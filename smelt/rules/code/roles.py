@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.syntax import ClassInfo
+    from smelt.diagnostics.violation import Fix
 
 
 def class_violation(  # noqa: PLR0913
@@ -20,6 +21,7 @@ def class_violation(  # noqa: PLR0913
     *,
     expected: dict[str, object] | None = None,
     hint: str | None = None,
+    fix: Fix | None = None,
 ) -> Violation:
     info = ctx.model.info(cls.module)
     start, end = cls.name_span
@@ -34,6 +36,7 @@ def class_violation(  # noqa: PLR0913
         layer=info.layer if info else None,
         expected=expected,
         hint=hint,
+        fix=fix,
     )
 
 
