@@ -4,12 +4,20 @@ from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
 from smelt.rules.base import Rule, RuleSet
+from smelt.rules.code.roles import MisplacedRole
 from smelt.rules.dependencies.composition_root import CompositionRootLeak
 from smelt.rules.dependencies.cycles import ImportCycle
 from smelt.rules.dependencies.features import CrossFeatureImport, SharedImportsFeature
 from smelt.rules.dependencies.layers import LayerBoundary
 from smelt.rules.dependencies.third_party import ThirdPartyDenied
 from smelt.rules.meta import StaleBaseline, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.structure.layout import (
+    CrowdedPackage,
+    UnclassifiedModule,
+    UnknownLayer,
+)
+from smelt.rules.structure.naming import ForbiddenPackageName
+from smelt.rules.structure.roles import RoleFile
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -30,6 +38,12 @@ def builtin_rules() -> list[Rule]:
         ImportCycle(),
         SharedImportsFeature(),
         CompositionRootLeak(),
+        MisplacedRole(),
+        UnknownLayer(),
+        ForbiddenPackageName(),
+        RoleFile(),
+        CrowdedPackage(),
+        UnclassifiedModule(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         StaleBaseline(),
