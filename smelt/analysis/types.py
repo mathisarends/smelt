@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import shutil
 import subprocess
@@ -125,7 +127,7 @@ class PyrightTypes:
                 check=False,
                 cwd=workspace,
             )
-        except OSError, subprocess.SubprocessError:
+        except (OSError, subprocess.SubprocessError):
             return None
         return result.stdout
 

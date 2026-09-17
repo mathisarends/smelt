@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from smelt.cli.support import EXIT_OK, Console, load_project_config

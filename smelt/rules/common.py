@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from smelt.model import ArchitectureModel, is_within

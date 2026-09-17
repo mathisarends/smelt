@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean

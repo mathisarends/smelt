@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import re
 import tokenize
@@ -51,7 +53,7 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
     found: list[Suppression] = []
     try:
         tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
-    except tokenize.TokenError, SyntaxError:
+    except (tokenize.TokenError, SyntaxError):
         return found
     for token in tokens:
         if token.type != tokenize.COMMENT:

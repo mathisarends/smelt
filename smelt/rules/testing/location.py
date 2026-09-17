@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import posixpath
 from collections import Counter
 from typing import TYPE_CHECKING

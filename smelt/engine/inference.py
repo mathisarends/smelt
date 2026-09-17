@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import tomllib
 from collections import Counter
@@ -222,7 +224,7 @@ def _di_frameworks(root: Path) -> list[str]:
     pyproject = root / "pyproject.toml"
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    except OSError, tomllib.TOMLDecodeError:
+    except (OSError, tomllib.TOMLDecodeError):
         return []
     project = data.get("project", {})
     requirements = list(project.get("dependencies", []))

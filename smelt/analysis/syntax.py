@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 from dataclasses import dataclass, field
 from functools import cached_property

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import difflib
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -71,9 +73,11 @@ class _Files:
     def original(self, path: str) -> str | None:
         if path not in self._cache:
             file = self._root / path
-            self._cache[path] = (
-                file.read_text(encoding="utf-8", newline="") if file.is_file() else None
-            )
+            if file.is_file():
+                with file.open(encoding="utf-8", newline="") as stream:
+                    self._cache[path] = stream.read()
+            else:
+                self._cache[path] = None
         return self._cache[path]
 
 
