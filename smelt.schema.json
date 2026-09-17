@@ -1,0 +1,592 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mathisarends/smelt/main/smelt.schema.json",
+  "$defs": {
+    "ArchitectureConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FeaturesConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "shared": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Shared",
+          "type": "array"
+        },
+        "composition_root": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Composition Root",
+          "type": "array"
+        },
+        "layers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/LayerConfig"
+          },
+          "title": "Layers",
+          "type": "object"
+        },
+        "cross_feature": {
+          "$ref": "#/$defs/CrossFeatureConfig"
+        },
+        "di_frameworks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Di Frameworks",
+          "type": "array"
+        },
+        "imports": {
+          "$ref": "#/$defs/ImportsConfig"
+        }
+      },
+      "title": "ArchitectureConfig",
+      "type": "object"
+    },
+    "BloatConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "ratio": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "title": "Ratio",
+          "type": "number"
+        },
+        "min_test_loc": {
+          "default": 100,
+          "minimum": 0,
+          "title": "Min Test Loc",
+          "type": "integer"
+        }
+      },
+      "title": "BloatConfig",
+      "type": "object"
+    },
+    "CrossFeatureConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/Policy",
+          "default": "deny"
+        },
+        "allow": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        }
+      },
+      "title": "CrossFeatureConfig",
+      "type": "object"
+    },
+    "CycleScope": {
+      "enum": [
+        "features",
+        "layers",
+        "siblings"
+      ],
+      "type": "string"
+    },
+    "FeaturesConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Root"
+        },
+        "pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern"
+        }
+      },
+      "title": "FeaturesConfig",
+      "type": "object"
+    },
+    "IgnoreEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "modules": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Modules",
+          "type": "array"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Paths",
+          "type": "array"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "reason"
+      ],
+      "title": "IgnoreEntry",
+      "type": "object"
+    },
+    "ImportsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "type_checking": {
+          "default": "include",
+          "enum": [
+            "include",
+            "ignore"
+          ],
+          "title": "Type Checking",
+          "type": "string"
+        },
+        "transitive": {
+          "default": false,
+          "title": "Transitive",
+          "type": "boolean"
+        },
+        "cycles": {
+          "items": {
+            "$ref": "#/$defs/CycleScope"
+          },
+          "title": "Cycles",
+          "type": "array"
+        }
+      },
+      "title": "ImportsConfig",
+      "type": "object"
+    },
+    "LayerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "may_depend_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "May Depend On",
+          "type": "array"
+        },
+        "third_party": {
+          "$ref": "#/$defs/ThirdPartyPolicy"
+        },
+        "forbid_bases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbid Bases",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "LayerConfig",
+      "type": "object"
+    },
+    "MocksConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "max_per_test": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Max Per Test",
+          "type": "integer"
+        },
+        "forbid_first_party": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbid First Party",
+          "type": "array"
+        }
+      },
+      "title": "MocksConfig",
+      "type": "object"
+    },
+    "PatchingConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        },
+        "forbid": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbid",
+          "type": "array"
+        }
+      },
+      "title": "PatchingConfig",
+      "type": "object"
+    },
+    "Policy": {
+      "enum": [
+        "allow",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "ProjectConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "root_packages": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Root Packages",
+          "type": "array"
+        },
+        "source_roots": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Roots",
+          "type": "array"
+        },
+        "test_roots": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Test Roots",
+          "type": "array"
+        },
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        }
+      },
+      "required": [
+        "root_packages"
+      ],
+      "title": "ProjectConfig",
+      "type": "object"
+    },
+    "RoleConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "detect": {
+          "$ref": "#/$defs/RoleDetect"
+        },
+        "layers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Layers",
+          "type": "array"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File"
+        }
+      },
+      "required": [
+        "detect"
+      ],
+      "title": "RoleConfig",
+      "type": "object"
+    },
+    "RoleDetect": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base"
+        },
+        "implements": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Implements"
+        }
+      },
+      "title": "RoleDetect",
+      "type": "object"
+    },
+    "SeverityName": {
+      "enum": [
+        "error",
+        "warning",
+        "hint",
+        "off"
+      ],
+      "type": "string"
+    },
+    "StructureConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "forbidden_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Names",
+          "type": "array"
+        },
+        "crowded_threshold": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Crowded Threshold",
+          "type": "integer"
+        }
+      },
+      "title": "StructureConfig",
+      "type": "object"
+    },
+    "SuppressionsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "require_reason": {
+          "default": true,
+          "title": "Require Reason",
+          "type": "boolean"
+        }
+      },
+      "title": "SuppressionsConfig",
+      "type": "object"
+    },
+    "TestsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "default": "none",
+          "enum": [
+            "mirror",
+            "feature",
+            "none"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "pattern": {
+          "default": "tests/{feature}",
+          "title": "Pattern",
+          "type": "string"
+        },
+        "patching": {
+          "$ref": "#/$defs/PatchingConfig"
+        },
+        "private_access": {
+          "default": "forbid",
+          "enum": [
+            "allow",
+            "forbid"
+          ],
+          "title": "Private Access",
+          "type": "string"
+        },
+        "mocks": {
+          "$ref": "#/$defs/MocksConfig"
+        },
+        "interaction_assertions": {
+          "$ref": "#/$defs/SeverityName",
+          "default": "warning"
+        },
+        "bloat": {
+          "$ref": "#/$defs/BloatConfig"
+        }
+      },
+      "title": "TestsConfig",
+      "type": "object"
+    },
+    "ThirdPartyPolicy": {
+      "anyOf": [
+        {
+          "enum": [
+            "allow",
+            "deny"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "default": {
+              "$ref": "#/$defs/Policy",
+              "default": "allow"
+            },
+            "allow": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Allow",
+              "type": "array"
+            },
+            "deny": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Deny",
+              "type": "array"
+            }
+          },
+          "title": "ThirdPartyPolicy",
+          "type": "object"
+        }
+      ]
+    },
+    "VerifyStep": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "run": {
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "run"
+      ],
+      "title": "VerifyStep",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "project": {
+      "$ref": "#/$defs/ProjectConfig"
+    },
+    "architecture": {
+      "$ref": "#/$defs/ArchitectureConfig"
+    },
+    "roles": {
+      "additionalProperties": {
+        "$ref": "#/$defs/RoleConfig"
+      },
+      "title": "Roles",
+      "type": "object"
+    },
+    "structure": {
+      "$ref": "#/$defs/StructureConfig"
+    },
+    "tests": {
+      "$ref": "#/$defs/TestsConfig"
+    },
+    "rules": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SeverityName"
+      },
+      "title": "Rules",
+      "type": "object"
+    },
+    "ignore": {
+      "items": {
+        "$ref": "#/$defs/IgnoreEntry"
+      },
+      "title": "Ignore",
+      "type": "array"
+    },
+    "suppressions": {
+      "$ref": "#/$defs/SuppressionsConfig"
+    },
+    "baseline": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Baseline"
+    },
+    "plugins": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+    },
+    "verify": {
+      "items": {
+        "$ref": "#/$defs/VerifyStep"
+      },
+      "title": "Verify",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "project"
+  ],
+  "title": "smelt.yaml",
+  "type": "object"
+}
