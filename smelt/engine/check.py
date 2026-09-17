@@ -294,7 +294,8 @@ def _suppression_violations(
         if unused is None:
             continue
         line = ctx.files.line(suppression.path, suppression.line)
-        replacement = without_codes(line, suppression, unused)
+        # An empty tuple means the whole comment goes, so name every code it carries.
+        replacement = without_codes(line, suppression, unused or suppression.codes)
         label = ", ".join(unused) if unused else "all codes"
         results.append(
             unused_rule.violation(
