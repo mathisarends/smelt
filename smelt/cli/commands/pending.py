@@ -12,4 +12,4 @@ def _pending(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     raise CliError(msg)
 
 
-baseline = fix = init = inspect = verify = _pending
+baseline = fix = inspect = verify = _pending

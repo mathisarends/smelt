@@ -180,7 +180,7 @@ def _cross_feature(model: ArchitectureModel) -> str:
     cross = model.config.architecture.cross_feature
     if cross.default == "allow":
         return "allowed"
-    pairs = [f"{source} → {target}" for source, target in cross.pairs()]
+    pairs = [f"{source} → {target}" for source, target in sorted(cross.pairs())]
     return f"only {', '.join(pairs)}" if pairs else "none"
 
 

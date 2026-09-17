@@ -242,3 +242,43 @@ class TestDiscoveryCommands:
         assert code == 0
         assert out == "src/gateway/features/payments/domain/\n"
         assert 'feature "payments" does not exist yet' in err
+
+
+class TestInitCommand:
+    def test_writes_inferred_config_and_reports_violations(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "app/__init__.py": "",
+                "app/domain/__init__.py": "",
+                "app/domain/model.py": "from app.infra import db\n",
+                "app/infra/__init__.py": "",
+                "app/infra/db.py": "",
+            },
+        )
+        monkeypatch.chdir(tmp_path)
+
+        code, out, _ = _run(capsys, "init")
+
+        assert code == 0
+        assert (tmp_path / "smelt.yaml").is_file()
+        assert "  layers: domain (domain), infrastructure (infra)\n" in out
+        assert "The inferred config yields 1 error and 0 warnings." in out
+
+    def test_refuses_to_overwrite(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(clean_project)
+
+        code, _, err = _run(capsys, "init")
+
+        assert code == 2
+        assert "smelt.yaml already exists (use --force to overwrite)" in err
