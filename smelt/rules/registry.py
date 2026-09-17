@@ -4,7 +4,11 @@ from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
 from smelt.rules.base import Rule, RuleSet
+from smelt.rules.code.construction import ConcreteConstruction, ConcreteDependency
+from smelt.rules.code.container import ContainerUsage
+from smelt.rules.code.inheritance import ForbiddenBaseClass
 from smelt.rules.code.roles import MisplacedRole
+from smelt.rules.code.self_reference import SelfClassReference
 from smelt.rules.dependencies.composition_root import CompositionRootLeak
 from smelt.rules.dependencies.cycles import ImportCycle
 from smelt.rules.dependencies.features import CrossFeatureImport, SharedImportsFeature
@@ -38,7 +42,12 @@ def builtin_rules() -> list[Rule]:
         ImportCycle(),
         SharedImportsFeature(),
         CompositionRootLeak(),
+        ConcreteConstruction(),
+        ConcreteDependency(),
+        ForbiddenBaseClass(),
         MisplacedRole(),
+        ContainerUsage(),
+        SelfClassReference(),
         UnknownLayer(),
         ForbiddenPackageName(),
         RoleFile(),
