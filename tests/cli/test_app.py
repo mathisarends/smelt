@@ -52,7 +52,7 @@ class TestCheckCommand:
         code, out, _ = _run(capsys, "check")
 
         assert code == 0
-        assert out == "✓ dependencies ✓ code ✓ structure · 4 modules\n"
+        assert out == "✓ dependencies ✓ code ✓ structure ✓ tests · 4 modules\n"
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(

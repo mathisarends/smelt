@@ -134,8 +134,9 @@ def run_check(
     config = loaded.config
     rules = rules or load_rules(loaded)
     active = resolve_active_rules(rules, loaded, options)
-    changes = git_changes(loaded.root, options.base) if options.changed else None
-    ctx = context or AnalysisContext(loaded.root, config, changes=changes)
+    ctx = context or AnalysisContext(loaded.root, config)
+    if options.changed and ctx.changes is None:
+        ctx.changes = git_changes(loaded.root, options.base)
     requires = frozenset(index for rule, _ in active for index in rule.requires)
     ctx.ensure(requires)
 

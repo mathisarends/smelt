@@ -22,6 +22,15 @@ from smelt.rules.structure.layout import (
 )
 from smelt.rules.structure.naming import ForbiddenPackageName
 from smelt.rules.structure.roles import RoleFile
+from smelt.rules.testing.api import ApiUsedOnlyByTests
+from smelt.rules.testing.bloat import BloatedTestChange
+from smelt.rules.testing.location import MisplacedTestFile
+from smelt.rules.testing.mocks import (
+    InteractionAssertion,
+    MocksFirstParty,
+    TooManyMocks,
+)
+from smelt.rules.testing.patching import PatchesInternal, PrivateAccess
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -53,6 +62,14 @@ def builtin_rules() -> list[Rule]:
         RoleFile(),
         CrowdedPackage(),
         UnclassifiedModule(),
+        MisplacedTestFile(),
+        PatchesInternal(),
+        PrivateAccess(),
+        MocksFirstParty(),
+        TooManyMocks(),
+        InteractionAssertion(),
+        BloatedTestChange(),
+        ApiUsedOnlyByTests(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         StaleBaseline(),
