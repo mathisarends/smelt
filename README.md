@@ -24,6 +24,25 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
+`smelt fix` applies the deterministic fixes: it moves a misplaced test file, removes an
+unused suppression, and moves a role class into its `file` when every import of it can be
+rewritten statically. `smelt fix --dry-run` prints the diff instead.
+
+Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
+autocompletion for `smelt.yaml`.
+
+## Optional type information
+
+Role detection is nominal by default: a class is an adapter when it inherits a port. With
+
+```yaml
+analysis:
+  types: pyright        # needs pyright on PATH; pyright_command overrides how it is run
+```
+
+Smelt also asks pyright whether a class satisfies a port structurally, so a duck-typed
+adapter is found too. It is never required: without it, every rule still runs.
+
 ## Using Smelt with coding agents
 
 Add this to your `AGENTS.md` or `CLAUDE.md`:
@@ -82,6 +101,8 @@ uv run ruff check --fix .            # lint
 uv run ruff format .                 # format
 uv run mypy                          # type-check
 uv run pre-commit run --all-files    # run all hooks
+uv run smelt check                   # smelt checks itself
+uv run python scripts/generate.py    # refresh smelt.schema.json and docs/rules/
 ```
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).

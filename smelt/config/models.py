@@ -199,6 +199,11 @@ class RoleConfig(_Model):
         return self.file.removesuffix(".py") if self.file else None
 
 
+class AnalysisConfig(_Model):
+    types: Literal["none", "pyright"] = "none"
+    pyright_command: list[str] = Field(default_factory=lambda: ["pyright"])
+
+
 class StructureConfig(_Model):
     forbidden_names: list[str] = Field(default_factory=list)
     crowded_threshold: Annotated[int, Field(ge=1)] = 10
@@ -269,6 +274,7 @@ class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
+    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
     structure: StructureConfig = Field(default_factory=StructureConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)

@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
 from smelt.analysis.parsing import AstCache
 from smelt.analysis.roles import RoleIndex
 from smelt.analysis.syntax import SyntaxIndex
+from smelt.analysis.types import PyrightTypes, TypeIndex
 from smelt.model import ArchitectureModel
 
 if TYPE_CHECKING:
@@ -46,14 +47,6 @@ class ChangeSet:
         return frozenset(self.files)
 
 
-class TypeIndex(Protocol):
-    """Optional type information (reserved; rules must work without it)."""
-
-    def resolve_type(self, path: str, line: int, column: int) -> str | None: ...
-
-    def implements(self, cls: str, protocol: str) -> bool: ...
-
-
 class AnalysisContext:
     def __init__(
         self,
@@ -66,7 +59,16 @@ class AnalysisContext:
         self.root = root
         self.config = config
         self.changes = changes
-        self.types = types
+        self._types = types
+
+    @cached_property
+    def types(self) -> TypeIndex | None:
+        """The configured type backend, or None when there is none to be had."""
+        if self._types is not None:
+            return self._types
+        if self.config.analysis.types == "pyright":
+            return PyrightTypes.discover(self.root, self.config)
+        return None
 
     @cached_property
     def files(self) -> FileIndex:
@@ -92,7 +94,7 @@ class AnalysisContext:
 
     @cached_property
     def roles(self) -> RoleIndex:
-        return RoleIndex(self.config, self.syntax)
+        return RoleIndex(self.config, self.syntax, self.types)
 
     def ensure(self, indexes: frozenset[Index]) -> None:
         """Build the requested indexes up front so failures surface before rules run."""

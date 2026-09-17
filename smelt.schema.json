@@ -2,6 +2,29 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/mathisarends/smelt/main/smelt.schema.json",
   "$defs": {
+    "AnalysisConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "default": "none",
+          "enum": [
+            "none",
+            "pyright"
+          ],
+          "title": "Types",
+          "type": "string"
+        },
+        "pyright_command": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pyright Command",
+          "type": "array"
+        }
+      },
+      "title": "AnalysisConfig",
+      "type": "object"
+    },
     "ArchitectureConfig": {
       "additionalProperties": false,
       "properties": {
@@ -525,6 +548,9 @@
     },
     "architecture": {
       "$ref": "#/$defs/ArchitectureConfig"
+    },
+    "analysis": {
+      "$ref": "#/$defs/AnalysisConfig"
     },
     "roles": {
       "additionalProperties": {
