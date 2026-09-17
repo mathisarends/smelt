@@ -1,0 +1,8 @@
+- id: smelt
+  name: smelt
+  description: Check Python architecture boundaries against smelt.yaml.
+  entry: smelt check
+  language: python
+  pass_filenames: true
+  types: [python]
+  require_serial: true

@@ -1,5 +1,69 @@
 # smelt
 
+Static architecture guardrails for Python. Describe your features, layers and roles in
+`smelt.yaml`; `smelt check` reports every import and construct that breaks them, with the
+exact location, the allowed alternative and a hint on how to fix it.
+
+## Usage
+
+```bash
+smelt check                          # whole project, text output
+smelt check --changed                # only files changed against HEAD (incl. untracked)
+smelt check --changed --base origin/main --format json
+smelt context voice                  # architecture briefing for a feature or path
+smelt where port --feature voice     # canonical file for a new concept
+smelt explain SMT101                 # rationale, examples and config knobs of a rule
+smelt rules                          # all rules with defaults
+```
+
+Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
+
+Silence a single finding inline, always with a reason:
+
+```python
+from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
+```
+
+## Using Smelt with coding agents
+
+Add this to your `AGENTS.md` or `CLAUDE.md`:
+
+```md
+Before implementing, run `smelt context <feature>` to see where code belongs.
+After every change, run `smelt check --changed --format json`.
+Do not finish while errors remain. Use `smelt explain <code>` when unsure.
+```
+
+Suggested loop: `smelt context <feature>` → edit → `smelt check --changed` → fix → tests →
+pre-commit → CI (full check). Prefer the cheapest verification that gives sufficient
+confidence: a rename needs smelt plus a type checker, new behavior needs one focused
+regression test.
+
+## pre-commit
+
+```yaml
+repos:
+  - repo: https://github.com/mathisarends/smelt
+    rev: v0.1.0
+    hooks:
+      - id: smelt
+```
+
+## GitHub Actions
+
+CI always checks the whole repository, because cycles and transitive rules cannot be judged
+from a diff alone.
+
+```yaml
+- uses: astral-sh/setup-uv@v6
+- run: uvx --from smelt smelt check --format github
+# optional: code scanning
+- run: uvx --from smelt smelt check --format sarif > smelt.sarif || true
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: smelt.sarif
+```
+
 ## Development
 
 Requires [uv](https://docs.astral.sh/uv/).

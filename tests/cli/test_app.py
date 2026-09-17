@@ -177,3 +177,68 @@ class TestInfoCommands:
             "transitive": False,
             "cycles": ["features", "layers", "siblings"],
         }
+
+
+class TestDiscoveryCommands:
+    def test_context_for_feature(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, out, _ = _run(
+            capsys, "--config", str(GATEWAY / "smelt.yaml"), "context", "voice"
+        )
+
+        assert code == 0
+        assert out.startswith("Feature: voice   (gateway.features.voice)\n")
+
+    def test_context_path_relative_to_cwd(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(GATEWAY / "src" / "gateway")
+
+        code, out, _ = _run(capsys, "context", "shared", "--format", "json")
+
+        assert code == 0
+        assert json.loads(out)["module"] == "gateway.shared"
+
+    def test_context_unknown_target(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, _, err = _run(
+            capsys, "--config", str(GATEWAY / "smelt.yaml"), "context", "voic"
+        )
+
+        assert code == 2
+        assert 'did you mean "voice"?' in err
+
+    def test_where_port(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, out, _ = _run(
+            capsys,
+            "--config",
+            str(GATEWAY / "smelt.yaml"),
+            "where",
+            "port",
+            "--feature",
+            "voice",
+        )
+
+        assert code == 0
+        assert out == "src/gateway/features/voice/application/ports.py\n"
+
+    def test_where_requires_feature(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, _, err = _run(
+            capsys, "--config", str(GATEWAY / "smelt.yaml"), "where", "port"
+        )
+
+        assert code == 2
+        assert "--feature is required (features: billing, voice)" in err
+
+    def test_where_new_feature_warns(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, out, err = _run(
+            capsys,
+            "--config",
+            str(GATEWAY / "smelt.yaml"),
+            "where",
+            "domain",
+            "--feature",
+            "payments",
+        )
+
+        assert code == 0
+        assert out == "src/gateway/features/payments/domain/\n"
+        assert 'feature "payments" does not exist yet' in err
