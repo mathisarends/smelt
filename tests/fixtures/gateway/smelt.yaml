@@ -1,0 +1,44 @@
+version: 1
+
+project:
+  root_packages: [gateway]
+  source_roots: [src]
+  test_roots: [tests]
+
+architecture:
+  features:
+    root: gateway.features
+  shared: [gateway.shared]
+  composition_root: [gateway.bootstrap, gateway.main]
+  layers:
+    domain:
+      path: domain
+      may_depend_on: []
+      third_party:
+        default: deny
+        allow: [pydantic]
+    application:
+      path: application
+      may_depend_on: [domain]
+      third_party:
+        default: allow
+        deny: [fastapi, sqlalchemy, dishka]
+    infrastructure:
+      path: infra
+      may_depend_on: [domain, application]
+    presentation:
+      path: api
+      may_depend_on: [application]
+  cross_feature:
+    default: deny
+    allow: ["application -> application"]
+  di_frameworks: [dishka]
+
+roles:
+  port:
+    detect: { base: typing.Protocol }
+    layers: [application]
+    file: ports.py
+  adapter:
+    detect: { implements: port }
+    layers: [infrastructure]

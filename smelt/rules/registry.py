@@ -9,6 +9,7 @@ from smelt.rules.dependencies.cycles import ImportCycle
 from smelt.rules.dependencies.features import CrossFeatureImport, SharedImportsFeature
 from smelt.rules.dependencies.layers import LayerBoundary
 from smelt.rules.dependencies.third_party import ThirdPartyDenied
+from smelt.rules.meta import StaleBaseline, SuppressionWithoutReason, UnusedSuppression
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -29,6 +30,9 @@ def builtin_rules() -> list[Rule]:
         ImportCycle(),
         SharedImportsFeature(),
         CompositionRootLeak(),
+        UnusedSuppression(),
+        SuppressionWithoutReason(),
+        StaleBaseline(),
     ]
 
 

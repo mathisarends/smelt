@@ -1,3 +1,4 @@
+import itertools
 import textwrap
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
@@ -63,10 +64,7 @@ def _render_violation(
     header = f"{style(location, _BOLD)}  {style(violation.code, _BOLD)} {violation.rule}  {severity}"
     out = [header, f"  {violation.message}"]
     out.extend(_snippet(violation, read_line, style))
-    if violation.import_chain:
-        modules = [violation.import_chain[0].importer]
-        modules.extend(link.imported for link in violation.import_chain)
-        out.append(_wrap("Chain: ", " → ".join(modules)))
+    out.extend(_chain(violation))
     if violation.expected:
         out.extend(_expected(violation, violation.expected))
     if violation.hint:
@@ -74,6 +72,21 @@ def _render_violation(
     if violation.fix is not None or violation.fixable:
         out.append(style("  Fixable with `smelt fix`", _DIM))
     return "\n".join(out)
+
+
+def _chain(violation: Violation) -> list[str]:
+    links = violation.import_chain
+    if not links:
+        return []
+    connected = all(a.imported == b.importer for a, b in itertools.pairwise(links))
+    if connected:
+        modules = [links[0].importer, *(link.imported for link in links)]
+        return [_wrap("Chain: ", " → ".join(modules))]
+    lines = ["  Imports:"]
+    for link in links:
+        where = f" (line {link.line})" if link.line else ""
+        lines.append(f"    {link.importer} → {link.imported}{where}")
+    return lines
 
 
 def _snippet(violation: Violation, read_line: LineReader, style: _Style) -> list[str]:

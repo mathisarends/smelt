@@ -18,6 +18,6 @@ def config_json_schema() -> dict[str, Any]:
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": SCHEMA_ID,
-        "title": "smelt.yaml",
         **schema,
+        "title": "smelt.yaml",
     }
