@@ -165,7 +165,7 @@ def run_check(
     stale: list[BaselineEntry] = []
     if options.use_baseline and config.baseline:
         baseline = Baseline.load(loaded.root / config.baseline)
-        violations, known, stale = baseline.match(violations, _snippet_reader(ctx))
+        violations, known, stale = baseline.match(violations, snippet_reader(ctx))
         baselined = len(known)
         full_run = not options.paths and not options.changed
         if "SMT903" in active_codes and full_run:
@@ -188,7 +188,7 @@ def run_check(
     return CheckOutcome(report, ctx, rules, active, unfiltered, stale)
 
 
-def _snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
+def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
     def snippet(violation: Violation) -> str:
         if not violation.path or not violation.line:
             return ""

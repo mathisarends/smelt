@@ -104,3 +104,14 @@ class Baseline:
                 available[entry.fingerprint] -= 1
                 stale.append(entry)
         return new, known, stale
+
+    def without(self, stale: Iterable[BaselineEntry]) -> Baseline:
+        """A copy without ``stale`` entries (matched by fingerprint, one per entry)."""
+        remove = Counter(entry.fingerprint for entry in stale)
+        kept: list[BaselineEntry] = []
+        for entry in self.entries:
+            if remove[entry.fingerprint] > 0:
+                remove[entry.fingerprint] -= 1
+            else:
+                kept.append(entry)
+        return Baseline(kept)

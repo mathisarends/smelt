@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
 
 from smelt.analysis.parsing import AnalysisError
-from smelt.cli.support import EXIT_OK, CliError, Console
+from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import CONFIG_FILENAME, CONFIG_FILENAMES, load_config
+from smelt.diagnostics.baseline import Baseline
 from smelt.diagnostics.violation import Severity
-from smelt.engine.check import CheckOptions, run_check
+from smelt.engine.check import CheckOptions, run_check, snippet_reader
 from smelt.engine.inference import infer_config, render_config
 
 if TYPE_CHECKING:
@@ -73,3 +74,39 @@ def _violation_summary(path: Path) -> str:
         f"{warnings} warning{'s' * (warnings != 1)}. Review {CONFIG_FILENAME}, then run "
         "`smelt check`, or `smelt baseline` to adopt incrementally."
     )
+
+
+DEFAULT_BASELINE = ".smelt/baseline.json"
+
+
+def baseline(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+    loaded = load_project_config(args.config, cwd)
+    configured = loaded.config.baseline
+    relative = configured or DEFAULT_BASELINE
+    path = loaded.root / relative
+    outcome = run_check(loaded, CheckOptions(use_baseline=False))
+    snippet = snippet_reader(outcome.context)
+    current = [
+        v
+        for v in outcome.unfiltered
+        if v.code != "SMT903" and v.severity is not Severity.HINT
+    ]
+    if args.prune:
+        existing = Baseline.load(path)
+        _, _, stale = existing.match(current, snippet)
+        existing.without(stale).write(path)
+        remaining = len(existing.entries) - len(stale)
+        console.print(
+            f"Removed {len(stale)} stale entr{'y' if len(stale) == 1 else 'ies'} "
+            f"from {relative} ({remaining} remain)"
+        )
+    else:
+        Baseline.from_violations(current, snippet).write(path)
+        console.print(
+            f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
+        )
+    if configured is None:
+        console.warn(
+            f"add `baseline: {relative}` to {loaded.path.name} so `smelt check` uses it"
+        )
+    return EXIT_OK

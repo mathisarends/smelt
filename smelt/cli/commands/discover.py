@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config.errors import did_you_mean
+from smelt.engine.architecture_map import build_architecture_map
 from smelt.engine.briefing import (
     TargetError,
     build_briefing,
@@ -69,4 +70,12 @@ def where(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         msg = f'no canonical location for "{args.role}"'
         raise CliError(msg)
     console.print(path)
+    return EXIT_OK
+
+
+def inspect(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+    loaded = load_project_config(args.config, cwd)
+    outcome = run_check(loaded, CheckOptions())
+    data = build_architecture_map(outcome.context, outcome.report)
+    console.print(json.dumps(data, indent=2))
     return EXIT_OK

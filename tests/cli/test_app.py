@@ -1,4 +1,5 @@
 import json
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -282,3 +283,138 @@ class TestInitCommand:
 
         assert code == 2
         assert "smelt.yaml already exists (use --force to overwrite)" in err
+
+
+class TestBaselineCommand:
+    def test_writes_default_baseline_and_check_uses_it(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        root = write_project(tmp_path, _violating_project())
+        monkeypatch.chdir(root)
+
+        code, out, err = _run(capsys, "baseline")
+
+        assert code == 0
+        assert out == "Wrote .smelt/baseline.json (1 violation)\n"
+        assert "add `baseline: .smelt/baseline.json` to smelt.yaml" in err
+        with (root / "smelt.yaml").open("a", encoding="utf-8") as config:
+            config.write("baseline: .smelt/baseline.json\n")
+        assert _run(capsys, "check")[0] == 0
+
+    def test_prune_removes_fixed_entries(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = _violating_project()
+        files["smelt.yaml"] += "baseline: baseline.json\n"
+        root = write_project(tmp_path, files)
+        monkeypatch.chdir(root)
+        _run(capsys, "baseline")
+        (root / "app/domain/model.py").write_text("", encoding="utf-8")
+
+        code, out, err = _run(capsys, "baseline", "--prune")
+
+        assert code == 0
+        assert out == "Removed 1 stale entry from baseline.json (0 remain)\n"
+        assert err == ""
+        data = json.loads((root / "baseline.json").read_text(encoding="utf-8"))
+        assert data["violations"] == []
+
+
+def _violating_project() -> dict[str, str]:
+    return {
+        "smelt.yaml": LAYERED_CONFIG,
+        "app/__init__.py": "",
+        "app/domain/__init__.py": "",
+        "app/domain/model.py": "from app.application import service\n",
+        "app/application/__init__.py": "",
+        "app/application/service.py": "",
+    }
+
+
+class TestInspectCommand:
+    def test_architecture_map(self, capsys: pytest.CaptureFixture[str]) -> None:
+        code, out, _ = _run(capsys, "--config", str(GATEWAY / "smelt.yaml"), "inspect")
+
+        data = json.loads(out)
+        assert code == 0
+        assert data["schema_version"] == 1
+        assert {feature["name"] for feature in data["features"]} >= {"voice"}
+        assert data["violations"]["total"]["errors"] > 0
+        assert all(edge["count"] > 0 for edge in data["edges"]["layers"])
+
+
+def _python(code: str) -> str:
+    return f'"{sys.executable}" -c "{code}"'
+
+
+class TestVerifyCommand:
+    def _project(self, tmp_path: Path, steps: list[tuple[str, str]]) -> Path:
+        lines = "".join(f"  - name: {name}\n    run: '{run}'\n" for name, run in steps)
+        return write_project(
+            tmp_path,
+            {
+                "smelt.yaml": LAYERED_CONFIG + "verify:\n" + lines,
+                "app/__init__.py": "",
+            },
+        )
+
+    def test_runs_steps_and_fails_on_error(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = self._project(
+            tmp_path,
+            [
+                ("ok", _python("print(1)")),
+                ("broken", _python("import sys; print(42); sys.exit(3)")),
+                ("after", _python("print(2)")),
+            ],
+        )
+
+        code, out, _ = _run(capsys, "--config", str(root / "smelt.yaml"), "verify")
+
+        assert code == 1
+        assert [line[:1] for line in out.splitlines()[:3]] == ["✓", "✗", " "]
+        assert "    42" in out
+        assert out.endswith("\n2/3 steps passed; failed: broken\n")
+
+    def test_fail_fast_json(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = self._project(
+            tmp_path,
+            [("broken", _python("import sys; sys.exit(3)")), ("after", "echo x")],
+        )
+
+        code, out, _ = _run(
+            capsys,
+            "--config",
+            str(root / "smelt.yaml"),
+            "verify",
+            "--format",
+            "json",
+            "--fail-fast",
+        )
+
+        data = json.loads(out)
+        assert code == 1
+        assert data["passed"] is False
+        assert [(s["name"], s["status"], s["exit_code"]) for s in data["steps"]] == [
+            ("broken", "failed", 3),
+            ("after", "skipped", None),
+        ]
+
+    def test_requires_steps(
+        self, capsys: pytest.CaptureFixture[str], clean_project: Path
+    ) -> None:
+        code, _, err = _run(
+            capsys, "--config", str(clean_project / "smelt.yaml"), "verify"
+        )
+
+        assert code == 2
+        assert "no verify steps configured" in err
