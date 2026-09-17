@@ -85,7 +85,9 @@ def generated_files() -> dict[str, str]:
     return files
 
 
-def write_generated_files(root: Path) -> list[str]:
+def write_generated_files(  # smelt: ignore[SMT408] -- called by scripts/generate.py
+    root: Path,
+) -> list[str]:
     """Write the schema and the rule pages, and report what changed."""
     changed = []
     for name, content in generated_files().items():

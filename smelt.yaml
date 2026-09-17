@@ -1,0 +1,51 @@
+# smelt checks itself. Run `smelt check` (or `uv run smelt check`) from the repo root.
+version: 1
+
+project:
+  root_packages: [smelt]
+  source_roots: ["."]
+  test_roots: [tests]
+  exclude: ["tests/fixtures/**"]
+
+architecture:
+  # The doc generator is a tool for the repo, not part of any layer.
+  shared: [smelt.docs]
+  composition_root: [smelt.__main__]
+
+  layers:
+    config:
+      path: config
+      may_depend_on: []
+    model:
+      path: model
+      may_depend_on: [config]
+    analysis:
+      path: analysis
+      may_depend_on: [config, model]
+    diagnostics:
+      path: diagnostics
+      may_depend_on: [config]
+    fix:
+      path: fix
+      may_depend_on: [analysis, config, diagnostics, model]
+    rules:
+      path: rules
+      may_depend_on: [analysis, config, diagnostics, fix, model]
+    engine:
+      path: engine
+      may_depend_on: [analysis, config, diagnostics, fix, model, rules]
+    cli:
+      path: cli
+      may_depend_on: [analysis, config, diagnostics, engine, fix, model, rules]
+
+  imports:
+    type_checking: include
+    transitive: false
+
+structure:
+  forbidden_names: [utils, helpers]
+  crowded_threshold: 10
+
+tests:
+  layout: none
+  private_access: forbid

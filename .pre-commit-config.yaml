@@ -39,6 +39,13 @@ repos:
         types: [python]
         pass_filenames: false
         require_serial: true
+      - id: smelt
+        name: smelt
+        entry: uv run --frozen smelt check
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
