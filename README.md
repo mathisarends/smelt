@@ -28,7 +28,9 @@ With `tests.layout: mirror`, every test file must mirror a source module by its 
 `tests/billing/test_billing.py` needs `app/billing/`. Not every module needs a test, but a
 test whose source is missing or elsewhere is an error. Deliberately unmirrored tests go in
 `tests.unmirrored` (e.g. `["tests/integration/**"]`); `tests.mirror_suffixes: true` also
-allows `test_invoice_<topic>.py`.
+allows `test_invoice_<topic>.py`. `tests.mirror` sets the convention relative to the test
+root: the default `{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py`
+keeps it, and `unit/{path}/{module}_test.py` puts tests under `tests/unit/` with a suffix.
 
 Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
 autocompletion for `smelt.yaml`.

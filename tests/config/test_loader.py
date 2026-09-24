@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -86,6 +87,18 @@ class TestParsing:
     def test_rejects_malformed_rule_code(self) -> None:
         with pytest.raises(ConfigError, match='"layer-boundary" is not a rule code'):
             parse_config(_with(rules={"layer-boundary": "off"}))
+
+    @pytest.mark.parametrize(
+        ("mirror", "message"),
+        [
+            ("{path}/test_{name}.py", "unknown placeholders: {name}"),
+            ("{path}/test.py", 'needs one "{module}"'),
+            ("/{path}/test_{module}.py", "must be relative"),
+        ],
+    )
+    def test_rejects_malformed_mirror_pattern(self, mirror: str, message: str) -> None:
+        with pytest.raises(ConfigError, match=re.escape(message)):
+            parse_config(_with(tests={"mirror": mirror}))
 
 
 class TestThirdPartyPolicy:

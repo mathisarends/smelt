@@ -160,6 +160,15 @@ analog zu `tests.pattern`, z. B. `tests.mirror: "tests/unit/{path}/test_{module}
 `tests/billing/test_invoice.py`, ohne Root-Paket). Andere Konventionen sind über das Pattern
 konfigurierbar.
 
+**Umgesetzt:** `tests.mirror`, relativ zum Test-Root, Standard `"{path}/test_{module}.py"`.
+Platzhalter: `{path}` (Paketpfad unterhalb des Root-Pakets, darf leer sein), `{module}`
+(Pflicht) und `{root}`. Beispiele: `"{root}/{path}/test_{module}.py"`,
+`"unit/{path}/test_{module}.py"`, `"{path}/{module}_test.py"`. Ein Dateiname, der nicht zum
+Pattern passt, ist ein Fehler („invoice_test.py does not match tests.mirror (…)“). Zeigen die
+Imports eindeutig auf das Modul, nennt die Meldung den richtigen Namen („should be named
+test_invoice.py“). Das ist bewusst streng: `*_test.py` gilt beim Standard-Pattern nicht mehr
+als gespiegelt. Ungültige Patterns weist die Config-Validierung ab.
+
 ---
 
 ## P1: Agent-UX

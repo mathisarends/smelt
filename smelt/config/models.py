@@ -229,7 +229,8 @@ class BloatConfig(_Model):
 class TestsConfig(_Model):
     layout: Literal["mirror", "feature", "none"] = "none"
     pattern: str = "tests/{feature}"
-    # layout: mirror only
+    # layout: mirror only; `mirror` is relative to the test root
+    mirror: str = "{path}/test_{module}.py"
     unmirrored: list[str] = Field(default_factory=list)
     mirror_suffixes: bool = False
     patching: PatchingConfig = Field(default_factory=PatchingConfig)
@@ -243,6 +244,29 @@ class TestsConfig(_Model):
     def _pattern_has_placeholder(cls, value: str) -> str:
         if "{feature}" not in value:
             msg = f'pattern "{value}" needs a "{{feature}}" placeholder'
+            raise ValueError(msg)
+        return value
+
+    @field_validator("mirror")
+    @classmethod
+    def _mirror_is_a_file_pattern(cls, value: str) -> str:
+        unknown = set(re.findall(r"\{[^}]*\}", value)) - {
+            "{path}",
+            "{module}",
+            "{root}",
+        }
+        if unknown:
+            msg = f'mirror "{value}" has unknown placeholders: {", ".join(sorted(unknown))}'
+            raise ValueError(msg)
+        if value.count("{module}") != 1 or not value.endswith(".py"):
+            msg = f'mirror "{value}" needs one "{{module}}" and must end with ".py"'
+            raise ValueError(msg)
+        if (
+            value.startswith("/")
+            or value.count("{path}") > 1
+            or value.count("{root}") > 1
+        ):
+            msg = f'mirror "{value}" must be relative, with {{path}} and {{root}} at most once'
             raise ValueError(msg)
         return value
 

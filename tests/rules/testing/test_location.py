@@ -116,7 +116,6 @@ class TestMirrorLayout:
             tmp_path,
             {
                 "tests/billing/test_invoice.py": "import os\n",
-                "tests/billing/payment_test.py": "",
                 "tests/billing/test_billing.py": "",
                 "tests/billing/stripe/test_stripe.py": "",
                 "tests/test_app.py": "",
@@ -210,3 +209,63 @@ class TestMirrorLayout:
         )
 
         assert violations(root, ONLY_SMT401) == []
+
+    def test_name_outside_the_pattern(self, tmp_path: Path) -> None:
+        root = _mirror(tmp_path, {"tests/billing/invoice_test.py": ""})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "invoice_test.py does not match tests.mirror ({path}/test_{module}.py)"
+        )
+
+    def test_name_outside_the_pattern_with_imports(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {"tests/billing/invoice_test.py": "from app.billing import invoice\n"},
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == "invoice_test.py should be named test_invoice.py"
+        assert found.expected == {"path": "tests/billing/test_invoice.py"}
+
+
+class TestMirrorPattern:
+    def test_suffix_style(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {"tests/billing/invoice_test.py": "", "tests/billing/billing_test.py": ""},
+            '  mirror: "{path}/{module}_test.py"\n',
+        )
+
+        assert violations(root, ONLY_SMT401) == []
+
+    def test_with_root_package(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "tests/app/billing/test_invoice.py": "",
+                "tests/other/billing/test_invoice.py": "",
+            },
+            '  mirror: "{root}/{path}/test_{module}.py"\n',
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.path == "tests/other/billing/test_invoice.py"
+
+    def test_prefix_directory(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "tests/unit/billing/test_invoice.py": "",
+                "tests/billing/test_payment.py": "from app.billing import payment\n",
+            },
+            '  mirror: "unit/{path}/test_{module}.py"\n',
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == "test_payment.py belongs in tests/unit/billing/"
+        assert found.expected == {"path": "tests/unit/billing/test_payment.py"}

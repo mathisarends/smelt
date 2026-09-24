@@ -454,6 +454,11 @@
           "title": "Pattern",
           "type": "string"
         },
+        "mirror": {
+          "default": "{path}/test_{module}.py",
+          "title": "Mirror",
+          "type": "string"
+        },
         "unmirrored": {
           "items": {
             "type": "string"
