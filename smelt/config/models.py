@@ -38,8 +38,8 @@ class ProjectConfig(_Model):
     root_packages: Annotated[
         list[str],
         Field(
-            min_length=1,
-            description="Top-level packages to check, e.g. [backend, agent].",
+            default_factory=list,
+            description="Top-level packages to check; discovered from source_roots when omitted.",
         ),
     ]
     source_roots: list[str] = Field(

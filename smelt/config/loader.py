@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_loc
 from smelt.config.models import SmeltConfig
 from smelt.config.validation import validate_semantics
@@ -71,13 +72,14 @@ def load_config(path: Path) -> LoadedConfig:
         raise ConfigError([ConfigIssue("", f"cannot read {path}: {exc}")]) from exc
     except yaml.YAMLError as exc:
         raise ConfigError([ConfigIssue("", f"invalid YAML: {exc}")], source) from exc
-    config, warnings = parse_config(raw, source=source)
+    config, warnings = parse_config(raw, source=source, root=path.parent)
     return LoadedConfig(config=config, path=path.resolve(), warnings=warnings)
 
 
 def parse_config(
-    raw: object, *, source: str | None = None
+    raw: object, *, source: str | None = None, root: Path | None = None
 ) -> tuple[SmeltConfig, tuple[ConfigIssue, ...]]:
+    """Validate a raw config; ``root`` lets omitted root_packages be discovered."""
     if raw is None:
         raw = {}
     if not isinstance(raw, dict):
@@ -88,10 +90,45 @@ def parse_config(
         config = SmeltConfig.model_validate(raw)
     except ValidationError as exc:
         raise ConfigError(_issues_from_validation(exc), source) from exc
+    config = _with_root_packages(config, root, source)
     errors, warnings = validate_semantics(config)
     if errors:
         raise ConfigError(errors, source)
     return config, tuple(warnings)
+
+
+def _with_root_packages(
+    config: SmeltConfig, root: Path | None, source: str | None
+) -> SmeltConfig:
+    project = config.project
+    if project.root_packages:
+        return config
+    found = (
+        list(
+            dict.fromkeys(
+                package.name
+                for source_root in project.source_roots
+                for package in packages_in(root / source_root)
+            )
+        )
+        if root is not None
+        else []
+    )
+    if not found:
+        where = ", ".join(project.source_roots)
+        raise ConfigError(
+            [
+                ConfigIssue(
+                    "project.root_packages",
+                    f"no packages found under source_roots ({where}); "
+                    "set root_packages or source_roots",
+                )
+            ],
+            source,
+        )
+    return config.model_copy(
+        update={"project": project.model_copy(update={"root_packages": found})}
+    )
 
 
 def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:

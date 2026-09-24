@@ -76,7 +76,9 @@ class TestInferConfig:
         assert inferred.features_root == "backend.features"
         assert inferred.composition_root == ["backend.main", "backend.lifespan"]
         assert inferred.wiring == ["backend.features.auth.infrastructure.di"]
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
         assert warnings == ()
         assert config.architecture.wiring == inferred.wiring
 
@@ -183,7 +185,9 @@ class TestRenderConfig:
         inferred = infer_config(tmp_path)
         assert inferred is not None
 
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
 
         assert warnings == ()
         assert config.architecture.features is not None
@@ -333,7 +337,9 @@ class TestDddWorkspace:
 
         assert inferred is not None
         assert inferred.tests_layout == "mirror"
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
         assert warnings == ()
         assert config.tests.mirror == "{root}/{path}/test_{module}.py"
         assert config.architecture.modules == inferred.modules

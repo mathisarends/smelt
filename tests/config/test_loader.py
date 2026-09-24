@@ -7,7 +7,7 @@ import pytest
 
 from smelt.config import ConfigError, discover_config, load_config, parse_config
 from smelt.config.loader import load_yaml
-from tests.helpers import FIXTURES
+from tests.helpers import FIXTURES, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -122,6 +122,37 @@ class TestParsing:
     def test_rejects_malformed_mirror_pattern(self, mirror: str, message: str) -> None:
         with pytest.raises(ConfigError, match=re.escape(message)):
             parse_config(_with(tests={"mirror": mirror}))
+
+
+class TestRootPackages:
+    def test_discovered_from_source_roots(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {
+                "backend/src/backend/__init__.py": "",
+                "libs/agent/src/agent/__init__.py": "",
+                "backend/src/tests/test_x.py": "",
+            },
+        )
+        raw = {
+            "version": 1,
+            "project": {"source_roots": ["backend/src", "libs/agent/src"]},
+        }
+
+        config, _ = parse_config(raw, root=tmp_path)
+
+        assert config.project.root_packages == ["backend", "agent"]
+
+    def test_explicit_root_packages_win(self, tmp_path: Path) -> None:
+        write_project(tmp_path, {"app/__init__.py": "", "other/__init__.py": ""})
+
+        config, _ = parse_config(MINIMAL, root=tmp_path)
+
+        assert config.project.root_packages == ["app"]
+
+    def test_error_when_nothing_is_found(self, tmp_path: Path) -> None:
+        with pytest.raises(ConfigError, match="no packages found under source_roots"):
+            parse_config({"version": 1, "project": {}}, root=tmp_path)
 
 
 class TestThirdPartyPolicy:

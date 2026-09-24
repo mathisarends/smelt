@@ -7,29 +7,18 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from smelt.config.discovery import (
+    IGNORED_DIRS,
+    child_packages,
+    has_python,
+    packages_in,
+)
 from smelt.config.patterns import module_matches
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-_IGNORED_DIRS = frozenset(
-    {
-        "tests",
-        "test",
-        "docs",
-        "doc",
-        "scripts",
-        "examples",
-        "build",
-        "dist",
-        "node_modules",
-        "site-packages",
-        "migrations",
-        "venv",
-        "env",
-    }
-)
 _FEATURE_CONTAINERS = (
     "features",
     "modules",
@@ -113,35 +102,17 @@ class InferredConfig:
         return self.features_root is not None or self.features_pattern is not None
 
 
-def _child_packages(directory: Path) -> list[Path]:
-    if not directory.is_dir():
-        return []
-    return sorted(
-        (child for child in directory.iterdir() if _has_python(child)),
-        key=lambda p: p.name,
-    )
-
-
-def _has_python(directory: Path) -> bool:
-    return (
-        directory.is_dir()
-        and directory.name.isidentifier()
-        and directory.name not in _IGNORED_DIRS
-        and any(directory.rglob("*.py"))
-    )
-
-
 def infer_config(root: Path) -> InferredConfig | None:
     source_root = (
-        "src" if (root / "src").is_dir() and _packages_in(root / "src") else "."
+        "src" if (root / "src").is_dir() and packages_in(root / "src") else "."
     )
     base = root / source_root
-    packages = _packages_in(base)
+    packages = packages_in(base)
     source_roots = [source_root] if packages else []
     member_roots: list[Path] = []
     for member in _workspace_members(root):
-        member_source = member / "src" if _packages_in(member / "src") else member
-        found = _packages_in(member_source)
+        member_source = member / "src" if packages_in(member / "src") else member
+        found = packages_in(member_source)
         if not found:
             continue
         packages.extend(found)
@@ -200,16 +171,12 @@ def _workspace_members(root: Path) -> list[Path]:
     return sorted(found)
 
 
-def _packages_in(base: Path) -> list[Path]:
-    return [child for child in _child_packages(base) if any(child.glob("*.py"))]
-
-
 def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
     for package in packages:
-        for depth_one in [package, *_child_packages(package)]:
+        for depth_one in [package, *child_packages(package)]:
             for name in _FEATURE_CONTAINERS:
                 candidate = depth_one / name
-                children = _child_packages(candidate)
+                children = child_packages(candidate)
                 if children:
                     dotted = ".".join(candidate.relative_to(package.parent).parts)
                     inferred.features_root = dotted
@@ -219,9 +186,9 @@ def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
     for package in packages:
         layered = [
             child
-            for child in _child_packages(package)
+            for child in child_packages(package)
             if child.name not in _SHARED_NAMES
-            and len({c.name for c in _child_packages(child)} & layer_names) >= 2  # noqa: PLR2004
+            and len({c.name for c in child_packages(child)} & layer_names) >= 2  # noqa: PLR2004
         ]
         if len(layered) >= 2:  # noqa: PLR2004
             inferred.features_pattern = f"{package.name}.{{feature}}"
@@ -234,7 +201,7 @@ def _layer_containers(inferred: InferredConfig, packages: list[Path]) -> list[Pa
     if inferred.features_root is not None:
         first, *rest = inferred.features_root.split(".")
         container = by_name[first].joinpath(*rest)
-        return _child_packages(container)
+        return child_packages(container)
     if inferred.features_pattern is not None:
         root_name = inferred.features_pattern.split(".")[0]
         return [by_name[root_name] / name for name in inferred.features]
@@ -243,7 +210,7 @@ def _layer_containers(inferred: InferredConfig, packages: list[Path]) -> list[Pa
 
 def _infer_layers(inferred: InferredConfig, containers: list[Path]) -> None:
     counts: Counter[str] = Counter(
-        child.name for container in containers for child in _child_packages(container)
+        child.name for container in containers for child in child_packages(container)
     )
     found: dict[str, str] = {}
     for name, aliases in LAYER_ALIASES.items():
@@ -267,10 +234,10 @@ def _dependencies(layer: str, found: dict[str, str]) -> list[str]:
 def _infer_special_modules(inferred: InferredConfig, packages: list[Path]) -> None:
     for package in packages:
         for name in _SHARED_NAMES:
-            if _has_python(package / name):
+            if has_python(package / name):
                 inferred.shared.append(f"{package.name}.{name}")
         for name in _COMPOSITION_NAMES:
-            if (package / f"{name}.py").is_file() or _has_python(package / name):
+            if (package / f"{name}.py").is_file() or has_python(package / name):
                 inferred.composition_root.append(f"{package.name}.{name}")
         for name in _SHARED_MODULES:
             if (package / f"{name}.py").is_file():
@@ -312,7 +279,7 @@ def _infer_central_modules(inferred: InferredConfig, packages: list[Path]) -> No
         if not _within_any(container, [package.name]):
             inferred.unclassified_roots.append(package.name)
             continue
-        for child in _child_packages(package):
+        for child in child_packages(package):
             module = f"{package.name}.{child.name}"
             if _within_any(container, [module]) or _within_any(module, taken):
                 continue
@@ -431,7 +398,7 @@ def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
     for package in packages:
         for path in package.rglob("*.py"):
             relative = path.relative_to(package.parent)
-            if any(part in _IGNORED_DIRS for part in relative.parts):
+            if any(part in IGNORED_DIRS for part in relative.parts):
                 continue
             content = path.read_text(encoding="utf-8", errors="replace")
             if "from dishka import" not in content or not re.search(
@@ -449,8 +416,8 @@ def render_config(inferred: InferredConfig) -> str:
         "version: 1",
         "",
         "project:",
-        f"  root_packages: {_list(inferred.root_packages)}",
         f"  source_roots: {_list(inferred.source_roots)}",
+        f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
         f"  test_roots: {_list(inferred.test_roots)}",
         '  # exclude: ["**/migrations/**"]',
         "",

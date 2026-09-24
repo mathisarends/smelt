@@ -261,11 +261,10 @@
       "description": "Which packages and tests smelt reads.",
       "properties": {
         "root_packages": {
-          "description": "Top-level packages to check, e.g. [backend, agent].",
+          "description": "Top-level packages to check; discovered from source_roots when omitted.",
           "items": {
             "type": "string"
           },
-          "minItems": 1,
           "title": "Root Packages",
           "type": "array"
         },
@@ -294,9 +293,6 @@
           "type": "array"
         }
       },
-      "required": [
-        "root_packages"
-      ],
       "title": "ProjectConfig",
       "type": "object"
     },
