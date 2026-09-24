@@ -103,6 +103,12 @@ und SMT407 läuft nur mit `--changed`, deshalb gilt `checked != known` in der
 Standardkonfiguration immer. Tote pauschale Ignores bleiben so für immer liegen. Fix: Nicht
 aktive Regeln dürfen die Prüfung nicht blockieren, weil sie ohnehin nichts unterdrücken können.
 
+**Umgesetzt:** SMT901 vergleicht jetzt mit den Regeln, die ein voller Lauf mit dieser Config
+ausführen würde, nicht mit allen bekannten Regeln. Ein totes `# smelt: ignore -- …` wird
+damit gemeldet. Ebenso ein `ignore[SMT206]`, solange SMT206 aus ist, denn eine abgeschaltete
+Regel braucht keine Suppression. Ein eingegrenzter Lauf (`--select`/`--ignore`) meldet
+pauschale Suppressions weiterhin nicht, weil er das nicht beurteilen kann.
+
 **Entschieden: keine Schutzmechanismen gegen den Agent.** Ein Agent *kann* smelt umgehen:
 Config lockern (`layout: none`, `rules: {X: off}`), `# smelt: ignore-file` setzen oder die
 Baseline neu schreiben. Das ist gewollt, vergleichbar mit `git commit --no-verify`. Solche

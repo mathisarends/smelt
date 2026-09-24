@@ -172,6 +172,28 @@ class TestSuppressions:
 
         assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
 
+    def test_unused_blanket_suppression(self, tmp_path: Path) -> None:
+        root = _layered(tmp_path, "import os  # smelt: ignore -- stale\n")
+
+        [found] = violations(root)
+
+        assert (found.code, found.message) == (
+            "SMT901",
+            "unused suppression (all codes)",
+        )
+
+    def test_blanket_suppression_in_a_narrowed_run(self, tmp_path: Path) -> None:
+        root = _layered(tmp_path, "import os  # smelt: ignore -- stale\n")
+
+        assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
+
+    def test_suppression_for_a_rule_that_is_off(self, tmp_path: Path) -> None:
+        root = _layered(tmp_path, "import os  # smelt: ignore[SMT206] -- x\n")
+
+        [found] = violations(root)
+
+        assert found.message == "unused suppression (all codes)"
+
 
 class TestBaseline:
     def test_known_violations_pass_and_survive_line_shifts(

@@ -152,9 +152,13 @@ def run_check(
     suppressions = _collect_suppressions(ctx)
     violations, suppressed = _apply_suppressions(violations, suppressions)
     known_codes = {rule.code for rule in rules.rules}
+    # The rules a full run with this config would execute; the others are off and
+    # cannot need a suppression.
+    enabled = resolve_active_rules(rules, loaded, CheckOptions(changed=options.changed))
+    enabled_codes = {rule.code for rule, _ in enabled} - _META
     violations.extend(
         _suppression_violations(
-            ctx, suppressions, active_codes, known_codes, severity_of
+            ctx, suppressions, active_codes, (known_codes, enabled_codes), severity_of
         )
     )
     unfiltered = list(violations)
@@ -264,7 +268,7 @@ def _suppression_violations(
     ctx: AnalysisContext,
     suppressions: list[Suppression],
     active_codes: set[str],
-    known_codes: set[str],
+    codes: tuple[set[str], set[str]],
     severity_of: dict[str, Severity],
 ) -> list[Violation]:
     results: list[Violation] = []
@@ -288,7 +292,7 @@ def _suppression_violations(
             )
         if "SMT901" not in active_codes:
             continue
-        unused = _unused_codes(suppression, checked, known_codes)
+        unused = _unused_codes(suppression, checked, *codes)
         if unused is None:
             continue
         label = ", ".join(unused) if unused else "all codes"
@@ -305,19 +309,20 @@ def _suppression_violations(
 
 
 def _unused_codes(
-    suppression: Suppression, checked: set[str], known: set[str]
+    suppression: Suppression, checked: set[str], known: set[str], enabled: set[str]
 ) -> tuple[str, ...] | None:
     """Codes to remove, ``()`` for the whole comment, None if the suppression is fine.
 
-    A code only counts as unused when every rule it refers to actually ran.
+    A code only counts as unused when every enabled rule it refers to actually ran;
+    a narrowed run (``--select``, ``--ignore``) cannot judge the others.
     """
     if not suppression.codes:
-        return None if suppression.is_used or checked != known - _META else ()
+        return None if suppression.is_used or not enabled <= checked else ()
     evaluated = tuple(
         prefix
         for prefix in suppression.unused_codes()
         if (matching := {code for code in known if code.startswith(prefix)})
-        and matching <= checked
+        and matching & enabled <= checked
     )
     if not evaluated:
         return None
