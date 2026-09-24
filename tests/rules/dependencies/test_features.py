@@ -69,6 +69,26 @@ class TestCrossFeatureImport:
         )
         assert found.expected == {"cross_feature_allow": ["application -> application"]}
 
+    def test_namespace_feature_container_inside_regular_package(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "gw/features/billing/application/invoices.py": (
+                    "from gw.features.voice.domain import call\n"
+                )
+            },
+        )
+        (root / "gw/features/__init__.py").unlink()
+
+        [found] = violations(root, CheckOptions(select=("SMT102",)))
+
+        assert found.path == "gw/features/billing/application/invoices.py"
+        assert found.message == (
+            "feature billing must not import feature voice (application -> domain)"
+        )
+
     def test_default_allow_disables_the_rule(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,

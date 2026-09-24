@@ -32,6 +32,31 @@ def _references(syntax: ModuleSyntax) -> set[str]:
     return names
 
 
+_ROUTE_DECORATORS = frozenset(
+    {
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "route",
+        "api_route",
+        "websocket",
+    }
+)
+
+
+def _is_registered_route(statement: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return any(
+        isinstance(decorator, ast.Call)
+        and isinstance(decorator.func, ast.Attribute)
+        and decorator.func.attr in _ROUTE_DECORATORS
+        for decorator in statement.decorator_list
+    )
+
+
 class ApiUsedOnlyByTests(BaseRule):
     code = "SMT408"
     name = "test-only-api"
@@ -42,7 +67,8 @@ class ApiUsedOnlyByTests(BaseRule):
         summary="A public production function or class is only used by tests.",
         rationale=(
             "Code that exists only for tests widens the public surface and suggests the "
-            "tests exercise helpers instead of behavior. It may also be dead code."
+            "tests exercise helpers instead of behavior. It may also be dead code. "
+            "Functions registered as HTTP routes are used by the framework."
         ),
         bad="def reset_cache_for_tests() -> None: ...",
         good="Test through the behavior that uses the cache.",
@@ -69,6 +95,10 @@ class ApiUsedOnlyByTests(BaseRule):
                     continue
                 name = statement.name
                 if is_private(name) or name.startswith("__") or name in production:
+                    continue
+                if isinstance(
+                    statement, ast.FunctionDef | ast.AsyncFunctionDef
+                ) and _is_registered_route(statement):
                     continue
                 if name not in tested:
                     continue

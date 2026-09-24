@@ -5,11 +5,18 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from importlib.machinery import PathFinder
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import grimp
 from grimp.application.config import settings as grimp_settings
+from grimp.application.ports.modulefinder import (
+    AbstractModuleFinder,
+    FoundPackage,
+    ModuleFile,
+)
 from grimp.application.ports.packagefinder import AbstractPackageFinder
+from grimp.domain.valueobjects import Module
 from grimp.exceptions import SourceSyntaxError
 
 from smelt.analysis.parsing import (
@@ -65,6 +72,42 @@ class _SourceRootPackageFinder(AbstractPackageFinder):
         return set(spec.submodule_search_locations)
 
 
+class _IndexedModuleFinder(AbstractModuleFinder):
+    """Give Grimp the same modules and namespace packages as Smelt's file index."""
+
+    def __init__(self, files: FileIndex) -> None:
+        self._files = files
+
+    def find_package(
+        self,
+        package_name: str,
+        package_directory: str,
+        file_system: AbstractFileSystem,
+    ) -> FoundPackage:
+        directory = Path(package_directory)
+        module_files = frozenset(
+            ModuleFile(
+                Module(source.module), file_system.get_mtime(str(source.absolute))
+            )
+            for source in self._files.sources.values()
+            if is_within(source.module, package_name)
+            and source.absolute.is_relative_to(directory)
+        )
+        namespace_packages = frozenset(
+            package.module
+            for package in self._files.packages.values()
+            if is_within(package.module, package_name)
+            and not package.has_init
+            and (self._files.root / package.path).is_relative_to(directory)
+        )
+        return FoundPackage(
+            name=package_name,
+            directory=package_directory,
+            module_files=module_files,
+            namespace_packages=namespace_packages,
+        )
+
+
 class ImportIndex:
     def __init__(
         self, graph: grimp.ImportGraph, files: FileIndex, asts: AstCache
@@ -91,8 +134,12 @@ class ImportIndex:
         search_paths = [
             str((files.root / root).resolve()) for root in project.source_roots
         ]
-        previous = grimp_settings.PACKAGE_FINDER
-        grimp_settings.configure(PACKAGE_FINDER=_SourceRootPackageFinder(search_paths))
+        previous_package_finder = grimp_settings.PACKAGE_FINDER
+        previous_module_finder = grimp_settings.MODULE_FINDER
+        grimp_settings.configure(
+            PACKAGE_FINDER=_SourceRootPackageFinder(search_paths),
+            MODULE_FINDER=_IndexedModuleFinder(files),
+        )
         try:
             graph = grimp.build_graph(
                 packages[0],
@@ -103,7 +150,10 @@ class ImportIndex:
         except SourceSyntaxError as exc:
             raise AnalysisError(str(exc)) from exc
         finally:
-            grimp_settings.configure(PACKAGE_FINDER=previous)
+            grimp_settings.configure(
+                PACKAGE_FINDER=previous_package_finder,
+                MODULE_FINDER=previous_module_finder,
+            )
         for module in list(graph.modules):
             if (
                 any(is_within(module, p) for p in packages)
@@ -111,6 +161,12 @@ class ImportIndex:
                 and module not in files.packages
             ):
                 graph.remove_module(module)
+        missing = files.sources.keys() - graph.modules
+        if missing:
+            examples = ", ".join(sorted(missing)[:3])
+            raise AnalysisError(
+                f"import graph omitted {len(missing)} source module(s): {examples}"
+            )
         return cls(graph, files, asts)
 
     def is_external(self, module: str) -> bool:
