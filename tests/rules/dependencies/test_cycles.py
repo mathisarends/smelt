@@ -88,3 +88,34 @@ class TestLayerCycles:
         [found] = violations(root, ONLY_SMT104)
 
         assert found.message == "import cycle between layers: a -> b -> a"
+
+
+class TestFeatureCycles:
+    def test_wiring_import_does_not_create_feature_cycle(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                    version: 1
+                    project: {root_packages: [app]}
+                    architecture:
+                      features: {root: app.features}
+                      wiring: [app.features.b.infrastructure.di]
+                      layers:
+                        application: {path: application}
+                        infrastructure: {path: infrastructure}
+                      cross_feature:
+                        allow: ["application -> application"]
+                """,
+                "app/__init__.py": "",
+                "app/features/a/application/use_case.py": (
+                    "from app.features.b.application import port\n"
+                ),
+                "app/features/b/application/port.py": "",
+                "app/features/b/infrastructure/di.py": (
+                    "from app.features.a.application import use_case\n"
+                ),
+            },
+        )
+
+        assert violations(root, ONLY_SMT104) == []

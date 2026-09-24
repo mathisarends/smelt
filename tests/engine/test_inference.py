@@ -16,6 +16,28 @@ def _layers(layers: list[InferredLayer]) -> list[tuple[str, str, list[str]]]:
 
 
 class TestInferConfig:
+    def test_presentation_may_use_domain_types_for_mapping(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "src/shop/__init__.py": "",
+                "src/shop/domain/__init__.py": "",
+                "src/shop/application/__init__.py": "",
+                "src/shop/presentation/__init__.py": "",
+            },
+        )
+
+        inferred = infer_config(tmp_path)
+
+        assert inferred is not None
+        assert _layers(inferred.layers) == [
+            ("domain", "domain", []),
+            ("application", "application", ["domain"]),
+            ("presentation", "presentation", ["application", "domain"]),
+        ]
+
     def test_uv_workspace_with_nested_source_roots(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,

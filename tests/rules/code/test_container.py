@@ -20,6 +20,33 @@ ONLY_SMT205 = CheckOptions(select=("SMT205",))
 
 
 class TestContainerUsage:
+    def test_wiring_location_is_summarized_in_message(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG.replace(
+                    "  composition_root: [app.bootstrap]",
+                    "  composition_root: [app.bootstrap]\n"
+                    "  wiring: [app.providers.database]",
+                ),
+                "app/__init__.py": "",
+                "app/bootstrap.py": "",
+                "app/providers/database.py": "",
+                "app/routes.py": "sessions = container.get(Sessions)\n",
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT205)
+
+        assert found.message == (
+            "container.get(...) resolves a dependency outside the composition "
+            "root or declared wiring modules"
+        )
+        assert found.expected == {
+            "composition_root": ["app.bootstrap"],
+            "wiring": ["app.providers.database"],
+        }
+
     def test_resolution_outside_composition_root(self, tmp_path: Path) -> None:
         root = write_project(
             tmp_path,

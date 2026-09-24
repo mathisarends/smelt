@@ -58,7 +58,7 @@ _LAYER_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "domain": (),
     "application": ("domain",),
     "infrastructure": ("domain", "application"),
-    "presentation": ("application",),
+    "presentation": ("application", "domain"),
 }
 # distribution name -> import name
 _DI_FRAMEWORKS = {

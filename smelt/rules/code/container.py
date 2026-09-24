@@ -37,7 +37,10 @@ class ContainerUsage(BaseRule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
-        summary="A DI container resolves a dependency outside the composition root.",
+        summary=(
+            "A DI container resolves a dependency outside the composition root "
+            "or declared wiring."
+        ),
         rationale=(
             "Pulling dependencies out of a container (service locator) hides them from "
             "signatures, so neither readers nor tests can see what a class needs."
@@ -48,12 +51,17 @@ class ContainerUsage(BaseRule):
         ),
         good="def start(sessions: VoiceSessionRepository) -> None: ...",
         fix="Take the dependency as a parameter and resolve it in the composition root.",
-        config=("architecture.composition_root", "architecture.di_frameworks"),
+        config=(
+            "architecture.composition_root",
+            "architecture.wiring",
+            "architecture.di_frameworks",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        roots = ctx.config.architecture.composition_root
-        locations = [*roots, *ctx.config.architecture.wiring]
+        arch = ctx.config.architecture
+        roots = arch.composition_root
+        locations = [*roots, *arch.wiring]
         if not locations:
             return
         model = ctx.model
@@ -77,9 +85,14 @@ class ContainerUsage(BaseRule):
                     ctx,
                     syntax,
                     node,
-                    f"{receiver}.{node.func.attr}(...) resolves a dependency outside "
-                    f"the composition root ({join(locations)})",
-                    expected={"composition_root": locations},
+                    (
+                        f"{receiver}.{node.func.attr}(...) resolves a dependency outside "
+                        "the composition root or declared wiring modules"
+                        if arch.wiring
+                        else f"{receiver}.{node.func.attr}(...) resolves a dependency "
+                        f"outside the composition root ({join(roots)})"
+                    ),
+                    expected={"composition_root": roots, "wiring": arch.wiring},
                     hint=(
                         "Accept the dependency as a constructor or function parameter "
                         f"and resolve it in {locations[0]}."

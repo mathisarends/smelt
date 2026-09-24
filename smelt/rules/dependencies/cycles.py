@@ -52,8 +52,9 @@ class ImportCycle(BaseRule):
         rationale=(
             "Cycles mean two parts can only be understood, tested and changed together. "
             "They also cause import-order bugs at runtime. Imports that other rules "
-            "already forbid (SMT101, SMT102, SMT106) are left out, so a cycle report "
-            "means the cycle is built entirely from allowed dependencies."
+            "already forbid (SMT101, SMT102, SMT106) and outbound imports from "
+            "declared wiring are left out, so a cycle report means the cycle is built "
+            "entirely from ordinary allowed dependencies."
         ),
         bad=(
             "# billing/application/invoices.py\n"
@@ -146,7 +147,9 @@ class ImportCycle(BaseRule):
 def _reported_elsewhere(
     ctx: AnalysisContext, source: ModuleInfo, target: ModuleInfo
 ) -> bool:
-    """Imports that SMT101, SMT102 or SMT106 already report as violations."""
+    """Ignore wiring edges and imports already reported by boundary rules."""
+    if source.wiring:
+        return True
     if (
         (target.kind is ModuleKind.COMPOSITION_ROOT or target.wiring)
         and source.kind is not ModuleKind.COMPOSITION_ROOT
@@ -154,8 +157,6 @@ def _reported_elsewhere(
         and not wiring_facade(ctx.model, source, target)
     ):
         return True
-    if source.wiring:
-        return False
     if not (source.in_grid and target.in_grid and source.layer and target.layer):
         return False
     if source.feature == target.feature:
