@@ -101,6 +101,28 @@ class TestRuleSelection:
         with pytest.raises(ConfigError, match='unknown rule "SMT199"'):
             check(root)
 
+    def test_rule_configured_by_name(self, tmp_path: Path) -> None:
+        config = LAYERED_CONFIG + "rules:\n  layer-boundary: warning\n"
+        root = _layered(tmp_path, "from app.infra import db\n", config)
+
+        found = violations(root)
+
+        assert [(v.code, v.severity) for v in found] == [("SMT101", Severity.WARNING)]
+
+    def test_unknown_rule_name_suggests_a_match(self, tmp_path: Path) -> None:
+        config = LAYERED_CONFIG + "rules:\n  layer-boundry: off\n"
+        root = _layered(tmp_path, "", config)
+
+        with pytest.raises(ConfigError, match='did you mean "layer-boundary"'):
+            check(root)
+
+    def test_rule_configured_by_code_and_name(self, tmp_path: Path) -> None:
+        config = LAYERED_CONFIG + "rules:\n  SMT101: off\n  layer-boundary: error\n"
+        root = _layered(tmp_path, "", config)
+
+        with pytest.raises(ConfigError, match="SMT101 is already configured"):
+            check(root)
+
 
 class TestIgnoreEntries:
     def test_module_glob(self, tmp_path: Path) -> None:

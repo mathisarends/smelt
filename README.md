@@ -163,6 +163,8 @@ Existing debt files remain readable. Run `smelt debt --prune` once before editin
 covered by an older baseline to upgrade their fingerprints; pruning accepts no new debt.
 New import fingerprints survive comments, aliases and formatting changes.
 
+Override severities by rule name or code, e.g. `rules: {unclassified-module: off}`.
+
 Silence a single finding inline, always with a reason:
 
 ```python

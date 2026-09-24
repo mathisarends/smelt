@@ -472,9 +472,9 @@ def render_config(inferred: InferredConfig) -> str:
     out.extend(
         [
             "",
-            "# Severity overrides by code: error | warning | hint | off",
+            "# Severity overrides by rule name or code: error | warning | hint | off",
             "# rules:",
-            "#   SMT305: off",
+            "#   unclassified-module: off  # same as SMT305: off",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",
             "# debt: .smelt/debt.json",

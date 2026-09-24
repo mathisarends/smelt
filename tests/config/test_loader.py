@@ -107,9 +107,9 @@ class TestParsing:
 
         assert config.rules == {"SMT101": "off"}
 
-    def test_rejects_malformed_rule_code(self) -> None:
-        with pytest.raises(ConfigError, match='"layer-boundary" is not a rule code'):
-            parse_config(_with(rules={"layer-boundary": "off"}))
+    def test_rejects_malformed_rule_key(self) -> None:
+        with pytest.raises(ConfigError, match='"Layer Boundary" is not a rule code'):
+            parse_config(_with(rules={"Layer Boundary": "off"}))
 
     @pytest.mark.parametrize(
         ("mirror", "message"),

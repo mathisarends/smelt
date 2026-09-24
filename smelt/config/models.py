@@ -15,6 +15,7 @@ type SeverityName = Literal["error", "warning", "hint", "off"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
+_RULE_NAME = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
 _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
@@ -394,8 +395,11 @@ class SmeltConfig(_Model):
     def _rule_codes_are_well_formed(
         cls, values: dict[str, SeverityName]
     ) -> dict[str, SeverityName]:
-        for code in values:
-            if not _RULE_CODE.match(code):
-                msg = f'"{code}" is not a rule code like "SMT101"'
+        for key in values:
+            if not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
+                msg = (
+                    f'"{key}" is not a rule code like "SMT101" '
+                    'or a rule name like "layer-boundary"'
+                )
                 raise ValueError(msg)
         return values
