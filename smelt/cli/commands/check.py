@@ -69,7 +69,11 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         case _:
             color = use_color(console.out, disabled=args.no_color)
             text = render_text(
-                report, read_line, color=color, show_hints=args.show_hints
+                report,
+                read_line,
+                color=color,
+                # Hints on the files just changed are few and relevant.
+                show_hints=args.show_hints or options.changed,
             )
             console.print(text, end="")
     return EXIT_VIOLATIONS if report.failed else EXIT_OK

@@ -167,6 +167,9 @@ SMT305: error“. Besser wäre ein Preset `strict`.
 `--show-hints`. Sie betreffen dann nur die gerade geänderten Dateien, sind also wenige und
 relevant. Im vollen Check bleiben sie eingeklappt.
 
+**Umgesetzt:** `smelt check --changed` (und `--base`) zeigt Hints im Textformat immer an.
+JSON/SARIF enthalten sie ohnehin.
+
 ### 9. ~~`smelt where test` für den exakten Testpfad~~ (entfällt)
 **Entschieden:** smelt wird *rückblickend* eingesetzt: Der Agent arbeitet, dann prüft
 `smelt check`. Proaktive Hilfen, die dem Agent vorher sagen, wo etwas hingehört, sind

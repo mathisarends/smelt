@@ -57,7 +57,9 @@ def _add_check(sub: Subparsers) -> None:
         "--ignore", metavar="CODES", help="comma-separated code prefixes"
     )
     check.add_argument(
-        "--show-hints", action="store_true", help="list hints in text output"
+        "--show-hints",
+        action="store_true",
+        help="list hints in text output (always on with --changed)",
     )
     check.add_argument("--no-color", action="store_true")
     check.add_argument("--no-baseline", action="store_true", help="ignore the baseline")

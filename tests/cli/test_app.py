@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 from typing import TYPE_CHECKING
 
@@ -150,6 +152,35 @@ class TestCheckCommand:
 
         assert code == 2
         assert "root_packages were found" in err
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+class TestChangedHints:
+    @pytest.fixture
+    def repo(self, clean_project: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+        for args in (
+            ["init", "-q", "-b", "main"],
+            ["add", "-A"],
+            ["commit", "-qm", "i"],
+        ):
+            subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
+        (clean_project / "app" / "misc.py").write_text("", encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+        return clean_project
+
+    @pytest.mark.usefixtures("repo")
+    def test_changed_mode_shows_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
+        _, out, _ = _run(capsys, "check", "--changed", "--no-color")
+
+        assert "app/misc.py  SMT305 unclassified-module  [hint]" in out
+
+    @pytest.mark.usefixtures("repo")
+    def test_full_check_folds_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
+        _, out, _ = _run(capsys, "check", "--no-color")
+
+        assert "SMT305" not in out
+        assert "1 hint (use --show-hints)" in out
 
 
 class TestInfoCommands:
