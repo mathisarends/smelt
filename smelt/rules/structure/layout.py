@@ -35,12 +35,16 @@ class UnknownLayer(BaseRule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
-        summary="A feature contains a package that is not a declared layer.",
+        summary="A feature contains a package or module outside the declared layers.",
         rationale=(
-            "Packages outside the layer grid are invisible to every layer rule: code in "
-            "voice/models/ can import anything and be imported by anything."
+            "Code outside the layer grid is invisible to every layer rule: voice/models/ "
+            "or voice/helpers.py can import anything and be imported by anything. A "
+            "feature's __init__.py is fine, and not every feature needs every layer."
         ),
-        bad="voice/\n  domain/\n  application/\n  models/      # not a layer",
+        bad=(
+            "voice/\n  domain/\n  application/\n  models/      # not a layer\n"
+            "  helpers.py   # in no layer"
+        ),
         good="voice/\n  domain/\n    models.py\n  application/",
         fix=(
             "Move the modules into a layer, declare the package under "
@@ -63,6 +67,8 @@ class UnknownLayer(BaseRule):
         paths: list[list[str]],
     ) -> Iterator[Violation]:
         model = ctx.model
+        if model.has_features:
+            yield from self._loose_modules(ctx, parent)
         for package in child_packages(ctx.files, parent):
             info = model.info(package.module)
             if info is not None and info.kind in (
@@ -90,6 +96,31 @@ class UnknownLayer(BaseRule):
                     f"Move the modules of {display_module_path(model, package.module, package=True)} "
                     "into a layer, declare it under architecture.layers, or add it to "
                     "architecture.shared."
+                ),
+            )
+
+    def _loose_modules(self, ctx: AnalysisContext, parent: str) -> Iterator[Violation]:
+        model = ctx.model
+        layers = list(model.layers)
+        for name, source in sorted(ctx.files.sources.items()):
+            if source.is_package or name.rsplit(".", 1)[0] != parent:
+                continue
+            info = model.info(name)
+            if info is None or info.layer is not None:
+                continue
+            if info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT):
+                continue
+            owner = info.feature or parent
+            yield self.violation(
+                f"{owner} contains module {last_segment(name)}.py, which is in no layer "
+                f"({join(layers)})",
+                path=source.path,
+                source_module=name,
+                feature=info.feature,
+                expected={"layers": layers},
+                hint=(
+                    f"Move {display_module_path(model, name)} into a layer of {owner}, "
+                    "or add it to architecture.shared."
                 ),
             )
 

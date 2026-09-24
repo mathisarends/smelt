@@ -138,6 +138,14 @@ außerhalb von Features. `__init__.py` des Features ist erlaubt.
 - **Keine Whitelist für Dateinamen pro Layer.** Zu streng, passt nicht zu „informieren statt
   bevormunden“.
 
+**Umgesetzt:** SMT301 meldet jetzt auch Module direkt im Feature (oder in einem
+Zwischenpaket eines gepunkteten Layer-Pfads wie `infra/` bei `infra.adapters`), die in keinem
+Layer liegen: „voice contains module helpers.py, which is in no layer (domain, …)“.
+Ausnahmen: das `__init__.py` des Features sowie Module, die unter `shared` oder
+`composition_root` stehen. In Projekten ohne Features bleiben Module neben den Layern
+(`app/main.py`) erlaubt und höchstens ein SMT305-Hint. `structure.max_depth` ist nicht
+umgesetzt, weil es kein konkreter Bedarf war.
+
 ### 6. ~~Test-Hierarchie bei `layout: feature`~~ (entfällt)
 **Entschieden:** Das Ziel ist ein strenges `mirror`. Die Lücke bei `layout: feature` (Tests
 ohne Feature-Import werden übergangen) ist deshalb nicht relevant. Test-Ordner ohne

@@ -100,6 +100,49 @@ class TestUnknownLayer:
 
         assert [v.source_module for v in found] == ["app.cli"]
 
+    def test_loose_module_in_feature(self, tmp_path: Path) -> None:
+        root = _features(tmp_path, {"gw/features/voice/helpers.py": ""})
+
+        [found] = violations(root, CheckOptions(select=("SMT301",)))
+
+        assert found.path == "gw/features/voice/helpers.py"
+        assert found.message == (
+            "voice contains module helpers.py, which is in no layer "
+            "(domain, infrastructure)"
+        )
+        assert found.hint == (
+            "Move voice/helpers.py into a layer of voice, or add it to "
+            "architecture.shared."
+        )
+
+    def test_loose_module_below_dotted_layer_prefix(self, tmp_path: Path) -> None:
+        root = _features(
+            tmp_path,
+            {
+                "gw/features/voice/infra/__init__.py": "",
+                "gw/features/voice/infra/config.py": "",
+                "gw/features/voice/infra/adapters/__init__.py": "",
+                "gw/features/voice/infra/adapters/sql.py": "",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT301",)))
+
+        assert [v.source_module for v in found] == ["gw.features.voice.infra.config"]
+
+    def test_modules_outside_features_are_not_loose(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": LAYERED_CONFIG,
+                "app/__init__.py": "",
+                "app/main.py": "",
+                "app/domain/__init__.py": "",
+            },
+        )
+
+        assert violations(root, CheckOptions(select=("SMT301",))) == []
+
 
 class TestCrowdedPackage:
     def test_reports_packages_above_threshold_as_hint(self, tmp_path: Path) -> None:
