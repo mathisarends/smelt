@@ -26,7 +26,7 @@ class TestJson:
             "hints": 1,
             "modules": 4,
             "suppressed": 1,
-            "baselined": 2,
+            "in_debt": 2,
         }
         assert [v["code"] for v in document["violations"]] == [
             "SMT101",

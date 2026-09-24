@@ -599,7 +599,7 @@
     "suppressions": {
       "$ref": "#/$defs/SuppressionsConfig"
     },
-    "baseline": {
+    "debt": {
       "anyOf": [
         {
           "type": "string"
@@ -609,7 +609,7 @@
         }
       ],
       "default": null,
-      "title": "Baseline"
+      "title": "Debt"
     },
     "plugins": {
       "items": {

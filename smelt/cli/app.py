@@ -62,7 +62,7 @@ def _add_check(sub: Subparsers) -> None:
         help="list hints in text output (always on with --changed)",
     )
     check.add_argument("--no-color", action="store_true")
-    check.add_argument("--no-baseline", action="store_true", help="ignore the baseline")
+    check.add_argument("--no-debt", action="store_true", help="ignore the debt file")
     check.set_defaults(handler=commands.check)
 
 
@@ -93,13 +93,11 @@ def _add_maintenance(sub: Subparsers) -> None:
     init.add_argument("--force", action="store_true", help="overwrite an existing file")
     init.set_defaults(handler=commands.init)
 
-    baseline = sub.add_parser(
-        "baseline", help="write the baseline of current violations"
+    debt = sub.add_parser("debt", help="record current violations as known debt")
+    debt.add_argument(
+        "--prune", action="store_true", help="only remove resolved entries"
     )
-    baseline.add_argument(
-        "--prune", action="store_true", help="only remove stale entries"
-    )
-    baseline.set_defaults(handler=commands.baseline)
+    debt.set_defaults(handler=commands.debt)
 
     verify = sub.add_parser("verify", help="run the configured verification stack")
     verify.add_argument("--format", choices=["text", "json"], default="text")

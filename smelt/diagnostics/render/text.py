@@ -160,8 +160,8 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     tail: list[str] = []
     if report.suppressed:
         tail.append(f"{report.suppressed} suppressed")
-    if report.baselined:
-        tail.append(f"{report.baselined} baselined")
+    if report.in_debt:
+        tail.append(f"{report.in_debt} in debt")
     tail.append(_plural(report.modules, "module"))
 
     if errors == 0 and warnings == 0:

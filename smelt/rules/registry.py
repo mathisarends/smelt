@@ -16,7 +16,7 @@ from smelt.rules.dependencies.cycles import ImportCycle
 from smelt.rules.dependencies.features import CrossFeatureImport, SharedImportsFeature
 from smelt.rules.dependencies.layers import LayerBoundary
 from smelt.rules.dependencies.third_party import ThirdPartyDenied
-from smelt.rules.meta import StaleBaseline, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.structure.layout import (
     CrowdedPackage,
     UnclassifiedModule,
@@ -74,7 +74,7 @@ def builtin_rules() -> list[Rule]:
         ApiUsedOnlyByTests(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
-        StaleBaseline(),
+        ResolvedDebt(),
     ]
 
 

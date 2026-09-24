@@ -299,8 +299,8 @@ class TestInitCommand:
         assert "smelt.yaml already exists (use --force to overwrite)" in err
 
 
-class TestBaselineCommand:
-    def test_writes_default_baseline_and_check_uses_it(
+class TestDebtCommand:
+    def test_writes_default_debt_and_check_uses_it(
         self,
         capsys: pytest.CaptureFixture[str],
         tmp_path: Path,
@@ -309,13 +309,13 @@ class TestBaselineCommand:
         root = write_project(tmp_path, _violating_project())
         monkeypatch.chdir(root)
 
-        code, out, err = _run(capsys, "baseline")
+        code, out, err = _run(capsys, "debt")
 
         assert code == 0
-        assert out == "Wrote .smelt/baseline.json (1 violation)\n"
-        assert "add `baseline: .smelt/baseline.json` to smelt.yaml" in err
+        assert out == "Wrote .smelt/debt.json (1 violation)\n"
+        assert "add `debt: .smelt/debt.json` to smelt.yaml" in err
         with (root / "smelt.yaml").open("a", encoding="utf-8") as config:
-            config.write("baseline: .smelt/baseline.json\n")
+            config.write("debt: .smelt/debt.json\n")
         assert _run(capsys, "check")[0] == 0
 
     def test_prune_removes_fixed_entries(
@@ -325,18 +325,18 @@ class TestBaselineCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         files = _violating_project()
-        files["smelt.yaml"] += "baseline: baseline.json\n"
+        files["smelt.yaml"] += "debt: debt.json\n"
         root = write_project(tmp_path, files)
         monkeypatch.chdir(root)
-        _run(capsys, "baseline")
+        _run(capsys, "debt")
         (root / "app/domain/model.py").write_text("", encoding="utf-8")
 
-        code, out, err = _run(capsys, "baseline", "--prune")
+        code, out, err = _run(capsys, "debt", "--prune")
 
         assert code == 0
-        assert out == "Removed 1 stale entry from baseline.json (0 remain)\n"
+        assert out == "Removed 1 resolved entry from debt.json (0 remain)\n"
         assert err == ""
-        data = json.loads((root / "baseline.json").read_text(encoding="utf-8"))
+        data = json.loads((root / "debt.json").read_text(encoding="utf-8"))
         assert data["violations"] == []
 
 

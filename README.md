@@ -13,7 +13,13 @@ smelt check --changed --base origin/main --format json
 smelt context voice                  # architecture briefing for a feature or path
 smelt explain SMT101                 # rationale, examples and config knobs of a rule
 smelt rules                          # all rules with defaults
+smelt debt                           # record today's violations as known debt
+smelt debt --prune                   # drop debt entries that were fixed
 ```
+
+`smelt debt` lets an existing project adopt smelt incrementally: with `debt: .smelt/debt.json`
+in `smelt.yaml`, `smelt check` only fails on new violations, and SMT903 reports entries that
+were fixed and can leave the file.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 

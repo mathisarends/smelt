@@ -13,11 +13,11 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.violation import Violation
 
-BASELINE_VERSION = 1
+DEBT_VERSION = 1
 
 
 @dataclass(frozen=True, slots=True)
-class BaselineEntry:
+class DebtEntry:
     fingerprint: str
     code: str
     path: str | None
@@ -39,17 +39,17 @@ def fingerprint(violation: Violation, snippet: str) -> str:
 
 
 @dataclass
-class Baseline:
-    entries: list[BaselineEntry]
+class Debt:
+    entries: list[DebtEntry]
 
     @classmethod
-    def load(cls, path: Path) -> Baseline:
+    def load(cls, path: Path) -> Debt:
         if not path.is_file():
             return cls([])
         data = json.loads(path.read_text(encoding="utf-8"))
         return cls(
             [
-                BaselineEntry(
+                DebtEntry(
                     fingerprint=item["fingerprint"],
                     code=item["code"],
                     path=item.get("path"),
@@ -62,9 +62,9 @@ class Baseline:
     @classmethod
     def from_violations(
         cls, violations: Iterable[Violation], snippet: Callable[[Violation], str]
-    ) -> Baseline:
+    ) -> Debt:
         entries = [
-            BaselineEntry(fingerprint(v, snippet(v)), v.code, v.path, v.message)
+            DebtEntry(fingerprint(v, snippet(v)), v.code, v.path, v.message)
             for v in violations
         ]
         entries.sort(key=lambda e: (e.path or "", e.code, e.fingerprint))
@@ -73,7 +73,7 @@ class Baseline:
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "version": BASELINE_VERSION,
+            "version": DEBT_VERSION,
             "violations": [
                 {
                     "fingerprint": e.fingerprint,
@@ -88,8 +88,8 @@ class Baseline:
 
     def match(
         self, violations: Iterable[Violation], snippet: Callable[[Violation], str]
-    ) -> tuple[list[Violation], list[Violation], list[BaselineEntry]]:
-        """Split into (new, baselined) violations and the stale entries."""
+    ) -> tuple[list[Violation], list[Violation], list[DebtEntry]]:
+        """Split into (new, known) violations and the resolved entries."""
         available = Counter(entry.fingerprint for entry in self.entries)
         new: list[Violation] = []
         known: list[Violation] = []
@@ -100,20 +100,20 @@ class Baseline:
                 known.append(violation)
             else:
                 new.append(violation)
-        stale: list[BaselineEntry] = []
+        resolved: list[DebtEntry] = []
         for entry in self.entries:
             if available[entry.fingerprint] > 0:
                 available[entry.fingerprint] -= 1
-                stale.append(entry)
-        return new, known, stale
+                resolved.append(entry)
+        return new, known, resolved
 
-    def without(self, stale: Iterable[BaselineEntry]) -> Baseline:
-        """A copy without ``stale`` entries (matched by fingerprint, one per entry)."""
-        remove = Counter(entry.fingerprint for entry in stale)
-        kept: list[BaselineEntry] = []
+    def without(self, resolved: Iterable[DebtEntry]) -> Debt:
+        """A copy without ``resolved`` entries (matched by fingerprint, one per entry)."""
+        remove = Counter(entry.fingerprint for entry in resolved)
+        kept: list[DebtEntry] = []
         for entry in self.entries:
             if remove[entry.fingerprint] > 0:
                 remove[entry.fingerprint] -= 1
             else:
                 kept.append(entry)
-        return Baseline(kept)
+        return Debt(kept)

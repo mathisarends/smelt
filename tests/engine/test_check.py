@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
-from smelt.diagnostics.baseline import Baseline
+from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import (
@@ -195,17 +195,17 @@ class TestSuppressions:
         assert found.message == "unused suppression (all codes)"
 
 
-class TestBaseline:
+class TestDebt:
     def test_known_violations_pass_and_survive_line_shifts(
         self, tmp_path: Path
     ) -> None:
-        config = LAYERED_CONFIG + "baseline: .smelt/baseline.json\n"
+        config = LAYERED_CONFIG + "debt: .smelt/debt.json\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
         outcome = check(root)
-        Baseline.from_violations(
+        Debt.from_violations(
             outcome.unfiltered,
             lambda v: outcome.context.files.line(v.path or "", v.line or 0),
-        ).write(root / ".smelt" / "baseline.json")
+        ).write(root / ".smelt" / "debt.json")
         (root / "app/application/service.py").write_text(
             "import os\n\n\nfrom app.infra import db\n"
         )
@@ -213,12 +213,12 @@ class TestBaseline:
         shifted = check(root)
 
         assert shifted.report.violations == []
-        assert shifted.report.baselined == 1
+        assert shifted.report.in_debt == 1
 
-    def test_stale_entries_are_reported(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "baseline: baseline.json\n"
+    def test_resolved_entries_are_reported(self, tmp_path: Path) -> None:
+        config = LAYERED_CONFIG + "debt: debt.json\n"
         root = _layered(tmp_path, "", config)
-        (root / "baseline.json").write_text(
+        (root / "debt.json").write_text(
             json.dumps(
                 {
                     "version": 1,

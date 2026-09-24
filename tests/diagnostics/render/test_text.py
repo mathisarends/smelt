@@ -28,7 +28,7 @@ class TestViolations:
             "  Hint: Move Sessions to voice/application/ports.py and update its imports.\n"
             "\n"
             "✗ 1 error · 1 warning · 1 hint (use --show-hints) · 1 suppressed · "
-            "2 baselined · 4 modules\n"
+            "2 in debt · 4 modules\n"
         )
 
     def test_hints_are_shown_on_request(self, report: Report) -> None:
@@ -36,7 +36,7 @@ class TestViolations:
 
         assert "gw/features/voice/infra/  SMT305 crowded-package  [hint]" in out
         assert out.endswith(
-            "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 baselined · 4 modules\n"
+            "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
         )
 
     def test_color_wraps_severity_and_carets(self, report: Report) -> None:

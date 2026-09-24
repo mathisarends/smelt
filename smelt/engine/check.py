@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
-from smelt.diagnostics.baseline import Baseline, BaselineEntry
+from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
 from smelt.diagnostics.report import Report, RuleMeta
 from smelt.diagnostics.suppressions import (
@@ -21,7 +21,7 @@ from smelt.diagnostics.violation import (
     docs_url,
 )
 from smelt.engine.changes import git_changes
-from smelt.rules.meta import StaleBaseline, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ class CheckOptions:
     select: tuple[str, ...] = ()
     ignore: tuple[str, ...] = ()
     fail_on: Severity = Severity.ERROR
-    use_baseline: bool = True
+    use_debt: bool = True
 
 
 @dataclass
@@ -56,9 +56,9 @@ class CheckOutcome:
     context: AnalysisContext
     rules: RuleSet
     active: list[tuple[Rule, Severity]]
-    # every violation after ignores and suppressions, before baseline and scoping
+    # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
-    stale_baseline: list[BaselineEntry] = field(default_factory=list)
+    resolved_debt: list[DebtEntry] = field(default_factory=list)
 
 
 def load_rules(loaded: LoadedConfig) -> RuleSet:
@@ -163,16 +163,16 @@ def run_check(
     )
     unfiltered = list(violations)
 
-    baselined = 0
-    stale: list[BaselineEntry] = []
-    if options.use_baseline and config.baseline:
-        baseline = Baseline.load(loaded.root / config.baseline)
-        violations, known, stale = baseline.match(violations, snippet_reader(ctx))
-        baselined = len(known)
+    in_debt = 0
+    resolved: list[DebtEntry] = []
+    if options.use_debt and config.debt:
+        debt = Debt.load(loaded.root / config.debt)
+        violations, known, resolved = debt.match(violations, snippet_reader(ctx))
+        in_debt = len(known)
         full_run = not options.paths and not options.changed
         if "SMT903" in active_codes and full_run:
             violations.extend(
-                _stale_violations(stale, config.baseline, severity_of["SMT903"])
+                _resolved_violations(resolved, config.debt, severity_of["SMT903"])
             )
 
     violations = [v for v in violations if _in_scope(ctx, v, options)]
@@ -185,9 +185,9 @@ def run_check(
         rules=[rule_meta(rule) for rule, _ in active],
         fail_on=options.fail_on,
         suppressed=suppressed,
-        baselined=baselined,
+        in_debt=in_debt,
     )
-    return CheckOutcome(report, ctx, rules, active, unfiltered, stale)
+    return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
 
 
 def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
@@ -331,17 +331,17 @@ def _unused_codes(
     return evaluated
 
 
-def _stale_violations(
-    stale: list[BaselineEntry], baseline_path: str, severity: Severity
+def _resolved_violations(
+    resolved: list[DebtEntry], debt_path: str, severity: Severity
 ) -> list[Violation]:
-    rule = StaleBaseline()
+    rule = ResolvedDebt()
     return [
         rule.violation(
-            f"stale baseline entry: {entry.code} {entry.path or ''} ({entry.message})",
-            path=baseline_path,
-            hint="Run `smelt baseline --prune` to remove fixed entries.",
+            f"resolved debt entry: {entry.code} {entry.path or ''} ({entry.message})",
+            path=debt_path,
+            hint="Run `smelt debt --prune` to remove resolved entries.",
         ).with_severity(severity)
-        for entry in stale
+        for entry in resolved
     ]
 
 

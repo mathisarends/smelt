@@ -47,7 +47,7 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         select=split_codes(args.select),
         ignore=split_codes(args.ignore),
         fail_on=Severity(args.fail_on),
-        use_baseline=not args.no_baseline,
+        use_debt=not args.no_debt,
     )
     outcome = run_check(loaded, options)
     report = outcome.report

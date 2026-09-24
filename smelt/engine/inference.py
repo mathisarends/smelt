@@ -282,8 +282,8 @@ def render_config(inferred: InferredConfig) -> str:
             "# rules:",
             "#   SMT304: off",
             "",
-            "# Adopt incrementally: `smelt baseline` records today's violations.",
-            "# baseline: .smelt/baseline.json",
+            "# Adopt incrementally: `smelt debt` records today's violations.",
+            "# debt: .smelt/debt.json",
         ]
     )
     return "\n".join(out) + "\n"

@@ -37,7 +37,7 @@ class Report:
     rules: list[RuleMeta] = field(default_factory=list)
     fail_on: Severity = Severity.ERROR
     suppressed: int = 0
-    baselined: int = 0
+    in_debt: int = 0
 
     def count(self, severity: Severity) -> int:
         return sum(1 for v in self.violations if v.severity is severity)
@@ -57,5 +57,5 @@ class Report:
             "hints": self.count(Severity.HINT),
             "modules": self.modules,
             "suppressed": self.suppressed,
-            "baselined": self.baselined,
+            "in_debt": self.in_debt,
         }

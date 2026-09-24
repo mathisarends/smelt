@@ -282,6 +282,16 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
     **Entschieden: `debt`.** Befehl `smelt debt` (bzw. `smelt debt --prune`), Config-Key
     `debt: .smelt/debt.json`, SMT903 wird zu `resolved-debt` („Eintrag behoben, bitte
     entfernen“).
+    **Umgesetzt:**
+    - Befehl `smelt debt` / `smelt debt --prune`, Flag `smelt check --no-debt`, Config-Key
+      `debt`, Standarddatei `.smelt/debt.json`.
+    - Modul `smelt/diagnostics/debt.py` mit `Debt`/`DebtEntry`. SMT903 heißt `resolved-debt`
+      („resolved debt entry: …“).
+    - Die Ausgabe zeigt „2 in debt“ statt „2 baselined“, im JSON-Summary heißt das Feld
+      `in_debt`.
+    - Die README erklärt `smelt debt` jetzt, vorher kam der Befehl dort nicht vor.
+    - Keine Rückwärtskompatibilität für `baseline:`: Eine alte Config scheitert mit „unknown
+      key "baseline"“ und damit klar erkennbar.
 
 17. **Scope verkleinern: `smelt fix` und `smelt where` entfernen.**
     **Entschieden:** smelt prüft im Nachhinein, der Agent behebt selbst. Das heißt:
@@ -309,5 +319,5 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
 1. ~~Spec schärfen (#1)~~ entfallen. ✓ Scope verkleinern (#17).
 2. ✓ `mirror` pfadbasiert machen und verwaiste Tests melden (#2, #3).
 3. ✓ smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
-4. Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).
-5. Kleinkram und Bugs (#4, #11, #13, #14, #16).
+4. ✓ Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).
+5. ✓ Kleinkram und Bugs (#4, #11, #13, #14, #16), dazu die Spiegel-Konvention (#7).

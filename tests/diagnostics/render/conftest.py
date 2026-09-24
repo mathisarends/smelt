@@ -96,7 +96,7 @@ def report() -> Report:
         categories=[Category.DEPENDENCIES, Category.STRUCTURE],
         rules=RULES,
         suppressed=1,
-        baselined=2,
+        in_debt=2,
     )
 
 

@@ -55,18 +55,18 @@ class SuppressionWithoutReason(_EngineRule):
     )
 
 
-class StaleBaseline(_EngineRule):
+class ResolvedDebt(_EngineRule):
     code = "SMT903"
-    name = "stale-baseline"
+    name = "resolved-debt"
     default_severity = Severity.WARNING
     doc = RuleDoc(
-        summary="A baseline entry that no longer matches any violation.",
+        summary="A debt entry that no longer matches any violation.",
         rationale=(
-            "Fixed violations should leave the baseline, otherwise they could silently "
+            "Fixed violations should leave the debt file, otherwise they could silently "
             "come back."
         ),
         bad='{"code": "SMT101", "path": "app/application/old.py", ...}',
         good="(entry removed after the violation was fixed)",
-        fix="Run `smelt baseline --prune`.",
-        config=("baseline",),
+        fix="Run `smelt debt --prune`.",
+        config=("debt",),
     )

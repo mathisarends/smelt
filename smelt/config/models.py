@@ -308,7 +308,7 @@ class SmeltConfig(_Model):
     rules: dict[str, SeverityName] = Field(default_factory=dict)
     ignore: list[IgnoreEntry] = Field(default_factory=list)
     suppressions: SuppressionsConfig = Field(default_factory=SuppressionsConfig)
-    baseline: str | None = None
+    debt: str | None = None
     plugins: list[str] = Field(default_factory=list)
     verify: list[VerifyStep] = Field(default_factory=list)
 

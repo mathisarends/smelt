@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import CONFIG_FILENAME, CONFIG_FILENAMES, load_config
-from smelt.diagnostics.baseline import Baseline
+from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, run_check, snippet_reader
 from smelt.engine.inference import infer_config, render_config
@@ -63,7 +63,7 @@ def _summary(inferred: InferredConfig) -> list[str]:
 
 def _violation_summary(path: Path) -> str:
     try:
-        outcome = run_check(load_config(path), CheckOptions(use_baseline=False))
+        outcome = run_check(load_config(path), CheckOptions(use_debt=False))
     except AnalysisError as exc:
         return f"Could not check the inferred config: {exc}"
     report = outcome.report
@@ -74,19 +74,19 @@ def _violation_summary(path: Path) -> str:
     return (
         f"The inferred config yields {errors} error{'s' * (errors != 1)} and "
         f"{warnings} warning{'s' * (warnings != 1)}. Review {CONFIG_FILENAME}, then run "
-        "`smelt check`, or `smelt baseline` to adopt incrementally."
+        "`smelt check`, or `smelt debt` to adopt incrementally."
     )
 
 
-DEFAULT_BASELINE = ".smelt/baseline.json"
+DEFAULT_DEBT = ".smelt/debt.json"
 
 
-def baseline(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    configured = loaded.config.baseline
-    relative = configured or DEFAULT_BASELINE
+    configured = loaded.config.debt
+    relative = configured or DEFAULT_DEBT
     path = loaded.root / relative
-    outcome = run_check(loaded, CheckOptions(use_baseline=False))
+    outcome = run_check(loaded, CheckOptions(use_debt=False))
     snippet = snippet_reader(outcome.context)
     current = [
         v
@@ -94,21 +94,21 @@ def baseline(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         if v.code != "SMT903" and v.severity is not Severity.HINT
     ]
     if args.prune:
-        existing = Baseline.load(path)
-        _, _, stale = existing.match(current, snippet)
-        existing.without(stale).write(path)
-        remaining = len(existing.entries) - len(stale)
+        existing = Debt.load(path)
+        _, _, resolved = existing.match(current, snippet)
+        existing.without(resolved).write(path)
+        remaining = len(existing.entries) - len(resolved)
         console.print(
-            f"Removed {len(stale)} stale entr{'y' if len(stale) == 1 else 'ies'} "
+            f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
             f"from {relative} ({remaining} remain)"
         )
     else:
-        Baseline.from_violations(current, snippet).write(path)
+        Debt.from_violations(current, snippet).write(path)
         console.print(
             f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
         )
     if configured is None:
         console.warn(
-            f"add `baseline: {relative}` to {loaded.path.name} so `smelt check` uses it"
+            f"add `debt: {relative}` to {loaded.path.name} so `smelt check` uses it"
         )
     return EXIT_OK

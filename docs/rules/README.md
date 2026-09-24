@@ -29,6 +29,6 @@
 | [SMT408](SMT408.md) | test-only-api | tests | off |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |
-| [SMT903](SMT903.md) | stale-baseline | meta | warning |
+| [SMT903](SMT903.md) | resolved-debt | meta | warning |
 
 `smelt rules` prints the same table in the terminal.
