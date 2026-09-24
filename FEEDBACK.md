@@ -83,8 +83,8 @@ Ausnahmeliste: `tests.unmirrored: ["tests/integration/**", "tests/e2e/**"]`.
   `test_<modul>.py` auch `test_<paketname>.py` im Paketordner.
 
 **Umgesetzt (#2 und #3 zusammen, in SMT401, keine eigene Regel SMT409):**
-- Bei `layout: mirror` entscheidet nur der Pfad. `tests/<dirs>/test_<x>.py` (oder
-  `<x>_test.py`) ist in Ordnung, wenn `<root>/<dirs>/<x>.py` existiert oder `<x>` das Paket
+- Bei `layout: mirror` entscheidet nur der Pfad. `tests/<dirs>/test_<x>.py` (Schreibweise
+  seit #7 über `tests.mirror` einstellbar) ist in Ordnung, wenn `<root>/<dirs>/<x>.py` existiert oder `<x>` das Paket
   `<root>/<dirs>/` selbst ist (`tests/billing/test_billing.py`, `tests/test_app.py`).
   Ein Paket zählt nicht als Modul: `tests/billing/test_stripe.py` für `app/billing/stripe/`
   ist ein Fehler, richtig ist `tests/billing/stripe/test_stripe.py`.
