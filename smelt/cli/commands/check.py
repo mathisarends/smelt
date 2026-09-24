@@ -74,6 +74,7 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 color=color,
                 # Hints on the files just changed are few and relevant.
                 show_hints=args.show_hints or options.changed,
+                statistics=args.statistics,
             )
             console.print(text, end="")
     return EXIT_VIOLATIONS if report.failed else EXIT_OK

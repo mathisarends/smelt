@@ -100,6 +100,11 @@ def _add_check(sub: Subparsers) -> None:
         action="store_true",
         help="list hints in text output (always on with --changed)",
     )
+    check.add_argument(
+        "--statistics",
+        action="store_true",
+        help="show counts per rule instead of each violation",
+    )
     check.add_argument("--no-color", action="store_true")
     check.add_argument("--no-debt", action="store_true", help="ignore the debt file")
     check.set_defaults(handler=commands.check)
