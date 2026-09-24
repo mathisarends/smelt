@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -63,6 +63,8 @@ class ApiUsedOnlyByTests(BaseRule):
     category = Category.TESTS
     default_severity = Severity.HINT
     requires = frozenset({Index.FILES, Index.SYNTAX})
+    # Off by default: in a library, API used only by tests is the public API.
+    enabled_by_default: ClassVar[bool] = False
     doc = RuleDoc(
         summary="A public production function or class is only used by tests.",
         rationale=(

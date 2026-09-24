@@ -26,7 +26,7 @@
 | [SMT405](SMT405.md) | too-many-mocks | tests | warning |
 | [SMT406](SMT406.md) | interaction-assertion | tests | warning |
 | [SMT407](SMT407.md) | test-bloat | tests | hint |
-| [SMT408](SMT408.md) | test-only-api | tests | hint |
+| [SMT408](SMT408.md) | test-only-api | tests | off |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |
 | [SMT903](SMT903.md) | stale-baseline | meta | warning |

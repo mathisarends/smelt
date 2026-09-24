@@ -181,6 +181,8 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
     smelt selbst braucht dafür schon ein Ignore (`smelt/docs.py:90`).
     **Entschieden:** SMT408 wird opt-in (standardmäßig aus, wie SMT206). Die Regel bleibt als
     Hilfe erhalten, bekommt aber keine neue Option. Das Ignore in `smelt/docs.py:90` fällt weg.
+    **Umgesetzt:** `enabled_by_default = False`, aktivierbar über `rules: {SMT408: hint}` oder
+    `--select SMT408`. smelt läuft jetzt ohne ein einziges Suppress-Kommentar.
 12. ~~**Testdateien, die andere Testdateien importieren**~~ (entfällt).
     **Entschieden:** Keine eigene Regel, das wäre neuer Scope. Das Beispiel
     `tests/cli/test_fix.py` verschwindet ohnehin mit #17.

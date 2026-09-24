@@ -56,3 +56,16 @@ class TestApiUsedOnlyByTests:
         found = violations(root, CheckOptions(select=("SMT408",)))
 
         assert codes_at(found) == [("SMT408", "app/routes.py", 7)]
+
+    def test_is_off_by_default(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "app/__init__.py": "",
+                "app/cache.py": "def reset_for_tests(): ...\n",
+                "tests/test_cache.py": "from app.cache import reset_for_tests\n",
+            },
+        )
+
+        assert violations(root) == []
