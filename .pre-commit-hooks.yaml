@@ -4,5 +4,5 @@
   entry: smelt check
   language: python
   pass_filenames: true
-  types: [python]
+  files: '(\.py|smelt\.ya?ml)$'
   require_serial: true

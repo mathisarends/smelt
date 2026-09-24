@@ -43,7 +43,7 @@ repos:
         name: smelt
         entry: uv run --frozen smelt check
         language: system
-        types: [python]
+        files: '(\.py|smelt\.yaml)$'
         pass_filenames: false
         require_serial: true
 

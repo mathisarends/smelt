@@ -219,6 +219,12 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
 14. **Der Pre-commit-Hook läuft nur bei `types: [python]`.** Eine Änderung nur an `smelt.yaml`
     triggert ihn nicht, obwohl eine strengere Config neue Fehler im ganzen Projekt auslösen
     kann. `files: '(\.py|smelt\.yaml)$'` wäre robuster.
+    **Umgesetzt:** Beide Hooks (`.pre-commit-hooks.yaml` für Nutzer, `.pre-commit-config.yaml`
+    für smelt selbst) laufen jetzt auch bei `smelt.yaml`/`smelt.yml`. Weil der veröffentlichte
+    Hook die Dateinamen übergibt, hätte `smelt check smelt.yaml` sonst nur die Config „geprüft“
+    und nichts gemeldet. Deshalb gilt jetzt: Steht die Config unter den Pfaden, prüft
+    `smelt check` das ganze Projekt. (Aufgefallen beim Commit von #15, der nur `smelt.yaml`
+    änderte: Der smelt-Hook wurde übersprungen.)
 15. **smelt dogfoodet die eigenen Test-Regeln nicht.** Die eigene `smelt.yaml` setzt
     `tests.layout: none`, obwohl die Tests fast gespiegelt sind. Wenn Spiegelung ein Kernziel
     ist, sollte smelt selbst `mirror` nutzen. Das deckt Fälle wie `tests/cli/test_fix.py`

@@ -96,6 +96,24 @@ class TestCheckCommand:
             "src/gateway/shared/clock.py"
         ]
 
+    def test_config_path_widens_the_scope_to_the_project(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(GATEWAY)
+
+        _, out, _ = _run(
+            capsys,
+            "check",
+            "--format",
+            "json",
+            "src/gateway/shared/clock.py",
+            "smelt.yaml",
+        )
+
+        paths = {v["path"] for v in json.loads(out)["violations"]}
+        assert "src/gateway/shared/clock.py" in paths
+        assert len(paths) > 1
+
     def test_config_error_exits_with_two(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

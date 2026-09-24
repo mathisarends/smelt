@@ -19,11 +19,20 @@ if TYPE_CHECKING:
     import argparse
     from pathlib import Path
 
+    from smelt.config import LoadedConfig
+
 
 def split_codes(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return ()
     return tuple(code.strip().upper() for code in raw.split(",") if code.strip())
+
+
+def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
+    paths = tuple(relative_scope(loaded.root, cwd, p) for p in raw)
+    # A changed config can break any file, so it widens the scope to the project.
+    config = relative_scope(loaded.root, cwd, str(loaded.path))
+    return () if config in paths else paths
 
 
 def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
@@ -32,7 +41,7 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         for warning in loaded.warnings:
             console.warn(str(warning))
     options = CheckOptions(
-        paths=tuple(relative_scope(loaded.root, cwd, p) for p in args.paths),
+        paths=_scope(loaded, cwd, args.paths),
         changed=args.changed or args.base is not None,
         base=args.base,
         select=split_codes(args.select),
