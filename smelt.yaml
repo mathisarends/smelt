@@ -44,5 +44,5 @@ structure:
   crowded_threshold: 10
 
 tests:
-  layout: none
+  layout: mirror
   private_access: forbid

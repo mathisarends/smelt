@@ -223,6 +223,9 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
     `tests.layout: none`, obwohl die Tests fast gespiegelt sind. Wenn Spiegelung ein Kernziel
     ist, sollte smelt selbst `mirror` nutzen. Das deckt Fälle wie `tests/cli/test_fix.py`
     auf, und neue Regeln wie #2 würden sofort an einem echten Projekt getestet.
+    **Umgesetzt:** `smelt.yaml` nutzt jetzt `layout: mirror`. smelts eigene Tests waren nach
+    #17 bereits vollständig gespiegelt, der Check ist grün. Eine testweise angelegte
+    `tests/cli/test_ghost.py` wurde korrekt als verwaist gemeldet.
 
 16. **„Baseline“ ist kein selbsterklärender Name.** Gemeint ist: bekannte Altlasten, die
     beim Einführen von smelt eingefroren werden, damit nur neue Verletzungen fehlschlagen.
@@ -257,6 +260,6 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
 
 1. ~~Spec schärfen (#1)~~ entfallen. ✓ Scope verkleinern (#17).
 2. ✓ `mirror` pfadbasiert machen und verwaiste Tests melden (#2, #3).
-3. smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
+3. ✓ smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
 4. Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).
 5. Kleinkram und Bugs (#4, #11, #13, #14, #16).
