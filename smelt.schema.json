@@ -454,6 +454,18 @@
           "title": "Pattern",
           "type": "string"
         },
+        "unmirrored": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unmirrored",
+          "type": "array"
+        },
+        "mirror_suffixes": {
+          "default": false,
+          "title": "Mirror Suffixes",
+          "type": "boolean"
+        },
         "patching": {
           "$ref": "#/$defs/PatchingConfig"
         },

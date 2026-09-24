@@ -82,6 +82,20 @@ Ausnahmeliste: `tests.unmirrored: ["tests/integration/**", "tests/e2e/**"]`.
   `tests/billing/test_billing.py`. Der Pfad-Check akzeptiert also neben
   `test_<modul>.py` auch `test_<paketname>.py` im Paketordner.
 
+**Umgesetzt (#2 und #3 zusammen, in SMT401, keine eigene Regel SMT409):**
+- Bei `layout: mirror` entscheidet nur der Pfad. `tests/<dirs>/test_<x>.py` (oder
+  `<x>_test.py`) ist in Ordnung, wenn `<root>/<dirs>/<x>.py` existiert oder `<x>` das Paket
+  `<root>/<dirs>/` selbst ist (`tests/billing/test_billing.py`, `tests/test_app.py`).
+  Ein Paket zählt nicht als Modul: `tests/billing/test_stripe.py` für `app/billing/stripe/`
+  ist ein Fehler, richtig ist `tests/billing/stripe/test_stripe.py`.
+- Passt der Pfad nicht und zeigen die Imports eindeutig auf ein Modul gleichen Namens:
+  „test_invoice.py belongs in tests/billing/“ mit `expected.path`.
+- Sonst ist der Test verwaist: „test_ghost.py mirrors no source module:
+  app/billing/ghost.py does not exist“.
+- Neue Optionen: `tests.unmirrored` (Globs, Standard leer) und `tests.mirror_suffixes`
+  (Standard `false`). `conftest.py` und Hilfsdateien ohne `test_`-Präfix werden nicht geprüft.
+- `smelt fix` im Vorschlag oben ist durch #17 hinfällig. Die Meldung reicht dem Agent.
+
 ### 4. SMT901 übersieht pauschale Suppressions (Bug, verifiziert)
 `_unused_codes` (`smelt/engine/check.py:320`) meldet ein unbenutztes `# smelt: ignore`
 **ohne Codes** nur, wenn *alle* bekannten Regeln gelaufen sind. SMT206 ist standardmäßig aus
@@ -242,7 +256,7 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
 ## Vorgeschlagene Reihenfolge
 
 1. ~~Spec schärfen (#1)~~ entfallen. ✓ Scope verkleinern (#17).
-2. `mirror` pfadbasiert machen und verwaiste Tests melden (#2, #3).
+2. ✓ `mirror` pfadbasiert machen und verwaiste Tests melden (#2, #3).
 3. smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
 4. Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).
 5. Kleinkram und Bugs (#4, #11, #13, #14, #16).

@@ -23,6 +23,13 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
+With `tests.layout: mirror`, every test file must mirror a source module by its path:
+`tests/billing/test_invoice.py` needs `app/billing/invoice.py`, and a package test
+`tests/billing/test_billing.py` needs `app/billing/`. Not every module needs a test, but a
+test whose source is missing or elsewhere is an error. Deliberately unmirrored tests go in
+`tests.unmirrored` (e.g. `["tests/integration/**"]`); `tests.mirror_suffixes: true` also
+allows `test_invoice_<topic>.py`.
+
 Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
 autocompletion for `smelt.yaml`.
 

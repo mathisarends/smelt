@@ -60,7 +60,7 @@ class TestRulePages:
     def test_page_carries_the_how_to_fix_section(self) -> None:
         page = (ROOT / DOCS_DIR / "SMT401.md").read_text(encoding="utf-8")
 
-        assert "## How to fix\n\nMove the file to the expected path.\n" in page
+        assert "## How to fix\n\nMove or rename the file" in page
         assert page.startswith("# SMT401 test-location\n")
 
     def test_index_lists_every_rule(self) -> None:

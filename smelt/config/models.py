@@ -229,6 +229,9 @@ class BloatConfig(_Model):
 class TestsConfig(_Model):
     layout: Literal["mirror", "feature", "none"] = "none"
     pattern: str = "tests/{feature}"
+    # layout: mirror only
+    unmirrored: list[str] = Field(default_factory=list)
+    mirror_suffixes: bool = False
     patching: PatchingConfig = Field(default_factory=PatchingConfig)
     private_access: Literal["allow", "forbid"] = "forbid"
     mocks: MocksConfig = Field(default_factory=MocksConfig)
