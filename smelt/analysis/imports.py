@@ -22,6 +22,7 @@ from grimp.exceptions import SourceSyntaxError
 from smelt.analysis.parsing import (
     AnalysisError,
     AstCache,
+    python_note,
     resolve_relative,
     type_checking_lines,
 )
@@ -148,7 +149,7 @@ class ImportIndex:
                 cache_dir=None,
             )
         except SourceSyntaxError as exc:
-            raise AnalysisError(str(exc)) from exc
+            raise AnalysisError(str(exc) + python_note(files.root)) from exc
         finally:
             grimp_settings.configure(
                 PACKAGE_FINDER=previous_package_finder,

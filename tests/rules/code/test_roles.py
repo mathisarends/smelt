@@ -109,6 +109,31 @@ class TestMisplacedRole:
             "path": "voice/infra/",
         }
 
+    def test_pep_695_generics(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "gw/features/voice/application/ports.py": (
+                    "from typing import Protocol\n\n"
+                    "type Key = str\n\n\n"
+                    "class Repository[T](Protocol):\n"
+                    "    def get(self, key: Key) -> T: ...\n"
+                ),
+                "gw/features/voice/domain/memory.py": (
+                    "from gw.features.voice.application.ports import Repository\n\n\n"
+                    "class MemoryRepository[T](Repository[T]):\n"
+                    "    def get(self, key: str) -> T: ...\n"
+                ),
+            },
+        )
+
+        found = violations(root, ROLE_RULES)
+
+        assert codes_at(found) == [("SMT204", "gw/features/voice/domain/memory.py", 4)]
+        assert found[0].message.startswith(
+            "adapter MemoryRepository is defined in domain"
+        )
+
 
 class TestRoleFile:
     def test_port_outside_ports_module(self, tmp_path: Path) -> None:

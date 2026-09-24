@@ -244,6 +244,20 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
     - Umsetzung: je Version ein kleines Fixture-Projekt, dazu Tests mit
       `pytest.mark.skipif(sys.version_info < (3, 14))`. Die CI-Matrix 3.12 bis 3.14 gibt es
       schon.
+
+    **Umgesetzt:**
+    - Syntaxfehler (aus `ast` und aus grimp) enden jetzt mit „(parsed by Python 3.12)“.
+      Zielt `requires-python` in `pyproject.toml` oder `.python-version` auf eine neuere
+      Version, kommt dazu: „the project targets Python 3.14, so run smelt on it, e.g.
+      `uvx -p 3.14 smelt check`“. Die README hat einen Abschnitt „Python versions“.
+    - `tests/analysis/test_parsing.py`: Unter 3.12/3.13 erzeugt 3.14-Syntax den Hinweis.
+      Unter 3.13+ bzw. 3.14 werden Typ-Parameter-Defaults bzw. t-Strings und
+      `except A, B:` geparst, und die Regeln laufen normal (per `skipif`).
+    - Annotationen im Stil von 3.14 (ohne Future-Import und ohne Anführungszeichen, mit
+      `TYPE_CHECKING`-Namen) für SMT202 sowie PEP 695 (`class Repository[T](Protocol)`,
+      `type Key = str`) für die Rollen-Erkennung sind jetzt durch Tests abgesichert.
+      Beides funktionierte schon, ein Code-Fix war nicht nötig.
+    - Die volle Suite lief lokal unter 3.12, 3.13 und 3.14 grün.
 14. **Der Pre-commit-Hook läuft nur bei `types: [python]`.** Eine Änderung nur an `smelt.yaml`
     triggert ihn nicht, obwohl eine strengere Config neue Fehler im ganzen Projekt auslösen
     kann. `files: '(\.py|smelt\.yaml)$'` wäre robuster.

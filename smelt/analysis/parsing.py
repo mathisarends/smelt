@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import ast
+import re
+import sys
+import tomllib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from smelt.analysis.files import FileIndex
 
 
@@ -25,9 +30,48 @@ class AstCache:
                 tree = ast.parse(source, filename=path)
             except SyntaxError as exc:
                 msg = f"{path}:{exc.lineno}: syntax error: {exc.msg}"
-                raise AnalysisError(msg) from exc
+                raise AnalysisError(msg + python_note(self.files.root)) from exc
             self._trees[path] = tree
         return tree
+
+
+_VERSION_BOUND = re.compile(r"(?:>=|~=|==)\s*3\.(\d+)")
+
+
+def python_note(root: Path) -> str:
+    """Explain a syntax error that may just be newer syntax than the running Python.
+
+    ``ast`` only knows the grammar of the interpreter smelt runs on, so a 3.14
+    project checked by smelt on 3.12 fails on ``except A, B:`` or t-strings.
+    """
+    running = sys.version_info[:2]
+    note = f" (parsed by Python {running[0]}.{running[1]})"
+    target = _target_python(root)
+    if target is not None and target > running:
+        version = f"{target[0]}.{target[1]}"
+        note += (
+            f"; the project targets Python {version}, so run smelt on it, "
+            f"e.g. `uvx -p {version} smelt check`"
+        )
+    return note
+
+
+def _target_python(root: Path) -> tuple[int, int] | None:
+    found: list[tuple[int, int]] = []
+    try:
+        data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        data = {}
+    requires = data.get("project", {}).get("requires-python", "")
+    if isinstance(requires, str) and (match := _VERSION_BOUND.search(requires)):
+        found.append((3, int(match.group(1))))
+    try:
+        pinned = (root / ".python-version").read_text(encoding="utf-8").split()
+    except OSError:
+        pinned = []
+    if pinned and (match := re.match(r"3\.(\d+)", pinned[0])):
+        found.append((3, int(match.group(1))))
+    return max(found, default=None)
 
 
 def type_checking_lines(tree: ast.Module) -> frozenset[int]:

@@ -35,6 +35,13 @@ keeps it, and `unit/{path}/{module}_test.py` puts tests under `tests/unit/` with
 Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
 autocompletion for `smelt.yaml`.
 
+## Python versions
+
+Smelt runs on Python 3.12 to 3.14 and parses your code with the Python it runs on. Code
+that uses newer syntax (3.14's `except A, B:` or t-strings, 3.13's type parameter defaults)
+needs smelt on that version, e.g. `uvx -p 3.14 smelt check`; the syntax error says so when
+`requires-python` or `.python-version` targets a newer Python.
+
 ## Optional type information
 
 Role detection is nominal by default: a class is an adapter when it inherits a port. With

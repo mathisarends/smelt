@@ -146,6 +146,28 @@ class TestConcreteDependency:
         )
         assert found.expected == {"ports": ["app.application.ports.Sessions"]}
 
+    def test_unquoted_type_checking_annotation(self, tmp_path: Path) -> None:
+        # Python 3.14 style (PEP 649): no future import, no quotes.
+        root = _project(
+            tmp_path,
+            {
+                "app/application/start.py": (
+                    "from typing import TYPE_CHECKING\n\n"
+                    "if TYPE_CHECKING:\n"
+                    "    from app.infra.sql import SqlSessions\n\n\n"
+                    "def start(sessions: SqlSessions) -> None: ...\n"
+                )
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT202",)))
+
+        assert (found.line, found.message) == (
+            7,
+            "parameter sessions of start is annotated with adapter SqlSessions; "
+            "depend on Sessions",
+        )
+
     def test_port_annotation_is_fine(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,
