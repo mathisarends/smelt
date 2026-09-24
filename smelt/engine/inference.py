@@ -506,19 +506,7 @@ def _architecture(inferred: InferredConfig) -> list[str]:
             ]
         )
     if inferred.has_features:
-        pair = (
-            '["application -> application"]'
-            if any(layer.name == "application" for layer in inferred.layers)
-            else "[]"
-        )
-        out.extend(
-            [
-                "  cross_feature:",
-                "    default: deny",
-                "    # Review this architectural decision: the pair applies to ALL features.",
-                f"    allow: {pair}",
-            ]
-        )
+        out.extend(["  cross_feature:", "    default: deny", *_allow_lines(inferred)])
     out.extend(
         [
             "  imports:",
@@ -527,6 +515,26 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         ]
     )
     return out
+
+
+def _allow_lines(inferred: InferredConfig) -> list[str]:
+    """No blanket layer pair: each feature relationship is declared on purpose."""
+    layer = next(
+        (
+            name
+            for name in ("application", "domain")
+            if any(inferred_layer.name == name for inferred_layer in inferred.layers)
+        ),
+        inferred.layers[0].name if inferred.layers else None,
+    )
+    names = inferred.features or ["orders", "billing"]
+    if layer is None or len(names) < 2:  # noqa: PLR2004
+        return ["    allow: []"]
+    return [
+        "    allow: []  # declare each feature relationship explicitly, e.g.:",
+        f"    #   - from: {names[1]}.{layer}",
+        f"    #     to: {names[0]}.{layer}",
+    ]
 
 
 def _wiring_lines(modules: list[str]) -> list[str]:

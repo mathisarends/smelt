@@ -6,6 +6,7 @@ import pytest
 
 from smelt.config import parse_config
 from smelt.config.loader import load_yaml
+from smelt.config.models import CrossFeatureAllowance
 from smelt.engine.inference import InferredLayer, infer_config, render_config
 from tests.helpers import write_project
 
@@ -166,7 +167,6 @@ class TestRenderConfig:
         assert "third_party: allow" in rendered
         assert "third_party: {default: deny" in rendered
         assert "transitive: false  # direct imports only" in rendered
-        assert "pair applies to ALL features" in rendered
 
     def test_rendered_config_is_valid(self, tmp_path: Path) -> None:
         write_project(
@@ -192,10 +192,38 @@ class TestRenderConfig:
         assert warnings == ()
         assert config.architecture.features is not None
         assert config.architecture.features.root == "shop.features"
-        assert config.architecture.cross_feature.pairs() == {
-            ("application", "application")
-        }
+        assert config.architecture.cross_feature.allow == []
         assert config.tests.layout == "none"
+
+    def test_cross_feature_example_names_real_features(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {
+                "src/shop/__init__.py": "",
+                "src/shop/features/cart/application/__init__.py": "",
+                "src/shop/features/orders/application/__init__.py": "",
+            },
+        )
+        inferred = infer_config(tmp_path)
+        assert inferred is not None
+
+        rendered = render_config(inferred)
+        uncommented = (
+            rendered.replace("allow: []  #", "allow:  #")
+            .replace("    #   - from", "      - from")
+            .replace("    #     to", "        to")
+        )
+        config, _ = parse_config(load_yaml(uncommented), root=tmp_path)
+
+        [allowance] = config.architecture.cross_feature.allow
+        assert "    #   - from: orders.application\n" in rendered
+        assert isinstance(allowance, CrossFeatureAllowance)
+        assert allowance.components() == (
+            "orders",
+            "application",
+            "cart",
+            "application",
+        )
 
 
 DISHKA_PROVIDER = "from dishka import Provider\nclass P(Provider): pass\n"
