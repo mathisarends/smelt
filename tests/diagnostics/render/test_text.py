@@ -26,7 +26,6 @@ class TestViolations:
             "          ^^^^^^^^^^^\n"
             "  Expected: voice/application/ports.py\n"
             "  Hint: Move Sessions to voice/application/ports.py and update its imports.\n"
-            "  Fixable with `smelt fix`\n"
             "\n"
             "✗ 1 error · 1 warning · 1 hint (use --show-hints) · 1 suppressed · "
             "2 baselined · 4 modules\n"
@@ -45,7 +44,6 @@ class TestViolations:
 
         assert "\x1b[31m[error]\x1b[0m" in out
         assert "\x1b[31m^^^^" in out
-        assert "\x1b[2m  Fixable with `smelt fix`\x1b[0m" in out
 
 
 class TestSummary:

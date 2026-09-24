@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.violation import FileMove
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
 
@@ -51,7 +50,7 @@ class TestFeatureLayout:
 
         assert violations(root, ONLY_SMT401) == []
 
-    def test_misplaced_test_gets_move_fix(self, tmp_path: Path) -> None:
+    def test_misplaced_test_names_the_feature_dir(self, tmp_path: Path) -> None:
         root = write_project(
             tmp_path,
             {
@@ -64,10 +63,7 @@ class TestFeatureLayout:
         [found] = violations(root, ONLY_SMT401)
 
         assert found.message == "test_calls.py belongs in tests/voice/"
-        assert found.fix is not None
-        assert found.fix.edits == (
-            FileMove("tests/test_calls.py", "tests/voice/test_calls.py"),
-        )
+        assert found.expected == {"path": "tests/voice/test_calls.py"}
 
     def test_test_spanning_features_may_live_in_either(self, tmp_path: Path) -> None:
         root = write_project(
@@ -119,4 +115,3 @@ class TestMirrorLayout:
 
         assert found.path == "tests/test_invoices.py"
         assert found.expected == {"path": "tests/billing/test_invoices.py"}
-        assert found.fix is None

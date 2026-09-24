@@ -81,11 +81,6 @@ def _add_discovery(sub: Subparsers) -> None:
     context.add_argument("--format", choices=["text", "json"], default="text")
     context.set_defaults(handler=commands.context)
 
-    where = sub.add_parser("where", help="canonical location for a role")
-    where.add_argument("role")
-    where.add_argument("--feature", metavar="NAME")
-    where.set_defaults(handler=commands.where)
-
     inspect = sub.add_parser("inspect", help="machine-readable architecture map")
     inspect.add_argument("--format", choices=["json"], default="json")
     inspect.set_defaults(handler=commands.inspect)
@@ -103,13 +98,6 @@ def _add_maintenance(sub: Subparsers) -> None:
         "--prune", action="store_true", help="only remove stale entries"
     )
     baseline.set_defaults(handler=commands.baseline)
-
-    fix = sub.add_parser("fix", help="apply deterministic fixes")
-    fix.add_argument("codes", nargs="*", metavar="CODES")
-    fix.add_argument(
-        "--dry-run", action="store_true", help="print a diff, change nothing"
-    )
-    fix.set_defaults(handler=commands.fix)
 
     verify = sub.add_parser("verify", help="run the configured verification stack")
     verify.add_argument("--format", choices=["text", "json"], default="text")

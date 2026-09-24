@@ -14,7 +14,6 @@ class RuleMeta:
     category: Category
     default_severity: Severity
     enabled_by_default: bool
-    fixable: bool
     summary: str
     docs_url: str
 
@@ -25,7 +24,6 @@ class RuleMeta:
             "category": self.category.value,
             "default_severity": self.default_severity.value,
             "enabled_by_default": self.enabled_by_default,
-            "fixable": self.fixable,
             "summary": self.summary,
             "docs_url": self.docs_url,
         }

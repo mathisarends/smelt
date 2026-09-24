@@ -42,38 +42,6 @@ class ImportLink:
 
 
 @dataclass(frozen=True, slots=True)
-class LineEdit:
-    """Replace line ``line`` (1-based) of ``path``; ``text=None`` deletes it."""
-
-    path: str
-    line: int
-    text: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class FileMove:
-    source: str
-    destination: str
-
-
-@dataclass(frozen=True, slots=True)
-class FileWrite:
-    """Create or overwrite ``path`` with ``content``."""
-
-    path: str
-    content: str
-
-
-type Edit = LineEdit | FileMove | FileWrite
-
-
-@dataclass(frozen=True, slots=True)
-class Fix:
-    description: str
-    edits: tuple[Edit, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class Violation:
     code: str
     rule: str
@@ -91,8 +59,6 @@ class Violation:
     layer: str | None = None
     expected: Mapping[str, Any] | None = None
     hint: str | None = None
-    fix: Fix | None = None
-    fixable: bool = False
     docs_url: str | None = None
     category: Category | None = field(default=None, compare=False)
 
@@ -135,7 +101,6 @@ class Violation:
             data["import_chain"] = [link.to_json() for link in self.import_chain]
         data["expected"] = dict(self.expected) if self.expected is not None else None
         data["hint"] = self.hint
-        data["fixable"] = self.fixable or self.fix is not None
         data["docs_url"] = self.docs_url
         return data
 

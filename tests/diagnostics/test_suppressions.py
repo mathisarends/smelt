@@ -1,4 +1,4 @@
-from smelt.diagnostics.suppressions import parse_suppressions, without_codes
+from smelt.diagnostics.suppressions import parse_suppressions
 
 
 class TestParseSuppressions:
@@ -33,25 +33,3 @@ class TestParseSuppressions:
         found.mark_used("SMT104")
 
         assert found.unused_codes() == ("SMT4",)
-
-
-class TestWithoutCodes:
-    def test_removes_one_code_and_keeps_reason(self) -> None:
-        line = "import x  # smelt: ignore[SMT101, SMT103] -- why"
-        [found] = parse_suppressions("a.py", line + "\n")
-
-        assert without_codes(line, found, ("SMT103",)) == (
-            "import x  # smelt: ignore[SMT101] -- why"
-        )
-
-    def test_removes_whole_trailing_comment(self) -> None:
-        line = "import x  # smelt: ignore[SMT101] -- why"
-        [found] = parse_suppressions("a.py", line + "\n")
-
-        assert without_codes(line, found, ("SMT101",)) == "import x"
-
-    def test_deletes_comment_only_line(self) -> None:
-        line = "# smelt: ignore-file[SMT4] -- why"
-        [found] = parse_suppressions("a.py", line + "\n")
-
-        assert without_codes(line, found, ("SMT4",)) is None

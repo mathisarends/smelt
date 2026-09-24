@@ -256,7 +256,7 @@ def render_config(inferred: InferredConfig) -> str:
     out.extend(
         [
             "",
-            "# Roles give concepts a canonical home (`smelt where port --feature x`).",
+            "# Roles give concepts a canonical home (`smelt context <feature>` lists them).",
             "# roles:",
             "#   port:",
             "#     detect: { base: typing.Protocol }",

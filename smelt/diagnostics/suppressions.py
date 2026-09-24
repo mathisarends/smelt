@@ -78,19 +78,3 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
             )
         )
     return found
-
-
-def without_codes(
-    line: str, suppression: Suppression, remove: tuple[str, ...]
-) -> str | None:
-    """The line with some codes (or the whole comment) removed; None deletes the line."""
-    before = line[: suppression.column].rstrip()
-    keep = [code for code in suppression.codes if code not in remove]
-    if not keep or not suppression.codes:
-        if not before:
-            return None
-        return before.rstrip("#").rstrip() if before.endswith("#") else before
-    kind = "ignore-file" if suppression.file_level else "ignore"
-    reason = f" -- {suppression.reason}" if suppression.reason else ""
-    comment = f"# smelt: {kind}[{', '.join(keep)}]{reason}"
-    return f"{before}  {comment}" if before else comment

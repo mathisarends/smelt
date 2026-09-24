@@ -68,8 +68,6 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     ]
     if doc.config:
         lines.extend(["", "Config:", *(f"  {key}" for key in doc.config)])
-    if rule.fixable:
-        lines.extend(["", f"Fixable: smelt fix {rule.code}"])
     lines.extend(["", f"Docs: {meta.docs_url}"])
     console.print("\n".join(lines))
     return EXIT_OK
@@ -87,9 +85,8 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         return EXIT_OK
     for meta in metas:
         severity = meta.default_severity.value if meta.enabled_by_default else "off"
-        fixable = "fixable" if meta.fixable else ""
         console.print(
-            f"{meta.code}  {meta.name:<28} {meta.category.value:<13} {severity:<8} {fixable}".rstrip()
+            f"{meta.code}  {meta.name:<28} {meta.category.value:<13} {severity}"
         )
     return EXIT_OK
 

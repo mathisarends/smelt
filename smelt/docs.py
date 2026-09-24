@@ -30,7 +30,6 @@ def rule_page(rule: Rule) -> str:
         "",
         f"- **Category:** {meta.category.value}",
         f"- **Default severity:** {default}",
-        f"- **Fixable:** {'`smelt fix ' + rule.code + '`' if meta.fixable else 'no'}",
         "",
         "## Why",
         "",
@@ -62,16 +61,15 @@ def rule_index(rules: list[Rule]) -> str:
     lines = [
         "# Rules",
         "",
-        "| Code | Name | Category | Default | Fixable |",
-        "| --- | --- | --- | --- | --- |",
+        "| Code | Name | Category | Default |",
+        "| --- | --- | --- | --- |",
     ]
     for rule in rules:
         meta = rule_meta(rule)
         default = meta.default_severity.value if meta.enabled_by_default else "off"
-        fixable = "yes" if meta.fixable else ""
         lines.append(
             f"| [{rule.code}]({rule.code}.md) | {rule.name} | "
-            f"{meta.category.value} | {default} | {fixable} |"
+            f"{meta.category.value} | {default} |"
         )
     lines += ["", "`smelt rules` prints the same table in the terminal."]
     return "\n".join(lines) + "\n"

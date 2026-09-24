@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.fix.move_class import move_class_fix
 from smelt.model import ModuleKind, is_within
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.code.roles import class_violation
@@ -20,7 +19,6 @@ class RoleFile(BaseRule):
     category = Category.STRUCTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.SYNTAX, Index.ROLES})
-    fixable = True
     doc = RuleDoc(
         summary="A class with a role lives in a different module than roles.<role>.file.",
         rationale=(
@@ -62,5 +60,4 @@ class RoleFile(BaseRule):
                 f"{match.role} {match.cls.name} must be defined in {expected_path}",
                 expected={"path": expected_path},
                 hint=f"Move {match.cls.name} to {expected_path} and update its imports.",
-                fix=move_class_fix(ctx, match.cls, expected),
             )

@@ -13,12 +13,9 @@ from smelt.diagnostics.report import Report, RuleMeta
 from smelt.diagnostics.suppressions import (
     Suppression,
     parse_suppressions,
-    without_codes,
 )
 from smelt.diagnostics.violation import (
     Category,
-    Fix,
-    LineEdit,
     Severity,
     Violation,
     docs_url,
@@ -77,7 +74,6 @@ def rule_meta(rule: Rule) -> RuleMeta:
         category=rule.category,
         default_severity=rule.default_severity,
         enabled_by_default=bool(getattr(rule, "enabled_by_default", True)),
-        fixable=rule.fixable,
         summary=rule.explain().summary,
         docs_url=docs_url(rule.code),
     )
@@ -295,9 +291,6 @@ def _suppression_violations(
         unused = _unused_codes(suppression, checked, known_codes)
         if unused is None:
             continue
-        line = ctx.files.line(suppression.path, suppression.line)
-        # An empty tuple means the whole comment goes, so name every code it carries.
-        replacement = without_codes(line, suppression, unused or suppression.codes)
         label = ", ".join(unused) if unused else "all codes"
         results.append(
             unused_rule.violation(
@@ -306,10 +299,6 @@ def _suppression_violations(
                 line=suppression.line,
                 column=suppression.column + 1,
                 hint="Remove the suppression; nothing on this line needs it.",
-                fix=Fix(
-                    "remove unused suppression",
-                    (LineEdit(suppression.path, suppression.line, replacement),),
-                ),
             ).with_severity(severity_of["SMT901"])
         )
     return results

@@ -48,7 +48,6 @@ ROLE_VIOLATION = Violation(
     end_column=18,
     expected={"path": "voice/application/ports.py"},
     hint="Move Sessions to voice/application/ports.py and update its imports.",
-    fixable=True,
     docs_url="https://example.test/rules/SMT303",
     category=Category.STRUCTURE,
 )
@@ -70,7 +69,6 @@ RULES = [
         category=Category.DEPENDENCIES,
         default_severity=Severity.ERROR,
         enabled_by_default=True,
-        fixable=False,
         summary="A module imports a layer it may not depend on.",
         docs_url="https://example.test/rules/SMT101",
     ),
@@ -80,7 +78,6 @@ RULES = [
         category=Category.STRUCTURE,
         default_severity=Severity.ERROR,
         enabled_by_default=True,
-        fixable=True,
         summary="A class with a role lives in another module.",
         docs_url="https://example.test/rules/SMT303",
     ),

@@ -25,18 +25,15 @@ architecture:
     diagnostics:
       path: diagnostics
       may_depend_on: [config]
-    fix:
-      path: fix
-      may_depend_on: [analysis, config, diagnostics, model]
     rules:
       path: rules
-      may_depend_on: [analysis, config, diagnostics, fix, model]
+      may_depend_on: [analysis, config, diagnostics, model]
     engine:
       path: engine
-      may_depend_on: [analysis, config, diagnostics, fix, model, rules]
+      may_depend_on: [analysis, config, diagnostics, model, rules]
     cli:
       path: cli
-      may_depend_on: [analysis, config, diagnostics, engine, fix, model, rules]
+      may_depend_on: [analysis, config, diagnostics, engine, model, rules]
 
   imports:
     type_checking: include

@@ -4,7 +4,6 @@ from smelt.config import load_config
 from smelt.engine.briefing import (
     TargetError,
     build_briefing,
-    layer_path,
     render_briefing,
     resolve_target,
     where_path,
@@ -122,10 +121,4 @@ class TestWhere:
         assert (
             where_path(outcome.context, "adapter", "payments")
             == "src/gateway/features/payments/infra/"
-        )
-
-    def test_layer_name(self, outcome: CheckOutcome) -> None:
-        assert (
-            layer_path(outcome.context, "presentation", "billing")
-            == "src/gateway/features/billing/api/"
         )

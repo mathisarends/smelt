@@ -209,13 +209,6 @@ def where_path(ctx: AnalysisContext, role: str, feature: str | None) -> str | No
     return ctx.files.module_to_path(module, package=is_package)
 
 
-def layer_path(ctx: AnalysisContext, layer: str, feature: str | None) -> str | None:
-    package = ctx.model.layer_package(feature, layer)
-    if package is None:
-        return None
-    return ctx.files.module_to_path(package, package=True)
-
-
 def _tests(ctx: AnalysisContext, feature: str | None) -> tuple[str, ...]:
     tests = ctx.config.tests
     layers = set(ctx.model.layers)

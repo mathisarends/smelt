@@ -11,7 +11,6 @@ smelt check                          # whole project, text output
 smelt check --changed                # only files changed against HEAD (incl. untracked)
 smelt check --changed --base origin/main --format json
 smelt context voice                  # architecture briefing for a feature or path
-smelt where port --feature voice     # canonical file for a new concept
 smelt explain SMT101                 # rationale, examples and config knobs of a rule
 smelt rules                          # all rules with defaults
 ```
@@ -23,10 +22,6 @@ Silence a single finding inline, always with a reason:
 ```python
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
-
-`smelt fix` applies the deterministic fixes: it moves a misplaced test file, removes an
-unused suppression, and moves a role class into its `file` when every import of it can be
-rewritten statically. `smelt fix --dry-run` prints the diff instead.
 
 Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
 autocompletion for `smelt.yaml`.

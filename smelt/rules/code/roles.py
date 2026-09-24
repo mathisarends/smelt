@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.syntax import ClassInfo
-    from smelt.diagnostics.violation import Fix
 
 
 def class_violation(  # noqa: PLR0913
@@ -23,7 +22,6 @@ def class_violation(  # noqa: PLR0913
     *,
     expected: dict[str, object] | None = None,
     hint: str | None = None,
-    fix: Fix | None = None,
 ) -> Violation:
     info = ctx.model.info(cls.module)
     start, end = cls.name_span
@@ -38,7 +36,6 @@ def class_violation(  # noqa: PLR0913
         layer=info.layer if info else None,
         expected=expected,
         hint=hint,
-        fix=fix,
     )
 
 
@@ -65,7 +62,7 @@ class MisplacedRole(BaseRule):
             "class VoiceSessionRepository(Protocol):\n"
             "    def save(self, session: VoiceSession) -> None: ..."
         ),
-        fix="Move the class into one of the role's layers; `smelt where <role>` prints the path.",
+        fix="Move the class into one of the role's layers; `smelt context` lists each role's home.",
         config=("roles.<role>.layers", "roles.<role>.detect"),
     )
 

@@ -146,7 +146,7 @@ class TestSuppressions:
 
         assert violations(root) == []
 
-    def test_unused_suppression_has_fix(self, tmp_path: Path) -> None:
+    def test_unused_suppression(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "import os  # smelt: ignore[SMT101] -- stale\n")
 
         [found] = violations(root)
@@ -155,7 +155,6 @@ class TestSuppressions:
             "SMT901",
             "unused suppression (all codes)",
         )
-        assert found.fix is not None
 
     def test_partially_used_suppression(self, tmp_path: Path) -> None:
         root = _layered(

@@ -71,8 +71,6 @@ def _render_violation(
         out.extend(_expected(violation, violation.expected))
     if violation.hint:
         out.append(_wrap("Hint: ", violation.hint))
-    if violation.fix is not None or violation.fixable:
-        out.append(style("  Fixable with `smelt fix`", _DIM))
     return "\n".join(out)
 
 

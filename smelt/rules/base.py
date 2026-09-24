@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
 from smelt.diagnostics.violation import (
     Category,
-    Fix,
     ImportLink,
     Severity,
     Violation,
@@ -35,7 +34,6 @@ class Rule(Protocol):
     category: Category
     default_severity: Severity
     requires: frozenset[Index]
-    fixable: bool
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]: ...
 
@@ -50,7 +48,6 @@ class BaseRule:
     category: Category
     default_severity: Severity = Severity.ERROR
     requires: frozenset[Index] = frozenset()
-    fixable: bool = False
     enabled_by_default: ClassVar[bool] = True
     doc: ClassVar[RuleDoc]
 
@@ -76,7 +73,6 @@ class BaseRule:
         layer: str | None = None,
         expected: Mapping[str, Any] | None = None,
         hint: str | None = None,
-        fix: Fix | None = None,
     ) -> Violation:
         return Violation(
             code=self.code,
@@ -95,8 +91,6 @@ class BaseRule:
             layer=layer,
             expected=expected,
             hint=hint,
-            fix=fix,
-            fixable=self.fixable or fix is not None,
             docs_url=docs_url(self.code),
             category=self.category,
         )
@@ -109,7 +103,6 @@ class RuleInfo:
     category: Category
     default_severity: Severity
     enabled_by_default: bool
-    fixable: bool
     summary: str
 
     def to_json(self) -> dict[str, Any]:
@@ -119,7 +112,6 @@ class RuleInfo:
             "category": self.category.value,
             "default_severity": self.default_severity.value,
             "enabled_by_default": self.enabled_by_default,
-            "fixable": self.fixable,
             "summary": self.summary,
         }
 
@@ -131,7 +123,6 @@ def rule_info(rule: Rule) -> RuleInfo:
         category=rule.category,
         default_severity=rule.default_severity,
         enabled_by_default=bool(getattr(rule, "enabled_by_default", True)),
-        fixable=rule.fixable,
         summary=rule.explain().summary,
     )
 

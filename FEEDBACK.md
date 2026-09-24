@@ -13,7 +13,10 @@ Scratch-Projekt nachgestellt.
 
 ## P0: Blockiert das Ziel
 
-### 1. Die Spec formuliert die Spiegelung nur als Option
+### ~~1. Die Spec formuliert die Spiegelung nur als Option~~
+**Entfallen:** `SPEC.md` ist gelöscht und bleibt es. Die strenge Mirror-Regel steht jetzt in
+der README und in der Regeldoku von SMT401 (`docs/rules/SMT401.md`).
+
 Dass nicht jede Datei einen Test braucht, passt zur Spec (§1 Non-goals). Zwei Stellen
 sollten trotzdem geschärft werden:
 - §5 SMT4xx: *"It never demands 1:1 mirroring."* Gemeint ist „nicht jede Datei braucht einen
@@ -229,11 +232,16 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
     - Der Pfad in `expected` und der `hint` einer Verletzung bleiben. Sie sind das, womit der
       Agent selbst korrigiert.
 
+    **Umgesetzt:** wie oben. Zusätzlich sind `layer_path` (nur von `smelt where` genutzt) und
+    `without_codes` (nur vom SMT901-Fix genutzt) weggefallen. Die Doku unter `docs/rules/` ist
+    neu generiert, Hinweise auf `smelt where` in SMT204 und `smelt init` zeigen jetzt auf
+    `smelt context`.
+
 ---
 
 ## Vorgeschlagene Reihenfolge
 
-1. Spec schärfen (#1) und Scope verkleinern (#17), bevor Neues dazukommt.
+1. ~~Spec schärfen (#1)~~ entfallen. ✓ Scope verkleinern (#17).
 2. `mirror` pfadbasiert machen und verwaiste Tests melden (#2, #3).
 3. smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
 4. Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).

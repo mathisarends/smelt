@@ -57,10 +57,10 @@ class TestRulePages:
             assert url == f"{DOCS_BASE_URL}/{rule.code}.md"
             assert (ROOT / DOCS_DIR / f"{rule.code}.md").is_file()
 
-    def test_page_carries_the_fix_hint(self) -> None:
+    def test_page_carries_the_how_to_fix_section(self) -> None:
         page = (ROOT / DOCS_DIR / "SMT401.md").read_text(encoding="utf-8")
 
-        assert "- **Fixable:** `smelt fix SMT401`" in page
+        assert "## How to fix\n\nMove the file to the expected path.\n" in page
         assert page.startswith("# SMT401 test-location\n")
 
     def test_index_lists_every_rule(self) -> None:

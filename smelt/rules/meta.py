@@ -25,7 +25,6 @@ class UnusedSuppression(_EngineRule):
     code = "SMT901"
     name = "unused-suppression"
     default_severity = Severity.WARNING
-    fixable = True
     doc = RuleDoc(
         summary="An inline `# smelt: ignore[...]` comment that suppresses nothing.",
         rationale=(
@@ -34,7 +33,7 @@ class UnusedSuppression(_EngineRule):
         ),
         bad="import os  # smelt: ignore[SMT101] -- legacy",
         good="import os",
-        fix="Remove the comment, or the unused codes from it. `smelt fix SMT901` does this.",
+        fix="Remove the comment, or the unused codes from it.",
         config=("suppressions.require_reason",),
     )
 

@@ -5,7 +5,7 @@ from collections import Counter
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, FileMove, Fix, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.testing.common import first_party_module
 
@@ -36,7 +36,6 @@ class MisplacedTestFile(BaseRule):
     category = Category.TESTS
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES, Index.SYNTAX})
-    fixable = True
     doc = RuleDoc(
         summary="A test file does not live where tests.layout expects it.",
         rationale=(
@@ -45,7 +44,7 @@ class MisplacedTestFile(BaseRule):
         ),
         bad="tests/test_voice_sessions.py      # layout: feature",
         good="tests/voice/test_sessions.py",
-        fix="Move the file to the expected path (`smelt fix SMT401`).",
+        fix="Move the file to the expected path.",
         config=("tests.layout", "tests.pattern", "project.test_roots"),
     )
 
@@ -67,15 +66,11 @@ class MisplacedTestFile(BaseRule):
                 expected = self._mirror_path(test, modules)
             if expected is None or expected == path:
                 continue
-            fix = None
-            if expected not in ctx.files.tests and not (ctx.root / expected).exists():
-                fix = Fix(f"move {path} to {expected}", (FileMove(path, expected),))
             yield self.violation(
                 f"{name} belongs in {posixpath.dirname(expected)}/",
                 path=path,
                 expected={"path": expected},
                 hint=f"Move the file to {expected}.",
-                fix=fix,
             )
 
     def _feature_path(

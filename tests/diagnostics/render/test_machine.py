@@ -61,7 +61,6 @@ class TestJson:
             ],
             "expected": {"may_depend_on": []},
             "hint": "Depend on a port instead.",
-            "fixable": False,
             "docs_url": "https://example.test/rules/SMT101",
         }
 
