@@ -25,8 +25,8 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     inferred = infer_config(cwd)
     if inferred is None:
         msg = (
-            "no Python package found in this directory or in src/; "
-            "run `smelt init` from the project root"
+            "no Python package found in this directory, src/, or declared uv workspace members; "
+            "run `smelt init` from the project root or configure source_roots manually"
         )
         raise CliError(msg)
     target = cwd / CONFIG_FILENAME
@@ -56,6 +56,8 @@ def _summary(inferred: InferredConfig) -> list[str]:
         lines.append(f"shared: {', '.join(inferred.shared)}")
     if inferred.composition_root:
         lines.append(f"composition root: {', '.join(inferred.composition_root)}")
+    if inferred.wiring:
+        lines.append(f"wiring: {', '.join(inferred.wiring)}")
     if inferred.di_frameworks:
         lines.append(f"DI frameworks: {', '.join(inferred.di_frameworks)}")
     return lines

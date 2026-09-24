@@ -45,6 +45,7 @@ _COMPOSITION_NAMES = (
     "wiring",
     "main",
     "__main__",
+    "lifespan",
 )
 # layer -> directory names, most conventional first
 LAYER_ALIASES: dict[str, tuple[str, ...]] = {
@@ -90,6 +91,7 @@ class InferredConfig:
     features: list[str] = field(default_factory=list)
     shared: list[str] = field(default_factory=list)
     composition_root: list[str] = field(default_factory=list)
+    wiring: list[str] = field(default_factory=list)
     di_frameworks: list[str] = field(default_factory=list)
     layers: list[InferredLayer] = field(default_factory=list)
     tests_layout: str = "none"
@@ -123,13 +125,29 @@ def infer_config(root: Path) -> InferredConfig | None:
     )
     base = root / source_root
     packages = _packages_in(base)
+    source_roots = [source_root] if packages else []
+    member_roots: list[Path] = []
+    for member in _workspace_members(root):
+        member_source = member / "src" if _packages_in(member / "src") else member
+        found = _packages_in(member_source)
+        if not found:
+            continue
+        packages.extend(found)
+        source_roots.append(member_source.relative_to(root).as_posix())
+        member_roots.append(member)
     if not packages:
         return None
     test_roots = [name for name in ("tests", "test") if (root / name).is_dir()]
+    test_roots.extend(
+        (member / name).relative_to(root).as_posix()
+        for member in member_roots
+        for name in ("tests", "test")
+        if (member / name).is_dir()
+    )
     inferred = InferredConfig(
         root_packages=[p.name for p in packages],
-        source_roots=[source_root],
-        test_roots=test_roots[:1] or ["tests"],
+        source_roots=source_roots,
+        test_roots=test_roots or ["tests"],
     )
     _infer_features(inferred, packages)
     containers = _layer_containers(inferred, packages)
@@ -138,12 +156,41 @@ def infer_config(root: Path) -> InferredConfig | None:
         inferred.features_root = inferred.features_pattern = None
         inferred.features = []
     _infer_special_modules(inferred, packages)
-    inferred.di_frameworks = _di_frameworks(root)
+    _infer_wiring(inferred, packages)
+    inferred.di_frameworks = sorted(
+        {
+            module
+            for location in [root, *member_roots]
+            for module in _di_frameworks(location)
+        }
+    )
     if inferred.has_features and inferred.features:
         tests_dir = root / inferred.test_roots[0]
         if any((tests_dir / feature).is_dir() for feature in inferred.features):
             inferred.tests_layout = "feature"
     return inferred
+
+
+def _workspace_members(root: Path) -> list[Path]:
+    try:
+        data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
+    uv = data.get("tool", {}).get("uv", {})
+    workspace = uv.get("workspace", {})
+    members = workspace.get("members", [])
+    if not isinstance(members, list):
+        return []
+    found: set[Path] = set()
+    for pattern in members:
+        if not isinstance(pattern, str):
+            continue
+        for candidate in root.glob(pattern):
+            if candidate.is_dir() and candidate.resolve().is_relative_to(
+                root.resolve()
+            ):
+                found.add(candidate)
+    return sorted(found)
 
 
 def _packages_in(base: Path) -> list[Path]:
@@ -218,6 +265,21 @@ def _infer_special_modules(inferred: InferredConfig, packages: list[Path]) -> No
         for name in _COMPOSITION_NAMES:
             if (package / f"{name}.py").is_file() or _has_python(package / name):
                 inferred.composition_root.append(f"{package.name}.{name}")
+
+
+def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
+    for package in packages:
+        for path in package.rglob("*.py"):
+            relative = path.relative_to(package.parent)
+            if any(part in _IGNORED_DIRS for part in relative.parts):
+                continue
+            content = path.read_text(encoding="utf-8", errors="replace")
+            if "from dishka import" not in content or not re.search(
+                r"class\s+\w+\s*\(\s*Provider\b", content
+            ):
+                continue
+            inferred.wiring.append(".".join(relative.with_suffix("").parts))
+    inferred.wiring.sort()
 
 
 def _di_frameworks(root: Path) -> list[str]:
@@ -314,9 +376,10 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         out.append(f"  composition_root: {_list(inferred.composition_root)}")
     else:
         out.append("  # composition_root: [myapp.bootstrap]")
+    out.extend(_wiring_lines(inferred.wiring))
     if inferred.di_frameworks:
         out.append(
-            f"  di_frameworks: {_list(inferred.di_frameworks)}  # composition root only"
+            f"  di_frameworks: {_list(inferred.di_frameworks)}  # composition root and wiring only"
         )
     out.append("")
     if inferred.layers:
@@ -349,6 +412,15 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         )
         out.extend(["  cross_feature:", "    default: deny", f"    allow: {pair}"])
     return out
+
+
+def _wiring_lines(modules: list[str]) -> list[str]:
+    if not modules:
+        return []
+    return [
+        "  wiring:  # exact provider modules; keep their original feature/layer",
+        *(f"    - {module}" for module in modules),
+    ]
 
 
 def _list(values: list[str]) -> str:

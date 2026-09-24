@@ -53,6 +53,13 @@
           "title": "Composition Root",
           "type": "array"
         },
+        "wiring": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Wiring",
+          "type": "array"
+        },
         "layers": {
           "additionalProperties": {
             "$ref": "#/$defs/LayerConfig"
@@ -96,6 +103,25 @@
       "title": "BloatConfig",
       "type": "object"
     },
+    "CrossFeatureAllowance": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "title": "CrossFeatureAllowance",
+      "type": "object"
+    },
     "CrossFeatureConfig": {
       "additionalProperties": false,
       "properties": {
@@ -105,7 +131,14 @@
         },
         "allow": {
           "items": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/CrossFeatureAllowance"
+              }
+            ]
           },
           "title": "Allow",
           "type": "array"

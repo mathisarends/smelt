@@ -47,8 +47,8 @@ class UnknownLayer(BaseRule):
         ),
         good="voice/\n  domain/\n    models.py\n  application/",
         fix=(
-            "Move the modules into a layer, declare the package under "
-            "architecture.layers, or add it to architecture.shared."
+            "Move the code into a declared layer, or declare its package as a layer "
+            "if the architecture has a distinct responsibility for it."
         ),
         config=("architecture.layers",),
     )
@@ -94,8 +94,7 @@ class UnknownLayer(BaseRule):
                 expected={"layers": layers},
                 hint=(
                     f"Move the modules of {display_module_path(model, package.module, package=True)} "
-                    "into a layer, declare it under architecture.layers, or add it to "
-                    "architecture.shared."
+                    "into a layer, or declare the package under architecture.layers."
                 ),
             )
 
@@ -120,7 +119,7 @@ class UnknownLayer(BaseRule):
                 expected={"layers": layers},
                 hint=(
                     f"Move {display_module_path(model, name)} into a layer of {owner}, "
-                    "or add it to architecture.shared."
+                    "such as infrastructure for configuration and external services."
                 ),
             )
 
@@ -194,7 +193,7 @@ class UnclassifiedModule(BaseRule):
             info = model.info(name)
             if source.is_package or info is None:
                 continue
-            if info.kind is not ModuleKind.UNCLASSIFIED:
+            if info.kind is not ModuleKind.UNCLASSIFIED or info.wiring:
                 continue
             yield self.violation(
                 f"{name} is not part of a feature, layer, shared or composition root",

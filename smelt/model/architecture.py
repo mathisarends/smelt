@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from smelt.config.patterns import module_matches
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
@@ -30,6 +32,7 @@ class ModuleInfo:
     feature: str | None = None
     layer: str | None = None
     roles: frozenset[str] = frozenset()
+    wiring: bool = False
 
     @property
     def in_grid(self) -> bool:
@@ -154,6 +157,7 @@ class _Classifier:
         self._roots = config.project.root_packages
         self._shared = arch.shared
         self._composition_root = arch.composition_root
+        self._wiring = arch.wiring
         self._packages = packages
         self._layer_paths = sorted(
             ((layer.path.split("."), name) for name, layer in arch.layers.items()),
@@ -167,10 +171,13 @@ class _Classifier:
             self._feature_prefix = arch.features.pattern.split(".")[:-1]
 
     def classify(self, module: str, roles: frozenset[str]) -> ModuleInfo:
+        wiring = any(module_matches(pattern, module) for pattern in self._wiring)
         if any(is_within(module, root) for root in self._composition_root):
-            return ModuleInfo(module, ModuleKind.COMPOSITION_ROOT, roles=roles)
+            return ModuleInfo(
+                module, ModuleKind.COMPOSITION_ROOT, roles=roles, wiring=wiring
+            )
         if any(is_within(module, shared) for shared in self._shared):
-            return ModuleInfo(module, ModuleKind.SHARED, roles=roles)
+            return ModuleInfo(module, ModuleKind.SHARED, roles=roles, wiring=wiring)
         if self._features is None:
             for root in self._roots:
                 if module.startswith(f"{root}."):
@@ -178,14 +185,25 @@ class _Classifier:
                     layer = self._match_layer(rest)
                     if layer is None:
                         break
-                    return ModuleInfo(module, ModuleKind.FEATURE, None, layer, roles)
-            return ModuleInfo(module, ModuleKind.UNCLASSIFIED, roles=roles)
+                    return ModuleInfo(
+                        module, ModuleKind.FEATURE, None, layer, roles, wiring
+                    )
+            return ModuleInfo(
+                module, ModuleKind.UNCLASSIFIED, roles=roles, wiring=wiring
+            )
         match = self._match_feature(module)
         if match is None:
-            return ModuleInfo(module, ModuleKind.UNCLASSIFIED, roles=roles)
+            return ModuleInfo(
+                module, ModuleKind.UNCLASSIFIED, roles=roles, wiring=wiring
+            )
         feature, rest = match
         return ModuleInfo(
-            module, ModuleKind.FEATURE, feature, self._match_layer(rest), roles
+            module,
+            ModuleKind.FEATURE,
+            feature,
+            self._match_layer(rest),
+            roles,
+            wiring,
         )
 
     def feature_package(self, module: str) -> str | None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from smelt.model import ArchitectureModel, is_within
+from smelt.model import ArchitectureModel, ModuleInfo, is_within
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
@@ -15,6 +15,20 @@ def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
     return (
         detail.type_checking
         and ctx.config.architecture.imports.type_checking == "ignore"
+    )
+
+
+def wiring_facade(
+    model: ArchitectureModel, source: ModuleInfo, target: ModuleInfo
+) -> bool:
+    """A feature or package initializer may export its own provider module."""
+    return target.wiring and (
+        source.name == target.name.rsplit(".", 1)[0]
+        or (
+            target.feature is not None
+            and source.feature == target.feature
+            and source.name == model.feature_package_for(target.feature)
+        )
     )
 
 

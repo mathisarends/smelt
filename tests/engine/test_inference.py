@@ -16,6 +16,47 @@ def _layers(layers: list[InferredLayer]) -> list[tuple[str, str, list[str]]]:
 
 
 class TestInferConfig:
+    def test_uv_workspace_with_nested_source_roots(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": (
+                    '[tool.uv.workspace]\nmembers = ["backend", "libs/*"]\n'
+                ),
+                "backend/pyproject.toml": '[project]\ndependencies = ["dishka>=1"]\n',
+                "backend/src/backend/__init__.py": "",
+                "backend/src/backend/main.py": "",
+                "backend/src/backend/lifespan.py": "",
+                "backend/src/backend/features/auth/__init__.py": "",
+                "backend/src/backend/features/auth/domain/__init__.py": "",
+                "backend/src/backend/features/auth/infrastructure/di.py": (
+                    "from dishka import Provider\nclass AuthProvider(Provider): pass\n"
+                ),
+                "backend/tests/test_auth.py": "",
+                "libs/agent/src/agent/__init__.py": "",
+                "libs/agent/tests/test_agent.py": "",
+                "libs/tokens/src/tokens/__init__.py": "",
+            },
+        )
+
+        inferred = infer_config(tmp_path)
+
+        assert inferred is not None
+        assert inferred.root_packages == ["backend", "agent", "tokens"]
+        assert inferred.source_roots == [
+            "backend/src",
+            "libs/agent/src",
+            "libs/tokens/src",
+        ]
+        assert inferred.test_roots == ["backend/tests", "libs/agent/tests"]
+        assert inferred.features_root == "backend.features"
+        assert inferred.composition_root == ["backend.main", "backend.lifespan"]
+        assert inferred.wiring == ["backend.features.auth.infrastructure.di"]
+        assert inferred.di_frameworks == ["dishka"]
+        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        assert warnings == ()
+        assert config.architecture.wiring == inferred.wiring
+
     def test_features_root_with_layers(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,

@@ -64,6 +64,7 @@ class Briefing:
     cross_feature: str | None
     shared: tuple[str, ...]
     composition_root: tuple[str, ...]
+    wiring: tuple[str, ...]
     di_frameworks: tuple[str, ...]
     roles: tuple[RoleBrief, ...]
     tests: tuple[str, ...]
@@ -85,6 +86,7 @@ class Briefing:
             "cross_feature": self.cross_feature,
             "shared": list(self.shared),
             "composition_root": list(self.composition_root),
+            "wiring": list(self.wiring),
             "di_frameworks": list(self.di_frameworks),
             "roles": [role.to_json() for role in self.roles],
             "tests": list(self.tests),
@@ -147,6 +149,7 @@ def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Brie
         cross_feature=_cross_feature(model) if model.has_features else None,
         shared=tuple(arch.shared),
         composition_root=tuple(arch.composition_root),
+        wiring=tuple(arch.wiring),
         di_frameworks=tuple(arch.di_frameworks),
         roles=_roles(ctx, target.feature),
         tests=_tests(ctx, target.feature),
@@ -182,7 +185,7 @@ def _cross_feature(model: ArchitectureModel) -> str:
     cross = model.config.architecture.cross_feature
     if cross.default == "allow":
         return "allowed"
-    pairs = [f"{source} → {target}" for source, target in sorted(cross.pairs())]
+    pairs = [label.replace(" -> ", " → ") for label in cross.labels()]
     return f"only {', '.join(pairs)}" if pairs else "none"
 
 
@@ -190,13 +193,19 @@ def _roles(ctx: AnalysisContext, feature: str | None) -> tuple[RoleBrief, ...]:
     model = ctx.model
     placeholder = feature or ("{feature}" if model.has_features else None)
     implementations = set(implementation_roles(model))
-    constrained = bool(model.config.architecture.composition_root)
+    constrained = bool(
+        model.config.architecture.composition_root or model.config.architecture.wiring
+    )
     briefs: list[RoleBrief] = []
     for name, role in model.config.roles.items():
         location = where_path(ctx, name, placeholder) if role.layers else None
         note = None
         if name in implementations and constrained:
-            note = "construct only in composition root"
+            note = (
+                "construct only in composition root or wiring"
+                if model.config.architecture.wiring
+                else "construct only in composition root"
+            )
         briefs.append(RoleBrief(name, location, note))
     return tuple(briefs)
 
@@ -250,6 +259,8 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
             else ""
         )
         lines.append(f"Composition root: {', '.join(briefing.composition_root)}{di}")
+    if briefing.wiring:
+        lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
     placed = [role for role in briefing.roles if role.location]
     if placed:
         width = max(len(role.name) for role in placed) + 2

@@ -11,7 +11,7 @@ from smelt.analysis.graphs import shortest_cycle, strongly_connected_components
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.model import ModuleInfo, ModuleKind, is_within
 from smelt.rules.base import BaseRule, RuleDoc
-from smelt.rules.common import import_violation, skip_import
+from smelt.rules.common import import_violation, skip_import, wiring_facade
 
 if TYPE_CHECKING:
     from smelt.analysis.imports import ImportDetail
@@ -148,17 +148,26 @@ def _reported_elsewhere(
 ) -> bool:
     """Imports that SMT101, SMT102 or SMT106 already report as violations."""
     if (
-        target.kind is ModuleKind.COMPOSITION_ROOT
+        (target.kind is ModuleKind.COMPOSITION_ROOT or target.wiring)
         and source.kind is not ModuleKind.COMPOSITION_ROOT
+        and not source.wiring
+        and not wiring_facade(ctx.model, source, target)
     ):
         return True
+    if source.wiring:
+        return False
     if not (source.in_grid and target.in_grid and source.layer and target.layer):
         return False
     if source.feature == target.feature:
         allowed = ctx.model.layers[source.layer].may_depend_on
         return source.layer != target.layer and target.layer not in allowed
     cross = ctx.config.architecture.cross_feature
-    return cross.default == "deny" and (source.layer, target.layer) not in cross.pairs()
+    return (
+        cross.default == "deny"
+        and source.feature is not None
+        and target.feature is not None
+        and not cross.allows(source.feature, source.layer, target.feature, target.layer)
+    )
 
 
 def _packages_covered_by_other_scopes(

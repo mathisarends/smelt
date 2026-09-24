@@ -53,12 +53,13 @@ class ContainerUsage(BaseRule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         roots = ctx.config.architecture.composition_root
-        if not roots:
+        locations = [*roots, *ctx.config.architecture.wiring]
+        if not locations:
             return
         model = ctx.model
         for syntax in ctx.syntax.sources():
             info = model.info(syntax.module)
-            if info is None or info.kind is ModuleKind.COMPOSITION_ROOT:
+            if info is None or info.kind is ModuleKind.COMPOSITION_ROOT or info.wiring:
                 continue
             for node in syntax.walk():
                 if not (
@@ -77,10 +78,10 @@ class ContainerUsage(BaseRule):
                     syntax,
                     node,
                     f"{receiver}.{node.func.attr}(...) resolves a dependency outside "
-                    f"the composition root ({join(roots)})",
-                    expected={"composition_root": list(roots)},
+                    f"the composition root ({join(locations)})",
+                    expected={"composition_root": locations},
                     hint=(
                         "Accept the dependency as a constructor or function parameter "
-                        f"and resolve it in {roots[0]}."
+                        f"and resolve it in {locations[0]}."
                     ),
                 )

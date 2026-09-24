@@ -43,7 +43,6 @@ class CrossFeatureImport(BaseRule):
         cross = ctx.config.architecture.cross_feature
         if cross.default == "allow":
             return
-        pairs = cross.pairs()
         model = ctx.model
         for detail in ctx.imports.all_imports():
             if detail.external or skip_import(ctx, detail):
@@ -53,6 +52,7 @@ class CrossFeatureImport(BaseRule):
             if (
                 source is None
                 or target is None
+                or source.wiring
                 or not (source.in_grid and target.in_grid)
             ):
                 continue
@@ -60,10 +60,16 @@ class CrossFeatureImport(BaseRule):
                 continue
             if source.feature == target.feature:
                 continue
-            if source.layer and target.layer and (source.layer, target.layer) in pairs:
+            if (
+                source.layer
+                and target.layer
+                and cross.allows(
+                    source.feature, source.layer, target.feature, target.layer
+                )
+            ):
                 continue
             pair = f"{source.layer or '(feature root)'} -> {target.layer or '(feature root)'}"
-            allowed = sorted(cross.allow)
+            allowed = cross.labels()
             shared = ctx.config.architecture.shared
             where = f" or move the shared concept into {shared[0]}" if shared else ""
             yield import_violation(

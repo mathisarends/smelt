@@ -15,6 +15,7 @@ type SeverityName = Literal["error", "warning", "hint", "off"]
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
 _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
+_FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
 PATCH_CATEGORIES = frozenset(
     {"external", "environment", "stdlib", "private", "first_party", "shared"}
@@ -117,15 +118,35 @@ class LayerConfig(_Model):
         return _check_dotted(values)
 
 
+class CrossFeatureAllowance(_Model):
+    source: str = Field(alias="from")
+    target: str = Field(alias="to")
+
+    @model_validator(mode="after")
+    def _feature_layers(self) -> Self:
+        for value in (self.source, self.target):
+            if not _FEATURE_LAYER.fullmatch(value):
+                msg = f'"{value}" must look like "feature.layer"'
+                raise ValueError(msg)
+        return self
+
+    def components(self) -> tuple[str, str, str, str]:
+        source_feature, source_layer = self.source.split(".")
+        target_feature, target_layer = self.target.split(".")
+        return source_feature, source_layer, target_feature, target_layer
+
+
 class CrossFeatureConfig(_Model):
     default: Policy = "deny"
-    allow: list[str] = Field(default_factory=list)
+    allow: list[str | CrossFeatureAllowance] = Field(default_factory=list)
 
     @field_validator("allow")
     @classmethod
-    def _pairs_are_well_formed(cls, values: list[str]) -> list[str]:
+    def _pairs_are_well_formed(
+        cls, values: list[str | CrossFeatureAllowance]
+    ) -> list[str | CrossFeatureAllowance]:
         for value in values:
-            if not _LAYER_PAIR.match(value):
+            if isinstance(value, str) and not _LAYER_PAIR.match(value):
                 msg = f'"{value}" must look like "layer -> layer"'
                 raise ValueError(msg)
         return values
@@ -133,10 +154,34 @@ class CrossFeatureConfig(_Model):
     def pairs(self) -> frozenset[tuple[str, str]]:
         result: set[tuple[str, str]] = set()
         for value in self.allow:
+            if not isinstance(value, str):
+                continue
             match = _LAYER_PAIR.match(value)
             if match:
                 result.add((match.group(1), match.group(2)))
         return frozenset(result)
+
+    def allows(
+        self,
+        source_feature: str,
+        source_layer: str,
+        target_feature: str,
+        target_layer: str,
+    ) -> bool:
+        if (source_layer, target_layer) in self.pairs():
+            return True
+        return any(
+            isinstance(value, CrossFeatureAllowance)
+            and value.components()
+            == (source_feature, source_layer, target_feature, target_layer)
+            for value in self.allow
+        )
+
+    def labels(self) -> list[str]:
+        return [
+            value if isinstance(value, str) else f"{value.source} -> {value.target}"
+            for value in self.allow
+        ]
 
 
 type CycleScope = Literal["features", "layers", "siblings"]
@@ -156,6 +201,7 @@ class ArchitectureConfig(_Model):
     features: FeaturesConfig | None = None
     shared: list[str] = Field(default_factory=list)
     composition_root: list[str] = Field(default_factory=list)
+    wiring: list[str] = Field(default_factory=list)
     layers: dict[str, LayerConfig] = Field(default_factory=dict)
     cross_feature: CrossFeatureConfig = Field(default_factory=CrossFeatureConfig)
     di_frameworks: list[str] = Field(default_factory=list)
@@ -165,6 +211,18 @@ class ArchitectureConfig(_Model):
     @classmethod
     def _modules_are_dotted(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
+
+    @field_validator("wiring")
+    @classmethod
+    def _wiring_patterns(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if any(
+                segment != "*" and not _DOTTED_NAME.fullmatch(segment)
+                for segment in value.split(".")
+            ):
+                msg = f'"{value}" must be a dotted module pattern with whole-segment * wildcards'
+                raise ValueError(msg)
+        return values
 
 
 class RoleDetect(_Model):

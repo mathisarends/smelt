@@ -111,8 +111,8 @@ class TestUnknownLayer:
             "(domain, infrastructure)"
         )
         assert found.hint == (
-            "Move voice/helpers.py into a layer of voice, or add it to "
-            "architecture.shared."
+            "Move voice/helpers.py into a layer of voice, such as infrastructure "
+            "for configuration and external services."
         )
 
     def test_loose_module_below_dotted_layer_prefix(self, tmp_path: Path) -> None:

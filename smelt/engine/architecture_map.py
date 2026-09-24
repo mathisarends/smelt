@@ -104,6 +104,7 @@ def build_architecture_map(ctx: AnalysisContext, report: Report) -> dict[str, An
         ],
         "shared": kind(ModuleKind.SHARED),
         "composition_root": kind(ModuleKind.COMPOSITION_ROOT),
+        "wiring": [info.name for info in modules if info.wiring],
         "unclassified": kind(ModuleKind.UNCLASSIFIED),
         "roles": [
             {

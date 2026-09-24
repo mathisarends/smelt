@@ -118,7 +118,12 @@ def _forbidden_layer(
     ctx: AnalysisContext, source: ModuleInfo | None, target: ModuleInfo | None
 ) -> str | None:
     """The target's layer if ``source`` must not import ``target``."""
-    if source is None or target is None or not (source.in_grid and target.in_grid):
+    if (
+        source is None
+        or target is None
+        or source.wiring
+        or not (source.in_grid and target.in_grid)
+    ):
         return None
     if source.layer is None or target.layer is None:
         return None

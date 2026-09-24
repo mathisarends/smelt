@@ -61,7 +61,7 @@ class ConcreteConstruction(BaseRule):
         roots = ctx.config.architecture.composition_root
         for syntax in ctx.syntax.sources():
             info = model.info(syntax.module)
-            if info is None or info.kind is ModuleKind.COMPOSITION_ROOT:
+            if info is None or info.kind is ModuleKind.COMPOSITION_ROOT or info.wiring:
                 continue
             for node in syntax.walk():
                 if not isinstance(node, ast.Call):

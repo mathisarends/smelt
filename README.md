@@ -15,6 +15,7 @@ smelt explain SMT101                 # rationale, examples and config knobs of a
 smelt rules                          # all rules with defaults
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
+smelt init                          # draft a config from packages or uv workspace members
 ```
 
 `smelt debt` lets an existing project adopt smelt incrementally: with `debt: .smelt/debt.json`
@@ -22,6 +23,34 @@ in `smelt.yaml`, `smelt check` only fails on new violations, and SMT903 reports 
 were fixed and can leave the file.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
+
+For a uv workspace, run `smelt init` at the workspace root. It reads
+`tool.uv.workspace.members`, finds each member's source and test roots, and drafts one
+configuration for all packages. Review the generated policy before adopting its findings:
+feature/layer boundaries are inferred, not a declaration of your intended architecture.
+For example, feature-local DI providers can be marked as narrowly scoped wiring while
+remaining in their original feature and layer:
+
+```yaml
+architecture:
+  features: {root: backend.features}
+  composition_root: [backend.main, backend.lifespan]
+  wiring: [backend.features.auth.infrastructure.di]
+  cross_feature:
+    default: deny
+    allow:
+      - from: session.presentation
+        to: auth.presentation
+```
+
+The object form permits only that directional feature/layer relationship. The shorter
+`"presentation -> presentation"` form remains available when a global layer-pair
+exception is intended. Wiring may also use whole-module-segment `*` patterns (such as
+`backend.features.*.infrastructure.di`); avoid patterns that designate unrelated modules.
+
+For an architecture-first adoption, `smelt check --select SMT1,SMT3` focuses on
+dependency and structure findings. To silence noisier testing rules persistently, use
+severity overrides such as `rules: {SMT403: off, SMT406: off}` and review them later.
 
 Silence a single finding inline, always with a reason:
 

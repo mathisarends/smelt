@@ -69,6 +69,29 @@ class TestCrossFeatureImport:
         )
         assert found.expected == {"cross_feature_allow": ["application -> application"]}
 
+    def test_scoped_feature_allowance_is_directional(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG.replace(
+                    '    allow: ["application -> application"]',
+                    "    allow:\n      - from: billing.application\n"
+                    "        to: voice.domain",
+                ),
+                "gw/features/billing/application/invoices.py": (
+                    "from gw.features.voice.domain import call\n"
+                ),
+                "gw/features/voice/application/calls.py": (
+                    "from gw.features.billing.domain import invoice\n"
+                ),
+                "gw/features/billing/domain/invoice.py": "",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT102",)))
+
+        assert [v.path for v in found] == ["gw/features/voice/application/calls.py"]
+
     def test_namespace_feature_container_inside_regular_package(
         self, tmp_path: Path
     ) -> None:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
-from smelt.config.models import PATCH_CATEGORIES
+from smelt.config.models import PATCH_CATEGORIES, CrossFeatureAllowance
 
 if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
@@ -60,8 +60,13 @@ class _Validator:
             )
 
     def _cross_feature(self) -> None:
-        pairs = sorted(self.config.architecture.cross_feature.pairs())
-        for index, pair in enumerate(pairs):
+        for index, allowance in enumerate(self.config.architecture.cross_feature.allow):
+            if isinstance(allowance, CrossFeatureAllowance):
+                _, source_layer, _, target_layer = allowance.components()
+                pair = (source_layer, target_layer)
+            else:
+                source_layer, target_layer = allowance.split("->", maxsplit=1)
+                pair = source_layer.strip(), target_layer.strip()
             for name in pair:
                 self._check_layer(f"architecture.cross_feature.allow[{index}]", name)
 
@@ -83,6 +88,13 @@ class _Validator:
                 self._error(
                     path,
                     f'"{module}" is not inside project.root_packages ({", ".join(roots)})',
+                )
+        for index, pattern in enumerate(arch.wiring):
+            prefix = pattern.split("*")[0].rstrip(".")
+            if not any(_within(prefix, root) for root in roots):
+                self._error(
+                    f"architecture.wiring[{index}]",
+                    f'"{pattern}" is not inside project.root_packages ({", ".join(roots)})',
                 )
         self._overlapping_sets()
 

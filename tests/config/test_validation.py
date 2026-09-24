@@ -57,6 +57,20 @@ class TestLayerReferences:
         ):
             parse_config(raw)
 
+    def test_scoped_cross_feature_allowance_checks_layers(self) -> None:
+        raw = {
+            **MINIMAL,
+            "architecture": {
+                "layers": {"application": {"path": "application"}},
+                "cross_feature": {
+                    "allow": [{"from": "billing.application", "to": "voice.domian"}]
+                },
+            },
+        }
+
+        with pytest.raises(ConfigError, match='unknown layer "domian"'):
+            parse_config(raw)
+
 
 class TestModuleSets:
     def test_shared_must_be_inside_root_packages(self) -> None:
