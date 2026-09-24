@@ -151,6 +151,18 @@ class TestUnclassifiedModule:
 
         assert codes_at(found) == [("SMT305", "gw/settings.py", None)]
 
+    def test_skips_root_packages_outside_the_architecture(self, tmp_path: Path) -> None:
+        root = _features(
+            tmp_path,
+            {
+                "smelt.yaml": FEATURE_CONFIG.replace("[gw]", "[gw, lib]"),
+                "lib/__init__.py": "",
+                "lib/tools.py": "",
+            },
+        )
+
+        assert violations(root, CheckOptions(select=("SMT305",))) == []
+
     def test_silent_without_layers_or_features(self, tmp_path: Path) -> None:
         root = write_project(
             tmp_path,
