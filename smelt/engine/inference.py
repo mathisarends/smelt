@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import ast
 import re
 import tomllib
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+from smelt.config.patterns import module_matches
+from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,6 +40,24 @@ _FEATURE_CONTAINERS = (
     "apps",
 )
 _SHARED_NAMES = ("shared", "common", "kernel", "shared_kernel")
+# root-level modules every layer may read: settings, logging setup
+_SHARED_MODULES = ("settings", "config", "env", "logging_config", "_logging")
+# central packages next to the features, by the layer they usually belong to
+_CENTRAL_NAMES: dict[str, tuple[str, ...]] = {
+    "infrastructure": (
+        "platform",
+        "infrastructure",
+        "infra",
+        "adapters",
+        "persistence",
+        "database",
+        "db",
+        "storage",
+    ),
+    "presentation": ("presentation", "api", "web", "http", "interfaces"),
+    "application": ("application", "services", "use_cases"),
+    "domain": ("domain",),
+}
 _COMPOSITION_NAMES = (
     "bootstrap",
     "composition_root",
@@ -80,6 +102,9 @@ class InferredConfig:
     shared: list[str] = field(default_factory=list)
     composition_root: list[str] = field(default_factory=list)
     wiring: list[str] = field(default_factory=list)
+    modules: dict[str, str] = field(default_factory=dict)
+    unclassified_roots: list[str] = field(default_factory=list)
+    mirror: MirrorGuess | None = None
     layers: list[InferredLayer] = field(default_factory=list)
     tests_layout: str = "none"
 
@@ -144,6 +169,12 @@ def infer_config(root: Path) -> InferredConfig | None:
         inferred.features = []
     _infer_special_modules(inferred, packages)
     _infer_wiring(inferred, packages)
+    _infer_app_factories(inferred, packages)
+    _infer_central_modules(inferred, packages)
+    inferred.wiring = _wiring_patterns(inferred.wiring, _all_modules(packages))
+    inferred.mirror = infer_mirror(root, inferred.test_roots, packages)
+    if inferred.mirror is not None:
+        inferred.tests_layout = "mirror"
     return inferred
 
 
@@ -241,6 +272,134 @@ def _infer_special_modules(inferred: InferredConfig, packages: list[Path]) -> No
         for name in _COMPOSITION_NAMES:
             if (package / f"{name}.py").is_file() or _has_python(package / name):
                 inferred.composition_root.append(f"{package.name}.{name}")
+        for name in _SHARED_MODULES:
+            if (package / f"{name}.py").is_file():
+                inferred.shared.append(f"{package.name}.{name}")
+
+
+def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None:
+    """Root-level modules between the entry point and the wiring, like ``app.py``.
+
+    A module counts when a composition root imports it and it imports a composition
+    root or wiring module itself: it assembles the app and is part of the root.
+    """
+    roots = list(inferred.composition_root)
+    targets = [*roots, *inferred.wiring]
+    for package in packages:
+        for path in sorted(package.glob("*.py")):
+            module = f"{package.name}.{path.stem}"
+            if path.stem == "__init__" or module in roots or module in inferred.shared:
+                continue
+            imports = _imports(path, package.name)
+            if not any(_within_any(name, targets) for name in imports):
+                continue
+            if any(
+                module in _imports(_module_file(packages, root), package.name)
+                for root in roots
+            ):
+                inferred.composition_root.append(module)
+
+
+def _infer_central_modules(inferred: InferredConfig, packages: list[Path]) -> None:
+    """Map packages beside the features to a layer by their name."""
+    if not inferred.has_features:
+        return
+    layers = {layer.name for layer in inferred.layers}
+    container = (
+        inferred.features_root or (inferred.features_pattern or "").rsplit(".", 1)[0]
+    )
+    taken = [*inferred.shared, *inferred.composition_root]
+    for package in packages:
+        if not _within_any(container, [package.name]):
+            inferred.unclassified_roots.append(package.name)
+            continue
+        for child in _child_packages(package):
+            module = f"{package.name}.{child.name}"
+            if _within_any(container, [module]) or _within_any(module, taken):
+                continue
+            if inferred.features_pattern and child.name in inferred.features:
+                continue
+            layer = next(
+                (
+                    name
+                    for name, aliases in _CENTRAL_NAMES.items()
+                    if child.name in aliases and name in layers
+                ),
+                None,
+            )
+            if layer is not None:
+                inferred.modules[module] = layer
+
+
+def _wiring_patterns(modules: list[str], known: set[str]) -> list[str]:
+    """Collapse ``a.x.di`` and ``a.y.di`` into ``a.*.di`` when it matches only wiring."""
+    remaining = sorted(modules)
+    patterns: list[str] = []
+    while remaining:
+        parts = remaining[0].split(".")
+        best: tuple[str, list[str]] | None = None
+        for index in range(1, len(parts)):
+            pattern = ".".join([*parts[:index], "*", *parts[index + 1 :]])
+            group = [m for m in remaining if module_matches(pattern, m)]
+            exact = all(m in modules for m in known if module_matches(pattern, m))
+            if len(group) > 1 and exact and (best is None or len(group) > len(best[1])):
+                best = (pattern, group)
+        if best is None:
+            patterns.append(remaining.pop(0))
+            continue
+        patterns.append(best[0])
+        remaining = [m for m in remaining if m not in best[1]]
+    return sorted(patterns)
+
+
+def _all_modules(packages: list[Path]) -> set[str]:
+    found: set[str] = set()
+    for package in packages:
+        for path in package.rglob("*.py"):
+            parts = path.relative_to(package.parent).with_suffix("").parts
+            if parts[-1] == "__init__":
+                parts = parts[:-1]
+            found.add(".".join(parts))
+    return found
+
+
+def _module_file(packages: list[Path], module: str) -> Path | None:
+    first, *rest = module.split(".")
+    for package in packages:
+        if package.name == first:
+            candidate = package.joinpath(*rest)
+            if candidate.with_suffix(".py").is_file():
+                return candidate.with_suffix(".py")
+            if (candidate / "__init__.py").is_file():
+                return candidate / "__init__.py"
+    return None
+
+
+def _imports(path: Path | None, package: str) -> set[str]:
+    """Absolute names a root-level module of ``package`` imports."""
+    if path is None:
+        return set()
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError:
+        return set()
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                base = f"{package}.{base}" if base else package
+            found.add(base)
+            found.update(f"{base}.{alias.name}" for alias in node.names)
+    return found
+
+
+def _within_any(module: str, packages: list[str]) -> bool:
+    return any(
+        module == package or module.startswith(f"{package}.") for package in packages
+    )
 
 
 def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
@@ -283,6 +442,8 @@ def render_config(inferred: InferredConfig) -> str:
             f"  layout: {inferred.tests_layout}  # mirror | none",
         ]
     )
+    if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:
+        out.append(f'  mirror: "{inferred.mirror.pattern}"')
     out.extend(
         [
             "",
@@ -323,6 +484,7 @@ def _architecture(inferred: InferredConfig) -> list[str]:
     else:
         out.append("  # composition_root: [myapp.bootstrap]")
     out.extend(_wiring_lines(inferred.wiring))
+    out.extend(_module_lines(inferred))
     out.append("")
     if inferred.layers:
         out.append("  layers:")
@@ -360,9 +522,24 @@ def _wiring_lines(modules: list[str]) -> list[str]:
     if not modules:
         return []
     return [
-        "  wiring:  # exact provider modules; keep their original feature/layer",
+        "  wiring:  # provider modules; they keep their feature and layer",
         *(f"    - {module}" for module in modules),
     ]
+
+
+def _module_lines(inferred: InferredConfig) -> list[str]:
+    if not inferred.has_features:
+        return []
+    if not inferred.modules and not inferred.unclassified_roots:
+        return []
+    header = "modules:  # packages outside the features and their layer"
+    out = [f"  {header}" if inferred.modules else f"  # {header}"]
+    out.extend(f"    {module}: {layer}" for module, layer in inferred.modules.items())
+    out.extend(
+        f"    # {package}: infrastructure  # pick the layer that may use it"
+        for package in inferred.unclassified_roots
+    )
+    return out
 
 
 def _list(values: list[str]) -> str:

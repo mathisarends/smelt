@@ -58,6 +58,26 @@ def _summary(inferred: InferredConfig) -> list[str]:
         lines.append(f"composition root: {', '.join(inferred.composition_root)}")
     if inferred.wiring:
         lines.append(f"wiring: {', '.join(inferred.wiring)}")
+    if inferred.modules:
+        lines.append(
+            "central modules: "
+            + ", ".join(
+                f"{module} ({layer})" for module, layer in inferred.modules.items()
+            )
+        )
+    if inferred.unclassified_roots:
+        lines.append(
+            f"no layer yet: {', '.join(inferred.unclassified_roots)} "
+            "(see architecture.modules)"
+        )
+    mirror = inferred.mirror
+    if mirror is None:
+        lines.append("tests: no test mirrors a module yet, mirroring is off")
+    else:
+        lines.append(
+            f"tests: mirror {mirror.pattern} "
+            f"({mirror.mirrored} of {mirror.total} test files already mirror)"
+        )
     return lines
 
 
