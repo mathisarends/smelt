@@ -14,7 +14,6 @@ from smelt.cli.support import (
     configure_streams,
 )
 from smelt.config import ConfigError
-from smelt.rules.registry import PluginError
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
@@ -83,10 +82,6 @@ def _add_discovery(sub: Subparsers) -> None:
     context.add_argument("--format", choices=["text", "json"], default="text")
     context.set_defaults(handler=commands.context)
 
-    inspect = sub.add_parser("inspect", help="machine-readable architecture map")
-    inspect.add_argument("--format", choices=["json"], default="json")
-    inspect.set_defaults(handler=commands.inspect)
-
 
 def _add_maintenance(sub: Subparsers) -> None:
     init = sub.add_parser("init", help="write a starter smelt.yaml")
@@ -98,11 +93,6 @@ def _add_maintenance(sub: Subparsers) -> None:
         "--prune", action="store_true", help="only remove resolved entries"
     )
     debt.set_defaults(handler=commands.debt)
-
-    verify = sub.add_parser("verify", help="run the configured verification stack")
-    verify.add_argument("--format", choices=["text", "json"], default="text")
-    verify.add_argument("--fail-fast", action="store_true")
-    verify.set_defaults(handler=commands.verify)
 
 
 def _add_config(sub: Subparsers) -> None:
@@ -128,7 +118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handler(args, console, Path.cwd())
     except ConfigError as exc:
         console.err.write(f"{exc}\n")
-    except (AnalysisError, CliError, PluginError) as exc:
+    except (AnalysisError, CliError) as exc:
         console.error(str(exc))
     except json.JSONDecodeError as exc:
         console.error(f"invalid JSON: {exc}")

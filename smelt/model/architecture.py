@@ -31,7 +31,6 @@ class ModuleInfo:
     kind: ModuleKind
     feature: str | None = None
     layer: str | None = None
-    roles: frozenset[str] = frozenset()
     wiring: bool = False
 
     @property
@@ -62,23 +61,19 @@ class ArchitectureModel:
         config: SmeltConfig,
         modules: Iterable[str],
         packages: Iterable[str],
-        roles: Mapping[str, frozenset[str]] | None = None,
     ) -> ArchitectureModel:
         package_set = frozenset(packages)
         classifier = _Classifier(config, package_set)
         infos: dict[str, ModuleInfo] = {}
         features: dict[str, FeatureInfo] = {}
         for name in sorted(set(modules)):
-            info = classifier.classify(name, (roles or {}).get(name, frozenset()))
+            info = classifier.classify(name)
             infos[name] = info
             if info.feature is not None and info.feature not in features:
                 package = classifier.feature_package(name)
                 if package is not None:
                     features[info.feature] = FeatureInfo(info.feature, package)
         return cls(config, infos, package_set, dict(sorted(features.items())))
-
-    def with_roles(self, roles: Mapping[str, frozenset[str]]) -> ArchitectureModel:
-        return ArchitectureModel.build(self.config, self.modules, self.packages, roles)
 
     @property
     def layers(self) -> Mapping[str, LayerConfig]:
@@ -94,7 +89,7 @@ class ArchitectureModel:
             return info
         if not self.is_first_party(module):
             return None
-        return _Classifier(self.config, self.packages).classify(module, frozenset())
+        return _Classifier(self.config, self.packages).classify(module)
 
     def is_first_party(self, module: str) -> bool:
         return any(
@@ -170,14 +165,12 @@ class _Classifier:
         elif arch.features is not None and arch.features.pattern is not None:
             self._feature_prefix = arch.features.pattern.split(".")[:-1]
 
-    def classify(self, module: str, roles: frozenset[str]) -> ModuleInfo:
+    def classify(self, module: str) -> ModuleInfo:
         wiring = any(module_matches(pattern, module) for pattern in self._wiring)
         if any(is_within(module, root) for root in self._composition_root):
-            return ModuleInfo(
-                module, ModuleKind.COMPOSITION_ROOT, roles=roles, wiring=wiring
-            )
+            return ModuleInfo(module, ModuleKind.COMPOSITION_ROOT, wiring=wiring)
         if any(is_within(module, shared) for shared in self._shared):
-            return ModuleInfo(module, ModuleKind.SHARED, roles=roles, wiring=wiring)
+            return ModuleInfo(module, ModuleKind.SHARED, wiring=wiring)
         if self._features is None:
             for root in self._roots:
                 if module.startswith(f"{root}."):
@@ -185,24 +178,17 @@ class _Classifier:
                     layer = self._match_layer(rest)
                     if layer is None:
                         break
-                    return ModuleInfo(
-                        module, ModuleKind.FEATURE, None, layer, roles, wiring
-                    )
-            return ModuleInfo(
-                module, ModuleKind.UNCLASSIFIED, roles=roles, wiring=wiring
-            )
+                    return ModuleInfo(module, ModuleKind.FEATURE, None, layer, wiring)
+            return ModuleInfo(module, ModuleKind.UNCLASSIFIED, wiring=wiring)
         match = self._match_feature(module)
         if match is None:
-            return ModuleInfo(
-                module, ModuleKind.UNCLASSIFIED, roles=roles, wiring=wiring
-            )
+            return ModuleInfo(module, ModuleKind.UNCLASSIFIED, wiring=wiring)
         feature, rest = match
         return ModuleInfo(
             module,
             ModuleKind.FEATURE,
             feature,
             self._match_layer(rest),
-            roles,
             wiring,
         )
 

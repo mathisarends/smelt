@@ -8,12 +8,8 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
-    display_module_path,
     import_violation,
     join,
-    last_segment,
-    port_roles,
-    role_home,
     skip_import,
 )
 
@@ -193,20 +189,6 @@ def _hint(
     chain: tuple[ImportLink, ...],
 ) -> str:
     model = ctx.model
-    name = (
-        last_segment(detail.names[0]) if detail.names else last_segment(detail.imported)
-    )
-    roots = ctx.config.architecture.composition_root
-    for role in port_roles(model):
-        if source.layer not in model.config.roles[role].layers:
-            continue
-        home = role_home(model, role, source.feature)
-        if home is None:
-            continue
-        module, is_package = home
-        location = display_module_path(model, module, package=is_package)
-        wire = f" and wire {name} in {roots[0]}" if roots else ""
-        return f"Introduce or reuse a {role} in {location}{wire}."
     layer = source.layer or ""
     allowed = join(list(model.layers[layer].may_depend_on))
     if chain:

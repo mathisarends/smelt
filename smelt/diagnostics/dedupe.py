@@ -7,12 +7,7 @@ if TYPE_CHECKING:
     from smelt.diagnostics.violation import Violation
 
 # winner -> codes it makes redundant when both report the same root cause
-SPECIFICITY: dict[str, frozenset[str]] = {
-    "SMT106": frozenset({"SMT103"}),
-    "SMT101": frozenset({"SMT201", "SMT202"}),
-    "SMT204": frozenset({"SMT303"}),
-    "SMT402": frozenset({"SMT403"}),
-}
+SPECIFICITY: dict[str, frozenset[str]] = {}
 
 
 def _key(violation: Violation) -> tuple[str | None, str | int | None]:

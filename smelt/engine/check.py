@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.context import AnalysisContext
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.diagnostics.debt import Debt, DebtEntry
@@ -33,7 +33,6 @@ if TYPE_CHECKING:
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
 _CATEGORY_ORDER = [
     Category.DEPENDENCIES,
-    Category.CODE,
     Category.STRUCTURE,
     Category.TESTS,
 ]
@@ -59,12 +58,6 @@ class CheckOutcome:
     # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
     resolved_debt: list[DebtEntry] = field(default_factory=list)
-
-
-def load_rules(loaded: LoadedConfig) -> RuleSet:
-    config = loaded.config
-    search = [loaded.root, *(loaded.root / r for r in config.project.source_roots)]
-    return build_rule_set(config.plugins, search_paths=search)
 
 
 def rule_meta(rule: Rule) -> RuleMeta:
@@ -97,8 +90,6 @@ def resolve_active_rules(
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
         setting = config.rules.get(rule.code)
-        if setting is None and rule.code == "SMT406":
-            setting = config.tests.interaction_assertions
         explicitly_selected = rule.code in options.select
         if setting == "off":
             continue
@@ -111,8 +102,6 @@ def resolve_active_rules(
         if options.select and not _matches_prefix(rule.code, options.select):
             continue
         if options.ignore and _matches_prefix(rule.code, options.ignore):
-            continue
-        if Index.CHANGES in rule.requires and not options.changed:
             continue
         active.append((rule, severity))
     return active
@@ -130,7 +119,7 @@ def run_check(
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
     config = loaded.config
-    rules = rules or load_rules(loaded)
+    rules = rules or build_rule_set()
     active = resolve_active_rules(rules, loaded, options)
     ctx = context or AnalysisContext(loaded.root, config)
     if options.changed and ctx.changes is None:
@@ -154,7 +143,7 @@ def run_check(
     known_codes = {rule.code for rule in rules.rules}
     # The rules a full run with this config would execute; the others are off and
     # cannot need a suppression.
-    enabled = resolve_active_rules(rules, loaded, CheckOptions(changed=options.changed))
+    enabled = resolve_active_rules(rules, loaded, CheckOptions())
     enabled_codes = {rule.code for rule, _ in enabled} - _META
     violations.extend(
         _suppression_violations(

@@ -17,10 +17,6 @@ _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
 _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
 _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
-PATCH_CATEGORIES = frozenset(
-    {"external", "environment", "stdlib", "private", "first_party", "shared"}
-)
-
 
 class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -104,18 +100,12 @@ class LayerConfig(_Model):
     path: str
     may_depend_on: list[str] = Field(default_factory=list)
     third_party: ThirdPartyPolicy = Field(default_factory=ThirdPartyPolicy)
-    forbid_bases: list[str] = Field(default_factory=list)
 
     @field_validator("path")
     @classmethod
     def _path_is_dotted(cls, value: str) -> str:
         _check_dotted([value])
         return value
-
-    @field_validator("forbid_bases")
-    @classmethod
-    def _bases_are_dotted(cls, values: list[str]) -> list[str]:
-        return _check_dotted(values)
 
 
 class CrossFeatureAllowance(_Model):
@@ -204,10 +194,9 @@ class ArchitectureConfig(_Model):
     wiring: list[str] = Field(default_factory=list)
     layers: dict[str, LayerConfig] = Field(default_factory=dict)
     cross_feature: CrossFeatureConfig = Field(default_factory=CrossFeatureConfig)
-    di_frameworks: list[str] = Field(default_factory=list)
     imports: ImportsConfig = Field(default_factory=ImportsConfig)
 
-    @field_validator("shared", "composition_root", "di_frameworks")
+    @field_validator("shared", "composition_root")
     @classmethod
     def _modules_are_dotted(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
@@ -225,85 +214,16 @@ class ArchitectureConfig(_Model):
         return values
 
 
-class RoleDetect(_Model):
-    base: str | None = None
-    implements: str | None = None
-
-    @model_validator(mode="after")
-    def _exactly_one(self) -> Self:
-        if (self.base is None) == (self.implements is None):
-            msg = "`detect` needs exactly one condition: `base` or `implements`"
-            raise ValueError(msg)
-        if self.base is not None:
-            _check_dotted([self.base])
-        return self
-
-
-class RoleConfig(_Model):
-    detect: RoleDetect
-    layers: list[str] = Field(default_factory=list)
-    file: str | None = None
-
-    @field_validator("file")
-    @classmethod
-    def _file_is_module_name(cls, value: str | None) -> str | None:
-        if value is not None and not re.match(r"^[A-Za-z_]\w*(\.py)?$", value):
-            msg = f'"{value}" must be a module file name like "ports.py"'
-            raise ValueError(msg)
-        return value
-
-    @property
-    def module_name(self) -> str | None:
-        return self.file.removesuffix(".py") if self.file else None
-
-
-class AnalysisConfig(_Model):
-    types: Literal["none", "pyright"] = "none"
-    pyright_command: list[str] = Field(default_factory=lambda: ["pyright"])
-
-
 class StructureConfig(_Model):
     forbidden_names: list[str] = Field(default_factory=list)
-    crowded_threshold: Annotated[int, Field(ge=1)] = 10
-
-
-class PatchingConfig(_Model):
-    allow: list[str] = Field(
-        default_factory=lambda: ["external", "environment", "stdlib"]
-    )
-    forbid: list[str] = Field(default_factory=lambda: ["private"])
-
-
-class MocksConfig(_Model):
-    max_per_test: Annotated[int, Field(ge=0)] = 3
-    forbid_first_party: list[str] = Field(default_factory=list)
-
-
-class BloatConfig(_Model):
-    ratio: Annotated[float, Field(gt=0)] = 5
-    min_test_loc: Annotated[int, Field(ge=0)] = 100
 
 
 class TestsConfig(_Model):
-    layout: Literal["mirror", "feature", "none"] = "none"
-    pattern: str = "tests/{feature}"
-    # layout: mirror only; `mirror` is relative to the test root
+    layout: Literal["mirror", "none"] = "none"
+    # `mirror` is relative to the test root
     mirror: str = "{path}/test_{module}.py"
     unmirrored: list[str] = Field(default_factory=list)
     mirror_suffixes: bool = False
-    patching: PatchingConfig = Field(default_factory=PatchingConfig)
-    private_access: Literal["allow", "forbid"] = "forbid"
-    mocks: MocksConfig = Field(default_factory=MocksConfig)
-    interaction_assertions: SeverityName = "warning"
-    bloat: BloatConfig = Field(default_factory=BloatConfig)
-
-    @field_validator("pattern")
-    @classmethod
-    def _pattern_has_placeholder(cls, value: str) -> str:
-        if "{feature}" not in value:
-            msg = f'pattern "{value}" needs a "{{feature}}" placeholder'
-            raise ValueError(msg)
-        return value
 
     @field_validator("mirror")
     @classmethod
@@ -350,25 +270,16 @@ class SuppressionsConfig(_Model):
     require_reason: bool = True
 
 
-class VerifyStep(_Model):
-    name: str
-    run: str
-
-
 class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
-    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
-    roles: dict[str, RoleConfig] = Field(default_factory=dict)
     structure: StructureConfig = Field(default_factory=StructureConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, SeverityName] = Field(default_factory=dict)
     ignore: list[IgnoreEntry] = Field(default_factory=list)
     suppressions: SuppressionsConfig = Field(default_factory=SuppressionsConfig)
     debt: str | None = None
-    plugins: list[str] = Field(default_factory=list)
-    verify: list[VerifyStep] = Field(default_factory=list)
 
     @field_validator("rules")
     @classmethod
@@ -380,8 +291,3 @@ class SmeltConfig(_Model):
                 msg = f'"{code}" is not a rule code like "SMT101"'
                 raise ValueError(msg)
         return values
-
-    @field_validator("plugins")
-    @classmethod
-    def _plugins_are_dotted(cls, values: list[str]) -> list[str]:
-        return _check_dotted(values)

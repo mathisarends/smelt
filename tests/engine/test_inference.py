@@ -74,7 +74,6 @@ class TestInferConfig:
         assert inferred.features_root == "backend.features"
         assert inferred.composition_root == ["backend.main", "backend.lifespan"]
         assert inferred.wiring == ["backend.features.auth.infrastructure.di"]
-        assert inferred.di_frameworks == ["dishka"]
         config, warnings = parse_config(load_yaml(render_config(inferred)))
         assert warnings == ()
         assert config.architecture.wiring == inferred.wiring
@@ -111,7 +110,6 @@ class TestInferConfig:
         ]
         assert inferred.shared == ["shop.common"]
         assert inferred.composition_root == ["shop.bootstrap"]
-        assert inferred.di_frameworks == ["dependency_injector"]
         assert inferred.tests_layout == "none"
 
     def test_feature_pattern_without_container(self, tmp_path: Path) -> None:
@@ -137,7 +135,7 @@ class TestInferConfig:
             ("domain", "domain", []),
             ("presentation", "api", ["domain"]),
         ]
-        assert inferred.tests_layout == "feature"
+        assert inferred.tests_layout == "none"
 
     def test_plain_package_without_structure(self, tmp_path: Path) -> None:
         write_project(tmp_path, {"tool/__init__.py": "", "tool/cli.py": ""})
@@ -180,4 +178,4 @@ class TestRenderConfig:
         assert config.architecture.cross_feature.pairs() == {
             ("application", "application")
         }
-        assert config.tests.layout == "feature"
+        assert config.tests.layout == "none"

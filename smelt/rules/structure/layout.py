@@ -124,49 +124,6 @@ class UnknownLayer(BaseRule):
             )
 
 
-class CrowdedPackage(BaseRule):
-    code = "SMT304"
-    name = "crowded-package"
-    category = Category.STRUCTURE
-    default_severity = Severity.HINT
-    requires = frozenset({Index.FILES})
-    doc = RuleDoc(
-        summary="A package has more modules than structure.crowded_threshold.",
-        rationale=(
-            "A flat package with many modules hides which of them belong together. "
-            "This is advisory: grouping is a judgement call."
-        ),
-        bad="voice/application/\n  start.py\n  stop.py\n  ... 13 modules",
-        good="voice/application/\n  sessions/\n  recordings/",
-        fix="Group related modules into subpackages, or raise the threshold.",
-        config=("structure.crowded_threshold",),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        files = ctx.files
-        threshold = ctx.config.structure.crowded_threshold
-        counts: dict[str, int] = {}
-        for source in files.sources.values():
-            if source.is_package or "." not in source.module:
-                continue
-            parent = source.module.rsplit(".", 1)[0]
-            counts[parent] = counts.get(parent, 0) + 1
-        for parent, count in sorted(counts.items()):
-            package = files.packages.get(parent)
-            if count <= threshold or package is None:
-                continue
-            info = ctx.model.info(parent)
-            shown = display_module_path(ctx.model, parent, package=True).rstrip("/")
-            yield self.violation(
-                f"{shown} has {count} modules; consider grouping related modules",
-                path=package_location(files, package),
-                source_module=parent,
-                feature=info.feature if info else None,
-                layer=info.layer if info else None,
-                expected={"crowded_threshold": threshold},
-            )
-
-
 class UnclassifiedModule(BaseRule):
     code = "SMT305"
     name = "unclassified-module"

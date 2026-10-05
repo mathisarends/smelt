@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import posixpath
 import re
-from collections import Counter
 from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING
@@ -11,7 +10,6 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
-from smelt.rules.testing.common import first_party_module
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -20,10 +18,20 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax
 
 
+def _first_party_module(ctx: AnalysisContext, qualname: str) -> str | None:
+    """The longest source module that prefixes ``qualname``."""
+    parts = qualname.split(".")
+    for end in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:end])
+        if candidate in ctx.files.sources:
+            return candidate
+    return None
+
+
 def _imported_modules(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[str]:
     found: list[str] = []
     for target in syntax.bindings.values():
-        module = first_party_module(ctx, target)
+        module = _first_party_module(ctx, target)
         if module is not None and module not in found:
             found.append(module)
     return found
@@ -141,7 +149,6 @@ class MisplacedTestFile(BaseRule):
         ),
         config=(
             "tests.layout",
-            "tests.pattern",
             "tests.mirror",
             "tests.unmirrored",
             "tests.mirror_suffixes",
@@ -156,20 +163,8 @@ class MisplacedTestFile(BaseRule):
         for path, test in sorted(ctx.files.tests.items()):
             if test.is_conftest:
                 continue
-            if tests.layout == "feature":
-                yield from self._check_feature(ctx, test)
-            elif not any(path_matches(p, path) for p in tests.unmirrored):
+            if not any(path_matches(p, path) for p in tests.unmirrored):
                 yield from self._check_mirror(ctx, test)
-
-    def _check_feature(
-        self, ctx: AnalysisContext, test: TestFile
-    ) -> Iterator[Violation]:
-        syntax = ctx.syntax.for_path(test.path)
-        if syntax is None:
-            return
-        expected = self._feature_path(ctx, test.path, _imported_modules(ctx, syntax))
-        if expected is not None and expected != test.path:
-            yield self._misplaced(test, expected)
 
     def _check_mirror(
         self, ctx: AnalysisContext, test: TestFile
@@ -216,25 +211,6 @@ class MisplacedTestFile(BaseRule):
             expected={"path": expected},
             hint=f"Move the file to {expected}.",
         )
-
-    def _feature_path(
-        self, ctx: AnalysisContext, path: str, modules: list[str]
-    ) -> str | None:
-        features: Counter[str] = Counter()
-        for module in modules:
-            info = ctx.model.info(module)
-            if info is not None and info.feature is not None:
-                features[info.feature] += 1
-        if not features:
-            return None
-        pattern = ctx.config.tests.pattern.strip("/")
-        for feature in features:
-            directory = pattern.replace("{feature}", feature)
-            if path.startswith(f"{directory}/"):
-                return path
-        best = max(sorted(features), key=lambda feature: features[feature])
-        directory = pattern.replace("{feature}", best)
-        return f"{directory}/{posixpath.basename(path)}"
 
     def _mirror_path(
         self, ctx: AnalysisContext, test: TestFile, subject: str, modules: list[str]

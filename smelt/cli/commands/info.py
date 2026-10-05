@@ -8,26 +8,16 @@ import yaml
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import config_json_schema
 from smelt.config.errors import did_you_mean
-from smelt.engine.check import load_rules, rule_meta
+from smelt.engine.check import rule_meta
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
     import argparse
     from pathlib import Path
 
-    from smelt.rules.base import RuleSet
-
-
-def _rule_set(args: argparse.Namespace, cwd: Path) -> RuleSet:
-    try:
-        loaded = load_project_config(args.config, cwd)
-    except CliError:
-        return build_rule_set()
-    return load_rules(loaded)
-
 
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rules = _rule_set(args, cwd)
+    rules = build_rule_set()
     rule = rules.lookup(args.rule)
     if rule is None:
         candidates = [r.code for r in rules.rules] + [r.name for r in rules.rules]
@@ -78,7 +68,7 @@ def _indent(text: str) -> str:
 
 
 def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rule_set = _rule_set(args, cwd)
+    rule_set = build_rule_set()
     metas = [rule_meta(rule) for rule in rule_set.rules]
     if args.format == "json":
         console.print(json.dumps([m.to_json() for m in metas], indent=2))

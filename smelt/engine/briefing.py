@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 from smelt.config.errors import did_you_mean
 from smelt.diagnostics.violation import Severity
 from smelt.model import ModuleKind
-from smelt.rules.common import implementation_roles, role_home
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
@@ -44,16 +43,6 @@ class LayerBrief:
 
 
 @dataclass(frozen=True)
-class RoleBrief:
-    name: str
-    location: str | None
-    note: str | None = None
-
-    def to_json(self) -> dict[str, Any]:
-        return {"name": self.name, "location": self.location, "note": self.note}
-
-
-@dataclass(frozen=True)
 class Briefing:
     target: Target
     package: str | None
@@ -65,8 +54,6 @@ class Briefing:
     shared: tuple[str, ...]
     composition_root: tuple[str, ...]
     wiring: tuple[str, ...]
-    di_frameworks: tuple[str, ...]
-    roles: tuple[RoleBrief, ...]
     tests: tuple[str, ...]
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
@@ -87,8 +74,6 @@ class Briefing:
             "shared": list(self.shared),
             "composition_root": list(self.composition_root),
             "wiring": list(self.wiring),
-            "di_frameworks": list(self.di_frameworks),
-            "roles": [role.to_json() for role in self.roles],
             "tests": list(self.tests),
             "violations": {**self.violations, "codes": list(self.violation_codes)},
         }
@@ -150,8 +135,6 @@ def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Brie
         shared=tuple(arch.shared),
         composition_root=tuple(arch.composition_root),
         wiring=tuple(arch.wiring),
-        di_frameworks=tuple(arch.di_frameworks),
-        roles=_roles(ctx, target.feature),
         tests=_tests(ctx, target.feature),
         violations={
             "errors": sum(v.severity is Severity.ERROR for v in scoped),
@@ -189,56 +172,11 @@ def _cross_feature(model: ArchitectureModel) -> str:
     return f"only {', '.join(pairs)}" if pairs else "none"
 
 
-def _roles(ctx: AnalysisContext, feature: str | None) -> tuple[RoleBrief, ...]:
-    model = ctx.model
-    placeholder = feature or ("{feature}" if model.has_features else None)
-    implementations = set(implementation_roles(model))
-    constrained = bool(
-        model.config.architecture.composition_root or model.config.architecture.wiring
-    )
-    briefs: list[RoleBrief] = []
-    for name, role in model.config.roles.items():
-        location = where_path(ctx, name, placeholder) if role.layers else None
-        note = None
-        if name in implementations and constrained:
-            note = (
-                "construct only in composition root or wiring"
-                if model.config.architecture.wiring
-                else "construct only in composition root"
-            )
-        briefs.append(RoleBrief(name, location, note))
-    return tuple(briefs)
-
-
-def where_path(ctx: AnalysisContext, role: str, feature: str | None) -> str | None:
-    home = role_home(ctx.model, role, feature)
-    if home is None:
-        return None
-    module, is_package = home
-    return ctx.files.module_to_path(module, package=is_package)
-
-
 def _tests(ctx: AnalysisContext, feature: str | None) -> tuple[str, ...]:
     tests = ctx.config.tests
-    layers = set(ctx.model.layers)
-    parts: list[str] = []
-    match tests.layout:
-        case "feature":
-            location = tests.pattern.replace("{feature}", feature or "{feature}")
-            parts.append(f"{location.rstrip('/')}/")
-        case "mirror":
-            parts.append("mirror the source tree")
-    if tests.interaction_assertions != "off":
-        parts.append("behavior-oriented")
-    internal = [c for c in tests.patching.forbid if c in layers]
-    if internal:
-        parts.append(f"no patching of {'/'.join(internal)} internals")
-    if tests.private_access == "forbid":
-        parts.append("no private access")
-    parts.append(f"≤{tests.mocks.max_per_test} mocks per test")
-    if tests.layout != "mirror":
-        parts.append("no 1:1 file mirroring required")
-    return tuple(parts)
+    if tests.layout == "mirror":
+        return ("mirror the source tree",)
+    return ("no layout enforced",)
 
 
 def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
@@ -253,21 +191,9 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
             f"Shared:           {', '.join(briefing.shared)} (must not import features)"
         )
     if briefing.composition_root:
-        di = (
-            f" (DI: {', '.join(briefing.di_frameworks)})"
-            if briefing.di_frameworks
-            else ""
-        )
-        lines.append(f"Composition root: {', '.join(briefing.composition_root)}{di}")
+        lines.append(f"Composition root: {', '.join(briefing.composition_root)}")
     if briefing.wiring:
         lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
-    placed = [role for role in briefing.roles if role.location]
-    if placed:
-        width = max(len(role.name) for role in placed) + 2
-        lines.extend(("", "Where things go:"))
-        for role in placed:
-            note = f"   ({role.note})" if role.note else ""
-            lines.append(f"  {role.name:<{width}}→ {role.location}{note}")
     lines.extend(("", *_wrap_tests(briefing.tests), "", _violation_line(briefing)))
     return "\n".join(lines) + "\n"
 

@@ -52,7 +52,7 @@ class TestSchema:
 
 class TestRulePages:
     def test_every_docs_url_points_at_a_page(self) -> None:
-        for rule in build_rule_set(load_entry_points=False).rules:
+        for rule in build_rule_set().rules:
             url = rule_meta(rule).docs_url
             assert url == f"{DOCS_BASE_URL}/{rule.code}.md"
             assert (ROOT / DOCS_DIR / f"{rule.code}.md").is_file()
@@ -66,5 +66,5 @@ class TestRulePages:
     def test_index_lists_every_rule(self) -> None:
         index = (ROOT / DOCS_DIR / "README.md").read_text(encoding="utf-8")
 
-        for rule in build_rule_set(load_entry_points=False).rules:
+        for rule in build_rule_set().rules:
             assert f"| [{rule.code}]({rule.code}.md) |" in index

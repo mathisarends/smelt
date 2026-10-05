@@ -2,29 +2,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/mathisarends/smelt/main/smelt.schema.json",
   "$defs": {
-    "AnalysisConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "types": {
-          "default": "none",
-          "enum": [
-            "none",
-            "pyright"
-          ],
-          "title": "Types",
-          "type": "string"
-        },
-        "pyright_command": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Pyright Command",
-          "type": "array"
-        }
-      },
-      "title": "AnalysisConfig",
-      "type": "object"
-    },
     "ArchitectureConfig": {
       "additionalProperties": false,
       "properties": {
@@ -70,37 +47,11 @@
         "cross_feature": {
           "$ref": "#/$defs/CrossFeatureConfig"
         },
-        "di_frameworks": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Di Frameworks",
-          "type": "array"
-        },
         "imports": {
           "$ref": "#/$defs/ImportsConfig"
         }
       },
       "title": "ArchitectureConfig",
-      "type": "object"
-    },
-    "BloatConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "ratio": {
-          "default": 5,
-          "exclusiveMinimum": 0,
-          "title": "Ratio",
-          "type": "number"
-        },
-        "min_test_loc": {
-          "default": 100,
-          "minimum": 0,
-          "title": "Min Test Loc",
-          "type": "integer"
-        }
-      },
-      "title": "BloatConfig",
       "type": "object"
     },
     "CrossFeatureAllowance": {
@@ -263,60 +214,12 @@
         },
         "third_party": {
           "$ref": "#/$defs/ThirdPartyPolicy"
-        },
-        "forbid_bases": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid Bases",
-          "type": "array"
         }
       },
       "required": [
         "path"
       ],
       "title": "LayerConfig",
-      "type": "object"
-    },
-    "MocksConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "max_per_test": {
-          "default": 3,
-          "minimum": 0,
-          "title": "Max Per Test",
-          "type": "integer"
-        },
-        "forbid_first_party": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid First Party",
-          "type": "array"
-        }
-      },
-      "title": "MocksConfig",
-      "type": "object"
-    },
-    "PatchingConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "allow": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Allow",
-          "type": "array"
-        },
-        "forbid": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid",
-          "type": "array"
-        }
-      },
-      "title": "PatchingConfig",
       "type": "object"
     },
     "Policy": {
@@ -365,69 +268,6 @@
       "title": "ProjectConfig",
       "type": "object"
     },
-    "RoleConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "detect": {
-          "$ref": "#/$defs/RoleDetect"
-        },
-        "layers": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Layers",
-          "type": "array"
-        },
-        "file": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "File"
-        }
-      },
-      "required": [
-        "detect"
-      ],
-      "title": "RoleConfig",
-      "type": "object"
-    },
-    "RoleDetect": {
-      "additionalProperties": false,
-      "properties": {
-        "base": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Base"
-        },
-        "implements": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Implements"
-        }
-      },
-      "title": "RoleDetect",
-      "type": "object"
-    },
     "SeverityName": {
       "enum": [
         "error",
@@ -446,12 +286,6 @@
           },
           "title": "Forbidden Names",
           "type": "array"
-        },
-        "crowded_threshold": {
-          "default": 10,
-          "minimum": 1,
-          "title": "Crowded Threshold",
-          "type": "integer"
         }
       },
       "title": "StructureConfig",
@@ -476,15 +310,9 @@
           "default": "none",
           "enum": [
             "mirror",
-            "feature",
             "none"
           ],
           "title": "Layout",
-          "type": "string"
-        },
-        "pattern": {
-          "default": "tests/{feature}",
-          "title": "Pattern",
           "type": "string"
         },
         "mirror": {
@@ -503,28 +331,6 @@
           "default": false,
           "title": "Mirror Suffixes",
           "type": "boolean"
-        },
-        "patching": {
-          "$ref": "#/$defs/PatchingConfig"
-        },
-        "private_access": {
-          "default": "forbid",
-          "enum": [
-            "allow",
-            "forbid"
-          ],
-          "title": "Private Access",
-          "type": "string"
-        },
-        "mocks": {
-          "$ref": "#/$defs/MocksConfig"
-        },
-        "interaction_assertions": {
-          "$ref": "#/$defs/SeverityName",
-          "default": "warning"
-        },
-        "bloat": {
-          "$ref": "#/$defs/BloatConfig"
         }
       },
       "title": "TestsConfig",
@@ -565,25 +371,6 @@
           "type": "object"
         }
       ]
-    },
-    "VerifyStep": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "run": {
-          "title": "Run",
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "run"
-      ],
-      "title": "VerifyStep",
-      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -598,16 +385,6 @@
     },
     "architecture": {
       "$ref": "#/$defs/ArchitectureConfig"
-    },
-    "analysis": {
-      "$ref": "#/$defs/AnalysisConfig"
-    },
-    "roles": {
-      "additionalProperties": {
-        "$ref": "#/$defs/RoleConfig"
-      },
-      "title": "Roles",
-      "type": "object"
     },
     "structure": {
       "$ref": "#/$defs/StructureConfig"
@@ -643,20 +420,6 @@
       ],
       "default": null,
       "title": "Debt"
-    },
-    "plugins": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Plugins",
-      "type": "array"
-    },
-    "verify": {
-      "items": {
-        "$ref": "#/$defs/VerifyStep"
-      },
-      "title": "Verify",
-      "type": "array"
     }
   },
   "required": [

@@ -36,63 +36,6 @@ SOURCES = {
 }
 
 
-class TestFeatureLayout:
-    def test_test_in_feature_directory_is_fine(self, tmp_path: Path) -> None:
-        root = write_project(
-            tmp_path,
-            {
-                "smelt.yaml": FEATURE_CONFIG,
-                **SOURCES,
-                "tests/voice/test_calls.py": "from gw.features.voice.domain import calls\n",
-                "tests/conftest.py": "from gw.features.voice.domain import calls\n",
-            },
-        )
-
-        assert violations(root, ONLY_SMT401) == []
-
-    def test_misplaced_test_names_the_feature_dir(self, tmp_path: Path) -> None:
-        root = write_project(
-            tmp_path,
-            {
-                "smelt.yaml": FEATURE_CONFIG,
-                **SOURCES,
-                "tests/test_calls.py": "from gw.features.voice.domain import calls\n",
-            },
-        )
-
-        [found] = violations(root, ONLY_SMT401)
-
-        assert found.message == "test_calls.py belongs in tests/voice/"
-        assert found.expected == {"path": "tests/voice/test_calls.py"}
-
-    def test_test_spanning_features_may_live_in_either(self, tmp_path: Path) -> None:
-        root = write_project(
-            tmp_path,
-            {
-                "smelt.yaml": FEATURE_CONFIG,
-                **SOURCES,
-                "tests/billing/test_charge.py": (
-                    "from gw.features.voice.domain import calls\n"
-                    "from gw.features.billing.domain import money\n"
-                ),
-            },
-        )
-
-        assert violations(root, ONLY_SMT401) == []
-
-    def test_test_without_feature_imports_is_ignored(self, tmp_path: Path) -> None:
-        root = write_project(
-            tmp_path,
-            {
-                "smelt.yaml": FEATURE_CONFIG,
-                **SOURCES,
-                "tests/test_misc.py": "import os\n",
-            },
-        )
-
-        assert violations(root, ONLY_SMT401) == []
-
-
 MIRROR_SOURCES = {
     "app/__init__.py": "",
     "app/billing/__init__.py": "",

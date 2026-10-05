@@ -6,7 +6,6 @@ from smelt.engine.briefing import (
     build_briefing,
     render_briefing,
     resolve_target,
-    where_path,
 )
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
 from tests.helpers import FIXTURES
@@ -61,14 +60,9 @@ class TestFeatureBriefing:
             "  presentation   → application\n"
             "Cross-feature:    only application → application\n"
             "Shared:           gateway.shared (must not import features)\n"
-            "Composition root: gateway.bootstrap, gateway.main (DI: dishka)\n"
+            "Composition root: gateway.bootstrap, gateway.main\n"
             "\n"
-            "Where things go:\n"
-            "  port     → src/gateway/features/voice/application/ports.py\n"
-            "  adapter  → src/gateway/features/voice/infra/   (construct only in composition root)\n"
-            "\n"
-            "Tests: behavior-oriented, no private access, ≤3 mocks per test,\n"
-            "       no 1:1 file mirroring required\n"
+            "Tests: no layout enforced\n"
             "\n"
             "Current violations: 5 errors (SMT101, SMT102, SMT103, SMT106)\n"
         )
@@ -98,7 +92,7 @@ class TestModuleBriefing:
 
         assert "Kind: feature voice, layer application\n" in text
         assert " *application    → domain" in text
-        assert text.endswith("Current violations: 2 errors (SMT101, SMT106)\n")
+        assert text.endswith("Current violations: 2 errors (SMT101, SMT103)\n")
 
     def test_shared_module_kind(self, outcome: CheckOutcome) -> None:
         ctx = outcome.context
@@ -107,18 +101,3 @@ class TestModuleBriefing:
         text = render_briefing(build_briefing(ctx, target, outcome.report), ctx)
 
         assert "Kind: shared (importable by all features" in text
-
-
-class TestWhere:
-    def test_role_with_file(self, outcome: CheckOutcome) -> None:
-        path = where_path(outcome.context, "port", "voice")
-
-        assert path == "src/gateway/features/voice/application/ports.py"
-
-    def test_role_without_file_points_at_layer_package(
-        self, outcome: CheckOutcome
-    ) -> None:
-        assert (
-            where_path(outcome.context, "adapter", "payments")
-            == "src/gateway/features/payments/infra/"
-        )

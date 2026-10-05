@@ -57,7 +57,7 @@ class TestCheckCommand:
         code, out, _ = _run(capsys, "check")
 
         assert code == 0
-        assert out == "✓ dependencies ✓ code ✓ structure ✓ tests · 4 modules\n"
+        assert out == "✓ dependencies ✓ structure ✓ tests · 4 modules\n"
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
@@ -351,84 +351,5 @@ def _violating_project() -> dict[str, str]:
     }
 
 
-class TestInspectCommand:
-    def test_architecture_map(self, capsys: pytest.CaptureFixture[str]) -> None:
-        code, out, _ = _run(capsys, "--config", str(GATEWAY / "smelt.yaml"), "inspect")
-
-        data = json.loads(out)
-        assert code == 0
-        assert data["schema_version"] == 1
-        assert {feature["name"] for feature in data["features"]} >= {"voice"}
-        assert data["violations"]["total"]["errors"] > 0
-        assert all(edge["count"] > 0 for edge in data["edges"]["layers"])
-
-
 def _python(code: str) -> str:
     return f'"{sys.executable}" -c "{code}"'
-
-
-class TestVerifyCommand:
-    def _project(self, tmp_path: Path, steps: list[tuple[str, str]]) -> Path:
-        lines = "".join(f"  - name: {name}\n    run: '{run}'\n" for name, run in steps)
-        return write_project(
-            tmp_path,
-            {
-                "smelt.yaml": LAYERED_CONFIG + "verify:\n" + lines,
-                "app/__init__.py": "",
-            },
-        )
-
-    def test_runs_steps_and_fails_on_error(
-        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
-    ) -> None:
-        root = self._project(
-            tmp_path,
-            [
-                ("ok", _python("print(1)")),
-                ("broken", _python("import sys; print(42); sys.exit(3)")),
-                ("after", _python("print(2)")),
-            ],
-        )
-
-        code, out, _ = _run(capsys, "--config", str(root / "smelt.yaml"), "verify")
-
-        assert code == 1
-        assert [line[:1] for line in out.splitlines()[:3]] == ["✓", "✗", " "]
-        assert "    42" in out
-        assert out.endswith("\n2/3 steps passed; failed: broken\n")
-
-    def test_fail_fast_json(
-        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
-    ) -> None:
-        root = self._project(
-            tmp_path,
-            [("broken", _python("import sys; sys.exit(3)")), ("after", "echo x")],
-        )
-
-        code, out, _ = _run(
-            capsys,
-            "--config",
-            str(root / "smelt.yaml"),
-            "verify",
-            "--format",
-            "json",
-            "--fail-fast",
-        )
-
-        data = json.loads(out)
-        assert code == 1
-        assert data["passed"] is False
-        assert [(s["name"], s["status"], s["exit_code"]) for s in data["steps"]] == [
-            ("broken", "failed", 3),
-            ("after", "skipped", None),
-        ]
-
-    def test_requires_steps(
-        self, capsys: pytest.CaptureFixture[str], clean_project: Path
-    ) -> None:
-        code, _, err = _run(
-            capsys, "--config", str(clean_project / "smelt.yaml"), "verify"
-        )
-
-        assert code == 2
-        assert "no verify steps configured" in err

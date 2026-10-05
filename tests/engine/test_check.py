@@ -25,7 +25,7 @@ GATEWAY_EXPECTED = [
     ("SMT104", "src/gateway/features/billing/application/invoices.py", 1),
     ("SMT106", "src/gateway/features/voice/api/routes.py", 3),
     ("SMT102", "src/gateway/features/voice/api/routes.py", 4),
-    ("SMT106", "src/gateway/features/voice/application/session.py", 1),
+    ("SMT103", "src/gateway/features/voice/application/session.py", 1),
     ("SMT101", "src/gateway/features/voice/application/session.py", 5),
     ("SMT103", "src/gateway/features/voice/domain/session.py", 4),
     ("SMT105", "src/gateway/shared/clock.py", 1),
@@ -188,7 +188,11 @@ class TestSuppressions:
         assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
 
     def test_suppression_for_a_rule_that_is_off(self, tmp_path: Path) -> None:
-        root = _layered(tmp_path, "import os  # smelt: ignore[SMT206] -- x\n")
+        root = _layered(
+            tmp_path,
+            "import os  # smelt: ignore[SMT305] -- x\n",
+            LAYERED_CONFIG + "rules:\n  SMT305: off\n",
+        )
 
         [found] = violations(root)
 

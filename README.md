@@ -1,6 +1,6 @@
 # smelt
 
-Static architecture guardrails for Python. Describe your features, layers and roles in
+Static architecture guardrails for Python. Describe your features and layers in
 `smelt.yaml`; `smelt check` reports every import and construct that breaks them, with the
 exact location, the allowed alternative and a hint on how to fix it.
 
@@ -48,10 +48,6 @@ The object form permits only that directional feature/layer relationship. The sh
 exception is intended. Wiring may also use whole-module-segment `*` patterns (such as
 `backend.features.*.infrastructure.di`); avoid patterns that designate unrelated modules.
 
-For an architecture-first adoption, `smelt check --select SMT1,SMT3` focuses on
-dependency and structure findings. To silence noisier testing rules persistently, use
-severity overrides such as `rules: {SMT403: off, SMT406: off}` and review them later.
-
 Silence a single finding inline, always with a reason:
 
 ```python
@@ -76,18 +72,6 @@ Smelt runs on Python 3.12 to 3.14 and parses your code with the Python it runs o
 that uses newer syntax (3.14's `except A, B:` or t-strings, 3.13's type parameter defaults)
 needs smelt on that version, e.g. `uvx -p 3.14 smelt check`; the syntax error says so when
 `requires-python` or `.python-version` targets a newer Python.
-
-## Optional type information
-
-Role detection is nominal by default: a class is an adapter when it inherits a port. With
-
-```yaml
-analysis:
-  types: pyright        # needs pyright on PATH; pyright_command overrides how it is run
-```
-
-Smelt also asks pyright whether a class satisfies a port structurally, so a duck-typed
-adapter is found too. It is never required: without it, every rule still runs.
 
 ## Using Smelt with coding agents
 

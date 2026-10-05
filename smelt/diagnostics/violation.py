@@ -25,7 +25,6 @@ class Severity(StrEnum):
 
 class Category(StrEnum):
     DEPENDENCIES = "dependencies"
-    CODE = "code"
     STRUCTURE = "structure"
     TESTS = "tests"
     META = "meta"

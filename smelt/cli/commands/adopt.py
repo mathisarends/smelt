@@ -58,8 +58,6 @@ def _summary(inferred: InferredConfig) -> list[str]:
         lines.append(f"composition root: {', '.join(inferred.composition_root)}")
     if inferred.wiring:
         lines.append(f"wiring: {', '.join(inferred.wiring)}")
-    if inferred.di_frameworks:
-        lines.append(f"DI frameworks: {', '.join(inferred.di_frameworks)}")
     return lines
 
 

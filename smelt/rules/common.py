@@ -84,36 +84,6 @@ def display_module_path(
     return module.replace(".", "/") + ("/" if package else ".py")
 
 
-def role_home(
-    model: ArchitectureModel, role: str, feature: str | None
-) -> tuple[str, bool] | None:
-    """The canonical module (or package, if the role has no ``file``) for a role."""
-    config = model.config.roles.get(role)
-    if config is None or not config.layers:
-        return None
-    layer = config.layers[0]
-    if model.has_features and feature is None:
-        return None
-    package = model.layer_package(feature, layer)
-    if package is None:
-        return None
-    if config.module_name:
-        return f"{package}.{config.module_name}", False
-    return package, True
-
-
-def port_roles(model: ArchitectureModel) -> list[str]:
-    """Roles that other roles implement (e.g. ``port``)."""
-    targets = {
-        r.detect.implements for r in model.config.roles.values() if r.detect.implements
-    }
-    return sorted(name for name in model.config.roles if name in targets)
-
-
-def implementation_roles(model: ArchitectureModel) -> list[str]:
-    return sorted(name for name, r in model.config.roles.items() if r.detect.implements)
-
-
 def join(values: list[str] | tuple[str, ...], empty: str = "(nothing)") -> str:
     return ", ".join(values) if values else empty
 

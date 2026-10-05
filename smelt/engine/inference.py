@@ -60,18 +60,6 @@ _LAYER_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "infrastructure": ("domain", "application"),
     "presentation": ("application", "domain"),
 }
-# distribution name -> import name
-_DI_FRAMEWORKS = {
-    "dishka": "dishka",
-    "dependency-injector": "dependency_injector",
-    "injector": "injector",
-    "lagom": "lagom",
-    "punq": "punq",
-    "wireup": "wireup",
-    "svcs": "svcs",
-    "kink": "kink",
-    "that-depends": "that_depends",
-}
 
 
 @dataclass
@@ -92,7 +80,6 @@ class InferredConfig:
     shared: list[str] = field(default_factory=list)
     composition_root: list[str] = field(default_factory=list)
     wiring: list[str] = field(default_factory=list)
-    di_frameworks: list[str] = field(default_factory=list)
     layers: list[InferredLayer] = field(default_factory=list)
     tests_layout: str = "none"
 
@@ -157,17 +144,6 @@ def infer_config(root: Path) -> InferredConfig | None:
         inferred.features = []
     _infer_special_modules(inferred, packages)
     _infer_wiring(inferred, packages)
-    inferred.di_frameworks = sorted(
-        {
-            module
-            for location in [root, *member_roots]
-            for module in _di_frameworks(location)
-        }
-    )
-    if inferred.has_features and inferred.features:
-        tests_dir = root / inferred.test_roots[0]
-        if any((tests_dir / feature).is_dir() for feature in inferred.features):
-            inferred.tests_layout = "feature"
     return inferred
 
 
@@ -282,24 +258,6 @@ def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
     inferred.wiring.sort()
 
 
-def _di_frameworks(root: Path) -> list[str]:
-    pyproject = root / "pyproject.toml"
-    try:
-        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
-        return []
-    project = data.get("project", {})
-    requirements = list(project.get("dependencies", []))
-    for extra in project.get("optional-dependencies", {}).values():
-        requirements.extend(extra)
-    names = {
-        re.split(r"[\s\[<>=!~;@]", requirement, maxsplit=1)[0].lower().replace("_", "-")
-        for requirement in requirements
-        if isinstance(requirement, str)
-    }
-    return sorted(module for dist, module in _DI_FRAMEWORKS.items() if dist in names)
-
-
 def render_config(inferred: InferredConfig) -> str:
     out = [
         "# Architecture guardrails for smelt. Reference: `smelt config schema`,",
@@ -318,31 +276,19 @@ def render_config(inferred: InferredConfig) -> str:
     out.extend(
         [
             "",
-            "# Roles give concepts a canonical home (`smelt context <feature>` lists them).",
-            "# roles:",
-            "#   port:",
-            "#     detect: { base: typing.Protocol }",
-            "#     layers: [application]",
-            "#     file: ports.py",
-            "#   adapter:",
-            "#     detect: { implements: port }",
-            "#     layers: [infrastructure]",
-            "",
             "structure:",
             "  forbidden_names: [utils, helpers]",
             "",
             "tests:",
-            f"  layout: {inferred.tests_layout}  # mirror | feature | none",
+            f"  layout: {inferred.tests_layout}  # mirror | none",
         ]
     )
-    if inferred.tests_layout == "feature":
-        out.append(f'  pattern: "{inferred.test_roots[0]}/{{feature}}"')
     out.extend(
         [
             "",
             "# Severity overrides by code: error | warning | hint | off",
             "# rules:",
-            "#   SMT304: off",
+            "#   SMT305: off",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",
             "# debt: .smelt/debt.json",
@@ -377,10 +323,6 @@ def _architecture(inferred: InferredConfig) -> list[str]:
     else:
         out.append("  # composition_root: [myapp.bootstrap]")
     out.extend(_wiring_lines(inferred.wiring))
-    if inferred.di_frameworks:
-        out.append(
-            f"  di_frameworks: {_list(inferred.di_frameworks)}  # composition root and wiring only"
-        )
     out.append("")
     if inferred.layers:
         out.append("  layers:")

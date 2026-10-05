@@ -8,9 +8,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
 from smelt.analysis.parsing import AstCache
-from smelt.analysis.roles import RoleIndex
 from smelt.analysis.syntax import SyntaxIndex
-from smelt.analysis.types import PyrightTypes, TypeIndex
 from smelt.model import ArchitectureModel
 
 if TYPE_CHECKING:
@@ -23,9 +21,6 @@ class Index(StrEnum):
     FILES = "files"
     IMPORTS = "imports"
     SYNTAX = "syntax"
-    ROLES = "roles"
-    TYPES = "types"
-    CHANGES = "changes"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,21 +51,10 @@ class AnalysisContext:
         config: SmeltConfig,
         *,
         changes: ChangeSet | None = None,
-        types: TypeIndex | None = None,
     ) -> None:
         self.root = root
         self.config = config
         self.changes = changes
-        self._types = types
-
-    @cached_property
-    def types(self) -> TypeIndex | None:
-        """The configured type backend, or None when there is none to be had."""
-        if self._types is not None:
-            return self._types
-        if self.config.analysis.types == "pyright":
-            return PyrightTypes.discover(self.root, self.config)
-        return None
 
     @cached_property
     def files(self) -> FileIndex:
@@ -94,13 +78,7 @@ class AnalysisContext:
     def syntax(self) -> SyntaxIndex:
         return SyntaxIndex(self.files, self.asts)
 
-    @cached_property
-    def roles(self) -> RoleIndex:
-        return RoleIndex(self.config, self.syntax, self.types)
-
     def ensure(self, indexes: frozenset[Index]) -> None:
         """Build the requested indexes up front so failures surface before rules run."""
         for index in sorted(indexes):
-            if index is Index.TYPES or index is Index.CHANGES:
-                continue
             getattr(self, index.value)

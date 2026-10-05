@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
 
@@ -142,20 +141,6 @@ class TestUnknownLayer:
         )
 
         assert violations(root, CheckOptions(select=("SMT301",))) == []
-
-
-class TestCrowdedPackage:
-    def test_reports_packages_above_threshold_as_hint(self, tmp_path: Path) -> None:
-        files = {f"gw/features/voice/domain/m{i}.py": "" for i in range(3)}
-        config = FEATURE_CONFIG + "structure:\n  crowded_threshold: 3\n"
-        root = _features(tmp_path, {**files, "smelt.yaml": config})
-
-        [found] = violations(root, CheckOptions(select=("SMT304",)))
-
-        assert found.severity is Severity.HINT
-        assert found.message == (
-            "voice/domain has 4 modules; consider grouping related modules"
-        )
 
 
 class TestUnclassifiedModule:
