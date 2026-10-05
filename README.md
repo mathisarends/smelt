@@ -1,52 +1,106 @@
 # smelt
 
-Static architecture guardrails for Python. Describe your features and layers in
-`smelt.yaml`; `smelt check` reports every import and construct that breaks them, with the
-exact location, the allowed alternative and a hint on how to fix it.
+Architecture guardrails for Python, built for reviewing what coding agents change. Describe
+your features and layers in `smelt.yaml`; `smelt check` reports two kinds of findings, each
+with the exact location, what is allowed instead and how to fix it:
+
+- **Boundaries:** an import that crosses a layer, a feature or the composition root.
+- **Test mirroring:** a test file that does not sit at the mirrored path of a source module.
 
 ## Usage
 
 ```bash
-smelt check                          # whole project, text output
-smelt check --changed                # only files changed against HEAD (incl. untracked)
+smelt init                           # draft smelt.yaml from the code (also uv workspaces)
+smelt check                          # whole project
+smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --changed --base origin/main --format json
-smelt context voice                  # architecture briefing for a feature or path
-smelt explain SMT101                 # rationale, examples and config knobs of a rule
-smelt rules                          # all rules with defaults
+smelt context user                   # what applies to a feature, module or path
+smelt explain SMT101                 # rationale, examples and config keys of a rule
+smelt rules                          # all rules with their default severity
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
-smelt init                          # draft a config from packages or uv workspace members
+smelt config show                    # the resolved config
+smelt config schema                  # the JSON schema of smelt.yaml
 ```
 
-`smelt debt` lets an existing project adopt smelt incrementally: with `debt: .smelt/debt.json`
-in `smelt.yaml`, `smelt check` only fails on new violations, and SMT903 reports entries that
-were fixed and can leave the file.
-
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
+A config entry that points at nothing (a mistyped package, a missing test root) is a
+config error, not a silently disabled rule.
 
-For a uv workspace, run `smelt init` at the workspace root. It reads
-`tool.uv.workspace.members`, finds each member's source and test roots, and drafts one
-configuration for all packages. Review the generated policy before adopting its findings:
-feature/layer boundaries are inferred, not a declaration of your intended architecture.
-For example, feature-local DI providers can be marked as narrowly scoped wiring while
-remaining in their original feature and layer:
+`--changed` checks the base commit (HEAD, or the merge-base with `--base`) with today's
+config and reports only violations that are new, wherever they show up. Old violations in
+an edited file stay quiet, a new import cycle does not.
+
+## A DDD layout
 
 ```yaml
+version: 1
+project:
+  root_packages: [backend, agent]
+  source_roots: [backend/src, libs/agent/src]
+  test_roots: [backend/tests, libs/agent/tests]
+
 architecture:
-  features: {root: backend.features}
-  composition_root: [backend.main, backend.lifespan]
-  wiring: [backend.features.auth.infrastructure.di]
+  features: {root: backend.features}     # every child package is a feature
+  shared: [backend.shared, backend.env]  # importable everywhere, imports no feature
+  composition_root: [backend.main, backend.app]
+  wiring: [backend.features.*.infrastructure.di]
+  modules:                               # packages outside the features
+    backend.platform: infrastructure
+    agent: infrastructure
+  layers:
+    domain: {path: domain}
+    application: {path: application, may_depend_on: [domain]}
+    infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
+    presentation: {path: presentation, may_depend_on: [application, domain]}
   cross_feature:
     default: deny
     allow:
-      - from: session.presentation
-        to: auth.presentation
+      - "application -> application"     # between all features
+      - {from: session.presentation, to: auth.presentation}
+
+tests:
+  layout: mirror
+  mirror: "{root}/{path}/test_{module}.py"
 ```
 
-The object form permits only that directional feature/layer relationship. The shorter
-`"presentation -> presentation"` form remains available when a global layer-pair
-exception is intended. Wiring may also use whole-module-segment `*` patterns (such as
-`backend.features.*.infrastructure.di`); avoid patterns that designate unrelated modules.
+- **Layers** hold inside every feature: `domain` must not import `infrastructure`.
+- **Features** may only import each other through `cross_feature.allow`. The string form
+  allows a layer pair for all features, the object form one direction between two.
+- **Central packages** such as a platform or a workspace library get a layer under
+  `modules`. The layer rules then apply between them and the features (a feature's domain
+  must not import `backend.platform`), and they must not import features.
+- **Wiring** modules (whole-segment `*` allowed) may import across layers and features but
+  keep their feature and layer; nothing outside the composition root may import them.
+- Every module should belong somewhere: an unclassified module is exempt from all
+  boundary rules, so SMT305 warns about it.
+
+`smelt init` infers most of this: features, layers, shared and settings modules, the
+composition root including an app factory, wiring patterns, central packages by name and
+the mirror pattern the existing tests follow. Review it before adopting its findings.
+
+## Test mirroring
+
+With `tests.layout: mirror` the path of a test decides: `tests/billing/test_invoice.py`
+needs `app/billing/invoice.py`, and a package test `tests/billing/test_billing.py` needs
+`app/billing/`. Not every module needs a test, but a test whose source is missing or
+elsewhere is an error. The message names the fix where it can: the right directory, the
+right file name (`test_session_infrastructure_repository.py` should be named
+`test_repository.py`), a neighbouring module with a similar name, or a missing `{root}` in
+the pattern.
+
+`tests.mirror` sets the convention relative to the test root: the default
+`{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py` keeps it,
+and `unit/{path}/{module}_test.py` puts tests under `tests/unit/` with a suffix. In a uv
+workspace each test root mirrors the package of its own member. Deliberately unmirrored
+tests go in `tests.unmirrored` (e.g. `["tests/e2e/**"]`); `tests.mirror_suffixes: true`
+also allows `test_invoice_<topic>.py`.
+
+## Adopting it in an existing project
+
+`smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
+`smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries
+that were fixed and can leave the file (`smelt debt --prune`).
 
 Silence a single finding inline, always with a reason:
 
@@ -54,17 +108,8 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
-With `tests.layout: mirror`, every test file must mirror a source module by its path:
-`tests/billing/test_invoice.py` needs `app/billing/invoice.py`, and a package test
-`tests/billing/test_billing.py` needs `app/billing/`. Not every module needs a test, but a
-test whose source is missing or elsewhere is an error. Deliberately unmirrored tests go in
-`tests.unmirrored` (e.g. `["tests/integration/**"]`); `tests.mirror_suffixes: true` also
-allows `test_invoice_<topic>.py`. `tests.mirror` sets the convention relative to the test
-root: the default `{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py`
-keeps it, and `unit/{path}/{module}_test.py` puts tests under `tests/unit/` with a suffix.
-
 Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
-autocompletion for `smelt.yaml`.
+autocompletion and a description for every key of `smelt.yaml`.
 
 ## Python versions
 
@@ -100,8 +145,7 @@ repos:
 
 ## GitHub Actions
 
-CI always checks the whole repository, because cycles and transitive rules cannot be judged
-from a diff alone.
+CI checks the whole repository; `--changed` is for the agent loop.
 
 ```yaml
 - uses: astral-sh/setup-uv@v6
