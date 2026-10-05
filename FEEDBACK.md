@@ -504,3 +504,42 @@ oder „Test liegt nicht am Spiegelpfad“.
 4. R5 (`--changed` meldet nur Neues): größter Hebel für den Agent-Loop.
 5. R4 + R6 (Mirror ableiten, bessere Vorschläge).
 6. R8, R9, P2.
+
+## Umgesetzt (Runde 2)
+
+Alle Punkte sind umgesetzt, jeweils in einem eigenen Commit. Validiert wurde auf einer
+frischen Kopie von Prompster.
+
+- **Scope:** wie in der Tabelle oben gestrichen. Neben den genannten Regeln ist auch
+  `di_frameworks` weggefallen: Ein DI-Framework in einem Layer wird über
+  `layers.<x>.third_party` verboten. SMT103 bleibt. R7 (SMT403-Rauschen) und R10 entfallen
+  damit.
+- **R1:** `architecture.modules` ordnet Pakete außerhalb der Features einem Layer zu
+  (`backend.platform: infrastructure`). SMT101 gilt dann auch zwischen Feature und
+  zentralem Modul, SMT105 verbietet zentralen Modulen Feature-Importe. SMT305 ist jetzt
+  eine Warnung und sagt, wie man ein Modul einordnet. In Prompster werden alle drei
+  eingeschleusten Fälle gemeldet.
+- **R2:** Nicht existierende `source_roots`, Root-Pakete, `features.root`/`pattern`,
+  `shared`, `composition_root`, `modules`, Wiring-Muster ohne Treffer und (bei `mirror`)
+  `test_roots` sind Config-Fehler mit Exit 2 und „did you mean“.
+- **R3:** Eine Test-Root spiegelt die Root-Pakete ihres Workspace-Members (längster
+  gemeinsamer Pfad mit der Source-Root).
+- **R4/R7:** `init` leitet `layout: mirror` samt Muster aus den Tests ab (Prompster:
+  `{root}/{path}/test_{module}.py`, 15 von 58 Tests spiegeln schon). Außerdem erkennt es:
+  App-Factory (`backend.app`) als Composition Root, Settings/Logging-Module als `shared`,
+  zentrale Pakete per Name als `modules` sowie Wiring als `*`-Muster. Nicht zuordenbare
+  Workspace-Pakete (`agent`) stehen auskommentiert in der Config.
+- **R5:** `--changed` prüft den Basis-Commit (HEAD bzw. Merge-Base mit `--base`) mit der
+  aktuellen Config und zieht dessen Verstöße per Fingerprint ab. Gemeldet wird nur, was
+  neu ist.
+- **R6:** „should be named test_repository.py“ auch bei Präfix-Namen, „did you mean
+  "fernet_token_cypher.py"?“ bei Tippfehlern, Hinweis auf fehlendes `{root}`. Im JSON sind
+  `source_module`, `feature`, `layer` und `expected.source` gesetzt.
+- **R8:** SMT105 macht SMT106 (und SMT101) für denselben Import überflüssig.
+- **R9/R14:** `context` zeigt nur die Wiring des Features und den konkreten Spiegelpfad,
+  benennt zentrale Module und erklärt unklassifizierte, statt eine Policy aufzulisten, die
+  nicht gilt. Bei unbekanntem Ziel listet es die Features. `explain` schlägt einen Code nur
+  vor, wenn genau einer sich in einem Zeichen unterscheidet.
+- **R11:** Jeder Key im Schema hat eine `description`.
+- **R12:** `smelt debt` trägt `debt:` selbst ein bzw. entkommentiert die Zeile aus `init`.
+- **R13:** README neu: alle Befehle, `--changed`-Semantik, DDD-Beispiel, Mirror, Adoption.
