@@ -7,6 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.errors import did_you_mean
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
@@ -133,10 +134,35 @@ def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bo
     return False
 
 
-def _missing_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
+def _missing_module(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
     root = (_roots(ctx, mirror, test_root) or member_roots(ctx, test_root))[0]
-    return ctx.files.module_to_path(
-        ".".join([root, *mirror.directories, mirror.module])
+    return ".".join([root, *mirror.directories, mirror.module])
+
+
+def _similar_module(ctx: AnalysisContext, module: str) -> str:
+    """`` (did you mean "fernet_token_cypher.py"?)`` for a typo next to a real module."""
+    package, name = module.rsplit(".", 1)
+    siblings = [
+        f"{source.module.rsplit('.', 1)[1]}.py"
+        for source in ctx.files.sources.values()
+        if not source.is_package and source.module.rsplit(".", 1)[0] == package
+    ]
+    return did_you_mean(f"{name}.py", siblings)
+
+
+def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
+    """A hint when the test path starts with the root package the pattern leaves out."""
+    pattern = ctx.config.tests.mirror
+    if "{root}" in pattern or not mirror.directories:
+        return ""
+    root, *directories = mirror.directories
+    if root not in member_roots(ctx, test_root):
+        return ""
+    if not _mirrors_source(ctx, _Mirror(directories, mirror.module, root), test_root):
+        return ""
+    return (
+        f' The test path starts with the root package "{root}"; if all tests do, '
+        f'set tests.mirror to "{{root}}/{pattern}".'
     )
 
 
@@ -203,10 +229,12 @@ class MisplacedTestFile(BaseRule):
         syntax = ctx.syntax.for_path(test.path)
         modules = _imported_modules(ctx, syntax) if syntax is not None else []
         subject = mirror.module if mirror else _subject(test.name)
-        expected = self._mirror_path(ctx, test, subject, modules)
-        if expected is not None and expected != test.path:
-            yield self._misplaced(test, expected)
-            return
+        tested = self._tested_module(ctx, subject, modules)
+        if tested is not None:
+            expected = _mirror_target(ctx, test.test_root, tested)
+            if expected != test.path:
+                yield self._misplaced(ctx, test, tested, expected)
+                return
         hint = (
             "Move or rename the test so its path mirrors the module it tests, "
             "delete it if that module is gone, or list it in tests.unmirrored."
@@ -220,34 +248,49 @@ class MisplacedTestFile(BaseRule):
                 hint=hint,
             )
             return
+        module = _missing_module(ctx, mirror, test.test_root)
+        source = ctx.files.module_to_path(module)
+        info = ctx.model.info(module)
         yield self.violation(
-            f"{test.name} mirrors no source module: "
-            f"{_missing_source(ctx, mirror, test.test_root)} does not exist",
+            f"{test.name} mirrors no source module: {source} does not exist"
+            f"{_similar_module(ctx, module)}",
             path=test.path,
-            hint=hint,
+            source_module=module,
+            feature=info.feature if info else None,
+            layer=info.layer if info else None,
+            expected={"source": source},
+            hint=hint + _root_pattern_hint(ctx, mirror, test.test_root),
         )
 
-    def _misplaced(self, test: TestFile, expected: str) -> Violation:
+    def _misplaced(
+        self, ctx: AnalysisContext, test: TestFile, module: str, expected: str
+    ) -> Violation:
         directory = posixpath.dirname(expected)
         if directory == posixpath.dirname(test.path):
             message = f"{test.name} should be named {posixpath.basename(expected)}"
         else:
             message = f"{test.name} belongs in {directory}/"
+        info = ctx.model.info(module)
         return self.violation(
             message,
             path=test.path,
-            expected={"path": expected},
+            source_module=module,
+            feature=info.feature if info else None,
+            layer=info.layer if info else None,
+            expected={"path": expected, "source": ctx.files.module_to_path(module)},
             hint=f"Move the file to {expected}.",
         )
 
-    def _mirror_path(
-        self, ctx: AnalysisContext, test: TestFile, subject: str, modules: list[str]
+    def _tested_module(
+        self, ctx: AnalysisContext, subject: str, modules: list[str]
     ) -> str | None:
-        candidates = [
-            m
-            for m in modules
-            if m.rsplit(".", 1)[-1] == subject and m not in ctx.files.packages
-        ]
-        if len(candidates) != 1:
+        """The one imported module the test is about, judged by its name."""
+        plain = [m for m in modules if m not in ctx.files.packages]
+        exact = [m for m in plain if m.rsplit(".", 1)[-1] == subject]
+        if len(exact) == 1:
+            return exact[0]
+        if exact:
             return None
-        return _mirror_target(ctx, test.test_root, candidates[0])
+        # test_session_infrastructure_repository.py spells out the package path
+        suffixed = [m for m in plain if subject.endswith(f"_{m.rsplit('.', 1)[-1]}")]
+        return suffixed[0] if len(suffixed) == 1 else None

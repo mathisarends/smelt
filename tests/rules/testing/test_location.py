@@ -52,7 +52,10 @@ class TestMirrorLayout:
         [found] = violations(root, ONLY_SMT401)
 
         assert found.message == "test_invoice.py belongs in tests/billing/"
-        assert found.expected == {"path": "tests/billing/test_invoice.py"}
+        assert found.expected == {
+            "path": "tests/billing/test_invoice.py",
+            "source": "app/billing/invoice.py",
+        }
 
     def test_orphaned_test_is_reported(self, tmp_path: Path) -> None:
         root = _mirror(
@@ -74,10 +77,14 @@ class TestMirrorLayout:
             (
                 "tests/billing/test_payments.py",
                 "test_payments.py mirrors no source module: "
-                "app/billing/payments.py does not exist",
+                "app/billing/payments.py does not exist "
+                '(did you mean "payment.py"?)',
             ),
         ]
-        assert all(v.expected is None for v in found)
+        assert [v.expected for v in found] == [
+            {"source": "app/billing/ghost.py"},
+            {"source": "app/billing/payments.py"},
+        ]
 
     def test_package_test_must_live_in_the_package_dir(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/test_billing.py": ""})
@@ -145,7 +152,10 @@ class TestMirrorLayout:
         [found] = violations(root, ONLY_SMT401)
 
         assert found.message == "invoice_test.py should be named test_invoice.py"
-        assert found.expected == {"path": "tests/billing/test_invoice.py"}
+        assert found.expected == {
+            "path": "tests/billing/test_invoice.py",
+            "source": "app/billing/invoice.py",
+        }
 
 
 class TestMirrorPattern:
@@ -185,7 +195,10 @@ class TestMirrorPattern:
         [found] = violations(root, ONLY_SMT401)
 
         assert found.message == "test_payment.py belongs in tests/unit/billing/"
-        assert found.expected == {"path": "tests/unit/billing/test_payment.py"}
+        assert found.expected == {
+            "path": "tests/unit/billing/test_payment.py",
+            "source": "app/billing/payment.py",
+        }
 
 
 WORKSPACE_CONFIG = """
@@ -240,3 +253,45 @@ class TestWorkspace:
             "test_ghost.py mirrors no source module: "
             "libs/agent/src/agent/tools/ghost.py does not exist",
         ]
+
+
+class TestSuggestions:
+    def test_name_spelling_out_the_package_is_renamed(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "tests/billing/test_billing_invoice.py": (
+                    "from app.billing import payment\n"
+                    "from app.billing.invoice import Invoice\n"
+                )
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "test_billing_invoice.py should be named test_invoice.py"
+        )
+        assert (found.source_module, found.feature, found.layer) == (
+            "app.billing.invoice",
+            None,
+            None,
+        )
+
+    def test_typo_suggests_the_neighbouring_module(self, tmp_path: Path) -> None:
+        root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message.endswith('(did you mean "invoice.py"?)')
+
+    def test_missing_root_placeholder_is_pointed_out(self, tmp_path: Path) -> None:
+        root = _mirror(tmp_path, {"tests/app/billing/test_invoice.py": ""})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.hint is not None
+        assert found.hint.endswith(
+            'The test path starts with the root package "app"; if all tests do, '
+            'set tests.mirror to "{root}/{path}/test_{module}.py".'
+        )
