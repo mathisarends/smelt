@@ -128,7 +128,20 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
         )
     if configured is None:
-        console.warn(
-            f"add `debt: {relative}` to {loaded.path.name} so `smelt check` uses it"
-        )
+        _enable_debt(loaded.path, relative)
+        console.print(f"Added `debt: {relative}` to {loaded.path.name}")
     return EXIT_OK
+
+
+def _enable_debt(config: Path, relative: str) -> None:
+    """Set the debt key, uncommenting the line `smelt init` leaves if it is there."""
+    text = config.read_text(encoding="utf-8")
+    line = f"debt: {relative}"
+    lines = text.splitlines()
+    for index, existing in enumerate(lines):
+        if existing.strip() in (f"# {line}", f"#{line}"):
+            lines[index] = line
+            config.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+            return
+    separator = "" if not text or text.endswith("\n") else "\n"
+    config.write_text(f"{text}{separator}{line}\n", encoding="utf-8", newline="\n")

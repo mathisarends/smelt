@@ -316,12 +316,29 @@ class TestDebtCommand:
 
         code, out, err = _run(capsys, "debt")
 
-        assert code == 0
-        assert out == "Wrote .smelt/debt.json (1 violation)\n"
-        assert "add `debt: .smelt/debt.json` to smelt.yaml" in err
-        with (root / "smelt.yaml").open("a", encoding="utf-8") as config:
-            config.write("debt: .smelt/debt.json\n")
+        assert (code, err) == (0, "")
+        assert out == (
+            "Wrote .smelt/debt.json (1 violation)\n"
+            "Added `debt: .smelt/debt.json` to smelt.yaml\n"
+        )
         assert _run(capsys, "check")[0] == 0
+
+    def test_uncomments_the_debt_line_from_init(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = _violating_project()
+        files["smelt.yaml"] += "# debt: .smelt/debt.json\n"
+        root = write_project(tmp_path, files)
+        monkeypatch.chdir(root)
+
+        _run(capsys, "debt")
+
+        config = (root / "smelt.yaml").read_text(encoding="utf-8")
+        assert config.endswith("\ndebt: .smelt/debt.json\n")
+        assert "# debt" not in config
 
     def test_prune_removes_fixed_entries(
         self,
