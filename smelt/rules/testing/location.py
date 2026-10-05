@@ -150,6 +150,25 @@ def _similar_module(ctx: AnalysisContext, module: str) -> str:
     return did_you_mean(f"{name}.py", siblings)
 
 
+def _suffix_sibling(
+    ctx: AnalysisContext, mirror: _Mirror, test_root: str
+) -> str | None:
+    """The module next to the mirrored path that the name ends with.
+
+    ``health/presentation/test_health_presentation_router.py`` mirrors
+    ``health/presentation/router.py`` once the prefix is dropped.
+    """
+    found = [
+        source.module
+        for root in _roots(ctx, mirror, test_root)
+        for source in ctx.files.sources.values()
+        if not source.is_package
+        and source.module.rsplit(".", 1)[0] == ".".join([root, *mirror.directories])
+        and mirror.module.endswith(f"_{source.module.rsplit('.', 1)[1]}")
+    ]
+    return found[0] if len(found) == 1 else None
+
+
 def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
     """A hint when the test path starts with the root package the pattern leaves out."""
     pattern = ctx.config.tests.mirror
@@ -242,6 +261,8 @@ class MisplacedTestFile(BaseRule):
         modules = _imported_modules(ctx, syntax) if syntax is not None else []
         subject = mirror.module if mirror else _subject(test.name)
         tested = self._tested_module(ctx, subject, modules)
+        if tested is None and mirror is not None:
+            tested = _suffix_sibling(ctx, mirror, test.test_root)
         if tested is not None:
             expected = _mirror_target(ctx, test.test_root, tested)
             if expected != test.path:

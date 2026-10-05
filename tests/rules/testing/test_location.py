@@ -278,6 +278,17 @@ class TestSuggestions:
             None,
         )
 
+    def test_name_ending_in_a_neighbouring_module_is_renamed(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(tmp_path, {"tests/billing/test_billing_payment.py": ""})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "test_billing_payment.py should be named test_payment.py"
+        )
+
     def test_typo_suggests_the_neighbouring_module(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
 
