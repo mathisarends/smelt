@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -23,38 +22,10 @@ class Index(StrEnum):
     SYNTAX = "syntax"
 
 
-@dataclass(frozen=True, slots=True)
-class FileChange:
-    path: str
-    added: int
-    deleted: int
-
-
-@dataclass(frozen=True)
-class ChangeSet:
-    """Files changed against a git base; paths are relative to the project root."""
-
-    files: dict[str, FileChange] = field(default_factory=dict)
-
-    def __contains__(self, path: object) -> bool:
-        return path in self.files
-
-    @property
-    def paths(self) -> frozenset[str]:
-        return frozenset(self.files)
-
-
 class AnalysisContext:
-    def __init__(
-        self,
-        root: Path,
-        config: SmeltConfig,
-        *,
-        changes: ChangeSet | None = None,
-    ) -> None:
+    def __init__(self, root: Path, config: SmeltConfig) -> None:
         self.root = root
         self.config = config
-        self.changes = changes
 
     @cached_property
     def files(self) -> FileIndex:

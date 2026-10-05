@@ -42,9 +42,15 @@ def _add_check(sub: Subparsers) -> None:
         "paths", nargs="*", metavar="PATHS", help="only report these files"
     )
     check.add_argument(
-        "--changed", action="store_true", help="only report changed files"
+        "--changed",
+        action="store_true",
+        help="only report violations introduced since HEAD (incl. uncommitted files)",
     )
-    check.add_argument("--base", metavar="REF", help="compare --changed against REF")
+    check.add_argument(
+        "--base",
+        metavar="REF",
+        help="compare --changed against the merge-base with REF",
+    )
     check.add_argument(
         "--format", choices=["text", "json", "sarif", "github"], default="text"
     )

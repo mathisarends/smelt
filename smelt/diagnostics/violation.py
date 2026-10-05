@@ -73,12 +73,6 @@ class Violation:
             self.message,
         )
 
-    def involved_modules(self) -> set[str]:
-        modules = {m for m in (self.source_module, self.target_module) if m}
-        for link in self.import_chain:
-            modules.update((link.importer, link.imported))
-        return modules
-
     def to_json(self) -> dict[str, Any]:
         data: dict[str, Any] = {
             "code": self.code,
