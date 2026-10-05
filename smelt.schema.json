@@ -4,6 +4,7 @@
   "$defs": {
     "ArchitectureConfig": {
       "additionalProperties": false,
+      "description": "Features, layers and the modules around them.",
       "properties": {
         "features": {
           "anyOf": [
@@ -14,9 +15,11 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Where the features (vertical slices) live."
         },
         "shared": {
+          "description": "Modules every feature may import; they must not import features.",
           "items": {
             "type": "string"
           },
@@ -24,6 +27,7 @@
           "type": "array"
         },
         "composition_root": {
+          "description": "Modules that wire everything; nothing may import them.",
           "items": {
             "type": "string"
           },
@@ -31,6 +35,7 @@
           "type": "array"
         },
         "wiring": {
+          "description": "Provider modules (whole-segment * allowed) that may import across layers and features; they keep their feature and layer.",
           "items": {
             "type": "string"
           },
@@ -41,6 +46,7 @@
           "additionalProperties": {
             "type": "string"
           },
+          "description": "Packages outside the features mapped to a layer, e.g. {backend.platform: infrastructure}.",
           "title": "Modules",
           "type": "object"
         },
@@ -48,6 +54,7 @@
           "additionalProperties": {
             "$ref": "#/$defs/LayerConfig"
           },
+          "description": "The layers and what each may import.",
           "title": "Layers",
           "type": "object"
         },
@@ -55,7 +62,8 @@
           "$ref": "#/$defs/CrossFeatureConfig"
         },
         "imports": {
-          "$ref": "#/$defs/ImportsConfig"
+          "$ref": "#/$defs/ImportsConfig",
+          "description": "Which imports count."
         }
       },
       "title": "ArchitectureConfig",
@@ -82,12 +90,15 @@
     },
     "CrossFeatureConfig": {
       "additionalProperties": false,
+      "description": "Imports between features.",
       "properties": {
         "default": {
           "$ref": "#/$defs/Policy",
-          "default": "deny"
+          "default": "deny",
+          "description": "Whether features may import each other at all."
         },
         "allow": {
+          "description": "Allowed imports: \"layer -> layer\" for all features, or {from: feature.layer, to: feature.layer}.",
           "items": {
             "anyOf": [
               {
@@ -126,6 +137,7 @@
             }
           ],
           "default": null,
+          "description": "Package whose direct child packages are the features.",
           "title": "Root"
         },
         "pattern": {
@@ -138,6 +150,7 @@
             }
           ],
           "default": null,
+          "description": "Dotted pattern ending in {feature}, e.g. \"app.{feature}\".",
           "title": "Pattern"
         }
       },
@@ -179,9 +192,11 @@
     },
     "ImportsConfig": {
       "additionalProperties": false,
+      "description": "Which imports the dependency rules look at.",
       "properties": {
         "type_checking": {
           "default": "include",
+          "description": "Whether imports under `if TYPE_CHECKING:` count.",
           "enum": [
             "include",
             "ignore"
@@ -191,10 +206,12 @@
         },
         "transitive": {
           "default": false,
+          "description": "Also report layer violations through other modules.",
           "title": "Transitive",
           "type": "boolean"
         },
         "cycles": {
+          "description": "Where SMT104 looks for cycles.",
           "items": {
             "$ref": "#/$defs/CycleScope"
           },
@@ -209,10 +226,12 @@
       "additionalProperties": false,
       "properties": {
         "path": {
+          "description": "Dotted path of the layer package inside a feature.",
           "title": "Path",
           "type": "string"
         },
         "may_depend_on": {
+          "description": "Layers this layer may import.",
           "items": {
             "type": "string"
           },
@@ -220,7 +239,8 @@
           "type": "array"
         },
         "third_party": {
-          "$ref": "#/$defs/ThirdPartyPolicy"
+          "$ref": "#/$defs/ThirdPartyPolicy",
+          "description": "Which third-party packages the layer may import (SMT103)."
         }
       },
       "required": [
@@ -238,8 +258,10 @@
     },
     "ProjectConfig": {
       "additionalProperties": false,
+      "description": "Which packages and tests smelt reads.",
       "properties": {
         "root_packages": {
+          "description": "Top-level packages to check, e.g. [backend, agent].",
           "items": {
             "type": "string"
           },
@@ -248,6 +270,7 @@
           "type": "array"
         },
         "source_roots": {
+          "description": "Directories that contain the root packages, e.g. [src].",
           "items": {
             "type": "string"
           },
@@ -255,6 +278,7 @@
           "type": "array"
         },
         "test_roots": {
+          "description": "Directories with the tests; with layout: mirror they must exist.",
           "items": {
             "type": "string"
           },
@@ -262,6 +286,7 @@
           "type": "array"
         },
         "exclude": {
+          "description": "Path globs smelt skips entirely.",
           "items": {
             "type": "string"
           },
@@ -286,8 +311,10 @@
     },
     "StructureConfig": {
       "additionalProperties": false,
+      "description": "Naming rules for packages and modules.",
       "properties": {
         "forbidden_names": {
+          "description": "Package and module names to avoid (SMT302).",
           "items": {
             "type": "string"
           },
@@ -300,6 +327,7 @@
     },
     "SuppressionsConfig": {
       "additionalProperties": false,
+      "description": "Inline `# smelt: ignore[CODE] -- reason` comments.",
       "properties": {
         "require_reason": {
           "default": true,
@@ -312,9 +340,11 @@
     },
     "TestsConfig": {
       "additionalProperties": false,
+      "description": "Where test files must live.",
       "properties": {
         "layout": {
           "default": "none",
+          "description": "mirror: every test file must mirror a source module.",
           "enum": [
             "mirror",
             "none"
@@ -324,10 +354,12 @@
         },
         "mirror": {
           "default": "{path}/test_{module}.py",
+          "description": "Test path relative to the test root; placeholders {root}, {path}, {module}.",
           "title": "Mirror",
           "type": "string"
         },
         "unmirrored": {
+          "description": "Test path globs exempt from mirroring, e.g. [\"tests/e2e/**\"].",
           "items": {
             "type": "string"
           },
@@ -336,6 +368,7 @@
         },
         "mirror_suffixes": {
           "default": false,
+          "description": "Also allow test_<module>_<topic>.py.",
           "title": "Mirror Suffixes",
           "type": "boolean"
         }
@@ -403,10 +436,12 @@
       "additionalProperties": {
         "$ref": "#/$defs/SeverityName"
       },
+      "description": "Severity per rule code, or off.",
       "title": "Rules",
       "type": "object"
     },
     "ignore": {
+      "description": "Rules to skip for modules or paths.",
       "items": {
         "$ref": "#/$defs/IgnoreEntry"
       },
@@ -414,7 +449,8 @@
       "type": "array"
     },
     "suppressions": {
-      "$ref": "#/$defs/SuppressionsConfig"
+      "$ref": "#/$defs/SuppressionsConfig",
+      "description": "Inline `# smelt: ignore` rules."
     },
     "debt": {
       "anyOf": [
@@ -426,6 +462,7 @@
         }
       ],
       "default": null,
+      "description": "Debt file with known violations, e.g. .smelt/debt.json.",
       "title": "Debt"
     }
   },
