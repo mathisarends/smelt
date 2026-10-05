@@ -76,11 +76,39 @@ def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
     return _Mirror(path.split("/") if path else [], match.group("module"), root)
 
 
-def _roots(ctx: AnalysisContext, mirror: _Mirror) -> list[str]:
-    roots = ctx.config.project.root_packages
+def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
+    roots = member_roots(ctx, test_root)
     if mirror.root is None:
         return roots
     return [mirror.root] if mirror.root in roots else []
+
+
+def member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
+    """The root packages a test root belongs to.
+
+    In a workspace, ``libs/agent/tests`` tests the package under ``libs/agent/src``:
+    the source roots sharing the longest leading path with the test root win.
+    """
+    roots = ctx.config.project.root_packages
+    shared = {root: _common_depth(ctx, root, test_root) for root in roots}
+    best = max(shared.values(), default=0)
+    if best == 0:
+        return roots
+    return [root for root in roots if shared[root] == best]
+
+
+def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
+    package = ctx.files.packages.get(root)
+    if package is None:
+        return 0
+    depth = 0
+    for left, right in zip(
+        package.source_root.strip("/").split("/"), test_root.split("/"), strict=False
+    ):
+        if left != right or left in ("", "."):
+            break
+        depth += 1
+    return depth
 
 
 def _subjects(subject: str, *, suffixes: bool) -> list[str]:
@@ -91,9 +119,9 @@ def _subjects(subject: str, *, suffixes: bool) -> list[str]:
     return ["_".join(parts[:end]) for end in range(len(parts), 0, -1)]
 
 
-def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror) -> bool:
+def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bool:
     files = ctx.files
-    for root in _roots(ctx, mirror):
+    for root in _roots(ctx, mirror, test_root):
         package = ".".join([root, *mirror.directories])
         package_name = mirror.directories[-1] if mirror.directories else root
         for name in _subjects(mirror.module, suffixes=ctx.config.tests.mirror_suffixes):
@@ -105,8 +133,8 @@ def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror) -> bool:
     return False
 
 
-def _missing_source(ctx: AnalysisContext, mirror: _Mirror) -> str:
-    root = (_roots(ctx, mirror) or ctx.config.project.root_packages)[0]
+def _missing_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
+    root = (_roots(ctx, mirror, test_root) or member_roots(ctx, test_root))[0]
     return ctx.files.module_to_path(
         ".".join([root, *mirror.directories, mirror.module])
     )
@@ -170,7 +198,7 @@ class MisplacedTestFile(BaseRule):
         self, ctx: AnalysisContext, test: TestFile
     ) -> Iterator[Violation]:
         mirror = _mirror_parts(ctx, test)
-        if mirror is not None and _mirrors_source(ctx, mirror):
+        if mirror is not None and _mirrors_source(ctx, mirror, test.test_root):
             return
         syntax = ctx.syntax.for_path(test.path)
         modules = _imported_modules(ctx, syntax) if syntax is not None else []
@@ -194,7 +222,7 @@ class MisplacedTestFile(BaseRule):
             return
         yield self.violation(
             f"{test.name} mirrors no source module: "
-            f"{_missing_source(ctx, mirror)} does not exist",
+            f"{_missing_source(ctx, mirror, test.test_root)} does not exist",
             path=test.path,
             hint=hint,
         )
