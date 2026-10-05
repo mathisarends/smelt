@@ -139,6 +139,23 @@ class TestSharedImportsFeature:
             == "shared module gw.shared.clock must not import feature voice"
         )
 
+    def test_importing_a_feature_wiring_module_is_one_finding(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG.replace(
+                    "  shared: [gw.shared]",
+                    "  shared: [gw.shared]\n  wiring: [gw.features.voice.application.di]",
+                ),
+                "gw/features/voice/application/di.py": "",
+                "gw/shared/clock.py": "from gw.features.voice.application import di\n",
+            },
+        )
+
+        assert [v.code for v in violations(root)] == ["SMT105"]
+
     def test_feature_importing_shared_is_fine(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,
