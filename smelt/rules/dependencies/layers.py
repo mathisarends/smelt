@@ -48,6 +48,7 @@ class LayerBoundary(BaseRule):
         ),
         config=(
             "architecture.layers.<layer>.may_depend_on",
+            "architecture.modules",
             "architecture.imports.transitive",
             "architecture.imports.type_checking",
         ),
@@ -123,7 +124,10 @@ def _forbidden_layer(
         return None
     if source.layer is None or target.layer is None:
         return None
-    if source.feature != target.feature or source.layer == target.layer:
+    if source.layer == target.layer:
+        return None
+    # across features SMT102 decides; a central module shares its layer rules with all
+    if source.feature != target.feature and not (source.central or target.central):
         return None
     if target.layer in ctx.model.layers[source.layer].may_depend_on:
         return None

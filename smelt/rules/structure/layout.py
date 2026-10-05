@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.files import FileIndex, PackageDir
+    from smelt.model import ArchitectureModel
 
 
 def child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
@@ -128,18 +129,26 @@ class UnclassifiedModule(BaseRule):
     code = "SMT305"
     name = "unclassified-module"
     category = Category.STRUCTURE
-    default_severity = Severity.HINT
+    default_severity = Severity.WARNING
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
         summary="A module maps to no feature, layer, shared set or composition root.",
         rationale=(
-            "Unclassified modules are exempt from most rules. A few are normal (entry "
-            "points, settings); many mean the config no longer describes the code."
+            "Unclassified modules are exempt from every boundary rule: a domain module "
+            "may import them and they may import anything. Central code such as a "
+            "database or storage package belongs to a layer via architecture.modules."
         ),
-        bad="gateway/\n  misc.py      # neither shared nor a feature",
-        good="gateway/\n  shared/misc.py",
-        fix="Move the module into a feature or shared, or list it in architecture.shared.",
-        config=("architecture.shared", "architecture.composition_root"),
+        bad="gateway/\n  platform/db.py    # neither shared, a layer nor a feature",
+        good="# smelt.yaml\narchitecture:\n  modules:\n    gateway.platform: infrastructure",
+        fix=(
+            "Give the package a layer under architecture.modules, list it in "
+            "architecture.shared or composition_root, or move it into a feature."
+        ),
+        config=(
+            "architecture.modules",
+            "architecture.shared",
+            "architecture.composition_root",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -152,8 +161,24 @@ class UnclassifiedModule(BaseRule):
                 continue
             if info.kind is not ModuleKind.UNCLASSIFIED or info.wiring:
                 continue
+            package = _top_package(model, name)
             yield self.violation(
                 f"{name} is not part of a feature, layer, shared or composition root",
                 path=source.path,
                 source_module=name,
+                hint=(
+                    f"Give {package} a layer under architecture.modules "
+                    f"(e.g. {package}: infrastructure), or list it in shared or "
+                    "composition_root."
+                ),
             )
+
+
+def _top_package(model: ArchitectureModel, module: str) -> str:
+    """The package directly below the root package, or the module itself."""
+    parts = module.split(".")
+    if parts[0] in model.config.project.root_packages and len(parts) > 2:  # noqa: PLR2004
+        candidate = ".".join(parts[:2])
+        if model.is_package(candidate):
+            return candidate
+    return module

@@ -92,3 +92,35 @@ class TestModuleSets:
 
         with pytest.raises(ConfigError, match="is inside the features root"):
             parse_config(raw)
+
+
+class TestCentralModules:
+    def test_unknown_layer(self) -> None:
+        raw = {
+            **MINIMAL,
+            "architecture": {
+                "layers": {"infrastructure": {"path": "infrastructure"}},
+                "modules": {"gateway.platform": "infra"},
+            },
+        }
+
+        with pytest.raises(ConfigError) as caught:
+            parse_config(raw)
+
+        assert str(caught.value.issues[0]) == (
+            'architecture.modules.gateway.platform: unknown layer "infra" '
+            '(did you mean "infrastructure"?)'
+        )
+
+    def test_inside_features_root(self) -> None:
+        raw = {
+            **MINIMAL,
+            "architecture": {
+                "features": {"root": "gateway.features"},
+                "layers": {"domain": {"path": "domain"}},
+                "modules": {"gateway.features.voice": "domain"},
+            },
+        }
+
+        with pytest.raises(ConfigError, match="overlaps the features root"):
+            parse_config(raw)

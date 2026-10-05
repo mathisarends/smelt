@@ -25,6 +25,8 @@ class ModuleInfo:
 
     ``kind`` is ``FEATURE`` for every module in the feature/layer grid. When no
     features are configured, the grid spans the root packages and ``feature`` is None.
+    A ``central`` module sits outside the features but in a layer
+    (``architecture.modules``), so layer rules apply to it as well.
     """
 
     name: str
@@ -32,6 +34,7 @@ class ModuleInfo:
     feature: str | None = None
     layer: str | None = None
     wiring: bool = False
+    central: bool = False
 
     @property
     def in_grid(self) -> bool:
@@ -153,6 +156,8 @@ class _Classifier:
         self._shared = arch.shared
         self._composition_root = arch.composition_root
         self._wiring = arch.wiring
+        # longest package first, so backend.platform.storage wins over backend.platform
+        self._central = sorted(arch.modules.items(), key=lambda item: -len(item[0]))
         self._packages = packages
         self._layer_paths = sorted(
             ((layer.path.split("."), name) for name, layer in arch.layers.items()),
@@ -171,15 +176,18 @@ class _Classifier:
             return ModuleInfo(module, ModuleKind.COMPOSITION_ROOT, wiring=wiring)
         if any(is_within(module, shared) for shared in self._shared):
             return ModuleInfo(module, ModuleKind.SHARED, wiring=wiring)
+        central = next(
+            (layer for package, layer in self._central if is_within(module, package)),
+            None,
+        )
+        if central is not None:
+            return ModuleInfo(
+                module, ModuleKind.FEATURE, None, central, wiring, central=True
+            )
         if self._features is None:
-            for root in self._roots:
-                if module.startswith(f"{root}."):
-                    rest = module[len(root) + 1 :].split(".")
-                    layer = self._match_layer(rest)
-                    if layer is None:
-                        break
-                    return ModuleInfo(module, ModuleKind.FEATURE, None, layer, wiring)
-            return ModuleInfo(module, ModuleKind.UNCLASSIFIED, wiring=wiring)
+            layer = self._root_layer(module)
+            kind = ModuleKind.UNCLASSIFIED if layer is None else ModuleKind.FEATURE
+            return ModuleInfo(module, kind, None, layer, wiring)
         match = self._match_feature(module)
         if match is None:
             return ModuleInfo(module, ModuleKind.UNCLASSIFIED, wiring=wiring)
@@ -191,6 +199,13 @@ class _Classifier:
             self._match_layer(rest),
             wiring,
         )
+
+    def _root_layer(self, module: str) -> str | None:
+        """Without features, layers sit directly in a root package."""
+        for root in self._roots:
+            if module.startswith(f"{root}."):
+                return self._match_layer(module[len(root) + 1 :].split("."))
+        return None
 
     def feature_package(self, module: str) -> str | None:
         match = self._match_feature(module)

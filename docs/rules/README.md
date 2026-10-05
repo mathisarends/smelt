@@ -10,7 +10,7 @@
 | [SMT106](SMT106.md) | composition-root-leak | dependencies | error |
 | [SMT301](SMT301.md) | unknown-layer | structure | error |
 | [SMT302](SMT302.md) | forbidden-package-name | structure | error |
-| [SMT305](SMT305.md) | unclassified-module | structure | hint |
+| [SMT305](SMT305.md) | unclassified-module | structure | warning |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |

@@ -165,6 +165,11 @@ class TestChangedHints:
             ["commit", "-qm", "i"],
         ):
             subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
+        config = clean_project / "smelt.yaml"
+        config.write_text(
+            config.read_text(encoding="utf-8") + "rules: {SMT305: hint}\n",
+            encoding="utf-8",
+        )
         (clean_project / "app" / "misc.py").write_text("", encoding="utf-8")
         monkeypatch.chdir(clean_project)
         return clean_project

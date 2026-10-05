@@ -69,6 +69,14 @@ def _missing_modules(ctx: AnalysisContext) -> list[ConfigIssue]:
                         f'module "{module}" does not exist{did_you_mean(module, known)}',
                     )
                 )
+    issues.extend(
+        ConfigIssue(
+            f"architecture.modules.{module}",
+            f'module "{module}" does not exist{did_you_mean(module, known)}',
+        )
+        for module in arch.modules
+        if module not in known
+    )
     for index, pattern in enumerate(arch.wiring):
         if not any(module_matches(pattern, module) for module in known):
             issues.append(

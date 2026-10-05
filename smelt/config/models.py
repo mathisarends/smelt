@@ -192,6 +192,8 @@ class ArchitectureConfig(_Model):
     shared: list[str] = Field(default_factory=list)
     composition_root: list[str] = Field(default_factory=list)
     wiring: list[str] = Field(default_factory=list)
+    # packages outside the features that belong to a layer, e.g. backend.platform
+    modules: dict[str, str] = Field(default_factory=dict)
     layers: dict[str, LayerConfig] = Field(default_factory=dict)
     cross_feature: CrossFeatureConfig = Field(default_factory=CrossFeatureConfig)
     imports: ImportsConfig = Field(default_factory=ImportsConfig)
@@ -200,6 +202,12 @@ class ArchitectureConfig(_Model):
     @classmethod
     def _modules_are_dotted(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
+
+    @field_validator("modules")
+    @classmethod
+    def _module_keys_are_dotted(cls, values: dict[str, str]) -> dict[str, str]:
+        _check_dotted(list(values))
+        return values
 
     @field_validator("wiring")
     @classmethod

@@ -37,6 +37,13 @@
           "title": "Wiring",
           "type": "array"
         },
+        "modules": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Modules",
+          "type": "object"
+        },
         "layers": {
           "additionalProperties": {
             "$ref": "#/$defs/LayerConfig"

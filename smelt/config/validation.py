@@ -75,6 +75,11 @@ class _Validator:
             for key in ("shared", "composition_root")
             for index, module in enumerate(getattr(arch, key))
         ]
+        named.extend(
+            (f"architecture.modules.{module}", module) for module in arch.modules
+        )
+        for module, layer in arch.modules.items():
+            self._check_layer(f"architecture.modules.{module}", layer)
         if arch.features and arch.features.root:
             named.append(("architecture.features.root", arch.features.root))
         if arch.features and arch.features.pattern:
@@ -105,6 +110,22 @@ class _Validator:
                     self._error(
                         f"architecture.{key}[{index}]",
                         f'"{module}" is inside the features root "{features_root}"',
+                    )
+        for module in arch.modules:
+            if features_root and (
+                _within(module, features_root) or _within(features_root, module)
+            ):
+                self._error(
+                    f"architecture.modules.{module}",
+                    f'"{module}" overlaps the features root "{features_root}"; '
+                    "modules are for code outside the features",
+                )
+            for other in (*arch.shared, *arch.composition_root):
+                if _within(module, other):
+                    self._error(
+                        f"architecture.modules.{module}",
+                        f'"{module}" is already covered by "{other}" '
+                        "(shared or composition_root)",
                     )
         for index, module in enumerate(arch.shared):
             for other in arch.composition_root:
