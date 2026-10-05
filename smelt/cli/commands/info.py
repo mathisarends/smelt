@@ -15,14 +15,15 @@ if TYPE_CHECKING:
     import argparse
     from pathlib import Path
 
+    from smelt.rules.base import RuleSet
+
 
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rules = build_rule_set()
     rule = rules.lookup(args.rule)
     if rule is None:
-        candidates = [r.code for r in rules.rules] + [r.name for r in rules.rules]
-        msg = f'unknown rule "{args.rule}"{did_you_mean(args.rule, candidates)}'
-        raise CliError(msg)
+        msg = f'unknown rule "{args.rule}"{_suggestion(args.rule, rules)}'
+        raise CliError(f"{msg}; `smelt rules` lists them all")
     doc = rule.explain()
     meta = rule_meta(rule)
     if args.format == "json":
@@ -61,6 +62,20 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     lines.extend(["", f"Docs: {meta.docs_url}"])
     console.print("\n".join(lines))
     return EXIT_OK
+
+
+def _suggestion(raw: str, rules: RuleSet) -> str:
+    """A close rule name, or a code that differs in one character only."""
+    wanted = raw.strip().upper()
+    if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
+        return did_you_mean(raw.strip(), [r.name for r in rules.rules])
+    close = [
+        r.code
+        for r in rules.rules
+        if len(r.code) == len(wanted)
+        and sum(a != b for a, b in zip(r.code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
 
 
 def _indent(text: str) -> str:

@@ -208,6 +208,29 @@ class TestInfoCommands:
         assert code == 2
         assert 'unknown rule "SMT10"' in err
 
+    @pytest.mark.parametrize(
+        ("raw", "suggestion"),
+        [
+            ("SMT999", ""),
+            ("SMT102x", ""),
+            ("SMT109", ""),
+            ("SMT401", None),
+            ("SMT411", ' (did you mean "SMT401"?)'),
+            ("layer-boundry", ' (did you mean "layer-boundary"?)'),
+        ],
+    )
+    def test_explain_suggests_only_close_rules(
+        self, capsys: pytest.CaptureFixture[str], raw: str, suggestion: str | None
+    ) -> None:
+        code, _, err = _run(capsys, "explain", raw)
+
+        if suggestion is None:
+            assert code == 0
+            return
+        assert err.strip() == (
+            f'error: unknown rule "{raw}"{suggestion}; `smelt rules` lists them all'
+        )
+
     def test_config_schema_is_json(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(capsys, "config", "schema")
 
