@@ -21,6 +21,7 @@ from smelt.diagnostics.violation import (
     docs_url,
 )
 from smelt.engine.changes import git_changes
+from smelt.engine.paths import missing_paths
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
@@ -122,6 +123,9 @@ def run_check(
     rules = rules or build_rule_set()
     active = resolve_active_rules(rules, loaded, options)
     ctx = context or AnalysisContext(loaded.root, config)
+    issues = missing_paths(ctx)
+    if issues:
+        raise ConfigError(issues, loaded.path.name)
     if options.changed and ctx.changes is None:
         ctx.changes = git_changes(loaded.root, options.base)
     requires = frozenset(index for rule, _ in active for index in rule.requires)

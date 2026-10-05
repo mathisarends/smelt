@@ -151,7 +151,7 @@ class TestCheckCommand:
         code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yaml"), "check")
 
         assert code == 2
-        assert "root_packages were found" in err
+        assert 'package "nothere" is in none of the source roots (.)' in err
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
