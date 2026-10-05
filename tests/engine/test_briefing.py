@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from smelt.config import load_config
@@ -8,7 +12,10 @@ from smelt.engine.briefing import (
     resolve_target,
 )
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
-from tests.helpers import FIXTURES
+from tests.helpers import FIXTURES, check, write_project
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 GATEWAY = FIXTURES / "gateway"
 
@@ -101,3 +108,76 @@ class TestModuleBriefing:
         text = render_briefing(build_briefing(ctx, target, outcome.report), ctx)
 
         assert "Kind: shared (importable by all features" in text
+
+
+MIRRORED = {
+    "smelt.yaml": """
+        version: 1
+        project: {root_packages: [app]}
+        architecture:
+          features: {root: app.features}
+          wiring: [app.features.*.infra.di]
+          modules: {app.platform: infra}
+          layers:
+            domain: {path: domain}
+            infra: {path: infra, may_depend_on: [domain]}
+        tests:
+          layout: mirror
+          mirror: "{root}/{path}/test_{module}.py"
+    """,
+    "app/__init__.py": "",
+    "app/misc.py": "",
+    "app/platform/__init__.py": "",
+    "app/platform/orm.py": "",
+    "app/features/__init__.py": "",
+    "app/features/voice/__init__.py": "",
+    "app/features/voice/domain/__init__.py": "",
+    "app/features/voice/domain/call.py": "",
+    "app/features/voice/infra/__init__.py": "",
+    "app/features/voice/infra/di.py": "",
+    "app/features/billing/__init__.py": "",
+    "app/features/billing/domain/__init__.py": "",
+    "tests/__init__.py": "",
+}
+
+
+def _briefing(tmp_path: Path, target: str) -> str:
+    outcome = check(write_project(tmp_path, MIRRORED))
+    ctx = outcome.context
+    briefing = build_briefing(ctx, resolve_target(ctx, target), outcome.report)
+    return render_briefing(briefing, ctx)
+
+
+class TestMirroredProject:
+    def test_feature_names_its_test_directory(self, tmp_path: Path) -> None:
+        text = _briefing(tmp_path, "voice")
+
+        assert "Wiring:           app.features.*.infra.di\n" in text
+        assert (
+            "Tests: mirror at tests/app/features/voice/<layer>/test_<module>.py" in text
+        )
+
+    def test_feature_without_wiring_hides_it(self, tmp_path: Path) -> None:
+        assert "Wiring:" not in _briefing(tmp_path, "billing")
+
+    def test_module_names_its_test_file(self, tmp_path: Path) -> None:
+        text = _briefing(tmp_path, "app/features/voice/domain/call.py")
+
+        assert "Tests: mirror at tests/app/features/voice/domain/test_call.py" in text
+
+    def test_central_module(self, tmp_path: Path) -> None:
+        text = _briefing(tmp_path, "app/platform/orm.py")
+
+        assert "Kind: central module in layer infra (outside the features" in text
+
+    def test_unclassified_module_lists_no_policy(self, tmp_path: Path) -> None:
+        text = _briefing(tmp_path, "app/misc.py")
+
+        assert "No boundary rule covers this module" in text
+        assert "Layers:" not in text
+
+    def test_unknown_target_lists_the_features(self, tmp_path: Path) -> None:
+        outcome = check(write_project(tmp_path, MIRRORED))
+
+        with pytest.raises(TargetError, match=r"; features: billing, voice$"):
+            resolve_target(outcome.context, "nothing")

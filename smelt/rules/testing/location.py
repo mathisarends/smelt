@@ -179,6 +179,18 @@ def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
     return f"{test_root}/{relative}"
 
 
+def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
+    """The mirrored test path of ``module`` under the test root of its package.
+
+    Segments may be placeholders such as ``<layer>``; they are kept as written.
+    """
+    root = module.split(".", 1)[0]
+    for test_root in ctx.config.project.test_roots:
+        if root in member_roots(ctx, test_root.strip("/")):
+            return _mirror_target(ctx, test_root.strip("/"), module)
+    return None
+
+
 class MisplacedTestFile(BaseRule):
     code = "SMT401"
     name = "test-location"

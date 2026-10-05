@@ -4,8 +4,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from smelt.config.errors import did_you_mean
+from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Severity
-from smelt.model import ModuleKind
+from smelt.model import ModuleKind, is_within
+from smelt.rules.testing.location import mirror_path
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
@@ -54,6 +56,7 @@ class Briefing:
     shared: tuple[str, ...]
     composition_root: tuple[str, ...]
     wiring: tuple[str, ...]
+    central: bool
     tests: tuple[str, ...]
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
@@ -102,6 +105,8 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
     msg = (
         f'"{raw}" is neither a feature nor a source path{did_you_mean(raw, candidates)}'
     )
+    if model.features:
+        msg += f"; features: {', '.join(sorted(model.features))}"
     raise TargetError(msg)
 
 
@@ -134,8 +139,9 @@ def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Brie
         cross_feature=_cross_feature(model) if model.has_features else None,
         shared=tuple(arch.shared),
         composition_root=tuple(arch.composition_root),
-        wiring=tuple(arch.wiring),
-        tests=_tests(ctx, target.feature),
+        wiring=_wiring(ctx, package),
+        central=bool(info and info.central),
+        tests=_tests(ctx, target),
         violations={
             "errors": sum(v.severity is Severity.ERROR for v in scoped),
             "warnings": sum(v.severity is Severity.WARNING for v in scoped),
@@ -172,16 +178,45 @@ def _cross_feature(model: ArchitectureModel) -> str:
     return f"only {', '.join(pairs)}" if pairs else "none"
 
 
-def _tests(ctx: AnalysisContext, feature: str | None) -> tuple[str, ...]:
+def _wiring(ctx: AnalysisContext, package: str | None) -> tuple[str, ...]:
+    """The wiring patterns that cover modules of ``package`` (all without one)."""
+    wiring = ctx.config.architecture.wiring
+    if package is None:
+        return tuple(wiring)
+    modules = [m for m in ctx.files.sources if is_within(m, package)]
+    return tuple(p for p in wiring if any(module_matches(p, m) for m in modules))
+
+
+def _tests(ctx: AnalysisContext, target: Target) -> tuple[str, ...]:
     tests = ctx.config.tests
-    if tests.layout == "mirror":
-        return ("mirror the source tree",)
-    return ("no layout enforced",)
+    if tests.layout != "mirror":
+        return ("no layout enforced",)
+    source = ctx.files.sources.get(target.module or "")
+    if source is not None and not source.is_package:
+        path = mirror_path(ctx, source.module)
+        return (f"mirror at {path}",) if path else ("mirror the source tree",)
+    if target.feature is not None:
+        package = ctx.model.feature_package_for(target.feature)
+        path = mirror_path(ctx, f"{package}.<layer>.<module>")
+        if path:
+            return (f"mirror at {path}",)
+    return (f"mirror the source tree ({tests.mirror})",)
 
 
 def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     lines = _header(briefing, ctx)
     lines.append("")
+    if briefing.module_kind is ModuleKind.UNCLASSIFIED:
+        lines.extend(
+            (
+                "No boundary rule covers this module: it may import anything and be",
+                "imported from any layer. Give its package a layer under",
+                "architecture.modules, or list it in shared or composition_root.",
+                "",
+                _violation_line(briefing),
+            )
+        )
+        return "\n".join(lines) + "\n"
     if briefing.layers:
         lines.extend(_layer_lines(briefing))
     if briefing.cross_feature is not None:
@@ -221,6 +256,11 @@ def _placement(briefing: Briefing) -> str:
             return "Kind: shared (importable by all features, must not import features)"
         case ModuleKind.COMPOSITION_ROOT:
             return "Kind: composition root (wires concrete implementations)"
+        case ModuleKind.FEATURE if briefing.central:
+            return (
+                f"Kind: central module in layer {briefing.layer} "
+                "(outside the features, must not import them)"
+            )
         case ModuleKind.FEATURE if briefing.layer is not None:
             feature = briefing.target.feature
             where = f"feature {feature}, " if feature else ""
