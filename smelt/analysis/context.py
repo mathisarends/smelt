@@ -24,7 +24,8 @@ class Index(StrEnum):
 
 class AnalysisContext:
     def __init__(self, root: Path, config: SmeltConfig) -> None:
-        self.root = root
+        # grimp resolves its search paths; the file index must agree on the prefix
+        self.root = root.resolve()
         self.config = config
 
     @cached_property
