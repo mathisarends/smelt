@@ -214,6 +214,10 @@ class TestCentralModules:
             "SMT101",
             "domain must not depend on infrastructure",
         )
+        assert found.hint == (
+            "domain depends on no other layer. Define what it needs as an "
+            "abstraction in domain and implement it in an outer layer."
+        )
 
     def test_feature_infrastructure_may_use_central_infrastructure(
         self, tmp_path: Path
@@ -241,3 +245,7 @@ class TestCentralModules:
             "SMT105",
             "central module gw.platform.settings must not import feature voice",
         )
+        assert found.expected == {
+            "may_import": "shared code, central modules of its layers and "
+            "third-party packages, no feature"
+        }

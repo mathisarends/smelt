@@ -288,7 +288,6 @@ class MisplacedTestFile(BaseRule):
             f"{test.name} mirrors no source module: {source} does not exist"
             f"{_similar_module(ctx, module)}",
             path=test.path,
-            source_module=module,
             feature=info.feature if info else None,
             layer=info.layer if info else None,
             expected={"source": source},
@@ -307,7 +306,6 @@ class MisplacedTestFile(BaseRule):
         return self.violation(
             message,
             path=test.path,
-            source_module=module,
             feature=info.feature if info else None,
             layer=info.layer if info else None,
             expected={"path": expected, "source": ctx.files.module_to_path(module)},

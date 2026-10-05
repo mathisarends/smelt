@@ -85,6 +85,13 @@ class CrossFeatureImport(BaseRule):
             )
 
 
+_MAY_IMPORT = {
+    "shared": "shared code and third-party packages, no feature",
+    "central": "shared code, central modules of its layers and third-party packages, "
+    "no feature",
+}
+
+
 class SharedImportsFeature(BaseRule):
     code = "SMT105"
     name = "shared-imports-feature"
@@ -126,7 +133,7 @@ class SharedImportsFeature(BaseRule):
                 ctx,
                 detail,
                 f"{kind} module {detail.importer} must not import feature {target.feature}",
-                expected={"may_depend_on": [kind, "third-party"]},
+                expected={"may_import": _MAY_IMPORT[kind]},
                 hint=(
                     f"Move what {detail.importer} needs out of {target.feature} into "
                     f"{kind} code, or move {detail.importer} into the {target.feature} "

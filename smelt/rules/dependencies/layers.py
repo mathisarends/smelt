@@ -195,6 +195,11 @@ def _hint(
     model = ctx.model
     layer = source.layer or ""
     allowed = join(list(model.layers[layer].may_depend_on))
+    if not model.layers[layer].may_depend_on and not chain:
+        return (
+            f"{layer} depends on no other layer. Define what it needs as an "
+            f"abstraction in {layer} and implement it in an outer layer."
+        )
     if chain:
         return (
             f"The dependency goes through {join([link.imported for link in chain[:-1]])}; "

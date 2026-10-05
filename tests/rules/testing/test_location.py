@@ -272,11 +272,11 @@ class TestSuggestions:
         assert found.message == (
             "test_billing_invoice.py should be named test_invoice.py"
         )
-        assert (found.source_module, found.feature, found.layer) == (
-            "app.billing.invoice",
-            None,
-            None,
-        )
+        assert found.source_module is None  # keeps debt fingerprints stable
+        assert found.expected == {
+            "path": "tests/billing/test_invoice.py",
+            "source": "app/billing/invoice.py",
+        }
 
     def test_name_ending_in_a_neighbouring_module_is_renamed(
         self, tmp_path: Path
