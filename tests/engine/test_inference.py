@@ -153,6 +153,17 @@ class TestInferConfig:
 
 
 class TestRenderConfig:
+    def test_adoption_exposes_coverage_decisions(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+        assert inferred is not None
+
+        rendered = render_config(inferred)
+
+        assert "third_party: allow" in rendered
+        assert "third_party: {default: deny" in rendered
+        assert "transitive: false  # direct imports only" in rendered
+        assert "pair applies to ALL features" in rendered
+
     def test_rendered_config_is_valid(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,

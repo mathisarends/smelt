@@ -7,9 +7,12 @@ import sys
 from typing import TYPE_CHECKING
 
 import pytest
+import yaml
 
 from smelt.cli import main
-from tests.helpers import FIXTURES, LAYERED_CONFIG, write_project
+from smelt.config import load_config
+from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
+from tests.helpers import FIXTURES, LAYERED_CONFIG, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,6 +41,99 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_unclassified_library_warnings_are_grouped_only_in_text(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        config = clean_project / "smelt.yaml"
+        config.write_text(
+            config.read_text(encoding="utf-8").replace("[app]", "[app, lib]"),
+            encoding="utf-8",
+        )
+        write_project(
+            clean_project, {"lib/__init__.py": "", "lib/a.py": "", "lib/b.py": ""}
+        )
+        monkeypatch.chdir(clean_project)
+
+        _, text, _ = _run(capsys, "check", "--select", "SMT305")
+        _, output, _ = _run(capsys, "check", "--select", "SMT305", "--format", "json")
+
+        assert text.count("SMT305 unclassified-module") == 1
+        assert "2 modules have no architecture classification" in text
+        assert "Give lib a layer" in text
+        assert len(json.loads(output)["violations"]) == 2
+
+    @pytest.mark.parametrize("path", ["app/domian", "README.md"])
+    def test_rejects_missing_or_unanalyzed_scope(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        path: str,
+    ) -> None:
+        (clean_project / "README.md").write_text("documentation", encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, "check", path, "--format", "json")
+
+        assert code == 2
+        assert out == ""
+        assert path in err
+        assert "does not exist" in err or "no analyzed Python" in err
+
+    @pytest.mark.parametrize("option", ["--select", "--ignore"])
+    def test_rejects_unknown_selector(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        option: str,
+    ) -> None:
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, "check", option, "SMT1,SMT999")
+
+        assert code == 2
+        assert out == ""
+        assert option in err
+        assert 'unknown rule prefix "SMT999"' in err
+        assert "SMT903" not in err
+
+    def test_scope_identifies_files_in_json_and_text(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(clean_project)
+
+        code, out, _ = _run(capsys, "check", "app/application", "--format", "json")
+
+        assert code == 0
+        scope = json.loads(out)["scope"]
+        assert scope["paths"] == ["app/application"]
+        assert scope["files"] == 2
+        assert "SMT101" in scope["rules"]
+        assert (
+            "Scope: app/application (2 analyzed source/test files)"
+            in _run(capsys, "check", "app/application")[1]
+        )
+
+    @pytest.mark.parametrize("args", [("check",), ("config", "show")])
+    def test_config_option_after_subcommand(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        args: tuple[str, ...],
+    ) -> None:
+        code, _, err = _run(
+            capsys, *args, "--config", str(clean_project / "smelt.yaml")
+        )
+
+        assert (code, err) == (0, "")
+
     def test_exit_code_one_on_errors(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
             capsys, "--config", str(GATEWAY / "smelt.yaml"), "check", "--no-color"
@@ -189,6 +285,31 @@ class TestChangedHints:
 
 
 class TestInfoCommands:
+    @pytest.mark.parametrize("format_name", ["yaml", "json"])
+    def test_config_show_roundtrips_feature_exceptions(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        format_name: str,
+    ) -> None:
+        root = tmp_path / "gateway"
+        shutil.copytree(GATEWAY, root)
+        path = root / "smelt.yaml"
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data["architecture"]["cross_feature"]["allow"].append(
+            {"from": "voice.application", "to": "billing.application"}
+        )
+        path.write_text(yaml.safe_dump(data), encoding="utf-8")
+        before = load_config(path).config
+
+        code, out, err = _run(
+            capsys, "config", "show", "--config", str(path), "--format", format_name
+        )
+        path.write_text(out, encoding="utf-8")
+
+        assert (code, err) == (0, "")
+        assert load_config(path).config == before
+
     def test_rules_json_lists_codes(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(capsys, "rules", "--format", "json")
 
@@ -260,6 +381,54 @@ class TestInfoCommands:
 
 
 class TestDiscoveryCommands:
+    def test_context_for_planned_file_and_dotted_module(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(
+            capsys, "context", "app/domain/new_entity.py", "--format", "json"
+        )
+
+        data = json.loads(out)
+        assert (code, err) == (0, "")
+        assert (data["module"], data["layer"], data["planned"]) == (
+            "app.domain.new_entity",
+            "domain",
+            True,
+        )
+        code, out, err = _run(
+            capsys, "context", "app.application.service", "--format", "json"
+        )
+        assert (code, err) == (0, "")
+        assert json.loads(out)["module"] == "app.application.service"
+
+    def test_context_survives_unrelated_syntax_error(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (clean_project / "app/application/broken.py").write_text(
+            "def broken(:\n", encoding="utf-8"
+        )
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, "context", "app.domain", "--format", "json")
+
+        data = json.loads(out)
+        assert (code, err) == (0, "")
+        assert data["layer"] == "domain"
+        assert data["violations"] is None
+        assert "broken.py" in data["analysis_error"]
+        assert (
+            "Current violations: unavailable"
+            in _run(capsys, "context", "app.domain")[1]
+        )
+
     def test_context_for_feature(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
             capsys, "--config", str(GATEWAY / "smelt.yaml"), "context", "voice"
@@ -328,6 +497,63 @@ class TestInitCommand:
 
 
 class TestDebtCommand:
+    def test_prune_upgrades_legacy_debt_without_accepting_new_violations(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = _violating_project()
+        files["smelt.yaml"] += "debt: debt.json\n"
+        root = write_project(tmp_path, files)
+        [known] = check(root).unfiltered
+        source = files["app/domain/model.py"]
+        legacy = fingerprint(known, source, legacy=True)
+        Debt([DebtEntry(legacy, known.code, known.path, known.message)]).write(
+            root / "debt.json"
+        )
+        write_project(root, {"app/domain/new.py": source})
+        monkeypatch.chdir(root)
+
+        code, _, err = _run(capsys, "debt", "--prune")
+
+        assert (code, err) == (0, "")
+        debt = Debt.load(root / "debt.json")
+        assert len(debt.entries) == 1
+        assert debt.entries[0].fingerprint == fingerprint(known, source)
+        assert debt.entries[0].fingerprint != legacy
+        write_project(
+            root, {"app/domain/model.py": source.rstrip() + " # changed comment\n"}
+        )
+        report = check(root).report
+        assert report.in_debt == 1
+        assert [v.path for v in report.violations] == ["app/domain/new.py"]
+
+    @pytest.mark.parametrize(
+        "content",
+        ['{"version":1,"violations":[{}]}', '{"version":2,"violations":[]}', "{broken"],
+    )
+    def test_malformed_debt_is_a_config_error(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        content: str,
+    ) -> None:
+        config = clean_project / "smelt.yaml"
+        config.write_text(
+            config.read_text(encoding="utf-8") + "debt: debt.json\n", encoding="utf-8"
+        )
+        (clean_project / "debt.json").write_text(content, encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, "check", "--format", "json")
+
+        assert code == 2
+        assert out == ""
+        assert "debt.json" in err
+        assert "Traceback" not in err
+
     def test_writes_default_debt_and_check_uses_it(
         self,
         capsys: pytest.CaptureFixture[str],

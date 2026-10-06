@@ -26,10 +26,15 @@ smelt config schema                  # the JSON schema of smelt.yaml
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 A config entry that points at nothing (a mistyped package, a missing test root) is a
 config error, not a silently disabled rule.
+Explicit check paths must exist and contain analyzed source or test files; unknown
+`--select`/`--ignore` prefixes are usage errors. JSON includes the reporting scope, file
+count and active rule codes. `--config PATH` works before or after a subcommand.
 
 `--changed` checks the base commit (HEAD, or the merge-base with `--base`) with today's
 config and reports only violations that are new, wherever they show up. Old violations in
 an edited file stay quiet, a new import cycle does not.
+Changing an import's comment, formatting or alias does not make its existing boundary
+violation new; an additional identical violating import still counts as new.
 
 ## A DDD layout
 
@@ -70,14 +75,31 @@ tests:
 - **Central packages** such as a platform or a workspace library get a layer under
   `modules`. The layer rules then apply between them and the features (a feature's domain
   must not import `backend.platform`), and they must not import features.
-- **Wiring** modules (whole-segment `*` allowed) may import across layers and features but
-  keep their feature and layer; nothing outside the composition root may import them.
+- **Wiring** modules (whole-segment `*` allowed) keep their feature and layer and may cross
+  layer boundaries. Feature wiring may also cross feature boundaries. Composition roots,
+  other wiring modules and their package facades may import declared wiring. Central or
+  shared wiring keeps the prohibition on importing features.
 - Every module should belong somewhere: an unclassified module is exempt from all
-  boundary rules, so SMT305 warns about it.
+  layer and feature boundary checks, so SMT305 warns about it. Composition-root/wiring
+  import restrictions and configured cycle checks still apply.
 
 `smelt init` infers most of this: features, layers, shared and settings modules, the
 composition root including an app factory, wiring patterns, central packages by name and
 the mirror pattern the existing tests follow. Review it before adopting its findings.
+Its starter policy explicitly allows third-party packages and checks direct imports.
+Review these decisions: to keep frameworks out of the core, set e.g.
+`domain.third_party: {default: deny, allow: [pydantic]}` under `architecture.layers`.
+Set `architecture.imports.transitive: true` to also detect layer dependencies through
+re-exports, such as a domain importing an infrastructure provider from a feature's
+`__init__.py`. Review the suggested `application -> application` pair too: it permits
+that dependency between **every** feature.
+
+`smelt context` describes the policy that applies to its target, including wiring and
+composition-root exceptions, third-party defaults and direct/transitive coverage. It
+accepts feature names, dotted module names and source paths, including planned `.py`
+files under existing source packages. If a syntax error prevents analysis, the briefing
+is still available and its violation counts are marked unavailable (`violations: null`
+and `analysis_error` in JSON). Central and wiring modules have explicit JSON flags.
 
 ## Test mirroring
 
@@ -112,6 +134,9 @@ addopts = ["--import-mode=importlib"]
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
 `smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries
 that were fixed and can leave the file (`smelt debt --prune`).
+Existing debt files remain readable. Run `smelt debt --prune` once before editing imports
+covered by an older baseline to upgrade their fingerprints; pruning accepts no new debt.
+New import fingerprints survive comments, aliases and formatting changes.
 
 Silence a single finding inline, always with a reason:
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext
+from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.diagnostics.debt import Debt, DebtEntry
@@ -88,6 +89,14 @@ def resolve_active_rules(
     ]
     if issues:
         raise ConfigError(issues, loaded.path.name)
+    for key in ("select", "ignore"):
+        for prefix in getattr(options, key):
+            if not any(code.startswith(prefix.strip().upper()) for code in known):
+                msg = (
+                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
+                    "`smelt rules` lists valid codes"
+                )
+                raise AnalysisError(msg)
 
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
@@ -113,6 +122,17 @@ def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
     return any(code.startswith(prefix.strip().upper()) for prefix in prefixes if prefix)
 
 
+def _prefix_suggestion(raw: str, known: set[str]) -> str:
+    wanted = raw.strip().upper()
+    candidates = {code[: len(wanted)] for code in known if len(code) >= len(wanted)}
+    close = [
+        code
+        for code in candidates
+        if sum(a != b for a, b in zip(code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
+
+
 def run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
@@ -127,6 +147,7 @@ def run_check(
     issues = missing_paths(ctx)
     if issues:
         raise ConfigError(issues, loaded.path.name)
+    _validate_scope(ctx, options.paths)
     violations, suppressed = _collect(ctx, rules, loaded, active)
     unfiltered = list(violations)
 
@@ -161,6 +182,11 @@ def run_check(
         fail_on=options.fail_on,
         suppressed=suppressed,
         in_debt=in_debt,
+        scope=options.paths,
+        checked_files=sum(
+            _under_any(path, options.paths) if options.paths else True
+            for path in ctx.files.all_python_paths()
+        ),
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
 
@@ -377,6 +403,21 @@ def _resolved_violations(
 
 def _in_scope(violation: Violation, options: CheckOptions) -> bool:
     return not options.paths or _under_any(violation.path, options.paths)
+
+
+def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
+    known = list(ctx.files.all_python_paths())
+    candidates = [*known, *(p.path for p in ctx.files.packages.values())]
+    for path in paths:
+        if not (ctx.root / path).exists():
+            msg = f'check path "{path}" does not exist{did_you_mean(path, candidates)}'
+            raise AnalysisError(msg)
+        if not any(_under_any(p, (path,)) for p in known):
+            msg = (
+                f'check path "{path}" contains no analyzed Python source or test files; '
+                "check project.root_packages, source_roots, test_roots and exclude"
+            )
+            raise AnalysisError(msg)
 
 
 def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:

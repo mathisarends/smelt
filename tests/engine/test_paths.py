@@ -35,6 +35,18 @@ def _issues(tmp_path: Path, architecture: str, tests: str = "") -> list[str]:
 
 
 class TestMissingPaths:
+    def test_unknown_feature_in_specific_allowance(self, tmp_path: Path) -> None:
+        issues = _issues(
+            tmp_path,
+            "  features: {root: app.features}\n"
+            "  cross_feature: {allow: [{from: billng.domain, to: billing.domain}]}\n",
+        )
+
+        assert issues == [
+            'architecture.cross_feature.allow[0].from: unknown feature "billng" '
+            '(did you mean "billing"?)'
+        ]
+
     def test_mistyped_features_root(self, tmp_path: Path) -> None:
         issues = _issues(tmp_path, "  features: {root: app.featurez}\n")
 

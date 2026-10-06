@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
+from smelt.config.models import CrossFeatureAllowance
 from smelt.config.patterns import module_matches
 
 if TYPE_CHECKING:
@@ -40,6 +41,18 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                 )
             )
     issues.extend(_missing_modules(ctx))
+    for index, allowance in enumerate(ctx.config.architecture.cross_feature.allow):
+        if not isinstance(allowance, CrossFeatureAllowance):
+            continue
+        for key, value in (("from", allowance.source), ("to", allowance.target)):
+            feature = value.split(".")[0]
+            if feature not in ctx.model.features:
+                issues.append(
+                    ConfigIssue(
+                        f"architecture.cross_feature.allow[{index}].{key}",
+                        f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
+                    )
+                )
     return issues
 
 

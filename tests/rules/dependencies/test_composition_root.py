@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.engine.check import CheckOptions
+from smelt.rules.dependencies.composition_root import CompositionRootLeak
 from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
@@ -32,6 +33,16 @@ def _project(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestCompositionRootLeak:
+    def test_documented_bad_example_is_detected(self, tmp_path: Path) -> None:
+        example = (
+            CompositionRootLeak().explain().bad.replace("gateway.main", "app.bootstrap")
+        )
+        root = _project(tmp_path, {"app/application/service.py": example})
+
+        [found] = violations(root, CheckOptions(select=("SMT106",)))
+
+        assert found.target_module == "app.bootstrap"
+
     def test_feature_wiring_keeps_its_layer_and_can_import_across_layers(
         self, tmp_path: Path
     ) -> None:

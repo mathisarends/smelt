@@ -38,6 +38,8 @@ class Report:
     fail_on: Severity = Severity.ERROR
     suppressed: int = 0
     in_debt: int = 0
+    scope: tuple[str, ...] = ()
+    checked_files: int = 0
 
     def count(self, severity: Severity) -> int:
         return sum(1 for v in self.violations if v.severity is severity)

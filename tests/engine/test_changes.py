@@ -67,6 +67,29 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "from app.infra import db  # explanation only\n",
+            "from app.infra import (\n    db,\n)\n",
+            "from app.infra import db as database\n",
+        ],
+    )
+    def test_import_spelling_does_not_make_existing_violation_new(
+        self, repo: Path, source: str
+    ) -> None:
+        (repo / "app/application/old.py").write_text(source, encoding="utf-8")
+
+        assert violations(repo, CheckOptions(changed=True)) == []
+
+    def test_additional_identical_import_still_is_new(self, repo: Path) -> None:
+        (repo / "app/application/old.py").write_text(
+            "from app.infra import db  # explanation only\nfrom app.infra import db\n",
+            encoding="utf-8",
+        )
+
+        assert len(violations(repo, CheckOptions(changed=True))) == 1
+
     def test_reports_only_introduced_violations(self, repo: Path) -> None:
         (repo / "app/application/service.py").write_text("from app.infra import db\n")
 

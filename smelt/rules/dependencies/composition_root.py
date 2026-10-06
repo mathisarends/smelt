@@ -28,7 +28,7 @@ class CompositionRootLeak(BaseRule):
             "Wiring belongs in one place. When features reach for the container or the "
             "bootstrap module, construction logic spreads and dependencies become hidden."
         ),
-        bad="# voice/application/session.py\nfrom dishka import FromDishka",
+        bad="# voice/application/session.py\nfrom gateway.main import container",
         good=(
             "# voice/application/session.py\n"
             "class StartSession:\n"

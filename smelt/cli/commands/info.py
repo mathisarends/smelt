@@ -98,7 +98,7 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    data = loaded.config.model_dump(mode="json")
+    data = loaded.config.model_dump(mode="json", by_alias=True)
     if args.format == "json":
         console.print(json.dumps(data, indent=2))
     else:

@@ -60,11 +60,15 @@ class TestFeatureBriefing:
         assert render_briefing(briefing, ctx) == (
             "Feature: voice   (gateway.features.voice)\n"
             "\n"
+            "Policy: Layer and feature boundaries apply as configured; wiring and composition roots\n"
+            "        have exceptions.\n"
+            "Imports: direct only (re-exports require architecture.imports.transitive: true)\n"
+            "\n"
             "Layers:\n"
             "  domain         → (nothing)            third-party: only pydantic\n"
             "  application    → domain               third-party: not fastapi, sqlalchemy, dishka\n"
-            "  infrastructure → domain, application\n"
-            "  presentation   → application\n"
+            "  infrastructure → domain, application  third-party: all allowed\n"
+            "  presentation   → application          third-party: all allowed\n"
             "Cross-feature:    only application → application\n"
             "Shared:           gateway.shared (must not import features)\n"
             "Composition root: gateway.bootstrap, gateway.main\n"
@@ -173,8 +177,75 @@ class TestMirroredProject:
     def test_unclassified_module_lists_no_policy(self, tmp_path: Path) -> None:
         text = _briefing(tmp_path, "app/misc.py")
 
-        assert "No boundary rule covers this module" in text
+        assert "Layer and feature boundaries are not enforced for this module" in text
+        assert "SMT106" in text
+        assert "SMT104" in text
         assert "Layers:" not in text
+
+    def test_wiring_exceptions_are_explicit(self, tmp_path: Path) -> None:
+        outcome = check(write_project(tmp_path, MIRRORED))
+        ctx = outcome.context
+        target = resolve_target(ctx, "app.features.voice.infra.di")
+        briefing = build_briefing(ctx, target, outcome.report)
+
+        assert briefing.to_json()["is_wiring"] is True
+        assert briefing.to_json()["central"] is False
+        assert "May import across layers and features" in briefing.boundary_policy
+        text = render_briefing(briefing, ctx)
+        assert "this module may cross layer boundaries" in text
+        assert "Cross-feature:    allowed (wiring/composition-root exception)" in text
+
+    def test_central_json_explains_feature_restriction(self, tmp_path: Path) -> None:
+        outcome = check(write_project(tmp_path, MIRRORED))
+        ctx = outcome.context
+        briefing = build_briefing(
+            ctx, resolve_target(ctx, "app.platform"), outcome.report
+        )
+
+        data = briefing.to_json()
+        assert data["central"] is True
+        assert "must not import features" in data["boundary_policy"]
+        assert data["cross_feature"] == "none (must not import features)"
+        assert data["wiring"] == []
+
+    def test_central_wiring_keeps_feature_import_prohibition(
+        self, tmp_path: Path
+    ) -> None:
+        files = {
+            **MIRRORED,
+            "app/platform/di.py": "from app.features.voice.domain import call\n",
+        }
+        files["smelt.yaml"] = files["smelt.yaml"].replace(
+            "wiring: [app.features.*.infra.di]",
+            "wiring: [app.features.*.infra.di, app.platform.di]",
+        )
+        outcome = check(write_project(tmp_path, files))
+        ctx = outcome.context
+        briefing = build_briefing(
+            ctx, resolve_target(ctx, "app.platform.di"), outcome.report
+        )
+
+        assert briefing.is_wiring is True
+        assert briefing.central is True
+        assert briefing.cross_feature == "none (must not import features)"
+        assert "must not import features" in briefing.boundary_policy
+        assert "SMT105" in briefing.violation_codes
+
+    def test_composition_root_has_no_feature_pair_restrictions(
+        self, tmp_path: Path
+    ) -> None:
+        files = {**MIRRORED, "app/main.py": ""}
+        files["smelt.yaml"] = files["smelt.yaml"].replace(
+            "wiring:", "composition_root: [app.main]\n          wiring:"
+        )
+        outcome = check(write_project(tmp_path, files))
+        ctx = outcome.context
+        briefing = build_briefing(ctx, resolve_target(ctx, "app.main"), outcome.report)
+
+        assert briefing.module_kind is not None
+        assert briefing.module_kind.value == "composition_root"
+        assert "May import across layers and features" in briefing.boundary_policy
+        assert "allowed" in (briefing.cross_feature or "")
 
     def test_unknown_target_lists_the_features(self, tmp_path: Path) -> None:
         outcome = check(write_project(tmp_path, MIRRORED))

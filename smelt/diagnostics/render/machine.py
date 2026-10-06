@@ -18,6 +18,11 @@ def render_json(report: Report) -> str:
         "schema_version": JSON_SCHEMA_VERSION,
         "status": report.status,
         "summary": report.summary_json(),
+        "scope": {
+            "paths": list(report.scope),
+            "files": report.checked_files,
+            "rules": [rule.code for rule in report.rules],
+        },
         "violations": [v.to_json() for v in report.violations],
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"

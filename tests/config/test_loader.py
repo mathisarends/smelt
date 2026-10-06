@@ -43,6 +43,29 @@ class TestDiscovery:
 
 
 class TestParsing:
+    def test_allowance_errors_use_public_yaml_paths(self) -> None:
+        raw = _with(
+            architecture={
+                "layers": {"domain": {"path": "domain"}},
+                "cross_feature": {"allow": [{"source": "a.domain", "to": "b.domain"}]},
+            }
+        )
+
+        with pytest.raises(ConfigError) as caught:
+            parse_config(raw)
+
+        errors = [str(issue) for issue in caught.value.issues]
+        assert (
+            "architecture.cross_feature.allow[0].from: required key is missing"
+            in errors
+        )
+        assert (
+            'architecture.cross_feature.allow[0].source: unknown key "source"' in errors
+        )
+        assert not any(
+            "function-after" in error or ".str:" in error for error in errors
+        )
+
     def test_loads_gateway_fixture(self) -> None:
         loaded = load_config(FIXTURES / "gateway" / "smelt.yaml")
 

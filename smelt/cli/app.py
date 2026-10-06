@@ -33,7 +33,19 @@ def build_parser() -> argparse.ArgumentParser:
     _add_discovery(sub)
     _add_maintenance(sub)
     _add_config(sub)
+    for command in sub.choices.values():
+        _allow_local_config(command)
     return parser
+
+
+def _allow_local_config(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--config", metavar="PATH", default=argparse.SUPPRESS, help="path to smelt.yaml"
+    )
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for child in action.choices.values():
+                _allow_local_config(child)
 
 
 def _add_check(sub: Subparsers) -> None:
@@ -82,9 +94,10 @@ def _add_discovery(sub: Subparsers) -> None:
     rules.set_defaults(handler=commands.rules)
 
     context = sub.add_parser(
-        "context", help="architecture briefing for a feature or path"
+        "context",
+        help="architecture briefing for a feature, module or planned source path",
     )
-    context.add_argument("target", nargs="?", metavar="FEATURE|PATH")
+    context.add_argument("target", nargs="?", metavar="FEATURE|MODULE|PATH")
     context.add_argument("--format", choices=["text", "json"], default="text")
     context.set_defaults(handler=commands.context)
 

@@ -1,3 +1,4 @@
+import posixpath
 import re
 from typing import Annotated, Literal, Self
 
@@ -51,6 +52,13 @@ class ProjectConfig(_Model):
     exclude: list[str] = Field(
         default_factory=list, description="Path globs smelt skips entirely."
     )
+
+    @field_validator("source_roots", "test_roots")
+    @classmethod
+    def _normalize_roots(cls, values: list[str]) -> list[str]:
+        return list(
+            dict.fromkeys(posixpath.normpath(v.replace("\\", "/")) for v in values)
+        )
 
     @field_validator("root_packages")
     @classmethod

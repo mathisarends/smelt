@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
-from smelt.diagnostics.debt import Debt
+from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import (
@@ -200,6 +200,40 @@ class TestSuppressions:
 
 
 class TestDebt:
+    def test_existing_debt_with_comments_remains_readable(self, tmp_path: Path) -> None:
+        source = "from app.infra import db  # old comment\n"
+        root = _layered(tmp_path, source, LAYERED_CONFIG + "debt: debt.json\n")
+        [found] = check(root).unfiltered
+        Debt(
+            [
+                DebtEntry(
+                    fingerprint(found, source, legacy=True),
+                    found.code,
+                    found.path,
+                    found.message,
+                )
+            ]
+        ).write(root / "debt.json")
+
+        assert check(root).report.in_debt == 1
+        assert check(root).report.violations == []
+
+    def test_import_comments_do_not_invalidate_debt(self, tmp_path: Path) -> None:
+        root = _layered(
+            tmp_path, "from app.infra import db\n", LAYERED_CONFIG + "debt: debt.json\n"
+        )
+        outcome = check(root)
+        Debt.from_violations(
+            outcome.unfiltered,
+            lambda v: outcome.context.files.line(v.path or "", v.line or 0),
+        ).write(root / "debt.json")
+        (root / "app/application/service.py").write_text(
+            "from app.infra import db  # updated documentation\n", encoding="utf-8"
+        )
+
+        assert check(root).report.in_debt == 1
+        assert check(root).report.violations == []
+
     def test_known_violations_pass_and_survive_line_shifts(
         self, tmp_path: Path
     ) -> None:

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
+
+import pytest
 
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
@@ -28,6 +31,41 @@ def _mirror(tmp_path: Path, tests: dict[str, str], options: str = "") -> Path:
 
 
 class TestMirrorLayout:
+    @pytest.mark.parametrize("prefix", ["", "./"])
+    @pytest.mark.parametrize("separator", ["/", "\\"])
+    def test_workspace_roots_have_canonical_paths(
+        self,
+        tmp_path: Path,
+        prefix: str,
+        separator: str,
+    ) -> None:
+        sources = [
+            prefix + p.replace("/", separator)
+            for p in ("backend/src", "libs/agent/src")
+        ]
+        tests = [
+            prefix + p.replace("/", separator) + separator
+            for p in ("backend/tests", "libs/agent/tests")
+        ]
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": (
+                    "version: 1\nproject:\n  root_packages: [app, agent]\n"
+                    f"  source_roots: {json.dumps(sources)}\n  test_roots: {json.dumps(tests)}\n"
+                    "tests: {layout: mirror}\n"
+                ),
+                "backend/src/app/__init__.py": "",
+                "backend/src/app/invoice.py": "",
+                "backend/tests/test_invoice.py": "",
+                "libs/agent/src/agent/__init__.py": "",
+                "libs/agent/src/agent/tool.py": "",
+                "libs/agent/tests/test_tool.py": "",
+            },
+        )
+
+        assert violations(root, ONLY_SMT401) == []
+
     def test_mirrored_paths_pass_whatever_they_import(self, tmp_path: Path) -> None:
         root = _mirror(
             tmp_path,

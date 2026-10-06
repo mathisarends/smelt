@@ -43,6 +43,9 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def _summary(inferred: InferredConfig) -> list[str]:
     lines = [f"root packages: {', '.join(inferred.root_packages)}"]
+    lines.append(
+        "boundary coverage: direct imports only; third-party packages allowed (review layers.*.third_party and imports.transitive)"
+    )
     if inferred.features:
         lines.append(f"features: {', '.join(inferred.features)}")
     if inferred.layers:
@@ -122,8 +125,9 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     ]
     if args.prune:
         existing = Debt.load(path)
-        _, _, resolved = existing.match(current, snippet)
-        existing.without(resolved).write(path)
+        _, known, resolved = existing.match(current, snippet)
+        # Upgrade legacy import fingerprints without accepting any new debt.
+        Debt.from_violations(known, snippet).write(path)
         remaining = len(existing.entries) - len(resolved)
         console.print(
             f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "

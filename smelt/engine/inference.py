@@ -494,8 +494,13 @@ def _architecture(inferred: InferredConfig) -> list[str]:
                     f"    {layer.name}:",
                     f"      path: {layer.path}",
                     f"      may_depend_on: {_list(layer.may_depend_on)}",
+                    "      third_party: allow  # review which frameworks this layer may use",
                 ]
             )
+            if layer.name in ("domain", "application"):
+                out.append(
+                    "      # For a framework-free core: third_party: {default: deny, allow: [pydantic]}"
+                )
     else:
         out.extend(
             [
@@ -514,7 +519,21 @@ def _architecture(inferred: InferredConfig) -> list[str]:
             if any(layer.name == "application" for layer in inferred.layers)
             else "[]"
         )
-        out.extend(["  cross_feature:", "    default: deny", f"    allow: {pair}"])
+        out.extend(
+            [
+                "  cross_feature:",
+                "    default: deny",
+                "    # Review this architectural decision: the pair applies to ALL features.",
+                f"    allow: {pair}",
+            ]
+        )
+    out.extend(
+        [
+            "  imports:",
+            "    transitive: false  # direct imports only; true also checks layer dependencies through re-exports",
+            "    type_checking: include",
+        ]
+    )
     return out
 
 

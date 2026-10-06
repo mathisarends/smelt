@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import ModuleKind
+from smelt.model import ModuleKind, is_within
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import display_module_path, join, last_segment
 
@@ -134,8 +134,8 @@ class UnclassifiedModule(BaseRule):
     doc = RuleDoc(
         summary="A module maps to no feature, layer, shared set or composition root.",
         rationale=(
-            "Unclassified modules are exempt from every boundary rule: a domain module "
-            "may import them and they may import anything. Central code such as a "
+            "Unclassified modules are exempt from layer and feature boundary checks: a domain module "
+            "may import them. Composition-root/wiring restrictions and configured cycle checks still apply. Central code such as a "
             "database or storage package belongs to a layer via architecture.modules."
         ),
         bad="gateway/\n  platform/db.py    # neither shared, a layer nor a feature",
@@ -177,6 +177,12 @@ class UnclassifiedModule(BaseRule):
 def _top_package(model: ArchitectureModel, module: str) -> str:
     """The package directly below the root package, or the module itself."""
     parts = module.split(".")
+    if all(
+        info.kind is ModuleKind.UNCLASSIFIED
+        for name, info in model.modules.items()
+        if is_within(name, parts[0])
+    ):
+        return parts[0]
     if parts[0] in model.config.project.root_packages and len(parts) > 2:  # noqa: PLR2004
         candidate = ".".join(parts[:2])
         if model.is_package(candidate):

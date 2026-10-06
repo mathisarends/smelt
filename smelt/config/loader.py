@@ -96,8 +96,22 @@ def parse_config(
 
 def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
     issues: list[ConfigIssue] = []
+    allowance_prefix = ("architecture", "cross_feature", "allow")
+    branch_index = len(allowance_prefix) + 1
     for error in exc.errors():
         loc = tuple(error["loc"])
+        # Expose YAML keys, not the internal branches of the allowance union.
+        if loc[: len(allowance_prefix)] == allowance_prefix and len(loc) > branch_index:
+            branch = str(loc[branch_index])
+            if branch == "str" and isinstance(error.get("input"), dict):
+                continue
+            if (
+                len(loc) == branch_index + 1
+                and branch.startswith("function-after")
+                and isinstance(error.get("input"), str)
+            ):
+                continue
+            loc = (*loc[:branch_index], *loc[branch_index + 1 :])
         message = str(error["msg"]).removeprefix("Value error, ")
         if error["type"] == "extra_forbidden":
             key = str(loc[-1])
@@ -118,7 +132,7 @@ def _known_fields(model: type[BaseModel], loc: Sequence[str | int]) -> list[str]
         if current is None:
             return []
     if isinstance(current, type) and issubclass(current, BaseModel):
-        return list(current.model_fields)
+        return [field.alias or name for name, field in current.model_fields.items()]
     return []
 
 

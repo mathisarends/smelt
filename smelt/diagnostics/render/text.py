@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import itertools
+import posixpath
 import textwrap
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from smelt.diagnostics.violation import Severity, Violation
@@ -43,15 +45,47 @@ def render_text(
 ) -> str:
     style = _Style(color)
     blocks: list[str] = []
-    for violation in report.violations:
+    for violation in _group_unclassified(report.violations):
         if violation.severity is Severity.HINT and not show_hints:
             continue
         blocks.append(_render_violation(violation, read_line, style))
     lines = ["\n\n".join(blocks)] if blocks else []
     if blocks:
         lines.append("")
+    if report.scope:
+        lines.append(
+            f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
+        )
     lines.append(_summary(report, style, show_hints=show_hints))
     return "\n".join(lines) + "\n"
+
+
+def _group_unclassified(violations: list[Violation]) -> list[Violation]:
+    groups: dict[tuple[Severity, str | None], list[Violation]] = {}
+    for violation in violations:
+        if violation.code == "SMT305":
+            groups.setdefault((violation.severity, violation.hint), []).append(
+                violation
+            )
+    result: list[Violation] = []
+    for violation in violations:
+        if violation.code != "SMT305":
+            result.append(violation)
+            continue
+        group = groups[(violation.severity, violation.hint)]
+        if violation is not group[0]:
+            continue
+        if len(group) > 1:
+            directory = posixpath.commonpath([v.path for v in group if v.path])
+            grouped = replace(
+                violation,
+                path=directory,
+                message=f"{len(group)} modules have no architecture classification; --format json lists individual paths",
+            )
+            result.append(grouped)
+        else:
+            result.append(violation)
+    return result
 
 
 def _render_violation(
