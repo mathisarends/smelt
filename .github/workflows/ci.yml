@@ -48,3 +48,21 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - run: uv run smelt check --format github
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv build
+      - name: Install and smoke-test the built wheel outside the checkout
+        run: |
+          uv venv "$RUNNER_TEMP/smelt-release"
+          uv pip install --python "$RUNNER_TEMP/smelt-release/bin/python" dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/smelt-release/bin/smelt" --version
+          "$RUNNER_TEMP/smelt-release/bin/smelt" rules
+          "$RUNNER_TEMP/smelt-release/bin/smelt" explain SMT101
+          "$RUNNER_TEMP/smelt-release/bin/smelt" config schema

@@ -147,7 +147,10 @@ class FileIndex:
     def read_text(self, path: str) -> str:
         cached = self._text_cache.get(path)
         if cached is None:
-            cached = (self.root / path).read_text(encoding="utf-8", errors="replace")
+            # Python accepts a UTF-8 BOM, commonly written by Windows editors.
+            cached = (self.root / path).read_text(
+                encoding="utf-8-sig", errors="replace"
+            )
             self._text_cache[path] = cached
         return cached
 

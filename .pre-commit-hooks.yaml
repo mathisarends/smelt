@@ -3,6 +3,6 @@
   description: Check Python architecture boundaries against smelt.yaml.
   entry: smelt check
   language: python
-  pass_filenames: true
+  pass_filenames: false
   files: '(\.py|smelt\.ya?ml)$'
   require_serial: true

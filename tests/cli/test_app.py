@@ -4,7 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 import yaml
@@ -13,9 +13,6 @@ from smelt.cli import main
 from smelt.config import load_config
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from tests.helpers import FIXTURES, LAYERED_CONFIG, check, write_project
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 GATEWAY = FIXTURES / "gateway"
 
@@ -41,6 +38,36 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_public_hook_checks_incoming_edges_and_unrelated_python_files(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_project(
+            clean_project,
+            {
+                "app/domain/model.py": "from app.application import service\n",
+                "scripts/build.py": "print('build')\n",
+            },
+        )
+        manifest = yaml.safe_load(
+            (Path(__file__).resolve().parents[2] / ".pre-commit-hooks.yaml").read_text(
+                encoding="utf-8"
+            )
+        )[0]
+        args = manifest["entry"].split()[1:]
+        if manifest.get("pass_filenames", True):
+            args.extend(["app/application/service.py", "scripts/build.py"])
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, *args)
+
+        assert code == 1
+        assert "SMT101" in out
+        assert "app/domain/model.py" in out
+        assert err == ""
+
     def test_unclassified_library_warnings_are_grouped_only_in_text(
         self,
         capsys: pytest.CaptureFixture[str],

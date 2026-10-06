@@ -859,3 +859,37 @@ und sämtliche Pre-Commit-Checks grün. Alle 27 ursprünglichen Prompster-Probes
 ausgeführt, zusätzlich Framework-Policy, korrektes SMT106-Beispiel und Selector-Hinweis
 geprüft. Die echte Prompster-Baseline bleibt bei 75 Fehlern und 22 Warnungen; die
 15 zusätzlichen Fehler durch `./` und die Altlast nach einem Import-Kommentar entfallen.
+
+## Release-Check (2026-10-06)
+
+- **Behoben:** Der öffentliche Pre-Commit-Hook übergab alle passenden Dateinamen an
+  `check`. Nicht konfigurierte Python-Skripte verursachten dadurch Exit 2; außerdem
+  konnte die Eingrenzung auf einen geänderten Import-Target eingehende Verstöße in
+  anderen Modulen übersehen. Der Hook prüft jetzt das gesamte Projekt wie der lokale
+  Hook. Ein Regressionstest umfasst beide Fälle; `pre-commit try-repo` prüft die echte
+  Installation des öffentlichen Hooks in einem separaten Git-Projekt.
+- **Behoben:** CI baut Wheel und Source-Archiv und installiert das Wheel auf Python
+  3.12 außerhalb des Checkouts für CLI-Smoke-Checks. Paketmetadaten enthalten jetzt
+  Repository-, Issue- und Dokumentationslinks.
+- **Behoben:** Installations- und CI-Beispiele verwenden die Git-Quelle. Der PyPI-Name
+  `smelt` gehört zu einem anderen Projekt (https://pypi.org/project/smelt/); die bisherigen
+  `uvx smelt`-Beispiele installierten dieses statt unserer Architekturprüfung.
+  Auch der Hinweis bei neuerer Python-Syntax empfiehlt keine Installation des fremden
+  Pakets mehr.
+- **Behoben:** Ein beim Windows-Hook-Test gefundenes UTF-8-BOM wurde als Syntaxfehler
+  behandelt, obwohl Python diese Quelldatei akzeptiert. Der Leser entfernt jetzt das
+  BOM; ein Regressionstest prüft weiterhin den Importbefund auf der korrekten Zeile.
+- **Offen vor PyPI-Release:** Eigenen Distributionsnamen wählen und anschließend
+  Metadaten, Versionsabfrage und Installationsbeispiele darauf umstellen. CLI-Befehl
+  und Python-Paket können weiterhin `smelt` heißen.
+- **Offen für einen Open-Source-Release:** Lizenz festlegen und als Datei sowie
+  Paketmetadatum aufnehmen. Aktuell ist keine Lizenz deklariert.
+- **Release-Schritte:** Nach erfolgreicher CI den PR mergen, den im README verwendeten
+  Tag `v0.1.0` erstellen und die Distribution veröffentlichen. Aktuell existiert weder
+  dieser Tag noch ein GitHub-Release; es wurde nichts veröffentlicht.
+
+**Lokal geprüft:** Wheel aus dem Source-Archiv gebaut, beide Archive und `py.typed`
+kontrolliert, Installation mit ausschließlich Laufzeitabhängigkeiten auf Python 3.12
+und 16 CLI-Smoke-Checks erfolgreich. 286 Tests bestanden, 1 übersprungen; Ruff, Mypy,
+eigener Smelt-Check und Pre-Commit-Checks grün. CI am vorherigen PR-Stand war auf
+Python 3.12–3.14 unter Linux, macOS und Windows vollständig erfolgreich.
