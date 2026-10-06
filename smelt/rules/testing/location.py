@@ -10,6 +10,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.errors import did_you_mean
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.model import is_within
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -151,12 +152,14 @@ def _similar_module(ctx: AnalysisContext, module: str) -> str:
 
 
 def _suffix_sibling(
-    ctx: AnalysisContext, mirror: _Mirror, test_root: str
+    ctx: AnalysisContext, mirror: _Mirror, test_root: str, imported: list[str]
 ) -> str | None:
     """The module next to the mirrored path that the name ends with.
 
     ``health/presentation/test_health_presentation_router.py`` mirrors
-    ``health/presentation/router.py`` once the prefix is dropped.
+    ``health/presentation/router.py`` once the prefix is dropped. Not when the test
+    imports another module of that package: ``test_..._event_mapper.py`` importing
+    ``presentation.rpc.mappers`` is not about ``presentation/mapper.py``.
     """
     found = [
         source.module
@@ -166,7 +169,13 @@ def _suffix_sibling(
         and source.module.rsplit(".", 1)[0] == ".".join([root, *mirror.directories])
         and mirror.module.endswith(f"_{source.module.rsplit('.', 1)[1]}")
     ]
-    return found[0] if len(found) == 1 else None
+    if len(found) != 1:
+        return None
+    package = found[0].rsplit(".", 1)[0]
+    others = [
+        m for m in imported if is_within(m, package) and m not in (package, found[0])
+    ]
+    return None if others else found[0]
 
 
 def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
@@ -262,15 +271,18 @@ class MisplacedTestFile(BaseRule):
         subject = mirror.module if mirror else _subject(test.name)
         tested = self._tested_module(ctx, subject, modules)
         if tested is None and mirror is not None:
-            tested = _suffix_sibling(ctx, mirror, test.test_root)
+            tested = _suffix_sibling(ctx, mirror, test.test_root, modules)
+        taken = ""
         if tested is not None:
             expected = _mirror_target(ctx, test.test_root, tested)
-            if expected != test.path:
+            if expected in ctx.files.tests and expected != test.path:
+                taken = f" {expected} already exists; merge the two tests."
+            elif expected != test.path:
                 yield self._misplaced(ctx, test, tested, expected)
                 return
         hint = (
             "Move or rename the test so its path mirrors the module it tests, "
-            "delete it if that module is gone, or list it in tests.unmirrored."
+            "delete it if that module is gone, or list it in tests.unmirrored." + taken
         )
         if mirror is None:
             pattern = ctx.config.tests.mirror

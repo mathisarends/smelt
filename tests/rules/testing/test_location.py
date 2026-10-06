@@ -289,6 +289,45 @@ class TestSuggestions:
             "test_billing_payment.py should be named test_payment.py"
         )
 
+    def test_name_suffix_loses_against_imports_of_another_module(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                # like test_session_presentation_event_mapper.py, which tests
+                # presentation/rpc/mappers.py and not presentation/mapper.py
+                "app/billing/stripe/charges.py": "",
+                "tests/billing/test_billing_stripe_payment.py": (
+                    "from app.billing.stripe.charges import charge\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message.startswith(
+            "test_billing_stripe_payment.py mirrors no source module"
+        )
+
+    def test_never_suggests_a_path_another_test_holds(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "tests/billing/test_payment.py": "",
+                "tests/billing/test_billing_payment.py": "",
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.path == "tests/billing/test_billing_payment.py"
+        assert found.message.startswith("test_billing_payment.py mirrors no source")
+        assert found.hint is not None
+        assert found.hint.endswith(
+            "tests/billing/test_payment.py already exists; merge the two tests."
+        )
+
     def test_typo_suggests_the_neighbouring_module(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
 
