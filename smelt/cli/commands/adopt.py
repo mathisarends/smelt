@@ -78,6 +78,13 @@ def _summary(inferred: InferredConfig) -> list[str]:
             f"tests: mirror {mirror.pattern} "
             f"({mirror.mirrored} of {mirror.total} test files already mirror)"
         )
+        if mirror.name_clashes:
+            lines.append(
+                f"pytest: {', '.join(mirror.name_clashes)} "
+                f"{'has' if len(mirror.name_clashes) == 1 else 'have'} no __init__.py, so two "
+                "mirrored test_router.py files clash; add --import-mode=importlib to "
+                "the pytest addopts"
+            )
     return lines
 
 

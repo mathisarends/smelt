@@ -96,6 +96,17 @@ workspace each test root mirrors the package of its own member. Deliberately unm
 tests go in `tests.unmirrored` (e.g. `["tests/e2e/**"]`); `tests.mirror_suffixes: true`
 also allows `test_invoice_<topic>.py`.
 
+Mirroring repeats file names: `auth/presentation/test_router.py` and
+`user/presentation/test_router.py`. pytest's default import mode only tells them apart
+inside packages, so without `__init__.py` in the test directories it stops with "import
+file mismatch". Prefixing the names (`test_auth_presentation_router.py`) works around that
+but breaks the mirror; set the import mode instead, which `smelt init` points out:
+
+```toml
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+```
+
 ## Adopting it in an existing project
 
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
