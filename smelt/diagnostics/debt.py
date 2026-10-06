@@ -5,7 +5,11 @@ import json
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+from smelt.config.errors import ConfigError, ConfigIssue, format_loc
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -16,6 +20,20 @@ if TYPE_CHECKING:
 DEBT_VERSION = 1
 
 
+class _DebtItem(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    fingerprint: str
+    code: str
+    path: str | None = None
+    message: str = ""
+
+
+class _DebtDocument(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    version: Literal[1]
+    violations: list[_DebtItem]
+
+
 @dataclass(frozen=True, slots=True)
 class DebtEntry:
     fingerprint: str
@@ -24,8 +42,14 @@ class DebtEntry:
     message: str
 
 
-def fingerprint(violation: Violation, snippet: str) -> str:
-    normalized = re.sub(r"\s+", " ", snippet).strip()
+def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> str:
+    # An import finding is an architecture edge, independent of its spelling.
+    # Multiplicity in Debt.match still detects an additional identical edge.
+    normalized = (
+        ""
+        if violation.target_module and not legacy
+        else re.sub(r"\s+", " ", snippet).strip()
+    )
     payload = "\x1f".join(
         [
             violation.code,
@@ -46,16 +70,26 @@ class Debt:
     def load(cls, path: Path) -> Debt:
         if not path.is_file():
             return cls([])
-        data = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            data = _DebtDocument.model_validate_json(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise ConfigError(
+                [ConfigIssue("", f"cannot read debt file: {exc}")], path.as_posix()
+            ) from exc
+        except ValidationError as exc:
+            issues = [
+                ConfigIssue(format_loc(e["loc"]), str(e["msg"])) for e in exc.errors()
+            ]
+            raise ConfigError(issues, path.as_posix()) from exc
         return cls(
             [
                 DebtEntry(
-                    fingerprint=item["fingerprint"],
-                    code=item["code"],
-                    path=item.get("path"),
-                    message=item.get("message", ""),
+                    fingerprint=item.fingerprint,
+                    code=item.code,
+                    path=item.path,
+                    message=item.message,
                 )
-                for item in data.get("violations", [])
+                for item in data.violations
             ]
         )
 
@@ -94,7 +128,11 @@ class Debt:
         new: list[Violation] = []
         known: list[Violation] = []
         for violation in violations:
-            key = fingerprint(violation, snippet(violation))
+            text = snippet(violation)
+            key = fingerprint(violation, text)
+            if available[key] == 0:
+                # Existing version-1 debt files used the complete source line.
+                key = fingerprint(violation, text, legacy=True)
             if available[key] > 0:
                 available[key] -= 1
                 known.append(violation)

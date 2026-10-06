@@ -321,3 +321,575 @@ Der Agent verschiebt die Datei anhand der Fehlermeldung selbst.
 3. ✓ smelt selbst auf `mirror` umstellen (#15) als Realitätstest.
 4. ✓ Lose Module im Feature melden (#5) und Hints im `--changed`-Modus zeigen (#8).
 5. ✓ Kleinkram und Bugs (#4, #11, #13, #14, #16), dazu die Spiegel-Konvention (#7).
+
+---
+---
+
+# Runde 2: Usability-Test an Prompster (2026-10-05)
+
+Ziel, an dem gemessen wird: smelt soll in automatisierten Architektur-Reviews sicherstellen,
+dass Agents **(a) die Teststruktur der Produktivstruktur spiegeln** und **(b) Architektur-
+grenzen einhalten**. Alles andere ist Nebensache und Kandidat für eine Scope-Reduktion.
+
+Vorgehen: Kopie von `prompster` (Commit `a066979`, uv-Workspace `backend` + `libs/agent`,
+Features unter `backend.features.<name>/{domain,application,infrastructure,presentation}`)
+in einem Temp-Ordner, dann der Weg eines neuen Nutzers: `--help` → `init` → `check` →
+Mirror einschalten → Verstöße gezielt einschleusen → `--changed` → `debt`. Prompster selbst
+wurde nicht verändert.
+
+## P0: Falsch-grüne Ergebnisse für die beiden Kernziele
+
+### R1. Alles außerhalb von `features.root` ist eine Blackbox für Grenzen (verifiziert)
+36 von 215 Modulen sind unklassifiziert: das ganze Paket `agent`, `backend.platform.*`,
+`backend.presentation.*`, `backend.app`, `backend.env`. Für sie gilt keine einzige
+Grenzregel, und sie erscheinen nur als eingeklappter SMT305-Hint. Eingeschleust und
+**nicht gemeldet**:
+
+| Import | Ergebnis |
+| --- | --- |
+| `user/domain/__init__.py` → `backend.platform.database.orm` (Domain importiert ORM) | **still** |
+| `backend.platform.database.settings` → `session.infrastructure.repository` | nur SMT305-Hint (+ zufällig SMT104-Zyklus) |
+| `agent.views` (Lib) → `backend.features.session.domain` (Lib importiert App) | nur SMT305-Hint |
+
+Das ist der größte Befund: Ein Agent kann die Domain an die Infrastruktur koppeln, solange
+die Infrastruktur nicht im Feature liegt. In DDD-Projekten liegt aber genau die technische
+Infrastruktur (DB, Storage, Logging, HTTP-Middleware) oft zentral.
+
+Vorschlag (eine Mechanik, kein neues Konzept): Module außerhalb von Features einem Layer
+zuordnen können, z. B.
+
+```yaml
+architecture:
+  modules:                       # Name offen
+    backend.platform: infrastructure
+    backend.presentation: presentation
+    agent: infrastructure        # oder eigene "library"-Kategorie
+```
+
+Dann greift SMT101 automatisch: `domain → platform` ist `domain → infrastructure` und damit
+ein Fehler. Zusätzlich sollte ein Import von *unklassifiziert* nach *Feature* mindestens eine
+Warnung sein, kein Hint. Die Abhängigkeitsrichtung zwischen Workspace-Paketen (`agent` darf
+`backend` nicht importieren) lässt sich mit derselben Zuordnung oder einer einfachen
+`forbid`-Liste ausdrücken.
+
+### R2. Falsche Pfade in der Config werden still akzeptiert (verifiziert)
+- `features.root: backend.featurez` (Tippfehler) → kein Config-Fehler, stattdessen 156
+  Hints und null Grenzfehler. Die Policy ist effektiv aus.
+- `test_roots: [backend/testz]` → kein Fehler, alle SMT401-Befunde verschwinden.
+
+Beides muss Exit 2 mit „does not exist“ sein, analog zu den schon guten Meldungen bei
+Tippfehlern in Keys und Layernamen (`unknown layer "domian" (did you mean "domain"?)`).
+Vermutlich gilt dasselbe für `shared`, `composition_root`, `wiring` und `source_roots`.
+
+### R3. Mirror im Workspace mit mehreren Root-Paketen ist mit dem Standard-Pattern kaputt (verifiziert)
+Mit `layout: mirror` und dem Standard `{path}/test_{module}.py` wird
+`libs/agent/tests/agent/tools/test_x.py` gegen `backend/src/backend/agent/tools/x.py`
+geprüft, also gegen das **falsche** Root-Paket. Ergebnis: 100 Fehler, viele davon falsch.
+Mit `{root}/{path}/test_{module}.py` stimmt es für beide Roots. Ohne `{root}` müsste smelt
+jede Test-Root ihrer Source-Root zuordnen (gleiches Workspace-Member), statt das erste
+Root-Paket zu nehmen.
+
+### R4. `smelt init` schlägt `tests.layout: none` vor, obwohl das Projekt spiegelt
+Prompster spiegelt konsequent (`tests/backend/features/...`). `init` sollte das Layout aus
+den vorhandenen Tests ableiten: Wenn die Mehrheit der Testdateien unter `{root}/{path}` bzw.
+`{path}` einen Treffer hat, `layout: mirror` mit passendem `mirror`-Pattern vorschlagen.
+Sonst ist das Kernfeature nach `init` aus, und der Nutzer merkt es nicht.
+
+## P1: Usability für Agents
+
+### R5. `--changed` meldet Altlasten in fremden Dateien (verifiziert)
+Nur ein Kommentar in `user/domain/__init__.py` geändert → 4 SMT102-Fehler in
+`auth/application/*` und `session/application/*`, weil `_in_scope`
+(`smelt/engine/check.py:348`) auch Verstöße meldet, deren *Ziel*modul geändert wurde. Der
+Agent wird damit aufgefordert, fremde, unveränderte Features umzubauen. Für einen
+automatisierten Review-Loop ist das das Gegenteil von hilfreich.
+
+Vorschlag: `--changed` meldet nur, was die Änderung **neu eingeführt** hat. Am saubersten:
+Verstöße auf `--base` (Standard `HEAD`) berechnen und als implizite Debt abziehen. Dann
+braucht der Agent-Loop keine `debt.json` mehr, und Altlasten in der geänderten Datei werden
+nicht mehr gemeldet. Zyklen, die durch die Änderung entstehen, bleiben sichtbar.
+
+### R6. Mirror-Meldungen ohne Vorschlag, wo einer möglich wäre (verifiziert)
+- `test_session_infrastructure_repository.py` importiert eindeutig
+  `session.infrastructure.repository` und liegt im richtigen Ordner, aber die Meldung sagt
+  nur „mirrors no source module“. Erwartet: „should be named test_repository.py“. Der
+  Import-Hinweis greift heute nur, wenn der Modulname exakt im Dateinamen steht.
+- `test_fernet_token_cipher.py` neben der Quelle `fernet_token_cypher.py`, `test_usr.py`
+  neben `user.py`: Ein „did you mean `fernet_token_cypher.py`?“ per Ähnlichkeit im selben
+  Ordner würde Tippfehler sofort sichtbar machen.
+- JSON: Bei SMT401 sind `feature`, `layer`, `source_module` und `expected` leer, obwohl der
+  Spiegelpfad Feature und Layer eindeutig bestimmt. `expected` sollte mindestens den
+  geprüften Quellpfad enthalten.
+
+### R7. `init` erzeugt eine Config, die sofort an sich selbst scheitert
+`init` meldet direkt 78 Fehler. Einige davon sind Artefakte der Ableitung:
+- `backend.app` importiert `backend.lifespan` und die DI-Provider. Das ist Teil der
+  Composition (FastAPI-App-Factory), `init` stuft es aber nicht als Composition Root ein →
+  3× SMT106.
+- 9 Wiring-Module werden einzeln aufgezählt, obwohl das Muster
+  `backend.features.*.infrastructure.di` unterstützt wird. Die Liste taucht danach in jeder
+  SMT205-Meldung und in jedem `smelt context` auf (siehe R9).
+- 41 der 78 Fehler sind SMT403 (private Zugriffe in Tests), obwohl `tests.layout: none`.
+  Für das erste Architektur-Review verdecken sie die Grenzbefunde (siehe Scope unten).
+
+### R8. Doppelte Meldungen für dieselbe Zeile
+`shared/ddd.py` importiert ein Wiring-Modul eines Features → SMT105 **und** SMT106 auf
+derselben Spalte. Ein Befund pro Import reicht, und zwar der spezifischere.
+
+### R9. `smelt context` ist für ein Feature zu laut und zu ungenau
+- Die `Wiring:`-Zeile listet die DI-Module aller Features und der Plattform.
+- `Tests: mirror the source tree, …` nennt nicht den konkreten Pfad. Für das Feature `user`
+  wäre `backend/tests/backend/features/user/<layer>/test_<module>.py` die eigentlich
+  nützliche Zeile.
+- Für ein unklassifiziertes Modul (`context backend/src/backend/platform/database/orm.py`)
+  kommt die volle Feature-Policy, obwohl keine davon gilt.
+
+### R10. SMT205 bei FastAPI + dishka nicht umsetzbar
+`conn.state.dishka_container.get(...)` in `presentation/dependencies.py` wird gemeldet, der
+Hint sagt „resolve it in backend.main“. In einer FastAPI-Dependency gibt es dafür keinen
+Weg. Entweder kennt die Regel die Integrationsmuster des deklarierten Frameworks, oder sie
+fliegt raus (siehe Scope).
+
+## P2: Kleinkram
+
+- **R11.** `smelt.schema.json` hat keine `description`s. Editor-Autocomplete zeigt Keys ohne
+  Erklärung. Pydantic-`Field(description=...)` würde reichen.
+- **R12.** `smelt debt` schreibt die Datei, aktiviert sie aber nicht („add `debt:` to
+  smelt.yaml“). Entweder trägt `debt` den Key selbst ein, oder `.smelt/debt.json` wird
+  benutzt, sobald sie existiert.
+- **R13.** Die README kennt `inspect`, `verify` und `config` nicht, `--help` listet sie.
+- **R14.** `explain SMT999` schlägt „SMT903“ vor, `context nonexistent` listet die Features
+  nicht auf. Bei unbekanntem Feature wäre „known features: auth, health, …“ hilfreich.
+
+Positiv, sollte so bleiben: Config-Validierung mit „did you mean“, das Textformat mit
+Snippet + `Expected` + `Hint`, der „belongs in …“-Vorschlag, wenn der Dateiname passt,
+robuste Debt-Fingerprints (Zeilenverschiebung ok, zusätzlicher gleichartiger Verstoß wird
+erkannt) und eine Laufzeit unter 2 s für 215 Module.
+
+## Scope-Reduktion: Vorschlag
+
+Gemessen an den Zielen (a) Mirror und (b) Grenzen trägt dieser Kern:
+
+| Behalten | Warum |
+| --- | --- |
+| SMT101, SMT102, SMT104, SMT105, SMT106 | Grenzen |
+| SMT301, SMT302, SMT305 | Ordnerstruktur, kein Modul außerhalb der Ordnung |
+| SMT401 | Mirror |
+| SMT901, SMT902, SMT903 | Suppressions und Debt bleiben ehrlich |
+| `check`, `explain`, `context`, `init`, `debt`, `rules` | Agent-Loop und Adoption |
+
+Kandidaten zum Streichen (oder zumindest standardmäßig aus):
+
+| Kandidat | Begründung |
+| --- | --- |
+| Rollen: SMT203, SMT204, SMT303, `roles:`, `analysis.types: pyright` | eigenes Konzept mit Konfigurationsaufwand, in Prompster nicht sauber anwendbar (Ports teils in domain, teils in application) |
+| SMT201, SMT202, SMT205, SMT206, `di_frameworks` | Code-Stil/DI-Pattern, keine Grenze; SMT205 bei FastAPI nicht umsetzbar (R10) |
+| Testqualität: SMT402–SMT408, `tests.patching/mocks/private_access/bloat/interaction_assertions` | machen in Prompster 58 von 78 Befunden aus und verdecken die Grenzen; Teststil ist nicht Teststruktur |
+| SMT304 crowded-package | Geschmackssache |
+| `verify`, `inspect`, `plugins` | nicht Teil des Agent-Loops, `verify` dupliziert pre-commit/CI |
+| `tests.layout: feature` | Ziel ist `mirror`, `feature` ist ein Zwischenweg |
+
+Offen: SMT103 `third-party-denied` eher **behalten**. „`domain` darf kein `sqlalchemy`
+importieren“ ist eine echte Grenze; `init` schlägt es nur nicht vor.
+
+Nach dieser Reduktion gibt es für Agents im Kern nur noch zwei Befunde: „Grenze verletzt“
+oder „Test liegt nicht am Spiegelpfad“.
+
+## Vorgeschlagene Reihenfolge (Runde 2)
+
+1. Scope reduzieren (oben). Damit entfallen R7 (SMT403-Rauschen) und R10 von selbst.
+2. R2 (stille Config-Pfade) und R3 (Mirror im Workspace): klein, verhindern falsch-grüne
+   bzw. falsch-rote Ergebnisse.
+3. R1 (Module außerhalb von Features klassifizieren): größter Hebel für Ziel (b).
+4. R5 (`--changed` meldet nur Neues): größter Hebel für den Agent-Loop.
+5. R4 + R6 (Mirror ableiten, bessere Vorschläge).
+6. R8, R9, P2.
+
+## Umgesetzt (Runde 2)
+
+Alle Punkte sind umgesetzt, jeweils in einem eigenen Commit. Validiert wurde auf einer
+frischen Kopie von Prompster.
+
+- **Scope:** wie in der Tabelle oben gestrichen. Neben den genannten Regeln ist auch
+  `di_frameworks` weggefallen: Ein DI-Framework in einem Layer wird über
+  `layers.<x>.third_party` verboten. SMT103 bleibt. R7 (SMT403-Rauschen) und R10 entfallen
+  damit.
+- **R1:** `architecture.modules` ordnet Pakete außerhalb der Features einem Layer zu
+  (`backend.platform: infrastructure`). SMT101 gilt dann auch zwischen Feature und
+  zentralem Modul, SMT105 verbietet zentralen Modulen Feature-Importe. SMT305 ist jetzt
+  eine Warnung und sagt, wie man ein Modul einordnet. In Prompster werden alle drei
+  eingeschleusten Fälle gemeldet.
+- **R2:** Nicht existierende `source_roots`, Root-Pakete, `features.root`/`pattern`,
+  `shared`, `composition_root`, `modules`, Wiring-Muster ohne Treffer und (bei `mirror`)
+  `test_roots` sind Config-Fehler mit Exit 2 und „did you mean“.
+- **R3:** Eine Test-Root spiegelt die Root-Pakete ihres Workspace-Members (längster
+  gemeinsamer Pfad mit der Source-Root).
+- **R4/R7:** `init` leitet `layout: mirror` samt Muster aus den Tests ab (Prompster:
+  `{root}/{path}/test_{module}.py`, 15 von 58 Tests spiegeln schon). Außerdem erkennt es:
+  App-Factory (`backend.app`) als Composition Root, Settings/Logging-Module als `shared`,
+  zentrale Pakete per Name als `modules` sowie Wiring als `*`-Muster. Nicht zuordenbare
+  Workspace-Pakete (`agent`) stehen auskommentiert in der Config.
+- **R5:** `--changed` prüft den Basis-Commit (HEAD bzw. Merge-Base mit `--base`) mit der
+  aktuellen Config und zieht dessen Verstöße per Fingerprint ab. Gemeldet wird nur, was
+  neu ist.
+- **R6:** „should be named test_repository.py“ auch bei Präfix-Namen, „did you mean
+  "fernet_token_cypher.py"?“ bei Tippfehlern, Hinweis auf fehlendes `{root}`. Im JSON sind
+  `source_module`, `feature`, `layer` und `expected.source` gesetzt.
+- **R8:** SMT105 macht SMT106 (und SMT101) für denselben Import überflüssig.
+- **R9/R14:** `context` zeigt nur die Wiring des Features und den konkreten Spiegelpfad,
+  benennt zentrale Module und erklärt unklassifizierte, statt eine Policy aufzulisten, die
+  nicht gilt. Bei unbekanntem Ziel listet es die Features. `explain` schlägt einen Code nur
+  vor, wenn genau einer sich in einem Zeichen unterscheidet.
+- **R11:** Jeder Key im Schema hat eine `description`.
+- **R12:** `smelt debt` trägt `debt:` selbst ein bzw. entkommentiert die Zeile aus `init`.
+- **R13:** README neu: alle Befehle, `--changed`-Semantik, DDD-Beispiel, Mirror, Adoption.
+
+## Runde 3: Usability am aktuellen PR #6
+
+Geprüft am 06.10.2026: smelt `a70a0f7` (aktueller PR-Head), Prompster `a066979`,
+Python 3.14 unter Windows. Alle folgenden Reproduktionen liefen auf einem separaten
+Prompster-Worktree; die laufenden Änderungen im ursprünglichen Projekt blieben unberührt.
+Das sind Befunde zum aktuellen Produktstand, nicht ausschließlich neue Regressionen dieses PRs.
+
+Maßstab bleibt: **Architektur-Guidelines verständlich ausdrücken und zuverlässig prüfen.**
+Ein grüner Lauf muss von einem leeren Prüfauftrag unterscheidbar sein; `context`, Config,
+Regeldoku und Checker müssen dieselbe Policy beschreiben.
+
+Ausgangspunkt: `smelt init` erkennt 215 Module und 58 Tests, davon 15 bereits gespiegelt.
+`smelt check --format json` meldet 75 Fehler und 22 Warnungen: 43 SMT401, 28 SMT102,
+3 SMT101, 1 SMT104 und 22 SMT305. Ein unveränderter `--changed`-Lauf ist korrekt grün.
+Der volle Lauf dauerte hier ca. 0,6 s, `--changed` ca. 1,9 s; kein Laufzeitproblem festgestellt.
+
+### P1 — U1. Ein vertippter Prüfpfad sieht wie ein bestandener Architekturcheck aus
+
+**Verifiziert:**
+
+```sh
+smelt check backend/src/backend/features/usr --format json
+```
+
+Exit 0, `status: passed`, alle Befundzähler 0, aber `modules: 215`.
+Das Feature heißt `user`; der eingegebene Pfad existiert nicht. Der komplette Check hat
+weiterhin 75 Fehler. Dass 215 Module gezählt werden, verstärkt den falschen Eindruck,
+der gewünschte Teil sei geprüft worden.
+
+**Vorschlag:** Explizite Pfade auf Existenz und Zugehörigkeit zu den analysierten Quellen
+bzw. Tests prüfen. Bei Tippfehlern Exit 2 mit `did you mean .../user?`; bei existierenden,
+aber nicht analysierten Pfaden den Grund nennen. In der Ausgabe geprüften Scope und
+Anzahl der tatsächlich vom Bericht abgedeckten Dateien sichtbar machen.
+
+**Stellen:** `smelt/cli/commands/check.py:31`, `smelt/engine/check.py:378`.
+
+### P1 — U2. Ein unbekannter Rule-Selector deaktiviert still die gesamte Prüfung
+
+**Verifiziert:**
+
+```sh
+smelt check --select SMT999 --format json
+```
+
+Exit 0, `status: passed`, keine Befunde. Anders als `smelt explain SMT999` wird der
+unbekannte Code nicht zurückgewiesen. Für einen Agenten ist ein Tippfehler dadurch ein
+erfolgreicher Check.
+
+**Vorschlag:** Jeden `--select`- und `--ignore`-Eintrag gegen die bekannten Regeln prüfen.
+Präfixe wie `SMT1` bleiben erlaubt; ein Präfix ohne Treffer ist ein Usage-Fehler mit Exit 2.
+Eine bewusst leere Auswahl sollte ausdrücklich als leer erscheinen.
+
+**Stelle:** `smelt/engine/check.py:77` (`resolve_active_rules`).
+
+### P1 — U3. `--changed` meldet einen bestehenden Verstoß nach einem reinen Kommentar erneut
+
+**Verifiziert:** In Prompster steht in
+`backend/src/backend/features/auth/presentation/cookies.py:7` bereits:
+
+```python
+from backend.features.auth.infrastructure import AuthSettings
+```
+
+Nur `  # explanatory comment only` an diese Zeile anhängen, dann:
+
+```sh
+smelt check --changed --format json
+```
+
+Jetzt Exit 1 mit SMT101 für genau diesen bestehenden Import. Vorher war derselbe
+`--changed`-Lauf grün. Die Architekturabhängigkeit hat sich nicht verändert.
+
+**Ursache:** Der Fingerprint enthält die vollständige Quellzeile einschließlich Kommentar.
+Whitespace wird normalisiert, Kommentare nicht. Das betrifft auch Debt: Ein Kommentar
+kann eine vorhandene Baseline-Zuordnung verlieren.
+
+**Vorschlag:** Importbefunde anhand normalisierter Import-Syntax und der beteiligten Module
+vergleichen; Kommentare und reine Formatierung auslassen. Die bestehende Multiset-Logik
+beibehalten, damit ein zusätzlich eingeführter gleicher Import weiterhin auffällt.
+
+**Stellen:** `smelt/diagnostics/debt.py:27`, `smelt/engine/check.py:168`.
+
+### P1 — U4. Gleichwertige Pfadschreibweisen erzeugen unterschiedliche Mirror-Ergebnisse
+
+**Verifiziert:** In der erzeugten Config nur ändern:
+
+```yaml
+project:
+  test_roots: [./backend/tests, ./libs/agent/tests]
+```
+
+`smelt check --select SMT401 --format json` meldet nun **58 statt 43** Fehler.
+Alle 15 bisher korrekt gespiegelten Tests werden zusätzlich bemängelt. Beispiel:
+
+```text
+test_google_oauth_flow.py belongs in ./backend/tests/backend/features/auth/application/
+Hint: Move the file to ./backend/tests/backend/features/auth/application/test_google_oauth_flow.py.
+```
+
+Der Test liegt bereits genau dort. Der Hinweis fordert somit einen wirkungslosen Move.
+Die Verzeichnisse existieren und bestehen die neue Config-Pfadvalidierung.
+
+**Vorschlag:** Source- und Test-Roots einmal beim Laden zu einheitlichen projektbezogenen
+Pfaden normalisieren und diese Darstellung auch für Discovery, Workspace-Zuordnung und
+Mirror-Vergleiche verwenden. Gleichwertige Schreibweisen dürfen keine Befunde erzeugen.
+
+**Stellen:** `smelt/analysis/files.py:115`, `smelt/rules/testing/location.py:70`.
+
+### P1 — U5. `config show` gibt bei Feature-Ausnahmen keine wiederverwendbare Config aus
+
+**Verifiziert:** Die gültige Config um diese Ausnahme ergänzen:
+
+```yaml
+architecture:
+  cross_feature:
+    default: deny
+    allow:
+      - "application -> application"
+      - {from: session.presentation, to: auth.presentation}
+```
+
+Dann:
+
+```sh
+smelt config show > resolved.yaml
+smelt --config resolved.yaml check --select SMT102
+```
+
+Der zweite Befehl scheitert mit Exit 2. `show` schreibt `source`/`target`, der Loader
+verlangt `from`/`to`. Auch die JSON-Ausgabe nutzt die internen Namen.
+Zusätzlich enthält die Fehlermeldung interne Pydantic-Texte wie
+`allow[1].function-after[_feature_layers(), CrossFeatureAllowance].from` und einen
+irrelevanten Fehler für den String-Zweig der Union.
+
+**Vorschlag:** Mit den öffentlichen Config-Aliasnamen serialisieren (`by_alias=True`).
+Validierungsfehler auf verständliche YAML-Pfade reduzieren, z. B.
+`architecture.cross_feature.allow[1].from: required key is missing`.
+
+**Stellen:** `smelt/cli/commands/info.py:99`, `smelt/config/loader.py:97`.
+
+### P1 — U6. `context` beschreibt nicht zuverlässig die tatsächlich geltenden Ausnahmen
+
+**Verifiziert, drei Fälle:**
+
+- `smelt context backend/src/backend/features/user/infrastructure/di.py` zeigt
+  `infrastructure → domain, application` und `Cross-feature: only application → application`.
+  Für dieses deklarierte Wiring-Modul sind layer- und featureübergreifende Imports erlaubt.
+  Die Ausgabe kennzeichnet diese Ausnahme nicht ausdrücklich.
+- `smelt context backend/src/backend/app.py` zeigt dieselbe eingeschränkte Feature-Policy,
+  obwohl dieses Modul als Composition Root übergreifend verdrahten darf.
+- Ein neues, unklassifiziertes `agent.review_probe` mit
+  `from backend.app import create_app` wird von SMT106 abgelehnt. `context` erklärt trotzdem:
+  `No boundary rule covers this module: it may import anything` — und meldet direkt
+  darunter einen SMT106-Fehler. Auch SMT104 gilt für unklassifizierte Module.
+
+**Zusätzlich im JSON:** `context backend/src/backend/platform --format json` liefert
+`module_kind: feature`, `feature: null`, aber kein `central`-Feld. Das vorhandene interne
+Flag wird nicht serialisiert. Ein konsumierender Agent kann die zentrale Platzierung und
+das Verbot von Feature-Imports daraus nicht direkt erkennen. Wiring ist ebenfalls nur
+eine Liste von Mustern, kein expliziter Status des Zielmoduls.
+
+**Vorschlag:** Die effektiv geltende Policy je Ziel ausgeben: Placement, Wiring-/Root-
+Ausnahmen und verbleibende Verbote. Diese Informationen auch strukturiert im JSON
+bereitstellen. Bei unklassifizierten Modulen präzise sagen, welche Grenzen ungeprüft
+bleiben und welche Regeln weiterhin gelten.
+
+**Stellen:** `smelt/engine/briefing.py:64`, `:113`, `:206`.
+
+### P1 — U7. Die Grenzen der von `init` erzeugten Policy bleiben zu unsichtbar
+
+**Verifiziert:** Mit der unveränderten Prompster-Config aus `init` wird ein neues Domain-
+Modul mit jeweils einem dieser Imports beim gezielten Check grün:
+
+```python
+from sqlalchemy.orm import Mapped
+```
+
+```python
+from backend.features.user import UserProvider
+```
+
+Im ersten Fall erlaubt der Default alle Third-Party-Pakete. Im zweiten Fall exportiert
+Prompsters Feature-`__init__.py` den Infrastruktur-Provider; `transitive` ist standardmäßig
+`false`. Mit `architecture.imports.transitive: true` wird der zweite Fall als indirekte
+Layer-Verletzung erkannt.
+
+**Einordnung:** Das sind konfigurierbare Abdeckungsgrenzen, nicht der Nachweis, dass jede
+Anwendung pauschal SQLAlchemy oder Re-Exports verbieten muss. Für das Ziel dieser Library
+ist aber entscheidend, dass die Adoption diese Entscheidungen sichtbar macht. Die
+erzeugte Config wirkt ausführlich, lässt beide relevanten Grenzen jedoch implizit offen.
+
+**Vorschlag:** `init` um kommentierte `third_party`- und `imports.transitive`-Entscheidungen
+mit konkreten Beispielen ergänzen. `context` sollte auch ein uneingeschränktes
+Third-Party-Default nennen. Die README sollte die Prüfung direkter Imports und den
+Re-Export-Fall samt Konfiguration erklären. Den vorgeschlagenen globalen Allow-Eintrag
+`application -> application` als bewusste Architekturentscheidung kennzeichnen.
+
+**Stellen:** `smelt/engine/inference.py` (`_architecture`),
+`smelt/config/models.py:97`, `:218`, `smelt/engine/briefing.py:167`.
+
+### P2 — U8. Eine beschädigte Debt-Datei liefert einen Traceback und den falschen Exit-Code
+
+**Verifiziert:** Config `debt: review-debt.json`, Dateiinhalt:
+
+```json
+{"version": 1, "violations": [{}]}
+```
+
+`smelt check --format json` endet mit `KeyError: 'fingerprint'`, vollständigem Python-
+Traceback und **Exit 1**. Laut CLI-Vertrag bedeutet 1 einen Architekturverstoß;
+ein Config-/Dateiformatfehler müsste Exit 2 ergeben.
+
+**Vorschlag:** Debt-Schema einschließlich Version validieren und einen kurzen Fehler mit
+Dateipfad und Elementpfad melden, z. B. `review-debt.json: violations[0].fingerprint is
+missing`. Das ist eine beschädigte Eingabedatei, kein regulärer Befund.
+
+**Stellen:** `smelt/diagnostics/debt.py:46`, `smelt/cli/app.py:126`.
+
+### P2 — U9. `context` ist als Vorbereitung von Änderungen zu stark vom aktuellen Code abhängig
+
+**Verifiziert:**
+
+- `context backend/src/backend/features/user/domain/new_entity.py` liefert Exit 2, obwohl
+  der bestehende Parent-Pfad Feature und Layer bereits eindeutig festlegt.
+- Ein Syntaxfehler in einer neuen Datei von `health` blockiert `smelt context user` mit
+  Exit 2. Das User-Briefing ist überhaupt nicht mehr erhältlich.
+
+**Vorschlag:** Geplante Dateien über ihren bestehenden Parent einordnen. Das Architektur-
+Briefing aus Config und Dateistruktur erstellen; aktuelle Befundzahlen ergänzend berechnen.
+Bei einem Analysefehler die Policy weiterhin ausgeben und die Befundzahlen ausdrücklich
+als nicht verfügbar kennzeichnen. Das unterstützt die README-Anweisung, `context`
+**vor** der Implementierung zu benutzen.
+
+**Stellen:** `smelt/cli/commands/discover.py:21`, `smelt/engine/briefing.py:85`.
+
+### P2 — U10. Ein Tippfehler in einer gezielten Feature-Ausnahme wird nicht als Config-Fehler erkannt
+
+**Verifiziert:** `{from: sessoin.presentation, to: auth.presentation}` wird akzeptiert.
+Der Lauf meldet nur die normalen SMT102-Verstöße, keinen Fehler über `sessoin`.
+Die Ausnahme greift nie, und die Nutzer müssen den Grund aus den Befunden erschließen.
+
+**Vorschlag:** Bei Objekt-Ausnahmen auch die Feature-Namen gegen die entdeckten Features
+prüfen und `did you mean session?` anbieten. Layer-Namen werden bereits validiert.
+Damit gilt das neue Prinzip „Config-Einträge, die auf nichts zeigen, sind Fehler“ konsistent.
+
+**Stellen:** `smelt/config/validation.py:60`, `smelt/engine/paths.py:46`.
+
+### P2 — U11. Das Bad-Beispiel von SMT106 wird von SMT106 gar nicht erkannt
+
+**Verifiziert:** `smelt explain SMT106` und `docs/rules/SMT106.md` zeigen:
+
+```python
+from dishka import FromDishka
+```
+
+Ein Domain-Modul mit dieser Zeile bleibt unter `smelt check <datei> --select SMT106`
+grün. Die Regel prüft Imports auf deklarierte interne Composition-/Wiring-Module,
+keine Third-Party-DI-Nutzung. Das Beispiel stammt inhaltlich noch aus dem entfernten Scope.
+
+**Vorschlag:** Ein tatsächlich von SMT106 erkanntes Beispiel verwenden, etwa einen Import
+aus `backend.main` oder einem deklarierten `infrastructure.di`. Regeldokumentation muss
+zeigen, was der Checker wirklich prüft, damit ein Agent aus `explain` richtig lernt.
+
+**Stelle:** `smelt/rules/dependencies/composition_root.py:31` (generiert auch die Regeldoku).
+
+### Weitere kleine Ergonomie-Befunde
+
+- Die README verspricht `context` für „feature, module or path“, aber gepunktete
+  Modulnamen wie `backend.features.user.domain.user` werden abgelehnt. Entweder diese
+  Eingabe unterstützen oder die Dokumentation eindeutig auf Feature-Namen und Pfade begrenzen.
+- `smelt check --config smelt.yaml` wird von argparse abgelehnt; nur
+  `smelt --config smelt.yaml check` funktioniert. Die natürliche Position beim Subcommand
+  ebenfalls erlauben oder mindestens einen gezielten Hinweis auf die richtige Reihenfolge geben.
+- Die 22 SMT305-Warnungen für das unklassifizierte Workspace-Paket `agent` wiederholen
+  dieselbe Entscheidung. Eine gemeinsame Package-Meldung mit den betroffenen Modulen würde
+  die eigentlichen Grenzbefunde besser sichtbar machen; die Einzelheiten können im JSON bleiben.
+
+**Priorität:** Erst U1/U2 (falsches Grün), U3/U4 (falsche neue Befunde), U5 (kanonische
+Config) und U6 (Policy-Widersprüche). U7 ist die wichtigste Produktentscheidung für
+„Architektur-Guidelines umsetzen“; die übrigen Punkte verbessern Fehlerbehandlung und Adoption.
+
+### Umgesetzt (Runde 3)
+
+- **U1/U2:** Nicht existierende oder nicht analysierte Prüfpfade und unbekannte
+  Select-/Ignore-Präfixe liefern Exit 2. JSON nennt Scope, Dateizahl und aktive Regeln;
+  die Textausgabe nennt den eingegrenzten Scope.
+- **U3:** Importbefunde werden nach Architektur-Kante statt Quelltext verglichen.
+  Kommentare, Aliase und Formatierung erzeugen keine neuen Befunde; ein zusätzlicher
+  identischer Import wird weiterhin erkannt. Alte Debt-Fingerprints bleiben lesbar;
+  `debt --prune` aktualisiert bekannte Einträge, ohne neue Verstöße zu übernehmen.
+- **U4:** Source-/Test-Roots werden beim Laden normalisiert, einschließlich `./`,
+  abschließendem Slash und Windows-Trennzeichen.
+- **U5:** `config show` serialisiert öffentliche Aliasnamen. Allowance-Fehler zeigen
+  YAML-Pfade und öffentliche Keys ohne interne Pydantic-Union-Marker.
+- **U6:** `context` benennt die geltenden Ausnahmen und verbleibenden Einschränkungen.
+  JSON enthält `central`, `is_wiring`, Coverage und die Policy; zentrale Module bekommen
+  ausdrücklich das Verbot von Feature-Imports.
+- **U7:** `init` macht Third-Party- und Transitivitätsentscheidungen ausdrücklich sichtbar,
+  ergänzt Beispiele für Einschränkungen und kennzeichnet den globalen Cross-Feature-Allow.
+  `context` und README erklären diese Abdeckung. Die Policy bleibt vom Projekt bestimmt.
+- **U8:** Debt-Dateiformat und Version werden validiert; beschädigte Dateien liefern
+  einen Config-Fehler mit Dateipfad und Exit 2.
+- **U9:** Geplante Dateien werden über vorhandene Source-Pakete eingeordnet. Ein
+  Analysefehler verhindert nur die Befundzahlen, nicht das Architektur-Briefing.
+- **U10:** Gezielte Feature-Ausnahmen prüfen beide Feature-Namen mit Tippfehlerhinweis.
+- **U11:** SMT106 zeigt einen tatsächlich erkannten Composition-Root-Import; Regeldoku
+  neu generiert.
+- **Ergonomie:** Dotted Modules in `context`, `--config` auch nach Subcommands und
+  zusammengefasste SMT305-Meldungen im Text; einzelne Befunde bleiben im JSON erhalten.
+
+**Validierung:** 284 Tests bestanden, 1 übersprungen; Ruff, Mypy, eigener Smelt-Check
+und sämtliche Pre-Commit-Checks grün. Alle 27 ursprünglichen Prompster-Probes erneut
+ausgeführt, zusätzlich Framework-Policy, korrektes SMT106-Beispiel und Selector-Hinweis
+geprüft. Die echte Prompster-Baseline bleibt bei 75 Fehlern und 22 Warnungen; die
+15 zusätzlichen Fehler durch `./` und die Altlast nach einem Import-Kommentar entfallen.
+
+## Release-Check (2026-10-06)
+
+- **Behoben:** Der öffentliche Pre-Commit-Hook übergab alle passenden Dateinamen an
+  `check`. Nicht konfigurierte Python-Skripte verursachten dadurch Exit 2; außerdem
+  konnte die Eingrenzung auf einen geänderten Import-Target eingehende Verstöße in
+  anderen Modulen übersehen. Der Hook prüft jetzt das gesamte Projekt wie der lokale
+  Hook. Ein Regressionstest umfasst beide Fälle; `pre-commit try-repo` prüft die echte
+  Installation des öffentlichen Hooks in einem separaten Git-Projekt.
+- **Behoben:** CI baut Wheel und Source-Archiv und installiert das Wheel auf Python
+  3.12 außerhalb des Checkouts für CLI-Smoke-Checks. Paketmetadaten enthalten jetzt
+  Repository-, Issue- und Dokumentationslinks.
+- **Behoben:** Installations- und CI-Beispiele verwenden die Git-Quelle. Der PyPI-Name
+  `smelt` gehört zu einem anderen Projekt (https://pypi.org/project/smelt/); die bisherigen
+  `uvx smelt`-Beispiele installierten dieses statt unserer Architekturprüfung.
+  Auch der Hinweis bei neuerer Python-Syntax empfiehlt keine Installation des fremden
+  Pakets mehr.
+- **Behoben:** Ein beim Windows-Hook-Test gefundenes UTF-8-BOM wurde als Syntaxfehler
+  behandelt, obwohl Python diese Quelldatei akzeptiert. Der Leser entfernt jetzt das
+  BOM; ein Regressionstest prüft weiterhin den Importbefund auf der korrekten Zeile.
+- **Offen vor PyPI-Release:** Eigenen Distributionsnamen wählen und anschließend
+  Metadaten, Versionsabfrage und Installationsbeispiele darauf umstellen. CLI-Befehl
+  und Python-Paket können weiterhin `smelt` heißen.
+- **Offen für einen Open-Source-Release:** Lizenz festlegen und als Datei sowie
+  Paketmetadatum aufnehmen. Aktuell ist keine Lizenz deklariert.
+- **Release-Schritte:** Nach erfolgreicher CI den PR mergen, den im README verwendeten
+  Tag `v0.1.0` erstellen und die Distribution veröffentlichen. Aktuell existiert weder
+  dieser Tag noch ein GitHub-Release; es wurde nichts veröffentlicht.
+
+**Lokal geprüft:** Wheel aus dem Source-Archiv gebaut, beide Archive und `py.typed`
+kontrolliert, Installation mit ausschließlich Laufzeitabhängigkeiten auf Python 3.12
+und 16 CLI-Smoke-Checks erfolgreich. 286 Tests bestanden, 1 übersprungen; Ruff, Mypy,
+eigener Smelt-Check und Pre-Commit-Checks grün. CI am vorherigen PR-Stand war auf
+Python 3.12–3.14 unter Linux, macOS und Windows vollständig erfolgreich.

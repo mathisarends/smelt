@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.context import AnalysisContext
+from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.diagnostics.debt import Debt, DebtEntry
@@ -20,7 +22,8 @@ from smelt.diagnostics.violation import (
     Violation,
     docs_url,
 )
-from smelt.engine.changes import git_changes
+from smelt.engine.changes import base_snapshot
+from smelt.engine.paths import missing_paths
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
@@ -33,7 +36,6 @@ if TYPE_CHECKING:
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
 _CATEGORY_ORDER = [
     Category.DEPENDENCIES,
-    Category.CODE,
     Category.STRUCTURE,
     Category.TESTS,
 ]
@@ -59,12 +61,6 @@ class CheckOutcome:
     # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
     resolved_debt: list[DebtEntry] = field(default_factory=list)
-
-
-def load_rules(loaded: LoadedConfig) -> RuleSet:
-    config = loaded.config
-    search = [loaded.root, *(loaded.root / r for r in config.project.source_roots)]
-    return build_rule_set(config.plugins, search_paths=search)
 
 
 def rule_meta(rule: Rule) -> RuleMeta:
@@ -93,12 +89,18 @@ def resolve_active_rules(
     ]
     if issues:
         raise ConfigError(issues, loaded.path.name)
+    for key in ("select", "ignore"):
+        for prefix in getattr(options, key):
+            if not any(code.startswith(prefix.strip().upper()) for code in known):
+                msg = (
+                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
+                    "`smelt rules` lists valid codes"
+                )
+                raise AnalysisError(msg)
 
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
         setting = config.rules.get(rule.code)
-        if setting is None and rule.code == "SMT406":
-            setting = config.tests.interaction_assertions
         explicitly_selected = rule.code in options.select
         if setting == "off":
             continue
@@ -112,14 +114,23 @@ def resolve_active_rules(
             continue
         if options.ignore and _matches_prefix(rule.code, options.ignore):
             continue
-        if Index.CHANGES in rule.requires and not options.changed:
-            continue
         active.append((rule, severity))
     return active
 
 
 def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
     return any(code.startswith(prefix.strip().upper()) for prefix in prefixes if prefix)
+
+
+def _prefix_suggestion(raw: str, known: set[str]) -> str:
+    wanted = raw.strip().upper()
+    candidates = {code[: len(wanted)] for code in known if len(code) >= len(wanted)}
+    close = [
+        code
+        for code in candidates
+        if sum(a != b for a, b in zip(code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
 
 
 def run_check(
@@ -130,11 +141,82 @@ def run_check(
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
     config = loaded.config
-    rules = rules or load_rules(loaded)
+    rules = rules or build_rule_set()
     active = resolve_active_rules(rules, loaded, options)
     ctx = context or AnalysisContext(loaded.root, config)
-    if options.changed and ctx.changes is None:
-        ctx.changes = git_changes(loaded.root, options.base)
+    issues = missing_paths(ctx)
+    if issues:
+        raise ConfigError(issues, loaded.path.name)
+    _validate_scope(ctx, options.paths)
+    violations, suppressed = _collect(ctx, rules, loaded, active)
+    unfiltered = list(violations)
+
+    in_debt = 0
+    resolved: list[DebtEntry] = []
+    severity_of = {rule.code: severity for rule, severity in active}
+    if options.use_debt and config.debt:
+        debt = Debt.load(loaded.root / config.debt)
+        violations, known, resolved = debt.match(violations, snippet_reader(ctx))
+        in_debt = len(known)
+        full_run = not options.paths and not options.changed
+        if "SMT903" in severity_of and full_run:
+            violations.extend(
+                _resolved_violations(resolved, config.debt, severity_of["SMT903"])
+            )
+    if options.changed:
+        violations = _introduced(
+            ctx,
+            violations,
+            lambda before: _collect(before, rules, loaded, active)[0],
+            base=options.base,
+        )
+
+    violations = [v for v in violations if _in_scope(v, options)]
+    violations.sort(key=Violation.sort_key)
+    categories = {rule.category for rule, _ in active}
+    report = Report(
+        violations=violations,
+        modules=len(ctx.files.sources),
+        categories=[c for c in _CATEGORY_ORDER if c in categories],
+        rules=[rule_meta(rule) for rule, _ in active],
+        fail_on=options.fail_on,
+        suppressed=suppressed,
+        in_debt=in_debt,
+        scope=options.paths,
+        checked_files=sum(
+            _under_any(path, options.paths) if options.paths else True
+            for path in ctx.files.all_python_paths()
+        ),
+    )
+    return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
+
+
+def _introduced(
+    ctx: AnalysisContext,
+    violations: list[Violation],
+    collect: Callable[[AnalysisContext], list[Violation]],
+    *,
+    base: str | None,
+) -> list[Violation]:
+    """The violations the working tree adds to the base commit, judged by today's config."""
+    with tempfile.TemporaryDirectory(prefix="smelt-base-") as tmp:
+        base_root = base_snapshot(ctx.root, base, Path(tmp))
+        if base_root is None:
+            return violations
+        before_ctx = AnalysisContext(base_root, ctx.config)
+        before = collect(before_ctx)
+        known = Debt.from_violations(before, snippet_reader(before_ctx))
+        introduced, _, _ = known.match(violations, snippet_reader(ctx))
+    return introduced
+
+
+def _collect(
+    ctx: AnalysisContext,
+    rules: RuleSet,
+    loaded: LoadedConfig,
+    active: list[tuple[Rule, Severity]],
+) -> tuple[list[Violation], int]:
+    """Every violation after ignores and suppressions, and the suppressed count."""
     requires = frozenset(index for rule, _ in active for index in rule.requires)
     ctx.ensure(requires)
 
@@ -154,40 +236,14 @@ def run_check(
     known_codes = {rule.code for rule in rules.rules}
     # The rules a full run with this config would execute; the others are off and
     # cannot need a suppression.
-    enabled = resolve_active_rules(rules, loaded, CheckOptions(changed=options.changed))
+    enabled = resolve_active_rules(rules, loaded, CheckOptions())
     enabled_codes = {rule.code for rule, _ in enabled} - _META
     violations.extend(
         _suppression_violations(
             ctx, suppressions, active_codes, (known_codes, enabled_codes), severity_of
         )
     )
-    unfiltered = list(violations)
-
-    in_debt = 0
-    resolved: list[DebtEntry] = []
-    if options.use_debt and config.debt:
-        debt = Debt.load(loaded.root / config.debt)
-        violations, known, resolved = debt.match(violations, snippet_reader(ctx))
-        in_debt = len(known)
-        full_run = not options.paths and not options.changed
-        if "SMT903" in active_codes and full_run:
-            violations.extend(
-                _resolved_violations(resolved, config.debt, severity_of["SMT903"])
-            )
-
-    violations = [v for v in violations if _in_scope(ctx, v, options)]
-    violations.sort(key=Violation.sort_key)
-    categories = {rule.category for rule, _ in active}
-    report = Report(
-        violations=violations,
-        modules=len(ctx.files.sources),
-        categories=[c for c in _CATEGORY_ORDER if c in categories],
-        rules=[rule_meta(rule) for rule, _ in active],
-        fail_on=options.fail_on,
-        suppressed=suppressed,
-        in_debt=in_debt,
-    )
-    return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
+    return violations, suppressed
 
 
 def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
@@ -345,20 +401,23 @@ def _resolved_violations(
     ]
 
 
-def _in_scope(
-    ctx: AnalysisContext, violation: Violation, options: CheckOptions
-) -> bool:
-    if options.paths and not _under_any(violation.path, options.paths):
-        return False
-    if options.changed and ctx.changes is not None:
-        if violation.path in ctx.changes:
-            return True
-        return any(
-            (path := ctx.files.path_for_module(module)) is not None
-            and path in ctx.changes
-            for module in violation.involved_modules()
-        )
-    return True
+def _in_scope(violation: Violation, options: CheckOptions) -> bool:
+    return not options.paths or _under_any(violation.path, options.paths)
+
+
+def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
+    known = list(ctx.files.all_python_paths())
+    candidates = [*known, *(p.path for p in ctx.files.packages.values())]
+    for path in paths:
+        if not (ctx.root / path).exists():
+            msg = f'check path "{path}" does not exist{did_you_mean(path, candidates)}'
+            raise AnalysisError(msg)
+        if not any(_under_any(p, (path,)) for p in known):
+            msg = (
+                f'check path "{path}" contains no analyzed Python source or test files; '
+                "check project.root_packages, source_roots, test_roots and exclude"
+            )
+            raise AnalysisError(msg)
 
 
 def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:

@@ -139,6 +139,23 @@ class TestSharedImportsFeature:
             == "shared module gw.shared.clock must not import feature voice"
         )
 
+    def test_importing_a_feature_wiring_module_is_one_finding(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG.replace(
+                    "  shared: [gw.shared]",
+                    "  shared: [gw.shared]\n  wiring: [gw.features.voice.application.di]",
+                ),
+                "gw/features/voice/application/di.py": "",
+                "gw/shared/clock.py": "from gw.features.voice.application import di\n",
+            },
+        )
+
+        assert [v.code for v in violations(root)] == ["SMT105"]
+
     def test_feature_importing_shared_is_fine(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,
@@ -149,3 +166,86 @@ class TestSharedImportsFeature:
         )
 
         assert violations(root, CheckOptions(select=("SMT1",))) == []
+
+
+CENTRAL_CONFIG = """
+version: 1
+project:
+  root_packages: [gw]
+architecture:
+  features:
+    root: gw.features
+  modules:
+    gw.platform: infrastructure
+  layers:
+    domain: {path: domain}
+    application: {path: application, may_depend_on: [domain]}
+    infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
+"""
+
+
+def _central(tmp_path: Path, files: dict[str, str]) -> Path:
+    base = {
+        "smelt.yaml": CENTRAL_CONFIG,
+        "gw/__init__.py": "",
+        "gw/platform/__init__.py": "",
+        "gw/platform/orm.py": "",
+        "gw/features/__init__.py": "",
+        "gw/features/voice/__init__.py": "",
+        "gw/features/voice/domain/__init__.py": "",
+        "gw/features/voice/domain/call.py": "",
+        "gw/features/voice/infrastructure/__init__.py": "",
+    }
+    return write_project(tmp_path, {**base, **files})
+
+
+class TestCentralModules:
+    def test_feature_domain_must_not_import_central_infrastructure(
+        self, tmp_path: Path
+    ) -> None:
+        root = _central(
+            tmp_path,
+            {"gw/features/voice/domain/repo.py": "from gw.platform.orm import Base\n"},
+        )
+
+        [found] = violations(root)
+
+        assert (found.code, found.message) == (
+            "SMT101",
+            "domain must not depend on infrastructure",
+        )
+        assert found.hint == (
+            "domain depends on no other layer. Define what it needs as an "
+            "abstraction in domain and implement it in an outer layer."
+        )
+
+    def test_feature_infrastructure_may_use_central_infrastructure(
+        self, tmp_path: Path
+    ) -> None:
+        root = _central(
+            tmp_path,
+            {
+                "gw/features/voice/infrastructure/repo.py": (
+                    "from gw.platform.orm import Base\n"
+                )
+            },
+        )
+
+        assert violations(root) == []
+
+    def test_central_module_must_not_import_a_feature(self, tmp_path: Path) -> None:
+        root = _central(
+            tmp_path,
+            {"gw/platform/settings.py": "from gw.features.voice.domain import call\n"},
+        )
+
+        [found] = violations(root)
+
+        assert (found.code, found.message) == (
+            "SMT105",
+            "central module gw.platform.settings must not import feature voice",
+        )
+        assert found.expected == {
+            "may_import": "shared code, central modules of its layers and "
+            "third-party packages, no feature"
+        }

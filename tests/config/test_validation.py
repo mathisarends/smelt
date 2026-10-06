@@ -94,40 +94,33 @@ class TestModuleSets:
             parse_config(raw)
 
 
-class TestRoles:
-    def test_implements_unknown_role(self) -> None:
+class TestCentralModules:
+    def test_unknown_layer(self) -> None:
         raw = {
             **MINIMAL,
-            "roles": {
-                "port": {"detect": {"base": "typing.Protocol"}},
-                "adapter": {"detect": {"implements": "prot"}},
+            "architecture": {
+                "layers": {"infrastructure": {"path": "infrastructure"}},
+                "modules": {"gateway.platform": "infra"},
             },
         }
 
-        with pytest.raises(
-            ConfigError, match='unknown role "prot" \\(did you mean "port"\\?\\)'
-        ):
+        with pytest.raises(ConfigError) as caught:
             parse_config(raw)
 
-    def test_detect_needs_exactly_one_condition(self) -> None:
-        raw = {**MINIMAL, "roles": {"port": {"detect": {}}}}
+        assert str(caught.value.issues[0]) == (
+            'architecture.modules.gateway.platform: unknown layer "infra" '
+            '(did you mean "infrastructure"?)'
+        )
 
-        with pytest.raises(ConfigError, match="exactly one condition"):
+    def test_inside_features_root(self) -> None:
+        raw = {
+            **MINIMAL,
+            "architecture": {
+                "features": {"root": "gateway.features"},
+                "layers": {"domain": {"path": "domain"}},
+                "modules": {"gateway.features.voice": "domain"},
+            },
+        }
+
+        with pytest.raises(ConfigError, match="overlaps the features root"):
             parse_config(raw)
-
-
-class TestTestsSection:
-    def test_unknown_patching_category(self) -> None:
-        raw = {**MINIMAL, "tests": {"patching": {"forbid": ["privat"]}}}
-
-        with pytest.raises(
-            ConfigError,
-            match='unknown category "privat" \\(did you mean "private"\\?\\)',
-        ):
-            parse_config(raw)
-
-    def test_feature_layout_requires_features(self) -> None:
-        with pytest.raises(
-            ConfigError, match=r'"feature" layout requires architecture\.features'
-        ):
-            parse_config({**MINIMAL, "tests": {"layout": "feature"}})

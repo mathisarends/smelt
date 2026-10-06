@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
-from smelt.config.models import PATCH_CATEGORIES, CrossFeatureAllowance
+from smelt.config.models import CrossFeatureAllowance
 
 if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
@@ -27,8 +27,6 @@ class _Validator:
         self._layers()
         self._cross_feature()
         self._module_sets()
-        self._roles()
-        self._tests()
 
     def _error(self, path: str, message: str) -> None:
         self.errors.append(ConfigIssue(path, message))
@@ -77,6 +75,11 @@ class _Validator:
             for key in ("shared", "composition_root")
             for index, module in enumerate(getattr(arch, key))
         ]
+        named.extend(
+            (f"architecture.modules.{module}", module) for module in arch.modules
+        )
+        for module, layer in arch.modules.items():
+            self._check_layer(f"architecture.modules.{module}", layer)
         if arch.features and arch.features.root:
             named.append(("architecture.features.root", arch.features.root))
         if arch.features and arch.features.pattern:
@@ -108,6 +111,22 @@ class _Validator:
                         f"architecture.{key}[{index}]",
                         f'"{module}" is inside the features root "{features_root}"',
                     )
+        for module in arch.modules:
+            if features_root and (
+                _within(module, features_root) or _within(features_root, module)
+            ):
+                self._error(
+                    f"architecture.modules.{module}",
+                    f'"{module}" overlaps the features root "{features_root}"; '
+                    "modules are for code outside the features",
+                )
+            for other in (*arch.shared, *arch.composition_root):
+                if _within(module, other):
+                    self._error(
+                        f"architecture.modules.{module}",
+                        f'"{module}" is already covered by "{other}" '
+                        "(shared or composition_root)",
+                    )
         for index, module in enumerate(arch.shared):
             for other in arch.composition_root:
                 if _within(module, other) or _within(other, module):
@@ -115,44 +134,6 @@ class _Validator:
                         f"architecture.shared[{index}]",
                         f'"{module}" overlaps composition_root "{other}"',
                     )
-
-    def _roles(self) -> None:
-        roles = self.config.roles
-        for name, role in roles.items():
-            base = f"roles.{name}"
-            for index, layer in enumerate(role.layers):
-                self._check_layer(f"{base}.layers[{index}]", layer)
-            target = role.detect.implements
-            if target == name:
-                self._error(
-                    f"{base}.detect.implements", "a role cannot implement itself"
-                )
-            elif target is not None and target not in roles:
-                self._error(
-                    f"{base}.detect.implements",
-                    f'unknown role "{target}"{did_you_mean(target, roles)}',
-                )
-
-    def _tests(self) -> None:
-        tests = self.config.tests
-        categories = sorted(
-            PATCH_CATEGORIES
-            | set(self.config.architecture.layers)
-            | {"composition_root"}
-        )
-        for key in ("allow", "forbid"):
-            for index, value in enumerate(getattr(tests.patching, key)):
-                if value not in categories:
-                    self._error(
-                        f"tests.patching.{key}[{index}]",
-                        f'unknown category "{value}"{did_you_mean(value, categories)}',
-                    )
-        for index, layer in enumerate(tests.mocks.forbid_first_party):
-            self._check_layer(f"tests.mocks.forbid_first_party[{index}]", layer)
-        if tests.layout == "feature" and self.config.architecture.features is None:
-            self._error(
-                "tests.layout", '"feature" layout requires architecture.features'
-            )
 
 
 def _within(module: str, package: str) -> bool:

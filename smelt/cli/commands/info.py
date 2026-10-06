@@ -8,7 +8,7 @@ import yaml
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import config_json_schema
 from smelt.config.errors import did_you_mean
-from smelt.engine.check import load_rules, rule_meta
+from smelt.engine.check import rule_meta
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
@@ -18,21 +18,12 @@ if TYPE_CHECKING:
     from smelt.rules.base import RuleSet
 
 
-def _rule_set(args: argparse.Namespace, cwd: Path) -> RuleSet:
-    try:
-        loaded = load_project_config(args.config, cwd)
-    except CliError:
-        return build_rule_set()
-    return load_rules(loaded)
-
-
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rules = _rule_set(args, cwd)
+    rules = build_rule_set()
     rule = rules.lookup(args.rule)
     if rule is None:
-        candidates = [r.code for r in rules.rules] + [r.name for r in rules.rules]
-        msg = f'unknown rule "{args.rule}"{did_you_mean(args.rule, candidates)}'
-        raise CliError(msg)
+        msg = f'unknown rule "{args.rule}"{_suggestion(args.rule, rules)}'
+        raise CliError(f"{msg}; `smelt rules` lists them all")
     doc = rule.explain()
     meta = rule_meta(rule)
     if args.format == "json":
@@ -73,12 +64,26 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return EXIT_OK
 
 
+def _suggestion(raw: str, rules: RuleSet) -> str:
+    """A close rule name, or a code that differs in one character only."""
+    wanted = raw.strip().upper()
+    if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
+        return did_you_mean(raw.strip(), [r.name for r in rules.rules])
+    close = [
+        r.code
+        for r in rules.rules
+        if len(r.code) == len(wanted)
+        and sum(a != b for a, b in zip(r.code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
+
+
 def _indent(text: str) -> str:
     return "\n".join(f"  {line}" if line else "" for line in text.splitlines())
 
 
 def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    rule_set = _rule_set(args, cwd)
+    rule_set = build_rule_set()
     metas = [rule_meta(rule) for rule in rule_set.rules]
     if args.format == "json":
         console.print(json.dumps([m.to_json() for m in metas], indent=2))
@@ -93,7 +98,7 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    data = loaded.config.model_dump(mode="json")
+    data = loaded.config.model_dump(mode="json", by_alias=True)
     if args.format == "json":
         console.print(json.dumps(data, indent=2))
     else:

@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import posixpath
 import re
-from collections import Counter
 from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.errors import did_you_mean
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.model import is_within
 from smelt.rules.base import BaseRule, RuleDoc
-from smelt.rules.testing.common import first_party_module
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -20,10 +20,20 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax
 
 
+def _first_party_module(ctx: AnalysisContext, qualname: str) -> str | None:
+    """The longest source module that prefixes ``qualname``."""
+    parts = qualname.split(".")
+    for end in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:end])
+        if candidate in ctx.files.sources:
+            return candidate
+    return None
+
+
 def _imported_modules(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[str]:
     found: list[str] = []
     for target in syntax.bindings.values():
-        module = first_party_module(ctx, target)
+        module = _first_party_module(ctx, target)
         if module is not None and module not in found:
             found.append(module)
     return found
@@ -68,11 +78,39 @@ def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
     return _Mirror(path.split("/") if path else [], match.group("module"), root)
 
 
-def _roots(ctx: AnalysisContext, mirror: _Mirror) -> list[str]:
-    roots = ctx.config.project.root_packages
+def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
+    roots = member_roots(ctx, test_root)
     if mirror.root is None:
         return roots
     return [mirror.root] if mirror.root in roots else []
+
+
+def member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
+    """The root packages a test root belongs to.
+
+    In a workspace, ``libs/agent/tests`` tests the package under ``libs/agent/src``:
+    the source roots sharing the longest leading path with the test root win.
+    """
+    roots = ctx.config.project.root_packages
+    shared = {root: _common_depth(ctx, root, test_root) for root in roots}
+    best = max(shared.values(), default=0)
+    if best == 0:
+        return roots
+    return [root for root in roots if shared[root] == best]
+
+
+def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
+    package = ctx.files.packages.get(root)
+    if package is None:
+        return 0
+    depth = 0
+    for left, right in zip(
+        package.source_root.strip("/").split("/"), test_root.split("/"), strict=False
+    ):
+        if left != right or left in ("", "."):
+            break
+        depth += 1
+    return depth
 
 
 def _subjects(subject: str, *, suffixes: bool) -> list[str]:
@@ -83,9 +121,9 @@ def _subjects(subject: str, *, suffixes: bool) -> list[str]:
     return ["_".join(parts[:end]) for end in range(len(parts), 0, -1)]
 
 
-def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror) -> bool:
+def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bool:
     files = ctx.files
-    for root in _roots(ctx, mirror):
+    for root in _roots(ctx, mirror, test_root):
         package = ".".join([root, *mirror.directories])
         package_name = mirror.directories[-1] if mirror.directories else root
         for name in _subjects(mirror.module, suffixes=ctx.config.tests.mirror_suffixes):
@@ -97,10 +135,62 @@ def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror) -> bool:
     return False
 
 
-def _missing_source(ctx: AnalysisContext, mirror: _Mirror) -> str:
-    root = (_roots(ctx, mirror) or ctx.config.project.root_packages)[0]
-    return ctx.files.module_to_path(
-        ".".join([root, *mirror.directories, mirror.module])
+def _missing_module(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
+    root = (_roots(ctx, mirror, test_root) or member_roots(ctx, test_root))[0]
+    return ".".join([root, *mirror.directories, mirror.module])
+
+
+def _similar_module(ctx: AnalysisContext, module: str) -> str:
+    """`` (did you mean "fernet_token_cypher.py"?)`` for a typo next to a real module."""
+    package, name = module.rsplit(".", 1)
+    siblings = [
+        f"{source.module.rsplit('.', 1)[1]}.py"
+        for source in ctx.files.sources.values()
+        if not source.is_package and source.module.rsplit(".", 1)[0] == package
+    ]
+    return did_you_mean(f"{name}.py", siblings)
+
+
+def _suffix_sibling(
+    ctx: AnalysisContext, mirror: _Mirror, test_root: str, imported: list[str]
+) -> str | None:
+    """The module next to the mirrored path that the name ends with.
+
+    ``health/presentation/test_health_presentation_router.py`` mirrors
+    ``health/presentation/router.py`` once the prefix is dropped. Not when the test
+    imports another module of that package: ``test_..._event_mapper.py`` importing
+    ``presentation.rpc.mappers`` is not about ``presentation/mapper.py``.
+    """
+    found = [
+        source.module
+        for root in _roots(ctx, mirror, test_root)
+        for source in ctx.files.sources.values()
+        if not source.is_package
+        and source.module.rsplit(".", 1)[0] == ".".join([root, *mirror.directories])
+        and mirror.module.endswith(f"_{source.module.rsplit('.', 1)[1]}")
+    ]
+    if len(found) != 1:
+        return None
+    package = found[0].rsplit(".", 1)[0]
+    others = [
+        m for m in imported if is_within(m, package) and m not in (package, found[0])
+    ]
+    return None if others else found[0]
+
+
+def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
+    """A hint when the test path starts with the root package the pattern leaves out."""
+    pattern = ctx.config.tests.mirror
+    if "{root}" in pattern or not mirror.directories:
+        return ""
+    root, *directories = mirror.directories
+    if root not in member_roots(ctx, test_root):
+        return ""
+    if not _mirrors_source(ctx, _Mirror(directories, mirror.module, root), test_root):
+        return ""
+    return (
+        f' The test path starts with the root package "{root}"; if all tests do, '
+        f'set tests.mirror to "{{root}}/{pattern}".'
     )
 
 
@@ -115,6 +205,18 @@ def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
         .replace("{root}", root)
     )
     return f"{test_root}/{relative}"
+
+
+def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
+    """The mirrored test path of ``module`` under the test root of its package.
+
+    Segments may be placeholders such as ``<layer>``; they are kept as written.
+    """
+    root = module.split(".", 1)[0]
+    for test_root in ctx.config.project.test_roots:
+        if root in member_roots(ctx, test_root.strip("/")):
+            return _mirror_target(ctx, test_root.strip("/"), module)
+    return None
 
 
 class MisplacedTestFile(BaseRule):
@@ -141,7 +243,6 @@ class MisplacedTestFile(BaseRule):
         ),
         config=(
             "tests.layout",
-            "tests.pattern",
             "tests.mirror",
             "tests.unmirrored",
             "tests.mirror_suffixes",
@@ -156,37 +257,32 @@ class MisplacedTestFile(BaseRule):
         for path, test in sorted(ctx.files.tests.items()):
             if test.is_conftest:
                 continue
-            if tests.layout == "feature":
-                yield from self._check_feature(ctx, test)
-            elif not any(path_matches(p, path) for p in tests.unmirrored):
+            if not any(path_matches(p, path) for p in tests.unmirrored):
                 yield from self._check_mirror(ctx, test)
-
-    def _check_feature(
-        self, ctx: AnalysisContext, test: TestFile
-    ) -> Iterator[Violation]:
-        syntax = ctx.syntax.for_path(test.path)
-        if syntax is None:
-            return
-        expected = self._feature_path(ctx, test.path, _imported_modules(ctx, syntax))
-        if expected is not None and expected != test.path:
-            yield self._misplaced(test, expected)
 
     def _check_mirror(
         self, ctx: AnalysisContext, test: TestFile
     ) -> Iterator[Violation]:
         mirror = _mirror_parts(ctx, test)
-        if mirror is not None and _mirrors_source(ctx, mirror):
+        if mirror is not None and _mirrors_source(ctx, mirror, test.test_root):
             return
         syntax = ctx.syntax.for_path(test.path)
         modules = _imported_modules(ctx, syntax) if syntax is not None else []
         subject = mirror.module if mirror else _subject(test.name)
-        expected = self._mirror_path(ctx, test, subject, modules)
-        if expected is not None and expected != test.path:
-            yield self._misplaced(test, expected)
-            return
+        tested = self._tested_module(ctx, subject, modules)
+        if tested is None and mirror is not None:
+            tested = _suffix_sibling(ctx, mirror, test.test_root, modules)
+        taken = ""
+        if tested is not None:
+            expected = _mirror_target(ctx, test.test_root, tested)
+            if expected in ctx.files.tests and expected != test.path:
+                taken = f" {expected} already exists; merge the two tests."
+            elif expected != test.path:
+                yield self._misplaced(ctx, test, tested, expected)
+                return
         hint = (
             "Move or rename the test so its path mirrors the module it tests, "
-            "delete it if that module is gone, or list it in tests.unmirrored."
+            "delete it if that module is gone, or list it in tests.unmirrored." + taken
         )
         if mirror is None:
             pattern = ctx.config.tests.mirror
@@ -197,53 +293,47 @@ class MisplacedTestFile(BaseRule):
                 hint=hint,
             )
             return
+        module = _missing_module(ctx, mirror, test.test_root)
+        source = ctx.files.module_to_path(module)
+        info = ctx.model.info(module)
         yield self.violation(
-            f"{test.name} mirrors no source module: "
-            f"{_missing_source(ctx, mirror)} does not exist",
+            f"{test.name} mirrors no source module: {source} does not exist"
+            f"{_similar_module(ctx, module)}",
             path=test.path,
-            hint=hint,
+            feature=info.feature if info else None,
+            layer=info.layer if info else None,
+            expected={"source": source},
+            hint=hint + _root_pattern_hint(ctx, mirror, test.test_root),
         )
 
-    def _misplaced(self, test: TestFile, expected: str) -> Violation:
+    def _misplaced(
+        self, ctx: AnalysisContext, test: TestFile, module: str, expected: str
+    ) -> Violation:
         directory = posixpath.dirname(expected)
         if directory == posixpath.dirname(test.path):
             message = f"{test.name} should be named {posixpath.basename(expected)}"
         else:
             message = f"{test.name} belongs in {directory}/"
+        info = ctx.model.info(module)
         return self.violation(
             message,
             path=test.path,
-            expected={"path": expected},
+            feature=info.feature if info else None,
+            layer=info.layer if info else None,
+            expected={"path": expected, "source": ctx.files.module_to_path(module)},
             hint=f"Move the file to {expected}.",
         )
 
-    def _feature_path(
-        self, ctx: AnalysisContext, path: str, modules: list[str]
+    def _tested_module(
+        self, ctx: AnalysisContext, subject: str, modules: list[str]
     ) -> str | None:
-        features: Counter[str] = Counter()
-        for module in modules:
-            info = ctx.model.info(module)
-            if info is not None and info.feature is not None:
-                features[info.feature] += 1
-        if not features:
+        """The one imported module the test is about, judged by its name."""
+        plain = [m for m in modules if m not in ctx.files.packages]
+        exact = [m for m in plain if m.rsplit(".", 1)[-1] == subject]
+        if len(exact) == 1:
+            return exact[0]
+        if exact:
             return None
-        pattern = ctx.config.tests.pattern.strip("/")
-        for feature in features:
-            directory = pattern.replace("{feature}", feature)
-            if path.startswith(f"{directory}/"):
-                return path
-        best = max(sorted(features), key=lambda feature: features[feature])
-        directory = pattern.replace("{feature}", best)
-        return f"{directory}/{posixpath.basename(path)}"
-
-    def _mirror_path(
-        self, ctx: AnalysisContext, test: TestFile, subject: str, modules: list[str]
-    ) -> str | None:
-        candidates = [
-            m
-            for m in modules
-            if m.rsplit(".", 1)[-1] == subject and m not in ctx.files.packages
-        ]
-        if len(candidates) != 1:
-            return None
-        return _mirror_target(ctx, test.test_root, candidates[0])
+        # test_session_infrastructure_repository.py spells out the package path
+        suffixed = [m for m in plain if subject.endswith(f"_{m.rsplit('.', 1)[-1]}")]
+        return suffixed[0] if len(suffixed) == 1 else None

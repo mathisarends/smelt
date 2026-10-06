@@ -14,7 +14,6 @@ from smelt.cli.support import (
     configure_streams,
 )
 from smelt.config import ConfigError
-from smelt.rules.registry import PluginError
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
@@ -34,7 +33,19 @@ def build_parser() -> argparse.ArgumentParser:
     _add_discovery(sub)
     _add_maintenance(sub)
     _add_config(sub)
+    for command in sub.choices.values():
+        _allow_local_config(command)
     return parser
+
+
+def _allow_local_config(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--config", metavar="PATH", default=argparse.SUPPRESS, help="path to smelt.yaml"
+    )
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for child in action.choices.values():
+                _allow_local_config(child)
 
 
 def _add_check(sub: Subparsers) -> None:
@@ -43,9 +54,15 @@ def _add_check(sub: Subparsers) -> None:
         "paths", nargs="*", metavar="PATHS", help="only report these files"
     )
     check.add_argument(
-        "--changed", action="store_true", help="only report changed files"
+        "--changed",
+        action="store_true",
+        help="only report violations introduced since HEAD (incl. uncommitted files)",
     )
-    check.add_argument("--base", metavar="REF", help="compare --changed against REF")
+    check.add_argument(
+        "--base",
+        metavar="REF",
+        help="compare --changed against the merge-base with REF",
+    )
     check.add_argument(
         "--format", choices=["text", "json", "sarif", "github"], default="text"
     )
@@ -77,15 +94,12 @@ def _add_discovery(sub: Subparsers) -> None:
     rules.set_defaults(handler=commands.rules)
 
     context = sub.add_parser(
-        "context", help="architecture briefing for a feature or path"
+        "context",
+        help="architecture briefing for a feature, module or planned source path",
     )
-    context.add_argument("target", nargs="?", metavar="FEATURE|PATH")
+    context.add_argument("target", nargs="?", metavar="FEATURE|MODULE|PATH")
     context.add_argument("--format", choices=["text", "json"], default="text")
     context.set_defaults(handler=commands.context)
-
-    inspect = sub.add_parser("inspect", help="machine-readable architecture map")
-    inspect.add_argument("--format", choices=["json"], default="json")
-    inspect.set_defaults(handler=commands.inspect)
 
 
 def _add_maintenance(sub: Subparsers) -> None:
@@ -98,11 +112,6 @@ def _add_maintenance(sub: Subparsers) -> None:
         "--prune", action="store_true", help="only remove resolved entries"
     )
     debt.set_defaults(handler=commands.debt)
-
-    verify = sub.add_parser("verify", help="run the configured verification stack")
-    verify.add_argument("--format", choices=["text", "json"], default="text")
-    verify.add_argument("--fail-fast", action="store_true")
-    verify.set_defaults(handler=commands.verify)
 
 
 def _add_config(sub: Subparsers) -> None:
@@ -128,7 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handler(args, console, Path.cwd())
     except ConfigError as exc:
         console.err.write(f"{exc}\n")
-    except (AnalysisError, CliError, PluginError) as exc:
+    except (AnalysisError, CliError) as exc:
         console.error(str(exc))
     except json.JSONDecodeError as exc:
         console.error(f"invalid JSON: {exc}")

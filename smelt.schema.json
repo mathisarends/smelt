@@ -2,31 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/mathisarends/smelt/main/smelt.schema.json",
   "$defs": {
-    "AnalysisConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "types": {
-          "default": "none",
-          "enum": [
-            "none",
-            "pyright"
-          ],
-          "title": "Types",
-          "type": "string"
-        },
-        "pyright_command": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Pyright Command",
-          "type": "array"
-        }
-      },
-      "title": "AnalysisConfig",
-      "type": "object"
-    },
     "ArchitectureConfig": {
       "additionalProperties": false,
+      "description": "Features, layers and the modules around them.",
       "properties": {
         "features": {
           "anyOf": [
@@ -37,9 +15,11 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Where the features (vertical slices) live."
         },
         "shared": {
+          "description": "Modules every feature may import; they must not import features.",
           "items": {
             "type": "string"
           },
@@ -47,6 +27,7 @@
           "type": "array"
         },
         "composition_root": {
+          "description": "Modules that wire everything; nothing may import them.",
           "items": {
             "type": "string"
           },
@@ -54,53 +35,38 @@
           "type": "array"
         },
         "wiring": {
+          "description": "Provider modules (whole-segment * allowed) that may import across layers and features; they keep their feature and layer.",
           "items": {
             "type": "string"
           },
           "title": "Wiring",
           "type": "array"
         },
+        "modules": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Packages outside the features mapped to a layer, e.g. {backend.platform: infrastructure}.",
+          "title": "Modules",
+          "type": "object"
+        },
         "layers": {
           "additionalProperties": {
             "$ref": "#/$defs/LayerConfig"
           },
+          "description": "The layers and what each may import.",
           "title": "Layers",
           "type": "object"
         },
         "cross_feature": {
           "$ref": "#/$defs/CrossFeatureConfig"
         },
-        "di_frameworks": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Di Frameworks",
-          "type": "array"
-        },
         "imports": {
-          "$ref": "#/$defs/ImportsConfig"
+          "$ref": "#/$defs/ImportsConfig",
+          "description": "Which imports count."
         }
       },
       "title": "ArchitectureConfig",
-      "type": "object"
-    },
-    "BloatConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "ratio": {
-          "default": 5,
-          "exclusiveMinimum": 0,
-          "title": "Ratio",
-          "type": "number"
-        },
-        "min_test_loc": {
-          "default": 100,
-          "minimum": 0,
-          "title": "Min Test Loc",
-          "type": "integer"
-        }
-      },
-      "title": "BloatConfig",
       "type": "object"
     },
     "CrossFeatureAllowance": {
@@ -124,12 +90,15 @@
     },
     "CrossFeatureConfig": {
       "additionalProperties": false,
+      "description": "Imports between features.",
       "properties": {
         "default": {
           "$ref": "#/$defs/Policy",
-          "default": "deny"
+          "default": "deny",
+          "description": "Whether features may import each other at all."
         },
         "allow": {
+          "description": "Allowed imports: \"layer -> layer\" for all features, or {from: feature.layer, to: feature.layer}.",
           "items": {
             "anyOf": [
               {
@@ -168,6 +137,7 @@
             }
           ],
           "default": null,
+          "description": "Package whose direct child packages are the features.",
           "title": "Root"
         },
         "pattern": {
@@ -180,6 +150,7 @@
             }
           ],
           "default": null,
+          "description": "Dotted pattern ending in {feature}, e.g. \"app.{feature}\".",
           "title": "Pattern"
         }
       },
@@ -221,9 +192,11 @@
     },
     "ImportsConfig": {
       "additionalProperties": false,
+      "description": "Which imports the dependency rules look at.",
       "properties": {
         "type_checking": {
           "default": "include",
+          "description": "Whether imports under `if TYPE_CHECKING:` count.",
           "enum": [
             "include",
             "ignore"
@@ -233,10 +206,12 @@
         },
         "transitive": {
           "default": false,
+          "description": "Also report layer violations through other modules.",
           "title": "Transitive",
           "type": "boolean"
         },
         "cycles": {
+          "description": "Where SMT104 looks for cycles.",
           "items": {
             "$ref": "#/$defs/CycleScope"
           },
@@ -251,10 +226,12 @@
       "additionalProperties": false,
       "properties": {
         "path": {
+          "description": "Dotted path of the layer package inside a feature.",
           "title": "Path",
           "type": "string"
         },
         "may_depend_on": {
+          "description": "Layers this layer may import.",
           "items": {
             "type": "string"
           },
@@ -262,61 +239,14 @@
           "type": "array"
         },
         "third_party": {
-          "$ref": "#/$defs/ThirdPartyPolicy"
-        },
-        "forbid_bases": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid Bases",
-          "type": "array"
+          "$ref": "#/$defs/ThirdPartyPolicy",
+          "description": "Which third-party packages the layer may import (SMT103)."
         }
       },
       "required": [
         "path"
       ],
       "title": "LayerConfig",
-      "type": "object"
-    },
-    "MocksConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "max_per_test": {
-          "default": 3,
-          "minimum": 0,
-          "title": "Max Per Test",
-          "type": "integer"
-        },
-        "forbid_first_party": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid First Party",
-          "type": "array"
-        }
-      },
-      "title": "MocksConfig",
-      "type": "object"
-    },
-    "PatchingConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "allow": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Allow",
-          "type": "array"
-        },
-        "forbid": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Forbid",
-          "type": "array"
-        }
-      },
-      "title": "PatchingConfig",
       "type": "object"
     },
     "Policy": {
@@ -328,8 +258,10 @@
     },
     "ProjectConfig": {
       "additionalProperties": false,
+      "description": "Which packages and tests smelt reads.",
       "properties": {
         "root_packages": {
+          "description": "Top-level packages to check, e.g. [backend, agent].",
           "items": {
             "type": "string"
           },
@@ -338,6 +270,7 @@
           "type": "array"
         },
         "source_roots": {
+          "description": "Directories that contain the root packages, e.g. [src].",
           "items": {
             "type": "string"
           },
@@ -345,6 +278,7 @@
           "type": "array"
         },
         "test_roots": {
+          "description": "Directories with the tests; with layout: mirror they must exist.",
           "items": {
             "type": "string"
           },
@@ -352,6 +286,7 @@
           "type": "array"
         },
         "exclude": {
+          "description": "Path globs smelt skips entirely.",
           "items": {
             "type": "string"
           },
@@ -365,69 +300,6 @@
       "title": "ProjectConfig",
       "type": "object"
     },
-    "RoleConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "detect": {
-          "$ref": "#/$defs/RoleDetect"
-        },
-        "layers": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Layers",
-          "type": "array"
-        },
-        "file": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "File"
-        }
-      },
-      "required": [
-        "detect"
-      ],
-      "title": "RoleConfig",
-      "type": "object"
-    },
-    "RoleDetect": {
-      "additionalProperties": false,
-      "properties": {
-        "base": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Base"
-        },
-        "implements": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Implements"
-        }
-      },
-      "title": "RoleDetect",
-      "type": "object"
-    },
     "SeverityName": {
       "enum": [
         "error",
@@ -439,19 +311,15 @@
     },
     "StructureConfig": {
       "additionalProperties": false,
+      "description": "Naming rules for packages and modules.",
       "properties": {
         "forbidden_names": {
+          "description": "Package and module names to avoid (SMT302).",
           "items": {
             "type": "string"
           },
           "title": "Forbidden Names",
           "type": "array"
-        },
-        "crowded_threshold": {
-          "default": 10,
-          "minimum": 1,
-          "title": "Crowded Threshold",
-          "type": "integer"
         }
       },
       "title": "StructureConfig",
@@ -459,6 +327,7 @@
     },
     "SuppressionsConfig": {
       "additionalProperties": false,
+      "description": "Inline `# smelt: ignore[CODE] -- reason` comments.",
       "properties": {
         "require_reason": {
           "default": true,
@@ -471,28 +340,26 @@
     },
     "TestsConfig": {
       "additionalProperties": false,
+      "description": "Where test files must live.",
       "properties": {
         "layout": {
           "default": "none",
+          "description": "mirror: every test file must mirror a source module.",
           "enum": [
             "mirror",
-            "feature",
             "none"
           ],
           "title": "Layout",
           "type": "string"
         },
-        "pattern": {
-          "default": "tests/{feature}",
-          "title": "Pattern",
-          "type": "string"
-        },
         "mirror": {
           "default": "{path}/test_{module}.py",
+          "description": "Test path relative to the test root; placeholders {root}, {path}, {module}.",
           "title": "Mirror",
           "type": "string"
         },
         "unmirrored": {
+          "description": "Test path globs exempt from mirroring, e.g. [\"tests/e2e/**\"].",
           "items": {
             "type": "string"
           },
@@ -501,30 +368,9 @@
         },
         "mirror_suffixes": {
           "default": false,
+          "description": "Also allow test_<module>_<topic>.py.",
           "title": "Mirror Suffixes",
           "type": "boolean"
-        },
-        "patching": {
-          "$ref": "#/$defs/PatchingConfig"
-        },
-        "private_access": {
-          "default": "forbid",
-          "enum": [
-            "allow",
-            "forbid"
-          ],
-          "title": "Private Access",
-          "type": "string"
-        },
-        "mocks": {
-          "$ref": "#/$defs/MocksConfig"
-        },
-        "interaction_assertions": {
-          "$ref": "#/$defs/SeverityName",
-          "default": "warning"
-        },
-        "bloat": {
-          "$ref": "#/$defs/BloatConfig"
         }
       },
       "title": "TestsConfig",
@@ -565,25 +411,6 @@
           "type": "object"
         }
       ]
-    },
-    "VerifyStep": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "run": {
-          "title": "Run",
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "run"
-      ],
-      "title": "VerifyStep",
-      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -599,16 +426,6 @@
     "architecture": {
       "$ref": "#/$defs/ArchitectureConfig"
     },
-    "analysis": {
-      "$ref": "#/$defs/AnalysisConfig"
-    },
-    "roles": {
-      "additionalProperties": {
-        "$ref": "#/$defs/RoleConfig"
-      },
-      "title": "Roles",
-      "type": "object"
-    },
     "structure": {
       "$ref": "#/$defs/StructureConfig"
     },
@@ -619,10 +436,12 @@
       "additionalProperties": {
         "$ref": "#/$defs/SeverityName"
       },
+      "description": "Severity per rule code, or off.",
       "title": "Rules",
       "type": "object"
     },
     "ignore": {
+      "description": "Rules to skip for modules or paths.",
       "items": {
         "$ref": "#/$defs/IgnoreEntry"
       },
@@ -630,7 +449,8 @@
       "type": "array"
     },
     "suppressions": {
-      "$ref": "#/$defs/SuppressionsConfig"
+      "$ref": "#/$defs/SuppressionsConfig",
+      "description": "Inline `# smelt: ignore` rules."
     },
     "debt": {
       "anyOf": [
@@ -642,21 +462,8 @@
         }
       ],
       "default": null,
+      "description": "Debt file with known violations, e.g. .smelt/debt.json.",
       "title": "Debt"
-    },
-    "plugins": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Plugins",
-      "type": "array"
-    },
-    "verify": {
-      "items": {
-        "$ref": "#/$defs/VerifyStep"
-      },
-      "title": "Verify",
-      "type": "array"
     }
   },
   "required": [

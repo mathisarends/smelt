@@ -74,7 +74,6 @@ class TestInferConfig:
         assert inferred.features_root == "backend.features"
         assert inferred.composition_root == ["backend.main", "backend.lifespan"]
         assert inferred.wiring == ["backend.features.auth.infrastructure.di"]
-        assert inferred.di_frameworks == ["dishka"]
         config, warnings = parse_config(load_yaml(render_config(inferred)))
         assert warnings == ()
         assert config.architecture.wiring == inferred.wiring
@@ -111,7 +110,6 @@ class TestInferConfig:
         ]
         assert inferred.shared == ["shop.common"]
         assert inferred.composition_root == ["shop.bootstrap"]
-        assert inferred.di_frameworks == ["dependency_injector"]
         assert inferred.tests_layout == "none"
 
     def test_feature_pattern_without_container(self, tmp_path: Path) -> None:
@@ -137,7 +135,7 @@ class TestInferConfig:
             ("domain", "domain", []),
             ("presentation", "api", ["domain"]),
         ]
-        assert inferred.tests_layout == "feature"
+        assert inferred.tests_layout == "none"
 
     def test_plain_package_without_structure(self, tmp_path: Path) -> None:
         write_project(tmp_path, {"tool/__init__.py": "", "tool/cli.py": ""})
@@ -155,6 +153,17 @@ class TestInferConfig:
 
 
 class TestRenderConfig:
+    def test_adoption_exposes_coverage_decisions(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+        assert inferred is not None
+
+        rendered = render_config(inferred)
+
+        assert "third_party: allow" in rendered
+        assert "third_party: {default: deny" in rendered
+        assert "transitive: false  # direct imports only" in rendered
+        assert "pair applies to ALL features" in rendered
+
     def test_rendered_config_is_valid(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,
@@ -180,4 +189,88 @@ class TestRenderConfig:
         assert config.architecture.cross_feature.pairs() == {
             ("application", "application")
         }
-        assert config.tests.layout == "feature"
+        assert config.tests.layout == "none"
+
+
+DISHKA_PROVIDER = "from dishka import Provider\nclass P(Provider): pass\n"
+
+DDD_WORKSPACE = {
+    "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend", "libs/*"]\n',
+    "backend/src/backend/__init__.py": "",
+    "backend/src/backend/main.py": "from backend.app import create_app\n",
+    "backend/src/backend/app.py": (
+        "from backend.lifespan import lifespan\n"
+        "from backend.platform.database.di import DatabaseProvider\n"
+    ),
+    "backend/src/backend/lifespan.py": "",
+    "backend/src/backend/env.py": "",
+    "backend/src/backend/helpers.py": "from backend.lifespan import lifespan\n",
+    "backend/src/backend/platform/__init__.py": "",
+    "backend/src/backend/platform/database/__init__.py": "",
+    "backend/src/backend/platform/database/orm.py": "",
+    "backend/src/backend/platform/database/di.py": DISHKA_PROVIDER,
+    "backend/src/backend/platform/storage/__init__.py": "",
+    "backend/src/backend/platform/storage/di.py": DISHKA_PROVIDER,
+    "backend/src/backend/presentation/__init__.py": "",
+    "backend/src/backend/presentation/middleware.py": "",
+    "backend/src/backend/features/__init__.py": "",
+    "backend/src/backend/features/auth/__init__.py": "",
+    "backend/src/backend/features/auth/domain/__init__.py": "",
+    "backend/src/backend/features/auth/domain/token.py": "",
+    "backend/src/backend/features/auth/infrastructure/__init__.py": "",
+    "backend/src/backend/features/auth/infrastructure/di.py": DISHKA_PROVIDER,
+    "backend/src/backend/features/user/__init__.py": "",
+    "backend/src/backend/features/user/domain/__init__.py": "",
+    "backend/src/backend/features/user/infrastructure/__init__.py": "",
+    "backend/src/backend/features/user/infrastructure/di.py": DISHKA_PROVIDER,
+    "backend/tests/backend/features/auth/domain/test_token.py": "",
+    "backend/tests/backend/features/auth/domain/test_auth_domain_misc.py": "",
+    "libs/agent/src/agent/__init__.py": "",
+    "libs/agent/src/agent/tools.py": "",
+    "libs/agent/tests/agent/test_tools.py": "",
+}
+
+
+class TestDddWorkspace:
+    def test_app_factory_joins_the_composition_root(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+
+        assert inferred is not None
+        assert inferred.composition_root == [
+            "backend.main",
+            "backend.lifespan",
+            "backend.app",
+        ]
+
+    def test_settings_modules_are_shared(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+
+        assert inferred is not None
+        assert inferred.shared == ["backend.env"]
+
+    def test_central_packages_get_a_layer(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+
+        assert inferred is not None
+        # no feature has a presentation layer, so backend.presentation stays open
+        assert inferred.modules == {"backend.platform": "infrastructure"}
+        assert inferred.unclassified_roots == ["agent"]
+
+    def test_wiring_collapses_into_patterns(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+
+        assert inferred is not None
+        assert inferred.wiring == [
+            "backend.features.*.infrastructure.di",
+            "backend.platform.*.di",
+        ]
+
+    def test_mirror_layout_with_root_package(self, tmp_path: Path) -> None:
+        inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
+
+        assert inferred is not None
+        assert inferred.tests_layout == "mirror"
+        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        assert warnings == ()
+        assert config.tests.mirror == "{root}/{path}/test_{module}.py"
+        assert config.architecture.modules == inferred.modules

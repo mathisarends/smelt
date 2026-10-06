@@ -1,3 +1,4 @@
+import posixpath
 import re
 from typing import Annotated, Literal, Self
 
@@ -17,10 +18,6 @@ _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
 _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
 _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
-PATCH_CATEGORIES = frozenset(
-    {"external", "environment", "stdlib", "private", "first_party", "shared"}
-)
-
 
 class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -35,10 +32,33 @@ def _check_dotted(values: list[str]) -> list[str]:
 
 
 class ProjectConfig(_Model):
-    root_packages: Annotated[list[str], Field(min_length=1)]
-    source_roots: list[str] = Field(default_factory=lambda: ["."])
-    test_roots: list[str] = Field(default_factory=lambda: ["tests"])
-    exclude: list[str] = Field(default_factory=list)
+    """Which packages and tests smelt reads."""
+
+    root_packages: Annotated[
+        list[str],
+        Field(
+            min_length=1,
+            description="Top-level packages to check, e.g. [backend, agent].",
+        ),
+    ]
+    source_roots: list[str] = Field(
+        default_factory=lambda: ["."],
+        description="Directories that contain the root packages, e.g. [src].",
+    )
+    test_roots: list[str] = Field(
+        default_factory=lambda: ["tests"],
+        description="Directories with the tests; with layout: mirror they must exist.",
+    )
+    exclude: list[str] = Field(
+        default_factory=list, description="Path globs smelt skips entirely."
+    )
+
+    @field_validator("source_roots", "test_roots")
+    @classmethod
+    def _normalize_roots(cls, values: list[str]) -> list[str]:
+        return list(
+            dict.fromkeys(posixpath.normpath(v.replace("\\", "/")) for v in values)
+        )
 
     @field_validator("root_packages")
     @classmethod
@@ -51,8 +71,14 @@ class ProjectConfig(_Model):
 
 
 class FeaturesConfig(_Model):
-    root: str | None = None
-    pattern: str | None = None
+    root: str | None = Field(
+        default=None,
+        description="Package whose direct child packages are the features.",
+    )
+    pattern: str | None = Field(
+        default=None,
+        description='Dotted pattern ending in {feature}, e.g. "app.{feature}".',
+    )
 
     @model_validator(mode="after")
     def _exactly_one(self) -> Self:
@@ -101,21 +127,20 @@ class ThirdPartyPolicy(_Model):
 
 
 class LayerConfig(_Model):
-    path: str
-    may_depend_on: list[str] = Field(default_factory=list)
-    third_party: ThirdPartyPolicy = Field(default_factory=ThirdPartyPolicy)
-    forbid_bases: list[str] = Field(default_factory=list)
+    path: str = Field(description="Dotted path of the layer package inside a feature.")
+    may_depend_on: list[str] = Field(
+        default_factory=list, description="Layers this layer may import."
+    )
+    third_party: ThirdPartyPolicy = Field(
+        default_factory=ThirdPartyPolicy,
+        description="Which third-party packages the layer may import (SMT103).",
+    )
 
     @field_validator("path")
     @classmethod
     def _path_is_dotted(cls, value: str) -> str:
         _check_dotted([value])
         return value
-
-    @field_validator("forbid_bases")
-    @classmethod
-    def _bases_are_dotted(cls, values: list[str]) -> list[str]:
-        return _check_dotted(values)
 
 
 class CrossFeatureAllowance(_Model):
@@ -137,8 +162,15 @@ class CrossFeatureAllowance(_Model):
 
 
 class CrossFeatureConfig(_Model):
-    default: Policy = "deny"
-    allow: list[str | CrossFeatureAllowance] = Field(default_factory=list)
+    """Imports between features."""
+
+    default: Policy = Field(
+        default="deny", description="Whether features may import each other at all."
+    )
+    allow: list[str | CrossFeatureAllowance] = Field(
+        default_factory=list,
+        description='Allowed imports: "layer -> layer" for all features, or {from: feature.layer, to: feature.layer}.',
+    )
 
     @field_validator("allow")
     @classmethod
@@ -192,25 +224,62 @@ def _all_cycle_scopes() -> list[CycleScope]:
 
 
 class ImportsConfig(_Model):
-    type_checking: Literal["include", "ignore"] = "include"
-    transitive: bool = False
-    cycles: list[CycleScope] = Field(default_factory=_all_cycle_scopes)
+    """Which imports the dependency rules look at."""
+
+    type_checking: Literal["include", "ignore"] = Field(
+        default="include",
+        description="Whether imports under `if TYPE_CHECKING:` count.",
+    )
+    transitive: bool = Field(
+        default=False, description="Also report layer violations through other modules."
+    )
+    cycles: list[CycleScope] = Field(
+        default_factory=_all_cycle_scopes, description="Where SMT104 looks for cycles."
+    )
 
 
 class ArchitectureConfig(_Model):
-    features: FeaturesConfig | None = None
-    shared: list[str] = Field(default_factory=list)
-    composition_root: list[str] = Field(default_factory=list)
-    wiring: list[str] = Field(default_factory=list)
-    layers: dict[str, LayerConfig] = Field(default_factory=dict)
-    cross_feature: CrossFeatureConfig = Field(default_factory=CrossFeatureConfig)
-    di_frameworks: list[str] = Field(default_factory=list)
-    imports: ImportsConfig = Field(default_factory=ImportsConfig)
+    """Features, layers and the modules around them."""
 
-    @field_validator("shared", "composition_root", "di_frameworks")
+    features: FeaturesConfig | None = Field(
+        default=None, description="Where the features (vertical slices) live."
+    )
+    shared: list[str] = Field(
+        default_factory=list,
+        description="Modules every feature may import; they must not import features.",
+    )
+    composition_root: list[str] = Field(
+        default_factory=list,
+        description="Modules that wire everything; nothing may import them.",
+    )
+    wiring: list[str] = Field(
+        default_factory=list,
+        description="Provider modules (whole-segment * allowed) that may import across layers and features; they keep their feature and layer.",
+    )
+    modules: dict[str, str] = Field(
+        default_factory=dict,
+        description="Packages outside the features mapped to a layer, e.g. {backend.platform: infrastructure}.",
+    )
+    layers: dict[str, LayerConfig] = Field(
+        default_factory=dict, description="The layers and what each may import."
+    )
+    cross_feature: CrossFeatureConfig = Field(
+        default_factory=CrossFeatureConfig, description="Imports between features."
+    )
+    imports: ImportsConfig = Field(
+        default_factory=ImportsConfig, description="Which imports count."
+    )
+
+    @field_validator("shared", "composition_root")
     @classmethod
     def _modules_are_dotted(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
+
+    @field_validator("modules")
+    @classmethod
+    def _module_keys_are_dotted(cls, values: dict[str, str]) -> dict[str, str]:
+        _check_dotted(list(values))
+        return values
 
     @field_validator("wiring")
     @classmethod
@@ -225,85 +294,32 @@ class ArchitectureConfig(_Model):
         return values
 
 
-class RoleDetect(_Model):
-    base: str | None = None
-    implements: str | None = None
-
-    @model_validator(mode="after")
-    def _exactly_one(self) -> Self:
-        if (self.base is None) == (self.implements is None):
-            msg = "`detect` needs exactly one condition: `base` or `implements`"
-            raise ValueError(msg)
-        if self.base is not None:
-            _check_dotted([self.base])
-        return self
-
-
-class RoleConfig(_Model):
-    detect: RoleDetect
-    layers: list[str] = Field(default_factory=list)
-    file: str | None = None
-
-    @field_validator("file")
-    @classmethod
-    def _file_is_module_name(cls, value: str | None) -> str | None:
-        if value is not None and not re.match(r"^[A-Za-z_]\w*(\.py)?$", value):
-            msg = f'"{value}" must be a module file name like "ports.py"'
-            raise ValueError(msg)
-        return value
-
-    @property
-    def module_name(self) -> str | None:
-        return self.file.removesuffix(".py") if self.file else None
-
-
-class AnalysisConfig(_Model):
-    types: Literal["none", "pyright"] = "none"
-    pyright_command: list[str] = Field(default_factory=lambda: ["pyright"])
-
-
 class StructureConfig(_Model):
-    forbidden_names: list[str] = Field(default_factory=list)
-    crowded_threshold: Annotated[int, Field(ge=1)] = 10
+    """Naming rules for packages and modules."""
 
-
-class PatchingConfig(_Model):
-    allow: list[str] = Field(
-        default_factory=lambda: ["external", "environment", "stdlib"]
+    forbidden_names: list[str] = Field(
+        default_factory=list, description="Package and module names to avoid (SMT302)."
     )
-    forbid: list[str] = Field(default_factory=lambda: ["private"])
-
-
-class MocksConfig(_Model):
-    max_per_test: Annotated[int, Field(ge=0)] = 3
-    forbid_first_party: list[str] = Field(default_factory=list)
-
-
-class BloatConfig(_Model):
-    ratio: Annotated[float, Field(gt=0)] = 5
-    min_test_loc: Annotated[int, Field(ge=0)] = 100
 
 
 class TestsConfig(_Model):
-    layout: Literal["mirror", "feature", "none"] = "none"
-    pattern: str = "tests/{feature}"
-    # layout: mirror only; `mirror` is relative to the test root
-    mirror: str = "{path}/test_{module}.py"
-    unmirrored: list[str] = Field(default_factory=list)
-    mirror_suffixes: bool = False
-    patching: PatchingConfig = Field(default_factory=PatchingConfig)
-    private_access: Literal["allow", "forbid"] = "forbid"
-    mocks: MocksConfig = Field(default_factory=MocksConfig)
-    interaction_assertions: SeverityName = "warning"
-    bloat: BloatConfig = Field(default_factory=BloatConfig)
+    """Where test files must live."""
 
-    @field_validator("pattern")
-    @classmethod
-    def _pattern_has_placeholder(cls, value: str) -> str:
-        if "{feature}" not in value:
-            msg = f'pattern "{value}" needs a "{{feature}}" placeholder'
-            raise ValueError(msg)
-        return value
+    layout: Literal["mirror", "none"] = Field(
+        default="none",
+        description="mirror: every test file must mirror a source module.",
+    )
+    mirror: str = Field(
+        default="{path}/test_{module}.py",
+        description="Test path relative to the test root; placeholders {root}, {path}, {module}.",
+    )
+    unmirrored: list[str] = Field(
+        default_factory=list,
+        description='Test path globs exempt from mirroring, e.g. ["tests/e2e/**"].',
+    )
+    mirror_suffixes: bool = Field(
+        default=False, description="Also allow test_<module>_<topic>.py."
+    )
 
     @field_validator("mirror")
     @classmethod
@@ -347,28 +363,31 @@ class IgnoreEntry(_Model):
 
 
 class SuppressionsConfig(_Model):
+    """Inline `# smelt: ignore[CODE] -- reason` comments."""
+
     require_reason: bool = True
-
-
-class VerifyStep(_Model):
-    name: str
-    run: str
 
 
 class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
-    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
-    roles: dict[str, RoleConfig] = Field(default_factory=dict)
     structure: StructureConfig = Field(default_factory=StructureConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)
-    rules: dict[str, SeverityName] = Field(default_factory=dict)
-    ignore: list[IgnoreEntry] = Field(default_factory=list)
-    suppressions: SuppressionsConfig = Field(default_factory=SuppressionsConfig)
-    debt: str | None = None
-    plugins: list[str] = Field(default_factory=list)
-    verify: list[VerifyStep] = Field(default_factory=list)
+    rules: dict[str, SeverityName] = Field(
+        default_factory=dict, description="Severity per rule code, or off."
+    )
+    ignore: list[IgnoreEntry] = Field(
+        default_factory=list, description="Rules to skip for modules or paths."
+    )
+    suppressions: SuppressionsConfig = Field(
+        default_factory=SuppressionsConfig,
+        description="Inline `# smelt: ignore` rules.",
+    )
+    debt: str | None = Field(
+        default=None,
+        description="Debt file with known violations, e.g. .smelt/debt.json.",
+    )
 
     @field_validator("rules")
     @classmethod
@@ -380,8 +399,3 @@ class SmeltConfig(_Model):
                 msg = f'"{code}" is not a rule code like "SMT101"'
                 raise ValueError(msg)
         return values
-
-    @field_validator("plugins")
-    @classmethod
-    def _plugins_are_dotted(cls, values: list[str]) -> list[str]:
-        return _check_dotted(values)

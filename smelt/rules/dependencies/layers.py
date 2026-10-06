@@ -8,12 +8,8 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
-    display_module_path,
     import_violation,
     join,
-    last_segment,
-    port_roles,
-    role_home,
     skip_import,
 )
 
@@ -52,6 +48,7 @@ class LayerBoundary(BaseRule):
         ),
         config=(
             "architecture.layers.<layer>.may_depend_on",
+            "architecture.modules",
             "architecture.imports.transitive",
             "architecture.imports.type_checking",
         ),
@@ -127,7 +124,10 @@ def _forbidden_layer(
         return None
     if source.layer is None or target.layer is None:
         return None
-    if source.feature != target.feature or source.layer == target.layer:
+    if source.layer == target.layer:
+        return None
+    # across features SMT102 decides; a central module shares its layer rules with all
+    if source.feature != target.feature and not (source.central or target.central):
         return None
     if target.layer in ctx.model.layers[source.layer].may_depend_on:
         return None
@@ -193,22 +193,13 @@ def _hint(
     chain: tuple[ImportLink, ...],
 ) -> str:
     model = ctx.model
-    name = (
-        last_segment(detail.names[0]) if detail.names else last_segment(detail.imported)
-    )
-    roots = ctx.config.architecture.composition_root
-    for role in port_roles(model):
-        if source.layer not in model.config.roles[role].layers:
-            continue
-        home = role_home(model, role, source.feature)
-        if home is None:
-            continue
-        module, is_package = home
-        location = display_module_path(model, module, package=is_package)
-        wire = f" and wire {name} in {roots[0]}" if roots else ""
-        return f"Introduce or reuse a {role} in {location}{wire}."
     layer = source.layer or ""
     allowed = join(list(model.layers[layer].may_depend_on))
+    if not model.layers[layer].may_depend_on and not chain:
+        return (
+            f"{layer} depends on no other layer. Define what it needs as an "
+            f"abstraction in {layer} and implement it in an outer layer."
+        )
     if chain:
         return (
             f"The dependency goes through {join([link.imported for link in chain[:-1]])}; "

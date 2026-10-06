@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 from smelt.config.errors import did_you_mean
+from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Severity
-from smelt.model import ModuleKind
-from smelt.rules.common import implementation_roles, role_home
+from smelt.model import ModuleKind, is_within
+from smelt.rules.testing.location import mirror_path
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
     from smelt.config.models import ThirdPartyPolicy
     from smelt.diagnostics.report import Report
-    from smelt.model import ArchitectureModel
+    from smelt.model import ArchitectureModel, ModuleInfo
 
 
 class TargetError(ValueError):
@@ -25,6 +28,7 @@ class Target:
     feature: str | None = None
     module: str | None = None
     path: str | None = None
+    planned: bool = False
 
 
 @dataclass(frozen=True)
@@ -44,16 +48,6 @@ class LayerBrief:
 
 
 @dataclass(frozen=True)
-class RoleBrief:
-    name: str
-    location: str | None
-    note: str | None = None
-
-    def to_json(self) -> dict[str, Any]:
-        return {"name": self.name, "location": self.location, "note": self.note}
-
-
-@dataclass(frozen=True)
 class Briefing:
     target: Target
     package: str | None
@@ -65,9 +59,12 @@ class Briefing:
     shared: tuple[str, ...]
     composition_root: tuple[str, ...]
     wiring: tuple[str, ...]
-    di_frameworks: tuple[str, ...]
-    roles: tuple[RoleBrief, ...]
+    central: bool
     tests: tuple[str, ...]
+    is_wiring: bool = False
+    boundary_policy: str = ""
+    transitive: bool = False
+    analysis_error: str | None = None
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
 
@@ -81,16 +78,22 @@ class Briefing:
             "package": self.package,
             "module_kind": self.module_kind.value if self.module_kind else None,
             "layer": self.layer,
+            "central": self.central,
+            "is_wiring": self.is_wiring,
+            "planned": self.target.planned,
+            "boundary_policy": self.boundary_policy,
+            "imports": {"transitive": self.transitive},
             "features": list(self.features),
             "layers": [layer.to_json() for layer in self.layers],
             "cross_feature": self.cross_feature,
             "shared": list(self.shared),
             "composition_root": list(self.composition_root),
             "wiring": list(self.wiring),
-            "di_frameworks": list(self.di_frameworks),
-            "roles": [role.to_json() for role in self.roles],
             "tests": list(self.tests),
-            "violations": {**self.violations, "codes": list(self.violation_codes)},
+            "violations": None
+            if self.analysis_error
+            else {**self.violations, "codes": list(self.violation_codes)},
+            "analysis_error": self.analysis_error,
         }
 
 
@@ -103,6 +106,9 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
         return Target("feature", feature=raw)
     path = raw.strip("/")
     files = ctx.files
+    module_path = files.path_for_module(raw)
+    if module_path is not None:
+        path = module_path
     source = files.source_for_path(path)
     if source is not None:
         info = model.info(source.module)
@@ -113,14 +119,37 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
             info = model.info(package.module)
             feature = info.feature if info else None
             return Target("package", feature, package.module, path)
+    planned = PurePosixPath(path)
+    if not (ctx.root / path).exists() and planned.suffix == ".py":
+        for parent in planned.parents:
+            ancestor = next(
+                (p for p in files.packages.values() if p.path == str(parent)), None
+            )
+            if ancestor is None:
+                continue
+            segments = planned.relative_to(parent).with_suffix("").parts
+            if all(segment.isidentifier() for segment in segments):
+                module = ".".join((ancestor.module, *segments))
+                info = model.info(module)
+                return Target(
+                    "module", info.feature if info else None, module, path, planned=True
+                )
     candidates = [*model.features, *(p.path for p in files.packages.values())]
     msg = (
         f'"{raw}" is neither a feature nor a source path{did_you_mean(raw, candidates)}'
     )
+    if model.features:
+        msg += f"; features: {', '.join(sorted(model.features))}"
     raise TargetError(msg)
 
 
-def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Briefing:
+def build_briefing(
+    ctx: AnalysisContext,
+    target: Target,
+    report: Report | None,
+    *,
+    analysis_error: str | None = None,
+) -> Briefing:
     model = ctx.model
     arch = ctx.config.architecture
     info = model.info(target.module) if target.module else None
@@ -138,7 +167,17 @@ def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Brie
         )
         for name, layer in model.layers.items()
     )
-    scoped = [v for v in report.violations if _violation_in(ctx, v.path, target)]
+    scoped = (
+        [v for v in report.violations if _violation_in(ctx, v.path, target)]
+        if report
+        else []
+    )
+    exempt = bool(info and (info.wiring or info.kind is ModuleKind.COMPOSITION_ROOT))
+    cross_feature = _cross_feature(model) if model.has_features else None
+    if info and (info.central or info.kind is ModuleKind.SHARED):
+        cross_feature = "none (must not import features)"
+    elif exempt:
+        cross_feature = "allowed (wiring/composition-root exception)"
     return Briefing(
         target=target,
         package=package,
@@ -146,13 +185,16 @@ def build_briefing(ctx: AnalysisContext, target: Target, report: Report) -> Brie
         layer=info.layer if info else None,
         features=tuple(sorted(model.features)),
         layers=layers,
-        cross_feature=_cross_feature(model) if model.has_features else None,
+        cross_feature=cross_feature,
         shared=tuple(arch.shared),
         composition_root=tuple(arch.composition_root),
-        wiring=tuple(arch.wiring),
-        di_frameworks=tuple(arch.di_frameworks),
-        roles=_roles(ctx, target.feature),
-        tests=_tests(ctx, target.feature),
+        wiring=_wiring(ctx, package or target.module),
+        central=bool(info and info.central),
+        tests=_tests(ctx, target),
+        is_wiring=bool(info and info.wiring),
+        boundary_policy=_boundary_policy(info),
+        transitive=arch.imports.transitive,
+        analysis_error=analysis_error,
         violations={
             "errors": sum(v.severity is Severity.ERROR for v in scoped),
             "warnings": sum(v.severity is Severity.WARNING for v in scoped),
@@ -175,10 +217,38 @@ def _violation_in(ctx: AnalysisContext, path: str | None, target: Target) -> boo
     return package is not None and path.startswith(f"{package.path}/")
 
 
-def _third_party(policy: ThirdPartyPolicy) -> str | None:
+def _third_party(policy: ThirdPartyPolicy) -> str:
     if policy.default == "deny":
         return f"only {', '.join(policy.allow)}" if policy.allow else "none"
-    return f"not {', '.join(policy.deny)}" if policy.deny else None
+    return f"not {', '.join(policy.deny)}" if policy.deny else "all allowed"
+
+
+def _boundary_policy(info: ModuleInfo | None) -> str:  # noqa: PLR0911
+    if info is None:
+        return "Layer and feature boundaries apply as configured; wiring and composition roots have exceptions."
+    if info.kind is ModuleKind.COMPOSITION_ROOT:
+        return "May import across layers and features; ordinary modules must not import the composition root."
+    if info.wiring:
+        access = (
+            "May import across layer boundaries; must not import features. "
+            if info.central or info.kind is ModuleKind.SHARED
+            else "May import across layers and features. "
+        )
+        return (
+            access + "Third-party policy still applies to assigned layers. "
+            "Only composition roots, other wiring modules and its package facade may import wiring."
+        )
+    if info.kind is ModuleKind.UNCLASSIFIED:
+        return (
+            "Layer and feature boundaries are not enforced for this module. "
+            "Composition-root/wiring import restrictions (SMT106) and configured cycle checks (SMT104) still apply. "
+            "Give its package a layer under architecture.modules, or list it in shared or composition_root."
+        )
+    if info.central:
+        return "The assigned layer's boundaries apply; central modules must not import features."
+    if info.kind is ModuleKind.SHARED:
+        return "Shared modules must not import features; composition-root/wiring restrictions and cycle checks still apply."
+    return "Layer, cross-feature and composition-root/wiring restrictions apply as configured."
 
 
 def _cross_feature(model: ArchitectureModel) -> str:
@@ -189,61 +259,57 @@ def _cross_feature(model: ArchitectureModel) -> str:
     return f"only {', '.join(pairs)}" if pairs else "none"
 
 
-def _roles(ctx: AnalysisContext, feature: str | None) -> tuple[RoleBrief, ...]:
-    model = ctx.model
-    placeholder = feature or ("{feature}" if model.has_features else None)
-    implementations = set(implementation_roles(model))
-    constrained = bool(
-        model.config.architecture.composition_root or model.config.architecture.wiring
-    )
-    briefs: list[RoleBrief] = []
-    for name, role in model.config.roles.items():
-        location = where_path(ctx, name, placeholder) if role.layers else None
-        note = None
-        if name in implementations and constrained:
-            note = (
-                "construct only in composition root or wiring"
-                if model.config.architecture.wiring
-                else "construct only in composition root"
-            )
-        briefs.append(RoleBrief(name, location, note))
-    return tuple(briefs)
+def _wiring(ctx: AnalysisContext, package: str | None) -> tuple[str, ...]:
+    """The wiring patterns that cover modules of ``package`` (all without one)."""
+    wiring = ctx.config.architecture.wiring
+    if package is None:
+        return tuple(wiring)
+    modules = [m for m in ctx.files.sources if is_within(m, package)]
+    return tuple(p for p in wiring if any(module_matches(p, m) for m in modules))
 
 
-def where_path(ctx: AnalysisContext, role: str, feature: str | None) -> str | None:
-    home = role_home(ctx.model, role, feature)
-    if home is None:
-        return None
-    module, is_package = home
-    return ctx.files.module_to_path(module, package=is_package)
-
-
-def _tests(ctx: AnalysisContext, feature: str | None) -> tuple[str, ...]:
+def _tests(ctx: AnalysisContext, target: Target) -> tuple[str, ...]:
     tests = ctx.config.tests
-    layers = set(ctx.model.layers)
-    parts: list[str] = []
-    match tests.layout:
-        case "feature":
-            location = tests.pattern.replace("{feature}", feature or "{feature}")
-            parts.append(f"{location.rstrip('/')}/")
-        case "mirror":
-            parts.append("mirror the source tree")
-    if tests.interaction_assertions != "off":
-        parts.append("behavior-oriented")
-    internal = [c for c in tests.patching.forbid if c in layers]
-    if internal:
-        parts.append(f"no patching of {'/'.join(internal)} internals")
-    if tests.private_access == "forbid":
-        parts.append("no private access")
-    parts.append(f"≤{tests.mocks.max_per_test} mocks per test")
     if tests.layout != "mirror":
-        parts.append("no 1:1 file mirroring required")
-    return tuple(parts)
+        return ("no layout enforced",)
+    source = ctx.files.sources.get(target.module or "")
+    if target.module and (
+        target.planned or (source is not None and not source.is_package)
+    ):
+        path = mirror_path(ctx, target.module)
+        return (f"mirror at {path}",) if path else ("mirror the source tree",)
+    if target.feature is not None:
+        package = ctx.model.feature_package_for(target.feature)
+        path = mirror_path(ctx, f"{package}.<layer>.<module>")
+        if path:
+            return (f"mirror at {path}",)
+    if target.kind == "package" and target.module:
+        path = mirror_path(ctx, f"{target.module}.<module>")
+        if path:
+            return (f"mirror at {path}",)
+    return (f"mirror the source tree ({tests.mirror})",)
 
 
 def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     lines = _header(briefing, ctx)
     lines.append("")
+    lines.append(
+        textwrap.fill(
+            briefing.boundary_policy,
+            width=88,
+            initial_indent="Policy: ",
+            subsequent_indent="        ",
+        )
+    )
+    lines.append(
+        "Imports: direct and transitive layer dependencies checked"
+        if briefing.transitive
+        else "Imports: direct only (re-exports require architecture.imports.transitive: true)"
+    )
+    lines.append("")
+    if briefing.module_kind is ModuleKind.UNCLASSIFIED:
+        lines.extend((*_wrap_tests(briefing.tests), "", _violation_line(briefing)))
+        return "\n".join(lines) + "\n"
     if briefing.layers:
         lines.extend(_layer_lines(briefing))
     if briefing.cross_feature is not None:
@@ -253,21 +319,9 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
             f"Shared:           {', '.join(briefing.shared)} (must not import features)"
         )
     if briefing.composition_root:
-        di = (
-            f" (DI: {', '.join(briefing.di_frameworks)})"
-            if briefing.di_frameworks
-            else ""
-        )
-        lines.append(f"Composition root: {', '.join(briefing.composition_root)}{di}")
+        lines.append(f"Composition root: {', '.join(briefing.composition_root)}")
     if briefing.wiring:
         lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
-    placed = [role for role in briefing.roles if role.location]
-    if placed:
-        width = max(len(role.name) for role in placed) + 2
-        lines.extend(("", "Where things go:"))
-        for role in placed:
-            note = f"   ({role.note})" if role.note else ""
-            lines.append(f"  {role.name:<{width}}→ {role.location}{note}")
     lines.extend(("", *_wrap_tests(briefing.tests), "", _violation_line(briefing)))
     return "\n".join(lines) + "\n"
 
@@ -284,7 +338,8 @@ def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
             if briefing.features:
                 lines.append(f"Features: {', '.join(briefing.features)}")
         case _:
-            lines.append(f"Module: {target.module}   ({target.path})")
+            planned = " [planned]" if target.planned else ""
+            lines.append(f"Module: {target.module}   ({target.path}){planned}")
             lines.append(_placement(briefing))
     return lines
 
@@ -295,6 +350,11 @@ def _placement(briefing: Briefing) -> str:
             return "Kind: shared (importable by all features, must not import features)"
         case ModuleKind.COMPOSITION_ROOT:
             return "Kind: composition root (wires concrete implementations)"
+        case ModuleKind.FEATURE if briefing.central:
+            return (
+                f"Kind: central module in layer {briefing.layer} "
+                "(outside the features, must not import them)"
+            )
         case ModuleKind.FEATURE if briefing.layer is not None:
             feature = briefing.target.feature
             where = f"feature {feature}, " if feature else ""
@@ -312,7 +372,12 @@ def _layer_lines(briefing: Briefing) -> list[str]:
         for layer in briefing.layers
     }
     dep_width = max(len(text) for text in deps.values()) + 2
-    lines = ["Layers:"]
+    exempt = briefing.is_wiring or briefing.module_kind is ModuleKind.COMPOSITION_ROOT
+    lines = [
+        "Layers (project defaults; this module may cross layer boundaries):"
+        if exempt
+        else "Layers:"
+    ]
     for layer in briefing.layers:
         marker = "*" if layer.name == briefing.layer else " "
         row = f" {marker}{layer.name:<{name_width - 2}}{deps[layer.name]}"
@@ -339,6 +404,8 @@ def _wrap_tests(parts: tuple[str, ...], width: int = 88) -> list[str]:
 
 
 def _violation_line(briefing: Briefing) -> str:
+    if briefing.analysis_error:
+        return f"Current violations: unavailable ({briefing.analysis_error})"
     counts = briefing.violations
     parts = [
         f"{count} {label if count == 1 else label + 's'}"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.engine.check import CheckOptions
+from smelt.rules.dependencies.composition_root import CompositionRootLeak
 from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
@@ -14,7 +15,6 @@ project:
   root_packages: [app]
 architecture:
   composition_root: [app.bootstrap]
-  di_frameworks: [dishka]
   layers:
     application:
       path: application
@@ -33,6 +33,16 @@ def _project(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestCompositionRootLeak:
+    def test_documented_bad_example_is_detected(self, tmp_path: Path) -> None:
+        example = (
+            CompositionRootLeak().explain().bad.replace("gateway.main", "app.bootstrap")
+        )
+        root = _project(tmp_path, {"app/application/service.py": example})
+
+        [found] = violations(root, CheckOptions(select=("SMT106",)))
+
+        assert found.target_module == "app.bootstrap"
+
     def test_feature_wiring_keeps_its_layer_and_can_import_across_layers(
         self, tmp_path: Path
     ) -> None:
@@ -46,7 +56,6 @@ class TestCompositionRootLeak:
                       features: {root: app.features}
                       composition_root: [app.bootstrap]
                       wiring: [app.features.*.infrastructure.di]
-                      di_frameworks: [dishka]
                       layers:
                         domain: {path: domain}
                         application: {path: application, may_depend_on: [domain]}
@@ -134,40 +143,6 @@ class TestCompositionRootLeak:
         )
 
         assert violations(root, CheckOptions(select=("SMT106",))) == []
-
-    def test_framework_integration_markers_are_not_container_access(
-        self, tmp_path: Path
-    ) -> None:
-        root = _project(
-            tmp_path,
-            {
-                "app/application/service.py": (
-                    "from dishka.integrations.fastapi import FromDishka\n"
-                ),
-            },
-        )
-
-        assert violations(root, CheckOptions(select=("SMT106",))) == []
-
-    def test_framework_inside_composition_root_is_fine(self, tmp_path: Path) -> None:
-        root = _project(tmp_path, {"app/application/service.py": ""})
-
-        assert violations(root, CheckOptions(select=("SMT1",))) == []
-
-    def test_framework_outside_root_wins_over_third_party_rule(
-        self, tmp_path: Path
-    ) -> None:
-        root = _project(
-            tmp_path, {"app/application/service.py": "from dishka import FromDishka\n"}
-        )
-
-        [found] = violations(root, CheckOptions(select=("SMT1",)))
-
-        assert found.code == "SMT106"
-        assert (
-            found.message
-            == "dishka may only be used in the composition root (app.bootstrap)"
-        )
 
     def test_importing_the_composition_root(self, tmp_path: Path) -> None:
         root = _project(

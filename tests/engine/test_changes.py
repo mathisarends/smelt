@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.engine.changes import git_changes
+from smelt.engine.changes import base_snapshot
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
 
@@ -46,31 +46,51 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-class TestGitChanges:
-    def test_clean_tree_has_no_changes(self, repo: Path) -> None:
-        assert git_changes(repo).paths == frozenset()
-
-    def test_counts_modified_and_untracked_lines(self, repo: Path) -> None:
-        (repo / "app/application/service.py").write_text("a = 1\nb = 2\n")
-        (repo / "app/application/new.py").write_text("c = 3\n")
-
-        changes = git_changes(repo)
-
-        assert {path: (c.added, c.deleted) for path, c in changes.files.items()} == {
-            "app/application/new.py": (1, 0),
-            "app/application/service.py": (2, 0),
-        }
-
-    def test_base_compares_against_merge_base(self, repo: Path) -> None:
-        _git(repo, "checkout", "-q", "-b", "feature")
+class TestBaseSnapshot:
+    def test_exports_head(
+        self, repo: Path, tmp_path_factory: pytest.TempPathFactory
+    ) -> None:
         (repo / "app/application/service.py").write_text("x = 1\n")
-        _git(repo, "commit", "-q", "-am", "change")
+        dest = tmp_path_factory.mktemp("base")
 
-        assert git_changes(repo, "main").paths == {"app/application/service.py"}
+        snapshot = base_snapshot(repo, None, dest)
+
+        assert snapshot == dest
+        assert (dest / "app/application/service.py").read_text() == ""
+
+    def test_without_commits_there_is_no_base(
+        self, tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
+    ) -> None:
+        _git(tmp_path, "init", "-q")
+
+        assert base_snapshot(tmp_path, None, tmp_path_factory.mktemp("base")) is None
 
 
 class TestChangedMode:
-    def test_reports_only_violations_in_changed_files(self, repo: Path) -> None:
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "from app.infra import db  # explanation only\n",
+            "from app.infra import (\n    db,\n)\n",
+            "from app.infra import db as database\n",
+        ],
+    )
+    def test_import_spelling_does_not_make_existing_violation_new(
+        self, repo: Path, source: str
+    ) -> None:
+        (repo / "app/application/old.py").write_text(source, encoding="utf-8")
+
+        assert violations(repo, CheckOptions(changed=True)) == []
+
+    def test_additional_identical_import_still_is_new(self, repo: Path) -> None:
+        (repo / "app/application/old.py").write_text(
+            "from app.infra import db  # explanation only\nfrom app.infra import db\n",
+            encoding="utf-8",
+        )
+
+        assert len(violations(repo, CheckOptions(changed=True))) == 1
+
+    def test_reports_only_introduced_violations(self, repo: Path) -> None:
         (repo / "app/application/service.py").write_text("from app.infra import db\n")
 
         found = violations(repo, CheckOptions(changed=True))
@@ -82,9 +102,30 @@ class TestChangedMode:
 
         assert len(violations(repo)) == 2
 
-    def test_violation_touching_a_changed_target_is_reported(self, repo: Path) -> None:
+    def test_old_violation_in_an_edited_file_is_not_reported(self, repo: Path) -> None:
+        (repo / "app/application/old.py").write_text(
+            "import os\n\nfrom app.infra import db\n"
+        )
+
+        assert violations(repo, CheckOptions(changed=True)) == []
+
+    def test_editing_an_import_target_reports_nothing_old(self, repo: Path) -> None:
         (repo / "app/infra/db.py").write_text("x = 1\n")
+
+        assert violations(repo, CheckOptions(changed=True)) == []
+
+    def test_untracked_file_is_new(self, repo: Path) -> None:
+        (repo / "app/application/new.py").write_text("from app.infra import db\n")
 
         found = violations(repo, CheckOptions(changed=True))
 
-        assert codes_at(found) == [("SMT101", "app/application/old.py", 1)]
+        assert codes_at(found) == [("SMT101", "app/application/new.py", 1)]
+
+    def test_base_compares_against_merge_base(self, repo: Path) -> None:
+        _git(repo, "checkout", "-q", "-b", "feature")
+        (repo / "app/application/service.py").write_text("from app.infra import db\n")
+        _git(repo, "commit", "-q", "-am", "change")
+
+        found = violations(repo, CheckOptions(changed=True, base="main"))
+
+        assert codes_at(found) == [("SMT101", "app/application/service.py", 1)]

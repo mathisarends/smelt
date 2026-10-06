@@ -41,8 +41,6 @@ architecture:
 
 structure:
   forbidden_names: [utils, helpers]
-  crowded_threshold: 10
 
 tests:
   layout: mirror
-  private_access: forbid

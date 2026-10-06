@@ -43,6 +43,9 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def _summary(inferred: InferredConfig) -> list[str]:
     lines = [f"root packages: {', '.join(inferred.root_packages)}"]
+    lines.append(
+        "boundary coverage: direct imports only; third-party packages allowed (review layers.*.third_party and imports.transitive)"
+    )
     if inferred.features:
         lines.append(f"features: {', '.join(inferred.features)}")
     if inferred.layers:
@@ -58,8 +61,33 @@ def _summary(inferred: InferredConfig) -> list[str]:
         lines.append(f"composition root: {', '.join(inferred.composition_root)}")
     if inferred.wiring:
         lines.append(f"wiring: {', '.join(inferred.wiring)}")
-    if inferred.di_frameworks:
-        lines.append(f"DI frameworks: {', '.join(inferred.di_frameworks)}")
+    if inferred.modules:
+        lines.append(
+            "central modules: "
+            + ", ".join(
+                f"{module} ({layer})" for module, layer in inferred.modules.items()
+            )
+        )
+    if inferred.unclassified_roots:
+        lines.append(
+            f"no layer yet: {', '.join(inferred.unclassified_roots)} "
+            "(see architecture.modules)"
+        )
+    mirror = inferred.mirror
+    if mirror is None:
+        lines.append("tests: no test mirrors a module yet, mirroring is off")
+    else:
+        lines.append(
+            f"tests: mirror {mirror.pattern} "
+            f"({mirror.mirrored} of {mirror.total} test files already mirror)"
+        )
+        if mirror.name_clashes:
+            lines.append(
+                f"pytest: {', '.join(mirror.name_clashes)} "
+                f"{'has' if len(mirror.name_clashes) == 1 else 'have'} no __init__.py, so two "
+                "mirrored test_router.py files clash; add --import-mode=importlib to "
+                "the pytest addopts"
+            )
     return lines
 
 
@@ -97,8 +125,9 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     ]
     if args.prune:
         existing = Debt.load(path)
-        _, _, resolved = existing.match(current, snippet)
-        existing.without(resolved).write(path)
+        _, known, resolved = existing.match(current, snippet)
+        # Upgrade legacy import fingerprints without accepting any new debt.
+        Debt.from_violations(known, snippet).write(path)
         remaining = len(existing.entries) - len(resolved)
         console.print(
             f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
@@ -110,7 +139,20 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
         )
     if configured is None:
-        console.warn(
-            f"add `debt: {relative}` to {loaded.path.name} so `smelt check` uses it"
-        )
+        _enable_debt(loaded.path, relative)
+        console.print(f"Added `debt: {relative}` to {loaded.path.name}")
     return EXIT_OK
+
+
+def _enable_debt(config: Path, relative: str) -> None:
+    """Set the debt key, uncommenting the line `smelt init` leaves if it is there."""
+    text = config.read_text(encoding="utf-8")
+    line = f"debt: {relative}"
+    lines = text.splitlines()
+    for index, existing in enumerate(lines):
+        if existing.strip() in (f"# {line}", f"#{line}"):
+            lines[index] = line
+            config.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+            return
+    separator = "" if not text or text.endswith("\n") else "\n"
+    config.write_text(f"{text}{separator}{line}\n", encoding="utf-8", newline="\n")

@@ -85,6 +85,13 @@ class CrossFeatureImport(BaseRule):
             )
 
 
+_MAY_IMPORT = {
+    "shared": "shared code and third-party packages, no feature",
+    "central": "shared code, central modules of its layers and third-party packages, "
+    "no feature",
+}
+
+
 class SharedImportsFeature(BaseRule):
     code = "SMT105"
     name = "shared-imports-feature"
@@ -92,15 +99,19 @@ class SharedImportsFeature(BaseRule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(
-        summary="A `shared` module imports a feature module.",
+        summary=(
+            "A `shared` module or a central module (`architecture.modules`) imports a "
+            "feature module."
+        ),
         rationale=(
-            "Shared code is importable by every feature. If it depends on a feature, every "
-            "feature transitively depends on that feature and the slices collapse."
+            "Shared code and central layers such as a platform package are importable by "
+            "every feature. If they depend on a feature, every feature transitively "
+            "depends on that feature and the slices collapse."
         ),
         bad="# gateway/shared/money.py\nfrom gateway.features.billing.domain import Currency",
         good="# gateway/shared/money.py\nclass Currency: ...",
         fix="Move the needed concept into shared, or move the shared code into the feature.",
-        config=("architecture.shared",),
+        config=("architecture.shared", "architecture.modules"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -110,18 +121,22 @@ class SharedImportsFeature(BaseRule):
                 continue
             source = model.info(detail.importer)
             target = model.info(detail.imported)
-            if source is None or target is None or source.kind is not ModuleKind.SHARED:
+            if source is None or target is None:
+                continue
+            if source.kind is not ModuleKind.SHARED and not source.central:
                 continue
             if not target.in_grid or target.feature is None:
                 continue
+            kind = "shared" if source.kind is ModuleKind.SHARED else "central"
             yield import_violation(
                 self,
                 ctx,
                 detail,
-                f"shared module {detail.importer} must not import feature {target.feature}",
-                expected={"may_depend_on": ["shared", "third-party"]},
+                f"{kind} module {detail.importer} must not import feature {target.feature}",
+                expected={"may_import": _MAY_IMPORT[kind]},
                 hint=(
-                    f"Move what shared needs out of {target.feature} into shared, "
-                    f"or move {detail.importer} into the {target.feature} feature."
+                    f"Move what {detail.importer} needs out of {target.feature} into "
+                    f"{kind} code, or move {detail.importer} into the {target.feature} "
+                    "feature."
                 ),
             )

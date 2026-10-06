@@ -77,7 +77,7 @@ def rule_index(rules: list[Rule]) -> str:
 
 def generated_files() -> dict[str, str]:
     """Every generated file, keyed by its path relative to the repository root."""
-    rules = build_rule_set(load_entry_points=False).rules
+    rules = build_rule_set().rules
     files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
     files[f"{DOCS_DIR}/README.md"] = rule_index(rules)
     for rule in rules:

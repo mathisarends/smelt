@@ -32,13 +32,3 @@ architecture:
   cross_feature:
     default: deny
     allow: ["application -> application"]
-  di_frameworks: [dishka]
-
-roles:
-  port:
-    detect: { base: typing.Protocol }
-    layers: [application]
-    file: ports.py
-  adapter:
-    detect: { implements: port }
-    layers: [infrastructure]
