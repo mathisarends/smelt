@@ -167,6 +167,8 @@ class TestRenderConfig:
         assert "third_party: allow" in rendered
         assert "third_party: {default: deny" in rendered
         assert "transitive: false  # direct imports only" in rendered
+        assert "    allow: []" in rendered
+        assert "pair applies to ALL features" not in rendered
 
     def test_rendered_config_is_valid(self, tmp_path: Path) -> None:
         write_project(
