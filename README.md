@@ -200,7 +200,7 @@ regression test.
 ```yaml
 repos:
   - repo: https://github.com/mathisarends/smelt
-    rev: v0.1.0
+    rev: v0.1.2
     hooks:
       - id: smelt
 ```

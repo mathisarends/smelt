@@ -1,6 +1,6 @@
 [project]
 name = "smelt"
-version = "0.1.0"
+version = "0.1.2"
 description = "Static guardrails for Python codebases maintained by humans and coding agents."
 readme = "README.md"
 authors = [{ name = "Mathis Arends", email = "mathisarends27@gmail.com" }]
