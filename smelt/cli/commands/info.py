@@ -23,7 +23,9 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rule = rules.lookup(args.rule)
     if rule is None:
         msg = f'unknown rule "{args.rule}"{_suggestion(args.rule, rules)}'
-        raise CliError(f"{msg}; `smelt rules` lists them all")
+        raise CliError(
+            f"{msg}; `smelt rules` lists them all", option="rule", value=args.rule
+        )
     doc = rule.explain()
     meta = rule_meta(rule)
     if args.format == "json":

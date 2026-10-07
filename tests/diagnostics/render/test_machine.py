@@ -52,6 +52,7 @@ class TestJson:
             "layer": "domain",
             "source_module": "gw.features.voice.domain.calls",
             "target_module": "gw.features.voice.infra.sql",
+            "edge": "voice.domain -> voice.infra",
             "import_chain": [
                 {
                     "importer": "gw.features.voice.domain.calls",

@@ -1,8 +1,11 @@
 import argparse
+import itertools
 import json
+import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 from smelt import __version__
 from smelt.analysis.parsing import AnalysisError
@@ -14,15 +17,34 @@ from smelt.cli.support import (
     configure_streams,
 )
 from smelt.config import ConfigError
+from smelt.diagnostics.render.machine import render_error_json
+from smelt.engine.check import InvalidOptionError
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
 
-type Subparsers = argparse._SubParsersAction[argparse.ArgumentParser]
+type Subparsers = argparse._SubParsersAction[_Parser]
+
+_INVALID_CHOICE = re.compile(r"argument ([^:]+): invalid choice: '([^']*)'")
+
+
+class _ParseError(CliError):
+    def __init__(self, parser: argparse.ArgumentParser, message: str) -> None:
+        choice = _INVALID_CHOICE.match(message)
+        option, value = choice.groups() if choice else (None, None)
+        super().__init__(message, option=option, value=value)
+        self.parser = parser
+
+
+class _Parser(argparse.ArgumentParser):
+    """Raises instead of exiting, so a JSON caller gets argument errors as JSON."""
+
+    def error(self, message: str) -> NoReturn:
+        raise _ParseError(self, message)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="smelt",
         description="Static guardrails for Python architecture.",
     )
@@ -128,17 +150,59 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_streams()
     console = Console(sys.stdout, sys.stderr)
     parser = build_parser()
-    args = parser.parse_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    try:
+        args = parser.parse_args(raw)
+    except _ParseError as exc:
+        if _asks_for_json(raw):
+            console.print(_error_json(exc), end="")
+        else:
+            exc.parser.print_usage(console.err)
+            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
+        return EXIT_ERROR
     handler: Handler | None = getattr(args, "handler", None)
     if handler is None:
         parser.print_help(sys.stderr)
         return EXIT_ERROR
     try:
         return handler(args, console, Path.cwd())
-    except ConfigError as exc:
-        console.err.write(f"{exc}\n")
-    except (AnalysisError, CliError) as exc:
-        console.error(str(exc))
-    except json.JSONDecodeError as exc:
-        console.error(f"invalid JSON: {exc}")
+    except (AnalysisError, CliError, ConfigError, json.JSONDecodeError) as exc:
+        if getattr(args, "format", None) == "json":
+            console.print(_error_json(exc), end="")
+        elif isinstance(exc, ConfigError):
+            console.err.write(f"{exc}\n")
+        else:
+            console.error(_message(exc))
     return EXIT_ERROR
+
+
+def _asks_for_json(argv: list[str]) -> bool:
+    pairs = itertools.pairwise(argv)
+    return "--format=json" in argv or ("--format", "json") in pairs
+
+
+def _message(exc: Exception) -> str:
+    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)
+
+
+def _error_json(exc: Exception) -> str:
+    """Errors in the format the agent asked for, so it needs no text parser."""
+    if isinstance(exc, ConfigError):
+        header, *_ = str(exc).splitlines()
+        issues = [
+            {"location": i.path or None, "message": i.message} for i in exc.issues
+        ]
+        return render_error_json(
+            "config", header, config={"file": exc.source, "issues": issues}
+        )
+    kind, option, value = "analysis", None, None
+    if isinstance(exc, CliError):
+        kind, option, value = exc.kind, exc.option, exc.value
+    elif isinstance(exc, InvalidOptionError):
+        kind, option, value = "usage", exc.option, exc.value
+    given = (
+        {"option": option, "value": value}
+        if option is not None and value is not None
+        else None
+    )
+    return render_error_json(kind, _message(exc), invalid_input=given)

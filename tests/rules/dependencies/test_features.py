@@ -68,6 +68,23 @@ class TestCrossFeatureImport:
             == "feature billing must not import feature voice (application -> domain)"
         )
         assert found.expected == {"cross_feature_allow": ["application -> application"]}
+        assert found.edge == "billing.application -> voice.domain"
+        assert found.hint is not None
+        assert found.hint.endswith(
+            "If billing may rely on voice, that is a policy decision rather than a "
+            "bug: allow it under architecture.cross_feature.allow as "
+            "{from: billing.application, to: voice.domain}."
+        )
+
+    def test_shared_module_edge_names_the_shared_entry(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {"gw/shared/money.py": "from gw.features.voice.domain import call\n"},
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT105",)))
+
+        assert found.edge == "gw.shared -> voice.domain"
 
     def test_scoped_feature_allowance_is_directional(self, tmp_path: Path) -> None:
         root = _project(

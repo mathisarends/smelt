@@ -42,6 +42,12 @@ config error, not a silently disabled rule.
 Explicit check paths must exist and contain analyzed source or test files; unknown
 `--select`/`--ignore` prefixes are usage errors. JSON includes the reporting scope, file
 count and active rule codes. `--config PATH` works before or after a subcommand.
+With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
+text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
+(`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)
+and, for config errors, the `config` file with each issue's YAML `location`. That covers
+argument errors (`--fail-on bogus`, an unknown flag) whenever `--format json` is on the
+command line; an invalid `--format` value itself is reported as argparse text.
 
 `--changed` checks the base commit (HEAD, or the merge-base with `--base`) with today's
 config and reports only violations that are new, wherever they show up. Old violations in
@@ -143,6 +149,12 @@ addopts = ["--import-mode=importlib"]
 ```
 
 ## Adopting it in an existing project
+
+A first check often reports dozens of findings that come down to a few decisions. Each
+import finding carries an `edge` in JSON (`"billing.application -> voice.domain"`; for
+cycles, the cycle), and the text output ends with the edges behind several findings.
+Settle each edge once: fix the code, or record an intended dependency as policy, e.g. a
+`cross_feature.allow` entry. Accept what remains with a baseline:
 
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
 `smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries

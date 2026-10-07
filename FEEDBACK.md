@@ -893,3 +893,77 @@ kontrolliert, Installation mit ausschließlich Laufzeitabhängigkeiten auf Pytho
 und 16 CLI-Smoke-Checks erfolgreich. 286 Tests bestanden, 1 übersprungen; Ruff, Mypy,
 eigener Smelt-Check und Pre-Commit-Checks grün. CI am vorherigen PR-Stand war auf
 Python 3.12–3.14 unter Linux, macOS und Windows vollständig erfolgreich.
+
+## Runde 4: Adoption in einem FastAPI/Dishka-Workspace (2026-10-07)
+
+Externes Feedback zu smelt `598131e` in einem uv-Workspace mit FastAPI, fastapi-canon,
+Dishka, Feature-Layern, Libraries und gespiegelten Tests. Ergebnis dort: 81 Befunde in
+63 Dateien (20 SMT101, 40 SMT102, 2 SMT104, 2 SMT105, 1 SMT106, 16 SMT401), aber
+**keine 81 unabhängigen Bugs**: Viele gehen auf dieselbe Fassade, dieselbe fehlende
+Cross-Feature-Erlaubnis oder ein altes Testlayout zurück.
+
+Maßstab für die Auswahl: hilft es bei jedem weiteren Projekt, die Kernziele Spiegelung
+und Grenzen zu prüfen, und lässt es sich mit wenig neuer Oberfläche umsetzen?
+
+### Bewertet
+
+| # | Vorschlag | Entscheidung |
+|---|---|---|
+| 1 | JSON-Fehlerobjekt statt stderr-Text bei `--format json` | umgesetzt |
+| 2 | Testort-Vorschläge nur mit Beleg statt Namensähnlichkeit | umgesetzt |
+| 3 | App-Factory über Paket-Fassaden als Composition Root erkennen | umgesetzt |
+| 4 | Befunde nach Abhängigkeitskante gruppieren | umgesetzt, schlank |
+| 5 | Zyklen kennzeichnen, die nur unter `TYPE_CHECKING` bestehen | umgesetzt |
+| 6 | Coverage-Tabelle der Policy | **bewusst nicht**: U7 macht die Entscheidungen schon in `init` und `context` sichtbar; eine weitere Tabelle wäre vor allem mehr Ausgabe |
+
+### Umgesetzt (Runde 4, PR #7)
+
+- **1:** Mit `--format json` liefert Exit 2 ein Dokument
+  `{"schema_version": 1, "status": "error", "error": {...}}` mit `kind`
+  (`usage`/`config`/`analysis`), `message`, abgelehnter Eingabe (`option`, `value`) und
+  bei Config-Fehlern Datei und YAML-Location jedes Problems. Unbekannte Selektoren und
+  Prüfpfade sind `InvalidOptionError` (usage) statt allgemeiner Analysefehler. Auch
+  argparse-Fehler (`--fail-on bogus`, unbekannte Flags) kommen als JSON, sobald
+  `--format json` auf der Kommandozeile steht; ein ungültiger `--format`-Wert selbst
+  bleibt argparse-Text, weil das gewünschte Format dann unbekannt ist.
+- **2:** Ursache der falschen Vorschläge war `did_you_mean` auf Dateinamen: das gemeinsame
+  `.py` hob `memory.py`/`errors.py` und `commands.py`/`channels.py` über die
+  Ähnlichkeitsschwelle. Verglichen werden jetzt Modulnamen; importiert der Test
+  First-Party-Code, kommen nur importierte Module in Frage. Heißt der Test wie ein Paket
+  neben dem Spiegelpfad, zeigt SMT401 auf dessen Paket-Testort, außer alle Imports
+  kommen von woanders. Die Meldung lautet „has no source module at its mirrored path“,
+  der Hinweis sagt ausdrücklich, dass das Verhalten trotzdem existieren kann, und nennt
+  Verschieben, Zusammenführen, Topic-Suffix, Löschen und `tests.unmirrored`.
+- **3:** `init` folgt von `app.py` aus Paket-Fassaden (`__init__.py`, nur Imports im
+  eigenen Paket, höchstens drei Ebenen) bis zum Wiring. FastAPI- oder Dishka-Imports
+  allein machen kein Modul zum Composition Root. Dabei behoben: relative Imports in einem
+  Composition Root, der ein Paket ist (`bootstrap/__init__.py`), wurden vom Root-Paket
+  aus aufgelöst; `from . import app` zählte fälschlich `shop/app.py`.
+- **4:** Jeder Import-Befund trägt `edge` (`billing.application -> voice.domain`, zentraler
+  oder Shared-Eintrag, Third-Party-Paket; bei SMT104 der Zyklus). Die Textausgabe endet
+  mit den fünf häufigsten Kanten mehrerer Befunde. SMT102 nennt den passenden
+  `cross_feature.allow`-Eintrag und benennt ihn als Policy-Entscheidung. README beschreibt
+  den Ablauf: jede Kante einmal entscheiden, Rest mit `smelt debt` als Baseline.
+  `edge` geht nicht in Debt-Fingerprints ein.
+- **5:** SMT104 hängt `(type checking only)` an, wenn eine Kante des Zyklus nur unter
+  `if TYPE_CHECKING:` importiert wird, mit `expected.type_checking_only` und dem Hinweis,
+  dass der Zyklus beim Import nicht fehlschlagen kann.
+
+**Gegenprobe an Prompster** (frischer Klon, Config aus `init`, Original unberührt):
+SMT401/SMT104 bleiben bei 44 Befunden; vier geratene Vorschläge entfallen
+(z. B. `spotify_service` → `spotify_search.py`, `guardrails_post_run` → `guardrails.py`),
+der echte Tippfehler `fernet_token_cypher.py` bleibt. Die 75 Fehler bündeln sich auf
+wenige Kanten, allein 13 auf `* -> auth.presentation`:
+
+```
+Repeated dependency edges (often one decision or fix each; JSON "edge"):
+  8x SMT102 session.presentation -> auth.presentation
+  5x SMT102 oauth_connections.presentation -> auth.presentation
+  3x SMT102 auth.application -> user.domain
+```
+
+`app.py` war bei Prompster schon vorher Composition Root (importiert `lifespan` direkt);
+der Fassaden-Fall ist durch Tests abgedeckt.
+
+**Validierung:** 306 Tests bestanden, 1 übersprungen; Ruff, Mypy, eigener Smelt-Check
+und Pre-Commit-Checks grün; CI auf Python 3.12–3.14 unter Linux, macOS und Windows.

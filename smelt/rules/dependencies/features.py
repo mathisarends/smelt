@@ -72,6 +72,14 @@ class CrossFeatureImport(BaseRule):
             allowed = cross.labels()
             shared = ctx.config.architecture.shared
             where = f" or move the shared concept into {shared[0]}" if shared else ""
+            policy = (
+                f" If {source.feature} may rely on {target.feature}, that is a "
+                "policy decision rather than a bug: allow it under "
+                f"architecture.cross_feature.allow as {{from: {source.feature}."
+                f"{source.layer}, to: {target.feature}.{target.layer}}}."
+                if source.layer and target.layer
+                else ""
+            )
             yield import_violation(
                 self,
                 ctx,
@@ -80,7 +88,7 @@ class CrossFeatureImport(BaseRule):
                 expected={"cross_feature_allow": allowed},
                 hint=(
                     f"Allowed across features: {join(allowed, 'nothing')}. "
-                    f"Use an allowed pair{where}."
+                    f"Use an allowed pair{where}.{policy}"
                 ),
             )
 

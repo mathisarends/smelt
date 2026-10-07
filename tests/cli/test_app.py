@@ -105,10 +105,15 @@ class TestCheckCommand:
 
         code, out, err = _run(capsys, "check", path, "--format", "json")
 
+        error = json.loads(out)["error"]
         assert code == 2
-        assert out == ""
-        assert path in err
-        assert "does not exist" in err or "no analyzed Python" in err
+        assert err == ""
+        assert error["kind"] == "usage"
+        assert error["input"] == {"option": "paths", "value": path}
+        assert (
+            "does not exist" in error["message"]
+            or "no analyzed Python" in error["message"]
+        )
 
     @pytest.mark.parametrize("option", ["--select", "--ignore"])
     def test_rejects_unknown_selector(
@@ -127,6 +132,60 @@ class TestCheckCommand:
         assert option in err
         assert 'unknown rule prefix "SMT999"' in err
         assert "SMT903" not in err
+
+    def test_usage_error_is_json_when_json_was_asked_for(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(capsys, "check", "--format", "json", "--select", "SMT999")
+
+        document = json.loads(out)
+        assert code == 2
+        assert err == ""
+        assert document["schema_version"] == 1
+        assert document["status"] == "error"
+        assert document["error"]["kind"] == "usage"
+        assert document["error"]["input"] == {"option": "--select", "value": "SMT999"}
+        assert 'unknown rule prefix "SMT999"' in document["error"]["message"]
+
+    @pytest.mark.parametrize(
+        ("args", "given"),
+        [
+            (
+                ["--format", "json", "--fail-on", "bogus"],
+                {"option": "--fail-on", "value": "bogus"},
+            ),
+            (["--format=json", "--selct", "SMT1"], None),
+        ],
+    )
+    def test_argument_error_is_json_when_json_was_asked_for(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        args: list[str],
+        given: dict[str, str] | None,
+    ) -> None:
+        code, out, err = _run(capsys, "check", *args)
+
+        error = json.loads(out)["error"]
+        assert code == 2
+        assert err == ""
+        assert error["kind"] == "usage"
+        assert error["input"] == given
+
+    @pytest.mark.parametrize("fmt", ["text", "xml"])
+    def test_argument_error_stays_argparse_text_otherwise(
+        self, capsys: pytest.CaptureFixture[str], fmt: str
+    ) -> None:
+        code, out, err = _run(capsys, "check", "--format", fmt, "--fail-on", "bogus")
+
+        assert code == 2
+        assert out == ""
+        assert err.startswith("usage: smelt check")
+        assert "smelt check: error: argument" in err
 
     def test_scope_identifies_files_in_json_and_text(
         self,
@@ -251,6 +310,31 @@ class TestCheckCommand:
         assert code == 2
         assert 'bogus: unknown key "bogus"' in err
 
+    def test_config_error_is_json_with_its_location(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        (tmp_path / "smelt.yaml").write_text(
+            "version: 1\nproject: {root_packages: [app]}\nbogus: 1\n"
+        )
+
+        code, out, _ = _run(
+            capsys,
+            "--config",
+            str(tmp_path / "smelt.yaml"),
+            "check",
+            "--format",
+            "json",
+        )
+
+        error = json.loads(out)["error"]
+        assert code == 2
+        assert error["kind"] == "config"
+        assert error["message"] == "invalid configuration in smelt.yaml"
+        assert error["config"]["file"] == "smelt.yaml"
+        assert {"location": "bogus", "message": 'unknown key "bogus"'} in error[
+            "config"
+        ]["issues"]
+
     def test_missing_config_exits_with_two(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -263,6 +347,14 @@ class TestCheckCommand:
 
         assert code == 2
         assert "no smelt.yaml found" in err
+
+        code, out, _ = _run(capsys, "check", "--format", "json")
+
+        error = json.loads(out)["error"]
+        assert code == 2
+        assert error["kind"] == "config"
+        assert "no smelt.yaml found" in error["message"]
+        assert error["input"] is None
 
     def test_missing_root_package_exits_with_two(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -355,6 +447,11 @@ class TestInfoCommands:
 
         assert code == 2
         assert 'unknown rule "SMT10"' in err
+
+        code, out, _ = _run(capsys, "explain", "SMT10", "--format", "json")
+
+        assert code == 2
+        assert json.loads(out)["error"]["input"] == {"option": "rule", "value": "SMT10"}
 
     @pytest.mark.parametrize(
         ("raw", "suggestion"),
@@ -574,12 +671,17 @@ class TestDebtCommand:
         (clean_project / "debt.json").write_text(content, encoding="utf-8")
         monkeypatch.chdir(clean_project)
 
-        code, out, err = _run(capsys, "check", "--format", "json")
+        code, out, err = _run(capsys, "check")
 
         assert code == 2
         assert out == ""
         assert "debt.json" in err
         assert "Traceback" not in err
+
+        code, out, _ = _run(capsys, "check", "--format", "json")
+
+        assert code == 2
+        assert json.loads(out)["error"]["config"]["file"].endswith("debt.json")
 
     def test_writes_default_debt_and_check_uses_it(
         self,

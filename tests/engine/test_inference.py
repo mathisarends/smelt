@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.config import parse_config
 from smelt.config.loader import load_yaml
 from smelt.engine.inference import InferredLayer, infer_config, render_config
@@ -241,6 +243,67 @@ class TestDddWorkspace:
             "backend.lifespan",
             "backend.app",
         ]
+
+    def test_app_factory_reaching_the_wiring_through_facades(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = {
+            **DDD_WORKSPACE,
+            # like fastapi-canon: app.py assembles the features via their facade
+            "backend/src/backend/app.py": "from backend.features import FEATURES\n",
+            "backend/src/backend/features/__init__.py": (
+                "from .auth import AuthProvider\nFEATURES = [AuthProvider]\n"
+            ),
+            "backend/src/backend/features/auth/__init__.py": (
+                "from .infrastructure.di import P as AuthProvider\n"
+            ),
+        }
+
+        inferred = infer_config(write_project(tmp_path, workspace))
+
+        assert inferred is not None
+        assert "backend.app" in inferred.composition_root
+
+    def test_facade_without_wiring_does_not_make_a_composition_root(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = {
+            **DDD_WORKSPACE,
+            "backend/src/backend/app.py": "from backend.features import auth\n",
+            "backend/src/backend/features/auth/__init__.py": (
+                "from .domain.token import Token\n"
+            ),
+        }
+
+        inferred = infer_config(write_project(tmp_path, workspace))
+
+        assert inferred is not None
+        assert "backend.app" not in inferred.composition_root
+
+    @pytest.mark.parametrize(
+        ("bootstrap", "is_factory"),
+        [
+            # shop/bootstrap/__init__.py: ``..app`` is shop/app.py
+            ("from ..app import create_app\n", True),
+            # ``. import app`` is shop/bootstrap/app.py, not shop/app.py
+            ("from . import app\n", False),
+        ],
+    )
+    def test_relative_imports_of_a_composition_root_package(
+        self, tmp_path: Path, bootstrap: str, *, is_factory: bool
+    ) -> None:
+        files = {
+            "shop/__init__.py": "",
+            "shop/providers.py": DISHKA_PROVIDER,
+            "shop/app.py": "from shop.providers import P\n",
+            "shop/bootstrap/__init__.py": bootstrap,
+            "shop/bootstrap/app.py": "",
+        }
+
+        inferred = infer_config(write_project(tmp_path, files))
+
+        assert inferred is not None
+        assert ("shop.app" in inferred.composition_root) is is_factory
 
     def test_settings_modules_are_shared(self, tmp_path: Path) -> None:
         inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))

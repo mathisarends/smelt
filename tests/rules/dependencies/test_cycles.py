@@ -27,8 +27,63 @@ class TestSiblingCycles:
         [found] = violations(root, ONLY_SMT104)
 
         assert found.message == "import cycle between modules in app: a -> b -> c -> a"
+        assert found.edge == "a -> b -> c -> a"
         assert [link.line for link in found.import_chain] == [1, 1, 1]
         assert found.path == "app/a.py"
+
+    def test_cycle_through_type_checking_import_is_marked(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "app/__init__.py": "",
+                "app/a.py": "from app import b\n",
+                "app/b.py": (
+                    "from typing import TYPE_CHECKING\n"
+                    "if TYPE_CHECKING:\n"
+                    "    from app import a\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT104)
+
+        assert found.message == (
+            "import cycle between modules in app: a -> b -> a (type checking only)"
+        )
+        assert found.expected == {
+            "cycle": ["a", "b", "a"],
+            "type_checking_only": ["b -> a"],
+        }
+        assert found.hint is not None
+        assert found.hint.startswith(
+            "Only type checkers see this cycle: b -> a is imported under "
+            "`if TYPE_CHECKING:`"
+        )
+
+    def test_runtime_import_beside_a_guarded_one_is_a_runtime_cycle(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "app/__init__.py": "",
+                "app/a.py": "from app import b\n",
+                "app/b.py": (
+                    "from typing import TYPE_CHECKING\n"
+                    "if TYPE_CHECKING:\n"
+                    "    from app import a\n"
+                    "def load():\n"
+                    "    from app.a import thing\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT104)
+
+        assert found.message == "import cycle between modules in app: a -> b -> a"
+        assert found.expected == {"cycle": ["a", "b", "a"]}
 
     def test_import_of_parent_package_is_not_a_cycle(self, tmp_path: Path) -> None:
         root = write_project(

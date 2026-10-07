@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from smelt.diagnostics.report import Report
 
 JSON_SCHEMA_VERSION = 1
@@ -24,6 +26,27 @@ def render_json(report: Report) -> str:
             "rules": [rule.code for rule in report.rules],
         },
         "violations": [v.to_json() for v in report.violations],
+    }
+    return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+
+
+def render_error_json(
+    kind: str,
+    message: str,
+    *,
+    invalid_input: Mapping[str, str] | None = None,
+    config: Mapping[str, Any] | None = None,
+) -> str:
+    """The document ``--format json`` prints instead of a report when it exits with 2."""
+    document = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "status": "error",
+        "error": {
+            "kind": kind,
+            "message": message,
+            "input": dict(invalid_input) if invalid_input is not None else None,
+            "config": dict(config) if config is not None else None,
+        },
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
