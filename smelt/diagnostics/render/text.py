@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import posixpath
 import textwrap
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from smelt.diagnostics.report import LineReader, Report
 
 _WIDTH = 88
+_TOP_EDGES = 5
 _COLORS = {
     Severity.ERROR: "\x1b[31m",
     Severity.WARNING: "\x1b[33m",
@@ -44,14 +46,18 @@ def render_text(
     show_hints: bool = False,
 ) -> str:
     style = _Style(color)
-    blocks: list[str] = []
-    for violation in _group_unclassified(report.violations):
-        if violation.severity is Severity.HINT and not show_hints:
-            continue
-        blocks.append(_render_violation(violation, read_line, style))
+    shown = [
+        violation
+        for violation in _group_unclassified(report.violations)
+        if violation.severity is not Severity.HINT or show_hints
+    ]
+    blocks = [_render_violation(violation, read_line, style) for violation in shown]
     lines = ["\n\n".join(blocks)] if blocks else []
     if blocks:
         lines.append("")
+    edges = _repeated_edges(shown)
+    if edges:
+        lines.extend([*edges, ""])
     if report.scope:
         lines.append(
             f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
@@ -86,6 +92,30 @@ def _group_unclassified(violations: list[Violation]) -> list[Violation]:
         else:
             result.append(violation)
     return result
+
+
+def _repeated_edges(violations: list[Violation]) -> list[str]:
+    """The dependency edges behind several findings, most frequent first.
+
+    81 findings are rarely 81 problems: one facade or one missing allowance
+    often explains a dozen of them.
+    """
+    counts = Counter((v.code, v.edge) for v in violations if v.edge)
+    repeated = sorted(
+        ((count, code, edge) for (code, edge), count in counts.items() if count > 1),
+        key=lambda item: (-item[0], item[1], item[2]),
+    )
+    if not repeated:
+        return []
+    width = len(str(repeated[0][0]))
+    lines = ['Repeated dependency edges (often one decision or fix each; JSON "edge"):']
+    lines.extend(
+        f"  {count:>{width}}x {code} {edge}"
+        for count, code, edge in repeated[:_TOP_EDGES]
+    )
+    if len(repeated) > _TOP_EDGES:
+        lines.append(f"  … {len(repeated) - _TOP_EDGES} more")
+    return lines
 
 
 def _render_violation(

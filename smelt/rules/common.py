@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from smelt.model import ArchitectureModel, ModuleInfo, is_within
+from smelt.model import ArchitectureModel, ModuleInfo, ModuleKind, is_within
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
@@ -41,9 +41,17 @@ def import_violation(  # noqa: PLR0913
     expected: dict[str, Any] | None = None,
     hint: str | None = None,
     chain: tuple[ImportLink, ...] = (),
+    edge: str | None = None,
 ) -> Violation:
     source = ctx.files.sources[detail.importer]
     info = ctx.model.info(detail.importer)
+    if edge is None:
+        target = (
+            detail.imported.split(".")[0]
+            if detail.external
+            else architecture_node(ctx, detail.imported)
+        )
+        edge = f"{architecture_node(ctx, detail.importer)} -> {target}"
     return rule.violation(
         message,
         path=source.path,
@@ -58,7 +66,25 @@ def import_violation(  # noqa: PLR0913
         layer=info.layer if info else None,
         expected=expected,
         hint=hint,
+        edge=edge,
     )
+
+
+def architecture_node(ctx: AnalysisContext, module: str) -> str:
+    """The part of the architecture ``module`` belongs to: ``user.domain``,
+    a central package, a shared or composition root entry, else the module."""
+    info = ctx.model.info(module)
+    if info is None:
+        return module
+    if info.in_grid and (info.feature or info.layer):
+        return ".".join(part for part in (info.feature, info.layer) if part)
+    architecture = ctx.config.architecture
+    entries = {
+        ModuleKind.SHARED: architecture.shared,
+        ModuleKind.COMPOSITION_ROOT: architecture.composition_root,
+    }.get(info.kind, list(architecture.modules) if info.central else [])
+    matching = [entry for entry in entries if is_within(module, entry)]
+    return max(matching, key=len) if matching else module
 
 
 def matches_any(name: str, entries: list[str]) -> bool:

@@ -164,6 +164,7 @@ class ImportCycle(BaseRule):
                 message,
                 expected=expected,
                 hint=hint,
+                edge=" -> ".join(names),
                 chain=tuple(ImportLink(d.importer, d.imported, d.line) for d in hops),
             )
 

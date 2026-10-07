@@ -282,6 +282,8 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
 
     A module counts when a composition root imports it and it imports a composition
     root or wiring module itself: it assembles the app and is part of the root.
+    Package facades count as the wiring they re-export: ``app.py`` importing
+    ``backend.features``, whose ``__init__`` collects the feature providers.
     """
     roots = list(inferred.composition_root)
     targets = [*roots, *inferred.wiring]
@@ -291,7 +293,7 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
             if path.stem == "__init__" or module in roots or module in inferred.shared:
                 continue
             imports = _imports(path, package.name)
-            if not any(_within_any(name, targets) for name in imports):
+            if not any(_reaches(packages, name, targets) for name in imports):
                 continue
             if any(
                 module in _imports(_module_file(packages, root), package.name)
@@ -375,8 +377,24 @@ def _module_file(packages: list[Path], module: str) -> Path | None:
     return None
 
 
+def _reaches(
+    packages: list[Path], name: str, targets: list[str], depth: int = 3
+) -> bool:
+    """``name`` is one of ``targets`` or a package facade re-exporting one."""
+    if _within_any(name, targets):
+        return True
+    path = _module_file(packages, name)
+    if depth == 0 or path is None or path.name != "__init__.py":
+        return False
+    return any(
+        _reaches(packages, imported, targets, depth - 1)
+        for imported in _imports(path, name)
+        if _within_any(imported, [name])
+    )
+
+
 def _imports(path: Path | None, package: str) -> set[str]:
-    """Absolute names a root-level module of ``package`` imports."""
+    """Absolute names a module directly inside ``package`` imports."""
     if path is None:
         return set()
     try:
@@ -390,7 +408,8 @@ def _imports(path: Path | None, package: str) -> set[str]:
         elif isinstance(node, ast.ImportFrom):
             base = node.module or ""
             if node.level:
-                base = f"{package}.{base}" if base else package
+                parent = package.rsplit(".", node.level - 1)[0]
+                base = f"{parent}.{base}" if base else parent
             found.add(base)
             found.update(f"{base}.{alias.name}" for alias in node.names)
     return found

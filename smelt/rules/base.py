@@ -73,6 +73,7 @@ class BaseRule:
         layer: str | None = None,
         expected: Mapping[str, Any] | None = None,
         hint: str | None = None,
+        edge: str | None = None,
     ) -> Violation:
         return Violation(
             code=self.code,
@@ -91,6 +92,7 @@ class BaseRule:
             layer=layer,
             expected=expected,
             hint=hint,
+            edge=edge,
             docs_url=docs_url(self.code),
             category=self.category,
         )

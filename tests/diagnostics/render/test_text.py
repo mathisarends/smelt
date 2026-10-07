@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt.diagnostics.render.text import render_text
@@ -44,6 +45,40 @@ class TestViolations:
 
         assert "\x1b[31m[error]\x1b[0m" in out
         assert "\x1b[31m^^^^" in out
+
+
+class TestRepeatedEdges:
+    def test_edges_behind_several_findings_are_counted(self, report: Report) -> None:
+        first = report.violations[0]
+        report.violations = [
+            *(replace(first, path=f"gw/calls_{n}.py") for n in range(3)),
+            replace(first, code="SMT102", edge="voice.domain -> billing.domain"),
+            replace(first, code="SMT102", edge="voice.domain -> billing.domain"),
+            replace(first, code="SMT102", edge="voice.domain -> chat.domain"),
+        ]
+
+        out = render_text(report, read_line)
+
+        assert (
+            'Repeated dependency edges (often one decision or fix each; JSON "edge"):\n'
+            "  3x SMT101 voice.domain -> voice.infra\n"
+            "  2x SMT102 voice.domain -> billing.domain\n"
+            "\n"
+        ) in out
+        assert "chat.domain" not in out.split("Repeated")[1]
+
+    def test_single_findings_have_no_edge_block(self, report: Report) -> None:
+        assert "Repeated dependency edges" not in render_text(report, read_line)
+
+    def test_more_than_five_edges_are_cut(self, report: Report) -> None:
+        first = report.violations[0]
+        report.violations = [
+            replace(first, edge=f"a{n} -> b") for n in range(7) for _ in range(2)
+        ]
+
+        out = render_text(report, read_line)
+
+        assert "  2x SMT101 a4 -> b\n  … 2 more\n" in out
 
 
 class TestSummary:

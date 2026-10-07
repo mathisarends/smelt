@@ -27,6 +27,7 @@ class TestSiblingCycles:
         [found] = violations(root, ONLY_SMT104)
 
         assert found.message == "import cycle between modules in app: a -> b -> c -> a"
+        assert found.edge == "a -> b -> c -> a"
         assert [link.line for link in found.import_chain] == [1, 1, 1]
         assert found.path == "app/a.py"
 

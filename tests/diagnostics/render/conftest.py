@@ -32,6 +32,7 @@ LAYER_VIOLATION = Violation(
     layer="domain",
     expected={"may_depend_on": []},
     hint="Depend on a port instead.",
+    edge="voice.domain -> voice.infra",
     docs_url="https://example.test/rules/SMT101",
     category=Category.DEPENDENCIES,
 )

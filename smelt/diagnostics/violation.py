@@ -58,6 +58,9 @@ class Violation:
     layer: str | None = None
     expected: Mapping[str, Any] | None = None
     hint: str | None = None
+    # The architecture dependency behind an import finding, e.g. "user.domain ->
+    # chat.domain": findings sharing one usually share one decision or fix.
+    edge: str | None = None
     docs_url: str | None = None
     category: Category | None = field(default=None, compare=False)
 
@@ -89,6 +92,7 @@ class Violation:
             "layer": self.layer,
             "source_module": self.source_module,
             "target_module": self.target_module,
+            "edge": self.edge,
         }
         if self.import_chain:
             data["import_chain"] = [link.to_json() for link in self.import_chain]

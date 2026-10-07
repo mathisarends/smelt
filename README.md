@@ -148,6 +148,12 @@ addopts = ["--import-mode=importlib"]
 
 ## Adopting it in an existing project
 
+A first check often reports dozens of findings that come down to a few decisions. Each
+import finding carries an `edge` in JSON (`"billing.application -> voice.domain"`; for
+cycles, the cycle), and the text output ends with the edges behind several findings.
+Settle each edge once: fix the code, or record an intended dependency as policy, e.g. a
+`cross_feature.allow` entry. Accept what remains with a baseline:
+
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
 `smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries
 that were fixed and can leave the file (`smelt debt --prune`).
