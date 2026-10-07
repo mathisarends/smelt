@@ -14,7 +14,24 @@ EXIT_ERROR = 2
 
 
 class CliError(Exception):
-    """A usage or environment problem; reported on stderr with exit code 2."""
+    """A usage or environment problem; reported with exit code 2.
+
+    ``kind``, ``option`` and ``value`` end up in the JSON error document;
+    ``option`` and ``value`` name the argument the user got wrong, if there is one.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        kind: str = "usage",
+        option: str | None = None,
+        value: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.option = option
+        self.value = value
 
 
 @dataclass
@@ -52,7 +69,7 @@ def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
     found = discover_config(cwd)
     if found is None:
         msg = "no smelt.yaml found in this directory or its parents (run `smelt init`)"
-        raise CliError(msg)
+        raise CliError(msg, kind="config")
     return load_config(found)
 
 

@@ -40,6 +40,10 @@ class _Graph[T: Hashable]:
             hops.append((connected or candidates)[0])
         return hops
 
+    def type_checking_only(self, a: T, b: T) -> bool:
+        """Every import from ``a`` to ``b`` sits under ``if TYPE_CHECKING:``."""
+        return all(d.type_checking for d in self.witnesses[(a, b)])
+
 
 class ImportCycle(BaseRule):
     code = "SMT104"
@@ -51,7 +55,9 @@ class ImportCycle(BaseRule):
         summary="Import cycles between features, between layers, or between sibling modules.",
         rationale=(
             "Cycles mean two parts can only be understood, tested and changed together. "
-            "They also cause import-order bugs at runtime. Imports that other rules "
+            "They also cause import-order bugs at runtime, unless one edge is imported "
+            "only under `if TYPE_CHECKING:`; such cycles are marked "
+            "`(type checking only)`. Imports that other rules "
             "already forbid (SMT101, SMT102, SMT106) and outbound imports from "
             "declared wiring are left out, so a cycle report means the cycle is built "
             "entirely from ordinary allowed dependencies."
@@ -130,16 +136,34 @@ class ImportCycle(BaseRule):
                 continue
             hops = graph.chain(cycle)
             names = [label(node) for node in cycle]
+            static = [
+                f"{label(a)} -> {label(b)}"
+                for a, b in itertools.pairwise(cycle)
+                if graph.type_checking_only(a, b)
+            ]
+            message = f"import cycle between {scope}: {' -> '.join(names)}"
+            expected: dict[str, list[str]] = {"cycle": names}
+            hint = (
+                "Break one edge: extract what both sides need into a separate module, "
+                "or invert one dependency behind an abstraction."
+            )
+            if static:
+                message += " (type checking only)"
+                expected["type_checking_only"] = static
+                verb = "is" if len(static) == 1 else "are"
+                hint = (
+                    f"Only type checkers see this cycle: {', '.join(static)} {verb} "
+                    "imported under `if TYPE_CHECKING:`, so it cannot fail at import "
+                    "time. It still couples both sides. " + hint + " To leave such "
+                    "edges out, set architecture.imports.type_checking: ignore."
+                )
             yield import_violation(
                 self,
                 ctx,
                 hops[0],
-                f"import cycle between {scope}: {' -> '.join(names)}",
-                expected={"cycle": names},
-                hint=(
-                    "Break one edge: extract what both sides need into a separate module, "
-                    "or invert one dependency behind an abstraction."
-                ),
+                message,
+                expected=expected,
+                hint=hint,
                 chain=tuple(ImportLink(d.importer, d.imported, d.line) for d in hops),
             )
 

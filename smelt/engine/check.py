@@ -34,6 +34,17 @@ if TYPE_CHECKING:
     from smelt.rules.base import Rule, RuleSet
 
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
+
+
+class InvalidOptionError(AnalysisError):
+    """A check option names something that does not exist; a usage error."""
+
+    def __init__(self, message: str, *, option: str, value: str) -> None:
+        super().__init__(message)
+        self.option = option
+        self.value = value
+
+
 _CATEGORY_ORDER = [
     Category.DEPENDENCIES,
     Category.STRUCTURE,
@@ -96,7 +107,7 @@ def resolve_active_rules(
                     f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
                     "`smelt rules` lists valid codes"
                 )
-                raise AnalysisError(msg)
+                raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
 
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
@@ -411,13 +422,13 @@ def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
     for path in paths:
         if not (ctx.root / path).exists():
             msg = f'check path "{path}" does not exist{did_you_mean(path, candidates)}'
-            raise AnalysisError(msg)
+            raise InvalidOptionError(msg, option="paths", value=path)
         if not any(_under_any(p, (path,)) for p in known):
             msg = (
                 f'check path "{path}" contains no analyzed Python source or test files; '
                 "check project.root_packages, source_roots, test_roots and exclude"
             )
-            raise AnalysisError(msg)
+            raise InvalidOptionError(msg, option="paths", value=path)
 
 
 def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:

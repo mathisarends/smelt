@@ -14,6 +14,8 @@ from smelt.cli.support import (
     configure_streams,
 )
 from smelt.config import ConfigError
+from smelt.diagnostics.render.machine import render_error_json
+from smelt.engine.check import InvalidOptionError
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
@@ -135,10 +137,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_ERROR
     try:
         return handler(args, console, Path.cwd())
-    except ConfigError as exc:
-        console.err.write(f"{exc}\n")
-    except (AnalysisError, CliError) as exc:
-        console.error(str(exc))
-    except json.JSONDecodeError as exc:
-        console.error(f"invalid JSON: {exc}")
+    except (AnalysisError, CliError, ConfigError, json.JSONDecodeError) as exc:
+        if getattr(args, "format", None) == "json":
+            console.print(_error_json(exc), end="")
+        elif isinstance(exc, ConfigError):
+            console.err.write(f"{exc}\n")
+        else:
+            console.error(_message(exc))
     return EXIT_ERROR
+
+
+def _message(exc: Exception) -> str:
+    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)
+
+
+def _error_json(exc: Exception) -> str:
+    """Errors in the format the agent asked for, so it needs no text parser."""
+    if isinstance(exc, ConfigError):
+        header, *_ = str(exc).splitlines()
+        issues = [
+            {"location": i.path or None, "message": i.message} for i in exc.issues
+        ]
+        return render_error_json(
+            "config", header, config={"file": exc.source, "issues": issues}
+        )
+    kind, option, value = "analysis", None, None
+    if isinstance(exc, CliError):
+        kind, option, value = exc.kind, exc.option, exc.value
+    elif isinstance(exc, InvalidOptionError):
+        kind, option, value = "usage", exc.option, exc.value
+    given = (
+        {"option": option, "value": value}
+        if option is not None and value is not None
+        else None
+    )
+    return render_error_json(kind, _message(exc), invalid_input=given)

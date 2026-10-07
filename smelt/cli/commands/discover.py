@@ -37,7 +37,7 @@ def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     try:
         target = resolve_target(ctx, raw)
     except TargetError as exc:
-        raise CliError(str(exc)) from exc
+        raise CliError(str(exc), option="target", value=args.target) from exc
     try:
         outcome = run_check(loaded, CheckOptions(), context=ctx)
     except (AnalysisError, ConfigError) as exc:
