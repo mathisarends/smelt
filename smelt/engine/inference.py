@@ -295,10 +295,7 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
             imports = _imports(path, package.name)
             if not any(_reaches(packages, name, targets) for name in imports):
                 continue
-            if any(
-                module in _imports(_module_file(packages, root), package.name)
-                for root in roots
-            ):
+            if any(module in _module_imports(packages, root) for root in roots):
                 inferred.composition_root.append(module)
 
 
@@ -388,9 +385,18 @@ def _reaches(
         return False
     return any(
         _reaches(packages, imported, targets, depth - 1)
-        for imported in _imports(path, name)
+        for imported in _module_imports(packages, name)
         if _within_any(imported, [name])
     )
+
+
+def _module_imports(packages: list[Path], module: str) -> set[str]:
+    """Absolute names ``module`` imports; relative ones resolved from its package."""
+    path = _module_file(packages, module)
+    if path is None:
+        return set()
+    parent = module if path.name == "__init__.py" else module.rsplit(".", 1)[0]
+    return _imports(path, parent)
 
 
 def _imports(path: Path | None, package: str) -> set[str]:

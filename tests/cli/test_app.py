@@ -152,6 +152,41 @@ class TestCheckCommand:
         assert document["error"]["input"] == {"option": "--select", "value": "SMT999"}
         assert 'unknown rule prefix "SMT999"' in document["error"]["message"]
 
+    @pytest.mark.parametrize(
+        ("args", "given"),
+        [
+            (
+                ["--format", "json", "--fail-on", "bogus"],
+                {"option": "--fail-on", "value": "bogus"},
+            ),
+            (["--format=json", "--selct", "SMT1"], None),
+        ],
+    )
+    def test_argument_error_is_json_when_json_was_asked_for(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        args: list[str],
+        given: dict[str, str] | None,
+    ) -> None:
+        code, out, err = _run(capsys, "check", *args)
+
+        error = json.loads(out)["error"]
+        assert code == 2
+        assert err == ""
+        assert error["kind"] == "usage"
+        assert error["input"] == given
+
+    @pytest.mark.parametrize("fmt", ["text", "xml"])
+    def test_argument_error_stays_argparse_text_otherwise(
+        self, capsys: pytest.CaptureFixture[str], fmt: str
+    ) -> None:
+        code, out, err = _run(capsys, "check", "--format", fmt, "--fail-on", "bogus")
+
+        assert code == 2
+        assert out == ""
+        assert err.startswith("usage: smelt check")
+        assert "smelt check: error: argument" in err
+
     def test_scope_identifies_files_in_json_and_text(
         self,
         capsys: pytest.CaptureFixture[str],

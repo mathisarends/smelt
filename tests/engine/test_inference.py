@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.config import parse_config
 from smelt.config.loader import load_yaml
 from smelt.engine.inference import InferredLayer, infer_config, render_config
@@ -277,6 +279,31 @@ class TestDddWorkspace:
 
         assert inferred is not None
         assert "backend.app" not in inferred.composition_root
+
+    @pytest.mark.parametrize(
+        ("bootstrap", "is_factory"),
+        [
+            # shop/bootstrap/__init__.py: ``..app`` is shop/app.py
+            ("from ..app import create_app\n", True),
+            # ``. import app`` is shop/bootstrap/app.py, not shop/app.py
+            ("from . import app\n", False),
+        ],
+    )
+    def test_relative_imports_of_a_composition_root_package(
+        self, tmp_path: Path, bootstrap: str, *, is_factory: bool
+    ) -> None:
+        files = {
+            "shop/__init__.py": "",
+            "shop/providers.py": DISHKA_PROVIDER,
+            "shop/app.py": "from shop.providers import P\n",
+            "shop/bootstrap/__init__.py": bootstrap,
+            "shop/bootstrap/app.py": "",
+        }
+
+        inferred = infer_config(write_project(tmp_path, files))
+
+        assert inferred is not None
+        assert ("shop.app" in inferred.composition_root) is is_factory
 
     def test_settings_modules_are_shared(self, tmp_path: Path) -> None:
         inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))

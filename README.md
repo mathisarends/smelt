@@ -45,7 +45,9 @@ count and active rule codes. `--config PATH` works before or after a subcommand.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)
-and, for config errors, the `config` file with each issue's YAML `location`.
+and, for config errors, the `config` file with each issue's YAML `location`. That covers
+argument errors (`--fail-on bogus`, an unknown flag) whenever `--format json` is on the
+command line; an invalid `--format` value itself is reported as argparse text.
 
 `--changed` checks the base commit (HEAD, or the merge-base with `--base`) with today's
 config and reports only violations that are new, wherever they show up. Old violations in

@@ -1,8 +1,11 @@
 import argparse
+import itertools
 import json
+import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 from smelt import __version__
 from smelt.analysis.parsing import AnalysisError
@@ -20,11 +23,28 @@ from smelt.engine.check import InvalidOptionError
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
 
-type Subparsers = argparse._SubParsersAction[argparse.ArgumentParser]
+type Subparsers = argparse._SubParsersAction[_Parser]
+
+_INVALID_CHOICE = re.compile(r"argument ([^:]+): invalid choice: '([^']*)'")
+
+
+class _ParseError(CliError):
+    def __init__(self, parser: argparse.ArgumentParser, message: str) -> None:
+        choice = _INVALID_CHOICE.match(message)
+        option, value = choice.groups() if choice else (None, None)
+        super().__init__(message, option=option, value=value)
+        self.parser = parser
+
+
+class _Parser(argparse.ArgumentParser):
+    """Raises instead of exiting, so a JSON caller gets argument errors as JSON."""
+
+    def error(self, message: str) -> NoReturn:
+        raise _ParseError(self, message)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="smelt",
         description="Static guardrails for Python architecture.",
     )
@@ -130,7 +150,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_streams()
     console = Console(sys.stdout, sys.stderr)
     parser = build_parser()
-    args = parser.parse_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    try:
+        args = parser.parse_args(raw)
+    except _ParseError as exc:
+        if _asks_for_json(raw):
+            console.print(_error_json(exc), end="")
+        else:
+            exc.parser.print_usage(console.err)
+            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
+        return EXIT_ERROR
     handler: Handler | None = getattr(args, "handler", None)
     if handler is None:
         parser.print_help(sys.stderr)
@@ -145,6 +174,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             console.error(_message(exc))
     return EXIT_ERROR
+
+
+def _asks_for_json(argv: list[str]) -> bool:
+    pairs = itertools.pairwise(argv)
+    return "--format=json" in argv or ("--format", "json") in pairs
 
 
 def _message(exc: Exception) -> str:
