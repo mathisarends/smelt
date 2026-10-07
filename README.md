@@ -20,6 +20,17 @@ smelt --version
 From a local checkout, use `uv tool install .`. The PyPI package named `smelt` belongs
 to a different project; `pip install smelt` and bare `uvx smelt` install that project.
 
+## Installation
+
+```bash
+uv tool install smelt-cli
+# or install into your project's environment:
+pip install smelt-cli
+```
+
+The PyPI package is named `smelt-cli`; the CLI command and Python package are both
+named `smelt`. To run without installing, use `uvx --from smelt-cli smelt check`.
+
 ## Usage
 
 ```bash
@@ -178,8 +189,7 @@ autocompletion and a description for every key of `smelt.yaml`.
 
 Smelt runs on Python 3.12 to 3.14 and parses your code with the Python it runs on. Code
 that uses newer syntax (3.14's `except A, B:` or t-strings, 3.13's type parameter defaults)
-needs smelt on that version, e.g. install it with `uv tool install --python 3.14
-git+https://github.com/mathisarends/smelt.git`; the syntax error says so when
+needs smelt on that version, e.g. `uvx -p 3.14 --from smelt-cli smelt check`; the syntax error says so when
 `requires-python` or `.python-version` targets a newer Python.
 
 ## Using Smelt with coding agents
@@ -216,9 +226,9 @@ CI checks the whole repository; `--changed` is for the agent loop.
 
 ```yaml
 - uses: astral-sh/setup-uv@v6
-- run: uvx --from git+https://github.com/mathisarends/smelt.git smelt check --format github
+- run: uvx --from smelt-cli smelt check --format github
 # optional: code scanning
-- run: uvx --from git+https://github.com/mathisarends/smelt.git smelt check --format sarif > smelt.sarif || true
+- run: uvx --from smelt-cli smelt check --format sarif > smelt.sarif || true
 - uses: github/codeql-action/upload-sarif@v3
   with:
     sarif_file: smelt.sarif

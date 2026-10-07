@@ -50,8 +50,8 @@ def python_note(root: Path) -> str:
     if target is not None and target > running:
         version = f"{target[0]}.{target[1]}"
         note += (
-            f"; the project targets Python {version}, "
-            f"so install and run smelt with Python {version}"
+            f"; the project targets Python {version}, so run smelt on it, "
+            f"e.g. `uvx -p {version} --from smelt-cli smelt check`"
         )
     return note
 

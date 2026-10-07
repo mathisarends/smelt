@@ -54,13 +54,13 @@ class TestPythonNote:
 
         assert python_note(tmp_path) == (
             f" (parsed by Python {RUNNING}); the project targets Python 3.99, "
-            "so install and run smelt with Python 3.99"
+            "so run smelt on it, e.g. `uvx -p 3.99 --from smelt-cli smelt check`"
         )
 
     def test_reads_python_version_file(self, tmp_path: Path) -> None:
         (tmp_path / ".python-version").write_text("3.99.1\n", encoding="utf-8")
 
-        assert "install and run smelt with Python 3.99" in python_note(tmp_path)
+        assert "`uvx -p 3.99 --from smelt-cli smelt check`" in python_note(tmp_path)
 
     def test_older_target_adds_nothing(self, tmp_path: Path) -> None:
         (tmp_path / ".python-version").write_text("3.8\n", encoding="utf-8")
@@ -72,14 +72,18 @@ class TestSyntaxError:
     def test_error_carries_the_python_note(self, tmp_path: Path) -> None:
         root = _project(tmp_path, "def broken(:\n", requires=">=3.99")
 
-        with pytest.raises(AnalysisError, match=r"run smelt with Python 3\.99"):
+        with pytest.raises(
+            AnalysisError, match=r"uvx -p 3\.99 --from smelt-cli smelt check"
+        ):
             violations(root)
 
     @pytest.mark.skipif(sys.version_info >= (3, 14), reason="3.14 parses it")
     def test_newer_syntax_on_an_older_python(self, tmp_path: Path) -> None:
         root = _project(tmp_path, PY314, requires=">=3.14")
 
-        with pytest.raises(AnalysisError, match=r"run smelt with Python 3\.14"):
+        with pytest.raises(
+            AnalysisError, match=r"uvx -p 3\.14 --from smelt-cli smelt check"
+        ):
             violations(root)
 
 
