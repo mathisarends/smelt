@@ -4,6 +4,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt.diagnostics.render.text import render_text
+from smelt.diagnostics.violation import ImportLink
 from tests.diagnostics.render.conftest import read_line
 
 if TYPE_CHECKING:
@@ -98,6 +99,25 @@ class TestRepeatedEdges:
             "\n"
         ) in out
         assert "chat.domain" not in out.split("Repeated")[1]
+
+    def test_facades_relaying_indirect_findings_are_counted(
+        self, report: Report
+    ) -> None:
+        first = report.violations[0]
+        chain = (
+            ImportLink("gw.chat.a", "gw.llm", 1),
+            ImportLink("gw.llm", "gw.llm.providers", 2),
+        )
+        report.violations = [
+            replace(first, path=f"gw/chat/{n}.py", import_chain=chain) for n in range(2)
+        ]
+
+        out = render_text(report, read_line)
+
+        assert (
+            'Indirect findings by the module relaying them (JSON "groups"):\n'
+            "  2x gw.llm (voice.domain -> voice.infra)\n"
+        ) in out
 
     def test_single_findings_have_no_edge_block(self, report: Report) -> None:
         assert "Repeated dependency edges" not in render_text(report, read_line)

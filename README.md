@@ -173,7 +173,15 @@ A first check often reports dozens of findings that come down to a few decisions
 import finding carries an `edge` in JSON (`"billing.application -> voice.domain"`; for
 cycles, the cycle), and the text output ends with the edges behind several findings.
 Settle each edge once: fix the code, or record an intended dependency as policy, e.g. a
-`cross_feature.allow` entry. Accept what remains with a baseline:
+`cross_feature.allow` entry.
+JSON also lists `groups`, sorted by size: a `facade` group collects the indirect
+findings one module relays (its count is what narrowing that facade's exports would
+address), an `edge` group counts `direct` and `transitive` findings of one dependency, a
+`cycle` group carries the witness import path, and a `test_move` group the SMT401 files
+moving between the same directories. Groups cite findings by their `id`; every finding
+stays in `violations`, so a group is one decision, not one more defect.
+
+Accept what remains with a baseline:
 
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
 `smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries

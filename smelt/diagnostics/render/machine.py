@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
+from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
@@ -26,6 +27,7 @@ def render_json(report: Report) -> str:
             "rules": [rule.code for rule in report.rules],
         },
         "violations": [v.to_json() for v in report.violations],
+        "groups": group_findings(report.violations),
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 

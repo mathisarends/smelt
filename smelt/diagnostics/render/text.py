@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
@@ -60,6 +61,9 @@ def render_text(
     edges = _repeated_edges(shown)
     if edges:
         lines.extend([*edges, ""])
+    facades = _facades(shown)
+    if facades:
+        lines.extend([*facades, ""])
     if report.scope:
         lines.append(
             f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
@@ -117,6 +121,22 @@ def _repeated_edges(violations: list[Violation]) -> list[str]:
     )
     if len(repeated) > _TOP_EDGES:
         lines.append(f"  … {len(repeated) - _TOP_EDGES} more")
+    return lines
+
+
+def _facades(violations: list[Violation]) -> list[str]:
+    """Modules relaying indirect findings: narrowing one addresses all of its findings."""
+    groups = [g for g in group_findings(violations) if g["kind"] == "facade"]
+    if not groups:
+        return []
+    width = len(str(groups[0]["count"]))
+    lines = ['Indirect findings by the module relaying them (JSON "groups"):']
+    lines.extend(
+        f"  {g['count']:>{width}}x {g['key']} ({', '.join(g['edges'])})"
+        for g in groups[:_TOP_EDGES]
+    )
+    if len(groups) > _TOP_EDGES:
+        lines.append(f"  … {len(groups) - _TOP_EDGES} more")
     return lines
 
 

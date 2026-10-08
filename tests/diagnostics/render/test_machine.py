@@ -38,6 +38,7 @@ class TestJson:
         first = _loads(render_json(report))["violations"][0]
 
         assert first == {
+            "id": report.violations[0].finding_id,
             "code": "SMT101",
             "rule": "layer-boundary",
             "severity": "error",
