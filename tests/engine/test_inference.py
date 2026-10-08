@@ -339,6 +339,129 @@ class TestDddWorkspace:
         assert inferred is not None
         assert ("shop.app" in inferred.composition_root) is is_factory
 
+    def test_server_target_string_and_assembly_modules(self, tmp_path: Path) -> None:
+        workspace = {
+            **DDD_WORKSPACE,
+            # main.py names the app only as a string, the way uvicorn takes it
+            "backend/src/backend/main.py": (
+                'import uvicorn\nuvicorn.run("backend.app:app", port=8000)\n'
+            ),
+            "backend/src/backend/app.py": (
+                "from web import App, Bundle\n"
+                "from backend.features import FEATURES\n"
+                "from backend.platform import platform_bundle\n"
+                "def create_app() -> App:\n"
+                "    return App(platform_bundle, *FEATURES)\n"
+                "app = create_app()\n"
+            ),
+            "backend/src/backend/features/__init__.py": (
+                "from . import auth\nFEATURES = (auth.bundle,)\n"
+            ),
+            "backend/src/backend/features/auth/__init__.py": (
+                "from .bundle import bundle\n"
+            ),
+            "backend/src/backend/features/auth/bundle.py": (
+                "from web import Bundle\n"
+                "from .infrastructure.di import P as AuthProvider\n"
+                "bundle = Bundle(providers=[AuthProvider])\n"
+            ),
+            "backend/src/backend/platform/__init__.py": (
+                "from .assembly import platform_bundle\n"
+            ),
+            "backend/src/backend/platform/database/__init__.py": (
+                "from .di import P as DatabaseProvider\n"
+            ),
+            "backend/src/backend/platform/assembly.py": (
+                "from web import Bundle\n"
+                "from backend.platform.database import DatabaseProvider\n"
+                "platform_bundle = Bundle(providers=[DatabaseProvider])\n"
+            ),
+        }
+
+        inferred = infer_config(write_project(tmp_path, workspace))
+
+        assert inferred is not None
+        assert inferred.composition_root == [
+            "backend.main",
+            "backend.lifespan",
+            "backend.app",
+        ]
+        assert inferred.evidence["backend.app"].startswith(
+            'backend.main serves "backend.app:app" from it; backend.app → '
+        )
+        assert "backend.features.auth.bundle" in inferred.wiring
+        assert "backend.platform.assembly" in inferred.wiring
+        assert inferred.evidence["backend.features.auth.bundle"] == (
+            "backend.app → backend.features.FEATURES → "
+            "backend.features.auth.bundle.bundle → "
+            "backend.features.auth.infrastructure.di.P"
+        )
+        rendered = render_config(inferred)
+        assert "    # assembles providers: backend.app → " in rendered
+        config, _ = parse_config(load_yaml(rendered))
+        assert "backend.app" in config.architecture.composition_root
+
+    def test_framework_consumers_are_no_assembly(self, tmp_path: Path) -> None:
+        workspace = {
+            **DDD_WORKSPACE,
+            "backend/src/backend/app.py": (
+                "from web import App\n"
+                "from backend.lifespan import lifespan\n"
+                "from backend.features.auth.presentation.router import router\n"
+                "from backend.features.auth.application.service import Service\n"
+                "app = App(lifespan, routers=[router], service=Service)\n"
+            ),
+            "backend/src/backend/features/auth/presentation/__init__.py": "",
+            "backend/src/backend/features/auth/presentation/router.py": (
+                "from web import Router\nrouter = Router()\n"
+            ),
+            # imports the wiring, but nothing it defines is built from it
+            "backend/src/backend/features/auth/application/__init__.py": "",
+            "backend/src/backend/features/auth/application/service.py": (
+                "from backend.features.auth.infrastructure.di import P\n"
+                "class Service: ...\n"
+            ),
+        }
+
+        inferred = infer_config(write_project(tmp_path, workspace))
+
+        assert inferred is not None
+        assert not any("presentation" in w for w in inferred.wiring)
+        assert not any("application" in w for w in inferred.wiring)
+
+    @pytest.mark.parametrize(
+        ("other_importer", "confidence"), [(False, "medium"), (True, "low")]
+    )
+    def test_unclassified_package_of_the_root_is_only_a_candidate(
+        self, tmp_path: Path, *, other_importer: bool, confidence: str
+    ) -> None:
+        workspace = {
+            **DDD_WORKSPACE,
+            "backend/src/backend/app.py": (
+                "from backend.lifespan import lifespan\n"
+                "from backend.rpc import endpoint\n"
+                "app = (lifespan, endpoint)\n"
+            ),
+            "backend/src/backend/rpc/__init__.py": "from .routes import endpoint\n",
+            "backend/src/backend/rpc/routes.py": "endpoint = object()\n",
+        }
+        if other_importer:
+            workspace["backend/src/backend/features/auth/domain/token.py"] = (
+                "from backend.rpc import endpoint\n"
+            )
+
+        inferred = infer_config(write_project(tmp_path, workspace))
+
+        assert inferred is not None
+        assert "backend.rpc" not in inferred.composition_root
+        [candidate] = inferred.candidates
+        assert (candidate.module, candidate.confidence) == ("backend.rpc", confidence)
+        assert candidate.chain == ["backend.app", "backend.rpc.routes.endpoint"]
+        rendered = render_config(inferred)
+        assert "    # - backend.rpc\n" in rendered
+        config, _ = parse_config(load_yaml(rendered))
+        assert "backend.rpc" not in config.architecture.composition_root
+
     def test_settings_modules_are_shared(self, tmp_path: Path) -> None:
         inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
 

@@ -104,8 +104,15 @@ tests:
   import restrictions and configured cycle checks still apply.
 
 `smelt init` infers most of this: features, layers, shared and settings modules, the
-composition root including an app factory, wiring patterns, central packages by name and
+composition root including an app factory (imported or named as a `"backend.app:app"`
+server target), wiring patterns, central packages by name and
 the mirror pattern the existing tests follow. Review it before adopting its findings.
+It follows the names a composition root imports through package facades into their
+definitions (`FEATURES = (chat.feature, ...)`); a module whose definition is built from
+providers, such as a `feature.py` assembling `TelegramProvider`, becomes wiring, and the
+config comment shows the chain. Merely importing framework types changes nothing. An
+unclassified package only the root uses is proposed as a commented-out candidate with its
+chain and confidence, never applied silently.
 In a uv workspace it lists every declared member with the packages it found or why it
 skipped it (`tool.uv.workspace.exclude`, no Python package); namespace packages without
 `__init__.py` count under `src/` and where `tool.uv.build-backend` declares them.

@@ -86,10 +86,7 @@ def _summary(inferred: InferredConfig) -> list[str]:
         lines.append("layers: none detected (see the commented example)")
     if inferred.shared:
         lines.append(f"shared: {', '.join(inferred.shared)}")
-    if inferred.composition_root:
-        lines.append(f"composition root: {', '.join(inferred.composition_root)}")
-    if inferred.wiring:
-        lines.append(f"wiring: {', '.join(inferred.wiring)}")
+    lines.extend(_assembly_summary(inferred))
     if inferred.modules:
         lines.append(
             "central modules: "
@@ -117,6 +114,28 @@ def _summary(inferred: InferredConfig) -> list[str]:
                 "mirrored test_router.py files clash; add --import-mode=importlib to "
                 "the pytest addopts"
             )
+    return lines
+
+
+def _assembly_summary(inferred: InferredConfig) -> list[str]:
+    lines: list[str] = []
+    if inferred.composition_root:
+        lines.append(f"composition root: {', '.join(inferred.composition_root)}")
+    if inferred.wiring:
+        lines.append(f"wiring: {', '.join(inferred.wiring)}")
+    lines.extend(
+        f"  {module}: {why}"
+        for module, why in inferred.evidence.items()
+        if module in inferred.composition_root or module in inferred.wiring
+    )
+    if inferred.candidates:
+        lines.append(
+            "composition-root candidates (commented out in the config, review):"
+        )
+        lines.extend(
+            f"  {c.module} ({c.confidence} confidence, {c.reason}): {' → '.join(c.chain)}"
+            for c in inferred.candidates
+        )
     return lines
 
 
