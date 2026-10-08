@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     import argparse
 
     from smelt.engine.inference import InferredConfig
+    from smelt.engine.workspace import WorkspaceMember
 
 
 def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
@@ -68,6 +69,9 @@ def _init_target(custom: str | None, cwd: Path) -> tuple[Path, str]:
 
 def _summary(inferred: InferredConfig) -> list[str]:
     lines = [f"root packages: {', '.join(inferred.root_packages)}"]
+    if inferred.members:
+        lines.append("workspace members:")
+        lines.extend(f"  {_member_status(member)}" for member in inferred.members)
     lines.append(
         "boundary coverage: direct imports only; third-party packages allowed (review layers.*.third_party and imports.transitive)"
     )
@@ -114,6 +118,16 @@ def _summary(inferred: InferredConfig) -> list[str]:
                 "the pytest addopts"
             )
     return lines
+
+
+def _member_status(member: WorkspaceMember) -> str:
+    if member.skipped:
+        return f"{member.path}: skipped, {member.skipped}"
+    packages = ", ".join(
+        f"{name} (namespace package)" if name in member.namespace else name
+        for name in member.packages
+    )
+    return f"{member.path}: {packages} in {member.source_root}"
 
 
 def _violation_summary(path: Path) -> str:

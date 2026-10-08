@@ -106,6 +106,9 @@ tests:
 `smelt init` infers most of this: features, layers, shared and settings modules, the
 composition root including an app factory, wiring patterns, central packages by name and
 the mirror pattern the existing tests follow. Review it before adopting its findings.
+In a uv workspace it lists every declared member with the packages it found or why it
+skipped it (`tool.uv.workspace.exclude`, no Python package); namespace packages without
+`__init__.py` count under `src/` and where `tool.uv.build-backend` declares them.
 Its starter policy explicitly allows third-party packages and checks direct imports.
 Review these decisions: to keep frameworks out of the core, set e.g.
 `domain.third_party: {default: deny, allow: [pydantic]}` under `architecture.layers`.

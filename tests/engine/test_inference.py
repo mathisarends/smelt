@@ -80,6 +80,40 @@ class TestInferConfig:
         assert warnings == ()
         assert config.architecture.wiring == inferred.wiring
 
+    def test_namespace_member_joins_and_skipped_members_are_named(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": (
+                    '[tool.uv.workspace]\nmembers = ["backend", "e2e/stack", "web"]\n'
+                ),
+                "backend/src/backend/__init__.py": "",
+                "e2e/stack/pyproject.toml": (
+                    "[tool.uv.build-backend]\nnamespace = true\n"
+                ),
+                "e2e/stack/src/e2e_stack/server/__init__.py": "",
+                "e2e/stack/tests/test_server.py": "",
+                "web/package.json": "{}",
+            },
+        )
+
+        inferred = infer_config(tmp_path)
+
+        assert inferred is not None
+        assert inferred.root_packages == ["backend", "e2e_stack"]
+        assert inferred.source_roots == ["backend/src", "e2e/stack/src"]
+        assert inferred.test_roots == ["e2e/stack/tests"]
+        rendered = render_config(inferred)
+        assert (
+            "  # not analyzed: workspace member web "
+            "(no Python package in src/ or the member directory)\n"
+        ) in rendered
+        config, warnings = parse_config(load_yaml(rendered))
+        assert warnings == ()
+        assert config.project.root_packages == ["backend", "e2e_stack"]
+
     def test_features_root_with_layers(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,

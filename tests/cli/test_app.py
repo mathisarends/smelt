@@ -606,6 +606,39 @@ class TestInitCommand:
         assert "  layers: domain (domain), infrastructure (infra)\n" in out
         assert "The inferred config yields 1 error and 0 warnings." in out
 
+    def test_summary_accounts_for_every_workspace_member(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": (
+                    "[tool.uv.workspace]\n"
+                    'members = ["api", "e2e", "web", "old"]\n'
+                    'exclude = ["old"]\n'
+                ),
+                "api/src/api/__init__.py": "",
+                "e2e/src/stack/server/__init__.py": "",
+                "web/index.ts": "",
+                "old/src/old/__init__.py": "",
+            },
+        )
+        monkeypatch.chdir(tmp_path)
+
+        code, out, _ = _run(capsys, "init")
+
+        assert code == 0
+        assert (
+            "  workspace members:\n"
+            "    api: api in api/src\n"
+            "    e2e: stack (namespace package) in e2e/src\n"
+            "    old: skipped, excluded by tool.uv.workspace.exclude\n"
+            "    web: skipped, no Python package in src/ or the member directory\n"
+        ) in out
+
     def test_refuses_to_overwrite(
         self,
         capsys: pytest.CaptureFixture[str],
