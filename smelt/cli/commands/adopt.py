@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.parsing import AnalysisError
@@ -12,33 +13,57 @@ from smelt.engine.inference import infer_config, render_config
 
 if TYPE_CHECKING:
     import argparse
-    from pathlib import Path
 
     from smelt.engine.inference import InferredConfig
 
 
 def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    existing = [cwd / name for name in CONFIG_FILENAMES if (cwd / name).exists()]
-    if existing and not args.force:
-        msg = f"{existing[0].name} already exists (use --force to overwrite)"
-        raise CliError(msg)
-    inferred = infer_config(cwd)
+    custom: str | None = args.config
+    target, shown = _init_target(custom, cwd)
+    if target.is_dir():
+        msg = f"{shown} is a directory; pass the path of the config file to write"
+        raise CliError(msg, option="--config", value=custom)
+    if target.exists() and not args.force:
+        msg = f"{shown} already exists (use --force to overwrite)"
+        raise CliError(msg, option="--config" if custom else None, value=custom)
+    root = target.parent
+    if not root.is_dir():
+        msg = (
+            f"directory {root} does not exist; it would be the project root of {shown}"
+        )
+        raise CliError(msg, option="--config", value=custom)
+    inferred = infer_config(root)
     if inferred is None:
         msg = (
             "no Python package found in this directory, src/, or declared uv workspace members; "
             "run `smelt init` from the project root or configure source_roots manually"
         )
         raise CliError(msg)
-    target = cwd / CONFIG_FILENAME
-    for path in existing:
-        if path != target:
-            path.unlink()
     target.write_text(render_config(inferred), encoding="utf-8", newline="\n")
-    console.print(f"Wrote {CONFIG_FILENAME}")
+    console.print(f"Wrote {shown}")
     for line in _summary(inferred):
         console.print(f"  {line}")
     console.print(_violation_summary(target))
+    if target.name not in CONFIG_FILENAMES:
+        console.print(
+            f"smelt only finds {' or '.join(CONFIG_FILENAMES)} on its own; "
+            f"pass --config {shown} to every command."
+        )
     return EXIT_OK
+
+
+def _init_target(custom: str | None, cwd: Path) -> tuple[Path, str]:
+    """The one file ``init`` writes: ``--config``, else the default config here.
+
+    Only that file is checked and overwritten; a reviewed config elsewhere stays.
+    Without ``--config`` an existing ``smelt.yml`` is the target, not a second file.
+    """
+    if custom is not None:
+        path = Path(custom)
+        return (path if path.is_absolute() else cwd / path), custom
+    existing = next((name for name in CONFIG_FILENAMES if (cwd / name).exists()), None)
+    name = existing or CONFIG_FILENAME
+    return cwd / name, name
 
 
 def _summary(inferred: InferredConfig) -> list[str]:
@@ -103,7 +128,7 @@ def _violation_summary(path: Path) -> str:
         return "The inferred config yields no violations. Run `smelt check` any time."
     return (
         f"The inferred config yields {errors} error{'s' * (errors != 1)} and "
-        f"{warnings} warning{'s' * (warnings != 1)}. Review {CONFIG_FILENAME}, then run "
+        f"{warnings} warning{'s' * (warnings != 1)}. Review {path.name}, then run "
         "`smelt check`, or `smelt debt` to adopt incrementally."
     )
 

@@ -24,6 +24,7 @@ to a different project; `pip install smelt` and bare `uvx smelt` install that pr
 
 ```bash
 smelt init                           # draft smelt.yaml from the code (also uv workspaces)
+smelt init --config other.yaml       # write elsewhere; only that file is checked and overwritten
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --changed --base origin/main --format json
