@@ -4,6 +4,7 @@ import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from smelt.analysis.exports import Namespace, namespace_of
 from smelt.analysis.parsing import AstCache, resolve_relative
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ class SyntaxIndex:
         self.files = files
         self._asts = asts
         self._by_path: dict[str, ModuleSyntax] = {}
+        self._namespaces: dict[str, Namespace | None] = {}
 
     def for_path(self, path: str) -> ModuleSyntax | None:
         cached = self._by_path.get(path)
@@ -42,6 +44,21 @@ class SyntaxIndex:
         _collect_bindings(syntax)
         self._by_path[path] = syntax
         return syntax
+
+    def namespace(self, module: str) -> Namespace | None:
+        """The top-level names of a source module; a loader for ``analysis.exports``."""
+        if module not in self._namespaces:
+            source = self.files.sources.get(module)
+            self._namespaces[module] = (
+                None
+                if source is None
+                else namespace_of(
+                    self._asts.parse(source.path),
+                    module,
+                    is_package=source.is_package,
+                )
+            )
+        return self._namespaces[module]
 
 
 def _collect_bindings(syntax: ModuleSyntax) -> None:

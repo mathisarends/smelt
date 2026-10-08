@@ -140,6 +140,14 @@ elsewhere is an error. The message names the fix where it can: the right directo
 right file name (`test_session_infrastructure_repository.py` should be named
 `test_repository.py`), a neighbouring module with a similar name, or a missing `{root}` in
 the pattern.
+Imports through package facades count as imports of the module that defines the
+name, so `from app.channels.application import ChannelCommands` points at
+`application/commands/`. A move needs that evidence (or a test named exactly after its
+subject, marked `"evidence": "name"`); a similar file name alone suggests nothing.
+Otherwise the JSON lists `expected.candidates`: the imported modules, nearest first, with
+the names imported from them, the facade they came through and their mirrored test path.
+A test importing two modules of its name (`application/bootstrap.py` and
+`infrastructure/bootstrap.py`) gets both as candidates and no move.
 
 `tests.mirror` sets the convention relative to the test root: the default
 `{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py` keeps it,

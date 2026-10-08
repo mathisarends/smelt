@@ -93,6 +93,8 @@ class TestMirrorLayout:
         assert found.expected == {
             "path": "tests/billing/test_invoice.py",
             "source": "app/billing/invoice.py",
+            "subject": "module",
+            "evidence": "imports",
         }
 
     def test_orphaned_test_is_reported(self, tmp_path: Path) -> None:
@@ -119,9 +121,11 @@ class TestMirrorLayout:
                 '(did you mean "payment.py"?)',
             ),
         ]
-        assert [v.expected for v in found] == [
-            {"source": "app/billing/ghost.py"},
-            {"source": "app/billing/payments.py"},
+        assert found[0].expected == {"source": "app/billing/ghost.py"}
+        assert found[1].expected is not None
+        assert found[1].expected["subject"] == "unknown"
+        assert [c["module"] for c in found[1].expected["candidates"]] == [
+            "app.billing.payment"
         ]
 
     def test_package_test_must_live_in_the_package_dir(self, tmp_path: Path) -> None:
@@ -141,6 +145,8 @@ class TestMirrorLayout:
         assert found.expected == {
             "path": "tests/billing/stripe/test_stripe.py",
             "source": "app/billing/stripe/",
+            "subject": "package",
+            "evidence": "name",
         }
 
     def test_suffixes_are_off_by_default(self, tmp_path: Path) -> None:
@@ -198,6 +204,8 @@ class TestMirrorLayout:
         assert found.expected == {
             "path": "tests/billing/test_invoice.py",
             "source": "app/billing/invoice.py",
+            "subject": "module",
+            "evidence": "imports",
         }
 
 
@@ -241,6 +249,8 @@ class TestMirrorPattern:
         assert found.expected == {
             "path": "tests/unit/billing/test_payment.py",
             "source": "app/billing/payment.py",
+            "subject": "module",
+            "evidence": "imports",
         }
 
 
@@ -319,6 +329,8 @@ class TestSuggestions:
         assert found.expected == {
             "path": "tests/billing/test_invoice.py",
             "source": "app/billing/invoice.py",
+            "subject": "module",
+            "evidence": "imports",
         }
 
     def test_name_ending_in_a_neighbouring_module_is_renamed(
@@ -371,12 +383,28 @@ class TestSuggestions:
             "tests/billing/test_payment.py already exists; merge the two tests."
         )
 
-    def test_typo_suggests_the_neighbouring_module(self, tmp_path: Path) -> None:
-        root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
+    def test_typo_suggests_the_imported_neighbouring_module(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(
+            tmp_path,
+            {"tests/billing/test_invoise.py": "from app.billing import invoice\n"},
+        )
 
         [found] = violations(root, ONLY_SMT401)
 
         assert found.message.endswith('(did you mean "invoice.py"?)')
+
+    def test_similar_name_alone_names_no_subject(self, tmp_path: Path) -> None:
+        root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "test_invoise.py has no source module at its mirrored path "
+            "app/billing/invoise.py"
+        )
+        assert found.expected == {"source": "app/billing/invoise.py"}
 
     def test_typo_is_only_suggested_for_an_imported_module(
         self, tmp_path: Path
@@ -438,6 +466,8 @@ class TestSuggestions:
         assert found.expected == {
             "path": "tests/billing/commands/test_commands.py",
             "source": "app/billing/commands/",
+            "subject": "package",
+            "evidence": "imports",
         }
 
     def test_package_name_loses_against_imports_from_elsewhere(
@@ -454,6 +484,129 @@ class TestSuggestions:
             "test_stripe.py has no source module at its mirrored path "
             "app/billing/stripe.py"
         )
+
+    def test_facade_imports_name_the_package_the_test_covers(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "app/billing/__init__.py": (
+                    "from .commands import Refund\nfrom .models import Command\n"
+                ),
+                "app/billing/models.py": "class Command: ...\n",
+                "app/billing/commands/__init__.py": "from .refund import Refund\n",
+                "app/billing/commands/refund.py": "class Refund: ...\n",
+                "tests/billing/test_commands.py": (
+                    "from app.billing import Command, Refund\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == "test_commands.py belongs in tests/billing/commands/"
+        assert found.expected is not None
+        assert found.expected["evidence"] == "imports"
+
+    def test_two_imported_subjects_of_one_name_stay_undecided(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "app/auth/__init__.py": "",
+                "app/auth/application/__init__.py": (
+                    "from .bootstrap import AdminBootstrap\n"
+                ),
+                "app/auth/application/bootstrap.py": "class AdminBootstrap: ...\n",
+                "app/auth/infrastructure/__init__.py": "",
+                "app/auth/infrastructure/bootstrap.py": "def seed() -> None: ...\n",
+                "tests/auth/test_bootstrap.py": (
+                    "from app.auth.application import AdminBootstrap\n"
+                    "from app.auth.infrastructure.bootstrap import seed\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "test_bootstrap.py has no source module at its mirrored path "
+            "app/auth/bootstrap.py; it imports 2 modules named bootstrap"
+        )
+        assert found.expected is not None
+        assert "path" not in found.expected
+        assert found.expected["subject"] == "ambiguous"
+        assert found.expected["candidates"] == [
+            {
+                "module": "app.auth.application.bootstrap",
+                "kind": "module",
+                "source": "app/auth/application/bootstrap.py",
+                "test_path": "tests/auth/application/test_bootstrap.py",
+                "imports": ["AdminBootstrap"],
+                "via": ["app.auth.application"],
+            },
+            {
+                "module": "app.auth.infrastructure.bootstrap",
+                "kind": "module",
+                "source": "app/auth/infrastructure/bootstrap.py",
+                "test_path": "tests/auth/infrastructure/test_bootstrap.py",
+                "imports": ["seed"],
+                "via": [],
+            },
+        ]
+        assert found.hint is not None
+        assert found.hint.startswith(
+            "It imports auth/application/bootstrap.py, auth/infrastructure/bootstrap.py."
+        )
+
+    def test_topic_prefix_is_not_a_package_path(self, tmp_path: Path) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "app/billing/events.py": "",
+                "tests/billing/test_workspace_update_events.py": (
+                    "from app.billing.events import Updated\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.message == (
+            "test_workspace_update_events.py has no source module at its mirrored "
+            "path app/billing/workspace_update_events.py"
+        )
+
+    def test_other_imported_module_with_a_similar_name_is_no_typo(
+        self, tmp_path: Path
+    ) -> None:
+        root = _mirror(
+            tmp_path,
+            {
+                "app/billing/spotify_search.py": "",
+                "tests/billing/test_spotify_service.py": (
+                    "from app.billing import spotify_search\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert "did you mean" not in found.message
+        assert found.expected is not None
+        assert found.expected["candidates"][0]["module"] == "app.billing.spotify_search"
+
+    def test_name_only_move_says_so(self, tmp_path: Path) -> None:
+        root = _mirror(tmp_path, {"tests/billing/test_stripe.py": "import os\n"})
+
+        [found] = violations(root, ONLY_SMT401)
+
+        assert found.expected is not None
+        assert found.expected["evidence"] == "name"
+        assert found.hint is not None
+        assert "Only its name points there" in found.hint
 
     def test_missing_root_placeholder_is_pointed_out(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/app/billing/test_invoice.py": ""})

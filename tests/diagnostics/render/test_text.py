@@ -46,6 +46,38 @@ class TestViolations:
         assert "\x1b[31m[error]\x1b[0m" in out
         assert "\x1b[31m^^^^" in out
 
+    def test_test_candidates_are_listed_and_machine_keys_hidden(
+        self, report: Report
+    ) -> None:
+        candidate = {
+            "module": "app.auth.application.bootstrap",
+            "kind": "module",
+            "source": "app/auth/application/bootstrap.py",
+            "test_path": "tests/auth/application/test_bootstrap.py",
+            "imports": ["AdminBootstrap"],
+            "via": ["app.auth.application"],
+        }
+        report.violations = [
+            replace(
+                report.violations[1],
+                expected={
+                    "source": "app/auth/bootstrap.py",
+                    "subject": "ambiguous",
+                    "candidates": [candidate],
+                },
+            )
+        ]
+
+        out = render_text(report, read_line)
+
+        assert (
+            "  Expected source: app/auth/bootstrap.py\n"
+            "  Candidates:\n"
+            "    app/auth/application/bootstrap.py (AdminBootstrap via "
+            "app.auth.application) → tests/auth/application/test_bootstrap.py\n"
+        ) in out
+        assert "ambiguous" not in out
+
 
 class TestRepeatedEdges:
     def test_edges_behind_several_findings_are_counted(self, report: Report) -> None:

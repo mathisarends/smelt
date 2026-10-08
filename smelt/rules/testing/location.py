@@ -8,10 +8,12 @@ from functools import cache
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.exports import resolve_dotted
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.common import display_module_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -30,13 +32,40 @@ def _first_party_module(ctx: AnalysisContext, qualname: str) -> str | None:
     return None
 
 
-def _imported_modules(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[str]:
-    found: list[str] = []
+@dataclass(frozen=True, slots=True)
+class _Import:
+    """A first-party name a test imports and the module that defines it."""
+
+    name: str  # ``ChannelCommands``, or the module for ``import``/``from . import x``
+    module: str
+    via: str | None = None  # the package facade that re-exports it
+
+
+def _resolved_imports(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[_Import]:
+    """First-party imports, followed through package facades to their modules.
+
+    ``from app.channels.application import ChannelCommands`` names the package, but
+    the test exercises ``app/channels/application/commands/registry.py``.
+    """
+    found: list[_Import] = []
     for target in syntax.bindings.values():
         module = _first_party_module(ctx, target)
-        if module is not None and module not in found:
-            found.append(module)
+        if module is None:
+            continue
+        item = _Import(target, module)
+        if target != module:
+            name = target[len(module) + 1 :]
+            item = _Import(name, module)
+            resolved = resolve_dotted(target, ctx.syntax.namespace)
+            if resolved is not None and resolved[0] != module:
+                item = _Import(name, resolved[0], via=module)
+        if item not in found:
+            found.append(item)
     return found
+
+
+def _modules(imports: list[_Import]) -> list[str]:
+    return list(dict.fromkeys(item.module for item in imports))
 
 
 def _subject(name: str) -> str:
@@ -144,19 +173,21 @@ def _similar_module(ctx: AnalysisContext, module: str, imported: list[str]) -> s
     """`` (did you mean "fernet_token_cypher.py"?)`` for a typo next to a real module.
 
     Names are compared without ``.py``, which made ``memory.py`` look like
-    ``errors.py``. A test that imports first-party code names its subject that way,
-    so only a module it imports can be the one it misspells.
+    ``errors.py``. Only a module the test imports can be the one it misspells: a
+    similar file name alone says nothing about what the test covers.
     """
     package, name = module.rsplit(".", 1)
     siblings = [
         source.module
         for source in ctx.files.sources.values()
-        if not source.is_package and source.module.rsplit(".", 1)[0] == package
+        if not source.is_package
+        and source.module.rsplit(".", 1)[0] == package
+        and source.module in imported
     ]
-    if imported:
-        siblings = [sibling for sibling in siblings if sibling in imported]
     stems = [sibling.rsplit(".", 1)[1] for sibling in siblings]
-    match = difflib.get_close_matches(name, stems, n=1, cutoff=0.6)
+    # Typos score above 0.85 (invoise/invoice); spotify_service/spotify_search
+    # scores 0.83 and is another module, not a misspelling.
+    match = difflib.get_close_matches(name, stems, n=1, cutoff=0.85)
     return f' (did you mean "{match[0]}.py"?)' if match else ""
 
 
@@ -203,7 +234,7 @@ def _suffix_sibling(
         for source in ctx.files.sources.values()
         if not source.is_package
         and source.module.rsplit(".", 1)[0] == ".".join([root, *mirror.directories])
-        and mirror.module.endswith(f"_{source.module.rsplit('.', 1)[1]}")
+        and _spells_package_path(mirror.module, source.module)
     ]
     if len(found) != 1:
         return None
@@ -277,7 +308,12 @@ class MisplacedTestFile(BaseRule):
             "Move or rename the file so its path mirrors the module it tests, merge it "
             "into that module's test, or list deliberately unmirrored tests "
             "(behaviour, integration, e2e) in tests.unmirrored. A missing mirrored "
-            "source says nothing about whether the tested behaviour exists."
+            "source says nothing about whether the tested behaviour exists. Imports "
+            "through package facades count as imports of the defining module. A move "
+            "is suggested only when the test imports its subject (or is named exactly "
+            "after it, marked `evidence: name`); otherwise `expected.candidates` lists "
+            "the imported modules with their names and mirrored test paths to choose "
+            "from, and two imported modules of the test's name stay undecided."
         ),
         config=(
             "tests.layout",
@@ -305,13 +341,15 @@ class MisplacedTestFile(BaseRule):
         if mirror is not None and _mirrors_source(ctx, mirror, test.test_root):
             return
         syntax = ctx.syntax.for_path(test.path)
-        modules = _imported_modules(ctx, syntax) if syntax is not None else []
+        imports = _resolved_imports(ctx, syntax) if syntax is not None else []
+        modules = _modules(imports)
         subject = mirror.module if mirror else _subject(test.name)
-        tested = self._tested_module(ctx, subject, modules)
-        if tested is None and mirror is not None:
+        named = _named_modules(ctx, subject, modules)
+        tested = named[0] if len(named) == 1 else None
+        if not named and mirror is not None:
             tested = _suffix_sibling(ctx, mirror, test.test_root, modules)
         package = None
-        if tested is None and mirror is not None:
+        if not named and tested is None and mirror is not None:
             package = _named_package(ctx, mirror, test.test_root, modules)
         covered = tested or package
         taken = ""
@@ -322,40 +360,62 @@ class MisplacedTestFile(BaseRule):
             if expected in ctx.files.tests and expected != test.path:
                 taken = f" {expected} already exists; merge the two tests."
             elif expected != test.path:
-                yield self._misplaced(ctx, test, covered, expected)
+                yield self._misplaced(ctx, test, covered, expected, modules)
                 return
-        hint = (
-            "A path without a source module does not mean the tested behaviour is "
-            "missing. Move or rename the test to mirror the module it covers, merge it "
-            "into that module's test, delete it if the module is gone, or list a "
-            "deliberate behaviour or integration test in tests.unmirrored."
-            + _suffix_hint(ctx)
-            + taken
-        )
         if mirror is None:
             pattern = ctx.config.tests.mirror
             yield self.violation(
                 f"{test.name} does not match tests.mirror ({pattern})",
                 path=test.path,
                 expected={"pattern": f"{test.test_root}/{pattern}"},
-                hint=hint,
+                hint=_GENERIC_HINT + _suffix_hint(ctx) + taken,
             )
             return
         module = _missing_module(ctx, mirror, test.test_root)
         source = ctx.files.module_to_path(module)
         info = ctx.model.info(module)
+        ranked = _ranked(ctx, test.test_root, module, named or modules)
+        candidates = _candidates(ctx, test.test_root, ranked, imports)
+        details: dict[str, object] = {"source": source}
+        message = f"{test.name} has no source module at its mirrored path {source}"
+        if len(named) <= 1:
+            message += _similar_module(ctx, module, modules)
+        if len(named) > 1:
+            message += f"; it imports {len(named)} modules named {subject}"
+            hint = (
+                f"It imports {_listing(ctx, ranked)}. Move it next to the one it tests, "
+                "split it, or list it in tests.unmirrored if it tests how they work "
+                "together."
+            )
+            details |= {"subject": "ambiguous", "candidates": candidates}
+        elif candidates:
+            hint = (
+                f"{_NO_SOURCE} It imports {_listing(ctx, ranked)}: rename or move it "
+                "to the test of the module it covers, merge it into that test, or list "
+                "it in tests.unmirrored if it tests behaviour across them."
+            )
+            details |= {"subject": "unknown", "candidates": candidates}
+        else:
+            hint = _GENERIC_HINT
         yield self.violation(
-            f"{test.name} has no source module at its mirrored path {source}"
-            f"{_similar_module(ctx, module, modules)}",
+            message,
             path=test.path,
             feature=info.feature if info else None,
             layer=info.layer if info else None,
-            expected={"source": source},
-            hint=hint + _root_pattern_hint(ctx, mirror, test.test_root),
+            expected=details,
+            hint=hint
+            + _suffix_hint(ctx)
+            + taken
+            + _root_pattern_hint(ctx, mirror, test.test_root),
         )
 
     def _misplaced(
-        self, ctx: AnalysisContext, test: TestFile, module: str, expected: str
+        self,
+        ctx: AnalysisContext,
+        test: TestFile,
+        module: str,
+        expected: str,
+        imported: list[str],
     ) -> Violation:
         directory = posixpath.dirname(expected)
         if directory == posixpath.dirname(test.path):
@@ -363,26 +423,112 @@ class MisplacedTestFile(BaseRule):
         else:
             message = f"{test.name} belongs in {directory}/"
         info = ctx.model.info(module)
-        source = ctx.files.module_to_path(module, package=module in ctx.files.packages)
+        package = module in ctx.files.packages
+        source = ctx.files.module_to_path(module, package=package)
+        hint = f"Move the file to {expected}."
+        evidence = "imports"
+        if not any(is_within(m, module) for m in imported):
+            evidence = "name"
+            hint = (
+                f"Move the file to {expected}. Only its name points there: it imports "
+                f"no code of {source}, so check that it really tests it."
+            )
         return self.violation(
             message,
             path=test.path,
             feature=info.feature if info else None,
             layer=info.layer if info else None,
-            expected={"path": expected, "source": source},
-            hint=f"Move the file to {expected}.",
+            expected={
+                "path": expected,
+                "source": source,
+                "subject": "package" if package else "module",
+                "evidence": evidence,
+            },
+            hint=hint,
         )
 
-    def _tested_module(
-        self, ctx: AnalysisContext, subject: str, modules: list[str]
-    ) -> str | None:
-        """The one imported module the test is about, judged by its name."""
-        plain = [m for m in modules if m not in ctx.files.packages]
-        exact = [m for m in plain if m.rsplit(".", 1)[-1] == subject]
-        if len(exact) == 1:
-            return exact[0]
-        if exact:
-            return None
-        # test_session_infrastructure_repository.py spells out the package path
-        suffixed = [m for m in plain if subject.endswith(f"_{m.rsplit('.', 1)[-1]}")]
-        return suffixed[0] if len(suffixed) == 1 else None
+
+def _named_modules(ctx: AnalysisContext, subject: str, modules: list[str]) -> list[str]:
+    """The imported modules the test is named after; several make it ambiguous."""
+    plain = [m for m in modules if m not in ctx.files.packages]
+    exact = [m for m in plain if m.rsplit(".", 1)[-1] == subject]
+    if exact:
+        return exact
+    # test_session_infrastructure_repository.py spells out the package path
+    suffixed = [m for m in plain if _spells_package_path(subject, m)]
+    return suffixed if len(suffixed) == 1 else []
+
+
+def _spells_package_path(subject: str, module: str) -> bool:
+    """``session_infrastructure_repository`` names ``session.infrastructure.repository``.
+
+    The prefix must be the end of the module's package path: a topic such as
+    ``agent_workspace_update_events`` does not make a test about ``agent/events.py``.
+    """
+    *package, name = module.split(".")
+    if not subject.endswith(f"_{name}"):
+        return False
+    prefix = subject[: -len(name) - 1]
+    return any(prefix == "_".join(package[start:]) for start in range(len(package)))
+
+
+_NO_SOURCE = (
+    "A path without a source module does not mean the tested behaviour is missing."
+)
+_GENERIC_HINT = (
+    f"{_NO_SOURCE} Move or rename the test to mirror the module it covers, merge it "
+    "into that module's test, delete it if the module is gone, or list a deliberate "
+    "behaviour or integration test in tests.unmirrored."
+)
+# Enough to choose from; the JSON says how many there are.
+_MAX_CANDIDATES = 5
+
+
+def _ranked(
+    ctx: AnalysisContext, test_root: str, missing: str, modules: list[str]
+) -> list[str]:
+    """Imported modules of the test's own member, nearest to its mirrored path first.
+
+    Within the mirrored package, names closer to the test's name come first; that
+    orders the evidence, it adds no module the test does not import.
+    """
+    roots = member_roots(ctx, test_root)
+    package, name = missing.rsplit(".", 1)
+    return sorted(
+        (m for m in modules if m.split(".")[0] in roots),
+        key=lambda m: (
+            not is_within(m, package),
+            -difflib.SequenceMatcher(None, name, m.rsplit(".", 1)[-1]).ratio(),
+            m,
+        ),
+    )
+
+
+def _candidates(
+    ctx: AnalysisContext, test_root: str, ranked: list[str], imports: list[_Import]
+) -> list[dict[str, object]]:
+    """The first ranked modules with what the test imports from them; none is a move."""
+    found: list[dict[str, object]] = []
+    for module in ranked[:_MAX_CANDIDATES]:
+        is_package = module in ctx.files.packages
+        target = f"{module}.{module.rsplit('.', 1)[-1]}" if is_package else module
+        found.append(
+            {
+                "module": module,
+                "kind": "package" if is_package else "module",
+                "source": ctx.files.module_to_path(module, package=is_package),
+                "test_path": _mirror_target(ctx, test_root, target),
+                "imports": sorted({i.name for i in imports if i.module == module}),
+                "via": sorted({i.via for i in imports if i.module == module and i.via}),
+            }
+        )
+    return found
+
+
+def _listing(ctx: AnalysisContext, modules: list[str]) -> str:
+    shown = [
+        display_module_path(ctx.model, m, package=m in ctx.files.packages)
+        for m in modules[:3]
+    ]
+    more = len(modules) - len(shown)
+    return ", ".join(shown) + (f" and {more} more" if more else "")

@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 _WIDTH = 88
 _TOP_EDGES = 5
+# Keys of "expected" that only machine readers need; the message says the same.
+_MACHINE_ONLY = frozenset({"cycle", "subject", "evidence"})
 _COLORS = {
     Severity.ERROR: "\x1b[31m",
     Severity.WARNING: "\x1b[33m",
@@ -180,14 +182,31 @@ def _expected(violation: Violation, expected: Mapping[str, Any]) -> list[str]:
         if key == "may_depend_on" and violation.layer:
             targets = ", ".join(value) if value else "(nothing)"
             lines.append(f"  Allowed: {violation.layer} → {targets}")
-        elif key == "cycle":
+        elif key in _MACHINE_ONLY:
             continue
+        elif key == "candidates":
+            lines.extend(_candidate_lines(value))
         elif key in ("path", "expected_path"):
             lines.append(f"  Expected: {value}")
         else:
             lines.append(
                 _wrap(f"Expected {key.replace('_', ' ')}: ", _format_value(value))
             )
+    return lines
+
+
+def _candidate_lines(candidates: list[Mapping[str, Any]]) -> list[str]:
+    """``application/commands/ (ChannelCommands, HelpCommand via ...application)``."""
+    lines = ["  Candidates:"]
+    for candidate in candidates:
+        names = ", ".join(candidate.get("imports", ()))
+        via = ", ".join(candidate.get("via", ()))
+        detail = f"{names} via {via}" if via else names
+        lines.append(
+            f"    {candidate['source']} ({detail}) → {candidate['test_path']}"
+            if detail
+            else f"    {candidate['source']} → {candidate['test_path']}"
+        )
     return lines
 
 
