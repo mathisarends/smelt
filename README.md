@@ -9,18 +9,7 @@ with the exact location, what is allowed instead and how to fix it:
 
 ## Installation
 
-Requires Python 3.12 or newer. Until this project has a PyPI release under its own
-distribution name, install from this repository:
-
-```bash
-uv tool install git+https://github.com/mathisarends/smelt.git
-smelt --version
-```
-
-From a local checkout, use `uv tool install .`. The PyPI package named `smelt` belongs
-to a different project; `pip install smelt` and bare `uvx smelt` install that project.
-
-## Installation
+Requires Python 3.12 or newer.
 
 ```bash
 uv tool install smelt-cli
@@ -30,6 +19,8 @@ pip install smelt-cli
 
 The PyPI package is named `smelt-cli`; the CLI command and Python package are both
 named `smelt`. To run without installing, use `uvx --from smelt-cli smelt check`.
+From a local checkout, use `uv tool install .`. The PyPI package named `smelt` belongs
+to a different project; `pip install smelt` and bare `uvx smelt` install that project.
 
 ## Usage
 
@@ -248,7 +239,7 @@ regression test.
 ```yaml
 repos:
   - repo: https://github.com/mathisarends/smelt
-    rev: v0.1.2
+    rev: v0.1.3
     hooks:
       - id: smelt
 ```
