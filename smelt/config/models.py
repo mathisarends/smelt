@@ -216,6 +216,30 @@ class CrossFeatureConfig(_Model):
             for value in self.allow
         ]
 
+    def entries(self) -> list[dict[str, str | None]]:
+        """Each allowance as fields; a ``None`` feature stands for every feature."""
+        found: list[dict[str, str | None]] = []
+        for value in self.allow:
+            features: tuple[str | None, str | None] = (None, None)
+            if isinstance(value, CrossFeatureAllowance):
+                source_feature, source_layer, target_feature, target_layer = (
+                    value.components()
+                )
+                features = (source_feature, target_feature)
+            elif match := _LAYER_PAIR.match(value):
+                source_layer, target_layer = match.group(1), match.group(2)
+            else:
+                continue
+            found.append(
+                {
+                    "source_feature": features[0],
+                    "source_layer": source_layer,
+                    "target_feature": features[1],
+                    "target_layer": target_layer,
+                }
+            )
+        return found
+
 
 type CycleScope = Literal["features", "layers", "siblings"]
 

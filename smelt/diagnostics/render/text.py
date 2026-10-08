@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
 
 _WIDTH = 88
 _TOP_EDGES = 5
+# Keys of "expected" that only machine readers need; the message says the same.
+_MACHINE_ONLY = frozenset({"cycle", "subject", "evidence"})
 _COLORS = {
     Severity.ERROR: "\x1b[31m",
     Severity.WARNING: "\x1b[33m",
@@ -65,6 +68,9 @@ def render_text(
     edges = _repeated_edges(shown)
     if edges:
         lines.extend([*edges, ""])
+    facades = _facades(shown)
+    if facades:
+        lines.extend([*facades, ""])
     many_rules = len({violation.code for violation in shown}) > 1
     if shown and (statistics or (len(shown) > _STATISTICS_THRESHOLD and many_rules)):
         lines.extend([_statistics(shown, style), ""])
@@ -125,6 +131,22 @@ def _repeated_edges(violations: list[Violation]) -> list[str]:
     )
     if len(repeated) > _TOP_EDGES:
         lines.append(f"  … {len(repeated) - _TOP_EDGES} more")
+    return lines
+
+
+def _facades(violations: list[Violation]) -> list[str]:
+    """Modules relaying indirect findings: narrowing one addresses all of its findings."""
+    groups = [g for g in group_findings(violations) if g["kind"] == "facade"]
+    if not groups:
+        return []
+    width = len(str(groups[0]["count"]))
+    lines = ['Indirect findings by the module relaying them (JSON "groups"):']
+    lines.extend(
+        f"  {g['count']:>{width}}x {g['key']} ({', '.join(g['edges'])})"
+        for g in groups[:_TOP_EDGES]
+    )
+    if len(groups) > _TOP_EDGES:
+        lines.append(f"  … {len(groups) - _TOP_EDGES} more")
     return lines
 
 
@@ -202,14 +224,31 @@ def _expected(violation: Violation, expected: Mapping[str, Any]) -> list[str]:
         if key == "may_depend_on" and violation.layer:
             targets = ", ".join(value) if value else "(nothing)"
             lines.append(f"  Allowed: {violation.layer} → {targets}")
-        elif key == "cycle":
+        elif key in _MACHINE_ONLY:
             continue
+        elif key == "candidates":
+            lines.extend(_candidate_lines(value))
         elif key in ("path", "expected_path"):
             lines.append(f"  Expected: {value}")
         else:
             lines.append(
                 _wrap(f"Expected {key.replace('_', ' ')}: ", _format_value(value))
             )
+    return lines
+
+
+def _candidate_lines(candidates: list[Mapping[str, Any]]) -> list[str]:
+    """``application/commands/ (ChannelCommands, HelpCommand via ...application)``."""
+    lines = ["  Candidates:"]
+    for candidate in candidates:
+        names = ", ".join(candidate.get("imports", ()))
+        via = ", ".join(candidate.get("via", ()))
+        detail = f"{names} via {via}" if via else names
+        lines.append(
+            f"    {candidate['source']} ({detail}) → {candidate['test_path']}"
+            if detail
+            else f"    {candidate['source']} → {candidate['test_path']}"
+        )
     return lines
 
 

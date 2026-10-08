@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
+from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
@@ -21,11 +22,15 @@ def render_json(report: Report) -> str:
         "status": report.status,
         "summary": report.summary_json(),
         "scope": {
+            "mode": "changed" if report.comparison else "full",
             "paths": list(report.scope),
             "files": report.checked_files,
             "rules": [rule.code for rule in report.rules],
         },
+        "comparison": dict(report.comparison) if report.comparison else None,
+        "coverage": dict(report.coverage) if report.coverage else None,
         "violations": [v.to_json() for v in report.violations],
+        "groups": group_findings(report.violations),
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
@@ -86,10 +91,21 @@ def render_sarif(report: Report, version: str) -> str:
                     }
                 },
                 "results": results,
+                "properties": _sarif_properties(report),
             }
         ],
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+
+
+def _sarif_properties(report: Report) -> dict[str, Any]:
+    """Provenance a SARIF consumer can keep with the results."""
+    coverage = report.coverage or {}
+    return {
+        "mode": "changed" if report.comparison else "full",
+        "comparison": dict(report.comparison) if report.comparison else None,
+        "policyHash": coverage.get("policy_hash"),
+    }
 
 
 def _sarif_result(violation: Violation, index: dict[str, int]) -> dict[str, Any]:

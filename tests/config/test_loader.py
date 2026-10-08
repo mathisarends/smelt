@@ -125,6 +125,43 @@ class TestParsing:
 
 
 class TestRootPackages:
+    @pytest.mark.parametrize(
+        ("source_root", "metadata"),
+        [
+            ("src", ""),
+            (".", "[tool.uv.build-backend]\nnamespace = true\n"),
+            (".", '[tool.uv.build-backend]\nmodule-name = "space"\n'),
+        ],
+    )
+    def test_discovers_namespace_packages(
+        self, tmp_path: Path, source_root: str, metadata: str
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": metadata,
+                f"{source_root}/space/inner/__init__.py": "",
+                f"{source_root}/loose/nested/script.py": "",
+            },
+        )
+
+        config, _ = parse_config(
+            {"version": 1, "project": {"source_roots": [source_root]}},
+            root=tmp_path,
+        )
+
+        assert config.project.root_packages == ["space"]
+
+    def test_flat_layout_keeps_undeclared_namespaces_out(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {"app/__init__.py": "", "deploy/inner/__init__.py": ""},
+        )
+
+        config, _ = parse_config({"version": 1, "project": {}}, root=tmp_path)
+
+        assert config.project.root_packages == ["app"]
+
     def test_discovered_from_source_roots(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,

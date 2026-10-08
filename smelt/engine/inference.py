@@ -2,22 +2,24 @@ from __future__ import annotations
 
 import ast
 import re
-import tomllib
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from smelt.config.discovery import (
-    IGNORED_DIRS,
-    child_packages,
-    has_python,
-    packages_in,
-)
+from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
+from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.patterns import module_matches
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
+from smelt.engine.workspace import (
+    WorkspaceMember,
+    import_root,
+    workspace_members,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from smelt.analysis.exports import Loader
 
 _FEATURE_CONTAINERS = (
     "features",
@@ -81,6 +83,16 @@ class InferredLayer:
 
 
 @dataclass
+class CompositionCandidate:
+    """A package that may belong to the composition root; proposed, not applied."""
+
+    module: str
+    chain: list[str]  # how the composition root reaches it
+    confidence: str  # medium: only the root imports it; low: others do too
+    reason: str
+
+
+@dataclass
 class InferredConfig:
     root_packages: list[str]
     source_roots: list[str]
@@ -96,6 +108,10 @@ class InferredConfig:
     mirror: MirrorGuess | None = None
     layers: list[InferredLayer] = field(default_factory=list)
     tests_layout: str = "none"
+    members: list[WorkspaceMember] = field(default_factory=list)
+    # composition root or wiring module -> why init put it there
+    evidence: dict[str, str] = field(default_factory=dict)
+    candidates: list[CompositionCandidate] = field(default_factory=list)
 
     @property
     def has_features(self) -> bool:
@@ -103,21 +119,17 @@ class InferredConfig:
 
 
 def infer_config(root: Path) -> InferredConfig | None:
-    source_root = (
-        "src" if (root / "src").is_dir() and packages_in(root / "src") else "."
-    )
-    base = root / source_root
-    packages = packages_in(base)
-    source_roots = [source_root] if packages else []
+    located = import_root(root)
+    packages = list(located[1]) if located else []
+    source_roots = [located[0].relative_to(root).as_posix()] if located else []
+    members = workspace_members(root)
     member_roots: list[Path] = []
-    for member in _workspace_members(root):
-        member_source = member / "src" if packages_in(member / "src") else member
-        found = packages_in(member_source)
-        if not found:
+    for member in members:
+        if member.source_root is None:
             continue
-        packages.extend(found)
-        source_roots.append(member_source.relative_to(root).as_posix())
-        member_roots.append(member)
+        packages.extend(root / member.source_root / name for name in member.packages)
+        source_roots.append(member.source_root)
+        member_roots.append(root / member.path)
     if not packages:
         return None
     test_roots = [name for name in ("tests", "test") if (root / name).is_dir()]
@@ -131,6 +143,7 @@ def infer_config(root: Path) -> InferredConfig | None:
         root_packages=[p.name for p in packages],
         source_roots=source_roots,
         test_roots=test_roots or ["tests"],
+        members=members,
     )
     _infer_features(inferred, packages)
     containers = _layer_containers(inferred, packages)
@@ -141,34 +154,14 @@ def infer_config(root: Path) -> InferredConfig | None:
     _infer_special_modules(inferred, packages)
     _infer_wiring(inferred, packages)
     _infer_app_factories(inferred, packages)
+    traces = _infer_assemblies(inferred, packages)
     _infer_central_modules(inferred, packages)
+    _infer_candidates(inferred, packages, traces)
     inferred.wiring = _wiring_patterns(inferred.wiring, _all_modules(packages))
     inferred.mirror = infer_mirror(root, inferred.test_roots, packages)
     if inferred.mirror is not None:
         inferred.tests_layout = "mirror"
     return inferred
-
-
-def _workspace_members(root: Path) -> list[Path]:
-    try:
-        data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
-        return []
-    uv = data.get("tool", {}).get("uv", {})
-    workspace = uv.get("workspace", {})
-    members = workspace.get("members", [])
-    if not isinstance(members, list):
-        return []
-    found: set[Path] = set()
-    for pattern in members:
-        if not isinstance(pattern, str):
-            continue
-        for candidate in root.glob(pattern):
-            if candidate.is_dir() and candidate.resolve().is_relative_to(
-                root.resolve()
-            ):
-                found.add(candidate)
-    return sorted(found)
 
 
 def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
@@ -247,11 +240,13 @@ def _infer_special_modules(inferred: InferredConfig, packages: list[Path]) -> No
 def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None:
     """Root-level modules between the entry point and the wiring, like ``app.py``.
 
-    A module counts when a composition root imports it and it imports a composition
-    root or wiring module itself: it assembles the app and is part of the root.
-    Package facades count as the wiring they re-export: ``app.py`` importing
+    A module counts when a composition root refers to it, by import or as a
+    ``"backend.app:app"`` server target, and it reaches a composition root or
+    wiring module itself: it assembles the app and is part of the root. Package
+    facades count as the wiring they re-export: ``app.py`` importing
     ``backend.features``, whose ``__init__`` collects the feature providers.
     """
+    load = _loader(packages)
     roots = list(inferred.composition_root)
     targets = [*roots, *inferred.wiring]
     for package in packages:
@@ -259,11 +254,119 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
             module = f"{package.name}.{path.stem}"
             if path.stem == "__init__" or module in roots or module in inferred.shared:
                 continue
-            imports = _imports(path, package.name)
-            if not any(_reaches(packages, name, targets) for name in imports):
+            referred = next(
+                (
+                    (root, how)
+                    for root in roots
+                    if (how := _reference(packages, root, module)) is not None
+                ),
+                None,
+            )
+            if referred is None:
                 continue
-            if any(module in _module_imports(packages, root) for root in roots):
-                inferred.composition_root.append(module)
+            imports = _imports(path, package.name)
+            reached = _first_hit(_trace(load, module), targets) or next(
+                (
+                    f"{name}, which re-exports wiring"
+                    for name in sorted(imports)
+                    if _reaches(packages, name, targets)
+                ),
+                None,
+            )
+            if reached is None:
+                continue
+            root, how = referred
+            inferred.composition_root.append(module)
+            inferred.evidence[module] = f"{root} {how} it; {reached}"
+
+
+def _infer_assemblies(
+    inferred: InferredConfig, packages: list[Path]
+) -> dict[str, dict[_Node, _Node | None]]:
+    """Modules that assemble wiring for the composition root become wiring too.
+
+    From each composition root, the names it imports are followed to where they are
+    defined and on through the names those definitions use: ``app.py`` imports
+    ``FEATURES`` from the features facade, which lists ``telegram.feature``, defined
+    in ``telegram/feature.py`` from ``TelegramProvider`` in ``telegram/di.py``. A
+    module (not a facade) whose definition refers to wiring builds the app from it,
+    as the wiring itself does. Merely importing a framework type is no assembly.
+    """
+    load = _loader(packages)
+    traces: dict[str, dict[_Node, _Node | None]] = {}
+    for root in list(inferred.composition_root):
+        parents = _trace(load, root)
+        traces[root] = parents
+        for node, parent in parents.items():
+            if parent is None or not _within_any(node[0], inferred.wiring):
+                continue
+            module = parent[0]
+            path = _module_file(packages, module)
+            taken = [*inferred.composition_root, *inferred.wiring, *inferred.shared]
+            if path is None or path.name == "__init__.py" or _within_any(module, taken):
+                continue
+            inferred.wiring.append(module)
+            inferred.evidence[module] = " → ".join(_chain(parents, node))
+    inferred.wiring.sort()
+    return traces
+
+
+def _infer_candidates(
+    inferred: InferredConfig,
+    packages: list[Path],
+    traces: dict[str, dict[_Node, _Node | None]],
+) -> None:
+    """Unclassified packages the composition root uses: proposed, not applied.
+
+    ``app.py`` mounting ``backend.rpc.feature`` suggests that ``backend.rpc`` belongs
+    to the root too, but it may also be an ordinary package missing a layer.
+    """
+    container = (
+        inferred.features_root or (inferred.features_pattern or "").rsplit(".", 1)[0]
+    )
+    classified = [
+        *inferred.shared,
+        *inferred.composition_root,
+        *inferred.wiring,
+        *inferred.modules,
+        *([container] if container else []),
+    ]
+    found: dict[str, list[str]] = {}
+    for root, parents in traces.items():
+        for node in parents:
+            package = ".".join(node[0].split(".")[:2])
+            if (
+                package.count(".") != 1
+                or package.split(".")[0] != root.split(".")[0]
+                or _within_any(package, classified)
+                or package in found
+            ):
+                continue
+            found[package] = _chain(parents, node)
+    if not found:
+        return
+    modules = sorted(_all_modules(packages))
+    roots = set(inferred.composition_root)
+    for package, chain in found.items():
+        importers = {
+            module
+            for module in modules
+            if not _within_any(module, [package])
+            and any(
+                _within_any(name, [package])
+                for name in _module_imports(packages, module)
+            )
+        }
+        others = sorted(importers - roots)
+        reason = (
+            f"also imported by {', '.join(others[:3])}"
+            if others
+            else "only the composition root imports it"
+        )
+        confidence = "low" if others else "medium"
+        inferred.candidates.append(
+            CompositionCandidate(package, chain, confidence, reason)
+        )
 
 
 def _infer_central_modules(inferred: InferredConfig, packages: list[Path]) -> None:
@@ -342,19 +445,138 @@ def _module_file(packages: list[Path], module: str) -> Path | None:
 
 
 def _reaches(
-    packages: list[Path], name: str, targets: list[str], depth: int = 3
+    packages: list[Path],
+    name: str,
+    targets: list[str],
+    depth: int = 3,
+    seen: set[str] | None = None,
 ) -> bool:
     """``name`` is one of ``targets`` or a package facade re-exporting one."""
     if _within_any(name, targets):
         return True
+    seen = set() if seen is None else seen
     path = _module_file(packages, name)
-    if depth == 0 or path is None or path.name != "__init__.py":
+    if depth == 0 or path is None or path.name != "__init__.py" or name in seen:
         return False
+    seen.add(name)
     return any(
-        _reaches(packages, imported, targets, depth - 1)
-        for imported in _module_imports(packages, name)
+        _reaches(packages, imported, targets, depth - 1, seen)
+        for imported in sorted(_module_imports(packages, name))
         if _within_any(imported, [name])
     )
+
+
+type _Node = tuple[str, str | None]
+# Symbols followed from one composition root; plenty for hundreds of features.
+_TRACE_LIMIT = 2000
+_SERVER_TARGET = re.compile(r"([A-Za-z_][\w.]*):([A-Za-z_]\w*)")
+
+
+def _loader(packages: list[Path]) -> Loader:
+    cache: dict[str, Namespace | None] = {}
+
+    def load(module: str) -> Namespace | None:
+        if module not in cache:
+            path = _module_file(packages, module)
+            cache[module] = None if path is None else _namespace(path, module)
+        return cache[module]
+
+    return load
+
+
+def _namespace(path: Path, module: str) -> Namespace | None:
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError:
+        return None
+    return namespace_of(tree, module, is_package=path.name == "__init__.py")
+
+
+def _reference(packages: list[Path], root: str, module: str) -> str | None:
+    """How ``root`` refers to ``module``: an import or a ``"module:attr"`` string."""
+    if module in _module_imports(packages, root):
+        return "imports"
+    for target in _server_targets(packages, root):
+        if target.split(":")[0] == module:
+            return f'serves "{target}" from'
+    return None
+
+
+def _server_targets(packages: list[Path], module: str) -> list[str]:
+    """``"backend.app:app"`` strings naming a first-party module, as uvicorn takes them."""
+    path = _module_file(packages, module)
+    if path is None:
+        return []
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError:
+        return []
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and (match := _SERVER_TARGET.fullmatch(node.value))
+        and _module_file(packages, match.group(1)) is not None
+    ]
+
+
+def _trace(load: Loader, root: str) -> dict[_Node, _Node | None]:
+    """Every symbol ``root`` uses, and those their definitions use, by first referrer.
+
+    Each symbol is visited once and the walk stops at ``_TRACE_LIMIT``, so cycles
+    and huge graphs end.
+    """
+    start: _Node = (root, None)
+    parents: dict[_Node, _Node | None] = {start: None}
+    namespace = load(root)
+    if namespace is None:
+        return parents
+    queue: deque[_Node] = deque()
+    for local in sorted(namespace.defined | namespace.imported.keys()):
+        node = (
+            resolve_dotted(namespace.imported[local], load)
+            if local in namespace.imported
+            else (root, local)
+        )
+        if node is not None and node not in parents:
+            parents[node] = start
+            queue.append(node)
+    while queue and len(parents) < _TRACE_LIMIT:
+        module, name = queue.popleft()
+        namespace = load(module)
+        if namespace is None or name is None:
+            continue
+        for head, *rest in namespace.references.get(name, ()):
+            target: _Node | None = None
+            if head in namespace.defined:
+                target = (module, head)
+            elif head in namespace.imported:
+                dotted = ".".join([namespace.imported[head], *rest])
+                target = resolve_dotted(dotted, load)
+            if target is not None and target not in parents:
+                parents[target] = (module, name)
+                queue.append(target)
+    return parents
+
+
+def _first_hit(parents: dict[_Node, _Node | None], targets: list[str]) -> str | None:
+    """The first traced module among ``targets``, with the chain that leads there."""
+    for node, parent in parents.items():
+        if parent is not None and _within_any(node[0], targets):
+            return " → ".join(_chain(parents, node))
+    return None
+
+
+def _chain(parents: dict[_Node, _Node | None], node: _Node) -> list[str]:
+    """``backend.app → backend.features.FEATURES → … → telegram.di.TelegramProvider``."""
+    labels: list[str] = []
+    current: _Node | None = node
+    while current is not None:
+        module, name = current
+        labels.append(f"{module}.{name}" if name else module)
+        current = parents.get(current)
+    return list(reversed(labels))
 
 
 def _module_imports(packages: list[Path], module: str) -> set[str]:
@@ -420,9 +642,13 @@ def render_config(inferred: InferredConfig) -> str:
         f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
         f"  test_roots: {_list(inferred.test_roots)}",
         '  # exclude: ["**/migrations/**"]',
-        "",
-        "architecture:",
     ]
+    out.extend(
+        f"  # not analyzed: workspace member {member.path} ({member.skipped})"
+        for member in inferred.members
+        if member.skipped
+    )
+    out.extend(["", "architecture:"])
     out.extend(_architecture(inferred))
     out.extend(
         [
@@ -471,11 +697,8 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         )
     else:
         out.append("  # shared: [myapp.shared]")
-    if inferred.composition_root:
-        out.append(f"  composition_root: {_list(inferred.composition_root)}")
-    else:
-        out.append("  # composition_root: [myapp.bootstrap]")
-    out.extend(_wiring_lines(inferred.wiring))
+    out.extend(_composition_lines(inferred))
+    out.extend(_wiring_lines(inferred.wiring, inferred.evidence))
     out.extend(_module_lines(inferred))
     out.append("")
     if inferred.layers:
@@ -537,13 +760,38 @@ def _allow_lines(inferred: InferredConfig) -> list[str]:
     ]
 
 
-def _wiring_lines(modules: list[str]) -> list[str]:
+def _composition_lines(inferred: InferredConfig) -> list[str]:
+    roots = inferred.composition_root
+    explained = any(root in inferred.evidence for root in roots)
+    if not explained and not inferred.candidates:
+        if roots:
+            return [f"  composition_root: {_list(roots)}"]
+        return ["  # composition_root: [myapp.bootstrap]"]
+    out = ["  composition_root:"]
+    for root in roots:
+        if root in inferred.evidence:
+            out.append(f"    # {inferred.evidence[root]}")
+        out.append(f"    - {root}")
+    for candidate in inferred.candidates:
+        out.extend(
+            [
+                f"    # Candidate ({candidate.confidence} confidence, {candidate.reason}):",
+                f"    # {' → '.join(candidate.chain)}",
+                f"    # - {candidate.module}",
+            ]
+        )
+    return out
+
+
+def _wiring_lines(modules: list[str], evidence: dict[str, str]) -> list[str]:
     if not modules:
         return []
-    return [
-        "  wiring:  # provider modules; they keep their feature and layer",
-        *(f"    - {module}" for module in modules),
-    ]
+    out = ["  wiring:  # provider modules; they keep their feature and layer"]
+    for module in modules:
+        if module in evidence:
+            out.append(f"    # assembles providers: {evidence[module]}")
+        out.append(f"    - {module}")
+    return out
 
 
 def _module_lines(inferred: InferredConfig) -> list[str]:

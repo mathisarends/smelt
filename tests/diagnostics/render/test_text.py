@@ -4,6 +4,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt.diagnostics.render.text import render_text
+from smelt.diagnostics.violation import ImportLink
 from tests.diagnostics.render.conftest import read_line
 
 if TYPE_CHECKING:
@@ -46,6 +47,38 @@ class TestViolations:
         assert "\x1b[31m[error]\x1b[0m" in out
         assert "\x1b[31m^^^^" in out
 
+    def test_test_candidates_are_listed_and_machine_keys_hidden(
+        self, report: Report
+    ) -> None:
+        candidate = {
+            "module": "app.auth.application.bootstrap",
+            "kind": "module",
+            "source": "app/auth/application/bootstrap.py",
+            "test_path": "tests/auth/application/test_bootstrap.py",
+            "imports": ["AdminBootstrap"],
+            "via": ["app.auth.application"],
+        }
+        report.violations = [
+            replace(
+                report.violations[1],
+                expected={
+                    "source": "app/auth/bootstrap.py",
+                    "subject": "ambiguous",
+                    "candidates": [candidate],
+                },
+            )
+        ]
+
+        out = render_text(report, read_line)
+
+        assert (
+            "  Expected source: app/auth/bootstrap.py\n"
+            "  Candidates:\n"
+            "    app/auth/application/bootstrap.py (AdminBootstrap via "
+            "app.auth.application) → tests/auth/application/test_bootstrap.py\n"
+        ) in out
+        assert "ambiguous" not in out
+
 
 class TestRepeatedEdges:
     def test_edges_behind_several_findings_are_counted(self, report: Report) -> None:
@@ -66,6 +99,25 @@ class TestRepeatedEdges:
             "\n"
         ) in out
         assert "chat.domain" not in out.split("Repeated")[1]
+
+    def test_facades_relaying_indirect_findings_are_counted(
+        self, report: Report
+    ) -> None:
+        first = report.violations[0]
+        chain = (
+            ImportLink("gw.chat.a", "gw.llm", 1),
+            ImportLink("gw.llm", "gw.llm.providers", 2),
+        )
+        report.violations = [
+            replace(first, path=f"gw/chat/{n}.py", import_chain=chain) for n in range(2)
+        ]
+
+        out = render_text(report, read_line)
+
+        assert (
+            'Indirect findings by the module relaying them (JSON "groups"):\n'
+            "  2x gw.llm (voice.domain -> voice.infra)\n"
+        ) in out
 
     def test_single_findings_have_no_edge_block(self, report: Report) -> None:
         assert "Repeated dependency edges" not in render_text(report, read_line)

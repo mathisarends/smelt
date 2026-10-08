@@ -61,9 +61,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _allow_local_config(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--config", metavar="PATH", default=argparse.SUPPRESS, help="path to smelt.yaml"
-    )
+    if "--config" not in parser._option_string_actions:
+        parser.add_argument(
+            "--config",
+            metavar="PATH",
+            default=argparse.SUPPRESS,
+            help="path to smelt.yaml",
+        )
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
             for child in action.choices.values():
@@ -131,7 +135,15 @@ def _add_discovery(sub: Subparsers) -> None:
 
 def _add_maintenance(sub: Subparsers) -> None:
     init = sub.add_parser("init", help="write a starter smelt.yaml")
-    init.add_argument("--force", action="store_true", help="overwrite an existing file")
+    init.add_argument(
+        "--config",
+        metavar="PATH",
+        default=argparse.SUPPRESS,
+        help="write the config here (default: smelt.yaml); its directory is the project root",
+    )
+    init.add_argument(
+        "--force", action="store_true", help="overwrite the target if it exists"
+    )
     init.set_defaults(handler=commands.init)
 
     debt = sub.add_parser("debt", help="record current violations as known debt")

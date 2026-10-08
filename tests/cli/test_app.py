@@ -608,6 +608,39 @@ class TestInitCommand:
         assert "  layers: domain (domain), infrastructure (infra)\n" in out
         assert "The inferred config yields 1 error and 0 warnings." in out
 
+    def test_summary_accounts_for_every_workspace_member(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": (
+                    "[tool.uv.workspace]\n"
+                    'members = ["api", "e2e", "web", "old"]\n'
+                    'exclude = ["old"]\n'
+                ),
+                "api/src/api/__init__.py": "",
+                "e2e/src/stack/server/__init__.py": "",
+                "web/index.ts": "",
+                "old/src/old/__init__.py": "",
+            },
+        )
+        monkeypatch.chdir(tmp_path)
+
+        code, out, _ = _run(capsys, "init")
+
+        assert code == 0
+        assert (
+            "  workspace members:\n"
+            "    api: api in api/src\n"
+            "    e2e: stack (namespace package) in e2e/src\n"
+            "    old: skipped, excluded by tool.uv.workspace.exclude\n"
+            "    web: skipped, no Python package in src/ or the member directory\n"
+        ) in out
+
     def test_refuses_to_overwrite(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -620,6 +653,82 @@ class TestInitCommand:
 
         assert code == 2
         assert "smelt.yaml already exists (use --force to overwrite)" in err
+
+    @pytest.mark.parametrize("before", [True, False])
+    def test_custom_config_is_the_only_file_written(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        before: bool,
+    ) -> None:
+        reviewed = (clean_project / "smelt.yaml").read_text(encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+        args = ["init", "--config", "custom.yaml"]
+        if before:
+            args = ["--config", "custom.yaml", "init"]
+
+        code, out, err = _run(capsys, *args)
+
+        assert (code, err) == (0, "")
+        assert out.startswith("Wrote custom.yaml\n")
+        assert "pass --config custom.yaml to every command" in out
+        assert load_config(clean_project / "custom.yaml").config.project.root_packages
+        assert (clean_project / "smelt.yaml").read_text(encoding="utf-8") == reviewed
+
+    def test_existing_custom_config_needs_force_and_leaves_the_default_alone(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        reviewed = (clean_project / "smelt.yaml").read_text(encoding="utf-8")
+        (clean_project / "custom.yaml").write_text("# mine\n", encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+
+        refused, _, err = _run(capsys, "init", "--config", "custom.yaml")
+        forced, _, _ = _run(capsys, "init", "--force", "--config", "custom.yaml")
+
+        assert refused == 2
+        assert "custom.yaml already exists (use --force to overwrite)" in err
+        assert forced == 0
+        assert "# mine" not in (clean_project / "custom.yaml").read_text(
+            encoding="utf-8"
+        )
+        assert (clean_project / "smelt.yaml").read_text(encoding="utf-8") == reviewed
+
+    def test_custom_config_in_a_subdirectory_infers_that_project(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_project(tmp_path, {"service/shop/__init__.py": "", "other/x.py": ""})
+        monkeypatch.chdir(tmp_path)
+
+        code, out, _ = _run(capsys, "init", "--config", "service/smelt.yaml")
+
+        assert code == 0
+        assert out.startswith("Wrote service/smelt.yaml\n")
+        assert "every command" not in out
+        loaded = load_config(tmp_path / "service" / "smelt.yaml")
+        assert loaded.config.project.root_packages == ["shop"]
+        assert not (tmp_path / "smelt.yaml").exists()
+
+    def test_force_overwrites_an_existing_smelt_yml_in_place(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (clean_project / "smelt.yaml").rename(clean_project / "smelt.yml")
+        monkeypatch.chdir(clean_project)
+
+        code, out, _ = _run(capsys, "init", "--force")
+
+        assert code == 0
+        assert out.startswith("Wrote smelt.yml\n")
+        assert not (clean_project / "smelt.yaml").exists()
 
 
 class TestDebtCommand:

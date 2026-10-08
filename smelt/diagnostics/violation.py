@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Self
@@ -76,8 +77,23 @@ class Violation:
             self.message,
         )
 
+    @property
+    def finding_id(self) -> str:
+        """A short id, stable for the same finding at the same place; groups cite it."""
+        payload = "\x1f".join(
+            [
+                self.code,
+                self.path or "",
+                str(self.line or 0),
+                str(self.column or 0),
+                self.message,
+            ]
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()[:12]
+
     def to_json(self) -> dict[str, Any]:
         data: dict[str, Any] = {
+            "id": self.finding_id,
             "code": self.code,
             "rule": self.rule,
             "severity": self.severity.value,

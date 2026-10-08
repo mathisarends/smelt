@@ -35,6 +35,7 @@ named `smelt`. To run without installing, use `uvx --from smelt-cli smelt check`
 
 ```bash
 smelt init                           # draft smelt.yaml from the code (also uv workspaces)
+smelt init --config other.yaml       # write elsewhere; only that file is checked and overwritten
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --changed --base origin/main --format json
@@ -53,6 +54,15 @@ config error, not a silently disabled rule.
 Explicit check paths must exist and contain analyzed source or test files; unknown
 `--select`/`--ignore` prefixes are usage errors. JSON includes the reporting scope, file
 count and active rule codes. `--config PATH` works before or after a subcommand.
+A stored JSON report explains itself: `scope.mode` is `full` or `changed`, and
+`comparison` names the requested `base`, the resolved `merge_base`, the
+`compared_revision` and `head`, so `passed` from `--changed` reads as "nothing new since
+that commit", not as a clean inventory. `coverage` lists the source and test roots,
+workspace members that are not analyzed, module counts per classification, the
+composition-root and wiring exemptions, third-party policies per layer, the import
+settings (`type_checking`, `transitive`, `cycles`), cross-feature allowances as fields,
+and a `policy_hash` that is equal for reports checked under the same resolved config.
+`smelt context --format json` carries the same import settings, allowances and hash.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)
@@ -114,8 +124,18 @@ tests:
   import restrictions and configured cycle checks still apply.
 
 `smelt init` infers most of this: features, layers, shared and settings modules, the
-composition root including an app factory, wiring patterns, central packages by name and
+composition root including an app factory (imported or named as a `"backend.app:app"`
+server target), wiring patterns, central packages by name and
 the mirror pattern the existing tests follow. Review it before adopting its findings.
+It follows the names a composition root imports through package facades into their
+definitions (`FEATURES = (chat.feature, ...)`); a module whose definition is built from
+providers, such as a `feature.py` assembling `TelegramProvider`, becomes wiring, and the
+config comment shows the chain. Merely importing framework types changes nothing. An
+unclassified package only the root uses is proposed as a commented-out candidate with its
+chain and confidence, never applied silently.
+In a uv workspace it lists every declared member with the packages it found or why it
+skipped it (`tool.uv.workspace.exclude`, no Python package); namespace packages without
+`__init__.py` count under `src/` and where `tool.uv.build-backend` declares them.
 Its starter policy explicitly allows third-party packages and checks direct imports.
 Review these decisions: to keep frameworks out of the core, set e.g.
 `domain.third_party: {default: deny, allow: [pydantic]}` under `architecture.layers`.
@@ -140,6 +160,14 @@ elsewhere is an error. The message names the fix where it can: the right directo
 right file name (`test_session_infrastructure_repository.py` should be named
 `test_repository.py`), a neighbouring module with a similar name, or a missing `{root}` in
 the pattern.
+Imports through package facades count as imports of the module that defines the
+name, so `from app.channels.application import ChannelCommands` points at
+`application/commands/`. A move needs that evidence (or a test named exactly after its
+subject, marked `"evidence": "name"`); a similar file name alone suggests nothing.
+Otherwise the JSON lists `expected.candidates`: the imported modules, nearest first, with
+the names imported from them, the facade they came through and their mirrored test path.
+A test importing two modules of its name (`application/bootstrap.py` and
+`infrastructure/bootstrap.py`) gets both as candidates and no move.
 
 `tests.mirror` sets the convention relative to the test root: the default
 `{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py` keeps it,
@@ -165,7 +193,15 @@ A first check often reports dozens of findings that come down to a few decisions
 import finding carries an `edge` in JSON (`"billing.application -> voice.domain"`; for
 cycles, the cycle), and the text output ends with the edges behind several findings.
 Settle each edge once: fix the code, or record an intended dependency as policy, e.g. a
-`cross_feature.allow` entry. Accept what remains with a baseline:
+`cross_feature.allow` entry.
+JSON also lists `groups`, sorted by size: a `facade` group collects the indirect
+findings one module relays (its count is what narrowing that facade's exports would
+address), an `edge` group counts `direct` and `transitive` findings of one dependency, a
+`cycle` group carries the witness import path, and a `test_move` group the SMT401 files
+moving between the same directories. Groups cite findings by their `id`; every finding
+stays in `violations`, so a group is one decision, not one more defect.
+
+Accept what remains with a baseline:
 
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
 `smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries

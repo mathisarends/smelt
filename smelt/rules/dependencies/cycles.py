@@ -4,6 +4,7 @@ import itertools
 from collections import defaultdict
 from collections.abc import Callable, Hashable, Iterator
 from dataclasses import dataclass, field
+from functools import partial
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -110,14 +111,28 @@ class ImportCycle(BaseRule):
             if parent is not None and parent not in skip_packages:
                 siblings[parent].add(a, b, detail)
 
+        model = ctx.model
+
+        def feature_of(module: str) -> str | None:
+            info = model.info(module)
+            return info.feature if info else None
+
+        def layer_of(module: str) -> tuple[str | None, str] | None:
+            info = model.info(module)
+            return (info.feature, info.layer) if info and info.layer else None
+
         if "features" in scopes:
-            yield from self._report(ctx, features, "features", str)
+            yield from self._report(ctx, features, "features", str, feature_of)
         if "layers" in scopes:
-            yield from self._report(ctx, layers, "layers", _layer_label)
+            yield from self._report(ctx, layers, "layers", _layer_label, layer_of)
         if "siblings" in scopes:
             for parent in sorted(siblings):
                 yield from self._report(
-                    ctx, siblings[parent], f"modules in {parent}", _last_segment
+                    ctx,
+                    siblings[parent],
+                    f"modules in {parent}",
+                    _last_segment,
+                    partial(_child_of, parent),
                 )
 
     def _report[T: Hashable](
@@ -126,6 +141,7 @@ class ImportCycle(BaseRule):
         graph: _Graph[T],
         scope: str,
         label: Callable[[T], str],
+        node_of: Callable[[str], T | None],
     ) -> Iterator[Violation]:
         for component in strongly_connected_components(graph.adjacency):
             if len(component) < 2:  # noqa: PLR2004
@@ -165,8 +181,77 @@ class ImportCycle(BaseRule):
                 expected=expected,
                 hint=hint,
                 edge=" -> ".join(names),
-                chain=tuple(ImportLink(d.importer, d.imported, d.line) for d in hops),
+                chain=_witness(ctx, hops, node_of),
             )
+
+
+# A witness hop inside one node is short; a longer path explains little.
+_MAX_INNER_HOPS = 6
+
+
+def _witness[T: Hashable](
+    ctx: AnalysisContext,
+    hops: list[ImportDetail],
+    node_of: Callable[[str], T | None],
+) -> tuple[ImportLink, ...]:
+    """The cycle's imports, joined inside each node where a module path exists.
+
+    ``features -> platform -> features`` crosses into ``platform.auth`` and leaves
+    from ``platform.auth.guard``; the witness adds ``platform.auth -> ...guard``.
+    Where no path inside the node joins two hops, the gap stays visible.
+    """
+    include = ctx.config.architecture.imports.type_checking == "include"
+    adjacency = ctx.imports.first_party_edges(include_type_checking=include)
+    links: list[ImportLink] = []
+    for hop, following in itertools.zip_longest(hops, hops[1:]):
+        links.append(ImportLink(hop.importer, hop.imported, hop.line))
+        if following is None or following.importer == hop.imported:
+            continue
+        path = _path_within(adjacency, hop.imported, following.importer, node_of)
+        links.extend(
+            ImportLink(a, b, _line(ctx, a, b)) for a, b in itertools.pairwise(path)
+        )
+    return tuple(links)
+
+
+def _path_within[T: Hashable](
+    adjacency: dict[str, set[str]],
+    start: str,
+    goal: str,
+    node_of: Callable[[str], T | None],
+) -> list[str]:
+    node = node_of(start)
+    previous: dict[str, str | None] = {start: None}
+    frontier = [start]
+    for _ in range(_MAX_INNER_HOPS):
+        following: list[str] = []
+        for module in frontier:
+            for child in sorted(adjacency.get(module, ())):
+                if child in previous or node_of(child) != node:
+                    continue
+                previous[child] = module
+                if child == goal:
+                    path = [goal]
+                    while (parent := previous[path[-1]]) is not None:
+                        path.append(parent)
+                    return list(reversed(path))
+                following.append(child)
+        frontier = following
+    return []
+
+
+def _line(ctx: AnalysisContext, importer: str, imported: str) -> int | None:
+    return next(
+        (d.line for d in ctx.imports.imports_of(importer) if d.imported == imported),
+        None,
+    )
+
+
+def _child_of(parent: str, module: str) -> str | None:
+    """The child of ``parent`` containing ``module``: the node of a sibling cycle."""
+    if not is_within(module, parent) or module == parent:
+        return None
+    return ".".join(module.split(".")[: parent.count(".") + 2])
 
 
 def _reported_elsewhere(

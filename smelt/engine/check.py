@@ -22,7 +22,8 @@ from smelt.diagnostics.violation import (
     Violation,
     docs_url,
 )
-from smelt.engine.changes import base_snapshot
+from smelt.engine.changes import Comparison, base_snapshot
+from smelt.engine.coverage import effective_coverage
 from smelt.engine.paths import missing_paths
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
@@ -188,8 +189,9 @@ def run_check(
             violations.extend(
                 _resolved_violations(resolved, config.debt, severity_of["SMT903"])
             )
+    comparison: Comparison | None = None
     if options.changed:
-        violations = _introduced(
+        violations, comparison = _introduced(
             ctx,
             violations,
             lambda before: _collect(before, rules, loaded, active)[0],
@@ -212,6 +214,8 @@ def run_check(
             _under_any(path, options.paths) if options.paths else True
             for path in ctx.files.all_python_paths()
         ),
+        comparison=comparison.to_json() if comparison else None,
+        coverage=effective_coverage(ctx),
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
 
@@ -222,17 +226,17 @@ def _introduced(
     collect: Callable[[AnalysisContext], list[Violation]],
     *,
     base: str | None,
-) -> list[Violation]:
+) -> tuple[list[Violation], Comparison]:
     """The violations the working tree adds to the base commit, judged by today's config."""
     with tempfile.TemporaryDirectory(prefix="smelt-base-") as tmp:
-        base_root = base_snapshot(ctx.root, base, Path(tmp))
+        base_root, comparison = base_snapshot(ctx.root, base, Path(tmp))
         if base_root is None:
-            return violations
+            return violations, comparison
         before_ctx = AnalysisContext(base_root, ctx.config)
         before = collect(before_ctx)
         known = Debt.from_violations(before, snippet_reader(before_ctx))
         introduced, _, _ = known.match(violations, snippet_reader(ctx))
-    return introduced
+    return introduced, comparison
 
 
 def _collect(

@@ -31,6 +31,32 @@ class TestSiblingCycles:
         assert [link.line for link in found.import_chain] == [1, 1, 1]
         assert found.path == "app/a.py"
 
+    def test_witness_joins_the_hops_inside_a_package(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "app/__init__.py": "",
+                "app/features/__init__.py": "",
+                "app/features/admin.py": "from app.platform.auth import ERRORS\n",
+                "app/features/auth.py": "",
+                "app/platform/__init__.py": "",
+                "app/platform/auth/__init__.py": "from .guard import ERRORS\n",
+                "app/platform/auth/guard.py": (
+                    "from app.features import auth\nERRORS = ()\n"
+                ),
+            },
+        )
+
+        [found] = violations(root, ONLY_SMT104)
+
+        assert found.edge == "features -> platform -> features"
+        assert [(link.importer, link.imported) for link in found.import_chain] == [
+            ("app.features.admin", "app.platform.auth"),
+            ("app.platform.auth", "app.platform.auth.guard"),
+            ("app.platform.auth.guard", "app.features.auth"),
+        ]
+
     def test_cycle_through_type_checking_import_is_marked(self, tmp_path: Path) -> None:
         root = write_project(
             tmp_path,

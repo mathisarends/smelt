@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.diagnostics.render.machine import render_json
 from smelt.engine.changes import base_snapshot
 from smelt.engine.check import CheckOptions
-from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
+from tests.helpers import LAYERED_CONFIG, check, codes_at, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,20 +55,61 @@ class TestBaseSnapshot:
         (repo / "app/application/service.py").write_text("x = 1\n")
         dest = tmp_path_factory.mktemp("base")
 
-        snapshot = base_snapshot(repo, None, dest)
+        snapshot, comparison = base_snapshot(repo, None, dest)
 
         assert snapshot == dest
         assert (dest / "app/application/service.py").read_text() == ""
+        assert comparison.revision == comparison.head
+        assert comparison.to_json()["merge_base"] is None
 
     def test_without_commits_there_is_no_base(
         self, tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
     ) -> None:
         _git(tmp_path, "init", "-q")
 
-        assert base_snapshot(tmp_path, None, tmp_path_factory.mktemp("base")) is None
+        snapshot, comparison = base_snapshot(
+            tmp_path, None, tmp_path_factory.mktemp("base")
+        )
+
+        assert snapshot is None
+        assert comparison.to_json() == {
+            "mode": "changed",
+            "base": None,
+            "merge_base": None,
+            "compared_revision": None,
+            "head": None,
+            "working_tree": True,
+        }
 
 
 class TestChangedMode:
+    def test_report_names_the_base_and_its_merge_base(self, repo: Path) -> None:
+        _git(repo, "checkout", "-q", "-b", "topic")
+        (repo / "app/application/service.py").write_text("x = 1\n", encoding="utf-8")
+        _git(repo, "commit", "-q", "-am", "topic work")
+
+        report = check(repo, CheckOptions(changed=True, base="main")).report
+        document = json.loads(render_json(report))
+
+        main = subprocess.run(
+            ["git", "rev-parse", "main"],  # noqa: S607
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert document["scope"]["mode"] == "changed"
+        comparison = document["comparison"]
+        assert (comparison["base"], comparison["merge_base"]) == ("main", main)
+        assert comparison["compared_revision"] == main
+        assert comparison["head"] != main
+
+    def test_full_run_has_no_comparison(self, repo: Path) -> None:
+        document = json.loads(render_json(check(repo).report))
+
+        assert document["scope"]["mode"] == "full"
+        assert document["comparison"] is None
+
     @pytest.mark.parametrize(
         "source",
         [
