@@ -29,6 +29,8 @@ _GREEN = "\x1b[32m"
 _RED = "\x1b[31m"
 _YELLOW = "\x1b[33m"
 _RESET = "\x1b[0m"
+# Longer listings end with a per-rule breakdown so the overview survives scrolling.
+_STATISTICS_THRESHOLD = 10
 
 
 class _Style:
@@ -47,14 +49,19 @@ def render_text(
     *,
     color: bool = False,
     show_hints: bool = False,
+    statistics: bool = False,
 ) -> str:
     style = _Style(color)
     shown = [
         violation
-        for violation in _group_unclassified(report.violations)
-        if violation.severity is not Severity.HINT or show_hints
+        for violation in report.violations
+        if show_hints or violation.severity is not Severity.HINT
     ]
-    blocks = [_render_violation(violation, read_line, style) for violation in shown]
+    blocks: list[str] = []
+    if not statistics:
+        blocks.extend(
+            _render_violation(v, read_line, style) for v in _group_unclassified(shown)
+        )
     lines = ["\n\n".join(blocks)] if blocks else []
     if blocks:
         lines.append("")
@@ -64,6 +71,9 @@ def render_text(
     facades = _facades(shown)
     if facades:
         lines.extend([*facades, ""])
+    many_rules = len({violation.code for violation in shown}) > 1
+    if shown and (statistics or (len(shown) > _STATISTICS_THRESHOLD and many_rules)):
+        lines.extend([_statistics(shown, style), ""])
     if report.scope:
         lines.append(
             f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
@@ -138,6 +148,18 @@ def _facades(violations: list[Violation]) -> list[str]:
     if len(groups) > _TOP_EDGES:
         lines.append(f"  … {len(groups) - _TOP_EDGES} more")
     return lines
+
+
+def _statistics(violations: list[Violation], style: _Style) -> str:
+    counts = Counter((v.code, v.rule, v.severity) for v in violations)
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0][0]))
+    width = len(str(ordered[0][1]))
+    name_width = max(len(rule) for (_, rule, _), _ in ordered)
+    return "\n".join(
+        f"{count:>{width}}  {style(code, _BOLD)} {rule:<{name_width}}  "
+        + style(f"[{severity.value}]", _COLORS[severity])
+        for (code, rule, severity), count in ordered
+    )
 
 
 def _render_violation(

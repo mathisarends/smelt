@@ -30,8 +30,9 @@ class CrossFeatureImport(BaseRule):
             "from gateway.features.voice.application.api import CallSummaryQuery"
         ),
         fix=(
-            "Go through an allowed layer pair (for example application -> application), "
-            "move the shared concept into a `shared` package, or merge the features."
+            "Go through an allowed relationship, declare an intended one explicitly "
+            "(`allow: [{from: orders.application, to: billing.application}]`), move the "
+            "shared concept into a `shared` package, or merge the features."
         ),
         config=(
             "architecture.cross_feature.default",
@@ -71,25 +72,23 @@ class CrossFeatureImport(BaseRule):
             pair = f"{source.layer or '(feature root)'} -> {target.layer or '(feature root)'}"
             allowed = cross.labels()
             shared = ctx.config.architecture.shared
-            where = f" or move the shared concept into {shared[0]}" if shared else ""
-            policy = (
-                f" If {source.feature} may rely on {target.feature}, that is a "
-                "policy decision rather than a bug: allow it under "
-                f"architecture.cross_feature.allow as {{from: {source.feature}."
-                f"{source.layer}, to: {target.feature}.{target.layer}}}."
-                if source.layer and target.layer
-                else ""
-            )
+            hints = [f"Use an allowed pair ({join(allowed)})."] if allowed else []
+            if shared:
+                hints.append(f"Move the shared concept into {shared[0]}.")
+            if source.layer and target.layer:
+                hints.append(
+                    f"If {source.feature} may rely on {target.feature}, that is a "
+                    "policy decision rather than a bug: allow it under "
+                    f"architecture.cross_feature.allow as {{from: {source.feature}."
+                    f"{source.layer}, to: {target.feature}.{target.layer}}}."
+                )
             yield import_violation(
                 self,
                 ctx,
                 detail,
                 f"feature {source.feature} must not import feature {target.feature} ({pair})",
                 expected={"cross_feature_allow": allowed},
-                hint=(
-                    f"Allowed across features: {join(allowed, 'nothing')}. "
-                    f"Use an allowed pair{where}.{policy}"
-                ),
+                hint=" ".join(hints) or None,
             )
 
 

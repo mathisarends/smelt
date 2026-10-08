@@ -7,13 +7,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
+from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.patterns import module_matches
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 from smelt.engine.workspace import (
-    IGNORED_DIRS,
     WorkspaceMember,
-    child_packages,
-    has_python,
     import_root,
     workspace_members,
 )
@@ -640,8 +638,8 @@ def render_config(inferred: InferredConfig) -> str:
         "version: 1",
         "",
         "project:",
-        f"  root_packages: {_list(inferred.root_packages)}",
         f"  source_roots: {_list(inferred.source_roots)}",
+        f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
         f"  test_roots: {_list(inferred.test_roots)}",
         '  # exclude: ["**/migrations/**"]',
     ]
@@ -667,9 +665,9 @@ def render_config(inferred: InferredConfig) -> str:
     out.extend(
         [
             "",
-            "# Severity overrides by code: error | warning | hint | off",
+            "# Severity overrides by rule name or code: error | warning | hint | off",
             "# rules:",
-            "#   SMT305: off",
+            "#   unclassified-module: off  # same as SMT305: off",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",
             "# debt: .smelt/debt.json",
@@ -731,19 +729,7 @@ def _architecture(inferred: InferredConfig) -> list[str]:
             ]
         )
     if inferred.has_features:
-        pair = (
-            '["application -> application"]'
-            if any(layer.name == "application" for layer in inferred.layers)
-            else "[]"
-        )
-        out.extend(
-            [
-                "  cross_feature:",
-                "    default: deny",
-                "    # Review this architectural decision: the pair applies to ALL features.",
-                f"    allow: {pair}",
-            ]
-        )
+        out.extend(["  cross_feature:", "    default: deny", *_allow_lines(inferred)])
     out.extend(
         [
             "  imports:",
@@ -752,6 +738,26 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         ]
     )
     return out
+
+
+def _allow_lines(inferred: InferredConfig) -> list[str]:
+    """No blanket layer pair: each feature relationship is declared on purpose."""
+    layer = next(
+        (
+            name
+            for name in ("application", "domain")
+            if any(inferred_layer.name == name for inferred_layer in inferred.layers)
+        ),
+        inferred.layers[0].name if inferred.layers else None,
+    )
+    names = inferred.features or ["orders", "billing"]
+    if layer is None or len(names) < 2:  # noqa: PLR2004
+        return ["    allow: []"]
+    return [
+        "    allow: []  # declare each feature relationship explicitly, e.g.:",
+        f"    #   - from: {names[1]}.{layer}",
+        f"    #     to: {names[0]}.{layer}",
+    ]
 
 
 def _composition_lines(inferred: InferredConfig) -> list[str]:

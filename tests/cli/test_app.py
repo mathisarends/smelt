@@ -68,29 +68,31 @@ class TestCheckCommand:
         assert "app/domain/model.py" in out
         assert err == ""
 
-    def test_unclassified_library_warnings_are_grouped_only_in_text(
+    def test_unclassified_package_warnings_are_grouped_only_in_text(
         self,
         capsys: pytest.CaptureFixture[str],
         clean_project: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        config = clean_project / "smelt.yaml"
-        config.write_text(
-            config.read_text(encoding="utf-8").replace("[app]", "[app, lib]"),
-            encoding="utf-8",
-        )
         write_project(
-            clean_project, {"lib/__init__.py": "", "lib/a.py": "", "lib/b.py": ""}
+            clean_project,
+            {
+                "app/platform/__init__.py": "",
+                "app/platform/a.py": "",
+                "app/platform/b.py": "",
+            },
         )
         monkeypatch.chdir(clean_project)
 
         _, text, _ = _run(capsys, "check", "--select", "SMT305")
         _, output, _ = _run(capsys, "check", "--select", "SMT305", "--format", "json")
+        _, statistics, _ = _run(capsys, "check", "--select", "SMT305", "--statistics")
 
         assert text.count("SMT305 unclassified-module") == 1
         assert "2 modules have no architecture classification" in text
-        assert "Give lib a layer" in text
+        assert "Give app.platform a layer" in text
         assert len(json.loads(output)["violations"]) == 2
+        assert "2  SMT305 unclassified-module" in statistics
 
     @pytest.mark.parametrize("path", ["app/domian", "README.md"])
     def test_rejects_missing_or_unanalyzed_scope(

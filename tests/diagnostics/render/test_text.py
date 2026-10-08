@@ -133,6 +133,37 @@ class TestRepeatedEdges:
         assert "  2x SMT101 a4 -> b\n  … 2 more\n" in out
 
 
+class TestStatistics:
+    def test_statistics_replace_the_listing(self, report: Report) -> None:
+        out = render_text(report, read_line, statistics=True, show_hints=True)
+
+        assert out == (
+            "1  SMT101 layer-boundary   [error]\n"
+            "1  SMT303 role-file        [warning]\n"
+            "1  SMT305 crowded-package  [hint]\n"
+            "\n"
+            "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
+        )
+
+    def test_long_listing_ends_with_statistics(self, report: Report) -> None:
+        many = replace(report, violations=report.violations * 6)
+
+        out = render_text(many, read_line)
+
+        assert out.endswith(
+            "6  SMT101 layer-boundary  [error]\n"
+            "6  SMT303 role-file       [warning]\n"
+            "\n"
+            "✗ 6 errors · 6 warnings · 6 hints (use --show-hints) · 1 suppressed · "
+            "2 in debt · 4 modules\n"
+        )
+
+    def test_short_listing_has_no_statistics(self, report: Report) -> None:
+        out = render_text(report, read_line)
+
+        assert "\n1  SMT101 layer-boundary" not in out
+
+
 class TestSummary:
     def test_clean_report_lists_the_categories(self, clean_report: Report) -> None:
         assert render_text(clean_report, read_line) == (

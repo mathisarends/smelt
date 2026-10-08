@@ -6,6 +6,7 @@ import pytest
 
 from smelt.config import parse_config
 from smelt.config.loader import load_yaml
+from smelt.config.models import CrossFeatureAllowance
 from smelt.engine.inference import InferredLayer, infer_config, render_config
 from tests.helpers import write_project
 
@@ -76,7 +77,9 @@ class TestInferConfig:
         assert inferred.features_root == "backend.features"
         assert inferred.composition_root == ["backend.main", "backend.lifespan"]
         assert inferred.wiring == ["backend.features.auth.infrastructure.di"]
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
         assert warnings == ()
         assert config.architecture.wiring == inferred.wiring
 
@@ -110,7 +113,7 @@ class TestInferConfig:
             "  # not analyzed: workspace member web "
             "(no Python package in src/ or the member directory)\n"
         ) in rendered
-        config, warnings = parse_config(load_yaml(rendered))
+        config, warnings = parse_config(load_yaml(rendered), root=tmp_path)
         assert warnings == ()
         assert config.project.root_packages == ["backend", "e2e_stack"]
 
@@ -198,7 +201,8 @@ class TestRenderConfig:
         assert "third_party: allow" in rendered
         assert "third_party: {default: deny" in rendered
         assert "transitive: false  # direct imports only" in rendered
-        assert "pair applies to ALL features" in rendered
+        assert "    allow: []" in rendered
+        assert "pair applies to ALL features" not in rendered
 
     def test_rendered_config_is_valid(self, tmp_path: Path) -> None:
         write_project(
@@ -217,15 +221,45 @@ class TestRenderConfig:
         inferred = infer_config(tmp_path)
         assert inferred is not None
 
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
 
         assert warnings == ()
         assert config.architecture.features is not None
         assert config.architecture.features.root == "shop.features"
-        assert config.architecture.cross_feature.pairs() == {
-            ("application", "application")
-        }
+        assert config.architecture.cross_feature.allow == []
         assert config.tests.layout == "none"
+
+    def test_cross_feature_example_names_real_features(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {
+                "src/shop/__init__.py": "",
+                "src/shop/features/cart/application/__init__.py": "",
+                "src/shop/features/orders/application/__init__.py": "",
+            },
+        )
+        inferred = infer_config(tmp_path)
+        assert inferred is not None
+
+        rendered = render_config(inferred)
+        uncommented = (
+            rendered.replace("allow: []  #", "allow:  #")
+            .replace("    #   - from", "      - from")
+            .replace("    #     to", "        to")
+        )
+        config, _ = parse_config(load_yaml(uncommented), root=tmp_path)
+
+        [allowance] = config.architecture.cross_feature.allow
+        assert "    #   - from: orders.application\n" in rendered
+        assert isinstance(allowance, CrossFeatureAllowance)
+        assert allowance.components() == (
+            "orders",
+            "application",
+            "cart",
+            "application",
+        )
 
 
 DISHKA_PROVIDER = "from dishka import Provider\nclass P(Provider): pass\n"
@@ -398,7 +432,7 @@ class TestDddWorkspace:
         )
         rendered = render_config(inferred)
         assert "    # assembles providers: backend.app → " in rendered
-        config, _ = parse_config(load_yaml(rendered))
+        config, _ = parse_config(load_yaml(rendered), root=tmp_path)
         assert "backend.app" in config.architecture.composition_root
 
     def test_framework_consumers_are_no_assembly(self, tmp_path: Path) -> None:
@@ -459,7 +493,7 @@ class TestDddWorkspace:
         assert candidate.chain == ["backend.app", "backend.rpc.routes.endpoint"]
         rendered = render_config(inferred)
         assert "    # - backend.rpc\n" in rendered
-        config, _ = parse_config(load_yaml(rendered))
+        config, _ = parse_config(load_yaml(rendered), root=tmp_path)
         assert "backend.rpc" not in config.architecture.composition_root
 
     def test_settings_modules_are_shared(self, tmp_path: Path) -> None:
@@ -490,7 +524,9 @@ class TestDddWorkspace:
 
         assert inferred is not None
         assert inferred.tests_layout == "mirror"
-        config, warnings = parse_config(load_yaml(render_config(inferred)))
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
         assert warnings == ()
         assert config.tests.mirror == "{root}/{path}/test_{module}.py"
         assert config.architecture.modules == inferred.modules

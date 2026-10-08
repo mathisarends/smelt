@@ -136,7 +136,8 @@ class UnclassifiedModule(BaseRule):
         rationale=(
             "Unclassified modules are exempt from layer and feature boundary checks: a domain module "
             "may import them. Composition-root/wiring restrictions and configured cycle checks still apply. Central code such as a "
-            "database or storage package belongs to a layer via architecture.modules."
+            "database or storage package belongs to a layer via architecture.modules. "
+            "Root packages with no classified module at all (libraries) are skipped."
         ),
         bad="gateway/\n  platform/db.py    # neither shared, a layer nor a feature",
         good="# smelt.yaml\narchitecture:\n  modules:\n    gateway.platform: infrastructure",
@@ -155,11 +156,21 @@ class UnclassifiedModule(BaseRule):
         model = ctx.model
         if not model.layers and not model.has_features:
             return
+        # A root package with nothing classified is a library outside the
+        # architecture (e.g. a workspace member): check it for cycles only.
+        described = {
+            name.split(".", 1)[0]
+            for name in ctx.files.sources
+            if (info := model.info(name)) is not None
+            and (info.kind is not ModuleKind.UNCLASSIFIED or info.wiring)
+        }
         for name, source in sorted(ctx.files.sources.items()):
             info = model.info(name)
             if source.is_package or info is None:
                 continue
             if info.kind is not ModuleKind.UNCLASSIFIED or info.wiring:
+                continue
+            if name.split(".", 1)[0] not in described:
                 continue
             package = _top_package(model, name)
             yield self.violation(

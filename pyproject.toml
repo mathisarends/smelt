@@ -1,5 +1,5 @@
 [project]
-name = "smelt"
+name = "smelt-cli"
 version = "0.1.2"
 description = "Static guardrails for Python codebases maintained by humans and coding agents."
 readme = "README.md"
@@ -25,6 +25,7 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = ""
+module-name = "smelt"
 
 [dependency-groups]
 dev = [

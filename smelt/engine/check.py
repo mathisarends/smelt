@@ -87,20 +87,34 @@ def rule_meta(rule: Rule) -> RuleMeta:
     )
 
 
+def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
+    """Key ``rules:`` overrides by code; the config may name a rule by code or name."""
+    codes = {rule.code: rule.code for rule in rules.rules}
+    codes.update({rule.name: rule.code for rule in rules.rules})
+    settings: dict[str, str] = {}
+    issues: list[ConfigIssue] = []
+    for key, setting in loaded.config.rules.items():
+        code = codes.get(key)
+        if code is None:
+            issues.append(
+                ConfigIssue(
+                    f"rules.{key}", f'unknown rule "{key}"{did_you_mean(key, codes)}'
+                )
+            )
+        elif code in settings:
+            issues.append(ConfigIssue(f"rules.{key}", f"{code} is already configured"))
+        else:
+            settings[code] = setting
+    if issues:
+        raise ConfigError(issues, loaded.path.name)
+    return settings
+
+
 def resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
 ) -> list[tuple[Rule, Severity]]:
-    config = loaded.config
+    settings = _settings_by_code(rules, loaded)
     known = {rule.code for rule in rules.rules}
-    issues = [
-        ConfigIssue(
-            f"rules.{code}", f'unknown rule "{code}"{did_you_mean(code, known)}'
-        )
-        for code in config.rules
-        if code not in known
-    ]
-    if issues:
-        raise ConfigError(issues, loaded.path.name)
     for key in ("select", "ignore"):
         for prefix in getattr(options, key):
             if not any(code.startswith(prefix.strip().upper()) for code in known):
@@ -112,7 +126,7 @@ def resolve_active_rules(
 
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
-        setting = config.rules.get(rule.code)
+        setting = settings.get(rule.code)
         explicitly_selected = rule.code in options.select
         if setting == "off":
             continue

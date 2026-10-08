@@ -4,26 +4,10 @@ import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from smelt.config.discovery import build_package_settings, packages_in
+
 if TYPE_CHECKING:
     from pathlib import Path
-
-IGNORED_DIRS = frozenset(
-    {
-        "tests",
-        "test",
-        "docs",
-        "doc",
-        "scripts",
-        "examples",
-        "build",
-        "dist",
-        "node_modules",
-        "site-packages",
-        "migrations",
-        "venv",
-        "env",
-    }
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,40 +29,6 @@ class WorkspaceMember:
         }
 
 
-def has_python(directory: Path) -> bool:
-    return (
-        directory.is_dir()
-        and directory.name.isidentifier()
-        and directory.name not in IGNORED_DIRS
-        and any(directory.rglob("*.py"))
-    )
-
-
-def child_packages(directory: Path) -> list[Path]:
-    if not directory.is_dir():
-        return []
-    return sorted(
-        (child for child in directory.iterdir() if has_python(child)),
-        key=lambda p: p.name,
-    )
-
-
-def packages_in(base: Path, *, namespace: bool = False) -> list[Path]:
-    """Top-level packages in an import root.
-
-    A directory counts when it holds Python files itself. With ``namespace`` a
-    directory without any also counts if it contains regular packages: a PEP 420
-    namespace like ``src/e2e_stack/server/__init__.py``. Callers allow that only
-    where the directory must be importable, so ``deploy/`` with scripts stays out.
-    """
-    return [
-        child
-        for child in child_packages(base)
-        if any(child.glob("*.py"))
-        or (namespace and any((c / "__init__.py").is_file() for c in child.iterdir()))
-    ]
-
-
 def import_root(directory: Path) -> tuple[Path, list[Path], list[Path]] | None:
     """The source root of a project or member, its packages and their namespaces.
 
@@ -86,7 +36,7 @@ def import_root(directory: Path) -> tuple[Path, list[Path], list[Path]] | None:
     declares ``namespace`` or a ``module-name`` may hold namespace packages.
     Otherwise the directory itself, with regular packages only.
     """
-    declared, namespace = _build_backend(directory)
+    declared, namespace = build_package_settings(directory)
     for base in (directory / "src", directory):
         allowed = base.name == "src" or namespace or bool(declared)
         found = packages_in(base, namespace=allowed)
@@ -96,15 +46,6 @@ def import_root(directory: Path) -> tuple[Path, list[Path], list[Path]] | None:
             namespaces = [p for p in found if not any(p.glob("*.py"))]
             return base, found, namespaces
     return None
-
-
-def _build_backend(directory: Path) -> tuple[set[str], bool]:
-    """Top-level modules ``tool.uv.build-backend`` names, and whether it builds a namespace."""
-    data = _pyproject(directory)
-    backend = data.get("tool", {}).get("uv", {}).get("build-backend", {})
-    raw = backend.get("module-name")
-    names = [raw] if isinstance(raw, str) else _strings(raw)
-    return {name.split(".")[0] for name in names}, backend.get("namespace") is True
 
 
 def workspace_members(root: Path) -> list[WorkspaceMember]:
