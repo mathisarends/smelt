@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.config import load_config
 from smelt.engine.coverage import policy_hash
 from tests.helpers import check, write_project
@@ -52,6 +54,61 @@ def _project(root: Path) -> Path:
 
 
 class TestEffectiveCoverage:
+    @pytest.mark.parametrize(
+        "project_settings",
+        [
+            "source_roots: [other/src]",
+            "source_roots: [other/src, backend/src]",
+            "source_roots: [backend/src]\n  exclude: [backend/src/app/**]",
+        ],
+    )
+    def test_member_needs_analyzed_files_in_its_own_package(
+        self, tmp_path: Path, project_settings: str
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": (
+                    "version: 1\nproject:\n  root_packages: [app]\n  "
+                    + project_settings
+                    + "\n"
+                ),
+                "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend"]\n',
+                "backend/src/app/__init__.py": "",
+                "other/src/app/__init__.py": "",
+            },
+        )
+
+        coverage = check(tmp_path).report.coverage
+
+        assert coverage is not None
+        assert coverage["omitted_workspace_members"] == [
+            {
+                "path": "backend",
+                "reason": "no analyzed source files in: backend/src/app",
+            }
+        ]
+
+    def test_namespace_member_with_analyzed_child_is_covered(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": (
+                    "version: 1\nproject:\n  root_packages: [app]\n"
+                    "  source_roots: [backend/src]\n"
+                ),
+                "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend"]\n',
+                "backend/src/app/inner/__init__.py": "",
+            },
+        )
+
+        coverage = check(tmp_path).report.coverage
+
+        assert coverage is not None
+        assert coverage["omitted_workspace_members"] == []
+
     def test_names_what_was_not_analyzed_and_what_is_exempt(
         self, tmp_path: Path
     ) -> None:

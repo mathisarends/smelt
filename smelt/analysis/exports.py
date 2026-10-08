@@ -41,11 +41,10 @@ def namespace_of(tree: ast.Module, module: str, *, is_package: bool) -> Namespac
     for node in _top_level(tree.body):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.asname:
-                    imported[alias.asname] = alias.name
-                else:
-                    top = alias.name.split(".")[0]
-                    imported.setdefault(top, top)
+                name = alias.asname or alias.name.split(".")[0]
+                imported[name] = alias.name if alias.asname else name
+                defined.discard(name)
+                references.pop(name, None)
         elif isinstance(node, ast.ImportFrom):
             base = resolve_relative(
                 module, is_package=is_package, level=node.level, target=node.module
@@ -53,7 +52,10 @@ def namespace_of(tree: ast.Module, module: str, *, is_package: bool) -> Namespac
             for alias in node.names:
                 if alias.name != "*":
                     qualified = f"{base}.{alias.name}" if base else alias.name
-                    imported[alias.asname or alias.name] = qualified
+                    name = alias.asname or alias.name
+                    imported[name] = qualified
+                    defined.discard(name)
+                    references.pop(name, None)
         else:
             for name in _defined_names(node):
                 defined.add(name)

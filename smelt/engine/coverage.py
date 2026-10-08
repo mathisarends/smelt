@@ -78,17 +78,31 @@ def _classification(ctx: AnalysisContext) -> dict[str, int]:
 
 def _omitted_members(ctx: AnalysisContext) -> list[dict[str, Any]]:
     """Workspace members, declared next to the config, whose code is not analyzed."""
-    analyzed = set(ctx.config.project.root_packages)
+    configured = set(ctx.config.project.root_packages)
+    analyzed = {
+        directory
+        for source in ctx.files.sources.values()
+        for directory in source.absolute.resolve().parents
+    }
     omitted: list[dict[str, Any]] = []
     for member in workspace_members(ctx.root):
-        missing = [name for name in member.packages if name not in analyzed]
         if member.skipped:
             omitted.append({"path": member.path, "reason": member.skipped})
-        elif missing:
-            omitted.append(
-                {
-                    "path": member.path,
-                    "reason": "not in project.root_packages: " + ", ".join(missing),
-                }
-            )
+            continue
+        if member.source_root is None:
+            continue
+        missing = [name for name in member.packages if name not in configured]
+        uncovered = [
+            f"{member.source_root}/{name}"
+            for name in member.packages
+            if name in configured
+            and (ctx.root / member.source_root / name).resolve() not in analyzed
+        ]
+        reasons = []
+        if missing:
+            reasons.append("not in project.root_packages: " + ", ".join(missing))
+        if uncovered:
+            reasons.append("no analyzed source files in: " + ", ".join(uncovered))
+        if reasons:
+            omitted.append({"path": member.path, "reason": "; ".join(reasons)})
     return omitted

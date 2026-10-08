@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import textwrap
 
+import pytest
+
 from smelt.analysis.exports import (
     Loader,
     Namespace,
@@ -34,6 +36,42 @@ SOURCES = {
 
 
 class TestResolveExport:
+    @pytest.mark.parametrize(
+        ("source", "name", "expected"),
+        [
+            (
+                "Invoice = None\nfrom .billing.models import Invoice\n",
+                "Invoice",
+                ("app.billing.models", "Invoice"),
+            ),
+            (
+                "def models(): pass\nimport app.billing.models as models\n",
+                "models",
+                ("app.billing.models", None),
+            ),
+            (
+                "app = None\nimport app.billing.models\n",
+                "app",
+                ("app", None),
+            ),
+            (
+                "from .billing.models import Invoice\nInvoice = None\n",
+                "Invoice",
+                ("app", "Invoice"),
+            ),
+        ],
+    )
+    def test_latest_binding_wins(
+        self, source: str, name: str, expected: tuple[str, str | None]
+    ) -> None:
+        load = _loader({**SOURCES, "app": source})
+
+        assert resolve_export("app", name, load) == expected
+        namespace = load("app")
+        assert namespace is not None
+        assert not namespace.defined.intersection(namespace.imported)
+        assert set(namespace.references) == namespace.defined
+
     def test_follows_aliases_through_facades(self) -> None:
         load = _loader(SOURCES)
 
