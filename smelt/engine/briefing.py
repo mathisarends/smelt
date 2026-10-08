@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from smelt.config.errors import did_you_mean
 from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Severity
+from smelt.engine.coverage import policy_hash
 from smelt.model import ModuleKind, is_within
 from smelt.rules.testing.location import mirror_path
 
@@ -64,6 +65,11 @@ class Briefing:
     is_wiring: bool = False
     boundary_policy: str = ""
     transitive: bool = False
+    type_checking: str = "include"
+    cycles: tuple[str, ...] = ()
+    # cross_feature as fields: default and allow entries, None feature = every feature
+    cross_feature_policy: dict[str, Any] | None = None
+    policy_hash: str = ""
     analysis_error: str | None = None
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
@@ -82,10 +88,16 @@ class Briefing:
             "is_wiring": self.is_wiring,
             "planned": self.target.planned,
             "boundary_policy": self.boundary_policy,
-            "imports": {"transitive": self.transitive},
+            "policy_hash": self.policy_hash,
+            "imports": {
+                "transitive": self.transitive,
+                "type_checking": self.type_checking,
+                "cycles": list(self.cycles),
+            },
             "features": list(self.features),
             "layers": [layer.to_json() for layer in self.layers],
             "cross_feature": self.cross_feature,
+            "cross_feature_policy": self.cross_feature_policy,
             "shared": list(self.shared),
             "composition_root": list(self.composition_root),
             "wiring": list(self.wiring),
@@ -194,6 +206,15 @@ def build_briefing(
         is_wiring=bool(info and info.wiring),
         boundary_policy=_boundary_policy(info),
         transitive=arch.imports.transitive,
+        type_checking=arch.imports.type_checking,
+        cycles=tuple(arch.imports.cycles),
+        cross_feature_policy={
+            "default": arch.cross_feature.default,
+            "allow": arch.cross_feature.entries(),
+        }
+        if model.has_features
+        else None,
+        policy_hash=policy_hash(ctx.config),
         analysis_error=analysis_error,
         violations={
             "errors": sum(v.severity is Severity.ERROR for v in scoped),

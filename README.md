@@ -43,6 +43,15 @@ config error, not a silently disabled rule.
 Explicit check paths must exist and contain analyzed source or test files; unknown
 `--select`/`--ignore` prefixes are usage errors. JSON includes the reporting scope, file
 count and active rule codes. `--config PATH` works before or after a subcommand.
+A stored JSON report explains itself: `scope.mode` is `full` or `changed`, and
+`comparison` names the requested `base`, the resolved `merge_base`, the
+`compared_revision` and `head`, so `passed` from `--changed` reads as "nothing new since
+that commit", not as a clean inventory. `coverage` lists the source and test roots,
+workspace members that are not analyzed, module counts per classification, the
+composition-root and wiring exemptions, third-party policies per layer, the import
+settings (`type_checking`, `transitive`, `cycles`), cross-feature allowances as fields,
+and a `policy_hash` that is equal for reports checked under the same resolved config.
+`smelt context --format json` carries the same import settings, allowances and hash.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)

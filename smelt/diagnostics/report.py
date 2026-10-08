@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -40,6 +40,10 @@ class Report:
     in_debt: int = 0
     scope: tuple[str, ...] = ()
     checked_files: int = 0
+    # what --changed compared with; None for a full inventory
+    comparison: Mapping[str, Any] | None = None
+    # roots, classification and policy the check ran under
+    coverage: Mapping[str, Any] | None = None
 
     def count(self, severity: Severity) -> int:
         return sum(1 for v in self.violations if v.severity is severity)

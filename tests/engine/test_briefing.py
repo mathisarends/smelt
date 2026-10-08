@@ -91,6 +91,30 @@ class TestFeatureBriefing:
         }
         assert data["layers"][0]["package"] == "gateway.features.billing.domain"
 
+    def test_json_states_the_policy_as_fields(self, outcome: CheckOutcome) -> None:
+        ctx = outcome.context
+        briefing = build_briefing(ctx, resolve_target(ctx, "billing"), outcome.report)
+
+        data = briefing.to_json()
+
+        assert data["imports"] == {
+            "transitive": ctx.config.architecture.imports.transitive,
+            "type_checking": "include",
+            "cycles": list(ctx.config.architecture.imports.cycles),
+        }
+        assert data["cross_feature_policy"] == {
+            "default": "deny",
+            "allow": [
+                {
+                    "source_feature": None,
+                    "source_layer": "application",
+                    "target_feature": None,
+                    "target_layer": "application",
+                }
+            ],
+        }
+        assert data["policy_hash"] == outcome.report.coverage["policy_hash"]  # type: ignore[index]
+
 
 class TestModuleBriefing:
     def test_marks_current_layer(self, outcome: CheckOutcome) -> None:
