@@ -967,3 +967,78 @@ der Fassaden-Fall ist durch Tests abgedeckt.
 
 **Validierung:** 306 Tests bestanden, 1 übersprungen; Ruff, Mypy, eigener Smelt-Check
 und Pre-Commit-Checks grün; CI auf Python 3.12–3.14 unter Linux, macOS und Windows.
+
+## Runde 5: Rest-Befunde aus dem FastAPI/Dishka-Workspace (2026-10-08)
+
+Externes Feedback zu smelt 0.1.2 im selben uv-Workspace (FastAPI, fastapi-canon, Dishka,
+Feature-Layer, Libraries, Namespace-Paket für E2E). Mit der geprüften Config: 86 Befunde
+in 69 Dateien (20 SMT101, 40 SMT102, 2 SMT104, 2 SMT105, 1 SMT106, 21 SMT401), keine
+Suppressions, keine Debt-Baseline. Maßstab wie in Runde 4, dazu ausdrücklich: nicht auf
+dieses Projekt zuschneiden. Jede Heuristik ist generisch (Strings `"modul:attr"`,
+Re-Exports über `__init__`, Namen in Definitionen) und durch Fixtures abgedeckt, die das
+Projekt nicht nachbauen.
+
+### Bewertet
+
+| # | Vorschlag | Entscheidung |
+|---|---|---|
+| 1 | `init --config` beachten oder ablehnen | umgesetzt: `--config` ist der Zielpfad |
+| 2 | Namespace-Pakete in Workspace-Mitgliedern | umgesetzt, mit Status pro Mitglied |
+| 3 | Composition Root über Assembly-Fassaden | umgesetzt, unsichere Fälle nur als Kandidat |
+| 4 | Strukturierte Testkandidaten statt Wiederholungsabsatz | umgesetzt |
+| 5 | Gruppierte Befunde, transitive Ursachen | umgesetzt, schlank |
+| 6 | Vergleichs-Provenienz und Coverage im Report | umgesetzt (Runde 4 hatte die Coverage-Tabelle abgelehnt; als JSON-Feld statt Textausgabe ist sie günstig und beantwortet „sauber oder nur nichts Neues?“) |
+
+### Umgesetzt (Runde 5)
+
+- **1:** `smelt init --config custom.yaml` (vor oder nach dem Subcommand) schreibt genau
+  diese Datei; nur sie wird geprüft und mit `--force` überschrieben, ihr Verzeichnis ist
+  die Projektwurzel der Inferenz. Ein bestehendes `smelt.yml` wird ohne `--config` an Ort
+  und Stelle überschrieben statt gelöscht.
+- **2:** Mitglieder-Erkennung in `engine/workspace.py`. Ein Verzeichnis ohne eigene
+  Python-Datei zählt als Namespace-Paket, wenn es reguläre Pakete enthält und unter `src/`
+  liegt oder `tool.uv.build-backend` `namespace`/`module-name` setzt; `deploy/` mit
+  Skripten bleibt draußen. `tool.uv.workspace.exclude` wird beachtet. Die Zusammenfassung
+  nennt jedes Mitglied mit Paketen oder Grund; die Config kommentiert übersprungene.
+- **3:** `analysis/exports.py` löst Namen über Re-Exports auf (Hop-Limit, Zyklusschutz).
+  `init` erkennt App-Factories auch über `"backend.app:app"`-Strings und folgt von jedem
+  Composition Root den importierten Namen in ihre Definitionen (`FEATURES = (chat.feature,
+  …)`). Ein Nicht-Fassaden-Modul, dessen Definition aus Wiring gebaut ist
+  (`platform/feature.py` mit `ApiProvider`), wird Wiring; bloße Framework-Importe oder ein
+  Import des Providers ohne Verwendung reichen nicht. Unklassifizierte Pakete, die nur der
+  Root nutzt (`backend.rpc`), erscheinen als auskommentierter Kandidat mit Kette und
+  Konfidenz (medium/low). Config und Zusammenfassung zeigen die Kette jedes Eintrags.
+- **4:** SMT401 folgt Test-Importen durch Fassaden. `expected` trägt `subject`
+  (module/package/ambiguous/unknown) und bei Verschiebungen `evidence` (imports/name).
+  Ohne belastbaren Ort listet `expected.candidates` die importierten Module des eigenen
+  Mitglieds (nächstliegende zuerst) mit importierten Namen, Fassade und Spiegelpfad.
+  `test_bootstrap.py` mit `application/bootstrap.py` und `infrastructure/bootstrap.py`
+  bleibt bewusst unentschieden. „did you mean“ braucht einen Import des Moduls und eine
+  Ähnlichkeit ab 0,85 (Tippfehler liegen darüber, `spotify_service`/`spotify_search` mit
+  0,83 darunter); die Suffix-Regel verlangt, dass der Präfix den Paketpfad nennt.
+- **5:** Jeder Befund hat eine stabile `id`; JSON `groups` (deterministisch sortiert)
+  fasst `facade` (transitive Befunde, die ein Modul weiterreicht), `edge` (mit direct/
+  transitive), `cycle` (Zeugenpfad, type-checking-only) und `test_move` zusammen. Der Text
+  nennt die Fassaden. SMT104-Zeugen verbinden ihre Hops innerhalb eines Knotens, wo ein
+  Modulpfad existiert (`features → platform.auth → platform.auth.guard → features`).
+- **6:** JSON `scope.mode` und `comparison` (base, merge_base, compared_revision, head);
+  `coverage` mit Wurzeln, nicht analysierten Workspace-Mitgliedern, Klassifikationszahlen,
+  Ausnahmen, Third-Party-Policy pro Layer, Import-Einstellungen, Cross-Feature-Einträgen
+  als Felder und `policy_hash`. SARIF-Runs tragen Modus, Vergleich und Hash; `context
+  --format json` die Import-Einstellungen, `cross_feature_policy` und den Hash.
+
+**Gegenprobe am Projekt** (Kopie ohne Config, Original unberührt): `init` findet jetzt
+`e2e_stack` (Namespace), `backend.app` (über `uvicorn.run("backend.app:app")`),
+`backend.platform.feature` und `telegram.feature` als Wiring und schlägt `backend.rpc` als
+Kandidat vor, also fast die geprüfte Config. Mit der geprüften Config bleiben es 86
+Befunde mit identischer Verteilung; `test_commands.py` zeigt nun auf
+`application/commands/`, `test_obstore_storage.py` über die Storage-Fassade auf
+`storage/impl/`.
+
+**Gegenprobe an Prompster:** gleiche Befundzahlen (75 Fehler, 22 Warnungen); `init`
+liefert dieselben Roots plus Begründung. Geänderte SMT401-Meldungen nur dort, wo Tests den
+Paketpfad ausschreiben und über Fassaden importieren (`test_session_domain_views.py` →
+`test_views.py`); die in Runde 4 entfernten Ratevorschläge bleiben weg.
+
+**Validierung:** 348 Tests bestanden, 1 übersprungen, an jedem Commit einzeln grün;
+Ruff, Mypy, eigener Smelt-Check und Pre-Commit-Checks grün.
