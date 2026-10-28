@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
 
@@ -39,6 +41,31 @@ def _features(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestUnknownLayer:
+    @pytest.mark.parametrize(
+        "wiring_path", ["feature.py", "assembly/__init__.py", "infra/feature.py"]
+    )
+    def test_declared_wiring_is_exempt_but_neighbor_is_not(
+        self, tmp_path: Path, wiring_path: str
+    ) -> None:
+        module = (
+            wiring_path.removesuffix("/__init__.py")
+            .removesuffix(".py")
+            .replace("/", ".")
+        )
+        root = _features(
+            tmp_path,
+            {
+                "smelt.yaml": FEATURE_CONFIG
+                + f"  wiring: [gw.features.voice.{module}]\n",
+                f"gw/features/voice/{wiring_path}": "",
+                "gw/features/voice/stray.py": "",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT301",)))
+
+        assert [v.source_module for v in found] == ["gw.features.voice.stray"]
+
     def test_declared_layers_are_fine(self, tmp_path: Path) -> None:
         root = _features(
             tmp_path,

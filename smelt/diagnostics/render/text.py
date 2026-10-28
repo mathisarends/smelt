@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 _WIDTH = 88
 _TOP_EDGES = 5
 # Keys of "expected" that only machine readers need; the message says the same.
-_MACHINE_ONLY = frozenset({"cycle", "subject", "evidence"})
+_MACHINE_ONLY = frozenset({"cycle", "members", "cyclic_edges", "subject", "evidence"})
 _COLORS = {
     Severity.ERROR: "\x1b[31m",
     Severity.WARNING: "\x1b[33m",

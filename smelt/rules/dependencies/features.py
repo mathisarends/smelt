@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.base import BaseRule, RuleDoc
-from smelt.rules.common import import_violation, join, skip_import
+from smelt.rules.common import boundary_imports, import_violation, join, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -45,7 +45,7 @@ class CrossFeatureImport(BaseRule):
         if cross.default == "allow":
             return
         model = ctx.model
-        for detail in ctx.imports.all_imports():
+        for detail, chain in boundary_imports(ctx):
             if detail.external or skip_import(ctx, detail):
                 continue
             source = model.info(detail.importer)
@@ -89,6 +89,7 @@ class CrossFeatureImport(BaseRule):
                 f"feature {source.feature} must not import feature {target.feature} ({pair})",
                 expected={"cross_feature_allow": allowed},
                 hint=" ".join(hints) or None,
+                chain=chain,
             )
 
 
@@ -123,7 +124,7 @@ class SharedImportsFeature(BaseRule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model
-        for detail in ctx.imports.all_imports():
+        for detail, chain in boundary_imports(ctx):
             if detail.external or skip_import(ctx, detail):
                 continue
             source = model.info(detail.importer)
@@ -146,4 +147,5 @@ class SharedImportsFeature(BaseRule):
                     f"{kind} code, or move {detail.importer} into the {target.feature} "
                     "feature."
                 ),
+                chain=chain,
             )

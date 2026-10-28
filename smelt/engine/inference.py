@@ -119,10 +119,21 @@ class InferredConfig:
 
 
 def infer_config(root: Path) -> InferredConfig | None:
-    located = import_root(root)
-    packages = list(located[1]) if located else []
-    source_roots = [located[0].relative_to(root).as_posix()] if located else []
     members = workspace_members(root)
+    located = import_root(root)
+    member_directories = {(root / member.path).resolve() for member in members}
+    packages = (
+        [
+            package
+            for package in located[1]
+            if package.resolve() not in member_directories
+        ]
+        if located
+        else []
+    )
+    source_roots = (
+        [located[0].relative_to(root).as_posix()] if located and packages else []
+    )
     member_roots: list[Path] = []
     for member in members:
         if member.source_root is None:
@@ -140,8 +151,8 @@ def infer_config(root: Path) -> InferredConfig | None:
         if (member / name).is_dir()
     )
     inferred = InferredConfig(
-        root_packages=[p.name for p in packages],
-        source_roots=source_roots,
+        root_packages=list(dict.fromkeys(p.name for p in packages)),
+        source_roots=list(dict.fromkeys(source_roots)),
         test_roots=test_roots or ["tests"],
         members=members,
     )

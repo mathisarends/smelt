@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import types
 import typing
+from collections.abc import Hashable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -24,6 +25,27 @@ CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yml")
 
 class _StrictBoolLoader(yaml.SafeLoader):
     """YAML 1.2 booleans: only ``true``/``false``, so ``off`` stays a string."""
+
+    def construct_mapping(
+        self, node: yaml.MappingNode, deep: bool = False
+    ) -> dict[Any, Any]:
+        if isinstance(node, yaml.MappingNode):
+            keys: dict[Hashable, yaml.Node] = {}
+            for key_node, _ in node.value:
+                if key_node.tag == "tag:yaml.org,2002:merge":
+                    continue  # Explicit keys may override inherited YAML defaults.
+                key = self.construct_object(key_node, deep=deep)
+                if not isinstance(key, Hashable):
+                    continue  # The standard constructor diagnoses invalid keys.
+                if key in keys:
+                    raise yaml.constructor.ConstructorError(
+                        "first definition of key",
+                        keys[key].start_mark,
+                        f"duplicate key {key!r}",
+                        key_node.start_mark,
+                    )
+                keys[key] = key_node
+        return super().construct_mapping(node, deep=deep)
 
 
 _StrictBoolLoader.yaml_implicit_resolvers = {
@@ -68,7 +90,7 @@ def load_config(path: Path) -> LoadedConfig:
     source = path.name
     try:
         raw = load_yaml(path.read_text(encoding="utf-8"))
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         raise ConfigError([ConfigIssue("", f"cannot read {path}: {exc}")]) from exc
     except yaml.YAMLError as exc:
         raise ConfigError([ConfigIssue("", f"invalid YAML: {exc}")], source) from exc

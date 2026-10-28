@@ -24,7 +24,7 @@ from smelt.diagnostics.violation import (
 )
 from smelt.engine.changes import Comparison, base_snapshot
 from smelt.engine.coverage import effective_coverage
-from smelt.engine.paths import missing_paths
+from smelt.engine.paths import missing_paths, project_metadata
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
@@ -216,6 +216,7 @@ def run_check(
         ),
         comparison=comparison.to_json() if comparison else None,
         coverage=effective_coverage(ctx),
+        project=project_metadata(loaded),
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
 
@@ -233,7 +234,10 @@ def _introduced(
         if base_root is None:
             return violations, comparison
         before_ctx = AnalysisContext(base_root, ctx.config)
-        before = collect(before_ctx)
+        # A committed README (or a newly added workspace package) is an empty
+        # historical inventory, not an analysis failure. Existing source still
+        # goes through normal parsing so corrupt baselines do not pass silently.
+        before = collect(before_ctx) if before_ctx.files.sources else []
         known = Debt.from_violations(before, snippet_reader(before_ctx))
         introduced, _, _ = known.match(violations, snippet_reader(ctx))
     return introduced, comparison

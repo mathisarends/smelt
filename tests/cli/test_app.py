@@ -38,6 +38,51 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    @pytest.mark.parametrize("output_format", ["json", "sarif", "github"])
+    def test_nested_configuration_identifies_and_rebases_paths(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path, output_format: str
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                ".git": "",
+                "service/smelt.yaml": LAYERED_CONFIG,
+                "service/app/__init__.py": "",
+                "service/app/domain/model.py": "from app.infra import db\n",
+                "service/app/infra/db.py": "",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(tmp_path / "service/smelt.yaml"),
+            "--format",
+            output_format,
+        )
+
+        assert code == 1
+        assert err == ""
+        if output_format == "json":
+            document = json.loads(out)
+            assert document["project"]["root"] == (tmp_path / "service").as_posix()
+            assert document["project"]["repository_root"] == tmp_path.as_posix()
+            assert document["project"]["repository_prefix"] == "service"
+            assert (
+                document["project"]["config"]
+                == (tmp_path / "service/smelt.yaml").as_posix()
+            )
+            assert document["violations"][0]["path"] == "app/domain/model.py"
+        elif output_format == "sarif":
+            location = json.loads(out)["runs"][0]["results"][0]["locations"][0]
+            assert (
+                location["physicalLocation"]["artifactLocation"]["uri"]
+                == "service/app/domain/model.py"
+            )
+        else:
+            assert "file=service/app/domain/model.py," in out
+
     def test_public_hook_checks_incoming_edges_and_unrelated_python_files(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -311,6 +356,29 @@ class TestCheckCommand:
 
         assert code == 2
         assert 'bogus: unknown key "bogus"' in err
+
+    @pytest.mark.parametrize("input_file", ["smelt.yaml", "debt.json", "app/model.py"])
+    def test_invalid_encoding_is_a_structured_input_error(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path, input_file: str
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+                "app/__init__.py": "",
+                "app/model.py": "VALUE = 1\n",
+                "debt.json": '{"version":1,"violations":[]}',
+            },
+        )
+        (root / input_file).write_bytes(b"# invalid encoding \xff\n")
+
+        code, out, err = _run(
+            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+        )
+
+        assert code == 2
+        assert json.loads(out)["status"] == "error"
+        assert err == ""
 
     def test_config_error_is_json_with_its_location(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

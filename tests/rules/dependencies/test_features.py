@@ -43,6 +43,45 @@ def _project(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestCrossFeatureImport:
+    def test_named_reexport_does_not_hide_a_foreign_feature(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/__init__.py": "from gw.features.voice.application.calls import Calls\n",
+                "gw/features/voice/application/calls.py": "class Calls: pass\n",
+                "gw/features/billing/domain/model.py": "from gw import Calls\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT102",)))
+
+        assert found.source_module == "gw.features.billing.domain.model"
+        assert found.target_module == "gw.features.voice.application.calls"
+        assert found.edge == "billing.domain -> voice.application"
+        assert [link.imported for link in found.import_chain] == [
+            "gw",
+            "gw.features.voice.application.calls",
+        ]
+
+    def test_reexport_does_not_consume_other_exported_implementations(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/__init__.py": "from gw.features.voice.application.calls import Calls\nfrom gw.features.voice.domain.call import Call\n",
+                "gw/features/voice/application/calls.py": "class Calls: pass\n",
+                "gw/features/voice/domain/call.py": "class Call: pass\n",
+                "gw/features/billing/application/model.py": "from gw import Calls\n",
+            },
+        )
+
+        assert violations(root, CheckOptions(select=("SMT102",))) == []
+
     def test_allowed_layer_pair(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,
@@ -144,6 +183,24 @@ class TestCrossFeatureImport:
 
 
 class TestSharedImportsFeature:
+    def test_named_facade_does_not_hide_a_feature_from_shared(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/__init__.py": "from gw.features.voice.domain.call import Call\n",
+                "gw/features/voice/domain/call.py": "class Call: pass\n",
+                "gw/shared/clock.py": "from gw import Call\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT105",)))
+
+        assert found.target_module == "gw.features.voice.domain.call"
+        assert len(found.import_chain) == 2
+
     def test_shared_importing_feature(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path, {"gw/shared/clock.py": "import gw.features.voice.domain.call\n"}
@@ -217,6 +274,22 @@ def _central(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestCentralModules:
+    def test_facade_does_not_hide_central_infrastructure(self, tmp_path: Path) -> None:
+        root = _central(
+            tmp_path,
+            {
+                "smelt.yaml": CENTRAL_CONFIG + "  imports: {transitive: true}\n",
+                "gw/__init__.py": "from gw.platform.orm import Base\n",
+                "gw/platform/orm.py": "class Base: pass\n",
+                "gw/features/voice/domain/repo.py": "from gw import Base\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT101",)))
+
+        assert found.target_module == "gw.platform.orm"
+        assert found.edge == "voice.domain -> infrastructure"
+
     def test_feature_domain_must_not_import_central_infrastructure(
         self, tmp_path: Path
     ) -> None:

@@ -43,6 +43,39 @@ class TestDiscovery:
 
 
 class TestParsing:
+    @pytest.mark.parametrize(
+        "repeated",
+        [
+            "architecture: {}\narchitecture: {}\n",
+            "rules:\n  SMT101: error\n  SMT101: off\n",
+            "architecture:\n  layers:\n    domain: {path: domain, path: other}\n",
+        ],
+    )
+    def test_duplicate_yaml_keys_are_config_errors(
+        self, tmp_path: Path, repeated: str
+    ) -> None:
+        path = tmp_path / "smelt.yaml"
+        path.write_text(
+            "version: 1\nproject: {root_packages: [app]}\n" + repeated, encoding="utf-8"
+        )
+
+        with pytest.raises(ConfigError, match="duplicate key") as caught:
+            load_config(path)
+
+        assert "line " in str(caught.value)
+
+    def test_yaml_merge_can_be_overridden_explicitly(self) -> None:
+        config, _ = parse_config(
+            load_yaml(
+                "version: 1\nproject: {root_packages: [app]}\n"
+                "architecture:\n  layers:\n"
+                "    domain: &base {path: domain}\n"
+                "    application: {<<: *base, path: application}\n"
+            )
+        )
+
+        assert config.architecture.layers["application"].path == "application"
+
     def test_allowance_errors_use_public_yaml_paths(self) -> None:
         raw = _with(
             architecture={

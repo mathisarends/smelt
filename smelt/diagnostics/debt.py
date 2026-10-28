@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -62,6 +62,25 @@ def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> 
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
 
+def _cycle_edges(violation: Violation) -> list[str]:
+    if violation.code != "SMT104" or not violation.expected:
+        return []
+    return list(violation.expected.get("cyclic_edges", []))
+
+
+def _fingerprints(violation: Violation, snippet: str) -> list[str]:
+    edges = _cycle_edges(violation)
+    if edges:
+        # One baseline token per cyclic architecture edge, independent of the
+        # displayed shortest witness. Subtracting edges is an improvement; adding
+        # an edge or expanding/splitting a component cannot hide behind a witness.
+        return [
+            hashlib.sha256(f"SMT104\x1f{edge}".encode()).hexdigest()[:32]
+            for edge in edges
+        ]
+    return [fingerprint(violation, snippet)]
+
+
 @dataclass
 class Debt:
     entries: list[DebtEntry]
@@ -72,7 +91,7 @@ class Debt:
             return cls([])
         try:
             data = _DebtDocument.model_validate_json(path.read_text(encoding="utf-8"))
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             raise ConfigError(
                 [ConfigIssue("", f"cannot read debt file: {exc}")], path.as_posix()
             ) from exc
@@ -98,8 +117,9 @@ class Debt:
         cls, violations: Iterable[Violation], snippet: Callable[[Violation], str]
     ) -> Debt:
         entries = [
-            DebtEntry(fingerprint(v, snippet(v)), v.code, v.path, v.message)
+            DebtEntry(key, v.code, v.path, v.message)
             for v in violations
+            for key in _fingerprints(v, snippet(v))
         ]
         entries.sort(key=lambda e: (e.path or "", e.code, e.fingerprint))
         return cls(entries)
@@ -129,14 +149,38 @@ class Debt:
         known: list[Violation] = []
         for violation in violations:
             text = snippet(violation)
-            key = fingerprint(violation, text)
-            if available[key] == 0:
+            keys = _fingerprints(violation, text)
+            matched: set[str] = set()
+            for key in keys:
+                if available[key] > 0:
+                    available[key] -= 1
+                    matched.add(key)
+            if not matched and not _cycle_edges(violation):
                 # Existing version-1 debt files used the complete source line.
                 key = fingerprint(violation, text, legacy=True)
-            if available[key] > 0:
-                available[key] -= 1
-                known.append(violation)
-            else:
+                if available[key] > 0:
+                    available[key] -= 1
+                    matched.add(keys[0])
+            if matched:
+                existing = violation
+                if len(matched) < len(keys):
+                    # Pruning may retain the old part of a growing cycle, but
+                    # must never accept its newly introduced edges as debt.
+                    existing = replace(
+                        violation,
+                        expected={
+                            **(violation.expected or {}),
+                            "cyclic_edges": [
+                                edge
+                                for edge, key in zip(
+                                    _cycle_edges(violation), keys, strict=True
+                                )
+                                if key in matched
+                            ],
+                        },
+                    )
+                known.append(existing)
+            if len(matched) < len(keys):
                 new.append(violation)
         resolved: list[DebtEntry] = []
         for entry in self.entries:

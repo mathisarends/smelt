@@ -4,7 +4,6 @@ import ast
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -60,17 +59,13 @@ def is_stdlib(module: str) -> bool:
 
 
 class _SourceRootPackageFinder(AbstractPackageFinder):
-    def __init__(self, search_paths: list[str]) -> None:
-        self._search_paths = search_paths
+    def __init__(self, files: FileIndex) -> None:
+        self._files = files
 
     def determine_package_directories(
         self, package_name: str, file_system: AbstractFileSystem
     ) -> set[str]:
-        spec = PathFinder.find_spec(package_name, self._search_paths)
-        if spec is None or not spec.submodule_search_locations:
-            msg = f"Could not find package '{package_name}'."
-            raise ValueError(msg)
-        return set(spec.submodule_search_locations)
+        return {str(path.resolve()) for path in self._files.package_roots[package_name]}
 
 
 class _IndexedModuleFinder(AbstractModuleFinder):
@@ -96,7 +91,8 @@ class _IndexedModuleFinder(AbstractModuleFinder):
         )
         namespace_packages = frozenset(
             package.module
-            for package in self._files.packages.values()
+            for portions in self._files.package_parts.values()
+            for package in portions
             if is_within(package.module, package_name)
             and not package.has_init
             and (self._files.root / package.path).is_relative_to(directory)
@@ -132,13 +128,14 @@ class ImportIndex:
         if not packages:
             msg = "none of project.root_packages were found under project.source_roots"
             raise AnalysisError(msg)
-        search_paths = [
-            str((files.root / root).resolve()) for root in project.source_roots
-        ]
+        # Validate source before the native scanner, which cannot reliably report
+        # decoding failures on every supported Python version.
+        for source in files.sources.values():
+            asts.parse(source.path)
         previous_package_finder = grimp_settings.PACKAGE_FINDER
         previous_module_finder = grimp_settings.MODULE_FINDER
         grimp_settings.configure(
-            PACKAGE_FINDER=_SourceRootPackageFinder(search_paths),
+            PACKAGE_FINDER=_SourceRootPackageFinder(files),
             MODULE_FINDER=_IndexedModuleFinder(files),
         )
         try:
@@ -215,37 +212,63 @@ class ImportIndex:
         details: list[ImportDetail] = []
         for imported in sorted(self.graph.find_modules_directly_imported_by(module)):
             external = imported not in self.first_party
-            for raw in self.graph.get_import_details(
-                importer=module, imported=imported
-            ):
-                line = int(raw["line_number"])
-                node = statements.get(line)
-                names, column, end_column = _describe(
-                    node, module, source.is_package, imported, raw["line_contents"]
+            raw_lines = {
+                int(raw["line_number"]): str(raw["line_contents"])
+                for raw in self.graph.get_import_details(
+                    importer=module, imported=imported
                 )
-                details.append(
-                    ImportDetail(
-                        importer=module,
-                        imported=imported,
-                        line=line,
-                        line_contents=str(raw["line_contents"]),
-                        names=names,
-                        type_checking=line in guarded,
-                        external=external,
-                        column=column,
-                        end_column=end_column,
+            }
+            for line, contents in sorted(raw_lines.items()):
+                nodes: list[ast.Import | ast.ImportFrom | None] = [
+                    node
+                    for node in statements.get(line, [])
+                    if _matches_statement(node, module, source.is_package, imported)
+                ]
+                for node in nodes or [None]:
+                    names, column, end_column = _describe(
+                        node, module, source.is_package, imported, contents
                     )
-                )
+                    details.append(
+                        ImportDetail(
+                            importer=module,
+                            imported=imported,
+                            line=line,
+                            line_contents=contents,
+                            names=names,
+                            type_checking=line in guarded,
+                            external=external,
+                            column=column,
+                            end_column=end_column,
+                        )
+                    )
         details.sort(key=lambda d: (d.line, d.column, d.imported))
         return details
 
 
-def _statements_by_line(tree: ast.Module) -> dict[int, ast.Import | ast.ImportFrom]:
-    return {
-        node.lineno: node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import | ast.ImportFrom)
-    }
+def _statements_by_line(
+    tree: ast.Module,
+) -> dict[int, list[ast.Import | ast.ImportFrom]]:
+    statements: dict[int, list[ast.Import | ast.ImportFrom]] = defaultdict(list)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            statements[node.lineno].append(node)
+    return statements
+
+
+def _matches_statement(
+    node: ast.Import | ast.ImportFrom, module: str, is_package: bool, imported: str
+) -> bool:
+    if isinstance(node, ast.Import):
+        names = [alias.name for alias in node.names]
+    else:
+        base = resolve_relative(
+            module, is_package=is_package, level=node.level, target=node.module
+        )
+        names = [
+            base if alias.name == "*" else f"{base}.{alias.name}"
+            for alias in node.names
+        ]
+    return any(is_within(name, imported) or is_within(imported, name) for name in names)
 
 
 def _describe(
@@ -269,14 +292,16 @@ def _describe_import(
     first_line_end = (
         node.end_col_offset if node.end_lineno == node.lineno else len(line_contents)
     )
-    names: tuple[str, ...] = (imported,)
     span = (node.col_offset + 1, (first_line_end or 0) + 1)
-    for alias in node.names:
-        if is_within(alias.name, imported) or is_within(imported, alias.name):
-            names = (alias.name,)
-            if alias.lineno == node.lineno:
-                span = (alias.col_offset + 1, (alias.end_col_offset or 0) + 1)
-            break
+    matching = [
+        alias
+        for alias in node.names
+        if is_within(alias.name, imported) or is_within(imported, alias.name)
+    ]
+    names = tuple(alias.name for alias in matching) or (imported,)
+    if len(matching) == 1 and matching[0].lineno == node.lineno:
+        alias = matching[0]
+        span = (alias.col_offset + 1, (alias.end_col_offset or 0) + 1)
     return names, *span
 
 

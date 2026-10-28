@@ -158,11 +158,23 @@ class ImportCycle(BaseRule):
                 if graph.type_checking_only(a, b)
             ]
             message = f"import cycle between {scope}: {' -> '.join(names)}"
-            expected: dict[str, list[str]] = {"cycle": names}
+            members = sorted(label(node) for node in component)
+            expected: dict[str, list[str]] = {
+                "cycle": names,
+                "members": members,
+                "cyclic_edges": sorted(
+                    f"{scope}:{label(a)} -> {label(b)}"
+                    for a in component
+                    for b in graph.adjacency.get(a, ())
+                    if b in component
+                ),
+            }
             hint = (
                 "Break one edge: extract what both sides need into a separate module, "
                 "or invert one dependency behind an abstraction."
             )
+            if len(component) > len(set(cycle)):
+                hint += f" The cyclic group contains: {', '.join(members)}."
             if static:
                 message += " (type checking only)"
                 expected["type_checking_only"] = static

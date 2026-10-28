@@ -58,7 +58,6 @@ class TestEffectiveCoverage:
         "project_settings",
         [
             "source_roots: [other/src]",
-            "source_roots: [other/src, backend/src]",
             "source_roots: [backend/src]\n  exclude: [backend/src/app/**]",
         ],
     )
