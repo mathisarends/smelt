@@ -175,6 +175,10 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     relative = configured or DEFAULT_DEBT
     path = loaded.root / relative
     outcome = run_check(loaded, CheckOptions(use_debt=False))
+    if any(v.code == "SMT306" for v in outcome.unfiltered):
+        raise CliError(
+            "Resolve strict coverage gaps before recording or pruning debt; coverage cannot be accepted as debt."
+        )
     snippet = snippet_reader(outcome.context)
     current = [
         v

@@ -38,6 +38,68 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_strict_coverage_override_and_optional_inventory(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": LAYERED_CONFIG,
+                "app/__init__.py": "",
+                "app/domain/model.py": "VALUE = 1\n",
+                "client/api.py": "VALUE = 1\n",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--strict-coverage",
+            "--show-coverage",
+            "--format",
+            "json",
+        )
+
+        document = json.loads(out)
+        assert code == 1
+        assert err == ""
+        assert document["coverage"]["mode"] == "strict"
+        assert document["coverage"]["complete"] is False
+        assert document["violations"][0]["code"] == "SMT306"
+        assert any(
+            item["path"] == "client/api.py"
+            for item in document["coverage"]["inventory"]
+        )
+        assert "coverage" not in (root / "smelt.yaml").read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("prune", [False, True])
+    def test_debt_command_does_not_write_when_coverage_is_incomplete(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path, prune: bool
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": LAYERED_CONFIG.replace(
+                    "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
+                ),
+                "app/__init__.py": "",
+                "client/api.py": "VALUE = 1\n",
+            },
+        )
+        before = (root / "smelt.yaml").read_bytes()
+        args = ["debt", "--config", str(root / "smelt.yaml")]
+        if prune:
+            args.append("--prune")
+
+        code, _, err = _run(capsys, *args)
+
+        assert code == 2
+        assert "coverage cannot be accepted as debt" in err
+        assert not (root / ".smelt").exists()
+        assert (root / "smelt.yaml").read_bytes() == before
+
     @pytest.mark.parametrize("output_format", ["json", "sarif", "github"])
     def test_nested_configuration_identifies_and_rebases_paths(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, output_format: str
@@ -286,7 +348,10 @@ class TestCheckCommand:
         code, out, _ = _run(capsys, "check")
 
         assert code == 0
-        assert out == "✓ dependencies ✓ structure ✓ tests · 4 modules\n"
+        assert out == (
+            "Policy coverage: complete (configured); 0 uncovered, 0 unclassified sources\n"
+            "✓ dependencies ✓ structure ✓ tests · 4 modules\n"
+        )
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(

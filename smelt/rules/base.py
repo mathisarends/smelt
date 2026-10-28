@@ -25,6 +25,7 @@ class RuleDoc:
     good: str
     fix: str
     config: tuple[str, ...] = ()
+    example_language: str = "python"
 
 
 @runtime_checkable

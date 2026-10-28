@@ -157,6 +157,8 @@ def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
     issues: list[ConfigIssue] = []
     allowance_prefix = ("architecture", "cross_feature", "allow")
     branch_index = len(allowance_prefix) + 1
+    exclusion_prefix = ("project", "exclude")
+    exclusion_branch_index = len(exclusion_prefix) + 1
     for error in exc.errors():
         loc = tuple(error["loc"])
         # Expose YAML keys, not the internal branches of the allowance union.
@@ -171,6 +173,20 @@ def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
             ):
                 continue
             loc = (*loc[:branch_index], *loc[branch_index + 1 :])
+        elif (
+            loc[: len(exclusion_prefix)] == exclusion_prefix
+            and len(loc) > exclusion_branch_index
+        ):
+            branch = str(loc[exclusion_branch_index])
+            if branch == "str" and isinstance(error.get("input"), dict):
+                continue
+            if (
+                len(loc) == exclusion_branch_index + 1
+                and branch == "SourceExclusion"
+                and isinstance(error.get("input"), str)
+            ):
+                continue
+            loc = (*loc[:exclusion_branch_index], *loc[exclusion_branch_index + 1 :])
         message = str(error["msg"]).removeprefix("Value error, ")
         if error["type"] == "extra_forbidden":
             key = str(loc[-1])

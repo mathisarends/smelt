@@ -5,6 +5,7 @@ from smelt.rules.dependencies.features import CrossFeatureImport, SharedImportsF
 from smelt.rules.dependencies.layers import LayerBoundary
 from smelt.rules.dependencies.third_party import ThirdPartyDenied
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.structure.coverage import IncompleteCoverage
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.naming import ForbiddenPackageName
 from smelt.rules.testing.location import MisplacedTestFile
@@ -21,6 +22,7 @@ def builtin_rules() -> list[Rule]:
         UnknownLayer(),
         ForbiddenPackageName(),
         UnclassifiedModule(),
+        IncompleteCoverage(),
         MisplacedTestFile(),
         UnusedSuppression(),
         SuppressionWithoutReason(),

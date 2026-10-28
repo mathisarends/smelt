@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from smelt.rules.base import Rule, RuleSet
 
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
+_COVERAGE = "SMT306"
 
 
 class InvalidOptionError(AnalysisError):
@@ -62,6 +63,8 @@ class CheckOptions:
     ignore: tuple[str, ...] = ()
     fail_on: Severity = Severity.ERROR
     use_debt: bool = True
+    strict_coverage: bool = False
+    show_coverage: bool = False
 
 
 @dataclass
@@ -127,6 +130,10 @@ def resolve_active_rules(
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
         setting = settings.get(rule.code)
+        if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
+            _validate_strict_coverage(loaded, options, setting)
+            active.append((rule, Severity.ERROR))
+            continue
         explicitly_selected = rule.code in options.select
         if setting == "off":
             continue
@@ -142,6 +149,27 @@ def resolve_active_rules(
             continue
         active.append((rule, severity))
     return active
+
+
+def _validate_strict_coverage(
+    loaded: LoadedConfig, options: CheckOptions, setting: str | None
+) -> None:
+    if setting is not None and setting != "error":
+        raise ConfigError(
+            [
+                ConfigIssue(
+                    f"rules.{_COVERAGE}",
+                    "strict coverage must remain an error; use reasoned project.exclude entries instead",
+                )
+            ],
+            loaded.path.name,
+        )
+    if _matches_prefix(_COVERAGE, options.ignore):
+        raise InvalidOptionError(
+            "--ignore cannot disable strict coverage; use reasoned project.exclude entries instead",
+            option="--ignore",
+            value=",".join(options.ignore),
+        )
 
 
 def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
@@ -167,15 +195,26 @@ def run_check(
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
     config = loaded.config
+    if options.strict_coverage and config.project.coverage != "strict":
+        config = config.model_copy(
+            update={"project": config.project.model_copy(update={"coverage": "strict"})}
+        )
+        loaded = replace(loaded, config=config)
     rules = rules or build_rule_set()
     active = resolve_active_rules(rules, loaded, options)
-    ctx = context or AnalysisContext(loaded.root, config)
+    ctx = (
+        context
+        if context is not None and context.config == config
+        else AnalysisContext(loaded.root, config)
+    )
     issues = missing_paths(ctx)
     if issues:
         raise ConfigError(issues, loaded.path.name)
     _validate_scope(ctx, options.paths)
     violations, suppressed = _collect(ctx, rules, loaded, active)
     unfiltered = list(violations)
+    coverage_gaps = [v for v in violations if v.code == _COVERAGE]
+    violations = [v for v in violations if v.code != _COVERAGE]
 
     in_debt = 0
     resolved: list[DebtEntry] = []
@@ -198,7 +237,7 @@ def run_check(
             base=options.base,
         )
 
-    violations = [v for v in violations if _in_scope(v, options)]
+    violations = coverage_gaps + [v for v in violations if _in_scope(v, options)]
     violations.sort(key=Violation.sort_key)
     categories = {rule.category for rule, _ in active}
     report = Report(
@@ -215,7 +254,7 @@ def run_check(
             for path in ctx.files.all_python_paths()
         ),
         comparison=comparison.to_json() if comparison else None,
-        coverage=effective_coverage(ctx),
+        coverage=effective_coverage(ctx, include_inventory=options.show_coverage),
         project=project_metadata(loaded),
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
@@ -299,6 +338,9 @@ def _apply_ignores(
         return violations
     kept: list[Violation] = []
     for violation in violations:
+        if violation.code == _COVERAGE:
+            kept.append(violation)
+            continue
         module = violation.source_module or _module_for_path(ctx, violation.path)
         ignored = any(
             violation.code.startswith(entry.rule)
@@ -341,6 +383,9 @@ def _apply_suppressions(
     kept: list[Violation] = []
     suppressed = 0
     for violation in violations:
+        if violation.code == _COVERAGE:
+            kept.append(violation)
+            continue
         match = next(
             (s for s in by_path.get(violation.path or "", []) if s.matches(violation)),
             None,

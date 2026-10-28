@@ -41,6 +41,8 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         for warning in loaded.warnings:
             console.warn(str(warning))
     options = CheckOptions(
+        strict_coverage=args.strict_coverage,
+        show_coverage=args.show_coverage,
         paths=_scope(loaded, cwd, args.paths),
         changed=args.changed or args.base is not None,
         base=args.base,
@@ -77,4 +79,10 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 statistics=args.statistics,
             )
             console.print(text, end="")
+            if args.show_coverage and report.coverage:
+                console.print("Coverage inventory:")
+                for entry in report.coverage.get("inventory", []):
+                    console.print(
+                        f"  {entry['status']}: {entry['path']} — {entry['reason']}"
+                    )
     return EXIT_VIOLATIONS if report.failed else EXIT_OK

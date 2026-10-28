@@ -11,6 +11,7 @@
 | [SMT301](SMT301.md) | unknown-layer | structure | error |
 | [SMT302](SMT302.md) | forbidden-package-name | structure | error |
 | [SMT305](SMT305.md) | unclassified-module | structure | warning |
+| [SMT306](SMT306.md) | incomplete-coverage | structure | error |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |

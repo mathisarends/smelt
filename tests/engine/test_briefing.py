@@ -26,6 +26,44 @@ def outcome() -> CheckOutcome:
 
 
 class TestResolveTarget:
+    def test_existing_uncovered_source_has_an_actionable_briefing(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
+                "src/app/__init__.py": "",
+                "src/app/domain/model.py": "",
+                "src/client/api.py": "VALUE = 1\n",
+            },
+        )
+        outcome = check(root)
+        ctx = outcome.context
+
+        briefing = build_briefing(
+            ctx, resolve_target(ctx, "src/client/api.py"), outcome.report
+        )
+
+        assert briefing.coverage["status"] == "uncovered"
+        assert "outside the analyzed packages" in briefing.boundary_policy
+        assert "Select its package" in briefing.boundary_policy
+
+    def test_planned_file_reports_policy_without_claiming_analysis(
+        self, outcome: CheckOutcome
+    ) -> None:
+        ctx = outcome.context
+
+        briefing = build_briefing(
+            ctx,
+            resolve_target(ctx, "src/gateway/features/voice/domain/planned.py"),
+            outcome.report,
+        )
+
+        assert briefing.coverage["status"] == "planned"
+        assert briefing.coverage["policy_status"] == "governed"
+        assert briefing.target.planned
+
     def test_feature_name(self, outcome: CheckOutcome) -> None:
         target = resolve_target(outcome.context, "voice")
 
@@ -62,6 +100,7 @@ class TestFeatureBriefing:
             "\n"
             "Policy: Layer and feature boundaries apply as configured; wiring and composition roots\n"
             "        have exceptions.\n"
+            "Coverage: configured; complete policy assignment for 10 source files.\n"
             "Imports: direct only (re-exports require architecture.imports.transitive: true)\n"
             "\n"
             "Layers:\n"

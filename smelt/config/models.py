@@ -32,6 +32,22 @@ def _check_dotted(values: list[str]) -> list[str]:
     return values
 
 
+class SourceExclusion(_Model):
+    path: str = Field(
+        description="Project-relative glob of source files deliberately excluded from analysis."
+    )
+    reason: str = Field(
+        description="Why this code is outside this architecture policy."
+    )
+
+    @field_validator("path", "reason")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value.strip()
+
+
 class ProjectConfig(_Model):
     """Which packages and tests smelt reads."""
 
@@ -50,9 +66,20 @@ class ProjectConfig(_Model):
         default_factory=lambda: ["tests"],
         description="Directories with the tests; with layout: mirror they must exist.",
     )
-    exclude: list[str] = Field(
-        default_factory=list, description="Path globs smelt skips entirely."
+    exclude: list[str | SourceExclusion] = Field(
+        default_factory=list,
+        description="Path globs or {path, reason} entries smelt skips entirely. Strict coverage requires a reason for every exclusion.",
     )
+    coverage: Literal["configured", "strict"] = Field(
+        default="configured",
+        description="strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
+    )
+
+    @property
+    def exclude_patterns(self) -> list[str]:
+        return [
+            entry if isinstance(entry, str) else entry.path for entry in self.exclude
+        ]
 
     @field_validator("source_roots", "test_roots")
     @classmethod

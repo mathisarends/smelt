@@ -285,12 +285,29 @@
           "type": "array"
         },
         "exclude": {
-          "description": "Path globs smelt skips entirely.",
+          "description": "Path globs or {path, reason} entries smelt skips entirely. Strict coverage requires a reason for every exclusion.",
           "items": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/SourceExclusion"
+              }
+            ]
           },
           "title": "Exclude",
           "type": "array"
+        },
+        "coverage": {
+          "default": "configured",
+          "description": "strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
+          "enum": [
+            "configured",
+            "strict"
+          ],
+          "title": "Coverage",
+          "type": "string"
         }
       },
       "title": "ProjectConfig",
@@ -304,6 +321,27 @@
         "off"
       ],
       "type": "string"
+    },
+    "SourceExclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Project-relative glob of source files deliberately excluded from analysis.",
+          "title": "Path",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why this code is outside this architecture policy.",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "reason"
+      ],
+      "title": "SourceExclusion",
+      "type": "object"
     },
     "StructureConfig": {
       "additionalProperties": false,

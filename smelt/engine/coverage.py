@@ -25,16 +25,25 @@ def policy_hash(config: SmeltConfig) -> str:
     return "sha256:" + hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-def effective_coverage(ctx: AnalysisContext) -> dict[str, Any]:
+def effective_coverage(
+    ctx: AnalysisContext, *, include_inventory: bool = False
+) -> dict[str, Any]:
     config = ctx.config
     project = config.project
     architecture = config.architecture
-    return {
+    inventory = ctx.coverage
+    report = {
+        "mode": project.coverage,
+        **inventory.summary(),
         "policy_hash": policy_hash(config),
         "root_packages": list(project.root_packages),
         "source_roots": list(project.source_roots),
         "test_roots": list(project.test_roots),
-        "exclude": list(project.exclude),
+        "exclude": list(project.exclude_patterns),
+        "exclusions": [
+            entry if isinstance(entry, str) else entry.model_dump(mode="json")
+            for entry in project.exclude
+        ],
         "omitted_workspace_members": _omitted_members(ctx),
         "modules": _classification(ctx),
         "exempt": {
@@ -56,6 +65,9 @@ def effective_coverage(ctx: AnalysisContext) -> dict[str, Any]:
             "unmirrored": list(config.tests.unmirrored),
         },
     }
+    if include_inventory:
+        report["inventory"] = [entry.to_json() for entry in inventory.entries]
+    return report
 
 
 def _classification(ctx: AnalysisContext) -> dict[str, int]:

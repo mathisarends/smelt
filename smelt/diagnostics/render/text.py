@@ -78,23 +78,35 @@ def render_text(
         lines.append(
             f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
         )
+    if report.coverage is not None and "complete" in report.coverage:
+        coverage = report.coverage
+        counts = coverage.get("counts", {})
+        state = "complete" if coverage["complete"] else "incomplete"
+        lines.append(
+            f"Policy coverage: {state} ({coverage.get('mode', 'configured')}); "
+            f"{counts.get('uncovered', 0)} uncovered, {counts.get('unclassified', 0)} unclassified sources"
+        )
+        lines.extend(
+            f"Coverage discovery: {error}"
+            for error in coverage.get("discovery_errors", [])
+        )
     lines.append(_summary(report, style, show_hints=show_hints))
     return "\n".join(lines) + "\n"
 
 
 def _group_unclassified(violations: list[Violation]) -> list[Violation]:
-    groups: dict[tuple[Severity, str | None], list[Violation]] = {}
+    groups: dict[tuple[str, Severity, str | None], list[Violation]] = {}
     for violation in violations:
-        if violation.code == "SMT305":
-            groups.setdefault((violation.severity, violation.hint), []).append(
-                violation
-            )
+        if violation.code in ("SMT305", "SMT306") and violation.path:
+            groups.setdefault(
+                (violation.code, violation.severity, violation.hint), []
+            ).append(violation)
     result: list[Violation] = []
     for violation in violations:
-        if violation.code != "SMT305":
+        if violation.code not in ("SMT305", "SMT306") or not violation.path:
             result.append(violation)
             continue
-        group = groups[(violation.severity, violation.hint)]
+        group = groups[(violation.code, violation.severity, violation.hint)]
         if violation is not group[0]:
             continue
         if len(group) > 1:
@@ -102,7 +114,9 @@ def _group_unclassified(violations: list[Violation]) -> list[Violation]:
             grouped = replace(
                 violation,
                 path=directory,
-                message=f"{len(group)} modules have no architecture classification; --format json lists individual paths",
+                message=f"{len(group)} source files have incomplete policy coverage; --format json lists individual paths"
+                if violation.code == "SMT306"
+                else f"{len(group)} modules have no architecture classification; --format json lists individual paths",
             )
             result.append(grouped)
         else:

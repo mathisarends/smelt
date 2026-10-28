@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
+from smelt.analysis.coverage import is_governed
 from smelt.config.errors import did_you_mean
 from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Severity
@@ -73,6 +74,7 @@ class Briefing:
     analysis_error: str | None = None
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
+    coverage: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -88,6 +90,7 @@ class Briefing:
             "is_wiring": self.is_wiring,
             "planned": self.target.planned,
             "boundary_policy": self.boundary_policy,
+            "coverage": self.coverage,
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -131,6 +134,16 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
             info = model.info(package.module)
             feature = info.feature if info else None
             return Target("package", feature, package.module, path)
+    inventory = next(
+        (
+            entry
+            for entry in ctx.coverage.entries
+            if entry.path == path or entry.module == raw
+        ),
+        None,
+    )
+    if inventory is not None:
+        return Target("module", module=inventory.module, path=inventory.path)
     planned = PurePosixPath(path)
     if not (ctx.root / path).exists() and planned.suffix == ".py":
         for parent in planned.parents:
@@ -186,6 +199,7 @@ def build_briefing(
     )
     exempt = bool(info and (info.wiring or info.kind is ModuleKind.COMPOSITION_ROOT))
     cross_feature = _cross_feature(model) if model.has_features else None
+    coverage = _coverage_brief(ctx, target)
     if info and (info.central or info.kind is ModuleKind.SHARED):
         cross_feature = "none (must not import features)"
     elif exempt:
@@ -204,7 +218,7 @@ def build_briefing(
         central=bool(info and info.central),
         tests=_tests(ctx, target),
         is_wiring=bool(info and info.wiring),
-        boundary_policy=_boundary_policy(info),
+        boundary_policy=_covered_policy(info, coverage),
         transitive=arch.imports.transitive,
         type_checking=arch.imports.type_checking,
         cycles=tuple(arch.imports.cycles),
@@ -222,7 +236,55 @@ def build_briefing(
             "hints": sum(v.severity is Severity.HINT for v in scoped),
         },
         violation_codes=tuple(sorted({v.code for v in scoped})),
+        coverage=coverage,
     )
+
+
+def _coverage_brief(ctx: AnalysisContext, target: Target) -> dict[str, Any]:
+    mode = ctx.config.project.coverage
+    if target.planned:
+        governed = is_governed(
+            ctx.model.info(target.module or ""), layers_declared=bool(ctx.model.layers)
+        )
+        return {
+            "mode": mode,
+            "status": "planned",
+            "policy_status": "governed" if governed else "unclassified",
+            "reason": "Planned placement; no source has been analyzed at this path yet.",
+        }
+    if target.path:
+        entry = ctx.coverage.for_path(target.path)
+        if entry is not None:
+            return {"mode": mode, **entry.to_json()}
+    entries = [
+        entry
+        for entry in ctx.coverage.entries
+        if target.feature is None or entry.feature == target.feature
+    ]
+    return {
+        "mode": mode,
+        "complete": ctx.coverage.complete
+        if target.feature is None
+        else all(
+            entry.status in ("governed", "facade", "excluded") for entry in entries
+        ),
+        "files": len(entries),
+    }
+
+
+def _covered_policy(info: ModuleInfo | None, coverage: dict[str, Any]) -> str:
+    if coverage.get("status") == "uncovered":
+        return "This file is outside the analyzed packages. Select its package and source root, then assign an architecture role before implementing here."
+    if coverage.get("status") == "excluded":
+        return "This file is explicitly outside the analyzed policy. Review its exclusion reason before using it for new production code."
+    if coverage.get("status") == "facade":
+        return "Package facade: keep implementation and assembly in classified modules. Named exports retain their providers' restrictions when transitive import checking is enabled."
+    if (
+        coverage.get("status") == "planned"
+        and coverage.get("policy_status") == "unclassified"
+    ):
+        return "This planned placement has no architecture role. Choose a declared layer or explicitly assign the intended package before implementing here."
+    return _boundary_policy(info)
 
 
 def _violation_in(ctx: AnalysisContext, path: str | None, target: Target) -> bool:
@@ -320,6 +382,18 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
             width=88,
             initial_indent="Policy: ",
             subsequent_indent="        ",
+        )
+    )
+    coverage = briefing.coverage
+    lines.append(
+        textwrap.fill(
+            f"Coverage: {coverage.get('mode', 'configured')}; "
+            + (
+                f"{coverage['status']}. {coverage.get('reason', '')}"
+                if "status" in coverage
+                else f"{'complete' if coverage.get('complete') else 'incomplete'} policy assignment for {coverage.get('files', 0)} source files."
+            ),
+            width=88,
         )
     )
     lines.append(
