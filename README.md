@@ -300,6 +300,41 @@ offending logical package rather than duplicate findings for its portions.
 files. Check JSON includes it in `coverage.contracts`. Rename deliberately and
 update imports and facade exports; Smelt never renames files or symbols itself.
 
+### Separate instance attribute assignments
+
+To keep field initialization readable, opt into `SMT314`:
+
+```yaml
+structure:
+  contracts:
+    instance-fields:
+      match: app
+      instance_assignments: separate
+```
+
+This reports `self.log, self.control = log, control` and chained assignments such
+as `self.log = self.control = value`. Prefer:
+
+```python
+self.log = log
+self.control = control
+```
+
+The rule checks assignments writing multiple direct attributes of an instance
+method's first positional parameter, including differently named receivers and
+async methods. Local unpacking stays valid. Mixed unpacking with only one direct
+instance target is allowed; nested object attributes and assignments in nested
+helper bodies are outside the check. Nested classes use their own receiver.
+Recognized static/class methods are excluded; arbitrary decorator and assignment
+aliases are not inferred. Only analyzed production modules are covered.
+
+The closest explicit package policy wins; `instance_assignments: allow` exempts
+a package. The effective policy appears in `context`, including planned modules.
+This is an optional readability convention. There is no autofix: parallel
+assignment, properties, swaps and unpacking failures can change behavior when
+split. When unpacking a computed pair, consider unpacking into locals first and
+then assigning each field while preserving evaluation timing.
+
 ### Relative and absolute imports
 
 Declare the style explicitly, globally for a root package or for selected

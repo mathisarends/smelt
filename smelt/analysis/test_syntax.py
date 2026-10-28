@@ -218,7 +218,9 @@ class _Visitor(ast.NodeVisitor):
         self.env = dict(outer)
         for statement in node.body:
             self.visit(statement)
-        self.env, self.class_name, self.unittest = outer, class_name, unittest
+        self.env = outer
+        self.class_name = class_name
+        self.unittest = unittest
         self.env.pop(node.name, None)
 
     def visit_FunctionDef(self, node: Function) -> None:
@@ -279,7 +281,8 @@ class _Visitor(ast.NodeVisitor):
         for statement in node.body:
             self.visit(statement)
         self.function_depth -= 1
-        self.env, self.test = outer, test
+        self.env = outer
+        self.test = test
         self.env.pop(node.name, None)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
@@ -396,7 +399,8 @@ class _Visitor(ast.NodeVisitor):
             *(v for v in node.args.kw_defaults if v is not None),
         ]:
             self.visit(value)
-        self.env, self.test = dict(outer), None
+        self.env = dict(outer)
+        self.test = None
         for arg in [
             *node.args.posonlyargs,
             *node.args.args,
@@ -405,7 +409,8 @@ class _Visitor(ast.NodeVisitor):
         ]:
             self.env.pop(arg.arg, None)
         self.visit(node.body)
-        self.env, self.test = outer, test
+        self.env = outer
+        self.test = test
 
     def visit_ListComp(
         self, node: ast.ListComp | ast.SetComp | ast.GeneratorExp | ast.DictComp
