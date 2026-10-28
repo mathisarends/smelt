@@ -4,6 +4,50 @@ Reviewed on 2026-10-28. Smelt checkout: `6fc6763` (version 0.1.3).
 Practical target: `C:/FH/FEP/maximus-trading`, working tree at HEAD
 `5805b5e1386ec420f54d726f343d767bbacbfc16`.
 
+## Follow-up: generalized policy coverage (C01)
+
+Implemented in [df25b6a](https://github.com/mathisarends/smelt/commit/df25b6acf3c013c1771883ce7d2fc429c946505c).
+The real projects are evaluation examples, not inputs to project-specific rules.
+The coverage implementation does not branch on their names, frameworks or DDD
+layer names. It uses the repository's declared roots and architecture roles.
+
+- `project.coverage: strict` / `--strict-coverage` inventories production source
+  independently of package selection and reports SMT306 for uncovered or
+  unclassified code. Deliberate exclusions need a path and nonempty reason.
+- Coverage gaps remain visible through changed/path/selection filters and cannot
+  be accepted as debt or hidden by inline/config ignores. Invalid workspace
+  metadata fails strict analysis rather than implying complete discovery.
+- `context` explains uncovered files and whether a planned placement has a policy.
+  It never describes a planned file as analyzed. `--show-coverage` adds the full
+  per-file inventory; normal reports remain compact.
+- Pure package facades and standard metadata are accepted. Implementation in an
+  unclassified initializer needs a role. Feature-only architectures remain valid
+  without inventing layers, and text output groups files sharing one decision.
+
+Portability regressions cover a flat library with no package manager, arbitrary
+layer and import-root names, multiple roots without uv, feature-only architecture,
+namespace packages, generated-code exclusions, standalone scripts and malformed
+metadata. These fixtures exercise general contracts rather than copying the
+real projects' approved structures.
+
+Validation: **448 tests passed, 1 skipped** locally on Windows/Python 3.14; Ruff,
+formatting, Mypy, commit hooks and Smelt's own strict check pass. The wheel builds
+and the new check/context/explain paths were smoke-tested outside the checkout.
+
+Read-only evaluation under the existing target policies found **100 uncovered
+source files**: browser (65), browser_protocol (2), and browser_client (33). The
+root's two existing dependency findings remain. Hermes has one unclassified
+strategy entry point; strict output reports it once, without duplicating SMT301.
+Neither target configuration nor any target source was changed. Smelt itself has
+complete strict policy assignment.
+
+Scope remains explicit: this proves policy assignment for discovered Python source
+under configured source roots and declared workspace members. Projects outside uv
+supply their roots directly. Separate runtimes outside that discovery scope still
+need separate checks. It does not prove behavior or the completeness of dynamic
+imports. Public package interfaces, policy-change review and multi-config
+aggregation remain follow-ups; no architecture shape is prescribed globally.
+
 ## Resolution status after implementation
 
 **All eleven reproduced implementation defects F01–F11 are SOLVED.** Their
@@ -426,7 +470,9 @@ checkout root. Retain project-relative paths as a separate field if useful.
 These are product/design gaps, not claims that an existing documented feature is
 necessarily broken.
 
-### C01 — A passing report does not establish complete project coverage
+### C01 — A passing report does not establish complete project coverage — IMPLEMENTED FOR DECLARED DISCOVERY SCOPE
+
+**Follow-up:** [df25b6a](https://github.com/mathisarends/smelt/commit/df25b6acf3c013c1771883ce7d2fc429c946505c); see the generalized coverage evaluation above. The original gap and proposed broader inventory are retained below as review history.
 
 The root maximus-trading report correctly lists omitted workspace members:
 
