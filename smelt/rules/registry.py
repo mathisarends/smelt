@@ -19,6 +19,7 @@ from smelt.rules.structure.import_style import ImportStyle
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
 from smelt.rules.structure.ordering import DefinitionOrder
+from smelt.rules.structure.type_dispatch import PreferMatchTypeDispatch
 from smelt.rules.testing.location import MisplacedTestFile
 from smelt.rules.testing.mocking import (
     ExcessiveTestPatches,
@@ -51,6 +52,7 @@ def builtin_rules() -> list[Rule]:
         NoPrivateModules(),
         DefinitionOrder(),
         BundledInstanceAssignment(),
+        PreferMatchTypeDispatch(),
         MisplacedTestFile(),
         PrivateTestAccess(),
         ForbiddenTestMock(),

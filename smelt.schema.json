@@ -477,6 +477,18 @@
           "default": null,
           "description": "Optional SMT314 convention: separate rejects an assignment statement writing multiple direct attributes of a method's instance receiver. Local unpacking remains allowed. Closest explicit package policy wins; no automatic splitting.",
           "title": "Instance Assignments"
+        },
+        "type_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeDispatchConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite."
         }
       },
       "required": [
@@ -759,6 +771,29 @@
           "type": "object"
         }
       ]
+    },
+    "TypeDispatchConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "default": "match",
+          "enum": [
+            "allow",
+            "match"
+          ],
+          "title": "Style",
+          "type": "string"
+        },
+        "min_branches": {
+          "default": 3,
+          "description": "Minimum number of type-tested if/elif branches over the same simple name before SMT315 suggests match/case.",
+          "minimum": 2,
+          "title": "Min Branches",
+          "type": "integer"
+        }
+      },
+      "title": "TypeDispatchConfig",
+      "type": "object"
     }
   },
   "additionalProperties": false,

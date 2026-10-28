@@ -436,6 +436,15 @@ class OrderingConfig(_Model):
         return values
 
 
+class TypeDispatchConfig(_Model):
+    style: Literal["allow", "match"] = "match"
+    min_branches: int = Field(
+        default=3,
+        ge=2,
+        description="Minimum number of type-tested if/elif branches over the same simple name before SMT315 suggests match/case.",
+    )
+
+
 class PackageContract(_Model):
     """Opt-in module layout and entry points for matching packages."""
 
@@ -478,6 +487,10 @@ class PackageContract(_Model):
     instance_assignments: Literal["allow", "separate"] | None = Field(
         default=None,
         description="Optional SMT314 convention: separate rejects an assignment statement writing multiple direct attributes of a method's instance receiver. Local unpacking remains allowed. Closest explicit package policy wins; no automatic splitting.",
+    )
+    type_dispatch: TypeDispatchConfig | None = Field(
+        default=None,
+        description="Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite.",
     )
 
     @field_validator("match")
@@ -526,6 +539,7 @@ class PackageContract(_Model):
             and self.private_modules is None
             and self.ordering is None
             and self.instance_assignments is None
+            and self.type_dispatch is None
         ):
             raise ValueError("set at least one package contract policy")
         return self
