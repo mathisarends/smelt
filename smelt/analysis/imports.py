@@ -292,14 +292,16 @@ def _describe_import(
     first_line_end = (
         node.end_col_offset if node.end_lineno == node.lineno else len(line_contents)
     )
-    names: tuple[str, ...] = (imported,)
     span = (node.col_offset + 1, (first_line_end or 0) + 1)
-    for alias in node.names:
-        if is_within(alias.name, imported) or is_within(imported, alias.name):
-            names = (alias.name,)
-            if alias.lineno == node.lineno:
-                span = (alias.col_offset + 1, (alias.end_col_offset or 0) + 1)
-            break
+    matching = [
+        alias
+        for alias in node.names
+        if is_within(alias.name, imported) or is_within(imported, alias.name)
+    ]
+    names = tuple(alias.name for alias in matching) or (imported,)
+    if len(matching) == 1 and matching[0].lineno == node.lineno:
+        alias = matching[0]
+        span = (alias.col_offset + 1, (alias.end_col_offset or 0) + 1)
     return names, *span
 
 

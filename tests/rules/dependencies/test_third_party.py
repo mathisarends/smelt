@@ -39,6 +39,23 @@ class TestDefaultDeny:
     policy = "{default: deny, allow: [pydantic, sqlalchemy.orm]}"
 
     @pytest.mark.parametrize(
+        "policy",
+        [
+            "{default: deny, allow: [sqlalchemy.orm]}",
+            "{default: allow, deny: [sqlalchemy.sql]}",
+        ],
+    )
+    def test_all_aliases_of_a_squashed_external_import_are_checked(
+        self, tmp_path: Path, policy: str
+    ) -> None:
+        root = _project(tmp_path, policy, "import sqlalchemy.orm, sqlalchemy.sql\n")
+
+        [found] = violations(root, ONLY_SMT103)
+
+        assert found.target_module == "sqlalchemy"
+        assert found.column == 1
+
+    @pytest.mark.parametrize(
         "source",
         [
             "from requests import Session; from pydantic import BaseModel\n",
