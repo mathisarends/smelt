@@ -175,16 +175,21 @@ def test_external_source_root_is_checked_but_never_rewritten(tmp_path: Path) -> 
 @pytest.mark.skipif(
     os.name == "nt", reason="symlink creation requires Windows privileges"
 )
-def test_symlink_source_is_not_replaced(tmp_path: Path) -> None:
+def test_source_replaced_by_symlink_after_check_is_preserved(tmp_path: Path) -> None:
     root = _project(tmp_path)
-    (root / "app/alias.py").symlink_to(root / "app/service.py")
-    outcome = check(root, CheckOptions(select=("SMT313",), paths=("app/alias.py",)))
+    outcome = check(root, OPTIONS)
+    target = root / "original.txt"
+    target.write_text(SOURCE)
+    source = root / "app/service.py"
+    source.unlink()
+    source.symlink_to(target)
 
     fixed = apply_ordering_fixes(outcome)
 
     assert fixed.files == []
-    assert (root / "app/alias.py").is_symlink()
-    assert (root / "app/service.py").read_text() == SOURCE
+    assert "inside the project root" in fixed.skipped[0]["reason"]
+    assert source.is_symlink()
+    assert target.read_text() == SOURCE
 
 
 def test_failed_replacement_leaves_original_and_cleans_temporary_file(
