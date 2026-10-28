@@ -254,7 +254,11 @@ def run_check(
             for path in ctx.files.all_python_paths()
         ),
         comparison=comparison.to_json() if comparison else None,
-        coverage=effective_coverage(ctx, include_inventory=options.show_coverage),
+        coverage=effective_coverage(
+            ctx,
+            include_inventory=options.show_coverage,
+            include_ordering=any(rule.code == "SMT313" for rule, _ in active),
+        ),
         project=project_metadata(loaded),
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)

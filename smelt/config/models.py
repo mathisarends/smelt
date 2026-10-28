@@ -363,6 +363,79 @@ class ImportStyleConfig(_Model):
     )
 
 
+type ModuleOrderSlot = Literal[
+    "docstring",
+    "future-imports",
+    "imports",
+    "dunder-assignments",
+    "type-vars",
+    "public",
+    "private",
+    "main-guard",
+]
+type ClassOrderSlot = Literal[
+    "class-attributes", "init", "dunders", "public", "private"
+]
+
+
+def _module_order() -> list[ModuleOrderSlot]:
+    return [
+        "docstring",
+        "future-imports",
+        "imports",
+        "dunder-assignments",
+        "type-vars",
+        "public",
+        "private",
+        "main-guard",
+    ]
+
+
+def _class_order() -> list[ClassOrderSlot]:
+    return ["class-attributes", "init", "dunders", "public", "private"]
+
+
+class OrderingConfig(_Model):
+    enabled: bool = True
+    module: list[ModuleOrderSlot] = Field(default_factory=_module_order)
+    class_order: list[ClassOrderSlot] = Field(
+        default_factory=_class_order, alias="class"
+    )
+    constants_exempt: bool = Field(
+        default=False,
+        description="Treat private uppercase module constants like public definitions, preserving their relative order.",
+    )
+    fix: Literal["off", "safe-only"] = Field(
+        default="safe-only",
+        description="Permit bounded ordering fixes only when check --fix is explicitly requested. Plain check never writes source.",
+    )
+
+    @field_validator("module")
+    @classmethod
+    def _module_slots(cls, values: list[ModuleOrderSlot]) -> list[ModuleOrderSlot]:
+        if len(values) != len(set(values)) or set(values) != set(_module_order()):
+            raise ValueError(
+                "module order must contain every module category exactly once"
+            )
+        if (
+            values[:3] != ["docstring", "future-imports", "imports"]
+            or values[-1] != "main-guard"
+        ):
+            raise ValueError(
+                "module order must start with docstring, future-imports, imports and end with main-guard"
+            )
+        return values
+
+    @field_validator("class_order")
+    @classmethod
+    def _class_slots(cls, values: list[ClassOrderSlot]) -> list[ClassOrderSlot]:
+        if len(values) != len(set(values)) or set(values) != set(_class_order()):
+            raise ValueError(
+                "class order must contain every class category exactly once"
+            )
+        return values
+
+
 class PackageContract(_Model):
     """Opt-in module layout and entry points for matching packages."""
 
@@ -397,6 +470,10 @@ class PackageContract(_Model):
     private_modules: Literal["allow", "forbid"] | None = Field(
         default=None,
         description="Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
+    )
+    ordering: OrderingConfig | None = Field(
+        default=None,
+        description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins.",
     )
 
     @field_validator("match")
@@ -443,6 +520,7 @@ class PackageContract(_Model):
             and self.module_docstrings is None
             and self.future_annotations is None
             and self.private_modules is None
+            and self.ordering is None
         ):
             raise ValueError("set at least one package contract policy")
         return self

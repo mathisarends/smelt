@@ -69,6 +69,16 @@
       "title": "ArchitectureConfig",
       "type": "object"
     },
+    "ClassOrderSlot": {
+      "enum": [
+        "class-attributes",
+        "init",
+        "dunders",
+        "public",
+        "private"
+      ],
+      "type": "string"
+    },
     "CrossFeatureAllowance": {
       "additionalProperties": false,
       "properties": {
@@ -273,6 +283,61 @@
       "title": "LayerConfig",
       "type": "object"
     },
+    "ModuleOrderSlot": {
+      "enum": [
+        "docstring",
+        "future-imports",
+        "imports",
+        "dunder-assignments",
+        "type-vars",
+        "public",
+        "private",
+        "main-guard"
+      ],
+      "type": "string"
+    },
+    "OrderingConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "module": {
+          "items": {
+            "$ref": "#/$defs/ModuleOrderSlot"
+          },
+          "title": "Module",
+          "type": "array"
+        },
+        "class": {
+          "items": {
+            "$ref": "#/$defs/ClassOrderSlot"
+          },
+          "title": "Class",
+          "type": "array"
+        },
+        "constants_exempt": {
+          "default": false,
+          "description": "Treat private uppercase module constants like public definitions, preserving their relative order.",
+          "title": "Constants Exempt",
+          "type": "boolean"
+        },
+        "fix": {
+          "default": "safe-only",
+          "description": "Permit bounded ordering fixes only when check --fix is explicitly requested. Plain check never writes source.",
+          "enum": [
+            "off",
+            "safe-only"
+          ],
+          "title": "Fix",
+          "type": "string"
+        }
+      },
+      "title": "OrderingConfig",
+      "type": "object"
+    },
     "PackageContract": {
       "additionalProperties": false,
       "description": "Opt-in module layout and entry points for matching packages.",
@@ -383,6 +448,18 @@
           "default": null,
           "description": "Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
           "title": "Private Modules"
+        },
+        "ordering": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderingConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins."
         }
       },
       "required": [

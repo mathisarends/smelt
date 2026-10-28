@@ -26,7 +26,10 @@ def policy_hash(config: SmeltConfig) -> str:
 
 
 def effective_coverage(
-    ctx: AnalysisContext, *, include_inventory: bool = False
+    ctx: AnalysisContext,
+    *,
+    include_inventory: bool = False,
+    include_ordering: bool = False,
 ) -> dict[str, Any]:
     config = ctx.config
     project = config.project
@@ -69,6 +72,8 @@ def effective_coverage(
     }
     if include_inventory:
         report["inventory"] = [entry.to_json() for entry in inventory.entries]
+    if include_ordering and ctx.ordering.files:
+        report["ordering"] = ctx.ordering.summary()
     return report
 
 

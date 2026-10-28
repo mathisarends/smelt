@@ -85,6 +85,88 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_new_ordering_inversions_cannot_hide_in_an_existing_section(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "accept existing ordering")
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "def _existing(): pass\ndef _new(): pass\ndef api(): pass\n"
+            },
+        )
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT313",)))
+
+        assert len(found) == 1
+        assert found[0].expected is not None
+        assert len(found[0].expected["ordering_edges"]) == 2
+
+    def test_pruning_ordering_debt_does_not_accept_added_inversions(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
+        )
+        options = CheckOptions(select=("SMT313",))
+        baseline = Debt.from_violations(violations(repo, options), lambda _: "")
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "def _existing(): pass\ndef _new(): pass\ndef api(): pass\n"
+            },
+        )
+        current = violations(repo, options)
+
+        new, known, _ = baseline.match(current, lambda _: "")
+        pruned = Debt.from_violations(known, lambda _: "")
+
+        assert len(new) == 1
+        assert len(pruned.entries) == 1
+        assert pruned.match(current, lambda _: "")[0]
+
+    def test_ordering_baseline_is_independent_of_whitespace_and_comments(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "existing order")
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "# comment\ndef _existing():\n    pass\n\n\ndef api():\n    pass\n"
+            },
+        )
+
+        assert violations(repo, CheckOptions(changed=True, select=("SMT313",))) == []
+
     def test_new_private_module_names_are_reported_without_repeating_existing_ones(
         self, repo: Path
     ) -> None:

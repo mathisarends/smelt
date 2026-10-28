@@ -62,20 +62,30 @@ def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> 
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
 
-def _cycle_edges(violation: Violation) -> list[str]:
-    if violation.code != "SMT104" or not violation.expected:
+def _edge_field(violation: Violation) -> str | None:
+    return {"SMT104": "cyclic_edges", "SMT313": "ordering_edges"}.get(violation.code)
+
+
+def _semantic_edges(violation: Violation) -> list[str]:
+    field = _edge_field(violation)
+    if field is None or not violation.expected:
         return []
-    return list(violation.expected.get("cyclic_edges", []))
+    return list(violation.expected.get(field, []))
 
 
 def _fingerprints(violation: Violation, snippet: str) -> list[str]:
-    edges = _cycle_edges(violation)
+    edges = _semantic_edges(violation)
     if edges:
         # One baseline token per cyclic architecture edge, independent of the
         # displayed shortest witness. Subtracting edges is an improvement; adding
         # an edge or expanding/splitting a component cannot hide behind a witness.
+        prefix = (
+            "SMT104"
+            if violation.code == "SMT104"
+            else f"{violation.code}\x1f{violation.path}\x1f{violation.source_module}"
+        )
         return [
-            hashlib.sha256(f"SMT104\x1f{edge}".encode()).hexdigest()[:32]
+            hashlib.sha256(f"{prefix}\x1f{edge}".encode()).hexdigest()[:32]
             for edge in edges
         ]
     return [fingerprint(violation, snippet)]
@@ -155,7 +165,7 @@ class Debt:
                 if available[key] > 0:
                     available[key] -= 1
                     matched.add(key)
-            if not matched and not _cycle_edges(violation):
+            if not matched and not _semantic_edges(violation):
                 # Existing version-1 debt files used the complete source line.
                 key = fingerprint(violation, text, legacy=True)
                 if available[key] > 0:
@@ -170,10 +180,10 @@ class Debt:
                         violation,
                         expected={
                             **(violation.expected or {}),
-                            "cyclic_edges": [
+                            (_edge_field(violation) or "cyclic_edges"): [
                                 edge
                                 for edge, key in zip(
-                                    _cycle_edges(violation), keys, strict=True
+                                    _semantic_edges(violation), keys, strict=True
                                 )
                                 if key in matched
                             ],
