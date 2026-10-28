@@ -16,6 +16,9 @@
 | [SMT306](SMT306.md) | incomplete-coverage | structure | error |
 | [SMT307](SMT307.md) | missing-required-module | structure | error |
 | [SMT308](SMT308.md) | import-style | structure | error |
+| [SMT309](SMT309.md) | forbidden-module-docstring | structure | error |
+| [SMT310](SMT310.md) | forbidden-future-annotations | structure | error |
+| [SMT311](SMT311.md) | unnecessary-future-annotations | structure | hint |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |

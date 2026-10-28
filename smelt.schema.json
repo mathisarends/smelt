@@ -331,6 +331,41 @@
           "default": null,
           "description": "Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
           "title": "Bundle Imports At"
+        },
+        "module_docstrings": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional module-docstring policy (SMT309). Function and class documentation is unaffected. The closest explicit package policy wins.",
+          "title": "Module Docstrings"
+        },
+        "future_annotations": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "when-needed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+          "title": "Future Annotations"
         }
       },
       "required": [
@@ -398,6 +433,20 @@
           ],
           "title": "Coverage",
           "type": "string"
+        },
+        "python_version": {
+          "anyOf": [
+            {
+              "pattern": "^3\\.[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicit minimum supported Python version for version-aware conventions, e.g. 3.14. Overrides per-project requires-python metadata; never inferred from the running interpreter or .python-version.",
+          "title": "Python Version"
         }
       },
       "title": "ProjectConfig",

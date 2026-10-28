@@ -9,6 +9,11 @@ from smelt.rules.dependencies.third_party import ThirdPartyDenied
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.structure.contracts import MissingRequiredModule
 from smelt.rules.structure.coverage import IncompleteCoverage
+from smelt.rules.structure.headers import (
+    ForbiddenFutureAnnotations,
+    ForbiddenModuleDocstring,
+    UnnecessaryFutureAnnotations,
+)
 from smelt.rules.structure.import_style import ImportStyle
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.naming import ForbiddenPackageName
@@ -31,6 +36,9 @@ def builtin_rules() -> list[Rule]:
         IncompleteCoverage(),
         MissingRequiredModule(),
         ImportStyle(),
+        ForbiddenModuleDocstring(),
+        ForbiddenFutureAnnotations(),
+        UnnecessaryFutureAnnotations(),
         MisplacedTestFile(),
         UnusedSuppression(),
         SuppressionWithoutReason(),

@@ -331,6 +331,60 @@ by default; it does not fail the usual error gate. Choose `public: ['.']` instea
 to require facade-only imports regardless of their count. No facade or import is
 rewritten automatically.
 
+### Module headers and Python-version-aware annotations
+
+Module docstrings and future imports can be governed independently:
+
+```yaml
+# Optional override of the minimum supported version, when metadata is absent:
+project:
+  python_version: "3.14"
+
+structure:
+  contracts:
+    source-conventions:
+      match: app
+      module_docstrings: forbid
+      future_annotations: when-needed
+```
+
+`module_docstrings: forbid` enables SMT309 for the initial module docstring,
+including package initializers. Class/function documentation and ordinary string
+values are unaffected. Use `allow` for an exception in a more specific package;
+omitting the field adds no policy.
+
+`future_annotations` supports three modes:
+
+- `allow`: preserve the import, including a deliberate runtime compatibility use.
+- `forbid`: SMT310 rejects `from __future__ import annotations` at any version.
+- `when-needed`: SMT310 rejects it for a declared minimum of Python 3.14 or newer.
+  With an earlier or unknown minimum, SMT311 gives a conservative review hint for
+  modules with no detected postponement need. It retains imports for unresolved
+  or quoted forward references, `TYPE_CHECKING`, runtime annotation inspection,
+  decorators, inherited models and unknown annotation expressions. Builtin
+  generics and unions are considered with their supported Python version.
+
+Version detection uses the nearest project's `requires-python` in
+`pyproject.toml`, with an explicit `project.python_version` taking precedence.
+The configured version means the **minimum supported version**. The interpreter
+running Smelt and `.python-version` are not evidence that older Python releases
+are unsupported. Monorepo members keep their own declared requirements; an
+independent member with missing/invalid metadata stays unknown. Lower bounds are
+validated with Python packaging specifiers; exclusions alone never raise the
+inferred minimum. For external source roots, discovery also checks their import
+root's parent; declare an override when the project boundary is otherwise unknown.
+
+The report exposes versions, metadata provenance and uncertainty under
+`coverage.python_targets`; context JSON includes `python_target` and the effective
+`header_policy`, and findings explain which version was used.
+
+Python 3.14 [defers annotations by default](https://docs.python.org/3.14/whatsnew/3.14.html#deferred-evaluation-of-annotations),
+but the future import still changes their runtime representation. These are
+source conventions and advisory evidence, not proof of equivalent runtime
+behavior. Smelt never removes imports or documentation automatically. Verify
+annotation consumers and tests before removing an import, and use an explicit
+package exception where its string-based behavior is intentional.
+
 ## Test mirroring
 
 With `tests.layout: mirror` the path of a test decides: `tests/billing/test_invoice.py`

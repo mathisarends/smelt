@@ -9,6 +9,7 @@ from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
 from smelt.analysis.parsing import AstCache
+from smelt.analysis.python_version import PythonTargetIndex
 from smelt.analysis.syntax import SyntaxIndex
 from smelt.model import ArchitectureModel
 
@@ -60,6 +61,10 @@ class AnalysisContext:
     @cached_property
     def contracts(self) -> ContractIndex:
         return ContractIndex(self.files)
+
+    @cached_property
+    def python_targets(self) -> PythonTargetIndex:
+        return PythonTargetIndex(self.files)
 
     def ensure(self, indexes: frozenset[Index]) -> None:
         """Build the requested indexes up front so failures surface before rules run."""

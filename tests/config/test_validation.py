@@ -19,6 +19,8 @@ class TestPackageContracts:
                 "imports": {"style": "relative", "max_relative_level": 2},
             },
             {"match": "gateway", "bundle_imports_at": 3},
+            {"match": "gateway", "module_docstrings": "forbid"},
+            {"match": "gateway", "future_annotations": "when-needed"},
         ],
     )
     def test_valid_contracts(self, spec: dict[str, object]) -> None:
@@ -44,6 +46,8 @@ class TestPackageContracts:
             {"match": "gateway", "imports": {"style": "sometimes"}},
             {"match": "gateway", "imports": {"max_relative_level": 0}},
             {"match": "gateway", "bundle_imports_at": 1},
+            {"match": "gateway", "module_docstrings": "sometimes"},
+            {"match": "gateway", "future_annotations": "always"},
         ],
     )
     def test_invalid_contracts_fail_explicitly(self, spec: dict[str, object]) -> None:

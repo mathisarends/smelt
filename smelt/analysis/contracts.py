@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from smelt.config.patterns import module_matches
 from smelt.model import is_within
@@ -47,16 +47,37 @@ class ContractIndex:
         )
 
     def style_for(self, module: str) -> ResolvedContract | None:
+        return self.policy_for(module, "imports")
+
+    def policy_for(
+        self,
+        module: str,
+        policy: Literal["imports", "module_docstrings", "future_annotations"],
+    ) -> ResolvedContract | None:
         return max(
             (
                 contract
                 for contract in self.resolved
-                if contract.spec.imports is not None
+                if getattr(contract.spec, policy) is not None
                 and is_within(module, contract.package)
             ),
             key=lambda contract: len(contract.package),
             default=None,
         )
+
+    def header_brief(self, module: str | None) -> dict[str, Any]:
+        policies: dict[str, Any] = {}
+        if module is None:
+            return policies
+        for key in ("module_docstrings", "future_annotations"):
+            contract = self.policy_for(module, key)
+            if contract is not None:
+                policies[key] = {
+                    "contract": contract.name,
+                    "package": contract.package,
+                    "policy": getattr(contract.spec, key),
+                }
+        return policies
 
     def style_brief(self, module: str | None) -> dict[str, Any] | None:
         contract = self.style_for(module) if module else None
@@ -111,6 +132,13 @@ class ContractIndex:
                     {"bundle_imports_at": contract.spec.bundle_imports_at}
                     if contract.spec.bundle_imports_at is not None
                     else {}
+                ),
+                **(
+                    {
+                        key: getattr(contract.spec, key)
+                        for key in ("module_docstrings", "future_annotations")
+                        if getattr(contract.spec, key) is not None
+                    }
                 ),
             }
             for contract in self.resolved

@@ -60,6 +60,7 @@ def effective_coverage(
             "allow": architecture.cross_feature.entries(),
         },
         "contracts": ctx.contracts.describe(),
+        "python_targets": ctx.python_targets.describe(),
         "tests": {
             "layout": config.tests.layout,
             "mirror": config.tests.mirror,

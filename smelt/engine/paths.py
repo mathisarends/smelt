@@ -9,7 +9,6 @@ from smelt.config.patterns import module_matches
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
     from smelt.config.loader import LoadedConfig
-    from smelt.config.models import ImportStyleConfig
 
 
 def project_metadata(loaded: LoadedConfig) -> dict[str, str]:
@@ -62,7 +61,7 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                 )
             )
     issues.extend(_missing_modules(ctx))
-    issues.extend(_conflicting_import_styles(ctx))
+    issues.extend(_conflicting_package_policies(ctx))
     matched_contracts = {contract.name for contract in ctx.contracts.resolved}
     issues.extend(
         ConfigIssue(
@@ -87,21 +86,26 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
     return issues
 
 
-def _conflicting_import_styles(ctx: AnalysisContext) -> list[ConfigIssue]:
-    styles: dict[str, ImportStyleConfig] = {}
+def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
+    policies: dict[tuple[str, str], object] = {}
     issues: list[ConfigIssue] = []
     for contract in ctx.contracts.resolved:
-        policy = contract.spec.imports
-        if policy is None:
-            continue
-        previous = styles.setdefault(contract.package, policy)
-        if previous != policy:
-            issues.append(
-                ConfigIssue(
-                    f"structure.contracts.{contract.name}.imports",
-                    f"conflicting import styles for {contract.package}; use one policy per package",
+        for key, label in (
+            ("imports", "import styles"),
+            ("module_docstrings", "module docstring policies"),
+            ("future_annotations", "future annotation policies"),
+        ):
+            policy = getattr(contract.spec, key)
+            if policy is None:
+                continue
+            previous = policies.setdefault((contract.package, key), policy)
+            if previous != policy:
+                issues.append(
+                    ConfigIssue(
+                        f"structure.contracts.{contract.name}.{key}",
+                        f"conflicting {label} for {contract.package}; use one policy per package",
+                    )
                 )
-            )
     return issues
 
 

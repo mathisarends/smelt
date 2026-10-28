@@ -74,6 +74,11 @@ class ProjectConfig(_Model):
         default="configured",
         description="strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
     )
+    python_version: str | None = Field(
+        default=None,
+        pattern=r"^3\.[0-9]+$",
+        description="Explicit minimum supported Python version for version-aware conventions, e.g. 3.14. Overrides per-project requires-python metadata; never inferred from the running interpreter or .python-version.",
+    )
 
     @property
     def exclude_patterns(self) -> list[str]:
@@ -381,6 +386,14 @@ class PackageContract(_Model):
         ge=2,
         description="Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
     )
+    module_docstrings: Literal["allow", "forbid"] | None = Field(
+        default=None,
+        description="Optional module-docstring policy (SMT309). Function and class documentation is unaffected. The closest explicit package policy wins.",
+    )
+    future_annotations: Literal["allow", "forbid", "when-needed"] | None = Field(
+        default=None,
+        description="allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+    )
 
     @field_validator("match")
     @classmethod
@@ -423,10 +436,10 @@ class PackageContract(_Model):
             and self.public is None
             and self.imports is None
             and self.bundle_imports_at is None
+            and self.module_docstrings is None
+            and self.future_annotations is None
         ):
-            raise ValueError(
-                "set required modules, a public interface, an import style or a bundling threshold"
-            )
+            raise ValueError("set at least one package contract policy")
         return self
 
 

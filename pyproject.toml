@@ -7,6 +7,7 @@ authors = [{ name = "Mathis Arends", email = "mathisarends27@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "grimp>=3.17",
+    "packaging>=24.2",
     "pydantic>=2.13.5",
     "pyyaml>=6.0.3",
 ]
