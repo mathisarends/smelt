@@ -185,20 +185,33 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         for v in outcome.unfiltered
         if v.code != "SMT903" and v.severity is not Severity.HINT
     ]
+    existing = Debt.load(path)
+    eligible = {
+        rule.code
+        for rule, severity in outcome.active
+        if severity is not Severity.HINT and rule.code != "SMT903"
+    }
+    dormant = [entry for entry in existing.entries if entry.code not in eligible]
     if args.prune:
-        existing = Debt.load(path)
-        _, known, resolved = existing.match(current, snippet)
+        checked = Debt([entry for entry in existing.entries if entry.code in eligible])
+        _, known, resolved = checked.match(current, snippet)
         # Upgrade legacy import fingerprints without accepting any new debt.
-        Debt.from_violations(known, snippet).write(path)
+        updated = Debt.from_violations(known, snippet)
+        Debt([*updated.entries, *dormant]).write(path)
         remaining = len(existing.entries) - len(resolved)
         console.print(
             f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
             f"from {relative} ({remaining} remain)"
         )
     else:
-        Debt.from_violations(current, snippet).write(path)
+        updated = Debt.from_violations(current, snippet)
+        Debt([*updated.entries, *dormant]).write(path)
         console.print(
             f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
+        )
+    if dormant:
+        console.print(
+            f"Kept {len(dormant)} unassessed debt entries for inactive or hint-only rules."
         )
     if configured is None:
         _enable_debt(loaded.path, relative)

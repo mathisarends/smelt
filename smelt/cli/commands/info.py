@@ -40,11 +40,9 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         }
         console.print(json.dumps(data, indent=2))
         return EXIT_OK
-    default = meta.default_severity.value
-    if not meta.enabled_by_default:
-        default = f"off (opt-in, {default} when enabled)"
     lines = [
-        f"{rule.code} {rule.name}  [{rule.category.value}, default: {default}]",
+        f"{rule.code} {rule.name}  [{rule.category.value}, activation: {meta.activation['mode']}, severity: {meta.default_severity.value}]",
+        meta.activation["description"],
         "",
         doc.summary,
         "",
@@ -92,9 +90,8 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         console.print(json.dumps([m.to_json() for m in metas], indent=2))
         return EXIT_OK
     for meta in metas:
-        severity = meta.default_severity.value if meta.enabled_by_default else "off"
         console.print(
-            f"{meta.code}  {meta.name:<28} {meta.category.value:<13} {severity}"
+            f"{meta.code}  {meta.name:<28} {meta.category.value:<13} {meta.activation['mode']:<8} {meta.default_severity.value}"
         )
     return EXIT_OK
 

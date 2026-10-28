@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -14,6 +15,10 @@ if TYPE_CHECKING:
 
 
 class ForbiddenTestMock(BaseRule):
+    activation = PolicyActivation(
+        "tests.forbid_mocks_in contains test path patterns.",
+        lambda config: bool(config.tests.forbid_mocks_in),
+    )
     code = "SMT421"
     name = "forbidden-test-mock"
     category = Category.TESTS
@@ -48,6 +53,10 @@ class ForbiddenTestMock(BaseRule):
 
 
 class StringPatchTarget(BaseRule):
+    activation = PolicyActivation(
+        "tests.forbid_string_patch_targets is enabled.",
+        lambda config: config.tests.forbid_string_patch_targets,
+    )
     code = "SMT422"
     name = "string-patch-target"
     category = Category.TESTS
@@ -81,6 +90,10 @@ class StringPatchTarget(BaseRule):
 
 
 class ExcessiveTestPatches(BaseRule):
+    activation = PolicyActivation(
+        "tests.max_patches_per_test is set, including zero.",
+        lambda config: config.tests.max_patches_per_test is not None,
+    )
     code = "SMT423"
     name = "excessive-test-patches"
     category = Category.TESTS

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -15,6 +16,10 @@ def _private(name: str) -> bool:
 
 
 class PrivateTestAccess(BaseRule):
+    activation = PolicyActivation(
+        "tests.forbid_private_imports is enabled.",
+        lambda config: config.tests.forbid_private_imports,
+    )
     code = "SMT420"
     name = "private-test-access"
     category = Category.TESTS

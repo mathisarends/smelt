@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
     import_violation,
@@ -21,6 +22,10 @@ if TYPE_CHECKING:
 
 
 class LayerBoundary(BaseRule):
+    activation = PolicyActivation(
+        "architecture.layers defines layer dependencies.",
+        lambda config: bool(config.architecture.layers),
+    )
     code = "SMT101"
     name = "layer-boundary"
     category = Category.DEPENDENCIES

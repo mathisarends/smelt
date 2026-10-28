@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.type_dispatch import type_dispatches
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -13,6 +14,14 @@ if TYPE_CHECKING:
 
 
 class PreferMatchTypeDispatch(BaseRule):
+    activation = PolicyActivation(
+        "A package contract sets type_dispatch.style to match.",
+        lambda config: any(
+            contract.type_dispatch is not None
+            and contract.type_dispatch.style == "match"
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT315"
     name = "prefer-match-type-dispatch"
     category = Category.STRUCTURE

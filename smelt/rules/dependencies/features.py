@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import boundary_imports, import_violation, join, skip_import
 
@@ -13,6 +14,10 @@ if TYPE_CHECKING:
 
 
 class CrossFeatureImport(BaseRule):
+    activation = PolicyActivation(
+        "architecture.features defines feature boundaries.",
+        lambda config: config.architecture.features is not None,
+    )
     code = "SMT102"
     name = "cross-feature-import"
     category = Category.DEPENDENCIES
@@ -101,6 +106,10 @@ _MAY_IMPORT = {
 
 
 class SharedImportsFeature(BaseRule):
+    activation = PolicyActivation(
+        "architecture.shared or architecture.modules declares shared/central modules.",
+        lambda config: bool(config.architecture.shared or config.architecture.modules),
+    )
     code = "SMT105"
     name = "shared-imports-feature"
     category = Category.DEPENDENCIES

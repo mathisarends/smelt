@@ -190,7 +190,11 @@ class TestSuppressions:
     def test_suppression_for_unselected_rule_is_not_unused(
         self, tmp_path: Path
     ) -> None:
-        root = _layered(tmp_path, "import os  # smelt: ignore[SMT104] -- x\n")
+        root = _layered(
+            tmp_path,
+            "import os  # smelt: ignore[SMT104] -- x\n",
+            LAYERED_CONFIG + "rules:\n  SMT104: error\n",
+        )
 
         assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
 

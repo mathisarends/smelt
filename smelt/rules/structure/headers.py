@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.annotations import has_postponement_evidence
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -13,6 +14,13 @@ if TYPE_CHECKING:
 
 
 class ForbiddenModuleDocstring(BaseRule):
+    activation = PolicyActivation(
+        "A package contract forbids module docstrings.",
+        lambda config: any(
+            contract.module_docstrings == "forbid"
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT309"
     name = "forbidden-module-docstring"
     category = Category.STRUCTURE
@@ -49,6 +57,13 @@ class ForbiddenModuleDocstring(BaseRule):
 
 
 class ForbiddenFutureAnnotations(BaseRule):
+    activation = PolicyActivation(
+        "A package contract sets future_annotations to forbid or when-needed.",
+        lambda config: any(
+            contract.future_annotations in {"forbid", "when-needed"}
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT310"
     name = "forbidden-future-annotations"
     category = Category.STRUCTURE
@@ -68,6 +83,13 @@ class ForbiddenFutureAnnotations(BaseRule):
 
 
 class UnnecessaryFutureAnnotations(BaseRule):
+    activation = PolicyActivation(
+        "A package contract sets future_annotations to when-needed.",
+        lambda config: any(
+            contract.future_annotations == "when-needed"
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT311"
     name = "unnecessary-future-annotations"
     category = Category.STRUCTURE

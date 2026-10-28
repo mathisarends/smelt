@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -11,6 +12,13 @@ if TYPE_CHECKING:
 
 
 class DefinitionOrder(BaseRule):
+    activation = PolicyActivation(
+        "A package contract enables ordering.",
+        lambda config: any(
+            contract.ordering is not None and contract.ordering.enabled
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT313"
     name = "definition-order"
     category = Category.STRUCTURE

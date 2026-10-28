@@ -38,6 +38,93 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_all_prefix_enables_cycle_check_and_explicit_off_wins(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
+                "app/__init__.py": "",
+                "app/one.py": "from app import two",
+                "app/two.py": "from app import one",
+            },
+        )
+        args = ("check", "--config", str(root / "smelt.yaml"), "--format", "json")
+        code, out, _ = _run(capsys, *args)
+        assert code == 0
+        assert json.loads(out)["violations"] == []
+        code, out, _ = _run(capsys, *args, "--select", "ALL")
+        assert code == 1
+        assert "SMT104" in {item["code"] for item in json.loads(out)["violations"]}
+        with (root / "smelt.yaml").open("a") as handle:
+            handle.write("rules: {SMT104: off}\n")
+        code, out, _ = _run(capsys, *args, "--select", "ALL")
+        assert code == 0
+        assert "SMT104" not in json.loads(out)["scope"]["rules"]
+
+    def test_enabled_rule_debt_can_still_be_resolved_and_pruned(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
+                "app/__init__.py": "",
+            },
+        )
+        entry = DebtEntry("b" * 32, "SMT104", "app/old.py", "removed cycle")
+        Debt([entry]).write(root / ".smelt/debt.json")
+        assert check(root).resolved_debt == [entry]
+        code, _, _ = _run(
+            capsys, "debt", "--config", str(root / "smelt.yaml"), "--prune"
+        )
+        assert code == 0
+        assert Debt.load(root / ".smelt/debt.json").entries == []
+
+    def test_minimal_configuration_reports_only_baseline_rules(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+                "app/__init__.py": "",
+                "app/helpers.py": "def _hidden(): pass",
+                "tests/test_smoke.py": "def test_smoke(): pass",
+            },
+        )
+        code, out, _ = _run(
+            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+        )
+        report = json.loads(out)
+        assert code == 0
+        assert set(report["scope"]["rules"]) == {"SMT301", "SMT901", "SMT902", "SMT903"}
+        assert report["violations"] == []
+
+    @pytest.mark.parametrize("prune", [False, True])
+    def test_inactive_rule_debt_is_preserved_when_recording_and_pruning(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path, prune: bool
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
+                "app/__init__.py": "",
+            },
+        )
+        entry = DebtEntry(
+            "a" * 32, "SMT104", "app/old.py", "cycle not currently checked"
+        )
+        Debt([entry]).write(root / ".smelt/debt.json")
+        outcome = check(root)
+        assert outcome.resolved_debt == []
+        assert outcome.report.violations == []
+        args = ("--prune",) if prune else ()
+        code, _, _ = _run(capsys, "debt", "--config", str(root / "smelt.yaml"), *args)
+        assert code == 0
+        assert Debt.load(root / ".smelt/debt.json").entries == [entry]
+
     def test_type_dispatch_is_a_hint_and_never_automatically_rewritten(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
@@ -593,7 +680,7 @@ class TestCheckCommand:
         assert code == 0
         assert out == (
             "Policy coverage: complete (configured); 0 uncovered, 0 unclassified sources\n"
-            "✓ dependencies ✓ structure ✓ tests · 4 modules\n"
+            "✓ dependencies ✓ structure · 4 modules\n"
         )
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -833,7 +920,9 @@ class TestInfoCommands:
         code, out, _ = _run(capsys, "explain", "layer-boundary")
 
         assert code == 0
-        assert out.startswith("SMT101 layer-boundary  [dependencies, default: error]")
+        assert out.startswith(
+            "SMT101 layer-boundary  [dependencies, activation: policy, severity: error]"
+        )
 
     def test_explain_unknown_rule(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, _, err = _run(capsys, "explain", "SMT10")
