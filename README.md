@@ -53,6 +53,9 @@ workspace members that are not analyzed, module counts per classification, the
 composition-root and wiring exemptions, third-party policies per layer, the import
 settings (`type_checking`, `transitive`, `cycles`), cross-feature allowances as fields,
 and a `policy_hash` that is equal for reports checked under the same resolved config.
+The report's `project` names the config, project root and repository root. JSON
+finding paths are project-relative; SARIF and GitHub annotation paths are rebased
+to the repository root, including when using a nested `--config`.
 `smelt context --format json` carries the same import settings, allowances and hash.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
@@ -132,7 +135,9 @@ Review these decisions: to keep frameworks out of the core, set e.g.
 `domain.third_party: {default: deny, allow: [pydantic]}` under `architecture.layers`.
 Set `architecture.imports.transitive: true` to also detect layer dependencies through
 re-exports, such as a domain importing an infrastructure provider from a feature's
-`__init__.py`. Review the suggested `application -> application` pair too: it permits
+`__init__.py`. Named re-exports also retain their feature, shared and composition-root
+restrictions. The starter leaves `cross_feature.allow` empty; declare intended
+feature relationships explicitly. A global `application -> application` pair permits
 that dependency between **every** feature.
 
 `smelt context` describes the policy that applies to its target, including wiring and
@@ -200,6 +205,12 @@ that were fixed and can leave the file (`smelt debt --prune`).
 Existing debt files remain readable. Run `smelt debt --prune` once before editing imports
 covered by an older baseline to upgrade their fingerprints; pruning accepts no new debt.
 New import fingerprints survive comments, aliases and formatting changes.
+Cycle debt records each cyclic architecture edge, so a new edge cannot hide behind
+an existing shortest-cycle witness. Indirect import findings identify the final
+forbidden target, rather than only the facade. Older cycle and indirect-import debt
+may therefore reappear for review: the old fingerprints cannot establish the full
+dependency they accepted. `smelt debt --prune` removes stale entries without accepting
+these findings; review them before explicitly recording new debt.
 
 Override severities by rule name or code, e.g. `rules: {unclassified-module: off}`.
 
