@@ -730,6 +730,21 @@ class TestInfoCommands:
         assert code == 0
         assert codes[:6] == ["SMT101", "SMT102", "SMT103", "SMT104", "SMT105", "SMT106"]
 
+    def test_catalog_and_explanation_share_config_metadata(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code, out, _ = _run(capsys, "rules", "--format", "json")
+        assert code == 0
+        entry = next(rule for rule in json.loads(out) if rule["code"] == "SMT308")
+        assert entry["requires"] == ["syntax"]
+        assert "structure.contracts" in entry["config"]
+
+        code, out, _ = _run(capsys, "explain", "SMT308", "--format", "json")
+        assert code == 0
+        explanation = json.loads(out)
+        assert explanation["requires"] == entry["requires"]
+        assert explanation["config"] == entry["config"]
+
     def test_explain_by_name(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(capsys, "explain", "layer-boundary")
 

@@ -87,6 +87,8 @@ def rule_meta(rule: Rule) -> RuleMeta:
         enabled_by_default=bool(getattr(rule, "enabled_by_default", True)),
         summary=rule.explain().summary,
         docs_url=docs_url(rule.code),
+        requires=tuple(sorted(index.value for index in rule.requires)),
+        config=rule.explain().config,
     )
 
 
