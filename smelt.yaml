@@ -53,6 +53,9 @@ structure:
     instance-fields:
       match: smelt
       instance_assignments: separate
+    type-dispatch:
+      match: smelt.rules.structure
+      type_dispatch: {style: match, min_branches: 3}
     model-api:
       match: smelt.model
       required: [architecture]
@@ -60,3 +63,6 @@ structure:
 
 tests:
   layout: mirror
+
+rules:
+  SMT315: error

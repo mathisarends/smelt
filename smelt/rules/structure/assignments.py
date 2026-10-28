@@ -23,14 +23,14 @@ def _assignments(node: ast.AST) -> Iterator[ast.Assign]:
 
 
 def _attributes(target: ast.expr, receiver: str) -> Iterator[ast.Attribute]:
-    if isinstance(target, ast.Attribute):
-        if isinstance(target.value, ast.Name) and target.value.id == receiver:
+    match target:
+        case ast.Attribute(value=ast.Name(id=name)) if name == receiver:
             yield target
-    elif isinstance(target, ast.Tuple | ast.List):
-        for element in target.elts:
-            yield from _attributes(element, receiver)
-    elif isinstance(target, ast.Starred):
-        yield from _attributes(target.value, receiver)
+        case ast.Tuple(elts=elements) | ast.List(elts=elements):
+            for element in elements:
+                yield from _attributes(element, receiver)
+        case ast.Starred(value=value):
+            yield from _attributes(value, receiver)
 
 
 def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
