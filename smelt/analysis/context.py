@@ -4,6 +4,7 @@ from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from smelt.analysis.contracts import ContractIndex
 from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
@@ -55,6 +56,10 @@ class AnalysisContext:
     @cached_property
     def syntax(self) -> SyntaxIndex:
         return SyntaxIndex(self.files, self.asts)
+
+    @cached_property
+    def contracts(self) -> ContractIndex:
+        return ContractIndex(self.files)
 
     def ensure(self, indexes: frozenset[Index]) -> None:
         """Build the requested indexes up front so failures surface before rules run."""

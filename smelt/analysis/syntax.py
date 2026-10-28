@@ -46,11 +46,11 @@ class SyntaxIndex:
         return syntax
 
     def namespace(self, module: str) -> Namespace | None:
-        """The top-level names of a source module; a loader for ``analysis.exports``."""
+        """Module bindings for ``analysis.exports``; namespaces have no initializer bindings."""
         if module not in self._namespaces:
             source = self.files.sources.get(module)
             self._namespaces[module] = (
-                None
+                (Namespace(module) if module in self.files.packages else None)
                 if source is None
                 else namespace_of(
                     self._asts.parse(source.path),

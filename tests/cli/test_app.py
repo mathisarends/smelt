@@ -38,6 +38,42 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_contract_failure_and_coverage_metadata_are_machine_readable(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [library]}
+                structure:
+                  contracts:
+                    public-api: {match: library, required: [api], public: [api]}
+            """,
+                "library/__init__.py": "",
+                "library/private.py": "",
+                "library/client.py": "",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT307",
+            "--format",
+            "json",
+        )
+        document = json.loads(out)
+
+        assert code == 1
+        assert err == ""
+        assert document["violations"][0]["code"] == "SMT307"
+        assert document["coverage"]["contracts"][0]["missing"] == ["library.api"]
+
     def test_strict_coverage_override_and_optional_inventory(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

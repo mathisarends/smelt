@@ -1,10 +1,12 @@
 # smelt
 
 Architecture guardrails for Python, built for reviewing what coding agents change. Describe
-your features and layers in `smelt.yaml`; `smelt check` reports two kinds of findings, each
+your features and layers in `smelt.yaml`; `smelt check` reports findings
 with the exact location, what is allowed instead and how to fix it:
 
 - **Boundaries:** an import that crosses a layer, a feature or the composition root.
+- **Package contracts:** required modules and explicit public entry points.
+- **Coverage:** production code without a declared architecture policy.
 - **Test mirroring:** a test file that does not sit at the mirrored path of a source module.
 
 ## Installation
@@ -211,6 +213,123 @@ complete coverage first. Resolve the placement or document a deliberate exclusio
 It also explains uncovered source discovered outside `root_packages`. A planned
 path reports whether its placement has a role without claiming the file has been
 analyzed. Use this before writing code, then run the strict check after editing.
+
+## Package contracts
+
+Declare a repeated structure or public interface explicitly. Contracts apply to
+Python packages matched by a dotted pattern, independently of feature or layer
+names. A whole-segment `*` in `match` selects one package segment.
+
+```yaml
+structure:
+  contracts:
+    feature-shape:
+      match: app.features.*
+      required: [application.api, domain]
+      public: [application.api]
+    library-api:
+      match: toolkit
+      required: [models]
+      public: ['.']
+```
+
+This requires every matching feature to contain an `application.api` module or
+package and a `domain` module or package. Callers outside that feature may import
+only `application.api`. Internal code may use its own implementation modules.
+`toolkit` exposes its package facade; `toolkit.models` remains private to outside
+callers, while the facade can deliberately re-export symbols from it.
+
+- `required` contains exact relative dotted module names. Namespace packages and
+  split source roots work too. Excluded files do not fulfill a contract.
+- `public` entries are relative module patterns. `'.'` means the matching package
+  itself; `api` exposes exactly that module/package, and `api.**` deliberately
+  exposes that subtree. Each pattern must match analyzed code. Omit `public` to
+  check structure only; `public: []` closes the package to outside imports.
+- Structure and interface contracts are additive: an import must satisfy every applicable contract.
+  Wiring and composition roots follow the same interface rules. Existing layer
+  and feature restrictions still apply, and public entries do not classify code
+  into architecture roles or grant cross-feature access.
+- SMT307 reports missing required modules or public entry points. A `match`
+  pattern selecting no analyzed package is a configuration error. SMT107 reports
+  private imports, including explicit module-valued aliases through facades;
+  intentional symbol re-exports through a public entry point are permitted.
+- These are static module contracts. They do not check `__all__`, arbitrary
+  attribute access, dynamic loading, symbol-level visibility, or behavior. Module
+  presence alone does not establish a useful implementation; choose contracts
+  that reflect an intentional design, rather than creating empty template files.
+
+`smelt context` includes applicable contracts, required/public modules, missing
+entries and the visibility of an existing or planned module. Check JSON includes
+resolved contracts under `coverage.contracts`. `smelt explain SMT107` and
+`smelt explain SMT307` describe the rules. No contract is inferred automatically
+or enabled by default for consumer projects.
+
+### Relative and absolute imports
+
+Declare the style explicitly, globally for a root package or for selected
+packages. This example uses absolute imports by default and relative imports
+within infrastructure packages where at most one leading dot is needed:
+
+```yaml
+structure:
+  contracts:
+    default-style:
+      match: app
+      imports: {style: absolute}
+    adapter-style:
+      match: app.features.*.infrastructure
+      imports: {style: relative, max_relative_level: 1}
+```
+
+In the relative scope, `from .models import Record` is preferred over
+`from app.features.users.infrastructure.models import Record`. An import requiring
+`from ..domain import User` instead uses the absolute path. The limit counts
+leading dots; set `max_relative_level: 2` to permit and prefer parent imports up
+to two dots. Imports between different root packages and third-party/standard
+library imports stay absolute. `style: absolute` requires absolute imports even
+for siblings. Omitting `imports` preserves either form.
+
+The most specific enclosing package with an `imports` policy wins. Conflicting
+styles for the same concrete package are config errors. Initializers and namespace
+packages use their logical package, independently of filesystem source roots.
+SMT308 reports the expected form without rewriting bindings or aliases. As with
+other import rules, `architecture.imports.type_checking` controls guarded imports.
+Ruff's [TID252](https://docs.astral.sh/ruff/rules/relative-imports/) already covers
+forbidding parent-relative imports; Smelt additionally checks the preferred form
+under these package contracts.
+
+### Suggestions to bundle implementation imports
+
+Several imports from the same package can suggest a missing public facade:
+
+```python
+from app.features.users.application.get_user import GetUser
+from app.features.users.application.update_user import UpdateUser
+from app.features.users.application.delete_user import DeleteUser
+```
+
+Enable an advisory threshold on the package that would own the common API:
+
+```yaml
+structure:
+  contracts:
+    application-api:
+      match: app.features.*.application
+      bundle_imports_at: 3
+```
+
+SMT108 suggests the matching `application` package facade once one outside file
+imports at least three distinct implementation modules there. Repeated imports,
+multiple symbols from one module, and imports in separate callers do not inflate
+the count. Imports from inside the package and symbols already exported by its
+facade do not count. The threshold is configurable and disabled when omitted.
+
+After deliberately defining the exports, the caller can use a combined import
+such as `from app.features.users.application import DeleteUser, GetUser, UpdateUser`.
+Review dependency direction and cycles before adding exports. This is a `hint`
+by default; it does not fail the usual error gate. Choose `public: ['.']` instead
+to require facade-only imports regardless of their count. No facade or import is
+rewritten automatically.
 
 ## Test mirroring
 

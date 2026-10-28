@@ -9,6 +9,7 @@ from smelt.config.patterns import module_matches
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
     from smelt.config.loader import LoadedConfig
+    from smelt.config.models import ImportStyleConfig
 
 
 def project_metadata(loaded: LoadedConfig) -> dict[str, str]:
@@ -61,6 +62,16 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                 )
             )
     issues.extend(_missing_modules(ctx))
+    issues.extend(_conflicting_import_styles(ctx))
+    matched_contracts = {contract.name for contract in ctx.contracts.resolved}
+    issues.extend(
+        ConfigIssue(
+            f"structure.contracts.{name}.match",
+            f'"{contract.match}" matches no analyzed package',
+        )
+        for name, contract in ctx.config.structure.contracts.items()
+        if name not in matched_contracts
+    )
     for index, allowance in enumerate(ctx.config.architecture.cross_feature.allow):
         if not isinstance(allowance, CrossFeatureAllowance):
             continue
@@ -73,6 +84,24 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                         f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
                     )
                 )
+    return issues
+
+
+def _conflicting_import_styles(ctx: AnalysisContext) -> list[ConfigIssue]:
+    styles: dict[str, ImportStyleConfig] = {}
+    issues: list[ConfigIssue] = []
+    for contract in ctx.contracts.resolved:
+        policy = contract.spec.imports
+        if policy is None:
+            continue
+        previous = styles.setdefault(contract.package, policy)
+        if previous != policy:
+            issues.append(
+                ConfigIssue(
+                    f"structure.contracts.{contract.name}.imports",
+                    f"conflicting import styles for {contract.package}; use one policy per package",
+                )
+            )
     return issues
 
 

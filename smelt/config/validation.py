@@ -27,6 +27,17 @@ class _Validator:
         self._layers()
         self._cross_feature()
         self._module_sets()
+        self._contracts()
+
+    def _contracts(self) -> None:
+        roots = self.config.project.root_packages
+        for name, contract in self.config.structure.contracts.items():
+            first = contract.match.split(".")[0]
+            if first != "*" and first not in roots:
+                self._error(
+                    f"structure.contracts.{name}.match",
+                    f'"{contract.match}" is not inside project.root_packages ({", ".join(roots)})',
+                )
 
     def _error(self, path: str, message: str) -> None:
         self.errors.append(ConfigIssue(path, message))

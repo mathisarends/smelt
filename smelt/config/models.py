@@ -346,12 +346,109 @@ class ArchitectureConfig(_Model):
         return values
 
 
+class ImportStyleConfig(_Model):
+    style: Literal["relative", "absolute"] = Field(
+        default="relative",
+        description="relative: prefer relative first-party imports up to max_relative_level, absolute beyond it; absolute: always use absolute imports.",
+    )
+    max_relative_level: int = Field(
+        default=1,
+        ge=1,
+        description="Maximum dots in a relative import when style is relative. Cross-root and deeper imports stay absolute.",
+    )
+
+
+class PackageContract(_Model):
+    """Opt-in module layout and entry points for matching packages."""
+
+    match: str = Field(
+        description="Dotted package pattern; a whole-segment * matches one package segment."
+    )
+    required: list[str] = Field(
+        default_factory=list,
+        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
+    )
+    public: list[str] | None = Field(
+        default=None,
+        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+    )
+    imports: ImportStyleConfig | None = Field(
+        default=None,
+        description="Optional import style for code in this package. The most specific enclosing package contract wins.",
+    )
+    bundle_imports_at: int | None = Field(
+        default=None,
+        ge=2,
+        description="Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
+    )
+
+    @field_validator("match")
+    @classmethod
+    def _package_pattern(cls, value: str) -> str:
+        if any(
+            segment != "*" and not _DOTTED_NAME.fullmatch(segment)
+            for segment in value.split(".")
+        ):
+            raise ValueError(
+                "must be a dotted package pattern with whole-segment * wildcards"
+            )
+        return value
+
+    @field_validator("required")
+    @classmethod
+    def _required_modules(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(_check_dotted(values)))
+
+    @field_validator("public")
+    @classmethod
+    def _public_modules(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        for value in values:
+            if value == ".":
+                continue
+            if any(
+                segment not in ("*", "**") and not _DOTTED_NAME.fullmatch(segment)
+                for segment in value.split(".")
+            ):
+                raise ValueError(
+                    "public entries must be relative dotted module patterns or '.'"
+                )
+        return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def _has_contract(self) -> Self:
+        if (
+            not self.required
+            and self.public is None
+            and self.imports is None
+            and self.bundle_imports_at is None
+        ):
+            raise ValueError(
+                "set required modules, a public interface, an import style or a bundling threshold"
+            )
+        return self
+
+
 class StructureConfig(_Model):
     """Naming rules for packages and modules."""
 
     forbidden_names: list[str] = Field(
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
+    contracts: dict[str, PackageContract] = Field(
+        default_factory=dict,
+        description="Named package contracts: required modules and optional public entry points.",
+    )
+
+    @field_validator("contracts")
+    @classmethod
+    def _contract_names(
+        cls, values: dict[str, PackageContract]
+    ) -> dict[str, PackageContract]:
+        if any(not name.strip() for name in values):
+            raise ValueError("contract names must not be empty")
+        return values
 
 
 class TestsConfig(_Model):

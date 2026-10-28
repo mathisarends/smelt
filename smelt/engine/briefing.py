@@ -75,6 +75,8 @@ class Briefing:
     violations: dict[str, int] = field(default_factory=dict)
     violation_codes: tuple[str, ...] = ()
     coverage: dict[str, Any] = field(default_factory=dict)
+    contracts: list[dict[str, Any]] = field(default_factory=list)
+    import_style: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -91,6 +93,8 @@ class Briefing:
             "planned": self.target.planned,
             "boundary_policy": self.boundary_policy,
             "coverage": self.coverage,
+            "contracts": self.contracts,
+            "import_style": self.import_style,
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -237,6 +241,8 @@ def build_briefing(
         },
         violation_codes=tuple(sorted({v.code for v in scoped})),
         coverage=coverage,
+        contracts=ctx.contracts.describe(target.module or package),
+        import_style=ctx.contracts.style_brief(target.module or package),
     )
 
 
@@ -401,6 +407,39 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
         if briefing.transitive
         else "Imports: direct only (re-exports require architecture.imports.transitive: true)"
     )
+    for contract in briefing.contracts:
+        required = ", ".join(contract["required"]) or "none"
+        public = contract["public"]
+        entry_points = (
+            "unrestricted"
+            if public is None
+            else ", ".join(public) or "none (private package)"
+        )
+        lines.append(f"Contract {contract['name']} ({contract['package']}):")
+        lines.append(f"  Required: {required}")
+        lines.append(f"  Public: {entry_points}")
+        if "imports" in contract:
+            style = contract["imports"]
+            lines.append(
+                f"  Import style: {style['style']}; maximum relative level {style['max_relative_level']}"
+            )
+        if contract["target_public"] is not None:
+            visibility = "public" if contract["target_public"] else "private"
+            lines.append(
+                f"  Target: {visibility} to callers outside {contract['package']}"
+            )
+        missing = sorted(set(contract["missing"] + contract["missing_public"]))
+        if missing:
+            lines.append(f"  Missing: {', '.join(missing)}")
+        if "bundle_imports_at" in contract:
+            lines.append(
+                f"  Bundling hint: from {contract['bundle_imports_at']} distinct modules per outside caller"
+            )
+    if briefing.import_style:
+        style = briefing.import_style
+        lines.append(
+            f"Import style: {style['style']}, maximum relative level {style['max_relative_level']} ({style['contract']})"
+        )
     lines.append("")
     if briefing.module_kind is ModuleKind.UNCLASSIFIED:
         lines.extend((*_wrap_tests(briefing.tests), "", _violation_line(briefing)))

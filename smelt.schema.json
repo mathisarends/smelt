@@ -190,6 +190,30 @@
       "title": "IgnoreEntry",
       "type": "object"
     },
+    "ImportStyleConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "default": "relative",
+          "description": "relative: prefer relative first-party imports up to max_relative_level, absolute beyond it; absolute: always use absolute imports.",
+          "enum": [
+            "relative",
+            "absolute"
+          ],
+          "title": "Style",
+          "type": "string"
+        },
+        "max_relative_level": {
+          "default": 1,
+          "description": "Maximum dots in a relative import when style is relative. Cross-root and deeper imports stay absolute.",
+          "minimum": 1,
+          "title": "Max Relative Level",
+          "type": "integer"
+        }
+      },
+      "title": "ImportStyleConfig",
+      "type": "object"
+    },
     "ImportsConfig": {
       "additionalProperties": false,
       "description": "Which imports the dependency rules look at.",
@@ -247,6 +271,72 @@
         "path"
       ],
       "title": "LayerConfig",
+      "type": "object"
+    },
+    "PackageContract": {
+      "additionalProperties": false,
+      "description": "Opt-in module layout and entry points for matching packages.",
+      "properties": {
+        "match": {
+          "description": "Dotted package pattern; a whole-segment * matches one package segment.",
+          "title": "Match",
+          "type": "string"
+        },
+        "required": {
+          "description": "Relative dotted modules or packages that must exist in every matching package (SMT307).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "public": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+          "title": "Public"
+        },
+        "imports": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImportStyleConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional import style for code in this package. The most specific enclosing package contract wins."
+        },
+        "bundle_imports_at": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
+          "title": "Bundle Imports At"
+        }
+      },
+      "required": [
+        "match"
+      ],
+      "title": "PackageContract",
       "type": "object"
     },
     "Policy": {
@@ -354,6 +444,14 @@
           },
           "title": "Forbidden Names",
           "type": "array"
+        },
+        "contracts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PackageContract"
+          },
+          "description": "Named package contracts: required modules and optional public entry points.",
+          "title": "Contracts",
+          "type": "object"
         }
       },
       "title": "StructureConfig",

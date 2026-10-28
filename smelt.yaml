@@ -46,6 +46,11 @@ architecture:
 
 structure:
   forbidden_names: [utils, helpers]
+  contracts:
+    model-api:
+      match: smelt.model
+      required: [architecture]
+      public: ['.']
 
 tests:
   layout: mirror
