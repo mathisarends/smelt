@@ -167,10 +167,13 @@ def _section(
     section = OrderSection(owner, scope, group, order, edges, reason)
     result.sections.append(section)
     if edges:
+        first_changed = next(
+            index for index, expected in enumerate(order) if index != expected
+        )
         result.issues.append(
             OrderIssue(
                 scope,
-                section.line,
+                group[first_changed].line,
                 f"definitions in {scope} have {len(edges)} avoidable ordering inversion(s)",
                 edges,
                 section,

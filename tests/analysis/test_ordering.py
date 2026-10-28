@@ -275,6 +275,25 @@ def test_global_rebinding_requires_manual_fix_review() -> None:
     assert result.issues[0].section.fix_reason
 
 
+def test_diagnostic_points_at_the_first_misplaced_definition() -> None:
+    result = _analyze("PUBLIC = 1\ndef _helper(): pass\ndef api(): pass")
+
+    assert result.issues[0].line == 2
+
+
+def test_class_priority_can_be_configured() -> None:
+    config = OrderingConfig.model_validate(
+        {"class": ["class-attributes", "init", "dunders", "private", "public"]}
+    )
+    result = _analyze(
+        "class Service:\n    def api(self): pass\n    def _helper(self): pass",
+        config=config,
+    )
+
+    assert result.issues[0].section is not None
+    assert result.issues[0].section.expected == ["_helper", "api"]
+
+
 def test_disabled_policy() -> None:
     assert (
         _analyze(

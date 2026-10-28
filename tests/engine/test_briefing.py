@@ -20,6 +20,35 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    order: {match: app, ordering: {constants_exempt: true}}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root, CheckOptions(select=("SMT313",)))
+    ctx = outcome.context
+
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
+    policy = briefing.to_json()["ordering_policy"]
+
+    assert briefing.target.planned
+    assert policy["enabled"]
+    assert policy["constants_exempt"]
+    assert policy["class"] == [
+        "class-attributes",
+        "init",
+        "dunders",
+        "public",
+        "private",
+    ]
+    assert "Definition ordering: enabled" in render_briefing(briefing, ctx)
+
+
 def test_private_module_convention_is_available_before_writing_a_file(
     tmp_path: Path,
 ) -> None:
