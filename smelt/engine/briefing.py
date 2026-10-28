@@ -82,6 +82,7 @@ class Briefing:
     ordering_policy: dict[str, Any] | None = None
     python_target: dict[str, Any] = field(default_factory=dict)
     test_policy: dict[str, Any] = field(default_factory=dict)
+    assignment_policy: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -105,6 +106,7 @@ class Briefing:
             "ordering_policy": self.ordering_policy,
             "python_target": self.python_target,
             "test_policy": self.test_policy,
+            "assignment_policy": self.assignment_policy,
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -258,6 +260,7 @@ def build_briefing(
         naming_policy=ctx.contracts.naming_brief(target.module or package),
         ordering_policy=ctx.contracts.ordering_brief(target.module or package),
         test_policy=ctx.config.tests.model_dump(mode="json"),
+        assignment_policy=ctx.contracts.assignment_brief(target.module or package),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -448,6 +451,11 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
 
 def _contract_lines(briefing: Briefing) -> list[str]:
     lines: list[str] = []
+    if briefing.assignment_policy:
+        policy = briefing.assignment_policy
+        lines.append(
+            f"Instance assignments: {policy['instance_assignments']} ({policy['contract']})"
+        )
     if briefing.test_policy:
         policy = briefing.test_policy
         enabled = [

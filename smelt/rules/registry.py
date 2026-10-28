@@ -7,6 +7,7 @@ from smelt.rules.dependencies.interfaces import PrivateModuleImport
 from smelt.rules.dependencies.layers import LayerBoundary
 from smelt.rules.dependencies.third_party import ThirdPartyDenied
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.structure.assignments import BundledInstanceAssignment
 from smelt.rules.structure.contracts import MissingRequiredModule
 from smelt.rules.structure.coverage import IncompleteCoverage
 from smelt.rules.structure.headers import (
@@ -49,6 +50,7 @@ def builtin_rules() -> list[Rule]:
         UnnecessaryFutureAnnotations(),
         NoPrivateModules(),
         DefinitionOrder(),
+        BundledInstanceAssignment(),
         MisplacedTestFile(),
         PrivateTestAccess(),
         ForbiddenTestMock(),

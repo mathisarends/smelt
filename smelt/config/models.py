@@ -475,6 +475,10 @@ class PackageContract(_Model):
         default=None,
         description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins.",
     )
+    instance_assignments: Literal["allow", "separate"] | None = Field(
+        default=None,
+        description="Optional SMT314 convention: separate rejects an assignment statement writing multiple direct attributes of a method's instance receiver. Local unpacking remains allowed. Closest explicit package policy wins; no automatic splitting.",
+    )
 
     @field_validator("match")
     @classmethod
@@ -521,6 +525,7 @@ class PackageContract(_Model):
             and self.future_annotations is None
             and self.private_modules is None
             and self.ordering is None
+            and self.instance_assignments is None
         ):
             raise ValueError("set at least one package contract policy")
         return self
