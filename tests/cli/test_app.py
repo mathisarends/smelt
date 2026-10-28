@@ -38,6 +38,51 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_ordering_fixes_require_explicit_request_and_report_result(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [app]}
+                architecture: {shared: [app]}
+                structure:
+                  contracts:
+                    order: {match: app, ordering: {}}
+            """,
+                "app/service.py": "def _helper(): return 7\n\ndef api(): return _helper()\n",
+            },
+        )
+        source = root / "app/service.py"
+        original = source.read_bytes()
+        arguments = (
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT313",
+            "--format",
+            "json",
+        )
+
+        code, _, _ = _run(capsys, *arguments)
+        assert code == 1
+        assert source.read_bytes() == original
+
+        code, out, err = _run(capsys, *arguments, "--fix")
+        report = json.loads(out)
+
+        assert code == 0
+        assert err == ""
+        assert report["fixes"]["ordering"]["files"] == ["app/service.py"]
+        assert source.read_text().lstrip().startswith("def api")
+
+        code, out, _ = _run(capsys, *arguments, "--fix")
+        assert code == 0
+        assert json.loads(out)["fixes"]["ordering"]["files"] == []
+
     def test_private_module_name_has_a_machine_readable_finding(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

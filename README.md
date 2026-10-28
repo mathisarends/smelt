@@ -421,6 +421,86 @@ behavior. Smelt never removes imports or documentation automatically. Verify
 annotation consumers and tests before removing an import, and use an explicit
 package exception where its string-based behavior is intentional.
 
+### Definition order with execution dependencies
+
+Enable `SMT313 definition-order` to put the public interface first while keeping
+prerequisites, binding versions and runtime boundaries intact:
+
+```yaml
+structure:
+  contracts:
+    definition-order:
+      match: app
+      ordering:
+        enabled: true
+        module: [docstring, future-imports, imports, dunder-assignments, type-vars, public, private, main-guard]
+        class: [class-attributes, init, dunders, public, private]
+        constants_exempt: false
+        fix: safe-only
+```
+
+The defaults are shown above. Each list must contain its categories exactly once;
+module docstrings, future imports and imports form the fixed prefix, and the
+main guard belongs last. The closest package policy wins; `enabled: false` can
+exempt a package. This extends `smelt.yaml` package contracts rather than adding
+a second `[tool.smelt.ordering]` configuration source.
+
+The analyzer partitions module and directly nested class bodies into sections.
+Within each section it computes a stable topological order: configured priority,
+with prerequisites inheriting the priority of their dependents. Relative order
+inside a category stays unchanged. Functions may refer to helpers in their bodies
+before those helpers are defined. Decorators, defaults, class creation,
+assignments and eagerly evaluated annotations have different timing; existing
+reads and later rebindings are preserved. Unknown Python minima are treated
+conservatively as eager; the future import or a declared Python 3.14+ minimum
+defers annotations, while defaults remain eager.
+
+Calls, unknown decorators, imports, control flow, `TYPE_CHECKING`, mutations,
+operator/protocol evaluation and unsupported generic constructs are execution
+barriers. Smelt keeps them in place. Literal construction through recognized
+typing TypeVar/ParamSpec/TypeVarTuple factories has a dedicated category.
+Consecutive overload/implementation and property getter/setter/deleter families
+remain atomic. Noncontiguous property families are pinned. Function bodies,
+including classes defined inside them, are outside this ordering analysis.
+
+`constants_exempt: true` treats private uppercase module constants like public
+definitions, allowing them to remain above the interface. Class attributes have
+their own category. `__init__`, `__new__` and `__post_init__` share the initializer
+category; other dunders precede ordinary public/private methods by default.
+Names use the underscore convention; ordering does not infer semantic visibility
+or rename symbols. If another tool changes visibility, run it before ordering.
+
+Plain `smelt check` is always read-only. Request fixes explicitly:
+
+```bash
+smelt check --select SMT313 --format json
+smelt check --select SMT313 --fix --format json
+```
+
+The fixer applies only visible, non-suppressed, non-debt sections within the
+requested scope, then checks again. `fix: off` disables writes for a package.
+Changed checks operate on affected reported sections, including any existing
+ordering debt in a section that also contains a new inversion. Debt pruning and
+changed comparisons track inversion identities, so adding a new inversion cannot
+hide behind an existing aggregate finding.
+
+Bounded fixes move source blocks, comments and their leading whitespace together;
+they preserve UTF-8/BOM, newline convention and file permissions. Nested edits
+are rendered together and the resulting AST must equal the approved permutations.
+Use the project's formatter afterwards to normalize spacing. Symlinks, external
+source roots, concurrent edits, formatter/suppression regions, tab indentation,
+runtime introspection and uncertain class/decorator behavior require manual
+review. A misplaced main guard or import is diagnosed but never moved across an
+execution barrier automatically. These bounds do not prove arbitrary Python
+reflection or hidden runtime effects equivalent; verify types and behavior.
+
+JSON includes expected/original order, semantic inversions, fixability and reasons.
+`coverage.ordering` identifies the analyzed files and barriers; `context` exposes
+the effective `ordering_policy`, including planned placement. With `--fix`, JSON
+also includes `fixes.ordering` with modified files, section counts and skipped
+reasons. Every other rule keeps its existing behavior; no visibility or module
+rename fixer is implied by this option.
+
 ## Test mirroring
 
 With `tests.layout: mirror` the path of a test decides: `tests/billing/test_invoice.py`

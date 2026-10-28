@@ -46,6 +46,7 @@ class Report:
     coverage: Mapping[str, Any] | None = None
     # Origin of config-relative paths and their prefix in repository CI reports.
     project: Mapping[str, str] | None = None
+    fixes: Mapping[str, Any] | None = None
 
     def count(self, severity: Severity) -> int:
         return sum(1 for v in self.violations if v.severity is severity)
