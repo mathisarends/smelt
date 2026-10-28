@@ -646,6 +646,62 @@
           "description": "Also allow test_<module>_<topic>.py.",
           "title": "Mirror Suffixes",
           "type": "boolean"
+        },
+        "quality_exclude": {
+          "description": "Project-relative globs excluded from SMT420-SMT424, independently of test mirroring.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Quality Exclude",
+          "type": "array"
+        },
+        "forbid_private_imports": {
+          "default": false,
+          "description": "Reject explicit private production imports and module attribute access from tests (SMT420).",
+          "title": "Forbid Private Imports",
+          "type": "boolean"
+        },
+        "forbid_mocks_in": {
+          "description": "Project-relative test globs forbidding recognized unittest.mock and pytest-mock operations, including fixtures (SMT421).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbid Mocks In",
+          "type": "array"
+        },
+        "forbid_string_patch_targets": {
+          "default": false,
+          "description": "Reject literal string targets for recognized patch/patch.dict/patch.multiple calls (SMT422).",
+          "title": "Forbid String Patch Targets",
+          "type": "boolean"
+        },
+        "max_patches_per_test": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum recognized patch calls per collected test, including decorators (SMT423). Nested helpers and fixtures are not attributed to callers.",
+          "title": "Max Patches Per Test"
+        },
+        "require_assertions": {
+          "default": false,
+          "description": "Warn when a collected test has no nontrivial assert, recognized pytest exception/warning check, unittest assertion or configured helper (SMT424). Syntactic evidence only.",
+          "title": "Require Assertions",
+          "type": "boolean"
+        },
+        "assertion_helpers": {
+          "description": "Qualified callable names accepted as assertion evidence, e.g. tests.assertions.assert_user.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Assertion Helpers",
+          "type": "array"
         }
       },
       "title": "TestsConfig",

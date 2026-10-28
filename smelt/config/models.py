@@ -565,6 +565,58 @@ class TestsConfig(_Model):
     mirror_suffixes: bool = Field(
         default=False, description="Also allow test_<module>_<topic>.py."
     )
+    quality_exclude: list[str] = Field(
+        default_factory=list,
+        description="Project-relative globs excluded from SMT420-SMT424, independently of test mirroring.",
+    )
+    forbid_private_imports: bool = Field(
+        default=False,
+        description="Reject explicit private production imports and module attribute access from tests (SMT420).",
+    )
+    forbid_mocks_in: list[str] = Field(
+        default_factory=list,
+        description="Project-relative test globs forbidding recognized unittest.mock and pytest-mock operations, including fixtures (SMT421).",
+    )
+    forbid_string_patch_targets: bool = Field(
+        default=False,
+        description="Reject literal string targets for recognized patch/patch.dict/patch.multiple calls (SMT422).",
+    )
+    max_patches_per_test: int | None = Field(
+        default=None,
+        ge=0,
+        description="Maximum recognized patch calls per collected test, including decorators (SMT423). Nested helpers and fixtures are not attributed to callers.",
+    )
+    require_assertions: bool = Field(
+        default=False,
+        description="Warn when a collected test has no nontrivial assert, recognized pytest exception/warning check, unittest assertion or configured helper (SMT424). Syntactic evidence only.",
+    )
+    assertion_helpers: list[str] = Field(
+        default_factory=list,
+        description="Qualified callable names accepted as assertion evidence, e.g. tests.assertions.assert_user.",
+    )
+
+    @field_validator("quality_exclude", "forbid_mocks_in")
+    @classmethod
+    def _quality_patterns(cls, values: list[str]) -> list[str]:
+        result: list[str] = []
+        for value in values:
+            pattern = value.strip().replace("\\", "/")
+            if (
+                not pattern
+                or pattern.startswith("/")
+                or re.match(r"^[A-Za-z]:", pattern)
+                or ".." in pattern.split("/")
+            ):
+                raise ValueError(
+                    "test quality globs must be nonempty project-relative paths without '..'"
+                )
+            result.append(posixpath.normpath(pattern))
+        return list(dict.fromkeys(result))
+
+    @field_validator("assertion_helpers")
+    @classmethod
+    def _assertion_helpers(cls, values: list[str]) -> list[str]:
+        return _check_dotted(values)
 
     @field_validator("mirror")
     @classmethod

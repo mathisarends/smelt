@@ -20,6 +20,24 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_test_quality_policy_is_available_for_planned_placement(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, max_patches_per_test: 0}",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
+    assert briefing.to_json()["test_policy"]["require_assertions"] is True
+    assert briefing.to_json()["test_policy"]["max_patches_per_test"] == 0
+    assert "Test quality:" in render_briefing(briefing, ctx)
+
+
 def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

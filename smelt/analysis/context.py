@@ -12,6 +12,7 @@ from smelt.analysis.ordering import DefinitionOrderIndex
 from smelt.analysis.parsing import AstCache
 from smelt.analysis.python_version import PythonTargetIndex
 from smelt.analysis.syntax import SyntaxIndex
+from smelt.analysis.test_syntax import TestSyntaxIndex
 from smelt.model import ArchitectureModel
 
 if TYPE_CHECKING:
@@ -26,6 +27,7 @@ class Index(StrEnum):
     IMPORTS = "imports"
     ORDERING = "ordering"
     SYNTAX = "syntax"
+    TESTS = "test_syntax"
 
 
 class AnalysisContext:
@@ -59,6 +61,10 @@ class AnalysisContext:
     @cached_property
     def syntax(self) -> SyntaxIndex:
         return SyntaxIndex(self.files, self.asts)
+
+    @cached_property
+    def test_syntax(self) -> TestSyntaxIndex:
+        return TestSyntaxIndex(self.files, self.asts)
 
     @cached_property
     def contracts(self) -> ContractIndex:

@@ -260,6 +260,10 @@ def run_check(
             ctx,
             include_inventory=options.show_coverage,
             include_ordering=any(rule.code == "SMT313" for rule, _ in active),
+            include_test_quality=any(
+                rule.code in {"SMT420", "SMT421", "SMT422", "SMT423", "SMT424"}
+                for rule, _ in active
+            ),
         ),
         project=project_metadata(loaded),
     )

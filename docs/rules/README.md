@@ -22,6 +22,11 @@
 | [SMT312](SMT312.md) | no-private-modules | structure | error |
 | [SMT313](SMT313.md) | definition-order | structure | error |
 | [SMT401](SMT401.md) | test-location | tests | error |
+| [SMT420](SMT420.md) | private-test-access | tests | error |
+| [SMT421](SMT421.md) | forbidden-test-mock | tests | error |
+| [SMT422](SMT422.md) | string-patch-target | tests | error |
+| [SMT423](SMT423.md) | excessive-test-patches | tests | error |
+| [SMT424](SMT424.md) | missing-test-assertion | tests | warning |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | warning |

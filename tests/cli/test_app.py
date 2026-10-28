@@ -38,6 +38,33 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_test_quality_rule_reports_json_and_sarif(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_string_patch_targets: true}",
+                "app/__init__.py": "",
+                "tests/test_service.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')",
+            },
+        )
+        arguments = (
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT422",
+        )
+        code, out, _ = _run(capsys, *arguments, "--format", "json")
+        assert code == 1
+        report = json.loads(out)
+        assert report["violations"][0]["code"] == "SMT422"
+        assert report["coverage"]["tests"]["forbid_string_patch_targets"] is True
+        code, out, _ = _run(capsys, *arguments, "--format", "sarif")
+        assert code == 1
+        assert json.loads(out)["runs"][0]["results"][0]["ruleId"] == "SMT422"
+
     def test_ordering_fixes_require_explicit_request_and_report_result(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
@@ -770,7 +797,7 @@ class TestInfoCommands:
             ("SMT109", ""),
             ("SMT401", None),
             ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
-            ("SMT421", ' (did you mean "SMT401"?)'),
+            ("SMT524", ' (did you mean "SMT424"?)'),
             ("layer-boundry", ' (did you mean "layer-boundary"?)'),
         ],
     )

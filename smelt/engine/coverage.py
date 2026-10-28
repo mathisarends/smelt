@@ -30,6 +30,7 @@ def effective_coverage(
     *,
     include_inventory: bool = False,
     include_ordering: bool = False,
+    include_test_quality: bool = False,
 ) -> dict[str, Any]:
     config = ctx.config
     project = config.project
@@ -65,6 +66,7 @@ def effective_coverage(
         "contracts": ctx.contracts.describe(),
         "python_targets": ctx.python_targets.describe(),
         "tests": {
+            **config.tests.model_dump(mode="json"),
             "layout": config.tests.layout,
             "mirror": config.tests.mirror,
             "unmirrored": list(config.tests.unmirrored),
@@ -74,6 +76,15 @@ def effective_coverage(
         report["inventory"] = [entry.to_json() for entry in inventory.entries]
     if include_ordering and ctx.ordering.files:
         report["ordering"] = ctx.ordering.summary()
+    if include_test_quality and ctx.test_syntax.modules:
+        report["test_quality"] = {
+            "mode": "syntactic",
+            "files": len(ctx.test_syntax.modules),
+            "collected_tests": sum(
+                len(module.tests) for module in ctx.test_syntax.modules.values()
+            ),
+            "fixture_traversal": False,
+        }
     return report
 
 

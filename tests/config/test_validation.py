@@ -193,3 +193,33 @@ class TestCentralModules:
 
         with pytest.raises(ConfigError, match="overlaps the features root"):
             parse_config(raw)
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"max_patches_per_test": -1},
+        {"quality_exclude": [""]},
+        {"forbid_mocks_in": ["../other/tests"]},
+        {"forbid_mocks_in": ["C:/tests/**"]},
+        {"quality_exclude": ["/tests/**"]},
+        {"assertion_helpers": ["not a callable"]},
+    ],
+)
+def test_invalid_test_quality_policy_is_rejected(policy: dict[str, object]) -> None:
+    with pytest.raises(ConfigError):
+        parse_config({**MINIMAL, "tests": policy})
+
+
+def test_test_quality_globs_are_canonical_and_zero_is_valid() -> None:
+    config, _ = parse_config(
+        {
+            **MINIMAL,
+            "tests": {
+                "forbid_mocks_in": ["./tests\\**\\domain\\**", "tests/**/domain/**"],
+                "max_patches_per_test": 0,
+            },
+        }
+    )
+    assert config.tests.forbid_mocks_in == ["tests/**/domain/**"]
+    assert config.tests.max_patches_per_test == 0
