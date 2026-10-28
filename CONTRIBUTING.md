@@ -33,6 +33,26 @@ Normal checks stay read-only. A new rule does not need a fixer or a new index.
 
 ## One rule, one catalog entry
 
+New BaseRule subclasses are off by default. Choose activation alongside the rule:
+
+- Reserve `enabled_by_default = True` for reliable baseline diagnostics that need
+  no opinionated policy. The baseline set is locked by catalog tests.
+- Use `PolicyActivation(description, matches)` from `smelt.rules.activation` for
+  an explicit architecture/package/test policy. Its predicate receives a typed
+  SmeltConfig; keep the predicate pure and let mypy check field access. It must not
+  inspect source files or infer architecture. Per-file checks still resolve closest
+  package overrides normally.
+- Leave activation unset for a heuristic requiring a deliberate `rules` entry or
+  CLI selection. Check applicability inside the rule even when selected with ALL.
+
+Activation and severity are separate. Do not require users to configure both a
+policy and an enable flag. Test missing policy, active policy, allow/disabled
+overrides and important falsy values such as public: [] or a patch limit of zero.
+Add a policy-activation regression when introducing a new policy. CLI prefixes must
+also activate opt-in rules, while explicit off/ignore and strict coverage retain
+their precedence. The generated catalog and CLI metadata derive activation from
+the rule class; there is no second registration list of activation decisions.
+
 Use `BaseRule`, a stable code, a unique kebab-case name, a category, explicit
 `requires` and a complete `RuleDoc`. Allocate an unused code from the live catalog:
 

@@ -26,6 +26,12 @@ to a different project; `pip install smelt` and bare `uvx smelt` install that pr
 
 ## Usage
 
+Most rules are opt-in. Smelt enables declared architecture/package/test policies
+without a second switch; only unknown-layer and suppression/debt diagnostics run
+by default. Import cycles and unclassified-module hints require explicit selection.
+See [rule activation and migration](docs/rule-selection.md) and the
+[full catalog](docs/rules/README.md) for the decisions and precedence rules.
+
 ```bash
 smelt init                           # draft smelt.yaml from the code (also uv workspaces)
 smelt init --config other.yaml       # write elsewhere; only that file is checked and overwritten
@@ -36,7 +42,7 @@ smelt check --strict-coverage         # fail on omitted or unclassified producti
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt context user                   # what applies to a feature, module or path
 smelt explain SMT101                 # rationale, examples and config keys of a rule
-smelt rules                          # all rules with their default severity
+smelt rules                          # full catalog with activation and severity
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
 smelt config show                    # the resolved config
