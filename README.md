@@ -501,7 +501,79 @@ also includes `fixes.ordering` with modified files, section counts and skipped
 reasons. Every other rule keeps its existing behavior; no visibility or module
 rename fixer is implied by this option.
 
-## Test mirroring
+## Test policies
+
+### Optional test quality policies
+
+Test mirroring and test quality are independent. Enable the policies that match
+your unit-test conventions in the existing YAML configuration:
+
+```yaml
+tests:
+  layout: mirror
+  forbid_private_imports: true
+  forbid_mocks_in: ["**/tests/**/domain/**"]
+  forbid_string_patch_targets: true
+  max_patches_per_test: 2
+  require_assertions: true
+  assertion_helpers: [tests.assertions.assert_user]
+  quality_exclude: ["**/tests/integration/**", "**/tests/e2e/**"]
+```
+
+| Code | Checks |
+| --- | --- |
+| SMT420 | Explicit private production imports and import-qualified private attributes |
+| SMT421 | Recognized mocking operations in the configured test paths, including conftest fixtures |
+| SMT422 | Literal string targets of patch, patch.dict and patch.multiple |
+| SMT423 | Recognized patch calls exceeding the per-test limit, including decorators and patch.object |
+| SMT424 | No recognized explicit outcome assertion (warning by default) |
+
+Every policy is opt-in; `0` is a valid patch limit. Globs are relative to the
+configuration root, not each test root. `quality_exclude` does not disable mirror
+checks or exclude production code. Rule selection, severity overrides, inline
+suppressions and debt work normally. Plain checks remain read-only.
+
+The shared analysis recognizes unittest.mock import aliases and the standard
+pytest-mock fixtures (`mocker`, `class_mocker`, `module_mocker`, `package_mocker`,
+`session_mocker`) on test/fixture functions. Explicit MockerFixture annotations
+are also recognized. It accounts for local shadowing and common control-flow
+bindings; unrelated functions named patch or Mock are not mocking evidence.
+Custom fixture overrides with these standard names are outside type resolution.
+
+SMT424 accepts assert other than literal `assert True`, recognized pytest
+exception/warning checks, unittest.TestCase assertions and imported qualified
+assertion helpers. Assertions inside a nested helper or fixture are not attributed
+to a caller. Interaction-only tests are review candidates under this policy;
+boundary-protocol tests and smoke tests can justify an exception. `assert result`
+still counts: this rule detects missing explicit checks, not assertion quality,
+reachability or correct behavior. Neither a literal threshold nor syntax proves
+that a test protects a requirement.
+
+The scope is the discovered `test_*.py`, `*_test.py` and conftest files. Test
+functions use the usual test_ prefix; methods in Test-prefixed classes and direct
+unittest.TestCase/IsolatedAsyncioTestCase subclasses are supported. Custom pytest
+collection settings and inherited tests are not resolved. Helper modules outside
+this inventory and transitive fixture/helper effects are not traversed. A fixture
+in a permitted shared conftest can therefore introduce mocking into a domain test
+without this path policy detecting that dependency. Unknown/dynamic call targets,
+assignment aliases, reflection and instance types are not inferred. String target
+variables and f-strings are outside SMT422's literal check.
+
+Patch-count comparisons track individual syntactic calls, including multiplicity,
+so accepted debt cannot hide an added or replaced patch. JSON includes policy,
+operation locations and a test-quality coverage summary; `smelt context` exposes
+the test policy before files are written. No automatic patch or test rewrites occur.
+
+For complementary checks use Ruff's annotation and pytest-style rules: ANN201/
+ANN202 for return annotations, ANN001 for parameters, N801 for class naming, and
+PT011 for selected exception assertions missing a meaningful match/check. The
+last rule can be configured for exception names that need these constraints.
+Smelt does not enforce class grouping, one assertion/action, a universal ban on
+control flow, assertion strength, fixture placement, duplicate test bodies,
+network isolation or frozen clocks in this release. Those require separate policy
+and evidence; multiple checks can legitimately describe one scenario.
+
+### Mirrored source paths
 
 With `tests.layout: mirror` the path of a test decides: `tests/billing/test_invoice.py`
 needs `app/billing/invoice.py`, and a package test `tests/billing/test_billing.py` needs
