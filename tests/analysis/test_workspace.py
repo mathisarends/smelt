@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from smelt.engine.workspace import WorkspaceMember, import_root, workspace_members
+from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from tests.helpers import write_project
 
 if TYPE_CHECKING:

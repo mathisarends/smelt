@@ -30,6 +30,8 @@ smelt init --config other.yaml       # write elsewhere; only that file is checke
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --changed --base origin/main --format json
+smelt check --strict-coverage         # fail on omitted or unclassified production code
+smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt context user                   # what applies to a feature, module or path
 smelt explain SMT101                 # rationale, examples and config keys of a rule
 smelt rules                          # all rules with their default severity
@@ -147,6 +149,69 @@ files under existing source packages. If a syntax error prevents analysis, the b
 is still available and its violation counts are marked unavailable (`violations: null`
 and `analysis_error` in JSON). Central and wiring modules have explicit JSON flags.
 
+## Strict policy coverage
+
+Enable `project.coverage: strict`, or use `smelt check --strict-coverage`, to fail
+when production source escapes package selection or has no architecture role.
+Folder names, layer names and frameworks come from your policy. Flat libraries,
+feature-only architectures and custom layers work without adopting a DDD layout.
+Outside uv workspaces, declare the relevant import roots in `source_roots`.
+Unreadable or invalid workspace metadata is an analysis error in strict mode;
+configured mode records discovery uncertainty and marks coverage incomplete.
+The inventory discovers Python files independently of `root_packages`, under the
+configured source roots and declared uv workspace members. Packaging exclusions
+in `tool.uv.workspace.exclude` do not hide source from this inventory.
+
+```yaml
+project:
+  root_packages: [backend, client]
+  source_roots: [backend/src, libs/client/src]
+  coverage: strict
+  exclude:
+    - path: "libs/client/src/client/generated/**"
+      reason: "Generated SDK; regeneration and drift are checked separately."
+```
+
+Each discovered source has one status:
+
+- `governed`: a declared layer, feature-only policy, shared, central, wiring or
+  composition-root role applies.
+- `facade`: a package initializer containing imports, documentation and package
+  metadata, including guarded imports and the standard package-version lookup.
+  Implementation functions and classes in an unclassified initializer are gaps.
+- `unclassified`: analyzed source has no architecture role.
+- `uncovered`: source exists outside the selected packages or is not an importable
+  module. The diagnostic names its package and import root where possible.
+  Loose scripts need a governed package or a reasoned tooling exclusion;
+  `root_packages` selects package directories rather than individual Python files.
+- `excluded`: an explicit project exclusion applies. Strict mode requires a
+  `{path, reason}` entry with a nonempty reason; string globs remain supported in
+  the default `configured` mode.
+
+`coverage.complete` means every discovered production source has a policy, is a
+package facade, or has a reasoned exclusion. It describes policy assignment;
+`scope.rules` and `coverage.imports` describe the checks actually run. Correct
+behavior still needs type checking and tests. Configured test roots, workspace
+`tests/` and `test/` directories, hidden directories and environment/cache
+directories are outside production discovery. Independent runtimes outside the
+declared roots/workspace need their own configuration and check.
+
+The normal JSON report includes counts and scan roots. Add `--show-coverage` for
+the per-file inventory, including feature, layer, source root, policy references
+and exclusion reason. Text output groups related missing files into one decision
+while JSON retains every path. The text summary also reports incomplete policy
+assignment in `configured` mode, which preserves the existing exit behavior.
+
+Strict coverage findings (`SMT306`) remain errors even in `--changed`, path-scoped
+and `--select` runs. Inline/config ignores and debt cannot hide them; disabling or
+demoting SMT306 in strict mode is rejected. Recording or pruning debt requires
+complete coverage first. Resolve the placement or document a deliberate exclusion.
+
+`smelt context <path> --format json` includes the file's coverage status and policy.
+It also explains uncovered source discovered outside `root_packages`. A planned
+path reports whether its placement has a role without claiming the file has been
+analyzed. Use this before writing code, then run the strict check after editing.
+
 ## Test mirroring
 
 With `tests.layout: mirror` the path of a test decides: `tests/billing/test_invoice.py`
@@ -236,8 +301,9 @@ Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md
 Before implementing, run `smelt context <feature>` to see where code belongs.
-After every change, run `smelt check --changed --format json`.
+After every change, run `smelt check --changed --strict-coverage --format json`.
 Do not finish while errors remain. Use `smelt explain <code>` when unsure.
+Resolve placement problems; do not relax policy or record debt just to make the check pass.
 ```
 
 Suggested loop: `smelt context <feature>` → edit → `smelt check --changed` → fix → tests →

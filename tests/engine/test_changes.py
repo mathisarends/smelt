@@ -85,6 +85,24 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_existing_coverage_gaps_remain_visible_in_changed_mode(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text(encoding="utf-8").replace(
+                "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
+            ),
+            encoding="utf-8",
+        )
+        write_project(repo, {"client/api.py": "VALUE = 1\n"})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "Existing coverage gap")
+
+        [found] = violations(repo, CheckOptions(changed=True))
+
+        assert (found.code, found.path) == ("SMT306", "client/api.py")
+
     def test_first_python_package_after_a_committed_readme(
         self, tmp_path: Path
     ) -> None:

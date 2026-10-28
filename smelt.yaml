@@ -5,7 +5,12 @@ project:
   root_packages: [smelt]
   source_roots: ["."]
   test_roots: [tests]
-  exclude: ["tests/fixtures/**"]
+  coverage: strict
+  exclude:
+    - path: "tests/fixtures/**"
+      reason: Deliberately violating example projects, checked by the test suite.
+    - path: "scripts/**"
+      reason: Maintainer schema and documentation generator, checked by Ruff and test_docs.
 
 architecture:
   # The doc generator is a tool for the repo, not part of any layer.

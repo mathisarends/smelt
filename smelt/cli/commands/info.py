@@ -36,6 +36,7 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             "good": doc.good,
             "fix": doc.fix,
             "config": list(doc.config),
+            "example_language": doc.example_language,
         }
         console.print(json.dumps(data, indent=2))
         return EXIT_OK

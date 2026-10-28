@@ -69,7 +69,8 @@ class FileIndex:
 
     def is_excluded(self, path: str) -> bool:
         return any(
-            path_matches(pattern, path) for pattern in self.config.project.exclude
+            path_matches(pattern, path)
+            for pattern in self.config.project.exclude_patterns
         )
 
     def relative(self, path: Path) -> str:
@@ -149,7 +150,7 @@ class FileIndex:
             directory = self.root / test_root
             if not directory.is_dir():
                 continue
-            for path in sorted(_python_files(directory)):
+            for path in sorted(python_files(directory)):
                 rel = self.relative(path)
                 if rel in source_paths or self.is_excluded(rel):
                     continue
@@ -223,14 +224,22 @@ class FileIndex:
 
 
 def _contains_python(directory: Path) -> bool:
-    return any(True for _ in _python_files(directory))
+    return any(True for _ in python_files(directory))
 
 
-def _python_files(directory: Path) -> Iterable[Path]:
-    for entry in directory.iterdir():
-        if entry.is_dir():
-            if entry.name in _SKIP_DIRS or entry.name.startswith("."):
-                continue
-            yield from _python_files(entry)
-        elif entry.suffix == ".py":
-            yield entry
+def python_files(directory: Path) -> Iterable[Path]:
+    """Python files below a root, skipping tool directories and symlink cycles."""
+    visited: set[Path] = set()
+    pending = [directory]
+    while pending:
+        parent = pending.pop()
+        resolved = parent.resolve()
+        if resolved in visited:
+            continue
+        visited.add(resolved)
+        for entry in parent.iterdir():
+            if entry.is_dir():
+                if entry.name not in _SKIP_DIRS and not entry.name.startswith("."):
+                    pending.append(entry)
+            elif entry.suffix == ".py":
+                yield entry

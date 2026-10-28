@@ -111,6 +111,16 @@ def _add_check(sub: Subparsers) -> None:
     )
     check.add_argument("--no-color", action="store_true")
     check.add_argument("--no-debt", action="store_true", help="ignore the debt file")
+    check.add_argument(
+        "--strict-coverage",
+        action="store_true",
+        help="require every discovered production source to have a policy or a reasoned exclusion",
+    )
+    check.add_argument(
+        "--show-coverage",
+        action="store_true",
+        help="include the per-file coverage inventory in JSON or text output",
+    )
     check.set_defaults(handler=commands.check)
 
 

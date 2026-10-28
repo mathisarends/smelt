@@ -43,6 +43,21 @@ class TestDiscovery:
 
 
 class TestParsing:
+    def test_reasoned_exclusions_reject_empty_reasons_at_public_locations(self) -> None:
+        with pytest.raises(ConfigError) as caught:
+            parse_config(
+                _with(
+                    project={
+                        "root_packages": ["app"],
+                        "exclude": [{"path": "generated/**", "reason": " "}],
+                    }
+                )
+            )
+
+        assert [issue.path for issue in caught.value.issues] == [
+            "project.exclude[0].reason"
+        ]
+
     @pytest.mark.parametrize(
         "repeated",
         [

@@ -4,6 +4,7 @@ from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
 from smelt.analysis.parsing import AstCache
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 
 class Index(StrEnum):
+    COVERAGE = "coverage"
     FILES = "files"
     IMPORTS = "imports"
     SYNTAX = "syntax"
@@ -41,6 +43,10 @@ class AnalysisContext:
         return ArchitectureModel.build(
             self.config, self.files.sources, self.files.packages
         )
+
+    @cached_property
+    def coverage(self) -> CoverageIndex:
+        return CoverageIndex.build(self.files, self.model, self.asts)
 
     @cached_property
     def imports(self) -> ImportIndex:
