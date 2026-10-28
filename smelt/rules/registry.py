@@ -16,7 +16,7 @@ from smelt.rules.structure.headers import (
 )
 from smelt.rules.structure.import_style import ImportStyle
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
-from smelt.rules.structure.naming import ForbiddenPackageName
+from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
 from smelt.rules.testing.location import MisplacedTestFile
 
 
@@ -39,6 +39,7 @@ def builtin_rules() -> list[Rule]:
         ForbiddenModuleDocstring(),
         ForbiddenFutureAnnotations(),
         UnnecessaryFutureAnnotations(),
+        NoPrivateModules(),
         MisplacedTestFile(),
         UnusedSuppression(),
         SuppressionWithoutReason(),

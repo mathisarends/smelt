@@ -47,6 +47,9 @@ architecture:
 structure:
   forbidden_names: [utils, helpers]
   contracts:
+    module-names:
+      match: smelt
+      private_modules: forbid
     model-api:
       match: smelt.model
       required: [architecture]

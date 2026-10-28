@@ -78,6 +78,7 @@ class Briefing:
     contracts: list[dict[str, Any]] = field(default_factory=list)
     import_style: dict[str, Any] | None = None
     header_policy: dict[str, Any] = field(default_factory=dict)
+    naming_policy: dict[str, Any] = field(default_factory=dict)
     python_target: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
@@ -98,6 +99,7 @@ class Briefing:
             "contracts": self.contracts,
             "import_style": self.import_style,
             "header_policy": self.header_policy,
+            "naming_policy": self.naming_policy,
             "python_target": self.python_target,
             "policy_hash": self.policy_hash,
             "imports": {
@@ -249,6 +251,7 @@ def build_briefing(
         contracts=ctx.contracts.describe(target.module or package),
         import_style=ctx.contracts.style_brief(target.module or package),
         header_policy=ctx.contracts.header_brief(target.module or package),
+        naming_policy=ctx.contracts.naming_brief(target.module or package),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -472,7 +475,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             )
         lines.extend(
             f"  {key}: {contract[key]}"
-            for key in ("module_docstrings", "future_annotations")
+            for key in ("module_docstrings", "future_annotations", "private_modules")
             if key in contract
         )
     if briefing.import_style:

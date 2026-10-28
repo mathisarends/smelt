@@ -85,6 +85,26 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_new_private_module_names_are_reported_without_repeating_existing_ones(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    names: {match: app, private_modules: forbid}\n",
+            encoding="utf-8",
+        )
+        write_project(repo, {"app/domain/_legacy.py": ""})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "declare module naming convention")
+        write_project(repo, {"app/domain/_new.py": ""})
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT312",)))
+
+        assert [(v.code, v.source_module) for v in found] == [
+            ("SMT312", "app.domain._new")
+        ]
+
     def test_import_conventions_are_checked_for_new_changes(self, repo: Path) -> None:
         config = repo / "smelt.yaml"
         config.write_text(

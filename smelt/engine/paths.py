@@ -94,6 +94,7 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
             ("imports", "import styles"),
             ("module_docstrings", "module docstring policies"),
             ("future_annotations", "future annotation policies"),
+            ("private_modules", "private module naming policies"),
         ):
             policy = getattr(contract.spec, key)
             if policy is None:

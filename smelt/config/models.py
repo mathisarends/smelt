@@ -394,6 +394,10 @@ class PackageContract(_Model):
         default=None,
         description="allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
     )
+    private_modules: Literal["allow", "forbid"] | None = Field(
+        default=None,
+        description="Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
+    )
 
     @field_validator("match")
     @classmethod
@@ -438,6 +442,7 @@ class PackageContract(_Model):
             and self.bundle_imports_at is None
             and self.module_docstrings is None
             and self.future_annotations is None
+            and self.private_modules is None
         ):
             raise ValueError("set at least one package contract policy")
         return self

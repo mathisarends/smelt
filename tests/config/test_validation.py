@@ -21,6 +21,8 @@ class TestPackageContracts:
             {"match": "gateway", "bundle_imports_at": 3},
             {"match": "gateway", "module_docstrings": "forbid"},
             {"match": "gateway", "future_annotations": "when-needed"},
+            {"match": "gateway", "private_modules": "forbid"},
+            {"match": "gateway", "private_modules": "allow"},
         ],
     )
     def test_valid_contracts(self, spec: dict[str, object]) -> None:
@@ -48,6 +50,7 @@ class TestPackageContracts:
             {"match": "gateway", "bundle_imports_at": 1},
             {"match": "gateway", "module_docstrings": "sometimes"},
             {"match": "gateway", "future_annotations": "always"},
+            {"match": "gateway", "private_modules": "sometimes"},
         ],
     )
     def test_invalid_contracts_fail_explicitly(self, spec: dict[str, object]) -> None:

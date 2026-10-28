@@ -264,6 +264,42 @@ resolved contracts under `coverage.contracts`. `smelt explain SMT107` and
 `smelt explain SMT307` describe the rules. No contract is inferred automatically
 or enabled by default for consumer projects.
 
+### Module names without private prefixes
+
+Require descriptive module/package names while keeping private helpers inside
+them:
+
+```yaml
+structure:
+  contracts:
+    module-names:
+      match: app
+      private_modules: forbid
+```
+
+SMT312 (`no-private-modules`) rejects `_service.py`, `_internal/` and other
+underscore-prefixed module/package names, including double-underscore names.
+Python's special `__init__.py` and `__main__.py` files are allowed; arbitrary names
+such as `__service__.py` are still checked. This exception applies to files, not
+dunder-named package directories.
+
+Use `service.py` with public entry functions and `_helper` functions instead.
+The rule checks names independently of exports: a private-prefixed module is
+still a finding when it declares `__all__` or its symbols are re-exported. Function,
+method, class and attribute names are unaffected. This naming convention does
+not change the public entry points declared by architecture API contracts.
+
+Omitting `private_modules` adds no naming policy. A more specific package can set
+`private_modules: allow`; contradictory policies on the same concrete package
+are config errors. Existing reasoned `ignore` entries can cover individual legacy
+modules. Excluded source and test directories follow the normal analysis scope.
+Namespace packages and split import roots are supported, with one finding per
+offending logical package rather than duplicate findings for its portions.
+
+`context` exposes the effective convention as `naming_policy`, including planned
+files. Check JSON includes it in `coverage.contracts`. Rename deliberately and
+update imports and facade exports; Smelt never renames files or symbols itself.
+
 ### Relative and absolute imports
 
 Declare the style explicitly, globally for a root package or for selected

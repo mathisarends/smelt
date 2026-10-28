@@ -52,7 +52,9 @@ class ContractIndex:
     def policy_for(
         self,
         module: str,
-        policy: Literal["imports", "module_docstrings", "future_annotations"],
+        policy: Literal[
+            "imports", "module_docstrings", "future_annotations", "private_modules"
+        ],
     ) -> ResolvedContract | None:
         return max(
             (
@@ -78,6 +80,18 @@ class ContractIndex:
                     "policy": getattr(contract.spec, key),
                 }
         return policies
+
+    def naming_brief(self, module: str | None) -> dict[str, Any]:
+        contract = self.policy_for(module, "private_modules") if module else None
+        if contract is None:
+            return {}
+        return {
+            "private_modules": {
+                "contract": contract.name,
+                "package": contract.package,
+                "policy": contract.spec.private_modules,
+            }
+        }
 
     def style_brief(self, module: str | None) -> dict[str, Any] | None:
         contract = self.style_for(module) if module else None
@@ -136,7 +150,11 @@ class ContractIndex:
                 **(
                     {
                         key: getattr(contract.spec, key)
-                        for key in ("module_docstrings", "future_annotations")
+                        for key in (
+                            "module_docstrings",
+                            "future_annotations",
+                            "private_modules",
+                        )
                         if getattr(contract.spec, key) is not None
                     }
                 ),

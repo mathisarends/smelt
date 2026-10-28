@@ -19,6 +19,7 @@
 | [SMT309](SMT309.md) | forbidden-module-docstring | structure | error |
 | [SMT310](SMT310.md) | forbidden-future-annotations | structure | error |
 | [SMT311](SMT311.md) | unnecessary-future-annotations | structure | hint |
+| [SMT312](SMT312.md) | no-private-modules | structure | error |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT901](SMT901.md) | unused-suppression | meta | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | error |

@@ -20,6 +20,35 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_private_module_convention_is_available_before_writing_a_file(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              contracts:
+                names: {match: app, private_modules: forbid}
+        """,
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/_planned.py"), outcome.report
+    )
+
+    assert briefing.target.planned
+    assert briefing.to_json()["naming_policy"]["private_modules"]["policy"] == "forbid"
+    assert briefing.to_json()["contracts"][0]["private_modules"] == "forbid"
+    assert "private_modules: forbid" in render_briefing(briefing, ctx)
+
+
 def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

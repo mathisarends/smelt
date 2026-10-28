@@ -38,6 +38,41 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_private_module_name_has_a_machine_readable_finding(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [app]}
+                structure:
+                  contracts:
+                    names: {match: app, private_modules: forbid}
+            """,
+                "app/_service.py": "__all__ = ['run']\ndef run(): pass\n",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT312",
+            "--format",
+            "json",
+        )
+        document = json.loads(out)
+
+        assert code == 1
+        assert err == ""
+        assert document["violations"][0]["code"] == "SMT312"
+        assert document["violations"][0]["path"] == "app/_service.py"
+        assert document["coverage"]["contracts"][0]["private_modules"] == "forbid"
+
     def test_header_policy_and_version_are_visible_to_agents(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
