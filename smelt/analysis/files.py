@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING
 
+from smelt.analysis.errors import AnalysisError
 from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
@@ -53,6 +54,8 @@ class FileIndex:
     config: SmeltConfig
     sources: dict[str, SourceFile] = field(default_factory=dict)
     packages: dict[str, PackageDir] = field(default_factory=dict)
+    package_parts: dict[str, list[PackageDir]] = field(default_factory=dict)
+    package_roots: dict[str, list[Path]] = field(default_factory=dict)
     tests: dict[str, TestFile] = field(default_factory=dict)
     missing_root_packages: list[str] = field(default_factory=list)
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
@@ -78,14 +81,29 @@ class FileIndex:
     def _discover_sources(self) -> None:
         project = self.config.project
         for package in project.root_packages:
-            found = False
-            for source_root in project.source_roots:
-                directory = self.root / source_root / package
-                if directory.is_dir():
-                    found = True
-                    self._walk_package(directory, package, source_root)
-                    break
-            if not found:
+            candidates = {
+                (self.root / source_root / package).resolve(): source_root
+                for source_root in project.source_roots
+                if (self.root / source_root / package).is_dir()
+                and not self.is_excluded(
+                    self.relative(self.root / source_root / package)
+                )
+            }
+            regular = {
+                path: source_root
+                for path, source_root in candidates.items()
+                if (path / "__init__.py").is_file()
+            }
+            # Python gives an ordinary package precedence over namespace portions,
+            # including workspace scaffolding found beneath a broad '.' root.
+            selected = regular or candidates
+            if len(regular) > 1:
+                paths = ", ".join(self.relative(path) for path in regular)
+                raise AnalysisError(f"ambiguous package {package}: {paths}")
+            self.package_roots[package] = list(selected)
+            for directory, source_root in selected.items():
+                self._walk_package(directory, package, source_root)
+            if not selected:
                 self.missing_root_packages.append(package)
 
     def _walk_package(self, directory: Path, module: str, source_root: str) -> None:
@@ -93,7 +111,14 @@ class FileIndex:
         if self.is_excluded(rel_dir):
             return
         init = directory / "__init__.py"
-        self.packages[module] = PackageDir(module, rel_dir, source_root, init.is_file())
+        portion = PackageDir(module, rel_dir, source_root, init.is_file())
+        previous = self.packages.get(module)
+        if previous is not None and (previous.has_init or portion.has_init):
+            raise AnalysisError(
+                f"ambiguous package {module}: {previous.path}, {rel_dir}"
+            )
+        self.packages.setdefault(module, portion)
+        self.package_parts.setdefault(module, []).append(portion)
         for entry in sorted(directory.iterdir(), key=lambda p: p.name):
             if entry.is_dir():
                 if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
@@ -105,12 +130,18 @@ class FileIndex:
                 if self.is_excluded(rel):
                     continue
                 if entry.name == "__init__.py":
-                    self.sources[module] = SourceFile(
-                        module, rel, entry, is_package=True
-                    )
+                    self._add_source(SourceFile(module, rel, entry, is_package=True))
                 elif entry.stem.isidentifier():
                     name = f"{module}.{entry.stem}"
-                    self.sources[name] = SourceFile(name, rel, entry, is_package=False)
+                    self._add_source(SourceFile(name, rel, entry, is_package=False))
+
+    def _add_source(self, source: SourceFile) -> None:
+        previous = self.sources.get(source.module)
+        if previous is not None:
+            raise AnalysisError(
+                f"ambiguous module {source.module}: {previous.path}, {source.path}"
+            )
+        self.sources[source.module] = source
 
     def _discover_tests(self) -> None:
         source_paths = {source.path for source in self.sources.values()}
@@ -148,9 +179,10 @@ class FileIndex:
         cached = self._text_cache.get(path)
         if cached is None:
             # Python accepts a UTF-8 BOM, commonly written by Windows editors.
-            cached = (self.root / path).read_text(
-                encoding="utf-8-sig", errors="replace"
-            )
+            try:
+                cached = (self.root / path).read_text(encoding="utf-8-sig")
+            except (OSError, UnicodeError) as exc:
+                raise AnalysisError(f"cannot read source {path}: {exc}") from exc
             self._text_cache[path] = cached
         return cached
 
@@ -172,9 +204,12 @@ class FileIndex:
         yield from self.tests
 
     def source_root_dir(self, module: str) -> str | None:
-        root = module.split(".", maxsplit=1)[0]
-        package = self.packages.get(root)
-        return package.source_root if package else None
+        parts = module.split(".")
+        for end in range(len(parts), 0, -1):
+            package = self.packages.get(".".join(parts[:end]))
+            if package is not None:
+                return package.source_root
+        return None
 
     def module_to_path(self, module: str, *, package: bool = False) -> str:
         """The expected repo-relative path for ``module``, whether or not it exists."""

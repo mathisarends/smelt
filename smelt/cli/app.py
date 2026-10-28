@@ -183,7 +183,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_ERROR
     try:
         return handler(args, console, Path.cwd())
-    except (AnalysisError, CliError, ConfigError, json.JSONDecodeError) as exc:
+    except (
+        AnalysisError,
+        CliError,
+        ConfigError,
+        json.JSONDecodeError,
+        OSError,
+        UnicodeError,
+    ) as exc:
         if getattr(args, "format", None) == "json":
             console.print(_error_json(exc), end="")
         elif isinstance(exc, ConfigError):

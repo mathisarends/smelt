@@ -7,14 +7,20 @@ import tomllib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from smelt.analysis.errors import AnalysisError
+
+__all__ = [
+    "AnalysisError",
+    "AstCache",
+    "python_note",
+    "resolve_relative",
+    "type_checking_lines",
+]
+
 if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.analysis.files import FileIndex
-
-
-class AnalysisError(Exception):
-    """The project cannot be analyzed (missing packages, syntax errors, ...)."""
 
 
 @dataclass

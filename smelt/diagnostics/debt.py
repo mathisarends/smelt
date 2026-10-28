@@ -72,7 +72,7 @@ class Debt:
             return cls([])
         try:
             data = _DebtDocument.model_validate_json(path.read_text(encoding="utf-8"))
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             raise ConfigError(
                 [ConfigIssue("", f"cannot read debt file: {exc}")], path.as_posix()
             ) from exc

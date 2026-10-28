@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
 
@@ -35,6 +37,49 @@ architecture:
 
 class TestDefaultDeny:
     policy = "{default: deny, allow: [pydantic, sqlalchemy.orm]}"
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "from requests import Session; from pydantic import BaseModel\n",
+            "from pydantic import BaseModel; from requests import Session\n",
+            "import requests; from pydantic import BaseModel\n",
+            "from sqlalchemy import text; from sqlalchemy.orm import Mapped\n",
+        ],
+    )
+    def test_imports_on_the_same_line_keep_their_own_names(
+        self, tmp_path: Path, source: str
+    ) -> None:
+        root = _project(tmp_path, self.policy, source)
+
+        [found] = violations(root, ONLY_SMT103)
+
+        assert found.target_module == (
+            "sqlalchemy" if "sqlalchemy" in source else "requests"
+        )
+        assert (
+            found.column
+            == source.index(
+                "text"
+                if "sqlalchemy" in source
+                else ("Session" if "Session" in source else "requests")
+            )
+            + 1
+        )
+
+    def test_repeated_imports_on_the_same_line_count_individually(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            self.policy,
+            "from requests import Session; from requests import get\n",
+        )
+
+        found = violations(root, ONLY_SMT103)
+
+        assert len(found) == 2
+        assert found[0].column != found[1].column
 
     def test_allowed_package_and_submodules(self, tmp_path: Path) -> None:
         root = _project(

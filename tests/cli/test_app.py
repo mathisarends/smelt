@@ -312,6 +312,29 @@ class TestCheckCommand:
         assert code == 2
         assert 'bogus: unknown key "bogus"' in err
 
+    @pytest.mark.parametrize("input_file", ["smelt.yaml", "debt.json", "app/model.py"])
+    def test_invalid_encoding_is_a_structured_input_error(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path, input_file: str
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+                "app/__init__.py": "",
+                "app/model.py": "VALUE = 1\n",
+                "debt.json": '{"version":1,"violations":[]}',
+            },
+        )
+        (root / input_file).write_bytes(b"# invalid encoding \xff\n")
+
+        code, out, err = _run(
+            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+        )
+
+        assert code == 2
+        assert json.loads(out)["status"] == "error"
+        assert err == ""
+
     def test_config_error_is_json_with_its_location(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

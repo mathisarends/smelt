@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import parse_config
-from smelt.config.loader import load_yaml
+from smelt.config.loader import LoadedConfig, load_yaml
 from smelt.config.models import CrossFeatureAllowance
+from smelt.engine.check import CheckOptions, run_check
 from smelt.engine.inference import InferredLayer, infer_config, render_config
 from tests.helpers import write_project
 
@@ -19,6 +20,38 @@ def _layers(layers: list[InferredLayer]) -> list[tuple[str, str, list[str]]]:
 
 
 class TestInferConfig:
+    def test_workspace_member_scaffolding_does_not_become_a_package(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend", "browser"]\n',
+                "backend/src/backend/__init__.py": "",
+                "backend/src/backend/features/auth/domain/model.py": "",
+                "backend/tests/test_auth.py": "",
+                "browser/tool.py": "",
+                "browser/src/browser/__init__.py": "",
+                "browser/src/browser/app.py": "",
+                "deploy/task.py": "",
+            },
+        )
+
+        inferred = infer_config(tmp_path)
+
+        assert inferred is not None
+        assert inferred.root_packages == ["deploy", "backend", "browser"]
+        assert not any(".src." in module for module in inferred.wiring)
+        config, warnings = parse_config(
+            load_yaml(render_config(inferred)), root=tmp_path
+        )
+        outcome = run_check(
+            LoadedConfig(config, tmp_path / "smelt.yaml", warnings), CheckOptions()
+        )
+        assert "backend.features.auth.domain.model" in outcome.context.files.sources
+        assert "browser.app" in outcome.context.files.sources
+        assert not any(".src." in module for module in outcome.context.files.sources)
+
     def test_presentation_may_use_domain_types_for_mapping(
         self, tmp_path: Path
     ) -> None:

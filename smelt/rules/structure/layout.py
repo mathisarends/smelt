@@ -72,9 +72,9 @@ class UnknownLayer(BaseRule):
             yield from self._loose_modules(ctx, parent)
         for package in child_packages(ctx.files, parent):
             info = model.info(package.module)
-            if info is not None and info.kind in (
-                ModuleKind.SHARED,
-                ModuleKind.COMPOSITION_ROOT,
+            if info is not None and (
+                info.wiring
+                or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
             ):
                 continue
             segment = last_segment(package.module)
@@ -106,7 +106,7 @@ class UnknownLayer(BaseRule):
             if source.is_package or name.rsplit(".", 1)[0] != parent:
                 continue
             info = model.info(name)
-            if info is None or info.layer is not None:
+            if info is None or info.layer is not None or info.wiring:
                 continue
             if info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT):
                 continue
