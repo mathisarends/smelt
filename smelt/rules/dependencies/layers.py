@@ -96,7 +96,7 @@ class LayerBoundary(BaseRule):
             source = model.info(module)
             if source is None or not source.in_grid or source.layer is None:
                 continue
-            for target_layer, path in _indirect_targets(
+            for target, path in _indirect_targets(
                 ctx, module, source, adjacency
             ).items():
                 first = next(
@@ -108,7 +108,9 @@ class LayerBoundary(BaseRule):
                     ImportLink(a, b, _line(ctx, a, b))
                     for a, b in itertools.pairwise(path)
                 )
-                yield self._violation(ctx, first, source, target_layer, chain)
+                forbidden = _forbidden_layer(ctx, source, model.info(target))
+                if forbidden is not None:
+                    yield self._violation(ctx, first, source, forbidden, chain)
 
 
 def _forbidden_layer(
@@ -149,7 +151,7 @@ def _indirect_targets(
         if (
             info is not None
             and info.in_grid
-            and info.feature == source.feature
+            and (info.feature == source.feature or info.central or source.central)
             and info.layer
         ):
             continue  # direct edges into the grid are checked directly
@@ -165,17 +167,20 @@ def _indirect_targets(
             if (
                 info is None
                 or not info.in_grid
-                or info.feature != source.feature
+                or (
+                    info.feature != source.feature
+                    and not (info.central or source.central)
+                )
                 or info.layer is None
             ):
                 queue.append(child)
                 continue
             forbidden = _forbidden_layer(ctx, source, info)
-            if forbidden is not None and forbidden not in found:
+            if forbidden is not None:
                 path = [child]
                 while path[-1] != start:
                     path.append(previous[path[-1]])
-                found[forbidden] = list(reversed(path))
+                found[child] = list(reversed(path))
     return found
 
 

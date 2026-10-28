@@ -8,6 +8,26 @@ from smelt.config.patterns import module_matches
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
+    from smelt.config.loader import LoadedConfig
+
+
+def project_metadata(loaded: LoadedConfig) -> dict[str, str]:
+    root = loaded.root.resolve()
+    repository = next(
+        (
+            directory
+            for directory in (root, *root.parents)
+            if (directory / ".git").exists()
+        ),
+        root,
+    )
+    prefix = root.relative_to(repository).as_posix()
+    return {
+        "root": root.as_posix(),
+        "config": loaded.path.resolve().as_posix(),
+        "repository_root": repository.as_posix(),
+        "repository_prefix": "" if prefix == "." else prefix,
+    }
 
 
 def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:

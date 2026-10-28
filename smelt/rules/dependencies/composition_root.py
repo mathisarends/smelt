@@ -7,6 +7,7 @@ from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
+    boundary_imports,
     import_violation,
     skip_import,
     wiring_facade,
@@ -47,7 +48,7 @@ class CompositionRootLeak(BaseRule):
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         roots = ctx.config.architecture.composition_root
         model = ctx.model
-        for detail in ctx.imports.all_imports():
+        for detail, chain in boundary_imports(ctx):
             if detail.external or skip_import(ctx, detail):
                 continue
             source = model.info(detail.importer)
@@ -75,4 +76,5 @@ class CompositionRootLeak(BaseRule):
                     "The composition root depends on everything; nothing depends on it. "
                     "Pass what you need in from the root instead."
                 ),
+                chain=chain,
             )

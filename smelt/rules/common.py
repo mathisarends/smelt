@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from collections import deque
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from smelt.analysis.exports import resolve_dotted
+from smelt.diagnostics.violation import ImportLink
 from smelt.model import ArchitectureModel, ModuleInfo, ModuleKind, is_within
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from smelt.analysis.context import AnalysisContext
     from smelt.analysis.imports import ImportDetail
-    from smelt.diagnostics.violation import ImportLink, Violation
+    from smelt.diagnostics.violation import Violation
     from smelt.rules.base import BaseRule
 
 
@@ -16,6 +22,70 @@ def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
         detail.type_checking
         and ctx.config.architecture.imports.type_checking == "ignore"
     )
+
+
+def boundary_imports(
+    ctx: AnalysisContext,
+) -> Iterator[tuple[ImportDetail, tuple[ImportLink, ...]]]:
+    """Syntactic imports and named providers reached through re-export facades.
+
+    Resolve only the names being consumed, not every implementation dependency of
+    an allowed abstraction. Retain the first import's location for diagnostics.
+    """
+    for detail in ctx.imports.all_imports():
+        yield detail, ()
+        if (
+            detail.external
+            or skip_import(ctx, detail)
+            or not ctx.config.architecture.imports.transitive
+        ):
+            continue
+        seen = {detail.imported}
+        original = ctx.model.info(detail.imported)
+        for name in detail.names:
+            resolved = resolve_dotted(name, ctx.syntax.namespace)
+            if resolved is None or resolved[0] in seen:
+                continue
+            target = resolved[0]
+            seen.add(target)
+            info = ctx.model.info(target)
+            if info is None:
+                continue
+            # Providers inside the same architectural slot add no new boundary.
+            if original is not None and replace(original, name=info.name) == info:
+                continue
+            path = _provider_path(ctx, detail.imported, target)
+            if path:
+                yield (
+                    replace(detail, imported=target),
+                    (ImportLink(detail.importer, detail.imported, detail.line), *path),
+                )
+
+
+def _provider_path(
+    ctx: AnalysisContext, start: str, target: str
+) -> tuple[ImportLink, ...]:
+    previous: dict[str, ImportLink] = {}
+    queue = deque([start])
+    while queue:
+        module = queue.popleft()
+        for detail in ctx.imports.imports_of(module):
+            child = detail.imported
+            if (
+                detail.external
+                or skip_import(ctx, detail)
+                or child == start
+                or child in previous
+            ):
+                continue
+            previous[child] = ImportLink(module, child, detail.line)
+            if child == target:
+                path = [previous[child]]
+                while path[-1].importer != start:
+                    path.append(previous[path[-1].importer])
+                return tuple(reversed(path))
+            queue.append(child)
+    return ()
 
 
 def wiring_facade(
@@ -45,11 +115,14 @@ def import_violation(  # noqa: PLR0913
 ) -> Violation:
     source = ctx.files.sources[detail.importer]
     info = ctx.model.info(detail.importer)
+    target_module = (
+        chain[-1].imported if chain and rule.code != "SMT104" else detail.imported
+    )
     if edge is None:
         target = (
             detail.imported.split(".")[0]
             if detail.external
-            else architecture_node(ctx, detail.imported)
+            else architecture_node(ctx, target_module)
         )
         edge = f"{architecture_node(ctx, detail.importer)} -> {target}"
     return rule.violation(
@@ -60,7 +133,7 @@ def import_violation(  # noqa: PLR0913
         end_line=detail.line,
         end_column=detail.end_column,
         source_module=detail.importer,
-        target_module=detail.imported,
+        target_module=target_module,
         import_chain=chain,
         feature=info.feature if info else None,
         layer=info.layer if info else None,

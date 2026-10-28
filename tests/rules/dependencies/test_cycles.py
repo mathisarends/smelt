@@ -79,6 +79,8 @@ class TestSiblingCycles:
         )
         assert found.expected == {
             "cycle": ["a", "b", "a"],
+            "members": ["a", "b"],
+            "cyclic_edges": ["modules in app:a -> b", "modules in app:b -> a"],
             "type_checking_only": ["b -> a"],
         }
         assert found.hint is not None
@@ -109,7 +111,11 @@ class TestSiblingCycles:
         [found] = violations(root, ONLY_SMT104)
 
         assert found.message == "import cycle between modules in app: a -> b -> a"
-        assert found.expected == {"cycle": ["a", "b", "a"]}
+        assert found.expected == {
+            "cycle": ["a", "b", "a"],
+            "members": ["a", "b"],
+            "cyclic_edges": ["modules in app:a -> b", "modules in app:b -> a"],
+        }
 
     def test_import_of_parent_package_is_not_a_cycle(self, tmp_path: Path) -> None:
         root = write_project(

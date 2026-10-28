@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.analysis.parsing import AnalysisError
+from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.changes import base_snapshot
 from smelt.engine.check import CheckOptions
@@ -83,6 +85,136 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_first_python_package_after_a_committed_readme(
+        self, tmp_path: Path
+    ) -> None:
+        _git(tmp_path, "init", "-q")
+        write_project(tmp_path, {"README.md": "Project\n"})
+        _git(tmp_path, "add", "README.md")
+        _git(tmp_path, "commit", "-qm", "Readme")
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": LAYERED_CONFIG,
+                "app/__init__.py": "",
+                "app/domain/model.py": "from app.infra import db\n",
+                "app/infra/db.py": "",
+            },
+        )
+
+        found = violations(tmp_path, CheckOptions(changed=True))
+
+        assert codes_at(found) == [("SMT101", "app/domain/model.py", 1)]
+
+    def test_invalid_historical_source_is_still_an_error(self, repo: Path) -> None:
+        path = repo / "app/domain/model.py"
+        path.write_text("def invalid(:\n", encoding="utf-8")
+        _git(repo, "add", "app/domain/model.py")
+        _git(repo, "commit", "-qm", "Invalid historical source")
+        path.write_text("VALUE = 1\n", encoding="utf-8")
+
+        with pytest.raises(AnalysisError, match="syntax error"):
+            check(repo, CheckOptions(changed=True))
+
+    def test_replacing_an_indirect_forbidden_target_is_new(self, repo: Path) -> None:
+        write_project(
+            repo,
+            {
+                "smelt.yaml": LAYERED_CONFIG
+                + "    presentation: {path: presentation}\n  imports: {transitive: true}\n",
+                "app/__init__.py": "from app.infra.db import Db\n",
+                "app/infra/db.py": "class Db: pass\n",
+                "app/presentation/api.py": "class Api: pass\n",
+                "app/domain/model.py": "from app import Db\n",
+            },
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "Existing indirect violation")
+        write_project(
+            repo,
+            {
+                "app/__init__.py": "from app.presentation.api import Api\n",
+                "app/domain/model.py": "from app import Api\n",
+            },
+        )
+
+        [found] = violations(repo, CheckOptions(changed=True, select=("SMT101",)))
+
+        assert found.target_module == "app.presentation.api"
+        assert found.edge == "domain -> presentation"
+
+    @pytest.mark.parametrize(
+        ("before", "after", "introduced"),
+        [
+            ({"a": "b", "b": "a", "c": ""}, {"a": "b", "b": "a,c", "c": "b"}, True),
+            ({"a": "b", "b": "c", "c": "a"}, {"a": "b,c", "b": "c", "c": "a"}, True),
+            ({"a": "b", "b": "a,c", "c": "b"}, {"a": "b", "b": "a", "c": "b"}, False),
+            (
+                {"a": "b", "b": "a,c", "c": "b,d", "d": "c"},
+                {"a": "b", "b": "a", "c": "d", "d": "c"},
+                False,
+            ),
+        ],
+    )
+    def test_cycle_changes_compare_all_cyclic_edges(
+        self,
+        repo: Path,
+        before: dict[str, str],
+        after: dict[str, str],
+        introduced: bool,
+    ) -> None:
+        def write_edges(edges: dict[str, str]) -> None:
+            write_project(
+                repo,
+                {
+                    f"app/domain/{name}.py": f"from app.domain import {targets}\n"
+                    if targets
+                    else "VALUE = 1\n"
+                    for name, targets in edges.items()
+                },
+            )
+
+        write_edges(before)
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "Existing cyclic group")
+        write_edges(after)
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT104",)))
+
+        assert bool(found) is introduced
+
+    def test_pruning_a_growing_cycle_preserves_only_known_edges(
+        self, repo: Path
+    ) -> None:
+        write_project(
+            repo,
+            {
+                "app/domain/a.py": "from app.domain import b\n",
+                "app/domain/b.py": "from app.domain import a\n",
+                "app/domain/c.py": "VALUE = 1\n",
+            },
+        )
+        options = CheckOptions(select=("SMT104",))
+        debt = Debt.from_violations(violations(repo, options), lambda v: "")
+        write_project(
+            repo,
+            {
+                "app/domain/b.py": "from app.domain import a, c\n",
+                "app/domain/c.py": "from app.domain import b\n",
+            },
+        )
+        current = violations(repo, options)
+
+        new, known, resolved = debt.match(current, lambda v: "")
+        pruned = Debt.from_violations(known, lambda v: "")
+
+        assert len(new) == 1
+        assert resolved == []
+        assert {entry.fingerprint for entry in pruned.entries} == {
+            entry.fingerprint for entry in debt.entries
+        }
+        assert len(pruned.match(current, lambda v: "")[0]) == 1
+
     def test_report_names_the_base_and_its_merge_base(self, repo: Path) -> None:
         _git(repo, "checkout", "-q", "-b", "topic")
         (repo / "app/application/service.py").write_text("x = 1\n", encoding="utf-8")

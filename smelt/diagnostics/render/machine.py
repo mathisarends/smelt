@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import posixpath
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
@@ -29,6 +31,7 @@ def render_json(report: Report) -> str:
         },
         "comparison": dict(report.comparison) if report.comparison else None,
         "coverage": dict(report.coverage) if report.coverage else None,
+        "project": dict(report.project) if report.project else None,
         "violations": [v.to_json() for v in report.violations],
         "groups": group_findings(report.violations),
     }
@@ -76,7 +79,8 @@ def render_sarif(report: Report, version: str) -> str:
         for meta in report.rules
     ]
     index = {meta.code: i for i, meta in enumerate(report.rules)}
-    results = [_sarif_result(v, index) for v in report.violations]
+    prefix = (report.project or {}).get("repository_prefix", "")
+    results = [_sarif_result(v, index, prefix) for v in report.violations]
     document = {
         "$schema": SARIF_SCHEMA,
         "version": "2.1.0",
@@ -105,10 +109,13 @@ def _sarif_properties(report: Report) -> dict[str, Any]:
         "mode": "changed" if report.comparison else "full",
         "comparison": dict(report.comparison) if report.comparison else None,
         "policyHash": coverage.get("policy_hash"),
+        "project": dict(report.project) if report.project else None,
     }
 
 
-def _sarif_result(violation: Violation, index: dict[str, int]) -> dict[str, Any]:
+def _sarif_result(
+    violation: Violation, index: dict[str, int], prefix: str = ""
+) -> dict[str, Any]:
     text = violation.message
     if violation.hint:
         text += f"\n{violation.hint}"
@@ -129,7 +136,11 @@ def _sarif_result(violation: Violation, index: dict[str, int]) -> dict[str, Any]
                 region["endLine"] = violation.end_line
             if violation.end_column:
                 region["endColumn"] = violation.end_column
-        location: dict[str, Any] = {"artifactLocation": {"uri": violation.path}}
+        location: dict[str, Any] = {
+            "artifactLocation": {
+                "uri": quote(posixpath.join(prefix, violation.path), safe="/")
+            }
+        }
         if region:
             location["region"] = region
         result["locations"] = [{"physicalLocation": location}]
@@ -144,7 +155,8 @@ _GITHUB_LEVEL = {
 
 
 def render_github(report: Report) -> str:
-    lines = [_github_line(v) for v in report.violations]
+    prefix = (report.project or {}).get("repository_prefix", "")
+    lines = [_github_line(v, prefix) for v in report.violations]
     summary = report.summary_json()
     lines.append(
         f"smelt: {summary['errors']} errors, {summary['warnings']} warnings, "
@@ -153,10 +165,12 @@ def render_github(report: Report) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _github_line(violation: Violation) -> str:
+def _github_line(violation: Violation, prefix: str = "") -> str:
     properties: list[str] = []
     if violation.path:
-        properties.append(f"file={_escape_property(violation.path)}")
+        properties.append(
+            f"file={_escape_property(posixpath.join(prefix, violation.path))}"
+        )
     if violation.line:
         properties.append(f"line={violation.line}")
     if violation.column:
