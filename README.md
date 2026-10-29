@@ -704,9 +704,12 @@ this inventory and transitive fixture/helper effects are not traversed. A fixtur
 in a permitted shared conftest can therefore introduce mocking into a domain test
 without this path policy detecting that dependency. Direct production constructors,
 explicit instance annotations and annotated local/conftest fixture returns support
-SMT420. Private instance writes are excluded for immutability probes. Unknown
-factories, untyped fixture return shapes, arbitrary attribute types and reflection
-are not inferred. String target variables and f-strings are outside SMT422's
+SMT420. Consistent known constructor/alias fixture returns and yields are also
+recognized, including fixed tuple components when unpacked. Inferred fixture
+types carry separate provenance; fixture bodies are never executed. Class fixture
+types stay in their own class. Private instance writes are excluded for
+immutability probes. Unknown factories, conflicting fixture outputs, arbitrary
+attribute types and reflection are not inferred. String target variables and f-strings are outside SMT422's
 literal check. A passing static report is not evidence that tests ran or protect
 their intended behavior.
 

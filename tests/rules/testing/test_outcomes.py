@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -100,3 +102,53 @@ def test_typed_conftest_mock_fixture_can_express_an_adapter_contract(
         },
     )
     assert violations(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "complete_comparison", [False, True], ids=["output-loop", "complete-mapping"]
+)
+@pytest.mark.parametrize(
+    "empty_output", [False, True], ids=["real-output", "empty-mutation"]
+)
+def test_codegen_review_is_backed_by_an_executed_empty_output_probe(
+    tmp_path: Path, complete_comparison: bool, empty_output: bool
+) -> None:
+    body = (
+        "assert generate() == expected"
+        if complete_comparison
+        else "for name, content in generate().items():\n        assert expected[name] == content"
+    )
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_non_vacuous_assertions: true}",
+            "app/__init__.py": "",
+            "app/generator.py": "def generate():\n    return "
+            + ("{}" if empty_output else "{'client.py': 'client'}"),
+            "tests/test_generator.py": "from app.generator import generate\ndef test_generator():\n    expected = {'client.py': 'client'}\n    "
+            + body,
+        },
+    )
+    findings = violations(tmp_path)
+    assert [finding.code for finding in findings] == (
+        [] if complete_comparison else ["SMT425"]
+    )
+    executed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_generator.py",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert executed.returncode == int(complete_comparison and empty_output), (
+        executed.stdout + executed.stderr
+    )

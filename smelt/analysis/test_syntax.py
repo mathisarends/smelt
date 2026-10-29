@@ -6,6 +6,7 @@ import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.parsing import resolve_relative
 from smelt.config.patterns import path_matches
 
@@ -84,6 +85,7 @@ class _Binding:
     qualified: str
     kind: str = "symbol"
     provenance: str = "import"
+    items: tuple[_Binding | None, ...] | None = None
 
 
 def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
@@ -104,6 +106,50 @@ def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
 def _instance(qualified: str, provenance: str) -> _Binding:
     return _Binding(
         qualified, "mock" if qualified in _MOCK_TYPES else "instance", provenance
+    )
+
+
+def _fixture_binding(node: ast.AST, env: Mapping[str, _Binding]) -> _Binding | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        try:
+            return _fixture_binding(ast.parse(node.value, mode="eval").body, env)
+        except SyntaxError:
+            return None
+    if isinstance(node, ast.Subscript):
+        origin = _annotation(node.value, env)
+        arguments = (
+            node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+        )
+        if origin in {
+            "typing.Iterator",
+            "typing.Generator",
+            "typing.AsyncIterator",
+            "typing.AsyncGenerator",
+            "collections.abc.Iterator",
+            "collections.abc.Generator",
+            "collections.abc.AsyncIterator",
+            "collections.abc.AsyncGenerator",
+        }:
+            return _fixture_binding(arguments[0], env) if arguments else None
+        if origin in {"builtins.tuple", "typing.Tuple"}:
+            return _Binding(
+                "",
+                "nonempty",
+                "fixture-return",
+                tuple(_fixture_binding(arg, env) for arg in arguments),
+            )
+    qualified = _annotation(node, env)
+    return _instance(qualified, "fixture-return") if qualified else None
+
+
+def _inferred_fixture(binding: _Binding) -> _Binding:
+    return _Binding(
+        binding.qualified,
+        binding.kind,
+        "fixture-inferred",
+        tuple(_inferred_fixture(item) if item else None for item in binding.items)
+        if binding.items is not None
+        else None,
     )
 
 
@@ -376,11 +422,14 @@ class _Visitor(ast.NodeVisitor):
     ) -> None:
         self.result = module
         self.env: dict[str, _Binding] = {
-            name: _Binding(f"builtins.{name}") for name in ("all", "range")
+            name: _Binding(f"builtins.{name}") for name in ("all", "range", "tuple")
         }
         self.module_env = self.env
         self.constructors = constructors
         self.fixtures = fixtures
+        self.defined_fixtures: dict[str, _Binding] = {}
+        self.fixture_outputs: list[_Binding | None] | None = None
+        self.fixture_yielded = False
         self.test: TestFunction | None = None
         self.function_depth = 0
         self.class_name: str | None = None
@@ -410,6 +459,17 @@ class _Visitor(ast.NodeVisitor):
         return None
 
     def value_binding(self, node: ast.AST, *, context: bool = False) -> _Binding | None:
+        if (
+            isinstance(node, ast.Tuple)
+            and node.elts
+            and not any(isinstance(item, ast.Starred) for item in node.elts)
+        ):
+            return _Binding(
+                "",
+                "nonempty",
+                "literal",
+                tuple(self.value_binding(item) for item in node.elts),
+            )
         if isinstance(node, ast.Tuple | ast.Constant) and nonempty_literal(node):
             return _Binding("", "nonempty", "literal")
         if isinstance(node, ast.Call):
@@ -484,6 +544,8 @@ class _Visitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: Function) -> None:
         outer, test = self.env, self.test
+        outer_outputs = self.fixture_outputs
+        outer_yielded = self.fixture_yielded
         fixture = any(
             self.qualified(
                 decorator.func if isinstance(decorator, ast.Call) else decorator
@@ -526,22 +588,24 @@ class _Visitor(ast.NodeVisitor):
         ]
         for arg in arguments:
             self.env.pop(arg.arg, None)
+            class_fixture = f"{self.class_name}.{arg.arg}"
+            fixture_key = class_fixture if class_fixture in self.fixtures else arg.arg
             annotation = (
                 _annotation(arg.annotation, self.env) if arg.annotation else None
             )
             if (
                 self.function_depth == 0
                 and (collected or fixture)
-                and arg.arg in self.fixtures
+                and fixture_key in self.fixtures
             ):
-                self.env[arg.arg] = self.fixtures[arg.arg]
+                self.env[arg.arg] = self.fixtures[fixture_key]
             if annotation:
                 self.env[arg.arg] = _instance(annotation, "annotation")
             if self.function_depth == 0 and (
                 (
                     arg.arg in _MOCKER_FIXTURES
                     and (collected or fixture)
-                    and arg.arg not in self.fixtures
+                    and fixture_key not in self.fixtures
                     and annotation is None
                 )
                 or (
@@ -556,7 +620,7 @@ class _Visitor(ast.NodeVisitor):
                 self.function_depth == 0
                 and arg.arg == "monkeypatch"
                 and (collected or fixture)
-                and arg.arg not in self.fixtures
+                and fixture_key not in self.fixtures
                 and annotation is None
             ):
                 self.env[arg.arg] = _instance(_MONKEYPATCH, "fixture")
@@ -564,13 +628,49 @@ class _Visitor(ast.NodeVisitor):
             self.env[node.args.args[0].arg] = _instance(
                 "unittest.TestCase", "unittest-self"
             )
+        self.fixture_outputs = [] if fixture else None
+        self.fixture_yielded = False
         self.function_depth += 1
         for statement in node.body:
             self.visit(statement)
         self.function_depth -= 1
+        if fixture:
+            self.record_fixture(node, outer)
         self.env = outer
         self.test = test
+        self.fixture_outputs = outer_outputs
+        self.fixture_yielded = outer_yielded
         self.env.pop(node.name, None)
+
+    def record_fixture(self, node: Function, env: Mapping[str, _Binding]) -> None:
+        if self.function_depth != 0:
+            return
+        binding = _fixture_binding(node.returns, env) if node.returns else None
+        outputs = self.fixture_outputs
+        if (
+            not node.returns
+            and outputs
+            and outputs[0] is not None
+            and all(output == outputs[0] for output in outputs)
+            and (self.fixture_yielded or isinstance(node.body[-1], ast.Return))
+        ):
+            binding = _inferred_fixture(outputs[0])
+        fixture_name = node.name
+        for decorator in node.decorator_list:
+            if isinstance(decorator, ast.Call):
+                for keyword in decorator.keywords:
+                    if (
+                        keyword.arg == "name"
+                        and isinstance(keyword.value, ast.Constant)
+                        and isinstance(keyword.value.value, str)
+                    ):
+                        fixture_name = keyword.value.value
+        fixture_key = (
+            f"{self.class_name}.{fixture_name}" if self.class_name else fixture_name
+        )
+        self.defined_fixtures[fixture_key] = binding or _Binding(
+            "", provenance="unknown-fixture"
+        )
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.visit_FunctionDef(node)
@@ -643,15 +743,46 @@ class _Visitor(ast.NodeVisitor):
             )
         self.generic_visit(node)
 
+    def visit_Return(self, node: ast.Return) -> None:
+        self.generic_visit(node)
+        if self.fixture_outputs is not None:
+            self.fixture_outputs.append(
+                self.value_binding(node.value) if node.value else None
+            )
+
+    def visit_Yield(self, node: ast.Yield) -> None:
+        self.generic_visit(node)
+        if self.fixture_outputs is not None:
+            self.fixture_yielded = True
+            self.fixture_outputs.append(
+                self.value_binding(node.value) if node.value else None
+            )
+
+    def visit_YieldFrom(self, node: ast.YieldFrom) -> None:
+        self.generic_visit(node)
+        if self.fixture_outputs is not None:
+            self.fixture_outputs.append(None)
+
+    def bind_target(self, target: ast.AST, binding: _Binding | None) -> None:
+        for name in _names(target):
+            self.env.pop(name, None)
+        if isinstance(target, ast.Name) and binding:
+            self.env[target.id] = binding
+        elif (
+            isinstance(target, ast.Tuple | ast.List)
+            and binding
+            and binding.items is not None
+            and len(target.elts) == len(binding.items)
+        ):
+            for item, value in zip(target.elts, binding.items, strict=True):
+                self.bind_target(item, value)
+
     def visit_Assign(self, node: ast.Assign) -> None:
         self.visit(node.value)
         binding = self.value_binding(node.value)
         for target in node.targets:
             self.visit(target)
-            for name in _names(target):
-                self.env.pop(name, None)
-            if isinstance(target, ast.Name) and binding:
-                self.env[target.id] = binding
+            self.bind_target(target, binding)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         self.visit(node.target)
@@ -807,43 +938,16 @@ class _Visitor(ast.NodeVisitor):
             self.env.pop(name, None)
 
 
-def _declared_fixtures(tree: ast.Module) -> dict[str, _Binding]:
-    """Return annotations only; never treat fixture execution as outcome evidence."""
-    visitor = _Visitor(TestModule(""), frozenset(), {})
-    fixtures: dict[str, _Binding] = {}
-    for node in tree.body:
-        if isinstance(node, ast.Import | ast.ImportFrom):
-            visitor.visit(node)
-        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and any(
-            visitor.qualified(d.func if isinstance(d, ast.Call) else d)
-            in {"pytest.fixture", "pytest_asyncio.fixture"}
-            for d in node.decorator_list
-        ):
-            annotation = node.returns
-            if isinstance(annotation, ast.Subscript) and visitor.qualified(
-                annotation.value
-            ) in {
-                "typing.Iterator",
-                "typing.Generator",
-                "typing.AsyncIterator",
-                "typing.AsyncGenerator",
-                "collections.abc.Iterator",
-                "collections.abc.Generator",
-                "collections.abc.AsyncIterator",
-                "collections.abc.AsyncGenerator",
-            }:
-                annotation = (
-                    annotation.slice.elts[0]
-                    if isinstance(annotation.slice, ast.Tuple)
-                    else annotation.slice
-                )
-            qualified = _annotation(annotation, visitor.env) if annotation else None
-            fixtures[node.name] = (
-                _instance(qualified, "fixture-return")
-                if qualified
-                else _Binding("", provenance="unknown-fixture")
-            )
-    return fixtures
+def _declared_fixtures(
+    tree: ast.Module,
+    path: str,
+    constructors: frozenset[str],
+    inherited: Mapping[str, _Binding],
+) -> dict[str, _Binding]:
+    """Annotations or consistent known returns/yields, never fixture execution."""
+    visitor = _Visitor(TestModule(path), constructors, inherited)
+    visitor.visit(tree)
+    return visitor.defined_fixtures
 
 
 def analyze_test_syntax(
@@ -855,7 +959,12 @@ def analyze_test_syntax(
 ) -> TestModule:
     module = TestModule(path)
     _Visitor(
-        module, constructors, {**(fixtures or {}), **_declared_fixtures(tree)}
+        module,
+        constructors,
+        {
+            **(fixtures or {}),
+            **_declared_fixtures(tree, path, constructors, fixtures or {}),
+        },
     ).visit(tree)
     return module
 
@@ -886,14 +995,36 @@ class TestSyntaxIndex:
             if config.forbid_private_imports
             else frozenset()
         )
-        fixture_scopes = {
-            path.removesuffix("conftest.py"): _declared_fixtures(asts.parse(path))
-            for path in sorted(files.tests)
-            if path.endswith("conftest.py")
-            and not any(
-                path_matches(pattern, path) for pattern in config.quality_exclude
+        if constructors:
+            namespaces = {
+                source.module: namespace_of(
+                    asts.parse(source.path), source.module, is_package=source.is_package
+                )
+                for source in files.sources.values()
+            }
+            constructors |= frozenset(
+                f"{module}.{name}"
+                for module, namespace in namespaces.items()
+                for name in namespace.imported
+                if (resolved := resolve_dotted(f"{module}.{name}", namespaces.get))
+                is not None
+                and f"{resolved[0]}.{resolved[1]}" in constructors
             )
-        }
+        fixture_scopes: dict[str, dict[str, _Binding]] = {}
+        for path in sorted(files.tests, key=lambda path: (path.count("/"), path)):
+            if not path.endswith("conftest.py") or any(
+                path_matches(pattern, path) for pattern in config.quality_exclude
+            ):
+                continue
+            inherited = {
+                name: binding
+                for scope, bindings in fixture_scopes.items()
+                if path.startswith(scope)
+                for name, binding in bindings.items()
+            }
+            fixture_scopes[path.removesuffix("conftest.py")] = _declared_fixtures(
+                asts.parse(path), path, constructors, inherited
+            )
         for path in sorted(files.tests):
             if any(path_matches(pattern, path) for pattern in config.quality_exclude):
                 continue

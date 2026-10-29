@@ -85,12 +85,18 @@ def effective_coverage(
             ),
             "fixture_traversal": False,
             "fixture_return_annotations": True,
+            "fixture_return_inference": "consistent known constructor/alias or fixed tuple; no execution",
             "operation_families": [
                 "unittest.mock",
                 "pytest-mock",
                 "pytest.MonkeyPatch.setattr/delattr",
             ],
-            "instance_provenance": ["constructor", "annotation", "fixture-return"],
+            "instance_provenance": [
+                "constructor",
+                "annotation",
+                "fixture-return",
+                "fixture-inferred",
+            ],
         }
     return report
 

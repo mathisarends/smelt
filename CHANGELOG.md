@@ -12,7 +12,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   `pytest.raises`/`warns` context objects no longer count as checks. Unknown
   `assert_*` methods and fixture execution alone remain insufficient evidence.
 - [SMT420](docs/rules/SMT420.md) tracks direct known production constructors and
-  explicitly typed instance reads; private writes and local fakes are excluded.
+  explicitly typed instance reads, including analyzed facade re-exports and
+  consistent known fixture return/yield tuple components. Unknown/conflicting
+  outputs, private writes and local fakes are excluded; fixture inference has
+  separate provenance and respects class/conftest scope.
   [SMT421–SMT423](docs/rules/SMT422.md) now include MonkeyPatch attribute
   replacement, aliases and context scopes, with operation/provenance metadata.
   MonkeyPatch environment/mapping setup is excluded from the mock count.

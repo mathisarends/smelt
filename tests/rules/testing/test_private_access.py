@@ -136,3 +136,31 @@ def test_annotated_conftest_fixture_scope_and_override(tmp_path: Path) -> None:
         "tests/test_tabs.py",
         "tests/neighbor/test_tabs.py",
     }
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "@pytest.fixture\ndef resource():\n    tabs = Tabs()\n    try:\n        yield tabs, []\n    finally:\n        tabs.close()",
+        "@pytest.fixture\ndef resource():\n    return Tabs(), []",
+        "@pytest.fixture\ndef resource() -> tuple[Tabs, list]:\n    return build()",
+    ],
+)
+def test_returned_fixture_tuple_preserves_known_production_receiver(
+    tmp_path: Path, fixture: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "app/__init__.py": "from .tabs import Tabs as Tabs",
+            "app/tabs.py": "class Tabs: pass",
+            "tests/test_tabs.py": "import pytest\nfrom app import Tabs\n"
+            + fixture
+            + "\ndef test_run(resource):\n    tabs, _ = resource\n    tabs._require_control()",
+        },
+    )
+    [finding] = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    assert finding.expected is not None
+    assert finding.expected["provenance"] in {"fixture-return", "fixture-inferred"}
+    assert finding.expected["private_target"].endswith("Tabs._require_control")

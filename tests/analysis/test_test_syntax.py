@@ -244,3 +244,51 @@ def test_unused_exception_contexts_are_not_outcome_evidence(
 ) -> None:
     [test] = _analyze("import pytest\ndef test_run():\n    " + body).tests
     assert test.has_assertion([]) is recognized
+
+
+@pytest.mark.parametrize(
+    ("fixture", "recognized"),
+    [
+        ("@pytest.fixture\ndef client(): return AsyncMock()", True),
+        ("@pytest.fixture(name='client')\ndef transport(): return AsyncMock()", True),
+        (
+            "@pytest.fixture\ndef client():\n    mock = AsyncMock()\n    yield mock",
+            True,
+        ),
+        (
+            "@pytest.fixture\ndef client():\n    if condition:\n        return unknown()\n    return AsyncMock()",
+            False,
+        ),
+        (
+            "@pytest.fixture\ndef client():\n    if condition:\n        return AsyncMock()",
+            False,
+        ),
+        (
+            "@pytest.fixture\ndef client():\n    def helper(): return AsyncMock()\n    return helper()",
+            False,
+        ),
+    ],
+)
+def test_fixture_results_supply_only_consistent_known_types(
+    fixture: str, recognized: bool
+) -> None:
+    [test] = _analyze(
+        "import pytest\nfrom unittest.mock import AsyncMock\n"
+        + fixture
+        + "\ndef test_run(client): client.assert_awaited_once()"
+    ).tests
+    assert test.has_assertion([]) is recognized
+
+
+def test_class_fixture_types_do_not_leak_to_other_test_classes() -> None:
+    module = _analyze("""
+import pytest
+from unittest.mock import AsyncMock
+class TestFirst:
+    @pytest.fixture
+    def client(self): return AsyncMock()
+    def test_run(self, client): client.assert_awaited_once()
+class TestSecond:
+    def test_run(self, client): client.assert_awaited_once()
+""")
+    assert [test.has_assertion([]) for test in module.tests] == [True, False]
