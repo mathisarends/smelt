@@ -158,3 +158,79 @@ def test_duplicate_patch_calls_keep_separate_baseline_tokens(tmp_path: Path) -> 
         outcome.report.violations, snippet_reader(outcome.context)
     )
     assert len({entry.fingerprint for entry in debt.entries}) == 2
+
+
+@pytest.mark.parametrize(
+    ("expression", "flagged"),
+    [
+        ("monkeypatch.setattr('app.service', replacement)", True),
+        ("monkeypatch.setattr(target='app.service', value=replacement)", True),
+        ("monkeypatch.setattr('app.service', value=replacement)", True),
+        ("monkeypatch.setattr('app.service', replacement, raising=False)", True),
+        ("monkeypatch.delattr('app.service', raising=False)", True),
+        ("monkeypatch.setattr(module, 'service', replacement)", False),
+        ("monkeypatch.setattr(module, name='service', value=replacement)", False),
+        ("monkeypatch.setattr('app', 'service', replacement)", False),
+        ("monkeypatch.delattr(module, 'service')", False),
+        ("monkeypatch.setattr(target, replacement)", False),
+        ("monkeypatch.setenv('APP_ENV', 'test')", False),
+        ("monkeypatch.setitem(mapping, 'app.service', replacement)", False),
+    ],
+)
+def test_monkeypatch_dotted_target_overloads(
+    tmp_path: Path, expression: str, flagged: bool
+) -> None:
+    root = _project(
+        tmp_path,
+        f"def test_run(monkeypatch):\n    {expression}\n",
+        "  forbid_string_patch_targets: true\n",
+    )
+    found = violations(root, CheckOptions(select=("SMT422",)))
+    assert bool(found) is flagged
+    if found:
+        assert found[0].expected is not None
+        assert found[0].expected["family"] == "pytest.MonkeyPatch"
+        assert found[0].expected["provenance"] == "fixture"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def test_run(monkeypatch):\n    replacement = monkeypatch\n    replacement.setattr('app.service', fake)",
+        "import pytest\ndef test_run(mp: pytest.MonkeyPatch): mp.setattr('app.service', fake)",
+        "from pytest import MonkeyPatch as MP\ndef test_run():\n    mp = MP()\n    mp.delattr('app.service')",
+        "def test_run(monkeypatch):\n    with monkeypatch.context() as mp:\n        mp.setattr('app.service', fake)",
+        "from pytest import MonkeyPatch\ndef test_run():\n    with MonkeyPatch.context() as mp:\n        mp.setattr('app.service', fake)",
+    ],
+)
+def test_monkeypatch_aliases_types_and_context_are_counted(
+    tmp_path: Path, source: str
+) -> None:
+    root = _project(
+        tmp_path,
+        source,
+        "  forbid_mocks_in: ['tests/domain/**']\n  forbid_string_patch_targets: true\n  max_patches_per_test: 0\n",
+    )
+    found = violations(root)
+    assert {finding.code for finding in found} == {"SMT421", "SMT422", "SMT423"}
+    assert all(finding.expected is not None for finding in found)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def helper(monkeypatch): monkeypatch.setattr('app.service', fake)",
+        "def test_run(monkeypatch):\n    monkeypatch = unrelated\n    monkeypatch.setattr('app.service', fake)",
+        "import pytest\n@pytest.fixture\ndef monkeypatch(): return unrelated\ndef test_run(monkeypatch): monkeypatch.setattr('app.service', fake)",
+        "def test_run(monkeypatch):\n    monkeypatch.setenv('NAME', 'value')\n    monkeypatch.delenv('NAME')\n    monkeypatch.setitem(mapping, 'key', 'value')\n    monkeypatch.chdir(directory)",
+    ],
+)
+def test_unrelated_monkeypatch_and_environment_setup_are_not_mocks(
+    tmp_path: Path, source: str
+) -> None:
+    root = _project(
+        tmp_path,
+        source,
+        "  forbid_mocks_in: ['tests/domain/**']\n  max_patches_per_test: 0\n",
+    )
+    assert violations(root) == []

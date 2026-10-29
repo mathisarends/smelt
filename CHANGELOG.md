@@ -7,6 +7,20 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Test outcome review now recognizes known mock interaction assertions, annotated
+  fixture receivers and awaited, bounded asyncio Event observations. Unused
+  `pytest.raises`/`warns` context objects no longer count as checks. Unknown
+  `assert_*` methods and fixture execution alone remain insufficient evidence.
+- [SMT420](docs/rules/SMT420.md) tracks direct known production constructors and
+  explicitly typed instance reads; private writes and local fakes are excluded.
+  [SMT421–SMT423](docs/rules/SMT422.md) now include MonkeyPatch attribute
+  replacement, aliases and context scopes, with operation/provenance metadata.
+  MonkeyPatch environment/mapping setup is excluded from the mock count.
+- Optional [SMT425](docs/rules/SMT425.md), [SMT426](docs/rules/SMT426.md) and
+  [SMT427](docs/rules/SMT427.md) review potentially vacuous outcomes, known waits
+  without deadlines/scheduler-clock replacements, and small independent-case loop
+  candidates. They remain advisory and require explicit test policies; no fixer,
+  blanket mock/sleep ban or assertion quota is introduced.
 - Configuration warnings now appear in JSON `configuration_diagnostics`, SARIF
   configuration notifications, GitHub annotations and text summaries. They count
   toward `summary.warnings` and `--fail-on warning`, including scoped/changed

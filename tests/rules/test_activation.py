@@ -62,6 +62,9 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"tests": {"forbid_string_patch_targets": True}}, {"SMT422"}),
         ({"tests": {"max_patches_per_test": 0}}, {"SMT423"}),
         ({"tests": {"require_assertions": True}}, {"SMT424"}),
+        ({"tests": {"require_non_vacuous_assertions": True}}, {"SMT425"}),
+        ({"tests": {"review_test_deadlines": True}}, {"SMT426"}),
+        ({"tests": {"review_case_loops": True}}, {"SMT427"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(

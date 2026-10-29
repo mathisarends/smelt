@@ -628,17 +628,24 @@ tests:
   forbid_string_patch_targets: true
   max_patches_per_test: 2
   require_assertions: true
+  require_non_vacuous_assertions: true
+  review_test_deadlines: true
+  review_case_loops: true
   assertion_helpers: [tests.assertions.assert_user]
-  quality_exclude: ["**/tests/integration/**", "**/tests/e2e/**"]
+  timeout_helpers: [tests.timing.deadline]
+  quality_exclude: []
 ```
 
 | Code | Checks |
 | --- | --- |
-| SMT420 | Explicit private production imports and import-qualified private attributes |
+| SMT420 | Private production imports, module access and direct known/typed instance reads |
 | SMT421 | Recognized mocking operations in the configured test paths, including conftest fixtures |
-| SMT422 | Literal string targets of patch, patch.dict and patch.multiple |
-| SMT423 | Recognized patch calls exceeding the per-test limit, including decorators and patch.object |
+| SMT422 | Literal string targets of patch, patch.dict, patch.multiple and MonkeyPatch setattr/delattr |
+| SMT423 | Recognized patch calls exceeding the per-test limit, including decorators, patch.object and MonkeyPatch attribute replacement |
 | SMT424 | No recognized explicit outcome assertion (warning by default) |
+| SMT425 | Every recognized outcome can disappear or pass trivially on empty input (warning) |
+| SMT426 | Known waits without local deadlines or replacement of the asyncio scheduler clock (warning) |
+| SMT427 | Small literal loops containing candidate independent cases (hint) |
 
 Every policy is opt-in; `0` is a valid patch limit. Globs are relative to the
 configuration root, not each test root. `quality_exclude` does not disable mirror
@@ -648,18 +655,46 @@ suppressions and debt work normally. Plain checks remain read-only.
 The shared analysis recognizes unittest.mock import aliases and the standard
 pytest-mock fixtures (`mocker`, `class_mocker`, `module_mocker`, `package_mocker`,
 `session_mocker`) on test/fixture functions. Explicit MockerFixture annotations
-are also recognized. It accounts for local shadowing and common control-flow
-bindings; unrelated functions named patch or Mock are not mocking evidence.
-Custom fixture overrides with these standard names are outside type resolution.
+are also recognized. MonkeyPatch receivers include the standard `monkeypatch`
+fixture, explicit annotations, constructors, aliases and `.context()` scopes.
+Only its `setattr`/`delattr` attribute replacements count as patches; environment,
+mapping and directory setup remain separate. Local shadowing and common
+control-flow bindings are respected. Locally declared fixture overrides take
+precedence over standard fixture names; external plugin overrides remain unknown.
 
 SMT424 accepts assert other than literal `assert True`, recognized pytest
-exception/warning checks, unittest.TestCase assertions and imported qualified
-assertion helpers. Assertions inside a nested helper or fixture are not attributed
-to a caller. Interaction-only tests are review candidates under this policy;
-boundary-protocol tests and smoke tests can justify an exception. `assert result`
+exception/warning checks, unittest.TestCase assertions, known mock interaction
+assertions and imported qualified assertion helpers. A mere unused
+`pytest.raises(...)` context object supplies no check. Known Mock/AsyncMock
+constructors, simple aliases, default patch context results and explicitly typed
+fixtures establish mock receivers; arbitrary methods named `assert_*` do not.
+An awaited `asyncio.wait_for(known_event.wait(), timeout=...)` also supplies
+observable lifecycle evidence. A frozen scheduler clock can still defeat that
+deadline. Assertions inside a nested helper or fixture are not attributed to a
+caller. Positive validation/smoke tests can justify an exception. `assert result`
 still counts: this rule detects missing explicit checks, not assertion quality,
 reachability or correct behavior. Neither a literal threshold nor syntax proves
 that a test protects a requirement.
+
+SMT425 complements outcome recognition: if every recognized check is inside a
+possibly empty result loop, or is a positive `assert all(...)` over possibly empty
+input, it asks for review. Nonempty literal collections, immutable tuple/string
+aliases and literal builtin `range` calls are recognized. Mutable collection
+aliases remain unknown because other calls can empty them. An additional independent outcome,
+explicit empty-result comparison, or alternative empty case is retained. Prefer
+complete generated/expected mappings over loops that check only returned files.
+This check does not prove collection cardinality or assertion reachability.
+
+SMT426 checks known subprocess calls for their own timeout, and known asyncio
+Event/Task/Future waits for local guards such as `wait_for`, `asyncio.timeout`,
+AnyIO/Trio timeout contexts or configured qualified `timeout_helpers`. Async
+cancellation cannot bound a blocking synchronous subprocess. A known loop's
+`time` replacement is reported separately because its deadlines may freeze too.
+External runner deadlines and general task/fixture flow are not resolved.
+Bounded real-boundary polling and `asyncio.sleep(0)` are valid; positive sleeps
+are not prohibited. SMT427 only suggests parametrization for narrow literal-loop
+candidates and avoids common stateful replay, handoff and transaction lifecycles.
+Review both heuristics in context before treating their findings as defects.
 
 The scope is the discovered `test_*.py`, `*_test.py` and conftest files. Test
 functions use the usual test_ prefix; methods in Test-prefixed classes and direct
@@ -667,9 +702,13 @@ unittest.TestCase/IsolatedAsyncioTestCase subclasses are supported. Custom pytes
 collection settings and inherited tests are not resolved. Helper modules outside
 this inventory and transitive fixture/helper effects are not traversed. A fixture
 in a permitted shared conftest can therefore introduce mocking into a domain test
-without this path policy detecting that dependency. Unknown/dynamic call targets,
-assignment aliases, reflection and instance types are not inferred. String target
-variables and f-strings are outside SMT422's literal check.
+without this path policy detecting that dependency. Direct production constructors,
+explicit instance annotations and annotated local/conftest fixture returns support
+SMT420. Private instance writes are excluded for immutability probes. Unknown
+factories, untyped fixture return shapes, arbitrary attribute types and reflection
+are not inferred. String target variables and f-strings are outside SMT422's
+literal check. A passing static report is not evidence that tests ran or protect
+their intended behavior.
 
 Patch-count comparisons track individual syntactic calls, including multiplicity,
 so accepted debt cannot hide an added or replaced patch. JSON includes policy,

@@ -84,6 +84,13 @@ def effective_coverage(
                 len(module.tests) for module in ctx.test_syntax.modules.values()
             ),
             "fixture_traversal": False,
+            "fixture_return_annotations": True,
+            "operation_families": [
+                "unittest.mock",
+                "pytest-mock",
+                "pytest.MonkeyPatch.setattr/delattr",
+            ],
+            "instance_provenance": ["constructor", "annotation", "fixture-return"],
         }
     return report
 

@@ -25,7 +25,7 @@ class ForbiddenTestMock(BaseRule):
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
         summary="A recognized mocking operation occurs in a test path that forbids mocks.",
-        rationale="Domain tests can exercise real domain objects and injected fakes. This opt-in path policy rejects recognized unittest.mock constructors/patching and standard pytest-mock fixture operations, including setup fixtures. It does not infer arbitrary test doubles or traverse fixture dependencies.",
+        rationale="Domain tests can exercise real domain objects and injected fakes. This opt-in path policy rejects recognized unittest.mock constructors/patching, standard pytest-mock operations and pytest.MonkeyPatch setattr/delattr replacements, including setup fixtures. MonkeyPatch receivers can be the standard fixture, annotated instances, constructors, aliases or context() scopes. MonkeyPatch setenv/delenv, mapping and directory setup are not counted as collaborator replacements. It does not infer arbitrary test doubles or traverse fixture dependencies.",
         bad="from unittest.mock import Mock\ndef test_rule():\n    service = Mock()",
         good="def test_rule():\n    result = calculate_total([10, 20])\n    assert result == 30",
         fix="Use real domain objects or a small fake implementing the port. Keep boundary mocking in explicitly permitted test paths; use a reasoned suppression for an intentional exception.",
@@ -47,6 +47,8 @@ class ForbiddenTestMock(BaseRule):
                         expected={
                             "forbid_mocks_in": patterns,
                             "operation": call.qualified,
+                            "family": call.family,
+                            "provenance": call.provenance,
                         },
                         hint="Exercise the domain with real values and an injected fake instead of a mock.",
                     )
@@ -63,7 +65,7 @@ class StringPatchTarget(BaseRule):
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
         summary="A recognized patch call or decorator uses a literal string target.",
-        rationale="String patch targets encode import paths that refactoring tools may not update. This opt-in convention checks unittest.mock and standard pytest-mock patch, patch.dict and patch.multiple literal targets. It does not claim that patch.object removes implementation coupling; variables and dynamically computed targets are outside this syntax check.",
+        rationale="String patch targets encode import paths that refactoring tools may not update. This opt-in convention checks unittest.mock and standard pytest-mock patch, patch.dict and patch.multiple literal targets, plus the dotted-target forms of pytest.MonkeyPatch setattr/delattr. Object/attribute forms are distinguished by their argument shape. It does not claim that object-based patching removes implementation coupling; variables and dynamically computed targets are outside this syntax check.",
         bad='from unittest.mock import patch\n@patch("app.service.Repository")\ndef test_run(repository): ...',
         good="def test_run():\n    repository = InMemoryRepository()\n    run(repository)\n    assert repository.saved == [42]",
         fix="Prefer an injected collaborator/fake. For deliberate boundary patching, use object-based patching where appropriate and patch the name looked up by the caller. No automatic rewrite is performed.",
@@ -84,6 +86,8 @@ class StringPatchTarget(BaseRule):
                         expected={
                             "forbid_string_patch_targets": True,
                             "operation": call.qualified,
+                            "family": call.family,
+                            "provenance": call.provenance,
                         },
                         hint="Inject the collaborator, or review deliberate object-based boundary patching.",
                     )
@@ -130,7 +134,12 @@ class ExcessiveTestPatches(BaseRule):
                             "patch_edges": edges,
                             "max_patches_per_test": maximum,
                             "patches": [
-                                {"line": call.node.lineno, "operation": call.qualified}
+                                {
+                                    "line": call.node.lineno,
+                                    "operation": call.qualified,
+                                    "family": call.family,
+                                    "provenance": call.provenance,
+                                }
                                 for call in patches
                             ],
                         },

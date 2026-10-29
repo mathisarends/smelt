@@ -286,7 +286,17 @@ def run_check(
             include_inventory=options.show_coverage,
             include_ordering=any(rule.code == "SMT313" for rule, _ in active),
             include_test_quality=any(
-                rule.code in {"SMT420", "SMT421", "SMT422", "SMT423", "SMT424"}
+                rule.code
+                in {
+                    "SMT420",
+                    "SMT421",
+                    "SMT422",
+                    "SMT423",
+                    "SMT424",
+                    "SMT425",
+                    "SMT426",
+                    "SMT427",
+                }
                 for rule, _ in active
             ),
         ),

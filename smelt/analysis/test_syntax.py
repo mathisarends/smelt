@@ -10,7 +10,7 @@ from smelt.analysis.parsing import resolve_relative
 from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from smelt.analysis.files import FileIndex
     from smelt.analysis.parsing import AstCache
@@ -37,16 +37,130 @@ _MOCK_OPERATIONS = frozenset(
         "async_stub",
     }
 )
+_MOCK_TYPES = frozenset(
+    root + name for root in _MOCK_ROOTS for name in _MOCK_OPERATIONS - {"patch", "spy"}
+)
+_MOCK_ASSERTIONS = frozenset(
+    {
+        "assert_called",
+        "assert_called_once",
+        "assert_called_with",
+        "assert_called_once_with",
+        "assert_any_call",
+        "assert_has_calls",
+        "assert_not_called",
+        "assert_awaited",
+        "assert_awaited_once",
+        "assert_awaited_with",
+        "assert_awaited_once_with",
+        "assert_any_await",
+        "assert_has_awaits",
+        "assert_not_awaited",
+    }
+)
+_MONKEYPATCH = "pytest.MonkeyPatch"
+_MAX_RANGE_ARGS = 3
+_CONSTRUCTORS = frozenset(
+    {
+        _MONKEYPATCH,
+        "asyncio.Event",
+        "asyncio.locks.Event",
+        "asyncio.Task",
+        "asyncio.Future",
+        "threading.Event",
+        "subprocess.Popen",
+    }
+)
+_FACTORY_TYPES = {
+    "asyncio.get_running_loop": "asyncio.AbstractEventLoop",
+    "asyncio.get_event_loop": "asyncio.AbstractEventLoop",
+    "asyncio.create_task": "asyncio.Task",
+    "asyncio.ensure_future": "asyncio.Future",
+}
+
+
+@dataclass(frozen=True)
+class _Binding:
+    qualified: str
+    kind: str = "symbol"
+    provenance: str = "import"
+
+
+def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        try:
+            return _annotation(ast.parse(node.value, mode="eval").body, env)
+        except SyntaxError:
+            return None
+    if isinstance(node, ast.Name):
+        binding = env.get(node.id)
+        return binding.qualified if binding else None
+    if isinstance(node, ast.Attribute):
+        parent = _annotation(node.value, env)
+        return f"{parent}.{node.attr}" if parent else None
+    return None
+
+
+def _instance(qualified: str, provenance: str) -> _Binding:
+    return _Binding(
+        qualified, "mock" if qualified in _MOCK_TYPES else "instance", provenance
+    )
+
+
+def nonempty_literal(node: ast.AST) -> bool:
+    if isinstance(node, ast.List | ast.Tuple | ast.Set):
+        return bool(node.elts) and not any(
+            isinstance(item, ast.Starred) for item in node.elts
+        )
+    if isinstance(node, ast.Dict):
+        return bool(node.keys) and None not in node.keys
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, str | bytes)
+        and bool(node.value)
+    )
+
+
+def _nonempty_range(node: ast.Call) -> bool:
+    if node.keywords or not node.args or len(node.args) > _MAX_RANGE_ARGS:
+        return False
+    values: list[int] = []
+    for arg in node.args:
+        sign = 1
+        value = arg
+        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+            sign, value = -1, value.operand
+        if (
+            not isinstance(value, ast.Constant)
+            or not isinstance(value.value, int)
+            or isinstance(value.value, bool)
+        ):
+            return False
+        values.append(sign * value.value)
+    try:
+        sequence = range(*values)
+    except ValueError:
+        return False
+    return (
+        sequence.start < sequence.stop
+        if sequence.step > 0
+        else sequence.start > sequence.stop
+    )
 
 
 @dataclass(frozen=True)
 class TestCall:
     node: ast.Call
     qualified: str
+    provenance: str = "import"
+    mock_receiver: bool = False
 
     @property
     def patch(self) -> bool:
         return self.qualified in {
+            f"{_MONKEYPATCH}.setattr",
+            f"{_MONKEYPATCH}.delattr",
+        } or self.qualified in {
             root + suffix
             for root in _MOCK_ROOTS
             for suffix in ("patch", "patch.object", "patch.dict", "patch.multiple")
@@ -61,9 +175,30 @@ class TestCall:
         )
 
     @property
+    def family(self) -> str:
+        if self.qualified.startswith(f"{_MONKEYPATCH}."):
+            return "pytest.MonkeyPatch"
+        if self.qualified.startswith("pytest_mock."):
+            return "pytest-mock"
+        return "unittest.mock"
+
+    @property
+    def interaction_assertion(self) -> bool:
+        return (
+            self.mock_receiver and self.qualified.rsplit(".", 1)[-1] in _MOCK_ASSERTIONS
+        )
+
+    @property
     def string_target(self) -> bool:
         if not self.patch or self.qualified.endswith(".object"):
             return False
+        if self.qualified.startswith(f"{_MONKEYPATCH}."):
+            # setattr("pkg.name", replacement) vs setattr(obj, "name", replacement).
+            positional = 2 if self.qualified.endswith(".setattr") else 1
+            if len(self.node.args) > positional or any(
+                kw.arg == "name" for kw in self.node.keywords
+            ):
+                return False
         target = (
             self.node.args[0]
             if self.node.args
@@ -85,19 +220,85 @@ class TestFunction:
     name: str
     calls: list[TestCall] = field(default_factory=list)
     assertions: list[ast.Assert] = field(default_factory=list)
+    clock_replacements: list[ast.Attribute | ast.Call] = field(default_factory=list)
+    awaited_tasks: list[tuple[ast.Await, str, str]] = field(default_factory=list)
+    nonempty_iterables: set[ast.expr] = field(default_factory=set)
 
     def has_assertion(self, helpers: list[str]) -> bool:
-        if any(
-            not (isinstance(node.test, ast.Constant) and node.test.value is True)
+        return bool(self.outcome_evidence(helpers))
+
+    def outcome_evidence(self, helpers: list[str]) -> list[ast.Assert | ast.Call]:
+        evidence: list[ast.Assert | ast.Call] = [
+            node
             for node in self.assertions
-        ):
-            return True
-        return any(
-            call.qualified
-            in {"pytest.raises", "pytest.warns", "pytest.deprecated_call", *helpers}
-            or call.qualified.startswith("unittest.TestCase.assert")
+            if not (isinstance(node.test, ast.Constant) and node.test.value is True)
+        ]
+        parents = {
+            child: node
+            for node in ast.walk(self.node)
+            for child in ast.iter_child_nodes(node)
+        }
+        evidence.extend(
+            call.node
             for call in self.calls
+            if (
+                call.qualified in helpers
+                or (
+                    call.qualified
+                    in {"pytest.raises", "pytest.warns", "pytest.deprecated_call"}
+                    and (
+                        isinstance(parents.get(call.node), ast.withitem)
+                        or len(call.node.args)
+                        > (0 if call.qualified == "pytest.deprecated_call" else 1)
+                    )
+                )
+                or call.qualified.startswith("unittest.TestCase.assert")
+                or call.interaction_assertion
+            )
         )
+        waits = {
+            id(call.node)
+            for call in self.calls
+            if call.qualified
+            in {
+                "asyncio.Event.wait",
+                "asyncio.locks.Event.wait",
+            }
+        }
+        awaited = {
+            node.value for node in ast.walk(self.node) if isinstance(node, ast.Await)
+        }
+        evidence.extend(
+            call.node
+            for call in self.calls
+            if (
+                call.qualified == "asyncio.wait_for"
+                and call.node in awaited
+                and call.node.args
+                and id(call.node.args[0]) in waits
+                and _has_timeout(call.node)
+            )
+        )
+        return evidence
+
+
+def _has_timeout(node: ast.Call) -> bool:
+    value = next(
+        (kw.value for kw in node.keywords if kw.arg == "timeout"),
+        node.args[1] if len(node.args) > 1 else None,
+    )
+    return value is not None and not (
+        isinstance(value, ast.Constant) and value.value is None
+    )
+
+
+def _patch_result(node: ast.Call, qualified: str) -> _Binding | None:
+    new_position = 2 if qualified.endswith(".object") else 1
+    if len(node.args) > new_position or any(
+        kw.arg in {"new", "new_callable"} or kw.arg is None for kw in node.keywords
+    ):
+        return None
+    return _instance("unittest.mock.MagicMock", "patch-result")
 
 
 @dataclass
@@ -107,6 +308,9 @@ class TestModule:
     attributes: list[tuple[ast.Attribute, str]] = field(default_factory=list)
     calls: list[TestCall] = field(default_factory=list)
     tests: list[TestFunction] = field(default_factory=list)
+    instance_attributes: list[tuple[ast.Attribute, str, str]] = field(
+        default_factory=list
+    )
 
 
 def _names(node: ast.AST) -> set[str]:
@@ -164,26 +368,81 @@ def _expression_bindings(node: ast.AST) -> set[str]:
 
 
 class _Visitor(ast.NodeVisitor):
-    def __init__(self, module: TestModule) -> None:
+    def __init__(
+        self,
+        module: TestModule,
+        constructors: frozenset[str],
+        fixtures: Mapping[str, _Binding],
+    ) -> None:
         self.result = module
-        self.env: dict[str, str] = {}
+        self.env: dict[str, _Binding] = {
+            name: _Binding(f"builtins.{name}") for name in ("all", "range")
+        }
         self.module_env = self.env
+        self.constructors = constructors
+        self.fixtures = fixtures
         self.test: TestFunction | None = None
         self.function_depth = 0
         self.class_name: str | None = None
         self.unittest = False
 
     def qualified(self, node: ast.AST) -> str | None:
+        binding = self.binding(node)
+        return binding.qualified if binding else None
+
+    def binding(self, node: ast.AST) -> _Binding | None:
         if isinstance(node, ast.Name):
             return self.env.get(node.id)
+        if isinstance(node, ast.Call):
+            return self.value_binding(node)
         if isinstance(node, ast.Attribute):
-            parent = self.qualified(node.value)
-            return f"{parent}.{node.attr}" if parent else None
+            parent = self.binding(node.value)
+            if parent and parent.kind != "member":
+                return _Binding(
+                    f"{parent.qualified}.{node.attr}",
+                    "mock"
+                    if parent.kind == "mock"
+                    else "member"
+                    if parent.kind == "instance"
+                    else "symbol",
+                    parent.provenance,
+                )
+        return None
+
+    def value_binding(self, node: ast.AST, *, context: bool = False) -> _Binding | None:
+        if isinstance(node, ast.Tuple | ast.Constant) and nonempty_literal(node):
+            return _Binding("", "nonempty", "literal")
+        if isinstance(node, ast.Call):
+            return self.call_result(node, context=context)
+        return self.binding(node)
+
+    def call_result(self, node: ast.Call, *, context: bool) -> _Binding | None:
+        qualified = self.qualified(node.func)
+        if qualified == "builtins.range":
+            return (
+                _Binding("", "nonempty", "literal-range")
+                if _nonempty_range(node)
+                else None
+            )
+        if qualified in self.constructors | _MOCK_TYPES | _CONSTRUCTORS:
+            return _instance(qualified, "constructor")
+        if qualified in _FACTORY_TYPES:
+            return _instance(_FACTORY_TYPES[qualified], "known-factory")
+        if qualified == f"{_MONKEYPATCH}.context":
+            return _instance(_MONKEYPATCH, "context")
+        if (
+            qualified
+            and TestCall(node, qualified).patch
+            and not qualified.endswith((".dict", ".multiple"))
+            and not qualified.startswith(f"{_MONKEYPATCH}.")
+            and (context or qualified.startswith("pytest_mock."))
+        ):
+            return _patch_result(node, qualified)
         return None
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
-            self.env[alias.asname or alias.name.split(".")[0]] = (
+            self.env[alias.asname or alias.name.split(".")[0]] = _Binding(
                 alias.name if alias.asname else alias.name.split(".")[0]
             )
             self.result.imports.append((node, alias.name))
@@ -198,7 +457,7 @@ class _Visitor(ast.NodeVisitor):
                 self.env.clear()
                 continue
             qualified = f"{base}.{alias.name}" if base else alias.name
-            self.env[alias.asname or alias.name] = qualified
+            self.env[alias.asname or alias.name] = _Binding(qualified)
             self.result.imports.append((node, qualified))
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -267,16 +526,44 @@ class _Visitor(ast.NodeVisitor):
         ]
         for arg in arguments:
             self.env.pop(arg.arg, None)
+            annotation = (
+                _annotation(arg.annotation, self.env) if arg.annotation else None
+            )
+            if (
+                self.function_depth == 0
+                and (collected or fixture)
+                and arg.arg in self.fixtures
+            ):
+                self.env[arg.arg] = self.fixtures[arg.arg]
+            if annotation:
+                self.env[arg.arg] = _instance(annotation, "annotation")
             if self.function_depth == 0 and (
-                (arg.arg in _MOCKER_FIXTURES and (collected or fixture))
+                (
+                    arg.arg in _MOCKER_FIXTURES
+                    and (collected or fixture)
+                    and arg.arg not in self.fixtures
+                    and annotation is None
+                )
                 or (
                     arg.annotation is not None
                     and self.qualified(arg.annotation) == "pytest_mock.MockerFixture"
                 )
             ):
-                self.env[arg.arg] = "pytest_mock.MockerFixture"
+                self.env[arg.arg] = _Binding(
+                    "pytest_mock.MockerFixture", provenance="fixture"
+                )
+            if (
+                self.function_depth == 0
+                and arg.arg == "monkeypatch"
+                and (collected or fixture)
+                and arg.arg not in self.fixtures
+                and annotation is None
+            ):
+                self.env[arg.arg] = _instance(_MONKEYPATCH, "fixture")
         if self.unittest and node.args.args:
-            self.env[node.args.args[0].arg] = "unittest.TestCase"
+            self.env[node.args.args[0].arg] = _instance(
+                "unittest.TestCase", "unittest-self"
+            )
         self.function_depth += 1
         for statement in node.body:
             self.visit(statement)
@@ -289,17 +576,52 @@ class _Visitor(ast.NodeVisitor):
         self.visit_FunctionDef(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        qualified = self.qualified(node.func)
-        if qualified:
-            call = TestCall(node, qualified)
+        binding = self.binding(node.func)
+        if binding:
+            call = TestCall(
+                node, binding.qualified, binding.provenance, binding.kind == "mock"
+            )
             self.result.calls.append(call)
             if self.test:
                 self.test.calls.append(call)
+                result = self.value_binding(node)
+                if result and result.kind == "nonempty":
+                    self.test.nonempty_iterables.add(node)
+                if (
+                    binding.qualified == f"{_MONKEYPATCH}.setattr"
+                    and len(node.args) > 1
+                    and self.qualified(node.args[0]) == "asyncio.AbstractEventLoop"
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value == "time"
+                ):
+                    self.test.clock_replacements.append(node)
         self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        binding = self.env.get(node.id)
+        if (
+            self.test
+            and isinstance(node.ctx, ast.Load)
+            and binding
+            and binding.kind == "nonempty"
+        ):
+            self.test.nonempty_iterables.add(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         qualified = self.qualified(node)
-        if qualified:
+        receiver = self.binding(node.value)
+        if (
+            qualified == "asyncio.AbstractEventLoop.time"
+            and isinstance(node.ctx, ast.Store)
+            and self.test
+        ):
+            self.test.clock_replacements.append(node)
+        if qualified and receiver and receiver.kind == "instance":
+            if isinstance(node.ctx, ast.Load):
+                self.result.instance_attributes.append(
+                    (node, qualified, receiver.provenance)
+                )
+        elif qualified:
             self.result.attributes.append((node, qualified))
         self.generic_visit(node)
 
@@ -308,17 +630,38 @@ class _Visitor(ast.NodeVisitor):
             self.test.assertions.append(node)
         self.generic_visit(node)
 
+    def visit_Await(self, node: ast.Await) -> None:
+        binding = self.binding(node.value)
+        if (
+            self.test
+            and binding
+            and binding.kind == "instance"
+            and binding.qualified in {"asyncio.Task", "asyncio.Future"}
+        ):
+            self.test.awaited_tasks.append(
+                (node, binding.qualified, binding.provenance)
+            )
+        self.generic_visit(node)
+
     def visit_Assign(self, node: ast.Assign) -> None:
         self.visit(node.value)
+        binding = self.value_binding(node.value)
         for target in node.targets:
+            self.visit(target)
             for name in _names(target):
                 self.env.pop(name, None)
+            if isinstance(target, ast.Name) and binding:
+                self.env[target.id] = binding
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        self.visit(node.target)
         if node.value:
             self.visit(node.value)
-            for name in _names(node.target):
-                self.env.pop(name, None)
+        for name in _names(node.target):
+            self.env.pop(name, None)
+        annotation = _annotation(node.annotation, self.env)
+        if isinstance(node.target, ast.Name) and annotation:
+            self.env[node.target.id] = _instance(annotation, "annotation")
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit(node.value)
@@ -360,9 +703,12 @@ class _Visitor(ast.NodeVisitor):
     def visit_With(self, node: ast.With | ast.AsyncWith) -> None:
         for item in node.items:
             self.visit(item.context_expr)
+            binding = self.value_binding(item.context_expr, context=True)
             if item.optional_vars:
                 for name in _names(item.optional_vars):
                     self.env.pop(name, None)
+                if isinstance(item.optional_vars, ast.Name) and binding:
+                    self.env[item.optional_vars.id] = binding
         for statement in node.body:
             self.visit(statement)
 
@@ -437,6 +783,10 @@ class _Visitor(ast.NodeVisitor):
 
     def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
         test = self.test
+        # Only the outer iterable is evaluated in this scope at construction.
+        binding = self.value_binding(node.generators[0].iter)
+        if test and binding and binding.kind == "nonempty":
+            test.nonempty_iterables.add(node.generators[0].iter)
         self.test = None
         self.visit_ListComp(node)
         self.test = test
@@ -457,9 +807,56 @@ class _Visitor(ast.NodeVisitor):
             self.env.pop(name, None)
 
 
-def analyze_test_syntax(tree: ast.Module, path: str) -> TestModule:
+def _declared_fixtures(tree: ast.Module) -> dict[str, _Binding]:
+    """Return annotations only; never treat fixture execution as outcome evidence."""
+    visitor = _Visitor(TestModule(""), frozenset(), {})
+    fixtures: dict[str, _Binding] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            visitor.visit(node)
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and any(
+            visitor.qualified(d.func if isinstance(d, ast.Call) else d)
+            in {"pytest.fixture", "pytest_asyncio.fixture"}
+            for d in node.decorator_list
+        ):
+            annotation = node.returns
+            if isinstance(annotation, ast.Subscript) and visitor.qualified(
+                annotation.value
+            ) in {
+                "typing.Iterator",
+                "typing.Generator",
+                "typing.AsyncIterator",
+                "typing.AsyncGenerator",
+                "collections.abc.Iterator",
+                "collections.abc.Generator",
+                "collections.abc.AsyncIterator",
+                "collections.abc.AsyncGenerator",
+            }:
+                annotation = (
+                    annotation.slice.elts[0]
+                    if isinstance(annotation.slice, ast.Tuple)
+                    else annotation.slice
+                )
+            qualified = _annotation(annotation, visitor.env) if annotation else None
+            fixtures[node.name] = (
+                _instance(qualified, "fixture-return")
+                if qualified
+                else _Binding("", provenance="unknown-fixture")
+            )
+    return fixtures
+
+
+def analyze_test_syntax(
+    tree: ast.Module,
+    path: str,
+    *,
+    constructors: frozenset[str] = frozenset(),
+    fixtures: Mapping[str, _Binding] | None = None,
+) -> TestModule:
     module = TestModule(path)
-    _Visitor(module).visit(tree)
+    _Visitor(
+        module, constructors, {**(fixtures or {}), **_declared_fixtures(tree)}
+    ).visit(tree)
     return module
 
 
@@ -473,10 +870,39 @@ class TestSyntaxIndex:
             or config.forbid_string_patch_targets
             or config.max_patches_per_test is not None
             or config.require_assertions
+            or config.require_non_vacuous_assertions
+            or config.review_test_deadlines
+            or config.review_case_loops
         )
         if not enabled:
             return
+        constructors = (
+            frozenset(
+                f"{source.module}.{node.name}"
+                for source in files.sources.values()
+                for node in asts.parse(source.path).body
+                if isinstance(node, ast.ClassDef)
+            )
+            if config.forbid_private_imports
+            else frozenset()
+        )
+        fixture_scopes = {
+            path.removesuffix("conftest.py"): _declared_fixtures(asts.parse(path))
+            for path in sorted(files.tests)
+            if path.endswith("conftest.py")
+            and not any(
+                path_matches(pattern, path) for pattern in config.quality_exclude
+            )
+        }
         for path in sorted(files.tests):
             if any(path_matches(pattern, path) for pattern in config.quality_exclude):
                 continue
-            self.modules[path] = analyze_test_syntax(asts.parse(path), path)
+            fixtures = {
+                name: binding
+                for scope in sorted(fixture_scopes, key=len)
+                if path.startswith(scope)
+                for name, binding in fixture_scopes[scope].items()
+            }
+            self.modules[path] = analyze_test_syntax(
+                asts.parse(path), path, constructors=constructors, fixtures=fixtures
+            )

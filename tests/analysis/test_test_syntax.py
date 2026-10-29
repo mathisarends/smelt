@@ -118,3 +118,129 @@ def test_generator_body_does_not_supply_an_assertion_to_its_owner() -> None:
         "import pytest\ndef test_run():\n    checks = (pytest.raises(ValueError) for value in values)"
     )
     assert not result.tests[0].has_assertion([])
+
+
+@pytest.mark.parametrize(
+    ("body", "recognized"),
+    [
+        ("client = AsyncMock()\n    client.assert_awaited_once_with(42)", True),
+        (
+            "client = Mock()\n    alias = client\n    alias.save.assert_called_once()",
+            True,
+        ),
+        ("client = Mock()\n    client.assert_something()", False),
+        (
+            "client = Mock()\n    client = unknown()\n    client.assert_called_once()",
+            False,
+        ),
+        (
+            "client = Mock()\n    if condition:\n        client = unknown()\n    client.assert_called_once()",
+            False,
+        ),
+        ("other.assert_called_once()", False),
+        (
+            "with patch('app.client') as client:\n        client.assert_called_once()",
+            True,
+        ),
+        ("client = Mock\n    client.assert_called_once()", False),
+        ("client = patch('app.client')\n    client.assert_called_once()", False),
+        (
+            "with patch('app.client', replacement) as client:\n        client.assert_called_once()",
+            False,
+        ),
+        (
+            "with patch.multiple('app', client=sentinel) as clients:\n        clients.assert_called_once()",
+            False,
+        ),
+        (
+            "constructor = AsyncMock\n    client = constructor()\n    client.assert_not_awaited()",
+            True,
+        ),
+    ],
+)
+def test_interaction_assertions_require_known_mock_receivers(
+    body: str, recognized: bool
+) -> None:
+    result = _analyze(
+        "from unittest.mock import Mock, AsyncMock, patch\ndef test_run():\n    " + body
+    )
+    assert result.tests[0].has_assertion([]) is recognized
+
+
+@pytest.mark.parametrize(
+    ("source", "recognized"),
+    [
+        (
+            "from unittest.mock import AsyncMock as AM\ndef test_run(client: AM): client.assert_awaited_once()",
+            True,
+        ),
+        (
+            "from unittest.mock import AsyncMock\ndef test_run(client: 'AsyncMock'): client.assert_awaited_once()",
+            True,
+        ),
+        (
+            "import pytest\nfrom unittest.mock import AsyncMock\n@pytest.fixture\ndef client() -> AsyncMock: return AsyncMock()\ndef test_run(client): client.assert_awaited_once()",
+            True,
+        ),
+        (
+            "import pytest\n@pytest.fixture\ndef client():\n    assert ready\n    return unknown\ndef test_run(client): client.assert_called_once()",
+            False,
+        ),
+        ("def test_run(client): client.assert_awaited_once()", False),
+    ],
+)
+def test_typed_mock_fixtures_supply_receiver_types_only(
+    source: str, recognized: bool
+) -> None:
+    assert _analyze(source).tests[0].has_assertion([]) is recognized
+
+
+@pytest.mark.parametrize(
+    ("body", "recognized"),
+    [
+        (
+            "closed = asyncio.Event()\n    await asyncio.wait_for(closed.wait(), timeout=1)",
+            True,
+        ),
+        ("closed = asyncio.Event()\n    await closed.wait()", False),
+        (
+            "closed = asyncio.Event()\n    await asyncio.wait_for(closed.wait(), timeout=None)",
+            False,
+        ),
+        ("await asyncio.wait_for(app.wait(), timeout=1)", False),
+        ("await asyncio.wait_for(command(), timeout=1)", False),
+        (
+            "closed = asyncio.Event()\n    await asyncio.wait_for(closed.wait(), 1)",
+            True,
+        ),
+        (
+            "closed = asyncio.Event()\n    asyncio.wait_for(closed.wait(), timeout=1)",
+            False,
+        ),
+    ],
+)
+def test_bounded_lifecycle_evidence_requires_known_event(
+    body: str, recognized: bool
+) -> None:
+    assert (
+        _analyze("import asyncio\nasync def test_run():\n    " + body)
+        .tests[0]
+        .has_assertion([])
+        is recognized
+    )
+
+
+@pytest.mark.parametrize(
+    ("body", "recognized"),
+    [
+        ("pytest.raises(ValueError)", False),
+        ("manager = pytest.warns(UserWarning)", False),
+        ("pytest.raises(ValueError, operation)", True),
+        ("with pytest.raises(ValueError):\n        operation()", True),
+    ],
+)
+def test_unused_exception_contexts_are_not_outcome_evidence(
+    body: str, recognized: bool
+) -> None:
+    [test] = _analyze("import pytest\ndef test_run():\n    " + body).tests
+    assert test.has_assertion([]) is recognized

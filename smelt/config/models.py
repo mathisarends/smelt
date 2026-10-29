@@ -586,19 +586,19 @@ class TestsConfig(_Model):
     )
     quality_exclude: list[str] = Field(
         default_factory=list,
-        description="Project-relative globs excluded from SMT420-SMT424, independently of test mirroring.",
+        description="Project-relative globs excluded from test-quality checks, independently of test mirroring.",
     )
     forbid_private_imports: bool = Field(
         default=False,
-        description="Reject explicit private production imports and module attribute access from tests (SMT420).",
+        description="Reject private production imports, module access and basic typed/constructor instance reads from tests (SMT420).",
     )
     forbid_mocks_in: list[str] = Field(
         default_factory=list,
-        description="Project-relative test globs forbidding recognized unittest.mock and pytest-mock operations, including fixtures (SMT421).",
+        description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
     )
     forbid_string_patch_targets: bool = Field(
         default=False,
-        description="Reject literal string targets for recognized patch/patch.dict/patch.multiple calls (SMT422).",
+        description="Reject literal string targets for recognized patch/patch.dict/patch.multiple and MonkeyPatch setattr/delattr calls (SMT422).",
     )
     max_patches_per_test: int | None = Field(
         default=None,
@@ -607,11 +607,27 @@ class TestsConfig(_Model):
     )
     require_assertions: bool = Field(
         default=False,
-        description="Warn when a collected test has no nontrivial assert, recognized pytest exception/warning check, unittest assertion or configured helper (SMT424). Syntactic evidence only.",
+        description="Warn when a collected test has no nontrivial assert, recognized pytest/unittest or mock assertion, bounded Event observation or configured helper (SMT424). Syntactic evidence only.",
+    )
+    require_non_vacuous_assertions: bool = Field(
+        default=False,
+        description="Review tests whose only recognized outcomes depend on possibly empty loops or positive all(...) checks (SMT425). Advisory syntax heuristic, not proof of test effectiveness.",
     )
     assertion_helpers: list[str] = Field(
         default_factory=list,
         description="Qualified callable names accepted as assertion evidence, e.g. tests.assertions.assert_user.",
+    )
+    review_test_deadlines: bool = Field(
+        default=False,
+        description="Review known subprocess/Event waits without local bounds and replacement of the asyncio scheduler clock (SMT426). External runner deadlines and unknown/transitive waits are not inferred.",
+    )
+    timeout_helpers: list[str] = Field(
+        default_factory=list,
+        description="Qualified context/wrapper helpers known to bound async waits, e.g. tests.timing.deadline. They do not supply assertion evidence or bound synchronous subprocess calls.",
+    )
+    review_case_loops: bool = Field(
+        default=False,
+        description="Suggest parametrization for narrow independent-case candidates in small literal test loops (SMT427). Stateful lifecycles remain outside the heuristic.",
     )
 
     @field_validator("quality_exclude", "forbid_mocks_in")
@@ -632,7 +648,7 @@ class TestsConfig(_Model):
             result.append(posixpath.normpath(pattern))
         return list(dict.fromkeys(result))
 
-    @field_validator("assertion_helpers")
+    @field_validator("assertion_helpers", "timeout_helpers")
     @classmethod
     def _assertion_helpers(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)

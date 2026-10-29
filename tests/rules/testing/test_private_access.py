@@ -46,3 +46,93 @@ def test_private_production_access(tmp_path: Path, source: str, flagged: bool) -
     if found:
         assert found[0].expected is not None
         assert found[0].expected["private_target"].startswith("app.")
+
+
+@pytest.mark.parametrize(
+    ("source", "provenance"),
+    [
+        (
+            "from app.tabs import Tabs\ndef test_run():\n    tabs = Tabs()\n    tabs._require_control()",
+            "constructor",
+        ),
+        (
+            "from app.tabs import Tabs as Controller\ndef test_run(tabs: Controller): tabs._require_control()",
+            "annotation",
+        ),
+        (
+            "from app.tabs import Tabs\ndef test_run():\n    tabs: Tabs = build()\n    tabs._require_control()",
+            "annotation",
+        ),
+        (
+            "from app.tabs import Tabs\ndef test_run():\n    tabs = Tabs()\n    alias = tabs\n    alias._require_control()",
+            "constructor",
+        ),
+        (
+            "import pytest\nfrom app.tabs import Tabs\n@pytest.fixture\ndef tabs() -> Tabs: return Tabs()\ndef test_run(tabs): tabs._require_control()",
+            "fixture-return",
+        ),
+    ],
+)
+def test_private_instance_reads_have_explicit_provenance(
+    tmp_path: Path, source: str, provenance: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "app/__init__.py": "",
+            "app/tabs.py": "class Tabs:\n    def _require_control(self): pass",
+            "tests/test_tabs.py": source,
+        },
+    )
+    [finding] = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    assert finding.expected is not None
+    assert finding.expected["private_target"] == "app.tabs.Tabs._require_control"
+    assert finding.expected["provenance"] == provenance
+    assert finding.expected["access"] == "instance"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "tabs = unknown()\n    tabs._require_control()",
+        "tabs = Tabs()\n    tabs = unknown()\n    tabs._require_control()",
+        "tabs = Tabs()\n    tabs._secret = 'immutable-probe'",
+        "class Fake:\n        def _require_control(self): pass\n    tabs = Fake()\n    tabs._require_control()",
+    ],
+)
+def test_unknown_receivers_local_fakes_and_instance_writes_are_excluded(
+    tmp_path: Path, body: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "app/__init__.py": "",
+            "app/tabs.py": "class Tabs: pass",
+            "tests/test_tabs.py": "from app.tabs import Tabs\ndef test_run():\n    "
+            + body,
+        },
+    )
+    assert violations(tmp_path, CheckOptions(select=("SMT420",))) == []
+
+
+def test_annotated_conftest_fixture_scope_and_override(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "app/__init__.py": "",
+            "app/tabs.py": "class Tabs: pass",
+            "tests/conftest.py": "import pytest\nfrom app.tabs import Tabs\nfrom collections.abc import Iterator\n@pytest.fixture\ndef tabs() -> Iterator[Tabs]:\n    yield Tabs()",
+            "tests/test_tabs.py": "def test_run(tabs): tabs._require_control()",
+            "tests/local/conftest.py": "import pytest\n@pytest.fixture\ndef tabs(): return Fake()",
+            "tests/local/test_tabs.py": "def test_run(tabs): tabs._require_control()",
+            "tests/neighbor/test_tabs.py": "def test_run(tabs): tabs._require_control()",
+        },
+    )
+    found = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    assert {finding.path for finding in found} == {
+        "tests/test_tabs.py",
+        "tests/neighbor/test_tabs.py",
+    }

@@ -29,6 +29,9 @@
 | [SMT422](SMT422.md) | string-patch-target | tests | policy | error |
 | [SMT423](SMT423.md) | excessive-test-patches | tests | policy | error |
 | [SMT424](SMT424.md) | missing-test-assertion | tests | policy | warning |
+| [SMT425](SMT425.md) | vacuous-test-outcome | tests | policy | warning |
+| [SMT426](SMT426.md) | test-deadline | tests | policy | warning |
+| [SMT427](SMT427.md) | independent-test-cases | tests | policy | hint |
 | [SMT901](SMT901.md) | unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |

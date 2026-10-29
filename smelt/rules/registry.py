@@ -20,14 +20,16 @@ from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
 from smelt.rules.structure.ordering import DefinitionOrder
 from smelt.rules.structure.type_dispatch import PreferMatchTypeDispatch
+from smelt.rules.testing.cases import IndependentTestCases
 from smelt.rules.testing.location import MisplacedTestFile
 from smelt.rules.testing.mocking import (
     ExcessiveTestPatches,
     ForbiddenTestMock,
     StringPatchTarget,
 )
-from smelt.rules.testing.outcomes import MissingTestAssertion
+from smelt.rules.testing.outcomes import MissingTestAssertion, VacuousTestOutcome
 from smelt.rules.testing.private_access import PrivateTestAccess
+from smelt.rules.testing.timing import TestDeadline
 
 
 def builtin_rules() -> list[Rule]:
@@ -59,6 +61,9 @@ def builtin_rules() -> list[Rule]:
         StringPatchTarget(),
         ExcessiveTestPatches(),
         MissingTestAssertion(),
+        VacuousTestOutcome(),
+        TestDeadline(),
+        IndependentTestCases(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         ResolvedDebt(),
