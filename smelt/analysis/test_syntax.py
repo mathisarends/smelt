@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import namespace_of, resolve_dotted
@@ -87,6 +87,9 @@ class _Binding:
     kind: str = "symbol"
     provenance: str = "import"
     items: tuple[_Binding | None, ...] | None = None
+    mock_spec: str | None = None
+    async_callable: str | None = None
+    mock_origin: str | None = field(default=None, compare=False)
 
 
 def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
@@ -106,7 +109,13 @@ def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
 
 def _instance(qualified: str, provenance: str) -> _Binding:
     return _Binding(
-        qualified, "mock" if qualified in _MOCK_TYPES else "instance", provenance
+        qualified,
+        "mock" if qualified in _MOCK_TYPES else "instance",
+        provenance,
+        async_callable=qualified
+        if qualified
+        in {root + name for root in _MOCK_ROOTS for name in ("AsyncMock", "async_stub")}
+        else None,
     )
 
 
@@ -144,14 +153,43 @@ def _fixture_binding(node: ast.AST, env: Mapping[str, _Binding]) -> _Binding | N
 
 
 def _inferred_fixture(binding: _Binding) -> _Binding:
-    return _Binding(
-        binding.qualified,
-        binding.kind,
-        "fixture-inferred",
-        tuple(_inferred_fixture(item) if item else None for item in binding.items)
+    return replace(
+        binding,
+        provenance="fixture-inferred",
+        items=tuple(_inferred_fixture(item) if item else None for item in binding.items)
         if binding.items is not None
         else None,
     )
+
+
+def _class_async_methods(tree: ast.Module, module: str) -> dict[str, frozenset[str]]:
+    decorators = {"staticmethod", "classmethod"}
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom) and node.module == "abc":
+            decorators.update(
+                alias.asname or alias.name
+                for alias in node.names
+                if alias.name == "abstractmethod"
+            )
+        elif isinstance(node, ast.Import):
+            decorators.update(
+                f"{alias.asname or alias.name}.abstractmethod"
+                for alias in node.names
+                if alias.name == "abc"
+            )
+    return {
+        f"{module}.{node.name}": frozenset(
+            method.name
+            for method in node.body
+            if isinstance(method, ast.AsyncFunctionDef)
+            and all(
+                ast.unparse(decorator) in decorators
+                for decorator in method.decorator_list
+            )
+        )
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+    }
 
 
 def nonempty_literal(node: ast.AST) -> bool:
@@ -262,6 +300,16 @@ class TestCall:
 
 
 @dataclass
+class MockObservation:
+    node: ast.Call | ast.Attribute
+    origin: str
+    receiver: str
+    kind: str
+    async_callable: str
+    provenance: str
+
+
+@dataclass
 class TestFunction:
     node: Function
     name: str
@@ -270,6 +318,7 @@ class TestFunction:
     clock_replacements: list[ast.Attribute | ast.Call] = field(default_factory=list)
     awaited_tasks: list[tuple[ast.Await, str, str]] = field(default_factory=list)
     nonempty_iterables: set[ast.expr] = field(default_factory=set)
+    mock_observations: list[MockObservation] = field(default_factory=list)
 
     def has_assertion(self, helpers: list[str]) -> bool:
         return bool(self.outcome_evidence(helpers))
@@ -397,6 +446,7 @@ class _Visitor(ast.NodeVisitor):
         module: TestModule,
         constructors: frozenset[str],
         fixtures: Mapping[str, _Binding],
+        async_specs: Mapping[str, frozenset[str]],
     ) -> None:
         self.result = module
         self.env: dict[str, _Binding] = {
@@ -405,6 +455,7 @@ class _Visitor(ast.NodeVisitor):
         self.module_env = self.env
         self.constructors = constructors
         self.fixtures = fixtures
+        self.async_specs = async_specs
         self.defined_fixtures: dict[str, _Binding] = {}
         self.fixture_outputs: list[_Binding | None] | None = None
         self.fixture_yielded = False
@@ -433,6 +484,13 @@ class _Visitor(ast.NodeVisitor):
                     if parent.kind == "instance"
                     else "symbol",
                     parent.provenance,
+                    async_callable=f"{parent.mock_spec}.{node.attr}"
+                    if parent.mock_spec
+                    and node.attr in self.async_specs.get(parent.mock_spec, ())
+                    else None,
+                    mock_origin=f"{parent.mock_origin}.{node.attr}"
+                    if parent.mock_origin
+                    else None,
                 )
         return None
 
@@ -463,7 +521,23 @@ class _Visitor(ast.NodeVisitor):
                 else None
             )
         if qualified in self.constructors | _MOCK_TYPES | _CONSTRUCTORS:
-            return _instance(qualified, "constructor")
+            binding = _instance(qualified, "constructor")
+            if binding.kind == "mock":
+                spec = next(
+                    (
+                        kw.value
+                        for kw in node.keywords
+                        if kw.arg in {"spec", "spec_set"}
+                        and not isinstance(kw.value, ast.Constant)
+                    ),
+                    node.args[0] if node.args else None,
+                )
+                binding = replace(
+                    binding,
+                    mock_spec=self.qualified(spec) if spec else None,
+                    mock_origin=f"{self.result.path}:{node.lineno}:{node.col_offset}",
+                )
+            return binding
         if qualified in _FACTORY_TYPES:
             return _instance(_FACTORY_TYPES[qualified], "known-factory")
         if qualified == f"{_MONKEYPATCH}.context":
@@ -519,6 +593,11 @@ class _Visitor(ast.NodeVisitor):
         self.class_name = class_name
         self.unittest = unittest
         self.env.pop(node.name, None)
+        qualified = (
+            f"{self.result.path.removesuffix('.py').replace('/', '.')}.{node.name}"
+        )
+        if qualified in self.async_specs:
+            self.env[node.name] = _Binding(qualified)
 
     def visit_FunctionDef(self, node: Function) -> None:
         outer, test = self.env, self.test
@@ -578,7 +657,18 @@ class _Visitor(ast.NodeVisitor):
             ):
                 self.env[arg.arg] = self.fixtures[fixture_key]
             if annotation:
-                self.env[arg.arg] = _instance(annotation, "annotation")
+                existing = self.env.get(arg.arg)
+                self.env[arg.arg] = (
+                    existing
+                    if existing and existing.qualified == annotation
+                    else _instance(annotation, "annotation")
+                )
+            binding = self.env.get(arg.arg)
+            if binding and binding.kind == "mock" and binding.mock_origin is None:
+                self.env[arg.arg] = replace(
+                    binding,
+                    mock_origin=f"{self.result.path}:{node.lineno}:{arg.arg}",
+                )
             if self.function_depth == 0 and (
                 (
                     arg.arg in _MOCKER_FIXTURES
@@ -626,13 +716,20 @@ class _Visitor(ast.NodeVisitor):
         binding = _fixture_binding(node.returns, env) if node.returns else None
         outputs = self.fixture_outputs
         if (
-            not node.returns
-            and outputs
+            outputs
             and outputs[0] is not None
             and all(output == outputs[0] for output in outputs)
             and (self.fixture_yielded or isinstance(node.body[-1], ast.Return))
         ):
-            binding = _inferred_fixture(outputs[0])
+            inferred = _inferred_fixture(outputs[0])
+            if not node.returns:
+                binding = inferred
+            elif (
+                binding
+                and binding.kind == "mock"
+                and binding.qualified == inferred.qualified
+            ):
+                binding = replace(inferred, provenance="fixture-return")
         fixture_name = node.name
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Call):
@@ -673,7 +770,31 @@ class _Visitor(ast.NodeVisitor):
                     and node.args[1].value == "time"
                 ):
                     self.test.clock_replacements.append(node)
+        if isinstance(node.func, ast.Attribute):
+            name = node.func.attr
+            if name in _MOCK_ASSERTIONS and name != "assert_not_called":
+                self.record_mock_observation(
+                    node,
+                    node.func.value,
+                    "await" if "await" in name else "call",
+                )
         self.generic_visit(node)
+
+    def record_mock_observation(
+        self, node: ast.Call | ast.Attribute, receiver: ast.expr, kind: str
+    ) -> None:
+        binding = self.binding(receiver)
+        if self.test and binding and binding.async_callable and binding.mock_origin:
+            self.test.mock_observations.append(
+                MockObservation(
+                    node,
+                    binding.mock_origin,
+                    ast.unparse(receiver),
+                    kind,
+                    binding.async_callable,
+                    binding.provenance,
+                )
+            )
 
     def visit_Name(self, node: ast.Name) -> None:
         binding = self.env.get(node.id)
@@ -701,6 +822,11 @@ class _Visitor(ast.NodeVisitor):
                 )
         elif qualified:
             self.result.attributes.append((node, qualified))
+        if isinstance(node.ctx, ast.Load):
+            if node.attr in {"called", "call_count", "call_args", "call_args_list"}:
+                self.record_mock_observation(node, node.value, "call")
+            elif node.attr in {"await_count", "await_args", "await_args_list"}:
+                self.record_mock_observation(node, node.value, "await")
         self.generic_visit(node)
 
     def visit_Assert(self, node: ast.Assert) -> None:
@@ -745,7 +871,14 @@ class _Visitor(ast.NodeVisitor):
         for name in _names(target):
             self.env.pop(name, None)
         if isinstance(target, ast.Name) and binding:
-            self.env[target.id] = binding
+            self.env[target.id] = (
+                replace(
+                    binding,
+                    mock_origin=f"{self.result.path}:{target.lineno}:{target.id}",
+                )
+                if binding.kind == "mock" and binding.mock_origin is None
+                else binding
+            )
         elif (
             isinstance(target, ast.Tuple | ast.List)
             and binding
@@ -755,22 +888,39 @@ class _Visitor(ast.NodeVisitor):
             for item, value in zip(target.elts, binding.items, strict=True):
                 self.bind_target(item, value)
 
+    def forget_mock_spec(self, target: ast.AST) -> None:
+        if not isinstance(target, ast.Attribute):
+            return
+        receiver = self.binding(target.value)
+        if receiver and receiver.mock_spec and receiver.mock_origin:
+            for name, binding in list(self.env.items()):
+                if binding.mock_origin == receiver.mock_origin:
+                    self.env[name] = replace(binding, mock_spec=None)
+
     def visit_Assign(self, node: ast.Assign) -> None:
         self.visit(node.value)
         binding = self.value_binding(node.value)
         for target in node.targets:
             self.visit(target)
+            self.forget_mock_spec(target)
             self.bind_target(target, binding)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         self.visit(node.target)
         if node.value:
             self.visit(node.value)
+            self.forget_mock_spec(node.target)
         for name in _names(node.target):
             self.env.pop(name, None)
         annotation = _annotation(node.annotation, self.env)
         if isinstance(node.target, ast.Name) and annotation:
-            self.env[node.target.id] = _instance(annotation, "annotation")
+            value = self.value_binding(node.value) if node.value else None
+            binding = (
+                value
+                if value and value.qualified == annotation
+                else _instance(annotation, "annotation")
+            )
+            self.bind_target(node.target, binding)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit(node.value)
@@ -779,6 +929,7 @@ class _Visitor(ast.NodeVisitor):
 
     def visit_Delete(self, node: ast.Delete) -> None:
         for target in node.targets:
+            self.forget_mock_spec(target)
             for name in _names(target):
                 self.env.pop(name, None)
 
@@ -921,9 +1072,10 @@ def _declared_fixtures(
     path: str,
     constructors: frozenset[str],
     inherited: Mapping[str, _Binding],
+    async_specs: Mapping[str, frozenset[str]],
 ) -> dict[str, _Binding]:
     """Annotations or consistent known returns/yields, never fixture execution."""
-    visitor = _Visitor(TestModule(path), constructors, inherited)
+    visitor = _Visitor(TestModule(path), constructors, inherited, async_specs)
     visitor.visit(tree)
     return visitor.defined_fixtures
 
@@ -934,15 +1086,21 @@ def analyze_test_syntax(
     *,
     constructors: frozenset[str] = frozenset(),
     fixtures: Mapping[str, _Binding] | None = None,
+    async_specs: Mapping[str, frozenset[str]] | None = None,
 ) -> TestModule:
     module = TestModule(path)
+    specs = {
+        **(async_specs or {}),
+        **_class_async_methods(tree, path.removesuffix(".py").replace("/", ".")),
+    }
     _Visitor(
         module,
         constructors,
         {
             **(fixtures or {}),
-            **_declared_fixtures(tree, path, constructors, fixtures or {}),
+            **_declared_fixtures(tree, path, constructors, fixtures or {}, specs),
         },
+        specs,
     ).visit(tree)
     return module
 
@@ -960,34 +1118,46 @@ class TestSyntaxIndex:
             or config.require_non_vacuous_assertions
             or config.review_test_deadlines
             or config.review_case_loops
+            or config.review_async_mock_assertions
         )
         if not enabled:
             return
-        constructors = (
-            frozenset(
-                f"{source.module}.{node.name}"
+        source_specs = (
+            {
+                qualified: methods
                 for source in files.sources.values()
-                for node in asts.parse(source.path).body
-                if isinstance(node, ast.ClassDef)
-            )
-            if config.forbid_private_imports
-            else frozenset()
+                for qualified, methods in _class_async_methods(
+                    asts.parse(source.path), source.module
+                ).items()
+            }
+            if config.forbid_private_imports or config.review_async_mock_assertions
+            else {}
         )
-        if constructors:
+        constructors = (
+            frozenset(source_specs) if config.forbid_private_imports else frozenset()
+        )
+        async_specs = dict(source_specs) if config.review_async_mock_assertions else {}
+        if source_specs:
             namespaces = {
                 source.module: namespace_of(
                     asts.parse(source.path), source.module, is_package=source.is_package
                 )
                 for source in files.sources.values()
             }
-            constructors |= frozenset(
-                f"{module}.{name}"
+            aliases = {
+                f"{module}.{name}": f"{resolved[0]}.{resolved[1]}"
                 for module, namespace in namespaces.items()
                 for name in namespace.imported
                 if (resolved := resolve_dotted(f"{module}.{name}", namespaces.get))
                 is not None
-                and f"{resolved[0]}.{resolved[1]}" in constructors
-            )
+                and f"{resolved[0]}.{resolved[1]}" in source_specs
+            }
+            if config.forbid_private_imports:
+                constructors |= frozenset(aliases)
+            if config.review_async_mock_assertions:
+                async_specs.update(
+                    (alias, source_specs[target]) for alias, target in aliases.items()
+                )
         fixture_scopes: dict[str, dict[str, _Binding]] = {}
         for path in sorted(files.tests, key=lambda path: (path.count("/"), path)):
             if not path.endswith("conftest.py") or any(
@@ -1000,8 +1170,17 @@ class TestSyntaxIndex:
                 if path.startswith(scope)
                 for name, binding in bindings.items()
             }
+            async_specs.update(
+                _class_async_methods(
+                    asts.parse(path), path.removesuffix(".py").replace("/", ".")
+                )
+            )
             fixture_scopes[path.removesuffix("conftest.py")] = _declared_fixtures(
-                asts.parse(path), path, constructors, inherited
+                asts.parse(path),
+                path,
+                constructors,
+                inherited,
+                async_specs,
             )
         for path in sorted(files.tests):
             if any(path_matches(pattern, path) for pattern in config.quality_exclude):
@@ -1013,5 +1192,9 @@ class TestSyntaxIndex:
                 for name, binding in fixture_scopes[scope].items()
             }
             self.modules[path] = analyze_test_syntax(
-                asts.parse(path), path, constructors=constructors, fixtures=fixtures
+                asts.parse(path),
+                path,
+                constructors=constructors,
+                fixtures=fixtures,
+                async_specs=async_specs,
             )

@@ -757,6 +757,12 @@
           "description": "Suggest parametrization for narrow independent-case candidates in small literal test loops (SMT427). Stateful lifecycles remain outside the heuristic.",
           "title": "Review Case Loops",
           "type": "boolean"
+        },
+        "review_async_mock_assertions": {
+          "default": false,
+          "description": "Review call-only checks on known async mocks and explicit async class-spec methods without await evidence (SMT428). Advisory; unknown methods and general data flow are not inferred.",
+          "title": "Review Async Mock Assertions",
+          "type": "boolean"
         }
       },
       "title": "TestsConfig",

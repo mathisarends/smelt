@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT428 (`tests.review_async_mock_assertions`) reviews call-only checks
+  on known async mocks and async class-spec methods. Await assertions, deliberate
+  scheduling checks and synchronous methods remain valid. Known fixture specs and
+  simple local history values are traced without executing analyzed code; unknown
+  methods and general data flow remain outside scope. Executed missing-await
+  counterexamples demonstrate the distinction between call and await assertions.
 - `context` text now shows all adopted test-quality review flags, including when
   only the newer policies are enabled.
 - SMT424 recognizes awaited, typed Event observations inside local timeout

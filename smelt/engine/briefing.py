@@ -475,6 +475,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "require_non_vacuous_assertions",
                 "review_test_deadlines",
                 "review_case_loops",
+                "review_async_mock_assertions",
             )
             if policy.get(name)
         ]

@@ -631,6 +631,7 @@ tests:
   require_non_vacuous_assertions: true
   review_test_deadlines: true
   review_case_loops: true
+  review_async_mock_assertions: true
   assertion_helpers: [tests.assertions.assert_user]
   timeout_helpers: [tests.timing.deadline]
   quality_exclude: []
@@ -646,6 +647,7 @@ tests:
 | SMT425 | Every recognized outcome can disappear or pass trivially on empty input (warning) |
 | SMT426 | Known waits without local deadlines or replacement of the asyncio scheduler clock (warning) |
 | SMT427 | Small literal loops containing candidate independent cases (hint) |
+| SMT428 | Call-only assertions on known async mocks without corresponding await evidence (warning) |
 
 Every policy is opt-in; `0` is a valid patch limit. Globs are relative to the
 configuration root, not each test root. `quality_exclude` does not disable mirror
@@ -668,8 +670,10 @@ assertions and imported qualified assertion helpers. A mere unused
 `pytest.raises(...)` context object supplies no check. Known Mock/AsyncMock
 constructors, simple aliases, default patch context results and explicitly typed
 fixtures establish mock receivers; arbitrary methods named `assert_*` do not.
-An awaited `asyncio.wait_for(known_event.wait(), timeout=...)` also supplies
-observable lifecycle evidence. A frozen scheduler clock can still defeat that
+An awaited `asyncio.wait_for(known_event.wait(), timeout=...)` or an equivalent
+Event wait inside a timeout context that raises on expiry also supplies
+observable lifecycle evidence. `move_on_after` and configured timeout helpers
+alone do not. A frozen scheduler clock can still defeat that
 deadline. Assertions inside a nested helper or fixture are not attributed to a
 caller. Positive validation/smoke tests can justify an exception. `assert result`
 still counts: this rule detects missing explicit checks, not assertion quality,
@@ -695,6 +699,19 @@ Bounded real-boundary polling and `asyncio.sleep(0)` are valid; positive sleeps
 are not prohibited. SMT427 only suggests parametrization for narrow literal-loop
 candidates and avoids common stateful replay, handoff and transaction lifecycles.
 Review both heuristics in context before treating their findings as defects.
+
+SMT428 reviews known async interactions checked only through call assertions or
+asserted call history. `assert_called_once_with` can pass even when an async
+operation was never awaited; use `assert_awaited_once_with` when execution matters.
+Direct AsyncMock callables and explicitly async methods on known class specs are
+supported, including aliases and consistent local/conftest fixture returns.
+Synchronous methods, unknown specs and arbitrary children of an unspecced mock
+are not assumed async. An explicit await-history check on the same mock, negative
+call checks or `assert_not_awaited` for intentional scheduling preserve that intent.
+Simple single-assignment locals can carry history into assertions; inherited or
+arbitrarily decorated methods, transitive helpers and general data flow remain
+outside scope. A finding concerns an individual test, not the suite's ability to
+catch the regression. There is no automatic assertion rewrite.
 
 The scope is the discovered `test_*.py`, `*_test.py` and conftest files. Test
 functions use the usual test_ prefix; methods in Test-prefixed classes and direct

@@ -65,6 +65,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"tests": {"require_non_vacuous_assertions": True}}, {"SMT425"}),
         ({"tests": {"review_test_deadlines": True}}, {"SMT426"}),
         ({"tests": {"review_case_loops": True}}, {"SMT427"}),
+        ({"tests": {"review_async_mock_assertions": True}}, {"SMT428"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(

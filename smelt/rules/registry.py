@@ -20,6 +20,7 @@ from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
 from smelt.rules.structure.ordering import DefinitionOrder
 from smelt.rules.structure.type_dispatch import PreferMatchTypeDispatch
+from smelt.rules.testing.awaits import CallOnlyAsyncMock
 from smelt.rules.testing.cases import IndependentTestCases
 from smelt.rules.testing.location import MisplacedTestFile
 from smelt.rules.testing.mocking import (
@@ -64,6 +65,7 @@ def builtin_rules() -> list[Rule]:
         VacuousTestOutcome(),
         TestDeadline(),
         IndependentTestCases(),
+        CallOnlyAsyncMock(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         ResolvedDebt(),

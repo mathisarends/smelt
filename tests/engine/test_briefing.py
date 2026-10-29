@@ -65,6 +65,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
         "require_non_vacuous_assertions",
         "review_test_deadlines",
         "review_case_loops",
+        "review_async_mock_assertions",
     ],
 )
 def test_test_quality_policy_is_available_for_planned_placement(

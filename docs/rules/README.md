@@ -32,6 +32,7 @@
 | [SMT425](SMT425.md) | vacuous-test-outcome | tests | policy | warning |
 | [SMT426](SMT426.md) | test-deadline | tests | policy | warning |
 | [SMT427](SMT427.md) | independent-test-cases | tests | policy | hint |
+| [SMT428](SMT428.md) | async-mock-call-only | tests | policy | warning |
 | [SMT901](SMT901.md) | unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |

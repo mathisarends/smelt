@@ -629,6 +629,10 @@ class TestsConfig(_Model):
         default=False,
         description="Suggest parametrization for narrow independent-case candidates in small literal test loops (SMT427). Stateful lifecycles remain outside the heuristic.",
     )
+    review_async_mock_assertions: bool = Field(
+        default=False,
+        description="Review call-only checks on known async mocks and explicit async class-spec methods without await evidence (SMT428). Advisory; unknown methods and general data flow are not inferred.",
+    )
 
     @field_validator("quality_exclude", "forbid_mocks_in")
     @classmethod
