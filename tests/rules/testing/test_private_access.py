@@ -164,3 +164,22 @@ def test_returned_fixture_tuple_preserves_known_production_receiver(
     assert finding.expected is not None
     assert finding.expected["provenance"] in {"fixture-return", "fixture-inferred"}
     assert finding.expected["private_target"].endswith("Tabs._require_control")
+
+
+def test_private_class_import_does_not_repeat_for_every_public_instance_operation(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "app/__init__.py": "",
+            "app/service.py": "class _Service: pass",
+            "tests/test_service.py": "from app.service import _Service\ndef test_run():\n    service = _Service()\n    service.run()\n    assert service.status == 'ready'\n    service.__str__()\n    service._inspect()",
+        },
+    )
+    found = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    assert [(finding.line, finding.target_module) for finding in found] == [
+        (1, "app.service._Service"),
+        (7, "app.service._Service._inspect"),
+    ]

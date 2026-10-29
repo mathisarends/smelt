@@ -21,7 +21,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   explicitly typed instance reads, including analyzed facade re-exports and
   consistent known fixture return/yield tuple components. Unknown/conflicting
   outputs, private writes and local fakes are excluded; fixture inference has
-  separate provenance and respects class/conftest scope.
+  separate provenance and respects class/conftest scope. A private class import
+  is not reported again for each public instance operation.
   [SMT421–SMT423](docs/rules/SMT422.md) now include MonkeyPatch attribute
   replacement, aliases and context scopes, with operation/provenance metadata.
   MonkeyPatch environment/mapping setup is excluded from the mock count.
