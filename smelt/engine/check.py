@@ -11,7 +11,7 @@ from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
-from smelt.diagnostics.report import Report, RuleMeta
+from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
 from smelt.diagnostics.suppressions import (
     Suppression,
     parse_suppressions,
@@ -286,11 +286,25 @@ def run_check(
             include_inventory=options.show_coverage,
             include_ordering=any(rule.code == "SMT313" for rule, _ in active),
             include_test_quality=any(
-                rule.code in {"SMT420", "SMT421", "SMT422", "SMT423", "SMT424"}
+                rule.code
+                in {
+                    "SMT420",
+                    "SMT421",
+                    "SMT422",
+                    "SMT423",
+                    "SMT424",
+                    "SMT425",
+                    "SMT426",
+                    "SMT427",
+                }
                 for rule, _ in active
             ),
         ),
         project=project_metadata(loaded),
+        configuration_diagnostics=[
+            ConfigurationDiagnostic(loaded.path.name, issue.path, issue.message)
+            for issue in loaded.warnings
+        ],
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
 

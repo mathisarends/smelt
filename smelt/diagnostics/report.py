@@ -8,6 +8,22 @@ type LineReader = Callable[[str, int], str]
 
 
 @dataclass(frozen=True, slots=True)
+class ConfigurationDiagnostic:
+    path: str
+    key: str
+    message: str
+    severity: Severity = Severity.WARNING
+
+    def to_json(self) -> dict[str, str]:
+        return {
+            "path": self.path,
+            "key": self.key,
+            "message": self.message,
+            "severity": self.severity.value,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RuleMeta:
     code: str
     name: str
@@ -53,13 +69,23 @@ class Report:
     # Origin of config-relative paths and their prefix in repository CI reports.
     project: Mapping[str, str] | None = None
     fixes: Mapping[str, Any] | None = None
+    configuration_diagnostics: list[ConfigurationDiagnostic] = field(
+        default_factory=list
+    )
 
     def count(self, severity: Severity) -> int:
-        return sum(1 for v in self.violations if v.severity is severity)
+        return sum(1 for v in self.violations if v.severity is severity) + sum(
+            1
+            for diagnostic in self.configuration_diagnostics
+            if diagnostic.severity is severity
+        )
 
     @property
     def failed(self) -> bool:
-        return any(v.severity.at_least(self.fail_on) for v in self.violations)
+        return any(v.severity.at_least(self.fail_on) for v in self.violations) or any(
+            diagnostic.severity.at_least(self.fail_on)
+            for diagnostic in self.configuration_diagnostics
+        )
 
     @property
     def status(self) -> str:

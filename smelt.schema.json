@@ -677,7 +677,7 @@
           "type": "boolean"
         },
         "quality_exclude": {
-          "description": "Project-relative globs excluded from SMT420-SMT424, independently of test mirroring.",
+          "description": "Project-relative globs excluded from test-quality checks, independently of test mirroring.",
           "items": {
             "type": "string"
           },
@@ -686,12 +686,12 @@
         },
         "forbid_private_imports": {
           "default": false,
-          "description": "Reject explicit private production imports and module attribute access from tests (SMT420).",
+          "description": "Reject private production imports, module access and basic typed/constructor instance reads from tests (SMT420).",
           "title": "Forbid Private Imports",
           "type": "boolean"
         },
         "forbid_mocks_in": {
-          "description": "Project-relative test globs forbidding recognized unittest.mock and pytest-mock operations, including fixtures (SMT421).",
+          "description": "Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
           "items": {
             "type": "string"
           },
@@ -700,7 +700,7 @@
         },
         "forbid_string_patch_targets": {
           "default": false,
-          "description": "Reject literal string targets for recognized patch/patch.dict/patch.multiple calls (SMT422).",
+          "description": "Reject literal string targets for recognized patch/patch.dict/patch.multiple and MonkeyPatch setattr/delattr calls (SMT422).",
           "title": "Forbid String Patch Targets",
           "type": "boolean"
         },
@@ -720,8 +720,14 @@
         },
         "require_assertions": {
           "default": false,
-          "description": "Warn when a collected test has no nontrivial assert, recognized pytest exception/warning check, unittest assertion or configured helper (SMT424). Syntactic evidence only.",
+          "description": "Warn when a collected test has no nontrivial assert, recognized pytest/unittest or mock assertion, bounded Event observation or configured helper (SMT424). Syntactic evidence only.",
           "title": "Require Assertions",
+          "type": "boolean"
+        },
+        "require_non_vacuous_assertions": {
+          "default": false,
+          "description": "Review tests whose only recognized outcomes depend on possibly empty loops or positive all(...) checks (SMT425). Advisory syntax heuristic, not proof of test effectiveness.",
+          "title": "Require Non Vacuous Assertions",
           "type": "boolean"
         },
         "assertion_helpers": {
@@ -731,6 +737,26 @@
           },
           "title": "Assertion Helpers",
           "type": "array"
+        },
+        "review_test_deadlines": {
+          "default": false,
+          "description": "Review known subprocess/Event waits without local bounds and replacement of the asyncio scheduler clock (SMT426). External runner deadlines and unknown/transitive waits are not inferred.",
+          "title": "Review Test Deadlines",
+          "type": "boolean"
+        },
+        "timeout_helpers": {
+          "description": "Qualified context/wrapper helpers known to bound async waits, e.g. tests.timing.deadline. They do not supply assertion evidence or bound synchronous subprocess calls.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Timeout Helpers",
+          "type": "array"
+        },
+        "review_case_loops": {
+          "default": false,
+          "description": "Suggest parametrization for narrow independent-case candidates in small literal test loops (SMT427). Stateful lifecycles remain outside the heuristic.",
+          "title": "Review Case Loops",
+          "type": "boolean"
         }
       },
       "title": "TestsConfig",

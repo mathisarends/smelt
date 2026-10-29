@@ -38,9 +38,6 @@ def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
 
 def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    if args.format == "text":
-        for warning in loaded.warnings:
-            console.warn(str(warning))
     options = CheckOptions(
         strict_coverage=args.strict_coverage,
         show_coverage=args.show_coverage,

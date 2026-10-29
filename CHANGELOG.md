@@ -9,6 +9,49 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 No unreleased behavior changes.
 
+## [0.1.5] - 2026-10-29
+
+### Compatibility and activation
+
+- Existing opted-in test policies can report additional MonkeyPatch operations
+  and known instance accesses. New SMT425-SMT427 review policies remain opt-in;
+  the small default rule set is unchanged. Review legitimate boundary tests
+  rather than exposing internals or imposing a global mock ban.
+- `--fail-on warning` now includes configuration warnings, and unused
+  `pytest.raises`/`warns` context objects no longer count as outcome evidence.
+  A passing static report is not proof of test effectiveness.
+
+### Added and fixed
+
+- `scripts/evaluate.py` supports repeatable agent review loops: compare two import
+  roots on identical config bytes, retain
+  structured recognition changes and independently bounded logs, then optionally
+  execute explicitly selected pytest targets. Invalid analysis, timeouts and
+  incomplete collection remain distinct from test failures; normal checks never
+  execute analyzed tests. See the [evaluation workflow](README.md#evaluate-a-test-quality-change).
+- Test outcome review now recognizes known mock interaction assertions, annotated
+  fixture receivers and awaited, bounded asyncio Event observations. Unused
+  `pytest.raises`/`warns` context objects no longer count as checks. Unknown
+  `assert_*` methods and fixture execution alone remain insufficient evidence.
+- [SMT420](docs/rules/SMT420.md) tracks direct known production constructors and
+  explicitly typed instance reads, including analyzed facade re-exports and
+  consistent known fixture return/yield tuple components. Unknown/conflicting
+  outputs, private writes and local fakes are excluded; fixture inference has
+  separate provenance and respects class/conftest scope. A private class import
+  is not reported again for each public instance operation.
+  [SMT421–SMT423](docs/rules/SMT422.md) now include MonkeyPatch attribute
+  replacement, aliases and context scopes, with operation/provenance metadata.
+  MonkeyPatch environment/mapping setup is excluded from the mock count.
+- Optional [SMT425](docs/rules/SMT425.md), [SMT426](docs/rules/SMT426.md) and
+  [SMT427](docs/rules/SMT427.md) review potentially vacuous outcomes, known waits
+  without deadlines/scheduler-clock replacements, and small independent-case loop
+  candidates. They remain advisory and require explicit test policies; no fixer,
+  blanket mock/sleep ban or assertion quota is introduced.
+- Configuration warnings now appear in JSON `configuration_diagnostics`, SARIF
+  configuration notifications, GitHub annotations and text summaries. They count
+  toward `summary.warnings` and `--fail-on warning`, including scoped/changed
+  checks; rule selection, suppressions and debt cannot hide configuration warnings.
+
 ## [0.1.4] - 2026-10-29
 
 ### Migration: rule activation changed
@@ -103,5 +146,6 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/mathisarends/smelt/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mathisarends/smelt/compare/v0.1.3...v0.1.4
