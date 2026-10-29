@@ -7,8 +7,24 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- A local `0.1.5.dev0` preview and `scripts/evaluate.py` support repeatable agent
-  review loops: compare two import roots on identical config bytes, retain
+No unreleased behavior changes.
+
+## [0.1.5] - 2026-10-29
+
+### Compatibility and activation
+
+- Existing opted-in test policies can report additional MonkeyPatch operations
+  and known instance accesses. New SMT425-SMT427 review policies remain opt-in;
+  the small default rule set is unchanged. Review legitimate boundary tests
+  rather than exposing internals or imposing a global mock ban.
+- `--fail-on warning` now includes configuration warnings, and unused
+  `pytest.raises`/`warns` context objects no longer count as outcome evidence.
+  A passing static report is not proof of test effectiveness.
+
+### Added and fixed
+
+- `scripts/evaluate.py` supports repeatable agent review loops: compare two import
+  roots on identical config bytes, retain
   structured recognition changes and independently bounded logs, then optionally
   execute explicitly selected pytest targets. Invalid analysis, timeouts and
   incomplete collection remain distinct from test failures; normal checks never
@@ -130,5 +146,6 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/mathisarends/smelt/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mathisarends/smelt/compare/v0.1.3...v0.1.4

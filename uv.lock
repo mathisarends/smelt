@@ -782,7 +782,7 @@ wheels = [
 
 [[package]]
 name = "smelt-cli"
-version = "0.1.5.dev0"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "grimp" },
