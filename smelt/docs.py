@@ -20,16 +20,14 @@ def rule_page(rule: Rule) -> str:
     """The reference page for one rule, the same content `smelt explain` prints."""
     doc = rule.explain()
     meta = rule_meta(rule)
-    default = meta.default_severity.value
-    if not meta.enabled_by_default:
-        default = f"off by default ({default} when enabled)"
     lines = [
         f"# {rule.code} {rule.name}",
         "",
         doc.summary,
         "",
         f"- **Category:** {meta.category.value}",
-        f"- **Default severity:** {default}",
+        f"- **Activation:** {meta.activation['mode']} — {meta.activation['description']}",
+        f"- **Severity when active:** {meta.default_severity.value}",
         "",
         "## Why",
         "",
@@ -61,15 +59,14 @@ def rule_index(rules: list[Rule]) -> str:
     lines = [
         "# Rules",
         "",
-        "| Code | Name | Category | Default |",
-        "| --- | --- | --- | --- |",
+        "| Code | Name | Category | Activation | Severity |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for rule in rules:
         meta = rule_meta(rule)
-        default = meta.default_severity.value if meta.enabled_by_default else "off"
         lines.append(
             f"| [{rule.code}]({rule.code}.md) | {rule.name} | "
-            f"{meta.category.value} | {default} |"
+            f"{meta.category.value} | {meta.activation['mode']} | {meta.default_severity.value} |"
         )
     lines += ["", "`smelt rules` prints the same table in the terminal."]
     return "\n".join(lines) + "\n"

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -11,6 +12,10 @@ if TYPE_CHECKING:
 
 
 class MissingTestAssertion(BaseRule):
+    activation = PolicyActivation(
+        "tests.require_assertions is enabled.",
+        lambda config: config.tests.require_assertions,
+    )
     code = "SMT424"
     name = "missing-test-assertion"
     category = Category.TESTS

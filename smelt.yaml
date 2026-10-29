@@ -65,4 +65,5 @@ tests:
   layout: mirror
 
 rules:
+  SMT104: error
   SMT315: error

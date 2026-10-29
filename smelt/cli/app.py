@@ -94,10 +94,14 @@ def _add_check(sub: Subparsers) -> None:
     )
     check.add_argument("--fail-on", choices=["error", "warning"], default="error")
     check.add_argument(
-        "--select", metavar="CODES", help="comma-separated code prefixes"
+        "--select",
+        metavar="CODES",
+        help="run matching code prefixes or ALL, including opt-in rules; policy is still required",
     )
     check.add_argument(
-        "--ignore", metavar="CODES", help="comma-separated code prefixes"
+        "--ignore",
+        metavar="CODES",
+        help="skip matching code prefixes or ALL; strict coverage remains mandatory",
     )
     check.add_argument(
         "--show-hints",

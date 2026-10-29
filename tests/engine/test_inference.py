@@ -562,4 +562,6 @@ class TestDddWorkspace:
         )
         assert warnings == ()
         assert config.tests.mirror == "{root}/{path}/test_{module}.py"
+        assert config.tests.layout == "none"
+        assert config.structure.forbidden_names == []
         assert config.architecture.modules == inferred.modules

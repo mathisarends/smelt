@@ -16,6 +16,7 @@ class _EngineRule(BaseRule):
     """Meta rules are evaluated by the engine after filtering, not by ``check``."""
 
     category = Category.META
+    enabled_by_default = True
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         return iter(())

@@ -664,20 +664,25 @@ def render_config(inferred: InferredConfig) -> str:
     out.extend(
         [
             "",
-            "structure:",
-            "  forbidden_names: [utils, helpers]",
+            "# Optional naming convention:",
+            "# structure:",
+            "#   forbidden_names: [utils, helpers]",
             "",
             "tests:",
-            f"  layout: {inferred.tests_layout}  # mirror | none",
+            "  layout: none  # opt in to mirror after reviewing the test layout",
         ]
     )
     if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:
         out.append(f'  mirror: "{inferred.mirror.pattern}"')
+    if inferred.tests_layout == "mirror":
+        out.append("  # Detected a mirrored layout; use layout: mirror to enforce it.")
     out.extend(
         [
             "",
             "# Severity overrides by rule name or code: error | warning | hint | off",
             "# rules:",
+            "#   SMT104: error  # opt in to import-cycle detection",
+            "#   SMT305: warning  # opt in to unclassified-module hints",
             "#   unclassified-module: off  # same as SMT305: off",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",

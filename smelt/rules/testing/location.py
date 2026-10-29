@@ -12,6 +12,7 @@ from smelt.analysis.exports import resolve_dotted
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import display_module_path
 
@@ -287,6 +288,9 @@ def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
 
 
 class MisplacedTestFile(BaseRule):
+    activation = PolicyActivation(
+        "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
+    )
     code = "SMT401"
     name = "test-location"
     category = Category.TESTS

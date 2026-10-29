@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -43,6 +44,13 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
 
 
 class BundledInstanceAssignment(BaseRule):
+    activation = PolicyActivation(
+        "A package contract requires separate instance assignments.",
+        lambda config: any(
+            contract.instance_assignments == "separate"
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT314"
     name = "bundled-instance-assignment"
     category = Category.STRUCTURE

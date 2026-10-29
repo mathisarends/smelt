@@ -18,6 +18,7 @@ class RuleMeta:
     docs_url: str
     requires: tuple[str, ...] = ()
     config: tuple[str, ...] = ()
+    activation: dict[str, str] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -30,6 +31,7 @@ class RuleMeta:
             "docs_url": self.docs_url,
             "requires": list(self.requires),
             "config": list(self.config),
+            "activation": self.activation,
         }
 
 

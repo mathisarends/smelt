@@ -79,16 +79,26 @@ class CheckOutcome:
 
 
 def rule_meta(rule: Rule) -> RuleMeta:
+    default = bool(getattr(rule, "enabled_by_default", False))
+    activation = getattr(rule, "activation", None)
     return RuleMeta(
         code=rule.code,
         name=rule.name,
         category=rule.category,
         default_severity=rule.default_severity,
-        enabled_by_default=bool(getattr(rule, "enabled_by_default", True)),
+        enabled_by_default=default,
         summary=rule.explain().summary,
         docs_url=docs_url(rule.code),
         requires=tuple(sorted(index.value for index in rule.requires)),
         config=rule.explain().config,
+        activation={
+            "mode": "default" if default else "policy" if activation else "explicit",
+            "description": "Enabled by default."
+            if default
+            else activation.description
+            if activation
+            else "Enable by rule setting or --select.",
+        },
     )
 
 
@@ -122,6 +132,8 @@ def resolve_active_rules(
     known = {rule.code for rule in rules.rules}
     for key in ("select", "ignore"):
         for prefix in getattr(options, key):
+            if prefix.strip().upper() == "ALL":
+                continue
             if not any(code.startswith(prefix.strip().upper()) for code in known):
                 msg = (
                     f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
@@ -136,12 +148,19 @@ def resolve_active_rules(
             _validate_strict_coverage(loaded, options, setting)
             active.append((rule, Severity.ERROR))
             continue
-        explicitly_selected = rule.code in options.select
+        explicitly_selected = bool(options.select) and _matches_prefix(
+            rule.code, options.select
+        )
+        activation = getattr(rule, "activation", None)
         if setting == "off":
             continue
         if setting is not None:
             severity = Severity(setting)
-        elif getattr(rule, "enabled_by_default", True) or explicitly_selected:
+        elif (
+            getattr(rule, "enabled_by_default", False)
+            or explicitly_selected
+            or (activation is not None and activation.matches(loaded.config))
+        ):
             severity = rule.default_severity
         else:
             continue
@@ -175,7 +194,11 @@ def _validate_strict_coverage(
 
 
 def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
-    return any(code.startswith(prefix.strip().upper()) for prefix in prefixes if prefix)
+    return any(
+        prefix.strip().upper() == "ALL" or code.startswith(prefix.strip().upper())
+        for prefix in prefixes
+        if prefix
+    )
 
 
 def _prefix_suggestion(raw: str, known: set[str]) -> str:
@@ -223,6 +246,8 @@ def run_check(
     severity_of = {rule.code: severity for rule, severity in active}
     if options.use_debt and config.debt:
         debt = Debt.load(loaded.root / config.debt)
+        # Inactive rules have not been checked; their debt is not resolved.
+        debt = Debt([entry for entry in debt.entries if entry.code in severity_of])
         violations, known, resolved = debt.match(violations, snippet_reader(ctx))
         in_debt = len(known)
         full_run = not options.paths and not options.changed

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import resolve_relative, type_checking_lines
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -16,6 +17,13 @@ if TYPE_CHECKING:
 
 
 class ImportStyle(BaseRule):
+    activation = PolicyActivation(
+        "A package contract declares an imports style.",
+        lambda config: any(
+            contract.imports is not None
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT308"
     name = "import-style"
     category = Category.STRUCTURE

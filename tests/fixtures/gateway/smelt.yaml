@@ -1,4 +1,6 @@
 version: 1
+rules:
+  SMT104: error
 
 project:
   root_packages: [gateway]

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -11,6 +12,13 @@ if TYPE_CHECKING:
 
 
 class MissingRequiredModule(BaseRule):
+    activation = PolicyActivation(
+        "A package contract requires modules or named public entry points.",
+        lambda config: any(
+            contract.required or contract.public
+            for contract in config.structure.contracts.values()
+        ),
+    )
     code = "SMT307"
     name = "missing-required-module"
     category = Category.STRUCTURE

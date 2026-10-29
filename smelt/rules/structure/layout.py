@@ -30,6 +30,7 @@ def package_location(files: FileIndex, package: PackageDir) -> str:
 
 
 class UnknownLayer(BaseRule):
+    enabled_by_default = True
     code = "SMT301"
     name = "unknown-layer"
     category = Category.STRUCTURE

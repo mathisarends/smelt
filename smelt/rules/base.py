@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from smelt.analysis.context import AnalysisContext, Index
+    from smelt.rules.activation import PolicyActivation
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +50,8 @@ class BaseRule:
     category: Category
     default_severity: Severity = Severity.ERROR
     requires: frozenset[Index] = frozenset()
-    enabled_by_default: ClassVar[bool] = True
+    enabled_by_default: ClassVar[bool] = False
+    activation: ClassVar[PolicyActivation | None] = None
     doc: ClassVar[RuleDoc]
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
