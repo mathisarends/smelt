@@ -63,7 +63,11 @@ def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> 
 
 
 def _edge_field(violation: Violation) -> str | None:
-    return {"SMT104": "cyclic_edges", "SMT313": "ordering_edges"}.get(violation.code)
+    return {
+        "SMT104": "cyclic_edges",
+        "SMT313": "ordering_edges",
+        "SMT423": "patch_edges",
+    }.get(violation.code)
 
 
 def _semantic_edges(violation: Violation) -> list[str]:
