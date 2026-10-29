@@ -20,6 +20,79 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_private_module_convention_is_available_before_writing_a_file(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              contracts:
+                names: {match: app, private_modules: forbid}
+        """,
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/_planned.py"), outcome.report
+    )
+
+    assert briefing.target.planned
+    assert briefing.to_json()["naming_policy"]["private_modules"]["policy"] == "forbid"
+    assert briefing.to_json()["contracts"][0]["private_modules"] == "forbid"
+    assert "private_modules: forbid" in render_briefing(briefing, ctx)
+
+
+def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": """
+            version: 1
+            project: {root_packages: [library]}
+            architecture: {shared: [library]}
+            structure:
+              contracts:
+                surface:
+                  match: library
+                  required: [api]
+                  public: [api]
+                  imports: {style: absolute}
+                  bundle_imports_at: 3
+        """,
+            "library/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "library/api.py"), outcome.report
+    )
+    private = build_briefing(
+        ctx, resolve_target(ctx, "library/storage.py"), outcome.report
+    )
+    project = build_briefing(ctx, resolve_target(ctx, None), outcome.report)
+    text = render_briefing(briefing, ctx)
+
+    assert briefing.target.planned
+    assert briefing.to_json()["contracts"][0]["target_public"] is True
+    assert private.to_json()["contracts"][0]["target_public"] is False
+    assert project.to_json()["contracts"][0]["package"] == "library"
+    assert "Required: library.api" in text
+    assert "Public: library.api" in text
+    assert "Missing: library.api" in text
+    assert briefing.to_json()["import_style"]["style"] == "absolute"
+    assert "Bundling hint: from 3" in text
+    assert "Import style: absolute" in text
+
+
 @pytest.fixture(scope="module")
 def outcome() -> CheckOutcome:
     return run_check(load_config(GATEWAY / "smelt.yaml"), CheckOptions())

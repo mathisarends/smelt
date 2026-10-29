@@ -1,528 +1,31 @@
-# Smelt review: reliable architecture checks for coding agents
+# Smelt review: remaining gaps for agent verification
 
-Reviewed on 2026-10-28. Smelt checkout: `6fc6763` (version 0.1.3).
-Practical target: `C:/FH/FEP/maximus-trading`, working tree at HEAD
-`5805b5e1386ec420f54d726f343d767bbacbfc16`.
+Updated on 2026-10-28. This is an open backlog, not a history of completed fixes.
+Resolved findings and their reproductions remain available in Git and the merged
+pull requests. The real projects below are evaluation examples; Smelt's contracts
+must generalize across repository layouts, frameworks and naming conventions.
 
-## Follow-up: generalized policy coverage (C01)
+Smelt can enforce declared Python architecture and explain failures to an agent.
+A green result still needs a precise scope: which source was discovered, which
+imports were modeled, which rules ran and which policy changes were accepted.
+It does not establish behavioral correctness or whether code was AI-generated.
 
-Implemented in [df25b6a](https://github.com/mathisarends/smelt/commit/df25b6acf3c013c1771883ce7d2fc429c946505c).
-The real projects are evaluation examples, not inputs to project-specific rules.
-The coverage implementation does not branch on their names, frameworks or DDD
-layer names. It uses the repository's declared roots and architecture roles.
+## C02 — Module interfaces do not define symbol or importer visibility
 
-- `project.coverage: strict` / `--strict-coverage` inventories production source
-  independently of package selection and reports SMT306 for uncovered or
-  unclassified code. Deliberate exclusions need a path and nonempty reason.
-- Coverage gaps remain visible through changed/path/selection filters and cannot
-  be accepted as debt or hidden by inline/config ignores. Invalid workspace
-  metadata fails strict analysis rather than implying complete discovery.
-- `context` explains uncovered files and whether a planned placement has a policy.
-  It never describes a planned file as analyzed. `--show-coverage` adds the full
-  per-file inventory; normal reports remain compact.
-- Pure package facades and standard metadata are accepted. Implementation in an
-  unclassified initializer needs a role. Feature-only architectures remain valid
-  without inventing layers, and text output groups files sharing one decision.
+Package contracts can designate public entry modules and require a repeated
+module layout. Remaining interface needs include symbol-level exports, designated
+friend packages, and explicit importer visibility. A public module currently makes
+all its statically imported symbols accessible under the module contract; this is
+not an `__all__` or attribute-access enforcement mechanism.
 
-Portability regressions cover a flat library with no package manager, arbitrary
-layer and import-root names, multiple roots without uv, feature-only architecture,
-namespace packages, generated-code exclusions, standalone scripts and malformed
-metadata. These fixtures exercise general contracts rather than copying the
-real projects' approved structures.
+Define those semantics before extending the config. Keep intentional symbol
+re-exports valid, keep module-valued aliases distinguishable from symbols, and
+ensure any exception is visible in both `context` and machine reports. Public
+entry points must continue to obey the existing layer and feature policies.
 
-Validation: **448 tests passed, 1 skipped** locally on Windows/Python 3.14; Ruff,
-formatting, Mypy, commit hooks and Smelt's own strict check pass. The wheel builds
-and the new check/context/explain paths were smoke-tested outside the checkout.
+## C03 — Dynamic loading is outside the dependency graph
 
-Read-only evaluation under the existing target policies found **100 uncovered
-source files**: browser (65), browser_protocol (2), and browser_client (33). The
-root's two existing dependency findings remain. Hermes has one unclassified
-strategy entry point; strict output reports it once, without duplicating SMT301.
-Neither target configuration nor any target source was changed. Smelt itself has
-complete strict policy assignment.
-
-Scope remains explicit: this proves policy assignment for discovered Python source
-under configured source roots and declared workspace members. Projects outside uv
-supply their roots directly. Separate runtimes outside that discovery scope still
-need separate checks. It does not prove behavior or the completeness of dynamic
-imports. Public package interfaces, policy-change review and multi-config
-aggregation remain follow-ups; no architecture shape is prescribed globally.
-
-## Resolution status after implementation
-
-**All eleven reproduced implementation defects F01–F11 are SOLVED.** Their
-individual sections retain the original reproduction and link the fixing commit.
-The assessment and measurements below describe the original 0.1.3 checkout; this
-section records the subsequent validation of the fixes.
-
-| Findings | Fix commit |
-| --- | --- |
-| F01, F05, F06, F07, F08, F09 | [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce) |
-| F02, F03, F04, F10, F11 | [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae) |
-| F07, grouped aliases in one external import | [36a621f](https://github.com/mathisarends/smelt/commit/36a621f52fcba117b6d176decf2abfc74d3cf3c8) |
-
-Validation of the implementation: **408 tests passed, 1 skipped** on Python 3.14
-and Windows. Ruff, formatting, Mypy, Smelt's self-check and the repository's commit
-hooks pass. Regressions cover growing and splitting cycle groups, pruning without
-accepting new debt, unrelated facade exports, duplicate package definitions, YAML
-merges, invalid encodings and nested CI paths as well as the original reproducers.
-The sdist and wheel build successfully; the wheel was smoke-tested outside the
-checkout for `rules`, `explain`, schema output and a real boundary violation.
-
-Read-only checks on the same real project now show:
-
-- Root configuration: **2 errors**, consisting of the existing `auth -> user ->
-  auth` group cycle and a newly exposed `steering.presentation -> llm.presentation`
-  dependency. The latter comes from symbols re-exported through
-  `conversation.presentation` and was hidden before F02 was fixed.
-- Hermes: **1 error**, the existing strategy `__main__.py` classification decision.
-- **All 25 declared-wiring false positives are gone.** No consuming configuration
-  was relaxed and no debt or suppressions were added.
-- The inferred starter configuration now loads and analyzes **996 modules**. It
-  reports 222 policy errors and 117 warnings under its draft policy, rather than
-  failing to locate its own inferred packages. That draft is not an approved policy
-  and was not installed in the target.
-- Both fixed `--changed` checks against HEAD pass with zero introduced findings.
-- JSON reports identify their config/project/repository roots. Hermes CI locations
-  now resolve under `hermes/` from the checkout root.
-
-C01–C08 remain design/workflow follow-ups, outside this logic-fix PR. The stale
-README description noted in C07 was corrected; strict profiles were not added.
-Existing cycle/indirect debt may require re-review because the old fingerprints
-cannot prove which full dependency was accepted; this compatibility change is
-explained in the README. Original source links refer to the audited commit.
-
-## Original assessment
-
-Smelt is a useful foundation for an agent-facing Python architecture checker. The
-separation between configuration, classification, analysis, rules, reporting and CLI
-is clear. `context`, `explain`, JSON errors, diagnostic groups, baseline support and
-the distinction between full and changed checks are valuable product decisions.
-
-**It is not yet reliable enough to be the sole architecture verification gate for
-an autonomous agent.** I reproduced both false negatives that return `passed` and
-false positives that make the approved architecture of maximus-trading fail. These
-are more urgent than adding a large catalogue of code smells.
-
-For the intended “AI slop linter”, the useful promise is: detect concrete unwanted
-changes, explain the violated policy, and make a green result precise. The current
-rule set primarily covers import boundaries, layout, names and test paths. It does
-not assess whether a new abstraction is justified, whether behavior is tested, or
-whether code was generated by AI. Those are distinct capabilities and should have
-explicit contracts and confidence levels.
-
-Recommended priority: **fix analysis and diff correctness, enforce coverage, add
-public API contracts, and integrate the existing quality tools into the agent
-workflow.** Expand into project-specific semantic rules after that.
-
-## Scope and evidence
-
-I inspected the implementation and tests, ran the existing checks, exercised the
-local CLI against both maximus-trading configurations, generated a starter policy
-in memory, and built independent adversarial fixtures. I did not modify the target
-project, approve its existing violations, create debt baselines, or change Smelt's
-implementation.
-
-All executable checks here used the local Smelt source and its existing Python
-3.14 environment on Windows. This does not establish results on Python 3.12/3.13,
-Linux/macOS, or a freshly installed wheel. The target project's own commands pin
-Smelt 0.1.3 and Python 3.13; those wrappers were inspected rather than executed.
-
-| Check | Observed result |
-| --- | --- |
-| Existing test suite | **371 passed, 1 skipped**, 17.54 s; writable temporary directory configured for the sandbox |
-| Ruff | Passed |
-| Mypy | Passed; 107 source files |
-| Smelt checking itself | Passed; 64 source modules, 94 analyzed files |
-| maximus-trading root configuration, full | Exit 1; 839 modules, 1,083 files, 20 errors |
-| maximus-trading Hermes configuration, full | Exit 1; 180 modules, 223 files, 7 errors |
-| Root configuration, `--changed` against HEAD | Exit 0; no introduced findings |
-| Hermes configuration, `--changed` against HEAD | Exit 0; no introduced findings |
-| Root `context conversation --format json` | Exit 0; structured policy briefing, no analysis error |
-| Starter configuration inferred from maximus-trading | Fails subsequent validation/analysis because source roots shadow each other |
-
-The full scans took approximately 7.0 s and 1.7 s respectively. The root changed
-scan took approximately 14.0 s. These are individual observations, not a controlled
-performance benchmark. A sandbox Git access restriction affected the first Hermes
-changed attempts; the read-only rerun outside that restriction succeeded. That
-restriction is not counted as a Smelt defect.
-
-The real-project error breakdown is especially informative:
-
-- Root: **19 SMT301 findings on declared feature wiring modules**, plus one
-  feature-level `auth -> user -> auth` cycle.
-- Hermes: **6 SMT301 findings on declared feature wiring modules**, plus one on
-  `features/strategies/__main__.py`.
-- Thus **25 of the 27 errors are the same wiring classification defect**. The
-  strategy entry point needs an explicit policy decision. The feature cycle is a
-  real dependency between architectural groups, but is not evidence by itself of
-  a connected Python module cycle or an import-time failure.
-
-Passing the shipped tests establishes the existing behavior. The independently
-reproduced cases below show where those tests do not establish the intended
-guarantees.
-
-## Reproduced implementation defects
-
-P1 means address before relying on Smelt as the architecture gate in this project.
-P2 means a concrete correctness or integration problem with a narrower trigger.
-Each finding below was exercised; later product gaps are identified separately.
-
-### F01 — P1: explicitly declared wiring is rejected by SMT301 — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-
-Source: [UnknownLayer._loose_modules](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/structure/layout.py#L102).
-
-`architecture.wiring: [backend.features.*.feature]` correctly classifies a
-`feature.py` module as wiring. Dependency rules honor that classification. The
-loose-module branch of SMT301 only exempts modules with a layer or a shared/root
-kind; it never exempts `info.wiring`.
-
-Minimal trigger:
-
-```yaml
-architecture:
-  features: {root: app.features}
-  wiring: [app.features.a.feature]
-  layers:
-    domain: {path: domain}
-```
-
-An existing `app/features/a/feature.py` still produces an error instructing the
-agent to move it into a layer. This contradicts both the declared exception and
-the assembly layout approved in maximus-trading's `AGENTS.md`.
-
-**Impact:** every new feature assembly starts with a false error. The fix hint
-encourages a structural change that the consuming repository explicitly forbids.
-
-**Fix:** apply the wiring exception consistently to both loose modules and child
-packages. Preserve SMT106 restrictions on who may import wiring. Add regressions
-for feature-root wiring, nested adapter wiring, and a neighboring undeclared
-module that must still fail. Do not solve this by disabling SMT301 globally.
-
-### F02 — P1: re-exports bypass feature and central-layer boundaries — SOLVED
-
-**Status: SOLVED** in [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae).
-
-Sources: [LayerBoundary._indirect_targets](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/dependencies/layers.py#L137),
-[CrossFeatureImport.check](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/dependencies/features.py#L43),
-[UnclassifiedModule.check](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/structure/layout.py#L155).
-
-With `transitive: true`, cross-feature denial enabled, and `--fail-on warning`, this
-fixture returns **exit 0 with no findings**:
-
-```python
-# app/__init__.py
-from app.features.b.application.service import Service
-
-# app/features/a/domain/model.py
-from app import Service
-```
-
-The `a` domain now consumes another feature's application implementation through
-the root facade. SMT102 checks direct edges only. The root facade has no feature
-or layer, and SMT305 skips package initializers. SMT101's transitive traversal
-does not report a foreign feature as a forbidden target.
-
-A second fixture also passes:
-
-```python
-# architecture.modules maps app.platform to infrastructure
-# app/__init__.py
-from app.platform.db import Db
-
-# app/features/a/domain/model.py
-from app import Db
-```
-
-Here the final target is a central infrastructure module. Its `feature=None`
-differs from the source feature, and the transitive traversal does not apply the
-central-module case supported by the direct checker.
-
-**Fix:** resolve the imported symbol's provider across facades and apply the same
-boundary predicates to the resolved target. A shared traversal should preserve
-source, facade path, final target and exemption semantics for SMT101/102/105/106.
-Do not simply treat every reachable implementation dependency as a direct
-dependency: legitimate ports and assembly have different semantics from a facade
-re-exporting a concrete class. Test those cases separately.
-
-### F03 — P1: an existing cycle can conceal a newly introduced cycle — SOLVED
-
-**Status: SOLVED** in [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae).
-
-Sources: [ImportCycle._report](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/dependencies/cycles.py#L138),
-[changed comparison](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/check.py#L223).
-
-Reproduction, all modules inside the same allowed layer:
-
-```text
-Committed graph:  a -> b -> a      c is independent
-New graph:        a -> b -> a      b -> c -> b
-```
-
-The full checker reports only `a -> b -> a` before and after the change. It emits
-one shortest witness from the smallest node of each strongly connected component.
-`--changed` subtracts the old finding and returns **exit 0, no findings**, even
-though `c` has joined the cyclic dependency group and a new cycle exists.
-
-**Impact:** incremental adoption and baselined repositories can accumulate new
-cyclic dependencies while the agent's prescribed verification stays green. This
-also qualifies the README's claim that new cycles are caught by changed checks.
-
-**Fix:** retain a readable witness for presentation, but compare semantic cyclic
-state: component membership and newly cyclic dependency edges. Do not enumerate
-every simple cycle; that can be exponential. Add regressions for SCC expansion,
-new edges inside an existing SCC, and an unchanged cycle after unrelated edits.
-
-### F04 — P1: indirect findings have a fingerprint for the facade, not the violation — SOLVED
-
-**Status: SOLVED** in [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae).
-
-Sources: [fingerprint](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/diagnostics/debt.py#L45),
-[transitive finding construction](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/dependencies/layers.py#L93).
-
-In a layered project without features, I committed:
-
-```text
-app.domain.service -> app facade -> app.infrastructure.db
-```
-
-Then replaced the imported symbol and its facade export so the path became:
-
-```text
-app.domain.service -> app facade -> app.presentation.api
-```
-
-Both full scans correctly report SMT101, with different forbidden target layers.
-The second `--changed` scan nevertheless returns **exit 0**. Both diagnostics set
-`target_module` to the first hop, `app`. The fingerprint excludes the final target,
-chain and forbidden layer, so it identifies both violations as the same debt.
-
-**Fix:** distinguish the import location used for the fix from the semantic
-dependency used for identity. Fingerprint the violated source/target contract,
-including the effective final target, while preserving tolerance for comments,
-aliases and line shifts. Version the baseline format or provide migration logic.
-The same matcher is used for debt, so this needs both changed and debt tests.
-
-### F05 — P1: split namespace packages are silently only partly analyzed — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-
-Source: [FileIndex._discover_sources](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/analysis/files.py#L78).
-
-```yaml
-project:
-  root_packages: [acme]
-  source_roots: [one/src, two/src]
-```
-
-```text
-one/src/acme/domain/service.py       # imports acme.infrastructure.db
-two/src/acme/infrastructure/db.py
-```
-
-These are namespace packages without initializers. The checker reports **one
-module, no violations, exit 0**, including with `--fail-on warning`. Discovery
-breaks after the first directory matching a root package. The second portion and
-its layer are absent from the index, and the graph/index completeness check cannot
-find files absent from both sides.
-
-**Fix:** merge legitimate namespace portions across source roots. Detect duplicate
-module definitions and report their competing paths. For ordinary packages, model
-Python's shadowing explicitly and reject ambiguous policy coverage rather than
-silently hiding a directory. Add a discovery manifest listing every considered
-root and whether it was selected, merged, excluded or shadowed.
-
-### F06 — P1: starter inference produces an unusable policy on the real monorepo — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-
-Sources: [infer_config](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/inference.py#L121),
-[render_config](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/inference.py#L634),
-[source discovery](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/analysis/files.py#L78).
-
-I ran `infer_config()` and `render_config()` against maximus-trading without writing
-to that repository, then loaded and checked the result with the original project
-directory as its root. The generated source roots start with:
-
-```yaml
-source_roots: [., backend/src, browser/src, e2e/stack/src, ...]
-```
-
-The inferred package list includes `browser` twice, and inferred wiring includes
-bogus names such as `browser.src.browser.app`. On reloading, `.` causes the
-repository's `backend/` and `browser/` project directories to win over their actual
-`src` packages. Validation then says `backend.features`, `backend.shared`,
-`backend.app` and many inferred wiring targets do not exist.
-
-**Impact:** the advertised initialization path does not work on the representative
-target without substantial manual repair. Some suggestions point into
-`backend.tests` instead of the production package.
-
-**Fix:** establish unambiguous package-to-directory ownership before inference.
-Workspace members should resolve to their build/import roots, and inferred dotted
-names must use that same mapping. Validate the rendered configuration in memory
-before offering to write it. Add a real-layout regression with workspace project
-directories named after their contained packages and Python tooling at the root.
-
-### F07 — P2: multiple import statements on one line corrupt third-party policy checks — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-Grouped aliases such as `import sqlalchemy.orm, sqlalchemy.sql` are also checked
-individually, covered by [36a621f](https://github.com/mathisarends/smelt/commit/36a621f52fcba117b6d176decf2abfc74d3cf3c8).
-
-Source: [import statement lookup](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/analysis/imports.py#L243).
-
-For a domain allowing only `pydantic` as a third-party package, the exact Python
-input must stay on one line:
-
-```text
-from requests import Session; from pydantic import BaseModel
-```
-
-The checker returns **exit 0, no findings**. `_statements_by_line` keeps only the
-last AST import on each line, so the `requests` edge is described using the
-`pydantic` statement. SMT103 evaluates the wrong imported names.
-
-**Fix:** match graph details to individual AST statements and their aliases using
-line, column and target. Add mixed imports, repeated imports, semicolons and
-multiline cases. Ruff can reject this formatting, but the architecture checker's
-own answer must remain correct when invoked independently.
-
-### F08 — P2: duplicate YAML keys can silently remove architecture policy — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-
-Source: [load_yaml](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/config/loader.py#L40).
-
-Appending a second `architecture: {}` to the direct-violation fixture makes it
-return **exit 0**. The loader accepts duplicate mapping keys and keeps the last
-value. Pydantic sees only the overwritten result and cannot diagnose the lost
-layer restrictions.
-
-**Fix:** reject duplicate keys with both YAML locations, including nested mappings.
-Explicitly define how YAML merges are handled. Add a regression showing that
-duplicate `architecture`, `layers`, rule codes and project roots cannot silently
-replace policy.
-
-### F09 — P2: invalid config encoding breaks the JSON and exit-code contract — SOLVED
-
-**Status: SOLVED** in [2752a7b](https://github.com/mathisarends/smelt/commit/2752a7b9d131cea70daa0a86edb798a7a56d49ce).
-
-Sources: [load_config](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/config/loader.py#L67),
-[CLI exception handling](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/cli/app.py#L186).
-
-A `smelt.yaml` containing an invalid UTF-8 byte produces a Python traceback,
-**exit 1 and empty stdout**, even with `--format json`. `UnicodeDecodeError` is not
-converted to a configuration error. An agent can mistake exit 1 for ordinary
-violations and cannot parse the promised error envelope.
-
-**Fix:** translate decoding and expected filesystem failures at their input
-boundaries into ConfigError/AnalysisError. Keep programming errors distinguishable.
-Require exit 2 and valid JSON for unreadable/invalid input. Exercise encoding
-errors in configuration, baseline and source inputs.
-
-### F10 — P2: changed checks fail when the committed repository has no Python package yet — SOLVED
-
-**Status: SOLVED** in [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae).
-
-Sources: [baseline analysis](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/check.py#L235),
-[ImportIndex.build](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/analysis/imports.py#L126).
-
-In a Git repository with a committed README, adding the first Python package and
-its Smelt configuration makes `--changed` return **exit 2**: none of the configured
-root packages existed in the base snapshot. The working-tree project itself is
-valid. This differs from the already supported “no commits yet” case.
-
-**Fix:** treat a genuinely absent historical project as an empty architecture
-inventory. Distinguish that from a historical project whose analysis failed; the
-latter must remain an error. Include first package, first configuration, and new
-workspace member cases.
-
-### F11 — P2: nested configurations produce ambiguous machine-report file paths — SOLVED
-
-**Status: SOLVED** in [a0d0583](https://github.com/mathisarends/smelt/commit/a0d0583a7c219ec301974c41007095acfb07beae).
-
-Sources: [JSON renderer](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/diagnostics/render/machine.py#L19),
-[SARIF artifact location](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/diagnostics/render/machine.py#L132).
-
-From the maximus-trading checkout root, `--config hermes/smelt.yml` reports:
-
-```text
-src/maximus_extension/features/memory/feature.py
-```
-
-The checkout-relative path is `hermes/src/maximus_extension/features/memory/feature.py`.
-Smelt's internal config-relative path is consistent, but JSON does not identify
-its project root/config path, and SARIF and GitHub annotations emit that path
-without rebasing or a URI base. A consumer at the repository root can open or
-annotate the wrong location. Reports from two configurations also cannot be safely
-merged based on path alone.
-
-**Fix:** expose project identity and config origin in JSON. Rebase CI locations to
-the repository root, or emit a correctly declared URI base for SARIF. Add an
-invariant test that each reported CI path resolves to the analyzed file from the
-checkout root. Retain project-relative paths as a separate field if useful.
-
-## Coverage and capability gaps
-
-These are product/design gaps, not claims that an existing documented feature is
-necessarily broken.
-
-### C01 — A passing report does not establish complete project coverage — IMPLEMENTED FOR DECLARED DISCOVERY SCOPE
-
-**Follow-up:** [df25b6a](https://github.com/mathisarends/smelt/commit/df25b6acf3c013c1771883ce7d2fc429c946505c); see the generalized coverage evaluation above. The original gap and proposed broader inventory are retained below as review history.
-
-The root maximus-trading report correctly lists omitted workspace members:
-
-- `browser`: packages `browser` and `browser_protocol`.
-- `libs/browser-client`: package `browser_client`.
-
-Hermes is outside that uv workspace and is covered only by a second explicit
-configuration. `browser/media`, deployment code, scripts and TypeScript need
-separate deliberate coverage decisions. Workspace-member reporting alone is not
-a complete inventory of repository code.
-
-Today these omissions are metadata, not violations. `--fail-on warning` does not
-make an omitted member fail. SMT305 also intentionally skips wholly unclassified
-root packages and package initializers. A report can therefore be green while
-new production code receives no meaningful boundary checks.
-
-Add an opt-in strict coverage contract: every discovered production module/member
-must be governed, explicitly excluded with a reason, or checked by another named
-configuration. Make omissions and coverage shrinkage actionable findings. Expose
-classification by path, not only totals. Keep generated and vendor code exclusions
-explicit rather than requiring humans to wade through their noise.
-
-Source: [effective coverage](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/coverage.py#L28).
-
-### C02 — Public package APIs cannot be enforced
-
-The target requires consumers to import package facades, with explicit exceptions
-for intra-package imports, infrastructure and cycle-sensitive assembly. Smelt can
-allow `application -> application`, but it cannot require a public entry point.
-
-An independent fixture allowing that layer pair accepts:
-
-```python
-from app.features.b.application.service import Service
-```
-
-from feature `a`, even if `service.py` is intended to be private. A feature-wide
-layer pair also permits every symbol in every matching target package; it cannot
-express a bounded context's published contracts or designated friends.
-
-Add public interfaces, private implementation modules, importer visibility and
-explicit exceptions. Distinguish “use this API” from “anything in this layer”.
-This is a high-value differentiator for the actual target repository. Tach already
-models interfaces and visibility, while Import Linter offers protected contracts.
-See [Tach configuration](https://docs.gauge.sh/usage/configuration/) and
-[Import Linter contract types](https://import-linter.readthedocs.io/en/stable/contract_types/).
-
-### C03 — Dynamic imports are silently outside the dependency graph
-
-This domain code passes with no findings:
+A normal static boundary policy does not catch this dependency:
 
 ```python
 from importlib import import_module
@@ -530,282 +33,122 @@ from importlib import import_module
 db = import_module("app.infrastructure.db")
 ```
 
-That is a verified capability limit. Static tools cannot resolve arbitrary runtime
-expressions, but literal `import_module()` and `__import__()` targets are tractable.
-Plugin entry points, string server targets and reflection need declared handling.
-Otherwise an agent can move the same dependency into a loader and obtain a green
-check. Inference recognizing some server strings does not mean boundary rules
-recognize them.
+Arbitrary runtime expressions cannot generally be resolved, but literal
+`import_module()` and `__import__()` calls are tractable. Entry points, string
+server targets and reflection also need declared handling. Recognizing a server
+string during inference does not establish that dependency rules check it.
 
-Resolve supported literal forms. Report unresolved dynamic loading as explicit
-analysis uncertainty, with a configurable strict policy. Publish these limits in
-`coverage`; do not label the dependency analysis complete without qualification.
+Resolve supported literal forms and report unresolved loading as analysis
+uncertainty. Publish the supported forms and strictness policy in the report.
+Module-interface contracts currently share this static-import limitation.
 
-### C04 — No general import policy for side effects in the core
+## C04 — No general policy for forbidden imports or side effects
 
-SMT103 excludes the standard library and only applies layer third-party policy.
-Consequently `third_party: deny` does not express “no network, process spawning,
-filesystem access or database drivers in the domain”; several of those facilities
-are in the standard library. Nor can the current config declare a general ban on
-a particular first-party module outside the layer/feature model.
+SMT103 excludes the standard library and controls third-party packages per layer.
+It therefore cannot express a general ban on networking, process spawning or
+filesystem access in core code. Some such capabilities live in the standard
+library. Package interfaces also do not express arbitrary forbidden API calls.
 
-Add an explicit forbidden-import/API policy scoped by package or layer. Avoid
-presenting a third-party denylist as a purity guarantee. Semantic calls and resource
-ownership can be handled by project rules or a companion pattern checker.
+Add an explicit forbidden-import policy scoped by package or layer if that
+belongs in Smelt. Keep semantic calls and resource ownership in focused companion
+checks where possible. A dependency denylist is not a purity guarantee.
 
-Source: [ThirdPartyDenied.check](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/dependencies/third_party.py#L48).
+## C05 — Semantic project conventions need a separate verification path
 
-### C05 — The project-specific conventions mostly remain unenforced
+Examples in the evaluated repositories include ABC-based ports, factory ordering,
+DI resource ownership, route operation IDs, typed process contracts and
+discriminated unions. Module presence and legal imports do not establish those
+properties. Mirrored test paths do not establish useful behavioral assertions.
 
-Examples from maximus-trading's actual `AGENTS.md` include ABC-based application
-ports, factory ordering, DI resource ownership, explicit route operation IDs,
-typed process contracts and discriminated unions. The current built-in rules do
-not establish those properties. Test mirroring verifies placement, not transaction
-semantics, fixture design or useful behavioral assertions.
+The Python engine accepts custom RuleSets, but the CLI registry is fixed. Decide
+between a small, versioned interface for explicitly installed rule packs and a
+documented companion-tool workflow. Do not hardcode one project's conventions
+into built-in rules or execute arbitrary discovered project plugins.
 
-Smelt has a useful Rule protocol and accepts custom RuleSets through its Python
-engine, but the CLI registry is hardcoded. There is no configured CLI route for
-repository-owned rule packs. Add a small versioned extension interface if these
-checks belong in Smelt, or document how to run companion checks in one verification
-workflow. Loading Python plugins is code execution; use explicitly installed,
-trusted rule packages rather than executing arbitrary discovered source.
+Reuse existing tools for formatting, unused code, complexity, typing, dependency
+hygiene and behavior. Smelt's value is architectural policy, evidence and useful
+agent guidance, rather than duplicating a language linter or test runner.
 
-Sources: [rule interface](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/base.py#L33),
-[CLI registry](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/rules/registry.py#L31).
+## C06 — Policy changes can weaken a successful check
 
-### C06 — Agents can satisfy the checker by weakening the checked policy
+`--changed` analyzes historical source under today's configuration. Changing
+rules, exclusions, wiring, composition roots, feature allowances, contracts,
+suppressions or debt can remove findings. A policy hash identifies a configuration
+but does not explain whether it broadened permissions relative to a trusted base.
+Debt contents and the CLI failure threshold are not part of that config hash.
 
-`--changed` intentionally analyzes the old source under today's configuration.
-Changing `rules`, exclusions, composition roots, wiring, feature allowances,
-suppressions or debt can remove findings. The current policy hash identifies the
-configuration used, but does not compare it with a trusted base or explain which
-permissions broadened. The debt file contents and CLI failure threshold are not
-represented by that configuration hash.
+Add a policy-change report covering newly exempt code, wider allowances, disabled
+rules, removed contracts and increased debt or suppressions. Have CI review those
+changes explicitly. This is workflow integrity, not a claim that a local linter is
+a security boundary against an agent controlling its environment.
 
-This is a workflow integrity problem rather than an attempt to make a local linter
-a security boundary. Add a policy-change report: newly exempt files, widened
-allowances, rules disabled, debt/suppression increases and missing coverage.
-Require the CI review process to handle these changes explicitly. Give agents a
-verification recipe that forbids updating baselines or relaxing policy just to
-pass; maximus-trading already has that instruction for debt and suppressions.
+Machine reports should also publish the effective failure threshold, per-rule
+severities, tool version and baseline provenance. Publish and validate an output
+JSON Schema; `smelt.schema.json` describes configuration, not the report protocol.
+Keep display finding IDs separate from semantic baseline identities.
 
-Keep human-readable diagnostic IDs separate from semantic baseline identities.
-Store the effective failure threshold, per-rule severities, tool version, report
-root and baseline provenance in the machine report. Publish a report JSON Schema;
-`smelt.schema.json` currently describes configuration, not the output protocol.
+## C07 — Adoption needs explicit analysis profiles
 
-### C07 — Initialization and documentation need a clearer adoption contract
+The inferred starter permits third-party imports and disables transitive checks.
+Strict policy coverage makes ownership explicit, but does not turn those choices
+into strict dependency analysis or infer intended public interfaces.
 
-The current generated starter explicitly permits third-party imports and turns
-transitive checks off. Those choices are explained, which is good, but they are
-weak defaults for an agent expected to validate architecture independently. Offer
-clearly named permissive/adoption and strict architecture profiles, with their
-coverage differences visible in the report.
+Offer clearly documented adoption and strict architecture profiles, exposing each
+profile's actual guarantees in reports. Keep generated examples exercised. Avoid
+inferring restrictive public APIs or mandatory module templates solely from names
+or from one representative codebase.
 
-The README still describes a suggested global `application -> application`
-allowance from `init`, whereas `_allow_lines()` now emits an empty allowlist with
-commented feature-specific examples. Correct this drift and keep examples generated
-or exercised where possible.
+## C08 — Changed checks repeat full graph work
 
-Source: [inferred allowances](https://github.com/mathisarends/smelt/blob/6fc6763/smelt/engine/inference.py#L743).
+`--changed` builds the working-tree graph, archives the historical project and
+builds another graph. Grimp caching is disabled. Earlier single-run observations
+on the root example were about 7 seconds for a full check and 14 seconds for a
+changed check; they are not a portable performance benchmark.
 
-### C08 — The edit loop does full graph work twice
+Benchmark before setting a latency target. Consider caching immutable base
+analysis by revision, effective policy, interpreter and tool version. Keep the
+full graph for affected dependencies: filename-only checking misses effects in
+unchanged importers. Measure archive overhead from non-Python assets as well.
 
-`--changed` rebuilds the working-tree graph, exports the historical project using
-`git archive`, and builds another graph. Grimp caching is explicitly disabled.
-The root project's observed ~14 s changed run versus ~7 s full run is consistent
-with this implementation, but not enough evidence for a general performance claim.
+## Multi-project CI and report usability
 
-After correctness fixes, benchmark representative monorepos and consider caching
-the immutable base analysis by commit, effective policy, interpreter and tool
-version. Keep the full graph for affected dependencies; changing to filename-only
-checking would lose architectural effects in unchanged importers. Include excluded
-and non-Python tracked assets when measuring archive overhead.
+The read-only maximus-trading evaluation found these integration gaps:
 
-## CI and CLI usability in maximus-trading
+- Its existing quality jobs, pre-commit and aggregate local checks did not run
+  Smelt automatically.
+- The root and Hermes policies needed separate commands. A sequential fail-fast
+  wrapper could skip the second project, and concatenated JSON documents were
+  not one aggregate report.
+- Its frontend had a separate ESLint architecture rule; Smelt does not analyze
+  TypeScript. Independent runtimes need their own policy and command.
+- Smelt has no native GitLab Code Quality formatter or tested adapter. Nested
+  project identities and repository-relative paths must survive aggregation.
 
-The consuming repository already has a promising local workflow:
-`smelt-context`, full inventories, and changed checks for root and Hermes. Its
-checked-in policy enables transitive analysis and denies frameworks in inner
-layers. These are appropriate choices once the correctness defects are fixed.
+Add native multi-config execution with independent outcomes and one structured
+result. Preserve error artifacts, trigger checks on policy as well as source
+changes, and make partial analysis explicit. This work should improve Smelt;
+consumer repositories remain read-only unless separately authorized.
 
-There are four concrete integration gaps:
+The latest coverage evaluation found 100 Python source files outside the root
+example's selected packages (browser: 65, browser_protocol: 2, browser_client: 33).
+Hermes had one unclassified strategy entry point. The root's existing auth/user
+cycle and steering-to-llm dependency remain consumer policy decisions. No consumer
+source, configuration, baseline or dependency pin was changed.
 
-1. **No automated Smelt gate.** The checked-in GitLab quality jobs, `poe ci`,
-   `poe precommit`, `poe prepush` and pre-commit hook do not run Smelt. An agent can
-   forget the manual command and still pass the existing pipeline.
-2. **Incomplete full command.** `poe smelt` checks only the root configuration.
-   Hermes requires `poe smelt-hermes`; browser packages are omitted by both policies.
-3. **Fail-fast multi-project loop.** `poe smelt-changed` is a sequence. A failure in
-   the first command can prevent the second project from being checked. If both
-   succeed, their two JSON documents are not one parseable JSON report.
-4. **No native GitLab Code Quality formatter.** Current formats are text, JSON,
-   SARIF and GitHub annotations. Smelt JSON is not GitLab's Code Quality JSON array.
-   Its path rebasing issue also matters when adapting Hermes reports.
+## Next priorities and acceptance criteria
 
-References: [target task definitions](C:/FH/FEP/maximus-trading/pyproject.toml:263),
-[target quality jobs](C:/FH/FEP/maximus-trading/.gitlab/ci/quality.yml:1),
-[target change selectors](C:/FH/FEP/maximus-trading/.gitlab/ci/changes.yml:19),
-[GitLab Code Quality format](https://docs.gitlab.com/ci/testing/code_quality/).
+1. **Policy-change reporting:** disabling a rule, removing an interface, widening
+   an exception or increasing debt produces an attributable policy delta.
+2. **Dynamic loading:** supported literal forms enforce the same boundaries as
+   static imports; unresolved forms are visible without claiming completeness.
+3. **Multi-config CI and output schema:** one failing project does not skip others;
+   results retain project identity, validated output and correct artifact paths.
+4. **Visibility and trusted extensions:** encode bounded importer/symbol contracts
+   and repository conventions without weakening existing architecture policies.
+5. **Latency:** benchmark representative layouts, then cache immutable analysis
+   without losing effects in unchanged importers.
 
-After fixing the wiring false positives and resolving the two remaining policy
-decisions, a concrete GitLab starting point is a separate matrix job:
-
-```yaml
-python-smelt:
-  extends: .uv
-  stage: quality
-  parallel:
-    matrix:
-      - SMELT_CONFIG: [smelt.yml, hermes/smelt.yml]
-  rules:
-    - changes:
-        - smelt.yml
-        - hermes/smelt.yml
-    - !reference [.python-changes, rules]
-  script:
-    - uvx --python 3.13 --from smelt-cli==0.1.3 smelt check --config "$SMELT_CONFIG" --format json > smelt-report.json
-  artifacts:
-    when: always
-    expire_in: 1 week
-    paths: [smelt-report.json]
-```
-
-This is a proposed integration, not an applied or executed pipeline. Pin a release
-containing the fixes when available; 0.1.3 is the target's current pin. Matrix jobs
-run independently and preserve failing reports. They will currently fail on the
-observed findings, so this is not an immediately green recipe. Add configurations
-for uncovered production packages, and aggregate results with project identities.
-If collecting matrix artifacts downstream, rename or namespace them to avoid
-identical artifact filenames overwriting one another.
-
-For local agents, retain `context -> edit -> changed check -> focused tests`, and
-use a base from before the agent's entire change set when checking committed work.
-Bare `--changed` compares against HEAD, so committing the work makes that change
-historical. A complete CI check remains necessary. If CI uses changed mode during
-adoption, provide/fetch the intended merge base explicitly and fail on comparison
-errors. Do not replace a failed analysis with `|| true` in an enforcement job.
-
-The target frontend already has its own ESLint architecture rule for
-`app -> features -> shared`, public feature entry points and toast ownership.
-Keep that rule and its tests: Smelt does not analyze TypeScript. A shared policy
-specification or combined reporting can come later; replacing that checker with
-the current Python tool would reduce coverage.
-
-Reference: [frontend architecture rule](C:/FH/FEP/maximus-trading/frontend/scripts/architecture.ts:1).
-
-## What Smelt should own, and where other tools fit better
-
-The comparisons below concern documented capabilities and conceptual fit, not a
-head-to-head accuracy or speed benchmark; I did not execute these other tools.
-
-| Need | Existing tool / evidence | Recommendation for Smelt |
-| --- | --- | --- |
-| Layer, forbidden, protected, independence and sibling-cycle contracts | [Import Linter](https://import-linter.readthedocs.io/en/stable/contract_types/) | Compare semantics and build differential fixtures. Smelt's agent briefings and repair-oriented reports can add value, but basic dependency enforcement must be equally dependable. |
-| Explicit module interfaces, visibility, exact dependencies and strict unowned-code handling | [Tach configuration](https://docs.gauge.sh/usage/configuration/) | Learn from these contracts before designing public APIs and coverage controls. Test correctness before considering an additional graph backend. |
-| Unused imports, commented code, broad exception handlers, simplification and complexity | [Ruff rules](https://docs.astral.sh/ruff/rules/) | Reuse Ruff. Do not reimplement these as Smelt rules. A documented quality profile is more useful than duplicate diagnostics. |
-| Missing/unused package declarations, undeclared transitive and misplaced development dependencies | [deptry](https://deptry.com/rules-violations/) | Integrate dependency hygiene. Smelt's third-party layer policy addresses a different question. |
-| Repository-specific syntactic and semantic patterns | [Semgrep custom rules](https://docs.semgrep.dev/writing-rules/overview) | Use for focused conventions where pattern matching is sufficient; keep graph-wide architectural decisions in Smelt. |
-| Types and behavior | The target already has `ty`, Pylint, pytest, integration and E2E checks | Run the relevant existing checks. Mirrored test paths and legal imports do not establish correct behavior, resource lifetimes or concurrency. |
-| Frontend boundaries | The target's existing ESLint architecture rule | Preserve language-native enforcement and aggregate its results if a unified agent report is desired. |
-
-For a useful “slop” capability, distinguish enforceable facts from review signals:
-
-| Candidate signal | Treatment |
-| --- | --- |
-| New forbidden dependency, private API access, unowned production module | Hard failure once policy and analysis are sound |
-| New blanket suppression, widened wiring exemption, baseline growth | Explicit policy-change finding requiring review |
-| Catch-all exception swallowing, commented code, unused imports | Existing linter rules with project-approved exceptions |
-| Large increase in dependency fan-out, exports, cycles or duplicate implementations | Advisory change report with evidence and a configurable budget |
-| New one-use abstraction, forwarding service, generic helper or manager | Advisory at most; these can be valid design choices |
-| “This looks AI-written” based on naming, comments or style | Do not claim provenance or reject code on this basis |
-
-Start with changes and their consequences: which contract widened, which public
-surface grew, which module became cyclic, and which code lost coverage. Avoid an
-opaque aggregate “slop score” that an agent can optimize without improving code.
-
-## Implementation plan and acceptance criteria
-
-### Phase 1 — Make a green architecture check trustworthy
-
-1. Fix wiring/SMT301 consistency (F01).
-2. Introduce a shared resolved-dependency representation and close facade bypasses
-   (F02). Keep syntactic imports and effective providers as separate evidence.
-3. Correct cycle change detection and indirect baseline identity (F03/F04).
-4. Fix source ownership, namespace portions and inference round-tripping (F05/F06).
-5. Fix import-statement identity, duplicate YAML handling, JSON input errors,
-   missing historical projects and report roots (F07–F11).
-
-Acceptance: all reproduced fixtures have the intended result, the original suite
-continues to pass, and the real target no longer reports the 25 approved wiring
-modules. Adding an undeclared loose module must still fail. The remaining cycle
-and strategy-entry-point findings are reviewed as policy decisions, not silently
-suppressed. Adding a new forbidden dependency or cyclic edge must fail both a full
-check and the appropriate changed/baseline check.
-
-### Phase 2 — Make the real project enforce the policy
-
-Add strict coverage, project/config identity and policy-change diagnostics. Cover
-the browser packages and independent runtimes deliberately. Run all configured
-projects independently in CI and preserve machine artifacts, including errors.
-Add GitLab Code Quality output or a tested adapter with repository-relative paths.
-Publish and validate the report schema.
-
-Acceptance: an omitted member, disabled rule, changed baseline and nested-project
-finding are all visible and correctly attributed. A failure in one project does not
-prevent checking the others. Source and policy changes both trigger CI.
-
-### Phase 3 — Add architecture capabilities agents actually need
-
-Add public APIs/private implementation contracts and importer visibility. Support
-literal dynamic imports and report unresolved loading explicitly. Provide strict
-and adoption profiles without hiding their differences. Add a small trusted rule
-pack mechanism only where existing companion tooling is insufficient.
-
-Acceptance: encode the target's public-import convention and its exceptions
-without weakening feature boundaries or creating initializer cycles. Every new
-rule has allowed, forbidden, exempt and incomplete-analysis cases.
-
-### Phase 4 — Improve useful feedback and latency
-
-Expose architecture deltas and advisory growth budgets, integrate companion-tool
-reports where it improves the agent loop, and cache immutable baseline analysis.
-Benchmark the representative project before choosing performance targets.
-
-Acceptance: the agent can tell what was checked, what was omitted, which policy
-was used, why each change is forbidden and which existing command verifies the
-remaining concerns. Advisory heuristics cannot silently become hard architecture
-requirements.
-
-## Committed regression coverage
-
-These tests are part of the PR and can be run in a fresh checkout with `uv run
-pytest`; the local artifacts below are optional historical evidence.
-
-| Findings | Regression files |
-| --- | --- |
-| F01 | [structure/test_layout.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/rules/structure/test_layout.py) |
-| F02 | [dependencies/test_features.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/rules/dependencies/test_features.py), [test_composition_root.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/rules/dependencies/test_composition_root.py) |
-| F03, F04, F10 | [engine/test_changes.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/engine/test_changes.py) |
-| F05 | [analysis/test_context.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/analysis/test_context.py) |
-| F06 | [engine/test_inference.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/engine/test_inference.py) |
-| F07 | [dependencies/test_third_party.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/rules/dependencies/test_third_party.py) |
-| F08 | [config/test_loader.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/config/test_loader.py) |
-| F09, F11 | [cli/test_app.py](https://github.com/mathisarends/smelt/blob/36a621f52fcba117b6d176decf2abfc74d3cf3c8/tests/cli/test_app.py) |
-
-## Reproduction artifacts
-
-The review probes and reports were kept outside both source checkouts. These are
-local evidence files; they are not additional committed tests or a portable public
-test suite. The important minimal triggers and outcomes are also described above.
-
-- [Probe runner and fixtures](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/review_probe.py)
-- [Additional probe runner](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/review_probe_more.py)
-- [Probe results](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/probe-results.json)
-- [Additional results](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/probe-more-results.json)
-- [Root full report](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-main.json)
-- [Hermes full report](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-hermes.json)
-- [Root changed report](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-changed.json)
-- [Hermes changed report](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-hermes-changed.json)
-- [Conversation feature context](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-context.json)
-- [Inferred policy, not installed in the target](C:/Users/mathi/.codex/visualizations/2026/10/28/01a182ee-dcd6-7551-bad6-d3f0f200abc3/maximus-inferred.yaml)
+Avoid an opaque aggregate “slop score”. Report enforceable changes and their
+consequences: a private dependency, lost policy coverage, a widened exception,
+a new cycle or a growing public surface. Naming, comments and a one-use
+abstraction alone do not establish bad design or AI provenance.

@@ -61,6 +61,16 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                 )
             )
     issues.extend(_missing_modules(ctx))
+    issues.extend(_conflicting_package_policies(ctx))
+    matched_contracts = {contract.name for contract in ctx.contracts.resolved}
+    issues.extend(
+        ConfigIssue(
+            f"structure.contracts.{name}.match",
+            f'"{contract.match}" matches no analyzed package',
+        )
+        for name, contract in ctx.config.structure.contracts.items()
+        if name not in matched_contracts
+    )
     for index, allowance in enumerate(ctx.config.architecture.cross_feature.allow):
         if not isinstance(allowance, CrossFeatureAllowance):
             continue
@@ -71,6 +81,30 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                     ConfigIssue(
                         f"architecture.cross_feature.allow[{index}].{key}",
                         f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
+                    )
+                )
+    return issues
+
+
+def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
+    policies: dict[tuple[str, str], object] = {}
+    issues: list[ConfigIssue] = []
+    for contract in ctx.contracts.resolved:
+        for key, label in (
+            ("imports", "import styles"),
+            ("module_docstrings", "module docstring policies"),
+            ("future_annotations", "future annotation policies"),
+            ("private_modules", "private module naming policies"),
+        ):
+            policy = getattr(contract.spec, key)
+            if policy is None:
+                continue
+            previous = policies.setdefault((contract.package, key), policy)
+            if previous != policy:
+                issues.append(
+                    ConfigIssue(
+                        f"structure.contracts.{contract.name}.{key}",
+                        f"conflicting {label} for {contract.package}; use one policy per package",
                     )
                 )
     return issues

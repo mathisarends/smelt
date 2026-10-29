@@ -5,6 +5,70 @@ from smelt.config import ConfigError, parse_config
 MINIMAL = {"version": 1, "project": {"root_packages": ["gateway"]}}
 
 
+class TestPackageContracts:
+    @pytest.mark.parametrize(
+        "spec",
+        [
+            {"match": "gateway.*", "required": ["api", "core.models"]},
+            {"match": "gateway", "public": ["."]},
+            {"match": "gateway", "public": []},
+            {"match": "*.*", "public": ["api.**", "commands.*"]},
+            {"match": "gateway", "imports": {"style": "absolute"}},
+            {
+                "match": "gateway",
+                "imports": {"style": "relative", "max_relative_level": 2},
+            },
+            {"match": "gateway", "bundle_imports_at": 3},
+            {"match": "gateway", "module_docstrings": "forbid"},
+            {"match": "gateway", "future_annotations": "when-needed"},
+            {"match": "gateway", "private_modules": "forbid"},
+            {"match": "gateway", "private_modules": "allow"},
+        ],
+    )
+    def test_valid_contracts(self, spec: dict[str, object]) -> None:
+        config, _ = parse_config(
+            {**MINIMAL, "structure": {"contracts": {"library": spec}}}
+        )
+
+        assert "library" in config.structure.contracts
+
+    @pytest.mark.parametrize(
+        "spec",
+        [
+            {"match": "gateway"},
+            {"match": "gateway.**", "public": []},
+            {"match": "gateway.prefix*", "public": []},
+            {"match": "gateway", "required": ["../api"]},
+            {"match": "gateway", "required": ["api.py/"]},
+            {"match": "gateway", "required": ["api.*"]},
+            {"match": "gateway", "public": ["api.*impl"]},
+            {"match": "gateway", "public": [""]},
+            {"match": "gateway", "public": ["/api"]},
+            {"match": "other", "public": []},
+            {"match": "gateway", "imports": {"style": "sometimes"}},
+            {"match": "gateway", "imports": {"max_relative_level": 0}},
+            {"match": "gateway", "bundle_imports_at": 1},
+            {"match": "gateway", "module_docstrings": "sometimes"},
+            {"match": "gateway", "future_annotations": "always"},
+            {"match": "gateway", "private_modules": "sometimes"},
+        ],
+    )
+    def test_invalid_contracts_fail_explicitly(self, spec: dict[str, object]) -> None:
+        with pytest.raises(ConfigError, match=r"structure\.contracts\.library"):
+            parse_config({**MINIMAL, "structure": {"contracts": {"library": spec}}})
+
+    def test_contract_names_must_not_be_empty(self) -> None:
+        with pytest.raises(ConfigError, match="contract names must not be empty"):
+            parse_config(
+                {
+                    **MINIMAL,
+                    "structure": {
+                        "contracts": {" ": {"match": "gateway", "public": []}}
+                    },
+                }
+            )
+
+
 def _layers(**layers: dict[str, object]) -> dict[str, object]:
     return {**MINIMAL, "architecture": {"layers": layers}}
 

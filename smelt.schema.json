@@ -190,6 +190,30 @@
       "title": "IgnoreEntry",
       "type": "object"
     },
+    "ImportStyleConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "default": "relative",
+          "description": "relative: prefer relative first-party imports up to max_relative_level, absolute beyond it; absolute: always use absolute imports.",
+          "enum": [
+            "relative",
+            "absolute"
+          ],
+          "title": "Style",
+          "type": "string"
+        },
+        "max_relative_level": {
+          "default": 1,
+          "description": "Maximum dots in a relative import when style is relative. Cross-root and deeper imports stay absolute.",
+          "minimum": 1,
+          "title": "Max Relative Level",
+          "type": "integer"
+        }
+      },
+      "title": "ImportStyleConfig",
+      "type": "object"
+    },
     "ImportsConfig": {
       "additionalProperties": false,
       "description": "Which imports the dependency rules look at.",
@@ -247,6 +271,124 @@
         "path"
       ],
       "title": "LayerConfig",
+      "type": "object"
+    },
+    "PackageContract": {
+      "additionalProperties": false,
+      "description": "Opt-in module layout and entry points for matching packages.",
+      "properties": {
+        "match": {
+          "description": "Dotted package pattern; a whole-segment * matches one package segment.",
+          "title": "Match",
+          "type": "string"
+        },
+        "required": {
+          "description": "Relative dotted modules or packages that must exist in every matching package (SMT307).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "public": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+          "title": "Public"
+        },
+        "imports": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImportStyleConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional import style for code in this package. The most specific enclosing package contract wins."
+        },
+        "bundle_imports_at": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
+          "title": "Bundle Imports At"
+        },
+        "module_docstrings": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional module-docstring policy (SMT309). Function and class documentation is unaffected. The closest explicit package policy wins.",
+          "title": "Module Docstrings"
+        },
+        "future_annotations": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "when-needed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+          "title": "Future Annotations"
+        },
+        "private_modules": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
+          "title": "Private Modules"
+        }
+      },
+      "required": [
+        "match"
+      ],
+      "title": "PackageContract",
       "type": "object"
     },
     "Policy": {
@@ -308,6 +450,20 @@
           ],
           "title": "Coverage",
           "type": "string"
+        },
+        "python_version": {
+          "anyOf": [
+            {
+              "pattern": "^3\\.[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicit minimum supported Python version for version-aware conventions, e.g. 3.14. Overrides per-project requires-python metadata; never inferred from the running interpreter or .python-version.",
+          "title": "Python Version"
         }
       },
       "title": "ProjectConfig",
@@ -354,6 +510,14 @@
           },
           "title": "Forbidden Names",
           "type": "array"
+        },
+        "contracts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PackageContract"
+          },
+          "description": "Named package contracts: required modules and optional public entry points.",
+          "title": "Contracts",
+          "type": "object"
         }
       },
       "title": "StructureConfig",

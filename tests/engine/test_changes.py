@@ -85,6 +85,92 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_new_private_module_names_are_reported_without_repeating_existing_ones(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    names: {match: app, private_modules: forbid}\n",
+            encoding="utf-8",
+        )
+        write_project(repo, {"app/domain/_legacy.py": ""})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "declare module naming convention")
+        write_project(repo, {"app/domain/_new.py": ""})
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT312",)))
+
+        assert [(v.code, v.source_module) for v in found] == [
+            ("SMT312", "app.domain._new")
+        ]
+
+    def test_import_conventions_are_checked_for_new_changes(self, repo: Path) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    api: {match: app.domain, bundle_imports_at: 2}\n    style: {match: app, imports: {style: absolute}}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {
+                "app/domain/one.py": "",
+                "app/domain/two.py": "",
+                "app/application/service.py": "from app.domain import one\n",
+            },
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "declare import conventions")
+        write_project(
+            repo, {"app/application/service.py": "from ..domain import one, two\n"}
+        )
+
+        found = violations(
+            repo, CheckOptions(changed=True, select=("SMT108", "SMT308"))
+        )
+
+        assert {v.code for v in found} == {"SMT108", "SMT308"}
+
+    def test_deleting_a_required_entry_point_is_a_new_finding(self, repo: Path) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    core: {match: app.domain, required: [api]}\n",
+            encoding="utf-8",
+        )
+        write_project(repo, {"app/domain/api.py": ""})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "add package contract")
+        (repo / "app/domain/api.py").unlink()
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT307",)))
+
+        assert [(v.code, v.target_module) for v in found] == [
+            ("SMT307", "app.domain.api")
+        ]
+
+    def test_new_private_import_is_reported_but_existing_one_is_not(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    data: {match: app.infra, public: ['.']}\n",
+            encoding="utf-8",
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "declare public facade")
+        write_project(
+            repo, {"app/application/service.py": "from app.infra import db\n"}
+        )
+
+        found = violations(repo, CheckOptions(changed=True, select=("SMT107",)))
+
+        assert [(v.code, v.source_module) for v in found] == [
+            ("SMT107", "app.application.service")
+        ]
+
     def test_existing_coverage_gaps_remain_visible_in_changed_mode(
         self, repo: Path
     ) -> None:

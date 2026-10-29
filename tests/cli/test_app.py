@@ -38,6 +38,120 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_private_module_name_has_a_machine_readable_finding(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [app]}
+                structure:
+                  contracts:
+                    names: {match: app, private_modules: forbid}
+            """,
+                "app/_service.py": "__all__ = ['run']\ndef run(): pass\n",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT312",
+            "--format",
+            "json",
+        )
+        document = json.loads(out)
+
+        assert code == 1
+        assert err == ""
+        assert document["violations"][0]["code"] == "SMT312"
+        assert document["violations"][0]["path"] == "app/_service.py"
+        assert document["coverage"]["contracts"][0]["private_modules"] == "forbid"
+
+    def test_header_policy_and_version_are_visible_to_agents(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [app], python_version: "3.14"}
+                structure:
+                  contracts:
+                    headers: {match: app, module_docstrings: forbid, future_annotations: when-needed}
+            """,
+                "app/source.py": '"""Module introduction."""\nfrom __future__ import annotations\n',
+            },
+        )
+
+        code, out, err = _run(
+            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+        )
+        document = json.loads(out)
+
+        assert code == 1
+        assert err == ""
+        assert {"SMT309", "SMT310"} <= {item["code"] for item in document["violations"]}
+        assert document["coverage"]["python_targets"][0]["minimum"] == "3.14"
+
+        code, out, err = _run(
+            capsys,
+            "context",
+            "app/source.py",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--format",
+            "json",
+        )
+        context = json.loads(out)
+
+        assert code == 0
+        assert err == ""
+        assert context["python_target"]["minimum"] == "3.14"
+        assert context["header_policy"]["future_annotations"]["policy"] == "when-needed"
+
+    def test_contract_failure_and_coverage_metadata_are_machine_readable(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": """
+                version: 1
+                project: {root_packages: [library]}
+                structure:
+                  contracts:
+                    public-api: {match: library, required: [api], public: [api]}
+            """,
+                "library/__init__.py": "",
+                "library/private.py": "",
+                "library/client.py": "",
+            },
+        )
+
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT307",
+            "--format",
+            "json",
+        )
+        document = json.loads(out)
+
+        assert code == 1
+        assert err == ""
+        assert document["violations"][0]["code"] == "SMT307"
+        assert document["coverage"]["contracts"][0]["missing"] == ["library.api"]
+
     def test_strict_coverage_override_and_optional_inventory(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
@@ -595,7 +709,8 @@ class TestInfoCommands:
             ("SMT102x", ""),
             ("SMT109", ""),
             ("SMT401", None),
-            ("SMT411", ' (did you mean "SMT401"?)'),
+            ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
+            ("SMT421", ' (did you mean "SMT401"?)'),
             ("layer-boundry", ' (did you mean "layer-boundary"?)'),
         ],
     )
