@@ -35,6 +35,8 @@ def render_json(report: Report) -> str:
         "violations": [v.to_json() for v in report.violations],
         "groups": group_findings(report.violations),
     }
+    if report.fixes is not None:
+        document["fixes"] = dict(report.fixes)
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -109,6 +111,7 @@ def _sarif_properties(report: Report) -> dict[str, Any]:
         "mode": "changed" if report.comparison else "full",
         "comparison": dict(report.comparison) if report.comparison else None,
         "policyHash": coverage.get("policy_hash"),
+        **({"fixes": dict(report.fixes)} if report.fixes is not None else {}),
         "project": dict(report.project) if report.project else None,
     }
 

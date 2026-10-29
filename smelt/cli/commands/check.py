@@ -14,6 +14,7 @@ from smelt.diagnostics.render.machine import render_github, render_json, render_
 from smelt.diagnostics.render.text import render_text
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check
+from smelt.engine.ordering_fixes import apply_ordering_fixes
 
 if TYPE_CHECKING:
     import argparse
@@ -52,6 +53,15 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         use_debt=not args.no_debt,
     )
     outcome = run_check(loaded, options)
+    if args.fix:
+        fixes = apply_ordering_fixes(outcome)
+        if fixes.files:
+            outcome = run_check(loaded, options)
+        outcome.report.fixes = {"ordering": fixes.to_json()}
+        if args.format == "text":
+            console.print(
+                f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
+            )
     report = outcome.report
     files = outcome.context.files
 

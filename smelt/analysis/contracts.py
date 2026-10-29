@@ -53,7 +53,11 @@ class ContractIndex:
         self,
         module: str,
         policy: Literal[
-            "imports", "module_docstrings", "future_annotations", "private_modules"
+            "imports",
+            "module_docstrings",
+            "future_annotations",
+            "private_modules",
+            "ordering",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -103,6 +107,16 @@ class ContractIndex:
             **contract.spec.imports.model_dump(mode="json"),
         }
 
+    def ordering_brief(self, module: str | None) -> dict[str, Any] | None:
+        contract = self.policy_for(module, "ordering") if module else None
+        if contract is None or contract.spec.ordering is None:
+            return None
+        return {
+            "contract": contract.name,
+            "package": contract.package,
+            **contract.spec.ordering.model_dump(mode="json", by_alias=True),
+        }
+
     def missing(self, contract: ResolvedContract) -> list[str]:
         return [
             contract.qualify(entry)
@@ -132,6 +146,15 @@ class ContractIndex:
                 if contract.public is not None
                 else None,
                 "missing_public": self.missing_public(contract),
+                **(
+                    {
+                        "ordering": contract.spec.ordering.model_dump(
+                            mode="json", by_alias=True
+                        )
+                    }
+                    if contract.spec.ordering
+                    else {}
+                ),
                 "target_public": contract.exposes(module)
                 if module
                 and is_within(module, contract.package)

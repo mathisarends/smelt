@@ -79,6 +79,7 @@ class Briefing:
     import_style: dict[str, Any] | None = None
     header_policy: dict[str, Any] = field(default_factory=dict)
     naming_policy: dict[str, Any] = field(default_factory=dict)
+    ordering_policy: dict[str, Any] | None = None
     python_target: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
@@ -100,6 +101,7 @@ class Briefing:
             "import_style": self.import_style,
             "header_policy": self.header_policy,
             "naming_policy": self.naming_policy,
+            "ordering_policy": self.ordering_policy,
             "python_target": self.python_target,
             "policy_hash": self.policy_hash,
             "imports": {
@@ -252,6 +254,7 @@ def build_briefing(
         import_style=ctx.contracts.style_brief(target.module or package),
         header_policy=ctx.contracts.header_brief(target.module or package),
         naming_policy=ctx.contracts.naming_brief(target.module or package),
+        ordering_policy=ctx.contracts.ordering_brief(target.module or package),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -442,6 +445,11 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
 
 def _contract_lines(briefing: Briefing) -> list[str]:
     lines: list[str] = []
+    if briefing.ordering_policy:
+        policy = briefing.ordering_policy
+        lines.append(
+            f"Definition ordering: {'enabled' if policy['enabled'] else 'disabled'} ({policy['contract']}); module: {', '.join(policy['module'])}; class: {', '.join(policy['class'])}"
+        )
     minimum = briefing.python_target.get("minimum")
     if minimum:
         lines.append(f"Minimum Python: {minimum} ({briefing.python_target['source']})")
