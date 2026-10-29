@@ -58,6 +58,38 @@ def test_assertion_helper_is_configurable_and_alias_aware(tmp_path: Path) -> Non
     assert violations(tmp_path, CheckOptions(select=("SMT424",))) == []
 
 
+def test_event_observations_share_deadline_recognition(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, review_test_deadlines: true}",
+            "app/__init__.py": "",
+            "tests/test_events.py": """
+                import asyncio
+                async def test_wait_for():
+                    event = asyncio.Event()
+                    await asyncio.wait_for(event.wait(), timeout=1)
+                async def test_context():
+                    event = asyncio.Event()
+                    async with asyncio.timeout(1):
+                        await event.wait()
+                async def test_unused_context():
+                    event = asyncio.Event()
+                    asyncio.timeout(1)
+                    await event.wait()
+            """,
+        },
+    )
+    found = violations(tmp_path)
+    assert {finding.code for finding in found} == {"SMT424", "SMT426"}
+    assert len(found) == 2
+    assert all(
+        finding.expected is not None
+        and finding.expected["test"] == "test_unused_context"
+        for finding in found
+    )
+
+
 def test_default_configuration_keeps_quality_rules_opt_in(tmp_path: Path) -> None:
     write_project(
         tmp_path,

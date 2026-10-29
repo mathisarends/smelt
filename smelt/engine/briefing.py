@@ -472,6 +472,9 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "forbid_private_imports",
                 "forbid_string_patch_targets",
                 "require_assertions",
+                "require_non_vacuous_assertions",
+                "review_test_deadlines",
+                "review_case_loops",
             )
             if policy.get(name)
         ]

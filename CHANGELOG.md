@@ -7,7 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-No unreleased behavior changes.
+- `context` text now shows all adopted test-quality review flags, including when
+  only the newer policies are enabled.
+- SMT424 recognizes awaited, typed Event observations inside local timeout
+  contexts that raise on expiry, consistently with SMT426 deadline recognition.
+  Unused contexts, unawaited waits and `move_on_after` scopes are not outcome
+  evidence; configured timeout helpers alone still do not count as assertions.
 
 ## [0.1.5] - 2026-10-29
 

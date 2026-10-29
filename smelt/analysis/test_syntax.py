@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.test_deadlines import async_deadline
 from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
@@ -302,40 +303,17 @@ class TestFunction:
                 or call.interaction_assertion
             )
         )
-        waits = {
-            id(call.node)
-            for call in self.calls
-            if call.qualified
-            in {
-                "asyncio.Event.wait",
-                "asyncio.locks.Event.wait",
-            }
-        }
-        awaited = {
-            node.value for node in ast.walk(self.node) if isinstance(node, ast.Await)
-        }
+        calls = {call.node: call.qualified for call in self.calls}
         evidence.extend(
             call.node
             for call in self.calls
             if (
-                call.qualified == "asyncio.wait_for"
-                and call.node in awaited
-                and call.node.args
-                and id(call.node.args[0]) in waits
-                and _has_timeout(call.node)
+                call.qualified in {"asyncio.Event.wait", "asyncio.locks.Event.wait"}
+                and (deadline := async_deadline(call.node, calls, parents)).awaited
+                and deadline.raises_on_timeout
             )
         )
         return evidence
-
-
-def _has_timeout(node: ast.Call) -> bool:
-    value = next(
-        (kw.value for kw in node.keywords if kw.arg == "timeout"),
-        node.args[1] if len(node.args) > 1 else None,
-    )
-    return value is not None and not (
-        isinstance(value, ast.Constant) and value.value is None
-    )
 
 
 def _patch_result(node: ast.Call, qualified: str) -> _Binding | None:

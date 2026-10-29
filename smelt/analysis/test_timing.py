@@ -6,6 +6,8 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.test_deadlines import async_deadline, has_timeout
+
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
 
@@ -20,27 +22,6 @@ _PROCESS_WAITS = frozenset(
     }
 )
 _ASYNC_WAITS = frozenset({"asyncio.Event.wait", "asyncio.locks.Event.wait"})
-_CONTEXT_TIMEOUTS = frozenset(
-    {
-        "asyncio.timeout",
-        "asyncio.timeout_at",
-        "anyio.fail_after",
-        "anyio.move_on_after",
-        "trio.fail_after",
-        "trio.move_on_after",
-    }
-)
-
-
-def _timeout(
-    call: ast.Call, name: str = "timeout", position: int | None = None
-) -> bool:
-    value = next((kw.value for kw in call.keywords if kw.arg == name), None)
-    if value is None and position is not None and len(call.args) > position:
-        value = call.args[position]
-    return value is not None and not (
-        isinstance(value, ast.Constant) and value.value is None
-    )
 
 
 @dataclass(frozen=True)
@@ -51,7 +32,7 @@ class TestWait:
 
 
 def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
-    calls = {call.node: call for call in test.calls}
+    calls = {call.node: call.qualified for call in test.calls}
     parents = {
         child: node
         for node in ast.walk(test.node)
@@ -77,39 +58,12 @@ def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
                 if call.qualified == "subprocess.Popen.communicate"
                 else None
             )
-            if isinstance(call.node, ast.Call) and not _timeout(
+            if isinstance(call.node, ast.Call) and not has_timeout(
                 call.node, position=position
             ):
                 unbounded.append(call)
             continue
-        parent = parents.get(call.node)
-        awaited = isinstance(call.node, ast.Await)
-        bounded = False
-        while parent is not None and parent is not test.node:
-            awaited |= isinstance(parent, ast.Await)
-            if isinstance(parent, ast.Call) and parent in calls:
-                wrapper = calls[parent].qualified
-                bounded |= wrapper == "asyncio.wait_for" and _timeout(
-                    parent, position=1
-                )
-                bounded |= wrapper in helpers
-            if isinstance(parent, ast.With | ast.AsyncWith):
-                for item in parent.items:
-                    context = item.context_expr
-                    if isinstance(context, ast.Call) and context in calls:
-                        wrapper = calls[context].qualified
-                        keyword = (
-                            "when"
-                            if wrapper == "asyncio.timeout_at"
-                            else "seconds"
-                            if wrapper.startswith("trio.")
-                            else "delay"
-                        )
-                        bounded |= wrapper in _CONTEXT_TIMEOUTS and _timeout(
-                            context, keyword, 0
-                        )
-                        bounded |= wrapper in helpers
-            parent = parents.get(parent)
-        if awaited and not bounded:
+        deadline = async_deadline(call.node, calls, parents, helpers)
+        if deadline.awaited and not deadline.bounded:
             unbounded.append(call)
     return unbounded

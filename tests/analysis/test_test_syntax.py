@@ -217,6 +217,38 @@ def test_typed_mock_fixtures_supply_receiver_types_only(
             "closed = asyncio.Event()\n    asyncio.wait_for(closed.wait(), timeout=1)",
             False,
         ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout(1):\n        await closed.wait()",
+            True,
+        ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout_at(when=deadline):\n        await closed.wait()",
+            True,
+        ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout(None):\n        await closed.wait()",
+            False,
+        ),
+        (
+            "closed = asyncio.Event()\n    asyncio.timeout(1)\n    await closed.wait()",
+            False,
+        ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout(1):\n        pending = closed.wait()",
+            False,
+        ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout(1):\n        pass\n    await closed.wait()",
+            False,
+        ),
+        (
+            "closed = asyncio.Event()\n    async with asyncio.timeout(await closed.wait()):\n        pass",
+            False,
+        ),
+        (
+            "async with asyncio.timeout(1):\n        await command()",
+            False,
+        ),
     ],
 )
 def test_bounded_lifecycle_evidence_requires_known_event(

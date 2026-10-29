@@ -58,11 +58,22 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     assert "Instance assignments: separate" in render_briefing(briefing, ctx)
 
 
-def test_test_quality_policy_is_available_for_planned_placement(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "flag",
+    [
+        "require_assertions",
+        "require_non_vacuous_assertions",
+        "review_test_deadlines",
+        "review_case_loops",
+    ],
+)
+def test_test_quality_policy_is_available_for_planned_placement(
+    tmp_path: Path, flag: str
+) -> None:
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, max_patches_per_test: 0}",
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\ntests: {{{flag}: true}}",
             "app/__init__.py": "",
         },
     )
@@ -71,9 +82,27 @@ def test_test_quality_policy_is_available_for_planned_placement(tmp_path: Path) 
     briefing = build_briefing(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
-    assert briefing.to_json()["test_policy"]["require_assertions"] is True
+    assert briefing.to_json()["test_policy"][flag] is True
+    assert f"Test quality: {flag};" in render_briefing(briefing, ctx)
+
+
+def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {max_patches_per_test: 0}",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
     assert briefing.to_json()["test_policy"]["max_patches_per_test"] == 0
-    assert "Test quality:" in render_briefing(briefing, ctx)
+    assert "maximum patches 0;" in render_briefing(briefing, ctx)
 
 
 def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> None:
