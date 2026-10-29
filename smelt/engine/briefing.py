@@ -84,6 +84,7 @@ class Briefing:
     test_policy: dict[str, Any] = field(default_factory=dict)
     assignment_policy: dict[str, Any] | None = None
     type_dispatch_policy: dict[str, Any] | None = None
+    member_policy: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -109,6 +110,7 @@ class Briefing:
             "test_policy": self.test_policy,
             "assignment_policy": self.assignment_policy,
             "type_dispatch_policy": self.type_dispatch_policy,
+            "member_policy": self.member_policy,
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -264,6 +266,7 @@ def build_briefing(
         test_policy=ctx.config.tests.model_dump(mode="json"),
         assignment_policy=ctx.contracts.assignment_brief(target.module or package),
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
+        member_policy=ctx.contracts.member_brief(target.module or package),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -453,7 +456,10 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
 
 
 def _contract_lines(briefing: Briefing) -> list[str]:
-    lines: list[str] = []
+    lines = [
+        f"Members: {key}={policy['policy']} ({policy['contract']})"
+        for key, policy in briefing.member_policy.items()
+    ]
     if briefing.type_dispatch_policy:
         policy = briefing.type_dispatch_policy
         lines.append(
@@ -476,6 +482,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "review_test_deadlines",
                 "review_case_loops",
                 "review_async_mock_assertions",
+                "review_test_only_public_functions",
             )
             if policy.get(name)
         ]

@@ -613,6 +613,45 @@ also includes `fixes.ordering` with modified files, section counts and skipped
 reasons. Every other rule keeps its existing behavior; no visibility or module
 rename fixer is implied by this option.
 
+### Internal public functions, methods and static helpers
+
+Adopt visibility and helper-placement conventions per package:
+
+```yaml
+structure:
+  contracts:
+    internal-helpers:
+      match: app
+      member_visibility: private-when-internal
+      static_methods: module-functions
+    deliberate-api:
+      match: app.integrations
+      member_visibility: allow
+      static_methods: allow
+```
+
+[SMT316](docs/rules/SMT316.md) reviews public module functions and ordinary instance
+methods with no observed use outside their defining module or class, including
+unused definitions. For example, `emit` called or passed as `self.emit` only
+inside `Browser` gets a private-name suggestion such as `_emit`. The JSON lists
+internal reference lines and distinguishes unused members from internal helpers.
+Existing private-name collisions get a distinct suggested name. Explicit module
+exports, decorated members and inherited/subclassed classes are preserved.
+Discovered test accesses count as external uses; SMT429 separately reviews
+test-only public module functions when its test policy is enabled.
+
+[SMT317](docs/rules/SMT317.md) suggests moving an internal `@staticmethod` helper
+to a private module function, such as `Browser._normalize(value)` becoming
+`_normalize(value)`. It supports sync/async helpers and builtin decorator aliases;
+class-namespace dependencies, inheritance, extra decorators and possible external
+method accesses are excluded. Neither policy performs automatic changes.
+
+Both policies use the closest explicit package setting. They are advisory:
+unknown same-named attribute access outside a class conservatively preserves its
+methods, and external users or dynamic reflection cannot be ruled out. Review
+the intended API before renaming or extracting a helper. `smelt context` includes
+the effective policies even for planned files.
+
 ## Test policies
 
 ### Optional test quality policies
@@ -632,6 +671,7 @@ tests:
   review_test_deadlines: true
   review_case_loops: true
   review_async_mock_assertions: true
+  review_test_only_public_functions: true
   assertion_helpers: [tests.assertions.assert_user]
   timeout_helpers: [tests.timing.deadline]
   quality_exclude: []
@@ -648,6 +688,7 @@ tests:
 | SMT426 | Known waits without local deadlines or replacement of the asyncio scheduler clock (warning) |
 | SMT427 | Small literal loops containing candidate independent cases (hint) |
 | SMT428 | Call-only assertions on known async mocks without corresponding await evidence (warning) |
+| SMT429 | Public module functions accessed from tests but not from other analyzed production modules (warning) |
 
 Every policy is opt-in; `0` is a valid patch limit. Globs are relative to the
 configuration root, not each test root. `quality_exclude` does not disable mirror
@@ -716,6 +757,17 @@ Simple single-assignment locals can carry history into assertions; inherited or
 arbitrarily decorated methods, transitive helpers and general data flow remain
 outside scope. A finding concerns an individual test, not the suite's ability to
 catch the regression. There is no automatic assertion rewrite.
+
+SMT429 reviews functions such as `drag_gesture` that are used inside their own
+module but exposed publicly only to tests. Its finding points at the definition,
+suggests `_drag_gesture` and lists the test locations in JSON. Review the rename
+and update internal references; prefer testing the public `drag` operation that
+calls the helper. Deliberate direct helper tests can retain a reasoned exception
+to SMT420 when that policy is also enabled. Functions in `__all__`, production
+re-exports, decorated functions and methods are excluded. Aliased and relative
+imports count as production consumers; star imports and escaped module values
+conservatively preserve public visibility. External users, packaging entry points
+and arbitrary dynamic access remain review limits. Checks do not rename code.
 
 The scope is the discovered `test_*.py`, `*_test.py` and conftest files. Test
 functions use the usual test_ prefix; methods in Test-prefixed classes and direct

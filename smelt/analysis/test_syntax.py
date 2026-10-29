@@ -1134,6 +1134,7 @@ class TestSyntaxIndex:
             or config.review_test_deadlines
             or config.review_case_loops
             or config.review_async_mock_assertions
+            or config.review_test_only_public_functions
         )
         if not enabled:
             return

@@ -7,7 +7,26 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-No unreleased behavior changes.
+- Optional [SMT316](docs/rules/SMT316.md), configured with package
+  `member_visibility: private-when-internal`, reviews public module functions and
+  ordinary instance methods with no observed external use, including unused
+  definitions. Findings suggest a private name and list internal uses/callbacks
+  so agents can review renames. Existing private names are avoided. Explicit
+  exports, decorators, inheritance and possible external method accesses preserve
+  public APIs; test-only public module functions remain covered by SMT429.
+- Optional [SMT317](docs/rules/SMT317.md), configured with package
+  `static_methods: module-functions`, suggests extracting internal static helpers
+  to private module functions. Class dependencies, inheritance, extra decorators
+  and possible external callers preserve deliberate static APIs. Both new
+  policies support closest `allow` overrides and appear in `smelt context`.
+  Checks remain read-only and the default rule set is unchanged.
+- Optional [SMT429](docs/rules/SMT429.md), enabled by
+  `tests.review_test_only_public_functions`, reviews public module functions
+  accessed from tests but not from other analyzed production modules. Findings
+  suggest a leading underscore and include test locations so agents can review
+  the rename and test the public caller. Explicit exports and decorated functions
+  stay public; external/dynamic consumers remain a review limitation. The default
+  rule set is unchanged.
 
 ## [0.1.6] - 2026-10-29
 

@@ -8,6 +8,7 @@ from smelt.analysis.contracts import ContractIndex
 from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.files import FileIndex
 from smelt.analysis.imports import ImportIndex
+from smelt.analysis.members import MemberUsageIndex
 from smelt.analysis.ordering import DefinitionOrderIndex
 from smelt.analysis.parsing import AstCache
 from smelt.analysis.python_version import PythonTargetIndex
@@ -25,6 +26,7 @@ class Index(StrEnum):
     COVERAGE = "coverage"
     FILES = "files"
     IMPORTS = "imports"
+    MEMBERS = "member_usage"
     ORDERING = "ordering"
     SYNTAX = "syntax"
     TESTS = "test_syntax"
@@ -61,6 +63,10 @@ class AnalysisContext:
     @cached_property
     def syntax(self) -> SyntaxIndex:
         return SyntaxIndex(self.files, self.asts)
+
+    @cached_property
+    def member_usage(self) -> MemberUsageIndex:
+        return MemberUsageIndex(self.syntax)
 
     @cached_property
     def test_syntax(self) -> TestSyntaxIndex:

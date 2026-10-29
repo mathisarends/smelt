@@ -492,6 +492,14 @@ class PackageContract(_Model):
         default=None,
         description="Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite.",
     )
+    member_visibility: Literal["allow", "private-when-internal"] | None = Field(
+        default=None,
+        description="Optional SMT316 review: suggest a leading underscore for module functions and ordinary instance methods with no observed use outside their module/class, including unused members. Test accesses preserve visibility; SMT429 separately reviews test-only public functions. Closest explicit package policy wins; no automatic rename.",
+    )
+    static_methods: Literal["allow", "module-functions"] | None = Field(
+        default=None,
+        description="Optional SMT317 preference: suggest private module functions for internal static helpers without class namespace dependencies. Explicit static APIs, inheritance and extra decorators are preserved. Closest explicit package policy wins; no automatic extraction.",
+    )
 
     @field_validator("match")
     @classmethod
@@ -540,6 +548,8 @@ class PackageContract(_Model):
             and self.ordering is None
             and self.instance_assignments is None
             and self.type_dispatch is None
+            and self.member_visibility is None
+            and self.static_methods is None
         ):
             raise ValueError("set at least one package contract policy")
         return self
@@ -632,6 +642,10 @@ class TestsConfig(_Model):
     review_async_mock_assertions: bool = Field(
         default=False,
         description="Review call-only checks on known async mocks and explicit async class-spec methods without await evidence (SMT428). Advisory; unknown methods and general data flow are not inferred.",
+    )
+    review_test_only_public_functions: bool = Field(
+        default=False,
+        description="Review public module functions accessed from tests but not used by other analyzed production modules (SMT429). Suggest a leading underscore; explicit exports and decorated functions are preserved. Advisory, not proof of external API usage.",
     )
 
     @field_validator("quality_exclude", "forbid_mocks_in")

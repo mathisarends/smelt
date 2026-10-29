@@ -85,6 +85,114 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    @pytest.mark.parametrize(
+        ("code", "policy", "decorator"),
+        [
+            ("SMT316", "member_visibility: private-when-internal", ""),
+            ("SMT317", "static_methods: module-functions", "    @staticmethod\n"),
+        ],
+    )
+    def test_member_findings_keep_the_owning_class_in_their_identity(
+        self, repo: Path, code: str, policy: str, decorator: str
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + f"\nstructure:\n  contracts:\n    members: {{match: app, {policy}}}\n",
+            encoding="utf-8",
+        )
+        source = f"class Original:\n{decorator}    def emit(self): pass\n"
+        write_project(repo, {"app/application/service.py": source})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "original member")
+        write_project(
+            repo,
+            {"app/application/service.py": source.replace("Original", "Replacement")},
+        )
+
+        [finding] = violations(repo, CheckOptions(changed=True, select=(code,)))
+
+        assert finding.target_module == "app.application.service.Replacement.emit"
+
+    def test_removing_an_external_method_user_reports_the_unchanged_definition(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text()
+            + "\nstructure:\n  contracts:\n    members: {match: app, member_visibility: private-when-internal}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "class Browser:\n    def emit(self): pass",
+                "app/application/consumer.py": "from .service import Browser\nBrowser().emit()",
+            },
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "external method user")
+        write_project(repo, {"app/application/consumer.py": ""})
+
+        [finding] = violations(repo, CheckOptions(changed=True, select=("SMT316",)))
+
+        assert (finding.path, finding.line) == ("app/application/service.py", 2)
+        assert finding.expected is not None
+        assert finding.expected["suggested_name"] == "_emit"
+
+    def test_new_test_exposure_reports_an_unchanged_production_definition(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text() + "\ntests: {review_test_only_public_functions: true}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "def helper(): pass\ndef run(): helper()",
+            },
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "before direct helper tests")
+        write_project(
+            repo,
+            {"tests/test_service.py": "from app.application.service import helper"},
+        )
+
+        [finding] = violations(repo, CheckOptions(changed=True, select=("SMT429",)))
+
+        assert (finding.code, finding.path, finding.line) == (
+            "SMT429",
+            "app/application/service.py",
+            1,
+        )
+
+    def test_extra_test_references_do_not_make_an_existing_visibility_finding_new(
+        self, repo: Path
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text() + "\ntests: {review_test_only_public_functions: true}\n",
+            encoding="utf-8",
+        )
+        write_project(
+            repo,
+            {
+                "app/application/service.py": "def helper(): pass",
+                "tests/test_service.py": "from app.application.service import helper",
+            },
+        )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "existing direct helper test")
+        write_project(
+            repo,
+            {"tests/test_other.py": "from app.application.service import helper"},
+        )
+
+        assert violations(repo, CheckOptions(changed=True, select=("SMT429",))) == []
+
     def test_new_ordering_inversions_cannot_hide_in_an_existing_section(
         self, repo: Path
     ) -> None:

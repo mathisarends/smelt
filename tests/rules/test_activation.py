@@ -66,6 +66,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"tests": {"review_test_deadlines": True}}, {"SMT426"}),
         ({"tests": {"review_case_loops": True}}, {"SMT427"}),
         ({"tests": {"review_async_mock_assertions": True}}, {"SMT428"}),
+        ({"tests": {"review_test_only_public_functions": True}}, {"SMT429"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(
@@ -89,6 +90,8 @@ def test_explicit_project_policy_activates_its_checks(
         ({"ordering": {}}, {"SMT313"}),
         ({"instance_assignments": "separate"}, {"SMT314"}),
         ({"type_dispatch": {}}, {"SMT315"}),
+        ({"member_visibility": "private-when-internal"}, {"SMT316"}),
+        ({"static_methods": "module-functions"}, {"SMT317"}),
         (
             {
                 "module_docstrings": "allow",
@@ -97,6 +100,8 @@ def test_explicit_project_policy_activates_its_checks(
                 "ordering": {"enabled": False},
                 "instance_assignments": "allow",
                 "type_dispatch": {"style": "allow"},
+                "member_visibility": "allow",
+                "static_methods": "allow",
             },
             set(),
         ),

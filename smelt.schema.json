@@ -489,6 +489,40 @@
           ],
           "default": null,
           "description": "Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite."
+        },
+        "member_visibility": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "private-when-internal"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional SMT316 review: suggest a leading underscore for module functions and ordinary instance methods with no observed use outside their module/class, including unused members. Test accesses preserve visibility; SMT429 separately reviews test-only public functions. Closest explicit package policy wins; no automatic rename.",
+          "title": "Member Visibility"
+        },
+        "static_methods": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "module-functions"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional SMT317 preference: suggest private module functions for internal static helpers without class namespace dependencies. Explicit static APIs, inheritance and extra decorators are preserved. Closest explicit package policy wins; no automatic extraction.",
+          "title": "Static Methods"
         }
       },
       "required": [
@@ -762,6 +796,12 @@
           "default": false,
           "description": "Review call-only checks on known async mocks and explicit async class-spec methods without await evidence (SMT428). Advisory; unknown methods and general data flow are not inferred.",
           "title": "Review Async Mock Assertions",
+          "type": "boolean"
+        },
+        "review_test_only_public_functions": {
+          "default": false,
+          "description": "Review public module functions accessed from tests but not used by other analyzed production modules (SMT429). Suggest a leading underscore; explicit exports and decorated functions are preserved. Advisory, not proof of external API usage.",
+          "title": "Review Test Only Public Functions",
           "type": "boolean"
         }
       },

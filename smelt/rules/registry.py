@@ -17,6 +17,10 @@ from smelt.rules.structure.headers import (
 )
 from smelt.rules.structure.import_style import ImportStyle
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
+from smelt.rules.structure.members import (
+    InternalPublicMember,
+    PreferPrivateModuleFunction,
+)
 from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
 from smelt.rules.structure.ordering import DefinitionOrder
 from smelt.rules.structure.type_dispatch import PreferMatchTypeDispatch
@@ -30,6 +34,7 @@ from smelt.rules.testing.mocking import (
 )
 from smelt.rules.testing.outcomes import MissingTestAssertion, VacuousTestOutcome
 from smelt.rules.testing.private_access import PrivateTestAccess
+from smelt.rules.testing.public_functions import TestOnlyPublicFunction
 from smelt.rules.testing.timing import TestDeadline
 
 
@@ -56,6 +61,8 @@ def builtin_rules() -> list[Rule]:
         DefinitionOrder(),
         BundledInstanceAssignment(),
         PreferMatchTypeDispatch(),
+        InternalPublicMember(),
+        PreferPrivateModuleFunction(),
         MisplacedTestFile(),
         PrivateTestAccess(),
         ForbiddenTestMock(),
@@ -66,6 +73,7 @@ def builtin_rules() -> list[Rule]:
         TestDeadline(),
         IndependentTestCases(),
         CallOnlyAsyncMock(),
+        TestOnlyPublicFunction(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         ResolvedDebt(),

@@ -60,6 +60,8 @@ class ContractIndex:
             "ordering",
             "instance_assignments",
             "type_dispatch",
+            "member_visibility",
+            "static_methods",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -139,6 +141,20 @@ class ContractIndex:
             **contract.spec.type_dispatch.model_dump(mode="json"),
         }
 
+    def member_brief(self, module: str | None) -> dict[str, Any]:
+        policies: dict[str, Any] = {}
+        if module is None:
+            return policies
+        for key in ("member_visibility", "static_methods"):
+            contract = self.policy_for(module, key)
+            if contract is not None:
+                policies[key] = {
+                    "contract": contract.name,
+                    "package": contract.package,
+                    "policy": getattr(contract.spec, key),
+                }
+        return policies
+
     def missing(self, contract: ResolvedContract) -> list[str]:
         return [
             contract.qualify(entry)
@@ -209,6 +225,8 @@ class ContractIndex:
                             "future_annotations",
                             "private_modules",
                             "instance_assignments",
+                            "member_visibility",
+                            "static_methods",
                         )
                         if getattr(contract.spec, key) is not None
                     }

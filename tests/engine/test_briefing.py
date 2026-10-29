@@ -20,6 +20,32 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("member_visibility", "private-when-internal"),
+        ("static_methods", "module-functions"),
+    ],
+)
+def test_member_policy_is_available_before_writing_a_module(
+    tmp_path: Path, key: str, value: str
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, {key}: {value}}}",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
+    assert briefing.to_json()["member_policy"][key]["policy"] == value
+    assert f"Members: {key}={value} (helpers)" in render_briefing(briefing, ctx)
+
+
 def test_type_dispatch_policy_is_visible_before_writing_a_module(
     tmp_path: Path,
 ) -> None:
@@ -66,6 +92,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
         "review_test_deadlines",
         "review_case_loops",
         "review_async_mock_assertions",
+        "review_test_only_public_functions",
     ],
 )
 def test_test_quality_policy_is_available_for_planned_placement(

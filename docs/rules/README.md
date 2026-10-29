@@ -23,6 +23,8 @@
 | [SMT313](SMT313.md) | definition-order | structure | policy | error |
 | [SMT314](SMT314.md) | bundled-instance-assignment | structure | policy | error |
 | [SMT315](SMT315.md) | prefer-match-type-dispatch | structure | policy | hint |
+| [SMT316](SMT316.md) | internal-public-member | structure | policy | warning |
+| [SMT317](SMT317.md) | prefer-private-module-function | structure | policy | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | policy | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |
@@ -33,6 +35,7 @@
 | [SMT426](SMT426.md) | test-deadline | tests | policy | warning |
 | [SMT427](SMT427.md) | independent-test-cases | tests | policy | hint |
 | [SMT428](SMT428.md) | async-mock-call-only | tests | policy | warning |
+| [SMT429](SMT429.md) | test-only-public-function | tests | policy | warning |
 | [SMT901](SMT901.md) | unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |
