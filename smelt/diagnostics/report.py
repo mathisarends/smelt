@@ -16,6 +16,8 @@ class RuleMeta:
     enabled_by_default: bool
     summary: str
     docs_url: str
+    requires: tuple[str, ...] = ()
+    config: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -26,6 +28,8 @@ class RuleMeta:
             "enabled_by_default": self.enabled_by_default,
             "summary": self.summary,
             "docs_url": self.docs_url,
+            "requires": list(self.requires),
+            "config": list(self.config),
         }
 
 

@@ -99,40 +99,20 @@ class BaseRule:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class RuleInfo:
-    code: str
-    name: str
-    category: Category
-    default_severity: Severity
-    enabled_by_default: bool
-    summary: str
-
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "code": self.code,
-            "name": self.name,
-            "category": self.category.value,
-            "default_severity": self.default_severity.value,
-            "enabled_by_default": self.enabled_by_default,
-            "summary": self.summary,
-        }
-
-
-def rule_info(rule: Rule) -> RuleInfo:
-    return RuleInfo(
-        code=rule.code,
-        name=rule.name,
-        category=rule.category,
-        default_severity=rule.default_severity,
-        enabled_by_default=bool(getattr(rule, "enabled_by_default", True)),
-        summary=rule.explain().summary,
-    )
-
-
 @dataclass
 class RuleSet:
     rules: list[Rule] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        codes: set[str] = set()
+        names: set[str] = set()
+        for rule in self.rules:
+            if rule.code in codes:
+                raise ValueError(f"duplicate rule code: {rule.code}")
+            if rule.name in names:
+                raise ValueError(f"duplicate rule name: {rule.name}")
+            codes.add(rule.code)
+            names.add(rule.name)
 
     def by_code(self, code: str) -> Rule | None:
         return next((r for r in self.rules if r.code == code), None)

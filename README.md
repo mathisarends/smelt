@@ -629,6 +629,11 @@ CI checks the whole repository; `--changed` is for the agent loop.
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the rule extension workflow, code layout,
+regression requirements and PR checklist. `smelt rules --format json` lists each
+rule's analysis requirements and configuration paths; `smelt explain <code>` gives
+the examples and rationale.
+
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```bash
