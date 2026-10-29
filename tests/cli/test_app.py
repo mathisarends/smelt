@@ -38,6 +38,35 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_type_dispatch_is_a_hint_and_never_automatically_rewritten(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        source = "if isinstance(event, A): first(event)\nelif isinstance(event, B): second(event)\nelif isinstance(event, C): third(event)\n"
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {}}",
+                "app/__init__.py": "",
+                "app/events.py": source,
+            },
+        )
+        before = (root / "app/events.py").read_bytes()
+        code, out, _ = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT315",
+            "--fix",
+            "--format",
+            "json",
+        )
+        assert code == 0
+        assert json.loads(out)["violations"][0]["code"] == "SMT315"
+        assert json.loads(out)["violations"][0]["severity"] == "hint"
+        assert (root / "app/events.py").read_bytes() == before
+
     def test_instance_assignment_check_never_automatically_splits_a_swap(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

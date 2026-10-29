@@ -20,6 +20,18 @@ SOURCES = {
 }
 
 
+def test_conflicting_type_dispatch_policies_are_rejected(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    first: {match: app, type_dispatch: {min_branches: 3}}\n    second: {match: app, type_dispatch: {min_branches: 4}}",
+            "app/__init__.py": "",
+        },
+    )
+    with pytest.raises(ConfigError, match="conflicting type dispatch policies"):
+        check(tmp_path)
+
+
 def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -> None:
     write_project(
         tmp_path,

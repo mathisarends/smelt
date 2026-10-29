@@ -59,6 +59,7 @@ class ContractIndex:
             "private_modules",
             "ordering",
             "instance_assignments",
+            "type_dispatch",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -128,6 +129,16 @@ class ContractIndex:
             "instance_assignments": contract.spec.instance_assignments,
         }
 
+    def dispatch_brief(self, module: str | None) -> dict[str, Any] | None:
+        contract = self.policy_for(module, "type_dispatch") if module else None
+        if contract is None or contract.spec.type_dispatch is None:
+            return None
+        return {
+            "contract": contract.name,
+            "package": contract.package,
+            **contract.spec.type_dispatch.model_dump(mode="json"),
+        }
+
     def missing(self, contract: ResolvedContract) -> list[str]:
         return [
             contract.qualify(entry)
@@ -157,6 +168,15 @@ class ContractIndex:
                 if contract.public is not None
                 else None,
                 "missing_public": self.missing_public(contract),
+                **(
+                    {
+                        "type_dispatch": contract.spec.type_dispatch.model_dump(
+                            mode="json"
+                        )
+                    }
+                    if contract.spec.type_dispatch
+                    else {}
+                ),
                 **(
                     {
                         "ordering": contract.spec.ordering.model_dump(

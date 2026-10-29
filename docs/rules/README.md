@@ -22,6 +22,7 @@
 | [SMT312](SMT312.md) | no-private-modules | structure | error |
 | [SMT313](SMT313.md) | definition-order | structure | error |
 | [SMT314](SMT314.md) | bundled-instance-assignment | structure | error |
+| [SMT315](SMT315.md) | prefer-match-type-dispatch | structure | hint |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT420](SMT420.md) | private-test-access | tests | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | error |

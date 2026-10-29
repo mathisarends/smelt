@@ -20,6 +20,25 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_type_dispatch_policy_is_visible_before_writing_a_module(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
+    assert briefing.to_json()["type_dispatch_policy"]["min_branches"] == 4
+    assert "Type dispatch: match from 4 branches" in render_briefing(briefing, ctx)
+
+
 def test_instance_assignment_policy_is_visible_for_a_planned_module(
     tmp_path: Path,
 ) -> None:

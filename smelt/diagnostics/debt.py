@@ -66,6 +66,7 @@ def _edge_field(violation: Violation) -> str | None:
     return {
         "SMT104": "cyclic_edges",
         "SMT313": "ordering_edges",
+        "SMT315": "dispatch_edges",
         "SMT423": "patch_edges",
     }.get(violation.code)
 

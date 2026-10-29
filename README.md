@@ -335,6 +335,66 @@ assignment, properties, swaps and unpacking failures can change behavior when
 split. When unpacking a computed pair, consider unpacking into locals first and
 then assigning each field while preserving evaluation timing.
 
+### Type dispatch with match/case
+
+`SMT315 prefer-match-type-dispatch` suggests reviewing longer positive
+`isinstance`/`elif` chains over the same simple name:
+
+```yaml
+structure:
+  contracts:
+    event-dispatch:
+      match: app
+      type_dispatch:
+        style: match
+        min_branches: 3
+```
+
+The default threshold is three type-tested branches; it counts branches rather
+than members of a type tuple/union. The closest policy wins. Use `style: allow`
+for an exception and `rules: {SMT315: error}` if this convention must fail CI.
+The default severity is a hint, since class-pattern equivalence needs review.
+
+```python
+match event:
+    case OutputValidated() | OutputValidationFailed():
+        if event.call_id is not None:
+            control_calls.add(event.call_id)
+    case ToolCalled() if event.call.id not in control_calls:
+        calls[event.call.id] = event.call
+        yield ToolStarted(event.call)
+```
+
+An independent preceding `if isinstance(event, SessionEvent): events.append(event)`
+must stay independent: an event may need both observation and dispatch. An inner
+body condition must not become a case guard without checking fallthrough: when
+an OutputValidated event has no call ID, its original branch still consumes it.
+Existing and-guards are recorded separately from body conditions.
+
+Supported heads use the builtin isinstance or an unambiguous top-level builtins
+import alias, a simple subject name and type names/dotted names/tuples/unions.
+Additional and-guards are allowed. Independent if statements, mixed subjects,
+negative/or tests, type factories, parameterized types, computed subjects and
+unsupported branches are not combined. One hint describes the whole supported
+chain; elif suffixes are not reported independently.
+
+Checker names bound anywhere in a file are conservatively excluded unless they
+are a single recognized top-level builtin import. A parameter in another function
+can therefore suppress the same checker spelling for the file. Star imports and
+recognized builtin-module mutations also disable detection. Assignment aliases,
+dynamic namespace changes and runtime type identities are not inferred; a type
+name may refer to something unsuitable for a class pattern.
+
+There is no autofix. Match evaluates its subject once, and subclasses, custom
+instance checks, guard effects and runtime type values need manual review. Declared
+Python minima before 3.10 are excluded; unknown minima retain an explicit version
+review requirement. JSON exposes the subject, branch types, guards and Python
+target; context exposes the policy for existing and planned modules. Only analyzed
+production sources are covered. Changed/debt comparisons track branch identities
+and multiplicity, so an additional branch cannot hide behind an accepted chain.
+See the Python reference for
+[match semantics](https://docs.python.org/3/reference/compound_stmts.html#the-match-statement).
+
 ### Relative and absolute imports
 
 Declare the style explicitly, globally for a root package or for selected
