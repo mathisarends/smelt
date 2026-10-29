@@ -718,6 +718,41 @@ so accepted debt cannot hide an added or replaced patch. JSON includes policy,
 operation locations and a test-quality coverage summary; `smelt context` exposes
 the test policy before files are written. No automatic patch or test rewrites occur.
 
+### Evaluate a test-quality change
+
+Use a fixed project snapshot and compare the old/new analyzer on the same policy.
+Then execute the chosen pytest boundary and, when justified, introduce a specific
+plausible regression in that disposable snapshot. Confirm that the test fails for
+the intended reason and still passes with the real implementation. Promote the
+small failing example and an intentional valid neighbor into Smelt regressions.
+Review false positives and missed cases; a lower finding count alone is no goal.
+
+The optional maintainer runner records this comparison without installing either
+version or changing policy. Replace the example paths with your snapshot, baseline
+import root and selected test scope:
+
+```bash
+uv run python scripts/evaluate.py --config ../application/smelt.yml \
+  --baseline ../smelt-0.1.4 --reports ../smelt-evaluation \
+  --pytest-target tests/unit
+```
+
+Both import roots must contain `smelt/__init__.py`; checkouts and extracted wheels
+are supported. Use `--candidate`, `--python`, `--test-python`, `--pythonpath` and
+repeatable `--pytest-arg` options when the project uses a separate test environment.
+`--select` defaults to SMT42; use `--select ''` for the adopted policy. Enable new
+candidate-only policies in a separate review run; old versions reject unknown
+configuration fields. Keep reports outside inspected source roots.
+
+`evaluation.json` contains the configuration SHA256, optional `--source-revision`,
+commands, return codes, deadlines, raw logs and added/removed/updated findings,
+including multiplicity. Analysis exit 1 means findings and permits comparison.
+Runner exit 0 / `complete` means the requested stages completed; without explicit
+pytest targets, `pytest.executed` is false. Test failures return 1 / `tests-failed`.
+Invalid analysis, malformed output, timeouts or incomplete pytest collection return
+2 / `error`; invalid analysis never starts pytest. Neither status proves test
+effectiveness, and this runner performs no automatic mutation or source fixes.
+
 For complementary checks use Ruff's annotation and pytest-style rules: ANN201/
 ANN202 for return annotations, ANN001 for parameters, N801 for class naming, and
 PT011 for selected exception assertions missing a meaningful match/check. The
