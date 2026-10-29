@@ -1,5 +1,7 @@
 # Extending Smelt
 
+Use [the vision](vision.md) as the scope and acceptance filter for proposed changes.
+
 An agent mistake is evidence for a regression, not automatically a new rule. Start
 with the smallest reproducible example, the intended result and a nearby valid
 counterexample. Fix an existing rule when its documented contract already covers
