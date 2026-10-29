@@ -21,7 +21,14 @@ _PROCESS_WAITS = frozenset(
         "subprocess.Popen.communicate",
     }
 )
-_ASYNC_WAITS = frozenset({"asyncio.Event.wait", "asyncio.locks.Event.wait"})
+_ASYNC_WAITS = frozenset(
+    {
+        "asyncio.Event.wait",
+        "asyncio.locks.Event.wait",
+        "asyncio.subprocess.Process.wait",
+        "asyncio.subprocess.Process.communicate",
+    }
+)
 
 
 @dataclass(frozen=True)

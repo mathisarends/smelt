@@ -79,6 +79,10 @@ _FACTORY_TYPES = {
     "asyncio.create_task": "asyncio.Task",
     "asyncio.ensure_future": "asyncio.Future",
 }
+_ASYNC_FACTORY_TYPES = {
+    "asyncio.create_subprocess_exec": "asyncio.subprocess.Process",
+    "asyncio.create_subprocess_shell": "asyncio.subprocess.Process",
+}
 
 
 @dataclass(frozen=True)
@@ -471,7 +475,7 @@ class _Visitor(ast.NodeVisitor):
     def binding(self, node: ast.AST) -> _Binding | None:
         if isinstance(node, ast.Name):
             return self.env.get(node.id)
-        if isinstance(node, ast.Call):
+        if isinstance(node, ast.Call | ast.Await):
             return self.value_binding(node)
         if isinstance(node, ast.Attribute):
             parent = self.binding(node.value)
@@ -495,6 +499,17 @@ class _Visitor(ast.NodeVisitor):
         return None
 
     def value_binding(self, node: ast.AST, *, context: bool = False) -> _Binding | None:
+        if isinstance(node, ast.Await):
+            qualified = (
+                self.qualified(node.value.func)
+                if isinstance(node.value, ast.Call)
+                else None
+            )
+            return (
+                _instance(_ASYNC_FACTORY_TYPES[qualified], "awaited-factory")
+                if qualified in _ASYNC_FACTORY_TYPES
+                else None
+            )
         if (
             isinstance(node, ast.Tuple)
             and node.elts

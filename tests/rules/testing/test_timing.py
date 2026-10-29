@@ -27,3 +27,35 @@ def test_deadline_review_reports_unbounded_process_and_shared_clock(
         "scheduler-clock",
     }
     assert all(finding.severity.value == "warning" for finding in found)
+
+
+def test_async_exit_wait_needs_its_own_guard_after_bounded_communication(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {review_test_deadlines: true}",
+            "app/__init__.py": "",
+            "tests/conftest.py": "import asyncio\nimport pytest\n@pytest.fixture\nasync def process():\n    child = await asyncio.create_subprocess_exec('tool')\n    yield child",
+            "tests/test_process.py": """
+                import asyncio
+                async def test_exit(process):
+                    await asyncio.wait_for(process.communicate(), timeout=1)
+                    process.kill()
+                    await process.wait()
+                async def test_bounded_exit(process):
+                    async with asyncio.timeout(1):
+                        await process.wait()
+            """,
+        },
+    )
+    [finding] = violations(tmp_path)
+    assert finding.code == "SMT426"
+    assert finding.line == 5
+    assert finding.expected == {
+        "test": "test_exit",
+        "kind": "unbounded-wait",
+        "operation": "asyncio.subprocess.Process.wait",
+        "provenance": "fixture-inferred",
+    }

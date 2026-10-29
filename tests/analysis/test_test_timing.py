@@ -51,6 +51,42 @@ from smelt.analysis.test_timing import unbounded_waits
         ("event = unknown()\n    await event.wait()", False),
         ("event = asyncio.Event()\n    pending = event.wait()", False),
         (
+            "process = await asyncio.create_subprocess_exec('tool')\n    await process.wait()",
+            True,
+        ),
+        (
+            "process = await asyncio.create_subprocess_shell('tool')\n    await process.communicate()",
+            True,
+        ),
+        ("process = await spawn('tool')\n    await process.wait()", True),
+        (
+            "process = asyncio.create_subprocess_exec('tool')\n    await process.wait()",
+            False,
+        ),
+        ("process: asyncio.subprocess.Process\n    await process.wait()", True),
+        ("process: Child\n    await process.communicate()", True),
+        (
+            "process = await asyncio.create_subprocess_exec('tool')\n    await asyncio.wait_for(process.wait(), 5)",
+            False,
+        ),
+        (
+            "process = await asyncio.create_subprocess_exec('tool')\n    async with asyncio.timeout(5):\n        await process.communicate()",
+            False,
+        ),
+        (
+            "process = await asyncio.create_subprocess_exec('tool')\n    await asyncio.wait_for(process.communicate(), 5)\n    await process.wait()",
+            True,
+        ),
+        (
+            "process = await asyncio.create_subprocess_exec('tool')\n    process.kill()\n    await process.wait()",
+            True,
+        ),
+        (
+            "process = await asyncio.create_subprocess_exec('tool')\n    pending = process.wait()",
+            False,
+        ),
+        ("process = unknown()\n    await process.wait()", False),
+        (
             "async with asyncio.timeout(1):\n        await asyncio.sleep(0.01)\n    await asyncio.sleep(0)",
             False,
         ),
@@ -58,7 +94,7 @@ from smelt.analysis.test_timing import unbounded_waits
 )
 def test_known_waits_and_local_deadlines(body: str, flagged: bool) -> None:
     source = (
-        "import subprocess\nimport asyncio\nimport anyio\nfrom tests.timing import deadline\nasync def test_run():\n    "
+        "import subprocess\nimport asyncio\nimport anyio\nfrom asyncio import create_subprocess_exec as spawn\nfrom asyncio.subprocess import Process as Child\nfrom tests.timing import deadline\nasync def test_run():\n    "
         + body
     )
     [test] = analyze_test_syntax(ast.parse(source), "tests/test_run.py").tests

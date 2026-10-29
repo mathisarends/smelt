@@ -619,7 +619,7 @@ class TestsConfig(_Model):
     )
     review_test_deadlines: bool = Field(
         default=False,
-        description="Review known subprocess/Event waits without local bounds and replacement of the asyncio scheduler clock (SMT426). External runner deadlines and unknown/transitive waits are not inferred.",
+        description="Review known synchronous/asyncio subprocess and Event/Task/Future waits without local bounds and replacement of the asyncio scheduler clock (SMT426). External runner deadlines and unknown/transitive waits are not inferred.",
     )
     timeout_helpers: list[str] = Field(
         default_factory=list,

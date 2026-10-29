@@ -690,10 +690,14 @@ complete generated/expected mappings over loops that check only returned files.
 This check does not prove collection cardinality or assertion reachability.
 
 SMT426 checks known subprocess calls for their own timeout, and known asyncio
-Event/Task/Future waits for local guards such as `wait_for`, `asyncio.timeout`,
+Event/Task/Future and subprocess Process waits for local guards such as `wait_for`, `asyncio.timeout`,
 AnyIO/Trio timeout contexts or configured qualified `timeout_helpers`. Async
 cancellation cannot bound a blocking synchronous subprocess. A known loop's
 `time` replacement is reported separately because its deadlines may freeze too.
+Async processes are recognized from awaited `asyncio.create_subprocess_exec` /
+`create_subprocess_shell` and explicit `asyncio.subprocess.Process` annotations.
+Each awaited `wait()` or `communicate()` needs its own guard: a preceding bounded
+read or `kill()` does not bound the later exit wait.
 External runner deadlines and general task/fixture flow are not resolved.
 Bounded real-boundary polling and `asyncio.sleep(0)` are valid; positive sleeps
 are not prohibited. SMT427 only suggests parametrization for narrow literal-loop

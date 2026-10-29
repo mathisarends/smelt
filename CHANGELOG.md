@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT426 now reviews `wait()` and `communicate()` on known asyncio subprocesses
+  created through awaited standard factories or explicit Process annotations.
+  Each operation needs its own local guard, including exit waits after bounded
+  reads or `kill()`. Unknown process-like objects remain outside scope.
 - Optional SMT428 (`tests.review_async_mock_assertions`) reviews call-only checks
   on known async mocks and async class-spec methods. Await assertions, deliberate
   scheduling checks and synchronous methods remain valid. Known fixture specs and
