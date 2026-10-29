@@ -96,6 +96,8 @@ from smelt.analysis.test_syntax import analyze_test_syntax
         ("connect = AsyncMock()\n    assert not connect.called", []),
         ("connect = AsyncMock()\n    assert connect.call_count == 0", []),
         ("connect = AsyncMock()\n    assert connect.call_args is None", []),
+        ("connect = AsyncMock()\n    assert connect.call_args_list == []", []),
+        ("connect = AsyncMock()\n    assert connect.call_args.args == ()", ["connect"]),
         (
             "connect = AsyncMock()\n    def helper():\n        connect.assert_awaited_once()\n    connect.assert_called_once()",
             ["connect"],

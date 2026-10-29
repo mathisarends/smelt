@@ -56,10 +56,13 @@ def _checks_no_call(node: ast.Attribute, parents: dict[ast.AST, ast.AST]) -> boo
     if isinstance(parent, ast.Compare) and len(parent.ops) == 1:
         left, right = parent.left, parent.comparators[0]
         other = right if left is node else left if right is node else None
-        return (
-            isinstance(parent.ops[0], ast.Eq | ast.Is)
-            and isinstance(other, ast.Constant)
-            and other.value in (None, False, 0)
+        return isinstance(parent.ops[0], ast.Eq | ast.Is) and (
+            (isinstance(other, ast.Constant) and other.value in (None, False, 0))
+            or (
+                node.attr == "call_args_list"
+                and isinstance(other, ast.List)
+                and not other.elts
+            )
         )
     return False
 
