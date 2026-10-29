@@ -26,6 +26,9 @@ to a different project; `pip install smelt` and bare `uvx smelt` install that pr
 
 ## Usage
 
+See the [changelog](CHANGELOG.md) for new capabilities, fixes and migration notes
+by release, including changes to agent workflows and rule defaults.
+
 Most rules are opt-in. Smelt enables declared architecture/package/test policies
 without a second switch; only unknown-layer and suppression/debt diagnostics run
 by default. Import cycles and unclassified-module hints require explicit selection.

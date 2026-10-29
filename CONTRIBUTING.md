@@ -113,6 +113,13 @@ and refusal tests for uncertain execution or concurrent edits.
 
 ## Verification and PR scope
 
+Update [CHANGELOG.md](CHANGELOG.md) under `Unreleased` for user-visible features,
+fixes and behavior changes. State what an agent can do differently, required
+policy or opt-in settings, compatibility changes and relevant limits. Keep entries
+concise and link to detailed rule documentation rather than duplicating it. Before
+publishing a release, move its entries into a dated version section and update the
+comparison links.
+
 ```bash
 uv sync --locked
 uv run pytest tests/rules/<category>/test_<concept>.py
