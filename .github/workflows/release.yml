@@ -1,0 +1,87 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Validate and build distributions
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: false
+      - name: Require a release commit from main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - run: uv sync --locked
+      - name: Require the tag to match the package version
+        run: |
+          uv run --frozen python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          expected_tag = f"v{project['version']}"
+          actual_tag = os.environ["GITHUB_REF_NAME"]
+          if actual_tag != expected_tag:
+              raise SystemExit(f"Expected tag {expected_tag!r}, got {actual_tag!r}")
+          PY
+      - run: uv run --frozen pre-commit run --all-files --show-diff-on-failure
+      - run: uv run --frozen pytest
+      - run: uv run --frozen smelt check --strict
+      - run: uv build --no-sources
+      - name: Install and smoke-test the wheel and source distribution
+        run: |
+          for distribution in dist/*.whl dist/*.tar.gz; do
+            smoke_env="$RUNNER_TEMP/$(basename "$distribution").venv"
+            uv venv --python 3.12 "$smoke_env"
+            uv pip install --python "$smoke_env/bin/python" "$distribution"
+            (
+              cd "$RUNNER_TEMP"
+              "$smoke_env/bin/smelt" --version
+              "$smoke_env/bin/smelt" rules
+              "$smoke_env/bin/smelt" explain SMT101
+              "$smoke_env/bin/smelt" config schema
+            )
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish distributions to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/smelt-cli/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Publish with PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -133,3 +133,68 @@ old/new result, valid counterexample, default/configuration behavior, false-posi
 boundaries and validation. Link related issues or prerequisite PRs. A new report
 format or configuration default deserves explicit compatibility notes. The PR
 template captures these decisions without duplicating the generated rule catalog.
+
+## Publishing a release
+
+The `.github/workflows/release.yml` workflow publishes `smelt-cli` to PyPI when a
+`v`-prefixed version tag is pushed. It uses
+[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/)
+through GitHub Actions OIDC; no PyPI API token or repository secret is needed.
+
+### One-time account configuration
+
+In the PyPI project's
+[Publishing settings](https://pypi.org/manage/project/smelt-cli/settings/publishing/),
+add a GitHub Trusted Publisher with these exact values:
+
+| Field | Value |
+| --- | --- |
+| PyPI project | `smelt-cli` |
+| Repository owner | `mathisarends` |
+| Repository name | `smelt` |
+| Workflow filename | `release.yml` |
+| Environment name | `pypi` |
+
+The workflow filename is the basename, without `.github/workflows/`. If the PyPI
+project does not exist yet, register the same values as a
+[pending publisher](https://pypi.org/manage/account/publishing/) instead.
+
+In the repository's
+[Environments settings](https://github.com/mathisarends/smelt/settings/environments),
+create an environment named `pypi` and allow deployments from tags matching `v*`.
+Required reviewers are optional; leave them unset if maintainers and coding agents
+should be able to publish without a separate approval for each release. The PyPI
+environment name must match the workflow exactly.
+
+### Release procedure
+
+1. Bump the version in `pyproject.toml`, run `uv lock`, and merge the version change
+   and release workflow into `main` after CI passes. Each release needs a new PyPI
+   version; this setup does not bump or publish the existing `0.1.3` automatically.
+2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
+   For example, after merging version `0.1.4`:
+
+   ```bash
+   git switch main
+   git pull --ff-only
+   git tag v0.1.4
+   git push origin v0.1.4
+   ```
+
+3. Follow the `Publish to PyPI` run in
+   [GitHub Actions](https://github.com/mathisarends/smelt/actions/workflows/release.yml).
+   The workflow requires the tagged commit to be reachable from `main` and the tag
+   to equal `v` followed by the package version. It runs pre-commit, pytest and
+   Smelt, builds both distributions, and installs and exercises each outside the
+   checkout. A separate job downloads those exact artifacts and publishes them
+   with OIDC and the publishing action's default attestations enabled.
+
+Maintainers and coding agents with permission to push release tags can use this
+procedure without local PyPI credentials. Ordinary branch pushes and pull requests
+do not publish. Manual workflow runs must select an existing `v`-prefixed tag
+(`gh workflow run release.yml --ref v0.1.4`); branch runs skip publishing.
+
+If the upload fails because account configuration is missing, finish that setup
+and rerun the failed publishing job so it reuses the validated build artifacts.
+PyPI does not permit overwriting published files; use a new version for changed
+package contents.
