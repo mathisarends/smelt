@@ -7,6 +7,21 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+No unreleased behavior changes.
+
+## [0.1.6] - 2026-10-29
+
+### Compatibility and activation
+
+- SMT428 remains opt-in through `tests.review_async_mock_assertions`; the default
+  rule set is unchanged. Its findings ask for review of an individual test, not a
+  claim that the suite misses the regression.
+- Existing `tests.review_test_deadlines` policies can now report additional known
+  asyncio subprocess waits. Review each operation's local deadline, including
+  cleanup paths, rather than adding a blanket timeout or await restriction.
+
+### Added and fixed
+
 - SMT426 now reviews `wait()` and `communicate()` on known asyncio subprocesses
   created through awaited standard factories or explicit Process annotations.
   Each operation needs its own local guard, including exit waits after bounded
@@ -161,6 +176,7 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/mathisarends/smelt/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/mathisarends/smelt/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mathisarends/smelt/compare/v0.1.3...v0.1.4

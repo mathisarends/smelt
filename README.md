@@ -887,7 +887,7 @@ regression test.
 ```yaml
 repos:
   - repo: https://github.com/mathisarends/smelt
-    rev: v0.1.4
+    rev: v0.1.6
     hooks:
       - id: smelt
 ```
