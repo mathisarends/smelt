@@ -33,6 +33,9 @@ def render_json(report: Report) -> str:
         "coverage": dict(report.coverage) if report.coverage else None,
         "project": dict(report.project) if report.project else None,
         "violations": [v.to_json() for v in report.violations],
+        "configuration_diagnostics": [
+            diagnostic.to_json() for diagnostic in report.configuration_diagnostics
+        ],
         "groups": group_findings(report.violations),
     }
     if report.fixes is not None:
@@ -97,6 +100,34 @@ def render_sarif(report: Report, version: str) -> str:
                     }
                 },
                 "results": results,
+                "invocations": [
+                    {
+                        "executionSuccessful": True,
+                        "toolConfigurationNotifications": [
+                            {
+                                "level": _SARIF_LEVEL[diagnostic.severity],
+                                "message": {
+                                    "text": f"{diagnostic.key}: {diagnostic.message}"
+                                },
+                                "locations": [
+                                    {
+                                        "physicalLocation": {
+                                            "artifactLocation": {
+                                                "uri": quote(
+                                                    posixpath.join(
+                                                        prefix, diagnostic.path
+                                                    ),
+                                                    safe="/",
+                                                )
+                                            }
+                                        }
+                                    }
+                                ],
+                            }
+                            for diagnostic in report.configuration_diagnostics
+                        ],
+                    }
+                ],
                 "properties": _sarif_properties(report),
             }
         ],
@@ -160,6 +191,10 @@ _GITHUB_LEVEL = {
 def render_github(report: Report) -> str:
     prefix = (report.project or {}).get("repository_prefix", "")
     lines = [_github_line(v, prefix) for v in report.violations]
+    lines.extend(
+        f"::{_GITHUB_LEVEL[diagnostic.severity]} file={_escape_property(posixpath.join(prefix, diagnostic.path))},title=Smelt configuration::{_escape_data(f'{diagnostic.key}: {diagnostic.message}')}"
+        for diagnostic in report.configuration_diagnostics
+    )
     summary = report.summary_json()
     lines.append(
         f"smelt: {summary['errors']} errors, {summary['warnings']} warnings, "

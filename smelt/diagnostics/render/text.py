@@ -57,7 +57,10 @@ def render_text(
         for violation in report.violations
         if show_hints or violation.severity is not Severity.HINT
     ]
-    blocks: list[str] = []
+    blocks: list[str] = [
+        f"warning: {diagnostic.path}: {diagnostic.key}: {diagnostic.message}"
+        for diagnostic in report.configuration_diagnostics
+    ]
     if not statistics:
         blocks.extend(
             _render_violation(v, read_line, style) for v in _group_unclassified(shown)

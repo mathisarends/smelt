@@ -38,6 +38,59 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    @pytest.mark.parametrize("fail_on", ["error", "warning"])
+    @pytest.mark.parametrize("output_format", ["json", "sarif", "github", "text"])
+    def test_configuration_warnings_are_structured_and_affect_the_threshold(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+        fail_on: str,
+        output_format: str,
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
+                "app/__init__.py": "",
+            },
+        )
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--format",
+            output_format,
+            "--fail-on",
+            fail_on,
+            "--select",
+            "SMT901",
+        )
+        assert code == (0 if fail_on == "error" else 1)
+        assert "cyclic may_depend_on" in out
+        assert not err
+        if output_format == "json":
+            report = json.loads(out)
+            assert report["status"] == ("passed" if fail_on == "error" else "failed")
+            assert report["summary"]["warnings"] == 1
+            assert report["violations"] == []
+            [diagnostic] = report["configuration_diagnostics"]
+            assert diagnostic["key"] == "architecture.layers"
+            assert diagnostic["path"] == "smelt.yaml"
+            assert diagnostic["severity"] == "warning"
+        elif output_format == "sarif":
+            [run] = json.loads(out)["runs"]
+            [invocation] = run["invocations"]
+            assert invocation["executionSuccessful"]
+            [notification] = invocation["toolConfigurationNotifications"]
+            assert notification["level"] == "warning"
+            assert (
+                notification["locations"][0]["physicalLocation"]["artifactLocation"][
+                    "uri"
+                ]
+                == "smelt.yaml"
+            )
+
     def test_all_prefix_enables_cycle_check_and_explicit_off_wins(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

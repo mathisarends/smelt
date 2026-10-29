@@ -77,6 +77,14 @@ and, for config errors, the `config` file with each issue's YAML `location`. Tha
 argument errors (`--fail-on bogus`, an unknown flag) whenever `--format json` is on the
 command line; an invalid `--format` value itself is reported as argparse text.
 
+Valid configurations can also produce warnings, such as cyclic `may_depend_on`
+policies. Reports retain these separately from rule violations in JSON
+`configuration_diagnostics` (config path, key, severity and message) and SARIF
+`toolConfigurationNotifications`. Text and GitHub output include them too.
+They count toward the warning total and cause exit `1` with `--fail-on warning`.
+Configuration warnings describe the current policy even in scoped/changed checks;
+rule selection, source suppressions and accepted debt do not remove them.
+
 `--changed` checks the base commit (HEAD, or the merge-base with `--base`) with today's
 config and reports only violations that are new, wherever they show up. Old violations in
 an edited file stay quiet, a new import cycle does not.

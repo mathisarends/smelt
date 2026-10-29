@@ -7,7 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-No unreleased behavior changes.
+- Configuration warnings now appear in JSON `configuration_diagnostics`, SARIF
+  configuration notifications, GitHub annotations and text summaries. They count
+  toward `summary.warnings` and `--fail-on warning`, including scoped/changed
+  checks; rule selection, suppressions and debt cannot hide configuration warnings.
 
 ## [0.1.4] - 2026-10-29
 
