@@ -58,6 +58,7 @@ class ContractIndex:
             "future_annotations",
             "private_modules",
             "ordering",
+            "instance_assignments",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -115,6 +116,16 @@ class ContractIndex:
             "contract": contract.name,
             "package": contract.package,
             **contract.spec.ordering.model_dump(mode="json", by_alias=True),
+        }
+
+    def assignment_brief(self, module: str | None) -> dict[str, Any] | None:
+        contract = self.policy_for(module, "instance_assignments") if module else None
+        if contract is None:
+            return None
+        return {
+            "contract": contract.name,
+            "package": contract.package,
+            "instance_assignments": contract.spec.instance_assignments,
         }
 
     def missing(self, contract: ResolvedContract) -> list[str]:
@@ -177,6 +188,7 @@ class ContractIndex:
                             "module_docstrings",
                             "future_annotations",
                             "private_modules",
+                            "instance_assignments",
                         )
                         if getattr(contract.spec, key) is not None
                     }

@@ -50,6 +50,9 @@ structure:
     module-names:
       match: smelt
       private_modules: forbid
+    instance-fields:
+      match: smelt
+      instance_assignments: separate
     model-api:
       match: smelt.model
       required: [architecture]

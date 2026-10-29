@@ -460,6 +460,23 @@
           ],
           "default": null,
           "description": "Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins."
+        },
+        "instance_assignments": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "separate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional SMT314 convention: separate rejects an assignment statement writing multiple direct attributes of a method's instance receiver. Local unpacking remains allowed. Closest explicit package policy wins; no automatic splitting.",
+          "title": "Instance Assignments"
         }
       },
       "required": [

@@ -20,6 +20,18 @@ SOURCES = {
 }
 
 
+def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    first: {match: app, instance_assignments: separate}\n    second: {match: app, instance_assignments: allow}",
+            "app/__init__.py": "",
+        },
+    )
+    with pytest.raises(ConfigError, match="conflicting instance assignment policies"):
+        check(tmp_path)
+
+
 def _issues(tmp_path: Path, architecture: str, tests: str = "") -> list[str]:
     config = (
         "version: 1\n"

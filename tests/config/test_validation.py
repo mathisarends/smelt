@@ -24,6 +24,8 @@ class TestPackageContracts:
             {"match": "gateway", "private_modules": "forbid"},
             {"match": "gateway", "private_modules": "allow"},
             {"match": "gateway", "ordering": {}},
+            {"match": "gateway", "instance_assignments": "separate"},
+            {"match": "gateway", "instance_assignments": "allow"},
             {"match": "gateway", "ordering": {"enabled": False}},
         ],
     )
@@ -48,6 +50,7 @@ class TestPackageContracts:
             {"match": "gateway", "public": ["/api"]},
             {"match": "other", "public": []},
             {"match": "gateway", "imports": {"style": "sometimes"}},
+            {"match": "gateway", "instance_assignments": "sometimes"},
             {"match": "gateway", "imports": {"max_relative_level": 0}},
             {"match": "gateway", "bundle_imports_at": 1},
             {"match": "gateway", "module_docstrings": "sometimes"},

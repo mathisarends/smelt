@@ -21,6 +21,7 @@
 | [SMT311](SMT311.md) | unnecessary-future-annotations | structure | hint |
 | [SMT312](SMT312.md) | no-private-modules | structure | error |
 | [SMT313](SMT313.md) | definition-order | structure | error |
+| [SMT314](SMT314.md) | bundled-instance-assignment | structure | error |
 | [SMT401](SMT401.md) | test-location | tests | error |
 | [SMT420](SMT420.md) | private-test-access | tests | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | error |

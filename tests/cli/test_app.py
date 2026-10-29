@@ -38,6 +38,34 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_instance_assignment_check_never_automatically_splits_a_swap(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        source = "class Inbox:\n    def update(self):\n        self.a, self.b = self.b, self.a\n"
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    fields: {match: app, instance_assignments: separate}",
+                "app/__init__.py": "",
+                "app/service.py": source,
+            },
+        )
+        before = (root / "app/service.py").read_bytes()
+        code, out, _ = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--select",
+            "SMT314",
+            "--fix",
+            "--format",
+            "json",
+        )
+        assert code == 1
+        assert json.loads(out)["violations"][0]["code"] == "SMT314"
+        assert (root / "app/service.py").read_bytes() == before
+
     def test_test_quality_rule_reports_json_and_sarif(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:

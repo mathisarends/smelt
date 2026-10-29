@@ -20,6 +20,25 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_instance_assignment_policy_is_visible_for_a_planned_module(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    fields: {match: app, instance_assignments: separate}",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(
+        ctx, resolve_target(ctx, "app/planned.py"), outcome.report
+    )
+    assert briefing.to_json()["assignment_policy"]["instance_assignments"] == "separate"
+    assert "Instance assignments: separate" in render_briefing(briefing, ctx)
+
+
 def test_test_quality_policy_is_available_for_planned_placement(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
