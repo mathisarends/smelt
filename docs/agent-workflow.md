@@ -97,7 +97,9 @@ or damaged result cache falls back to normal checking. `--no-cache` bypasses bot
 result and fact caches. Normal working-tree checks hash contents and rediscover
 inventory; they do not trust modification time alone.
 Policy, Python metadata and analyzer/dependency versions invalidate relevant data.
-Editable analyzer source changes invalidate its cache too. SQLite transactions
+Installed wheels use their recorded build hashes; reinstalls with different code
+invalidate the cache even if the version is unchanged. Editable and `PYTHONPATH`
+overrides hash the actual analyzer source instead. SQLite transactions
 allow simultaneous readers/writers without sharing mutable graph caches. A busy
 writer causes a quick fallback instead of making a commit wait for another check.
 
@@ -136,6 +138,43 @@ working-tree changes by default; `--baseline-mode staged` compares the same stag
 workflow. The `architecture` policy adds layers and native import scanning to the
 member review. Synthetic policies do not represent every architecture, test-quality
 policy, machine or repository size. With few samples, p95 is effectively the maximum.
+
+### Direct Git reads and incremental decisions
+
+Paired measurements on 2026-10-30 compare installed wheels against `origin/main`
+at `aa1163091e9be6f41028b59d956f7cd423e4d8ff`, including PR #36. Both analyzers use
+the same Python environment and `--staged`. Windows 11, CPython 3.14, 250 modules
+with twelve helper methods each; seven samples per warm or edit scenario. The
+architecture variant adds a simple layered import graph with direct-import policy.
+
+| Scenario | Main median (s) | New median (s) | New p95 / max (s) |
+| --- | ---: | ---: | ---: |
+| Member policy, unchanged retry | 0.771 | 0.313 | 0.334 |
+| Member policy, first check after each edit | 1.289 | 0.840 | 1.058 |
+| Members + architecture, unchanged retry | 0.793 | 0.362 | 0.388 |
+| Members + architecture, first check after each edit | 1.564 | 0.922 | 1.522 |
+
+Single first-cache-build observations were 4.709 → 1.363 seconds for members and
+4.981 → 1.700 seconds with architecture. New uncached checks took 2.381 and 1.955
+seconds respectively. These cold observations are separate from the seven-sample
+medians. Each edited result matched an independent uncached report, and both
+versions agreed on finding identities. Complete CLI startup and JSON output are
+timed; hook-runner startup, environment installation and `uv run` are excluded.
+
+The [raw samples and wheel identities](benchmarks/precommit-performance-2026-10-30.json)
+record the measured builds and runner arguments. To reproduce installed behavior,
+build each checkout with `uv build --wheel`, install its wheel into a separate
+directory with `uv pip install --target DIR --no-deps WHEEL`, and pass those two
+directories as `--candidate` and `--baseline`. Keep the dependency environment the
+same for both. The default runner instead measures source checkouts.
+
+Small edits still exceed 500 ms in this run. Global evidence, graph decisions,
+serialization and fresh-process imports remain work; a whole-language rewrite is
+not part of this change. Timings on this Windows machine varied substantially
+between sessions, so these paired observations are not latency guarantees. The
+caller chooses `pre-commit` or `prek`; the hook entry requires no runner migration.
+
+### Historical snapshot implementation
 
 Historical PR #35 sample on 2026-10-30: Windows, CPython 3.14, baseline `d4a77c9`, 250 modules
 with 12 existing public helper methods each. Baseline/warm medians use 15 CLI

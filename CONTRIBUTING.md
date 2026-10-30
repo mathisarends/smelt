@@ -38,7 +38,9 @@ inputs that affect their meaning. Verify results against `--no-cache` after edit
 deletions, re-exports and fixture changes. Mark a rule `file_local` only when its
 source contents, resolved policy and Python target fully determine its decision.
 `test_local` rules additionally receive resolved constructor, fixture and module
-inventory inputs. Global rules must retain their cross-file dependencies.
+inventory inputs. `member_local` rules consume resolved member facts, including
+current external-use and inheritance evidence. Global rules must retain their
+cross-file dependencies.
 
 Keep related rules together when they share a concept, as in `structure/headers.py`.
 Give a growing concept its own module rather than expanding a catch-all file.

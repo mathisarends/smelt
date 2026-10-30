@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Staged checks read captured Git blobs directly instead of writing temporary
+  source trees. An unchanged retry can reuse its exact result before loading the
+  analysis engine. Per-file import, member and test facts and selected findings
+  are reused across edits, with dependency-aware invalidation for callers,
+  re-exports and fixtures. `--no-cache` remains an independent check. See the
+  [paired CLI benchmarks and cache limits](docs/agent-workflow.md).
 - `architecture.imports.transitive: true` now checks arbitrary import chains for
   layer, cross-feature, shared, composition-root and third-party policies, e.g.
   `domain → shared.utils → sqlalchemy`. Findings include a deterministic shortest

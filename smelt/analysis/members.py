@@ -112,6 +112,7 @@ type MemberState = tuple[bool, bool, tuple[int, ...], bool]
 class MemberUsageIndex:
     def __init__(self, syntax: SyntaxIndex) -> None:
         self._syntax = syntax
+        self._decision_keys: dict[str, str] = {}
 
     @cached_property
     def _files(self) -> list[_FileFacts]:
@@ -253,20 +254,32 @@ class MemberUsageIndex:
             if cache is None:
                 members.extend(self._resolve_file(file, states))
             else:
+                inputs = [
+                    file.module,
+                    file.path,
+                    file.production,
+                    self._syntax.files.content_id(file.path),
+                    states,
+                ]
+                self._decision_keys[file.path] = cache.key("resolved-members", inputs)
                 cached_members = cache.get(
                     "resolved-members",
-                    [
-                        file.module,
-                        file.path,
-                        file.production,
-                        self._syntax.files.content_id(file.path),
-                        states,
-                    ],
+                    inputs,
                     _MEMBERS,
                     partial(self._resolve_file, file, states),
                 )
                 members.extend(cached_members)
         return members
+
+    @cached_property
+    def member_files(self) -> dict[str, list[Member]]:
+        groups: dict[str, list[Member]] = {}
+        for member in self.members:
+            groups.setdefault(member.path, []).append(member)
+        return groups
+
+    def decision_key(self, path: str) -> str:
+        return self._decision_keys[path]
 
     def _resolve_file(
         self, file: _FileFacts, states: list[MemberState]

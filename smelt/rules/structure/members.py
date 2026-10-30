@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class InternalPublicMember(BaseRule):
+    member_local = True
     code = "SMT316"
     name = "internal-public-member"
     category = Category.STRUCTURE
@@ -62,6 +63,7 @@ class InternalPublicMember(BaseRule):
 
 
 class InternalStaticHelper(BaseRule):
+    member_local = True
     code = "SMT317"
     name = "internal-static-helper"
     category = Category.STRUCTURE

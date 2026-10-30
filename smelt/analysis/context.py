@@ -62,6 +62,12 @@ class AnalysisContext:
         view.test_syntax = self.test_syntax.for_file(path)
         return view
 
+    def member_view(self, path: str) -> AnalysisContext:
+        view = copy(self)
+        view.member_usage = copy(self.member_usage)
+        view.member_usage.members = self.member_usage.member_files[path]
+        return view
+
     @cached_property
     def files(self) -> FileIndex:
         from smelt.analysis.files import FileIndex  # noqa: PLC0415 - load only requested analysis indexes
