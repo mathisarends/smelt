@@ -134,7 +134,9 @@ class Debt:
         entries = [
             DebtEntry(key, v.code, v.path, v.message)
             for v in violations
-            for key in _fingerprints(v, snippet(v))
+            for key in _fingerprints(
+                v, "" if v.target_module or _semantic_edges(v) else snippet(v)
+            )
         ]
         entries.sort(key=lambda e: (e.path or "", e.code, e.fingerprint))
         return cls(entries)
@@ -163,7 +165,11 @@ class Debt:
         new: list[Violation] = []
         known: list[Violation] = []
         for violation in violations:
-            text = snippet(violation)
+            text = (
+                ""
+                if violation.target_module or _semantic_edges(violation)
+                else snippet(violation)
+            )
             keys = _fingerprints(violation, text)
             matched: set[str] = set()
             for key in keys:
@@ -172,6 +178,8 @@ class Debt:
                     matched.add(key)
             if not matched and not _semantic_edges(violation):
                 # Existing version-1 debt files used the complete source line.
+                if violation.target_module:
+                    text = snippet(violation)
                 key = fingerprint(violation, text, legacy=True)
                 if available[key] > 0:
                     available[key] -= 1

@@ -90,7 +90,7 @@ class PythonTargetIndex:
             if path is not None
             else self.files.root
         )
-        directory = directory.resolve()
+        directory = self.files.resolve_path(directory)
         boundary = self.files.root
         if not directory.is_relative_to(self.files.root):
             source_roots = [

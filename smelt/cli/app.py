@@ -79,10 +79,16 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "paths", nargs="*", metavar="PATHS", help="only report these files"
     )
-    check.add_argument(
+    scope = check.add_mutually_exclusive_group()
+    scope.add_argument(
         "--changed",
         action="store_true",
         help="only report violations introduced since HEAD (incl. uncommitted files)",
+    )
+    scope.add_argument(
+        "--staged",
+        action="store_true",
+        help="only report violations introduced by the Git index since HEAD",
     )
     check.add_argument(
         "--base",
@@ -115,6 +121,11 @@ def _add_check(sub: Subparsers) -> None:
     )
     check.add_argument("--no-color", action="store_true")
     check.add_argument("--no-debt", action="store_true", help="ignore the debt file")
+    check.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="recompute all analysis without reading or writing the persistent cache",
+    )
     check.add_argument(
         "--fix",
         action="store_true",

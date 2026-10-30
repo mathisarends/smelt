@@ -27,10 +27,27 @@ def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
 
 
 def module_references(module: ModuleSyntax, syntax: SyntaxIndex) -> Iterator[Target]:
+    imports, loads, stars = reference_names(module)
+    yield from ((name, None) for name in stars)
+    for qualified in imports:
+        target = resolve_dotted(qualified, syntax.namespace)
+        if target and target[1] is not None:
+            yield target
+    for qualified in loads:
+        if target := resolve_dotted(qualified, syntax.namespace):
+            yield target
+
+
+def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[str]]:
+    """Unresolved use evidence, independent of every other module's contents."""
+    imports: set[str] = set()
+    loads: set[str] = set()
+    stars: set[str] = set()
+    nodes = list(ast.walk(module.tree))
     # Preserve every possible import binding. A same-named import in a different
     # local scope must not hide a real production consumer elsewhere in the file.
     bindings: dict[str, set[str]] = {}
-    for node in ast.walk(module.tree):
+    for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 name = alias.asname or alias.name.split(".")[0]
@@ -46,19 +63,15 @@ def module_references(module: ModuleSyntax, syntax: SyntaxIndex) -> Iterator[Tar
             )
             for alias in node.names:
                 if alias.name == "*":
-                    yield base, None
+                    stars.add(base)
                     continue
                 qualified = f"{base}.{alias.name}"
                 bindings.setdefault(alias.asname or alias.name, set()).add(qualified)
-                target = resolve_dotted(qualified, syntax.namespace)
-                if target and target[1] is not None:
-                    yield target
+                imports.add(qualified)
     parents = {
-        child: parent
-        for parent in ast.walk(module.tree)
-        for child in ast.iter_child_nodes(parent)
+        child: parent for parent in nodes for child in ast.iter_child_nodes(parent)
     }
-    for node in ast.walk(module.tree):
+    for node in nodes:
         if isinstance(node, ast.Name | ast.Attribute) and isinstance(
             node.ctx, ast.Load
         ):
@@ -66,10 +79,9 @@ def module_references(module: ModuleSyntax, syntax: SyntaxIndex) -> Iterator[Tar
             if isinstance(parent, ast.Attribute) and parent.value is node:
                 continue
             for qualified in _qualified(node, bindings):
-                if target := resolve_dotted(qualified, syntax.namespace):
-                    # A module used as a value may escape via an alias, callback or
-                    # reflection. Keep its API rather than guess which members flow.
-                    yield target
+                # Module-valued loads may escape via aliases, callbacks or reflection.
+                loads.add(qualified)
+    return sorted(imports), sorted(loads), sorted(stars)
 
 
 def _qualified(node: ast.AST, bindings: dict[str, set[str]]) -> Iterator[str]:

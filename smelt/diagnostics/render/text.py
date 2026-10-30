@@ -81,6 +81,8 @@ def render_text(
         lines.append(
             f"Scope: {', '.join(report.scope)} ({report.checked_files} analyzed source/test files)"
         )
+    if report.comparison and report.comparison.get("mode") == "staged":
+        lines.append("Scope: staged Git index; new findings since the compared commit.")
     if report.coverage is not None and "complete" in report.coverage:
         coverage = report.coverage
         counts = coverage.get("counts", {})

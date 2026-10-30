@@ -24,7 +24,9 @@ def render_json(report: Report) -> str:
         "status": report.status,
         "summary": report.summary_json(),
         "scope": {
-            "mode": "changed" if report.comparison else "full",
+            "mode": report.comparison.get("mode", "changed")
+            if report.comparison
+            else "full",
             "paths": list(report.scope),
             "files": report.checked_files,
             "rules": [rule.code for rule in report.rules],
@@ -139,7 +141,9 @@ def _sarif_properties(report: Report) -> dict[str, Any]:
     """Provenance a SARIF consumer can keep with the results."""
     coverage = report.coverage or {}
     return {
-        "mode": "changed" if report.comparison else "full",
+        "mode": report.comparison.get("mode", "changed")
+        if report.comparison
+        else "full",
         "comparison": dict(report.comparison) if report.comparison else None,
         "policyHash": coverage.get("policy_hash"),
         **({"fixes": dict(report.fixes)} if report.fixes is not None else {}),

@@ -19,6 +19,7 @@ from smelt.model import ArchitectureModel
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from smelt.analysis.cache import FactCache
     from smelt.config.models import SmeltConfig
 
 
@@ -33,10 +34,13 @@ class Index(StrEnum):
 
 
 class AnalysisContext:
-    def __init__(self, root: Path, config: SmeltConfig) -> None:
+    def __init__(
+        self, root: Path, config: SmeltConfig, *, cache: FactCache | None = None
+    ) -> None:
         # grimp resolves its search paths; the file index must agree on the prefix
         self.root = root.resolve()
         self.config = config
+        self.cache = cache
 
     @cached_property
     def files(self) -> FileIndex:
@@ -62,7 +66,7 @@ class AnalysisContext:
 
     @cached_property
     def syntax(self) -> SyntaxIndex:
-        return SyntaxIndex(self.files, self.asts)
+        return SyntaxIndex(self.files, self.asts, cache=self.cache)
 
     @cached_property
     def member_usage(self) -> MemberUsageIndex:

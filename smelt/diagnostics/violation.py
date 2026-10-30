@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping  # noqa: TC003 - persistent JSON validation
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Self
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
+from typing import Any, Self
 
 DOCS_BASE_URL = "https://github.com/mathisarends/smelt/blob/main/docs/rules"
 
