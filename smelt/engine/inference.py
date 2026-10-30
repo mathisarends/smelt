@@ -774,7 +774,7 @@ def _architecture(inferred: InferredConfig) -> list[str]:
     out.extend(
         [
             "  imports:",
-            "    transitive: false  # direct imports only; true also checks layer dependencies through re-exports",
+            "    transitive: false  # direct imports only; true checks all reachable architectural and third-party dependencies",
             "    type_checking: include",
         ]
     )

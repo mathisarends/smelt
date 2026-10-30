@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 import sys
 from contextlib import closing
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -273,7 +274,9 @@ def test_exact_retry_bypasses_the_engine_and_its_imports(
     def unexpected(*args: Any, **kwargs: Any) -> None:
         pytest.fail("an exact staged result must bypass analysis")
 
-    monkeypatch.setattr("smelt.cli.commands.check.staged_project", unexpected)
+    monkeypatch.setattr(
+        import_module("smelt.cli.commands.check"), "staged_project", unexpected
+    )
     assert _check(repo, capsys) == expected
     executed = subprocess.run(  # noqa: S603 - fixed interpreter and fixture-controlled CLI arguments
         [

@@ -1,3 +1,5 @@
+"""Incremental file decisions and their cross-file dependencies."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -133,6 +135,26 @@ def test_fixture_changes_invalidate_unchanged_test_quality_decisions(
     cached = check(tmp_path).report
     assert [v.code for v in cached.violations] == ["SMT424"]
     assert render_json(cached) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
+
+
+def test_transitive_imports_can_reach_namespace_packages_without_initializers(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": LAYERED_CONFIG,
+            "app/__init__.py": "",
+            "app/domain/value.py": "VALUE = 1\n",
+            "app/application/service.py": "from app import domain\n",
+        },
+    )
+    cached = check(tmp_path)
+    assert cached.context.imports.imports_of("app.domain") == []
+    assert list(cached.context.imports.shortest_chains_from("app.application.service"))
+    assert render_json(cached.report) == render_json(
         check(tmp_path, CheckOptions(use_cache=False)).report
     )
 

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import itertools
-from collections import deque
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -9,6 +7,7 @@ from smelt.diagnostics.violation import Category, ImportLink, Severity, Violatio
 from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
+    boundary_imports,
     import_violation,
     join,
     skip_import,
@@ -36,7 +35,10 @@ class LayerBoundary(BaseRule):
         rationale=(
             "Layers only stay replaceable and testable when dependencies point in one "
             "direction. An application service that imports infrastructure cannot be "
-            "used without the database, HTTP client or framework behind it."
+            "used without the database, HTTP client or framework behind it. With "
+            "architecture.imports.transitive, the allowlist also applies to every "
+            "reachable layer, including paths through allowed layers and helpers. "
+            "Indirect findings include a shortest import chain."
         ),
         bad=(
             "# voice/application/session.py\n"
@@ -61,15 +63,13 @@ class LayerBoundary(BaseRule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model
-        for detail in ctx.imports.all_imports():
+        for detail, chain in boundary_imports(ctx):
             if detail.external or skip_import(ctx, detail):
                 continue
             source = model.info(detail.importer)
             forbidden = _forbidden_layer(ctx, source, model.info(detail.imported))
             if source is not None and forbidden is not None:
-                yield self._violation(ctx, detail, source, forbidden)
-        if ctx.config.architecture.imports.transitive:
-            yield from self._transitive(ctx)
+                yield self._violation(ctx, detail, source, forbidden, chain)
 
     def _violation(
         self,
@@ -91,31 +91,6 @@ class LayerBoundary(BaseRule):
             hint=_hint(ctx, detail, source, chain),
             chain=chain,
         )
-
-    def _transitive(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        """Chains that leave the layer grid and come back into a forbidden layer."""
-        model = ctx.model
-        include_tc = ctx.config.architecture.imports.type_checking == "include"
-        adjacency = ctx.imports.first_party_edges(include_type_checking=include_tc)
-        for module in sorted(adjacency):
-            source = model.info(module)
-            if source is None or not source.in_grid or source.layer is None:
-                continue
-            for target, path in _indirect_targets(
-                ctx, module, source, adjacency
-            ).items():
-                first = next(
-                    d
-                    for d in ctx.imports.imports_of(module)
-                    if d.imported == path[1] and (include_tc or not d.type_checking)
-                )
-                chain = tuple(
-                    ImportLink(a, b, _line(ctx, a, b))
-                    for a, b in itertools.pairwise(path)
-                )
-                forbidden = _forbidden_layer(ctx, source, model.info(target))
-                if forbidden is not None:
-                    yield self._violation(ctx, first, source, forbidden, chain)
 
 
 def _forbidden_layer(
@@ -139,61 +114,6 @@ def _forbidden_layer(
     if target.layer in ctx.model.layers[source.layer].may_depend_on:
         return None
     return target.layer
-
-
-def _indirect_targets(
-    ctx: AnalysisContext,
-    start: str,
-    source: ModuleInfo,
-    adjacency: dict[str, set[str]],
-) -> dict[str, list[str]]:
-    model = ctx.model
-    found: dict[str, list[str]] = {}
-    previous: dict[str, str] = {}
-    queue: deque[str] = deque()
-    for child in sorted(adjacency.get(start, ())):
-        info = model.info(child)
-        if (
-            info is not None
-            and info.in_grid
-            and (info.feature == source.feature or info.central or source.central)
-            and info.layer
-        ):
-            continue  # direct edges into the grid are checked directly
-        previous[child] = start
-        queue.append(child)
-    while queue:
-        node = queue.popleft()
-        for child in sorted(adjacency.get(node, ())):
-            if child in previous or child == start:
-                continue
-            previous[child] = node
-            info = model.info(child)
-            if (
-                info is None
-                or not info.in_grid
-                or (
-                    info.feature != source.feature
-                    and not (info.central or source.central)
-                )
-                or info.layer is None
-            ):
-                queue.append(child)
-                continue
-            forbidden = _forbidden_layer(ctx, source, info)
-            if forbidden is not None:
-                path = [child]
-                while path[-1] != start:
-                    path.append(previous[path[-1]])
-                found[child] = list(reversed(path))
-    return found
-
-
-def _line(ctx: AnalysisContext, importer: str, imported: str) -> int | None:
-    for detail in ctx.imports.imports_of(importer):
-        if detail.imported == imported:
-            return detail.line
-    return None
 
 
 def _hint(

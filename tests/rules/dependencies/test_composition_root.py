@@ -33,6 +33,30 @@ def _project(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestCompositionRootLeak:
+    def test_plain_import_chain_cannot_hide_the_composition_root(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "app/application/service.py": "from app import bridge\n",
+                "app/bridge.py": "from app import bootstrap\n",
+                "app/bootstrap.py": "container = object()\n",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT106",)))
+
+        consumer = next(
+            v for v in found if v.source_module == "app.application.service"
+        )
+        assert consumer.target_module == "app.bootstrap"
+        assert [link.imported for link in consumer.import_chain] == [
+            "app.bridge",
+            "app.bootstrap",
+        ]
+
     def test_facade_does_not_hide_the_composition_root(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path,

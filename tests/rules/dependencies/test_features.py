@@ -66,7 +66,7 @@ class TestCrossFeatureImport:
             "gw.features.voice.application.calls",
         ]
 
-    def test_reexport_does_not_consume_other_exported_implementations(
+    def test_transitive_module_policy_includes_other_facade_dependencies(
         self, tmp_path: Path
     ) -> None:
         root = _project(
@@ -77,6 +77,43 @@ class TestCrossFeatureImport:
                 "gw/features/voice/application/calls.py": "class Calls: pass\n",
                 "gw/features/voice/domain/call.py": "class Call: pass\n",
                 "gw/features/billing/application/model.py": "from gw import Calls\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT102",)))
+
+        assert found.source_module == "gw.features.billing.application.model"
+        assert found.target_module == "gw.features.voice.domain.call"
+
+    def test_helpers_do_not_hide_foreign_features(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/features/billing/domain/model.py": "from gw.shared import bridge\n",
+                "gw/shared/bridge.py": "from gw import helper\n",
+                "gw/helper.py": "from gw.features.voice.domain import call\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT102",)))
+
+        assert [link.imported for link in found.import_chain] == [
+            "gw.shared.bridge",
+            "gw.helper",
+            "gw.features.voice.domain.call",
+        ]
+        assert found.edge == "billing.domain -> voice.domain"
+
+    def test_allowed_cross_feature_dependencies_remain_clean(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/features/billing/application/model.py": "from gw import helper\n",
+                "gw/helper.py": "from gw.features.voice.application import calls\n",
             },
         )
 
@@ -183,6 +220,49 @@ class TestCrossFeatureImport:
 
 
 class TestSharedImportsFeature:
+    def test_distinct_indirect_targets_keep_their_own_violations(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG
+                + "  imports: {transitive: true}\n  composition_root: [gw.bootstrap]\n",
+                "gw/shared/clock.py": "from gw import helper\n",
+                "gw/helper.py": "from gw.features.voice.domain import call\nfrom gw import bootstrap\n",
+                "gw/bootstrap.py": "",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT105", "SMT106")))
+
+        assert {
+            (v.code, v.target_module)
+            for v in found
+            if v.source_module == "gw.shared.clock"
+        } == {
+            ("SMT105", "gw.features.voice.domain.call"),
+            ("SMT106", "gw.bootstrap"),
+        }
+
+    def test_plain_import_chain_cannot_hide_a_feature(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "gw/shared/clock.py": "from gw import helper\n",
+                "gw/helper.py": "from gw.features.voice.domain import call\n",
+            },
+        )
+
+        [found] = violations(root, CheckOptions(select=("SMT105",)))
+
+        assert found.target_module == "gw.features.voice.domain.call"
+        assert [link.imported for link in found.import_chain] == [
+            "gw.helper",
+            "gw.features.voice.domain.call",
+        ]
+
     def test_named_facade_does_not_hide_a_feature_from_shared(
         self, tmp_path: Path
     ) -> None:

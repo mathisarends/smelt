@@ -7,7 +7,13 @@ from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
-from smelt.rules.common import import_violation, join, matches_any, skip_import
+from smelt.rules.common import (
+    boundary_imports,
+    import_violation,
+    join,
+    matches_any,
+    skip_import,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -39,7 +45,12 @@ class ThirdPartyDenied(BaseRule):
         summary="A layer imports a third-party package its `third_party` policy does not allow.",
         rationale=(
             "Inner layers should not know about frameworks, drivers or SDKs. Keeping them "
-            "out makes the core portable and cheap to test."
+            "out makes the core portable and cheap to test. With "
+            "architecture.imports.transitive, the importing layer's policy also "
+            "applies to packages reached through project modules, such as "
+            "domain -> shared.utils -> sqlalchemy. A shortest chain includes each "
+            "import's source line. External packages are leaves: their own source "
+            "is not scanned. Standard-library imports remain allowed."
         ),
         bad="# voice/domain/session.py\nfrom sqlalchemy.orm import Mapped",
         good="# voice/domain/session.py\nfrom dataclasses import dataclass",
@@ -51,12 +62,15 @@ class ThirdPartyDenied(BaseRule):
             "architecture.layers.<layer>.third_party.default",
             "architecture.layers.<layer>.third_party.allow",
             "architecture.layers.<layer>.third_party.deny",
+            "architecture.imports.transitive",
+            "architecture.imports.type_checking",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model
-        for detail in ctx.imports.all_imports():
+        reported: set[tuple[str, str]] = set()
+        for detail, chain in boundary_imports(ctx):
             if (
                 not detail.external
                 or is_stdlib(detail.imported)
@@ -70,13 +84,21 @@ class ThirdPartyDenied(BaseRule):
             names = detail.names or (detail.imported,)
             if not is_denied(policy, names):
                 continue
+            key = (detail.importer, detail.imported)
+            if chain and key in reported:
+                continue
+            reported.add(key)
+            message = _message(source.layer, detail, policy)
+            if chain:
+                message += " (indirectly)"
             yield import_violation(
                 self,
                 ctx,
                 detail,
-                _message(source.layer, detail, policy),
+                message,
                 expected=_expected(policy),
                 hint=_hint(ctx, detail, source.layer),
+                chain=chain,
             )
 
 

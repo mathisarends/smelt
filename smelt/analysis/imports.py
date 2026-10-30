@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -98,6 +98,7 @@ class ImportDetail:
 
 
 _DETAILS = TypeAdapter(list[ImportDetail])
+_CHAIN_CACHE_HOPS = 20_000
 
 
 class _SourceRootPackageFinder(AbstractPackageFinder):
@@ -171,6 +172,8 @@ class ImportIndex:
         )
         self._outgoing: dict[str, list[ImportDetail]] = {}
         self._incoming: dict[str, list[ImportDetail]] | None = None
+        self._chains: dict[tuple[str, bool], tuple[tuple[ImportDetail, ...], ...]] = {}
+        self._chain_hops = 0
 
     @classmethod
     def build(
@@ -236,10 +239,10 @@ class ImportIndex:
     def imports_of(self, module: str) -> list[ImportDetail]:
         cached = self._outgoing.get(module)
         if cached is None:
-            source = self.files.sources[module]
+            source = self.files.sources.get(module)
             cached = (
                 self._details_for(module)
-                if self._cache is None
+                if self._cache is None or source is None
                 else self._cache.get(
                     "import-details",
                     [
@@ -277,6 +280,61 @@ class ImportIndex:
                 continue
             adjacency[detail.importer].add(detail.imported)
         return adjacency
+
+    def shortest_chains_from(
+        self, module: str, *, include_type_checking: bool = True
+    ) -> Iterator[tuple[ImportDetail, ...]]:
+        """Share deterministic witnesses between rules within this graph view."""
+        key = module, include_type_checking
+        if key in self._chains:
+            yield from self._chains[key]
+            return
+        paths: list[tuple[ImportDetail, ...]] = []
+        hops = 0
+        for path in self._shortest_chains_from(
+            module, include_type_checking=include_type_checking
+        ):
+            hops += len(path)
+            if hops + self._chain_hops <= _CHAIN_CACHE_HOPS:
+                paths.append(path)
+            else:
+                paths.clear()
+            yield path
+        if hops + self._chain_hops <= _CHAIN_CACHE_HOPS:
+            self._chains[key] = tuple(paths)
+            self._chain_hops += hops
+
+    def _shortest_chains_from(
+        self, module: str, *, include_type_checking: bool
+    ) -> Iterator[tuple[ImportDetail, ...]]:
+        """Shortest import paths, including external leaves, without revisiting cycles.
+
+        Keep every external statement: Grimp squashes external submodules, but
+        policies may allow ``sqlalchemy.orm`` while denying ``sqlalchemy.sql``.
+        Traverse modules in lexical order and prefer the earliest active import
+        for a deterministic witness. No third-party source is inspected.
+        """
+        previous: dict[str, ImportDetail] = {}
+        visited = {module}
+        queue = deque([module])
+        while queue:
+            current = queue.popleft()
+            for detail in sorted(
+                self.imports_of(current),
+                key=lambda d: (d.imported, d.line, d.column),
+            ):
+                if detail.type_checking and not include_type_checking:
+                    continue
+                if not detail.external:
+                    if detail.imported in visited:
+                        continue
+                    visited.add(detail.imported)
+                    previous[detail.imported] = detail
+                    queue.append(detail.imported)
+                path = [detail]
+                while path[-1].importer != module:
+                    path.append(previous[path[-1].importer])
+                yield tuple(reversed(path))
 
     def _details_for(self, module: str) -> list[ImportDetail]:
         source = self.files.sources.get(module)
