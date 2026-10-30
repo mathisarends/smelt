@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
+from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -101,11 +102,12 @@ class Debt:
     entries: list[DebtEntry]
 
     @classmethod
-    def load(cls, path: Path) -> Debt:
-        if not path.is_file():
+    def load(cls, path: Path, *, store: SourceStore | None = None) -> Debt:
+        store = store or SourceStore()
+        if not store.is_file(path):
             return cls([])
         try:
-            data = _DebtDocument.model_validate_json(path.read_text(encoding="utf-8"))
+            data = _DebtDocument.model_validate_json(store.read_text(path))
         except (OSError, UnicodeError) as exc:
             raise ConfigError(
                 [ConfigIssue("", f"cannot read debt file: {exc}")], path.as_posix()

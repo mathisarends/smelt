@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class UnboundedTestWait(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT426"
     name = "unbounded-test-wait"

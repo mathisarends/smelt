@@ -5,6 +5,8 @@ from __future__ import annotations
 import tomllib
 from typing import TYPE_CHECKING
 
+from smelt.config.source import SourceStore
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -27,48 +29,60 @@ IGNORED_DIRS = frozenset(
 )
 
 
-def has_python(directory: Path) -> bool:
+def has_python(directory: Path, *, store: SourceStore | None = None) -> bool:
+    store = store or SourceStore()
     return (
-        directory.is_dir()
+        store.is_dir(directory)
         and directory.name.isidentifier()
         and directory.name not in IGNORED_DIRS
-        and any(directory.rglob("*.py"))
+        and any(store.glob(directory, "**/*.py"))
     )
 
 
-def child_packages(directory: Path) -> list[Path]:
-    if not directory.is_dir():
+def child_packages(directory: Path, *, store: SourceStore | None = None) -> list[Path]:
+    store = store or SourceStore()
+    if not store.is_dir(directory):
         return []
     return sorted(
-        (child for child in directory.iterdir() if has_python(child)),
+        (child for child in store.iterdir(directory) if has_python(child, store=store)),
         key=lambda p: p.name,
     )
 
 
-def packages_in(base: Path, *, namespace: bool | None = None) -> list[Path]:
+def packages_in(
+    base: Path, *, namespace: bool | None = None, store: SourceStore | None = None
+) -> list[Path]:
     """Packages under an import root, including supported namespace packages.
 
     ``src/`` and build metadata permit a directory containing regular packages
     without Python files of its own. Loose script directories stay excluded.
     """
+    store = store or SourceStore()
     declared, enabled = build_package_settings(
-        base.parent if base.name == "src" else base
+        base.parent if base.name == "src" else base, store=store
     )
     if namespace is None:
         namespace = base.name == "src" or enabled or bool(declared)
     found = [
         child
-        for child in child_packages(base)
-        if any(child.glob("*.py"))
-        or (namespace and any((c / "__init__.py").is_file() for c in child.iterdir()))
+        for child in child_packages(base, store=store)
+        if any(store.glob(child, "*.py"))
+        or (
+            namespace
+            and any(store.is_file(c / "__init__.py") for c in store.iterdir(child))
+        )
     ]
     return ([p for p in found if p.name in declared] or found) if declared else found
 
 
-def build_package_settings(directory: Path) -> tuple[set[str], bool]:
+def build_package_settings(
+    directory: Path, *, store: SourceStore | None = None
+) -> tuple[set[str], bool]:
     """Top-level modules and namespace support declared by the uv build backend."""
     try:
-        data = tomllib.loads((directory / "pyproject.toml").read_text(encoding="utf-8"))
+        data = tomllib.loads(
+            (store or SourceStore()).read_text(directory / "pyproject.toml")
+        )
     except (OSError, tomllib.TOMLDecodeError):
         return set(), False
     backend = data.get("tool", {}).get("uv", {}).get("build-backend", {})

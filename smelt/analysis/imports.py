@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import ast
-import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import grimp
+from grimp import _rustgrimp as rust  # type: ignore[attr-defined]
+from grimp.adaptors.filesystem import FileSystem
 from grimp.application.config import settings as grimp_settings
 from grimp.application.ports.modulefinder import (
     AbstractModuleFinder,
@@ -17,7 +18,9 @@ from grimp.application.ports.modulefinder import (
 from grimp.application.ports.packagefinder import AbstractPackageFinder
 from grimp.domain.valueobjects import Module
 from grimp.exceptions import SourceSyntaxError
+from pydantic import TypeAdapter
 
+from smelt.analysis.import_cache import import_cache_type, resolution_identity
 from smelt.analysis.parsing import (
     AnalysisError,
     AstCache,
@@ -25,14 +28,54 @@ from smelt.analysis.parsing import (
     resolve_relative,
     type_checking_lines,
 )
+from smelt.analysis.parsing import is_stdlib as is_stdlib  # noqa: PLC0414 - preserve the public import helper
 from smelt.model import is_within
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from grimp.application.ports.filesystem import AbstractFileSystem
+    from grimp.application.ports.filesystem import AbstractFileSystem, BasicFileSystem
 
+    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
+
+
+class _SourceFileSystem(FileSystem):
+    def __init__(self, files: FileIndex) -> None:
+        self.files = files
+        self._basic: BasicFileSystem | None = None
+
+    def read(self, file_name: str) -> str:
+        return self.files.store.read_text(Path(file_name), encoding="utf-8-sig")
+
+    def exists(self, file_name: str) -> bool:
+        return self.files.store.is_file(Path(file_name))
+
+    def get_mtime(self, file_name: str) -> float:
+        identity = self.files.store.identity(Path(file_name))
+        if identity is not None:
+            return float(int(identity[-12:], 16))
+        return super().get_mtime(file_name)
+
+    def convert_to_basic(self) -> BasicFileSystem:
+        if self._basic is not None:
+            return self._basic
+        inventory = self.files.store.inventory()
+        if inventory is None:
+            return super().convert_to_basic()
+        # Native Grimp accepts its in-memory filesystem. Include unselected
+        # filenames for import resolution without parsing their source.
+        contents = {path.as_posix(): "" for path in inventory if path.suffix == ".py"}
+        basic = rust.FakeBasicFileSystem(content_map=contents)
+        # FakeBasicFileSystem's constructor strips indentation from its test
+        # fixtures. write() preserves the exact analyzed source instead.
+        for source in self.files.sources.values():
+            basic.write(source.absolute.as_posix(), self.files.read_text(source.path))
+        self._basic = cast("BasicFileSystem", basic)
+        return self._basic
+
+    def write(self, file_name: str, contents: str) -> None:
+        raise OSError("analysis sources are read-only")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,8 +97,7 @@ class ImportDetail:
         return self.imported.split(".")[0]
 
 
-def is_stdlib(module: str) -> bool:
-    return module.split(".", maxsplit=1)[0] in sys.stdlib_module_names
+_DETAILS = TypeAdapter(list[ImportDetail])
 
 
 class _SourceRootPackageFinder(AbstractPackageFinder):
@@ -65,7 +107,10 @@ class _SourceRootPackageFinder(AbstractPackageFinder):
     def determine_package_directories(
         self, package_name: str, file_system: AbstractFileSystem
     ) -> set[str]:
-        return {str(path.resolve()) for path in self._files.package_roots[package_name]}
+        return {
+            self._files.resolve_path(path).as_posix()
+            for path in self._files.package_roots[package_name]
+        }
 
 
 class _IndexedModuleFinder(AbstractModuleFinder):
@@ -107,11 +152,19 @@ class _IndexedModuleFinder(AbstractModuleFinder):
 
 class ImportIndex:
     def __init__(
-        self, graph: grimp.ImportGraph, files: FileIndex, asts: AstCache
+        self,
+        graph: grimp.ImportGraph,
+        files: FileIndex,
+        asts: AstCache,
+        *,
+        cache: FactCache | None = None,
+        inventory: str = "",
     ) -> None:
         self.graph = graph
         self.files = files
         self._asts = asts
+        self._cache = cache
+        self._inventory = inventory
         roots = files.config.project.root_packages
         self.first_party = frozenset(
             m for m in graph.modules if any(is_within(m, r) for r in roots)
@@ -120,7 +173,9 @@ class ImportIndex:
         self._incoming: dict[str, list[ImportDetail]] | None = None
 
     @classmethod
-    def build(cls, files: FileIndex, asts: AstCache) -> ImportIndex:
+    def build(
+        cls, files: FileIndex, asts: AstCache, *, cache: FactCache | None = None
+    ) -> ImportIndex:
         project = files.config.project
         packages = [
             p for p in project.root_packages if p not in files.missing_root_packages
@@ -128,29 +183,34 @@ class ImportIndex:
         if not packages:
             msg = "none of project.root_packages were found under project.source_roots"
             raise AnalysisError(msg)
-        # Validate source before the native scanner, which cannot reliably report
-        # decoding failures on every supported Python version.
-        for source in files.sources.values():
-            asts.parse(source.path)
+        inventory = resolution_identity(files)
         previous_package_finder = grimp_settings.PACKAGE_FINDER
         previous_module_finder = grimp_settings.MODULE_FINDER
+        previous_file_system = grimp_settings.FILE_SYSTEM
+        previous_cache_class = grimp_settings.CACHE_CLASS
         grimp_settings.configure(
             PACKAGE_FINDER=_SourceRootPackageFinder(files),
             MODULE_FINDER=_IndexedModuleFinder(files),
+            FILE_SYSTEM=_SourceFileSystem(files),
+            CACHE_CLASS=import_cache_type(files, asts, cache, inventory),
         )
         try:
             graph = grimp.build_graph(
                 packages[0],
                 *packages[1:],
                 include_external_packages=True,
-                cache_dir=None,
+                cache_dir="smelt",
             )
         except SourceSyntaxError as exc:
-            raise AnalysisError(str(exc) + python_note(files.root)) from exc
+            raise AnalysisError(
+                str(exc) + python_note(files.root, store=files.store)
+            ) from exc
         finally:
             grimp_settings.configure(
                 PACKAGE_FINDER=previous_package_finder,
                 MODULE_FINDER=previous_module_finder,
+                FILE_SYSTEM=previous_file_system,
+                CACHE_CLASS=previous_cache_class,
             )
         for module in list(graph.modules):
             if (
@@ -165,7 +225,7 @@ class ImportIndex:
             raise AnalysisError(
                 f"import graph omitted {len(missing)} source module(s): {examples}"
             )
-        return cls(graph, files, asts)
+        return cls(graph, files, asts, cache=cache, inventory=inventory)
 
     def is_external(self, module: str) -> bool:
         return module not in self.first_party
@@ -176,7 +236,23 @@ class ImportIndex:
     def imports_of(self, module: str) -> list[ImportDetail]:
         cached = self._outgoing.get(module)
         if cached is None:
-            cached = self._details_for(module)
+            source = self.files.sources[module]
+            cached = (
+                self._details_for(module)
+                if self._cache is None
+                else self._cache.get(
+                    "import-details",
+                    [
+                        module,
+                        source.path,
+                        source.is_package,
+                        self.files.content_id(source.path),
+                        self._inventory,
+                    ],
+                    _DETAILS,
+                    lambda: self._details_for(module),
+                )
+            )
             self._outgoing[module] = cached
         return cached
 

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.patterns import path_matches
+from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -59,15 +60,20 @@ class FileIndex:
     package_roots: dict[str, list[Path]] = field(default_factory=dict)
     tests: dict[str, TestFile] = field(default_factory=dict)
     missing_root_packages: list[str] = field(default_factory=list)
+    store: SourceStore = field(default_factory=SourceStore, repr=False)
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
+    _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
+    _content_ids: dict[str, str] = field(default_factory=dict, repr=False)
     _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
-        self.root = self.root.resolve()
+        self.root = self.store.resolve(self.root)
 
     @classmethod
-    def discover(cls, root: Path, config: SmeltConfig) -> FileIndex:
-        index = cls(root=root, config=config)
+    def discover(
+        cls, root: Path, config: SmeltConfig, *, store: SourceStore | None = None
+    ) -> FileIndex:
+        index = cls(root=root, config=config, store=store or SourceStore())
         index._discover_sources()
         index._discover_tests()
         return index
@@ -91,7 +97,7 @@ class FileIndex:
     def resolve_path(self, path: Path) -> Path:
         resolved = self._resolved_paths.get(path)
         if resolved is None:
-            resolved = path.resolve()
+            resolved = self.store.resolve(path)
             self._resolved_paths[path] = resolved
         return resolved
 
@@ -99,9 +105,9 @@ class FileIndex:
         project = self.config.project
         for package in project.root_packages:
             candidates = {
-                (self.root / source_root / package).resolve(): source_root
+                self.resolve_path(self.root / source_root / package): source_root
                 for source_root in project.source_roots
-                if (self.root / source_root / package).is_dir()
+                if self.store.is_dir(self.root / source_root / package)
                 and not self.is_excluded(
                     self.relative(self.root / source_root / package)
                 )
@@ -109,7 +115,7 @@ class FileIndex:
             regular = {
                 path: source_root
                 for path, source_root in candidates.items()
-                if (path / "__init__.py").is_file()
+                if self.store.is_file(path / "__init__.py")
             }
             # Python gives an ordinary package precedence over namespace portions,
             # including workspace scaffolding found beneath a broad '.' root.
@@ -128,7 +134,7 @@ class FileIndex:
         if self.is_excluded(rel_dir):
             return
         init = directory / "__init__.py"
-        portion = PackageDir(module, rel_dir, source_root, init.is_file())
+        portion = PackageDir(module, rel_dir, source_root, self.store.is_file(init))
         previous = self.packages.get(module)
         if previous is not None and (previous.has_init or portion.has_init):
             raise AnalysisError(
@@ -136,13 +142,13 @@ class FileIndex:
             )
         self.packages.setdefault(module, portion)
         self.package_parts.setdefault(module, []).append(portion)
-        for entry in sorted(directory.iterdir(), key=lambda p: p.name):
-            if entry.is_dir():
+        for entry in sorted(self.store.iterdir(directory), key=lambda p: p.name):
+            if self.store.is_dir(entry):
                 if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
                     continue
-                if _contains_python(entry):
+                if _contains_python(entry, store=self.store):
                     self._walk_package(entry, f"{module}.{entry.name}", source_root)
-            elif entry.suffix == ".py" and entry.is_file():
+            elif entry.suffix == ".py" and self.store.is_file(entry):
                 rel = self.relative(entry)
                 if self.is_excluded(rel):
                     continue
@@ -164,9 +170,9 @@ class FileIndex:
         source_paths = {source.path for source in self.sources.values()}
         for test_root in self.config.project.test_roots:
             directory = self.root / test_root
-            if not directory.is_dir():
+            if not self.store.is_dir(directory):
                 continue
-            for path in sorted(python_files(directory)):
+            for path in sorted(python_files(directory, store=self.store)):
                 rel = self.relative(path)
                 if rel in source_paths or self.is_excluded(rel):
                     continue
@@ -197,14 +203,16 @@ class FileIndex:
         if cached is None:
             # Python accepts a UTF-8 BOM, commonly written by Windows editors.
             try:
-                cached = (self.root / path).read_text(encoding="utf-8-sig")
+                cached = self.store.read_text(self.root / path, encoding="utf-8-sig")
             except (OSError, UnicodeError) as exc:
                 raise AnalysisError(f"cannot read source {path}: {exc}") from exc
             self._text_cache[path] = cached
         return cached
 
     def lines(self, path: str) -> list[str]:
-        return self.read_text(path).splitlines()
+        if path not in self._line_cache:
+            self._line_cache[path] = self.read_text(path).splitlines()
+        return self._line_cache[path]
 
     def line(self, path: str, number: int) -> str:
         lines = self.lines(path)
@@ -212,6 +220,13 @@ class FileIndex:
 
     def sha256(self, path: str) -> str:
         return hashlib.sha256(self.read_text(path).encode()).hexdigest()
+
+    def content_id(self, path: str) -> str:
+        if path not in self._content_ids:
+            self._content_ids[path] = self.store.identity(
+                self.root / path
+            ) or self.sha256(path)
+        return self._content_ids[path]
 
     def size(self, path: str) -> int:
         return len(self.read_text(path).encode())
@@ -239,22 +254,25 @@ class FileIndex:
         return "/".join(parts) + ("/" if package else ".py")
 
 
-def _contains_python(directory: Path) -> bool:
-    return any(True for _ in python_files(directory))
+def _contains_python(directory: Path, *, store: SourceStore | None = None) -> bool:
+    return any(True for _ in python_files(directory, store=store))
 
 
-def python_files(directory: Path) -> Iterable[Path]:
+def python_files(
+    directory: Path, *, store: SourceStore | None = None
+) -> Iterable[Path]:
     """Python files below a root, skipping tool directories and symlink cycles."""
+    store = store or SourceStore()
     visited: set[Path] = set()
     pending = [directory]
     while pending:
         parent = pending.pop()
-        resolved = parent.resolve()
+        resolved = store.resolve(parent)
         if resolved in visited:
             continue
         visited.add(resolved)
-        for entry in parent.iterdir():
-            if entry.is_dir():
+        for entry in store.iterdir(parent):
+            if store.is_dir(entry):
                 if entry.name not in _SKIP_DIRS and not entry.name.startswith("."):
                     pending.append(entry)
             elif entry.suffix == ".py":

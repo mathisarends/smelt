@@ -43,6 +43,7 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
 
 
 class BundledInstanceAssignment(BaseRule):
+    file_local = True
     code = "SMT314"
     name = "bundled-instance-assignment"
     category = Category.STRUCTURE

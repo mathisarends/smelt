@@ -43,7 +43,7 @@ def analysis_inputs(
                 source.module,
                 source.path,
                 source.is_package,
-                ctx.files.sha256(source.path),
+                ctx.files.content_id(source.path),
                 ctx.python_targets.for_path(source.absolute).to_json(),
             ]
             for source in sorted(
@@ -51,7 +51,7 @@ def analysis_inputs(
             )
         ],
         [
-            [path, test.test_root, ctx.files.sha256(path)]
+            [path, test.test_root, ctx.files.content_id(path)]
             for path, test in sorted(ctx.files.tests.items())
         ],
         [
@@ -60,5 +60,5 @@ def analysis_inputs(
         ],
         [entry.to_json() for entry in ctx.coverage.entries],
         ctx.coverage.summary(),
-        [member.to_json() for member in workspace_members(ctx.root)],
+        [member.to_json() for member in workspace_members(ctx.root, store=ctx.store)],
     ]

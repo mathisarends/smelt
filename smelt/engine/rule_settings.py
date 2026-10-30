@@ -151,9 +151,9 @@ class RuleSettings:
         source = ctx.files.source_for_path(path) if path else None
         module = source.module if source else None
         if module is None and path:
-            absolute = (ctx.root / path).resolve()
+            absolute = ctx.files.resolve_path(ctx.root / path)
             for source_root in self.config.project.source_roots:
-                base = (ctx.root / source_root).resolve()
+                base = ctx.files.resolve_path(ctx.root / source_root)
                 if absolute.is_relative_to(base):
                     parts = list(absolute.relative_to(base).with_suffix("").parts)
                     if parts and parts[0] in self.config.project.root_packages:

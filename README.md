@@ -1034,7 +1034,10 @@ Both source and policy come from the Git index, including partially staged files
 Unstaged or untracked callers cannot hide a new finding. Unchanged methods affected
 by a removed caller are still checked. Cache files live in `.smelt_cache/`; add it
 to your `.gitignore`. Use `--no-cache` to recompute without reading or writing them.
-The first run builds the cache; repeated runs reuse analysis and the HEAD baseline.
+The first run builds the cache. Staged checks read Git blobs directly, reuse
+per-file facts after edits and check an exact-result cache before loading the
+analysis engine on unchanged retries. Removing a caller still checks the affected
+unchanged definition. No background process is required.
 See [the commit workflow](docs/agent-workflow.md) for configuration, deliberate API
 exceptions, cache behavior and the reproducible performance benchmark.
 

@@ -9,8 +9,8 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.cache import FactCache
 from smelt.analysis.context import AnalysisContext
+from smelt.analysis.errors import InvalidOptionError as InvalidOptionError  # noqa: PLC0414 - preserve the public engine exception import
 from smelt.analysis.files import FileIndex
-from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.diagnostics.debt import Debt, DebtEntry
@@ -29,6 +29,8 @@ from smelt.diagnostics.violation import (
 from smelt.engine.cache import ANALYSIS, CachedAnalysis, analysis_inputs
 from smelt.engine.changes import Comparison, export_base, resolve_comparison
 from smelt.engine.coverage import effective_coverage
+from smelt.engine.file_checks import rule_findings
+from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
@@ -38,20 +40,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from smelt.config.loader import LoadedConfig
+    from smelt.config.source import SourceStore
     from smelt.rules.base import Rule, RuleSet
 
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
 _COVERAGE = "SMT306"
 _BASELINE = TypeAdapter(list[DebtEntry])
-
-
-class InvalidOptionError(AnalysisError):
-    """A check option names something that does not exist; a usage error."""
-
-    def __init__(self, message: str, *, option: str, value: str) -> None:
-        super().__init__(message)
-        self.option = option
-        self.value = value
+_SUPPRESSIONS = TypeAdapter(list[Suppression])
 
 
 _CATEGORY_ORDER = [
@@ -78,6 +73,7 @@ class CheckOptions:
     staged: bool = False
     snapshot_id: str | None = None
     repository_root: Path | None = None
+    comparison: Comparison | None = None
 
 
 @dataclass
@@ -253,8 +249,10 @@ def _run_check(
     ctx = (
         context
         if context is not None and context.config == config
-        else AnalysisContext(loaded.root, config, cache=cache)
+        else AnalysisContext(loaded.root, config, cache=cache, store=loaded.source)
     )
+    if isinstance(ctx.store, GitSourceStore):
+        ctx.store.cache = cache
     key = (
         cache.key(
             "index-analysis",
@@ -310,7 +308,7 @@ def _run_check(
     resolved: list[DebtEntry] = []
     severity_of = {rule.code: severity for rule, severity in active}
     if options.use_debt and config.debt:
-        debt = Debt.load(loaded.root / config.debt)
+        debt = Debt.load(loaded.root / config.debt, store=ctx.store)
         # Inactive rules have not been checked; their debt is not resolved.
         policy = RuleSettings(rules, loaded)
         debt = Debt(
@@ -387,15 +385,18 @@ def _introduced(
 ) -> tuple[list[Violation], Comparison]:
     """The violations the working tree adds to the base commit, judged by today's config."""
     root = options.comparison_root or ctx.root
-    repository, comparison = resolve_comparison(
-        root, options.base, repository=options.repository_root
-    )
+    if options.comparison is not None and options.repository_root is not None:
+        repository, comparison = options.repository_root, options.comparison
+    else:
+        repository, comparison = resolve_comparison(
+            root, options.base, repository=options.repository_root
+        )
     if options.staged:
         comparison = replace(comparison, staged=True)
     cache = ctx.cache
     # A source root outside the repository can change independently of HEAD.
     if any(
-        not (root / path).resolve().is_relative_to(repository.resolve())
+        not ctx.store.resolve(root / path).is_relative_to(repository.resolve())
         for path in [*ctx.config.project.source_roots, *ctx.config.project.test_roots]
     ):
         cache = None
@@ -410,6 +411,23 @@ def _introduced(
     entries = cache.read(key, _BASELINE) if cache and key else None
     if entries is not None:
         introduced, _, _ = Debt(entries).match(violations, snippet_reader(ctx))
+        return introduced, comparison
+    if isinstance(ctx.store, GitSourceStore):
+        if comparison.revision is None:
+            return violations, comparison
+        before_store = GitSourceStore.from_revision(
+            repository, comparison.revision, cache=ctx.cache
+        )
+        if not before_store.is_dir(root):
+            return violations, comparison
+        before_ctx = AnalysisContext(
+            root, ctx.config, cache=ctx.cache, store=before_store
+        )
+        before = collect(before_ctx) if before_ctx.files.sources else []
+        known = Debt.from_violations(before, snippet_reader(before_ctx))
+        if cache and key:
+            cache.write(key, known.entries, _BASELINE)
+        introduced, _, _ = known.match(violations, snippet_reader(ctx))
         return introduced, comparison
     with tempfile.TemporaryDirectory(prefix="smelt-base-") as tmp:
         base_root = export_base(root, repository, comparison, Path(tmp))
@@ -435,6 +453,7 @@ def _collect(
     options: CheckOptions,
 ) -> tuple[list[Violation], int]:
     """Every violation after ignores and suppressions, and the suppressed count."""
+    ctx.store.prefetch(ctx.root / path for path in ctx.files.all_python_paths())
     requires = frozenset(index for rule, _ in active for index in rule.requires)
     ctx.ensure(requires)
 
@@ -443,7 +462,7 @@ def _collect(
     for rule, _ in active:
         if rule.code in _META:
             continue
-        for violation in rule.check(ctx):
+        for violation in rule_findings(rule, ctx):
             severity = policy.severity(
                 rule, ctx, violation.source_module, selected=bool(options.select)
             )
@@ -472,7 +491,9 @@ def _collect(
 def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
     # A cached snapshot needs source lines, not source discovery, to compare
     # fingerprints. A lightweight FileIndex provides the same decoding/cache.
-    files = ctx.__dict__.get("files") or FileIndex(ctx.root, ctx.config)
+    files = ctx.__dict__.get("files") or FileIndex(
+        ctx.root, ctx.config, store=ctx.store
+    )
 
     def snippet(violation: Violation) -> str:
         if not violation.path or not violation.line:
@@ -526,10 +547,28 @@ def _module_for_path(ctx: AnalysisContext, path: str | None) -> str | None:
 
 def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
     found: list[Suppression] = []
+    keys = (
+        {
+            path: ctx.cache.key("suppressions", [path, ctx.files.content_id(path)])
+            for path in ctx.files.all_python_paths()
+        }
+        if ctx.cache
+        else {}
+    )
+    missing = ctx.cache.missing(list(keys.values())) if ctx.cache else set()
+    ctx.store.prefetch(
+        ctx.root / path
+        for path in ctx.files.all_python_paths()
+        if ctx.cache is None or keys[path] in missing
+    )
     for path in ctx.files.all_python_paths():
-        text = ctx.files.read_text(path)
-        if "smelt:" in text:
-            found.extend(parse_suppressions(path, text))
+        cached = ctx.cache.read(keys[path], _SUPPRESSIONS) if ctx.cache else None
+        if cached is None:
+            text = ctx.files.read_text(path)
+            cached = parse_suppressions(path, text) if "smelt:" in text else []
+            if ctx.cache:
+                ctx.cache.write(keys[path], cached, _SUPPRESSIONS)
+        found.extend(cached)
     return found
 
 
@@ -646,7 +685,7 @@ def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
     known = list(ctx.files.all_python_paths())
     candidates = [*known, *(p.path for p in ctx.files.packages.values())]
     for path in paths:
-        if not (ctx.root / path).exists():
+        if not ctx.store.exists(ctx.root / path):
             msg = f'check path "{path}" does not exist{did_you_mean(path, candidates)}'
             raise InvalidOptionError(msg, option="paths", value=path)
         if not any(_under_any(p, (path,)) for p in known):
@@ -669,9 +708,13 @@ def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:
     return False
 
 
-def relative_scope(root: Path, cwd: Path, raw: str) -> str:
-    absolute = (cwd / raw).resolve()
+def relative_scope(
+    root: Path, cwd: Path, raw: str, *, store: SourceStore | None = None
+) -> str:
+    absolute = store.resolve(cwd / raw) if store else (cwd / raw).resolve()
     try:
-        return absolute.relative_to(root.resolve()).as_posix()
+        return absolute.relative_to(
+            store.resolve(root) if store else root.resolve()
+        ).as_posix()
     except ValueError:
         return Path(raw).as_posix()

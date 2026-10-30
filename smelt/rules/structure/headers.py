@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 class ForbiddenModuleDocstring(BaseRule):
+    file_local = True
     activation = PolicyActivation(
         "A package contract forbids module docstrings.",
         lambda config: any(
@@ -57,6 +58,7 @@ class ForbiddenModuleDocstring(BaseRule):
 
 
 class ForbiddenFutureAnnotations(BaseRule):
+    file_local = True
     activation = PolicyActivation(
         "A package contract sets future_annotations to forbid or when-needed.",
         lambda config: any(
@@ -83,6 +85,7 @@ class ForbiddenFutureAnnotations(BaseRule):
 
 
 class UnnecessaryFutureAnnotations(BaseRule):
+    file_local = True
     activation = PolicyActivation(
         "A package contract sets future_annotations to when-needed.",
         lambda config: any(

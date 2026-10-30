@@ -80,7 +80,7 @@ class SyntaxIndex:
                 source.module,
                 source.path,
                 source.is_package,
-                self.files.sha256(source.path),
+                self.files.content_id(source.path),
             ],
             _NAMESPACE,
             build,

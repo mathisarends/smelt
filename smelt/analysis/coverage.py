@@ -7,6 +7,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from pydantic import TypeAdapter
+
 from smelt.analysis.errors import AnalysisError
 from smelt.analysis.files import python_files
 from smelt.analysis.workspace import import_root, workspace_members
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
 type CoverageStatus = Literal[
     "governed", "facade", "unclassified", "uncovered", "excluded"
 ]
+_BOOL = TypeAdapter(bool)
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,15 +71,16 @@ class CoverageIndex:
         cls, files: FileIndex, model: ArchitectureModel, asts: AstCache
     ) -> CoverageIndex:
         roots = {
-            (files.root / value).resolve()
+            files.resolve_path(files.root / value)
             for value in files.config.project.source_roots
         }
         test_roots = {
-            (files.root / value).resolve() for value in files.config.project.test_roots
+            files.resolve_path(files.root / value)
+            for value in files.config.project.test_roots
         }
         discovery_errors: tuple[str, ...] = ()
         try:
-            members = workspace_members(files.root, strict=True)
+            members = workspace_members(files.root, strict=True, store=files.store)
         except AnalysisError as exc:
             if files.config.project.coverage == "strict":
                 raise
@@ -84,15 +88,19 @@ class CoverageIndex:
             discovery_errors = (str(exc),)
         for member in members:
             directory = files.root / member.path
-            if not directory.is_dir():
+            if not files.store.is_dir(directory):
                 continue
             # uv excludes control packaging, not architecture coverage. Inspect
             # their Python files too, unless the policy explicitly excludes them.
-            located = import_root(directory)
-            fallback = directory / "src" if (directory / "src").is_dir() else directory
-            roots.add(located[0].resolve() if located else fallback.resolve())
+            located = import_root(directory, store=files.store)
+            fallback = (
+                directory / "src"
+                if files.store.is_dir(directory / "src")
+                else directory
+            )
+            roots.add(files.resolve_path(located[0] if located else fallback))
             test_roots.update(
-                (directory / name).resolve() for name in ("tests", "test")
+                files.resolve_path(directory / name) for name in ("tests", "test")
             )
         inventory = {
             source.path: classify_source(source, files, model, asts)
@@ -101,9 +109,9 @@ class CoverageIndex:
         # The most specific import root names a module in nested workspaces.
         ordered = sorted(roots, key=lambda value: (-len(value.parts), value.as_posix()))
         for directory in ordered:
-            if not directory.is_dir():
+            if not files.store.is_dir(directory):
                 continue
-            for path in python_files(directory):
+            for path in python_files(directory, store=files.store):
                 absolute = files.resolve_path(path)
                 relative = files.relative(path)
                 if relative in inventory or any(
@@ -254,6 +262,17 @@ def _policies(info: ModuleInfo | None) -> tuple[str, ...]:
 
 
 def _is_facade(source: SourceFile, asts: AstCache) -> bool:
+    if asts.cache is not None:
+        return asts.cache.get(
+            "facade",
+            [source.path, asts.files.content_id(source.path)],
+            _BOOL,
+            lambda: _facade_syntax(source, asts),
+        )
+    return _facade_syntax(source, asts)
+
+
+def _facade_syntax(source: SourceFile, asts: AstCache) -> bool:
     try:
         tree = asts.parse(source.path)
     except AnalysisError:

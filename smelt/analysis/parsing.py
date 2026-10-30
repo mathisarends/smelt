@@ -8,10 +8,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.errors import AnalysisError
+from smelt.config.source import SourceStore
 
 __all__ = [
     "AnalysisError",
     "AstCache",
+    "is_stdlib",
     "python_note",
     "resolve_relative",
     "type_checking_lines",
@@ -20,12 +22,14 @@ __all__ = [
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
 
 
 @dataclass
 class AstCache:
     files: FileIndex
+    cache: FactCache | None = None
     _trees: dict[str, ast.Module] = field(default_factory=dict)
 
     def parse(self, path: str) -> ast.Module:
@@ -36,15 +40,21 @@ class AstCache:
                 tree = ast.parse(source, filename=path)
             except SyntaxError as exc:
                 msg = f"{path}:{exc.lineno}: syntax error: {exc.msg}"
-                raise AnalysisError(msg + python_note(self.files.root)) from exc
+                raise AnalysisError(
+                    msg + python_note(self.files.root, store=self.files.store)
+                ) from exc
             self._trees[path] = tree
         return tree
+
+
+def is_stdlib(module: str) -> bool:
+    return module.split(".", maxsplit=1)[0] in sys.stdlib_module_names
 
 
 _VERSION_BOUND = re.compile(r"(?:>=|~=|==)\s*3\.(\d+)")
 
 
-def python_note(root: Path) -> str:
+def python_note(root: Path, *, store: SourceStore | None = None) -> str:
     """Explain a syntax error that may just be newer syntax than the running Python.
 
     ``ast`` only knows the grammar of the interpreter smelt runs on, so a 3.14
@@ -52,7 +62,7 @@ def python_note(root: Path) -> str:
     """
     running = sys.version_info[:2]
     note = f" (parsed by Python {running[0]}.{running[1]})"
-    target = _target_python(root)
+    target = _target_python(root, store=store or SourceStore())
     if target is not None and target > running:
         version = f"{target[0]}.{target[1]}"
         note += (
@@ -62,17 +72,17 @@ def python_note(root: Path) -> str:
     return note
 
 
-def _target_python(root: Path) -> tuple[int, int] | None:
+def _target_python(root: Path, *, store: SourceStore) -> tuple[int, int] | None:
     found: list[tuple[int, int]] = []
     try:
-        data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        data = tomllib.loads(store.read_text(root / "pyproject.toml"))
     except (OSError, tomllib.TOMLDecodeError):
         data = {}
     requires = data.get("project", {}).get("requires-python", "")
     if isinstance(requires, str) and (match := _VERSION_BOUND.search(requires)):
         found.append((3, int(match.group(1))))
     try:
-        pinned = (root / ".python-version").read_text(encoding="utf-8").split()
+        pinned = store.read_text(root / ".python-version").split()
     except OSError:
         pinned = []
     if pinned and (match := re.match(r"3\.(\d+)", pinned[0])):

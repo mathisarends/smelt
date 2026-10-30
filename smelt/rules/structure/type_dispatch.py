@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 class PreferMatchTypeDispatch(BaseRule):
+    file_local = True
     activation = PolicyActivation(
         "A package contract sets type_dispatch.style to match.",
         lambda config: any(

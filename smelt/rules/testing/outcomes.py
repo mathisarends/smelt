@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 
 class TestWithoutOutcomeCheck(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT424"
     name = "test-without-outcome-check"
@@ -49,6 +50,7 @@ class TestWithoutOutcomeCheck(BaseRule):
 
 
 class TestOnlyChecksPossiblyEmptyData(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT425"
     name = "test-only-checks-possibly-empty-data"

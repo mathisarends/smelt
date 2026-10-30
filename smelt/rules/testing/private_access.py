@@ -15,6 +15,7 @@ def _private(name: str) -> bool:
 
 
 class PrivateTestAccess(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT420"
     name = "private-test-access"

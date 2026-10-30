@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import sqlite3
 import subprocess
-from typing import TYPE_CHECKING, Any
+import sys
+from contextlib import closing
+from pathlib import Path
+from typing import Any
 
 import pytest
 
 from smelt.cli import main
 from smelt.diagnostics.debt import Debt
-from smelt.engine.changes import staged_snapshot
+from smelt.engine.changes import GitIndex, capture_index
 from smelt.engine.check import snippet_reader
-from tests.helpers import check, write_project
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests.helpers import LAYERED_CONFIG, check, write_project
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
@@ -249,6 +251,128 @@ def test_staged_debt_with_arbitrary_filename_is_used(
     assert report["summary"]["in_debt"] == 1
 
 
+def test_staged_analyses_do_not_materialize_sources(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("staged analysis must not create a temporary source tree")
+
+    monkeypatch.setattr("smelt.engine.check.tempfile.TemporaryDirectory", unexpected)
+    (repo / "app/consumer.py").write_text("")
+    _git(repo, "add", "app/consumer.py")
+    code, report = _check(repo, capsys, "--no-cache")
+    assert code == 1
+    assert report["violations"][0]["path"] == "app/browser.py"
+
+
+def test_exact_retry_bypasses_the_engine_and_its_imports(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    expected = _check(repo, capsys)
+
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("an exact staged result must bypass analysis")
+
+    monkeypatch.setattr("smelt.cli.commands.check.staged_project", unexpected)
+    assert _check(repo, capsys) == expected
+    executed = subprocess.run(  # noqa: S603 - fixed interpreter and fixture-controlled CLI arguments
+        [
+            sys.executable,
+            "-c",
+            "import sys; from smelt.cli import main; "
+            "code=main(sys.argv[1:]); "
+            "assert 'pydantic' not in sys.modules; assert 'grimp' not in sys.modules; "
+            "raise SystemExit(code)",
+            "check",
+            "--staged",
+            "--config",
+            str(repo / "smelt.yaml"),
+            "--format",
+            "json",
+            "--fail-on",
+            "warning",
+        ],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])},
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert executed.returncode == expected[0], executed.stderr
+    assert json.loads(executed.stdout) == expected[1]
+
+
+def test_head_advance_invalidates_the_exact_result(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    _git(repo, "add", "app/consumer.py")
+    assert _check(repo, capsys)[0] == 1
+    _git(repo, "commit", "-qm", "accept existing finding")
+    assert _check(repo, capsys)[0] == 0
+    assert _check(repo, capsys) == _check(repo, capsys, "--no-cache")
+
+
+def test_corrupt_exact_result_and_cached_blob_fall_back_to_analysis(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    expected = _check(repo, capsys)
+    database = next((repo / ".smelt_cache").rglob("results.sqlite3"))
+    with closing(sqlite3.connect(database)) as connection, connection:
+        connection.execute("UPDATE results SET payload = ?", (b"broken",))
+    assert _check(repo, capsys) == expected
+    facts = next((repo / ".smelt_cache").rglob("facts.sqlite3"))
+    with closing(sqlite3.connect(facts)) as connection, connection:
+        connection.execute("UPDATE objects SET payload = ?", (b"invalid source(",))
+    (repo / "app/consumer.py").write_text("")
+    _git(repo, "add", "app/consumer.py")
+    cached = _check(repo, capsys)
+    assert cached[0] == 1
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
+def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        repo,
+        {
+            "smelt.yaml": LAYERED_CONFIG,
+            "app/domain/__init__.py": "",
+            "app/domain/leak.py": "from app.application import service\n",
+            "app/application/__init__.py": "",
+            "app/application/service.py": "VALUE = 1\n",
+        },
+    )
+    _git(repo, "add", "smelt.yaml", "app")
+    (repo / "app/domain/leak.py").write_text("")
+    (repo / "app/application/service.py").unlink()
+    cached = _check(repo, capsys)
+    assert any(
+        v["code"] == "SMT101" and v["path"] == "app/domain/leak.py"
+        for v in cached[1]["violations"]
+    )
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
+def test_explicit_staged_config_can_be_deleted_from_the_working_tree(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = repo / "nested/smelt.yaml"
+    config.parent.mkdir()
+    config.write_text(
+        CONFIG.replace(
+            "root_packages: [app]", "root_packages: [app], source_roots: ['..']"
+        )
+    )
+    _git(repo, "add", "nested/smelt.yaml")
+    config.unlink()
+    config.parent.rmdir()
+    cached = _check(repo, capsys, "--config", str(config))
+    assert cached[0] in {0, 1}
+    assert cached == _check(repo, capsys, "--config", str(config), "--no-cache")
+
+
 def test_text_feedback_names_the_decision_and_shows_the_staged_source(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
@@ -292,15 +416,13 @@ def test_debt_uses_the_captured_index_even_if_another_process_stages_again(
     (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
     _git(repo, "add", "smelt.yaml", "accepted.baseline", "app")
 
-    def capture(
-        root: Path, dest: Path, **kwargs: Any
-    ) -> tuple[Path, str, dict[str, str]]:
-        captured = staged_snapshot(root, dest, **kwargs)
+    def capture(root: Path) -> GitIndex:
+        captured = capture_index(root)
         Debt([]).write(repo / "accepted.baseline")
         _git(repo, "add", "accepted.baseline")
         return captured
 
-    monkeypatch.setattr("smelt.engine.staged.staged_snapshot", capture)
+    monkeypatch.setattr("smelt.engine.result_cache.capture_index", capture)
     code, report = _check(repo, capsys)
     assert code == 0
     assert report["summary"]["in_debt"] == 1
