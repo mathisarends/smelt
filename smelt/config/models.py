@@ -288,7 +288,8 @@ class ImportsConfig(_Model):
         description="Whether imports under `if TYPE_CHECKING:` count.",
     )
     transitive: bool = Field(
-        default=False, description="Also report layer violations through other modules."
+        default=False,
+        description="Also check indirect layer, feature, shared, composition-root and third-party dependencies through all reachable project modules. Reports a shortest import chain; external packages are leaves.",
     )
     cycles: list[CycleScope] = Field(
         default_factory=_all_cycle_scopes, description="Where SMT104 looks for cycles."

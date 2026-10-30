@@ -42,7 +42,7 @@ architecture:
 
   imports:
     type_checking: include
-    transitive: false
+    transitive: true
 
 structure:
   forbidden_names: [utils, helpers]

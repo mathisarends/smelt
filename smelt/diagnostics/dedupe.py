@@ -24,17 +24,14 @@ def _key(violation: Violation) -> tuple[str | None, str | int | None]:
 def deduplicate(violations: list[Violation]) -> list[Violation]:
     """Drop violations that a more specific rule already reports for the same cause."""
     codes_by_key: dict[tuple[str | None, str | int | None], set[str]] = defaultdict(set)
-    lines_by_key: dict[tuple[str | None, int | None], set[str]] = defaultdict(set)
     for violation in violations:
         codes_by_key[_key(violation)].add(violation.code)
-        lines_by_key[(violation.path, violation.line)].add(violation.code)
 
     kept: list[Violation] = []
     for violation in violations:
-        same_cause = (
-            codes_by_key[_key(violation)]
-            | lines_by_key[(violation.path, violation.line)]
-        )
+        # One originating import can reach several unrelated forbidden targets.
+        # Only a finding for the same target can explain an import violation.
+        same_cause = codes_by_key[_key(violation)]
         redundant = any(
             violation.code in losers and winner in same_cause
             for winner, losers in SPECIFICITY.items()

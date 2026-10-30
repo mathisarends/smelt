@@ -441,9 +441,9 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
         )
     )
     lines.append(
-        "Imports: direct and transitive layer dependencies checked"
+        "Imports: direct and transitive dependencies checked (layers, features, shared, composition roots, third-party)"
         if briefing.transitive
-        else "Imports: direct only (re-exports require architecture.imports.transitive: true)"
+        else "Imports: direct only (indirect chains require architecture.imports.transitive: true)"
     )
     lines.extend(_contract_lines(briefing))
     lines.append("")
