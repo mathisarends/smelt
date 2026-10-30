@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass, field
 from functools import cached_property
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.errors import AnalysisError
@@ -10,7 +12,6 @@ from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
-    from pathlib import Path
 
     from smelt.config.models import SmeltConfig
 
@@ -59,6 +60,10 @@ class FileIndex:
     tests: dict[str, TestFile] = field(default_factory=dict)
     missing_root_packages: list[str] = field(default_factory=list)
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
+    _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        self.root = self.root.resolve()
 
     @classmethod
     def discover(cls, root: Path, config: SmeltConfig) -> FileIndex:
@@ -74,10 +79,21 @@ class FileIndex:
         )
 
     def relative(self, path: Path) -> str:
+        absolute = self.resolve_path(path)
         try:
-            return path.resolve().relative_to(self.root.resolve()).as_posix()
+            return absolute.relative_to(self.root).as_posix()
         except ValueError:
-            return path.as_posix()
+            try:
+                return Path(os.path.relpath(absolute, self.root)).as_posix()
+            except ValueError:  # different Windows drives
+                return absolute.as_posix()
+
+    def resolve_path(self, path: Path) -> Path:
+        resolved = self._resolved_paths.get(path)
+        if resolved is None:
+            resolved = path.resolve()
+            self._resolved_paths[path] = resolved
+        return resolved
 
     def _discover_sources(self) -> None:
         project = self.config.project

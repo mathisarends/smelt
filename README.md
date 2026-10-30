@@ -84,6 +84,8 @@ smelt init --maintainability         # write individually named source/test revi
 smelt init --config other.yaml       # write a config and editor schema in that directory
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
+smelt check --staged --fail-on warning  # review the actual commit, including new warnings
+smelt check --staged --no-cache       # recompute to verify the cached result
 smelt check --changed --base origin/main --format json
 smelt check --strict-coverage         # fail on omitted or unclassified production code
 smelt check --show-coverage --format json  # include the per-file policy inventory
@@ -102,7 +104,7 @@ config error, not a silently disabled rule.
 Explicit check paths must exist and contain analyzed source or test files; unknown
 `--select`/`--ignore` selectors are usage errors. JSON includes the reporting scope, file
 count and active rule codes. `--config PATH` works before or after a subcommand.
-A stored JSON report explains itself: `scope.mode` is `full` or `changed`, and
+A stored JSON report explains itself: `scope.mode` is `full`, `changed` or `staged`, and
 `comparison` names the requested `base`, the resolved `merge_base`, the
 `compared_revision` and `head`, so `passed` from `--changed` reads as "nothing new since
 that commit", not as a clean inventory. `coverage` lists the source and test roots,
@@ -1022,8 +1024,19 @@ repos:
       - id: smelt
 ```
 
-The hook checks the whole project when Python files or `smelt.yaml` / `smelt.yml`
-change. Checking only changed filenames can miss violations in modules that import them.
+The `smelt` hook checks the whole project when Python files or `smelt.yaml` /
+`smelt.yml` change. For the agent edit → commit → review → refine loop, use
+`id: smelt-staged` instead. It runs `smelt check --staged --fail-on warning`:
+new warnings and errors block the commit, while existing findings stay quiet
+(strict coverage gaps remain visible). It also runs on deletions and policy changes.
+
+Both source and policy come from the Git index, including partially staged files.
+Unstaged or untracked callers cannot hide a new finding. Unchanged methods affected
+by a removed caller are still checked. Cache files live in `.smelt_cache/`; add it
+to your `.gitignore`. Use `--no-cache` to recompute without reading or writing them.
+The first run builds the cache; repeated runs reuse analysis and the HEAD baseline.
+See [the commit workflow](docs/agent-workflow.md) for configuration, deliberate API
+exceptions, cache behavior and the reproducible performance benchmark.
 
 ## GitHub Actions
 

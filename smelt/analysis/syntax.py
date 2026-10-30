@@ -4,11 +4,16 @@ import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from pydantic import TypeAdapter
+
 from smelt.analysis.exports import Namespace, namespace_of
 from smelt.analysis.parsing import AstCache, resolve_relative
 
 if TYPE_CHECKING:
-    from smelt.analysis.files import FileIndex
+    from smelt.analysis.cache import FactCache
+    from smelt.analysis.files import FileIndex, SourceFile
+
+_NAMESPACE = TypeAdapter(Namespace)
 
 
 @dataclass
@@ -22,9 +27,12 @@ class ModuleSyntax:
 
 
 class SyntaxIndex:
-    def __init__(self, files: FileIndex, asts: AstCache) -> None:
+    def __init__(
+        self, files: FileIndex, asts: AstCache, *, cache: FactCache | None = None
+    ) -> None:
         self.files = files
         self._asts = asts
+        self.cache = cache
         self._by_path: dict[str, ModuleSyntax] = {}
         self._namespaces: dict[str, Namespace | None] = {}
 
@@ -52,13 +60,31 @@ class SyntaxIndex:
             self._namespaces[module] = (
                 (Namespace(module) if module in self.files.packages else None)
                 if source is None
-                else namespace_of(
-                    self._asts.parse(source.path),
-                    module,
-                    is_package=source.is_package,
-                )
+                else self._namespace(source)
             )
         return self._namespaces[module]
+
+    def _namespace(self, source: SourceFile) -> Namespace:
+        def build() -> Namespace:
+            return namespace_of(
+                self._asts.parse(source.path),
+                source.module,
+                is_package=source.is_package,
+            )
+
+        if self.cache is None:
+            return build()
+        return self.cache.get(
+            "namespace",
+            [
+                source.module,
+                source.path,
+                source.is_package,
+                self.files.sha256(source.path),
+            ],
+            _NAMESPACE,
+            build,
+        )
 
 
 def _collect_bindings(syntax: ModuleSyntax) -> None:

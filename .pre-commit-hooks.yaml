@@ -6,3 +6,11 @@
   pass_filenames: false
   files: '(\.py|smelt\.ya?ml)$'
   require_serial: true
+- id: smelt-staged
+  name: smelt (new staged findings)
+  description: Review new architecture and maintainability findings in the Git index.
+  entry: smelt check --staged --fail-on warning
+  language: python
+  pass_filenames: false
+  always_run: true
+  require_serial: true

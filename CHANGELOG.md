@@ -37,6 +37,22 @@ current configuration and complete rule contracts, see the [README](README.md),
   supported; ordinary enums, uncertain bindings and instance inference are
   excluded. Exact-string boundaries can still need a conversion, so findings
   remain advisory and checks stay read-only. The default rule set is unchanged.
+- `smelt check --staged` reviews the actual Git index against HEAD, using staged
+  source, configuration, Python metadata and debt. The new `smelt-staged` hook
+  blocks new warnings as well as errors, including findings in unchanged methods
+  whose last caller was removed. Partial staging and untracked files cannot hide
+  commit findings. JSON/SARIF distinguish staged scope from working-tree changes.
+- Content-addressed JSON caches reuse complete analyses, per-file member facts
+  and the historical baseline. `--no-cache` recomputes independently. Member-use
+  analysis avoids repeated per-function tree walks; cache invalidation includes
+  contents, inventory, policy, Python targets and analyzer implementation. See
+  [the commit workflow and benchmark](docs/agent-workflow.md). Changed/staged
+  snapshots reject symbolic links; staged fixes require editing and re-staging
+  working files explicitly.
+- SMT316 feedback explains how to retain a deliberate public API with a reasoned
+  `# smelt: ignore[SMT316] -- ...` comment on its definition. Existing suppression
+  reason and unused-suppression checks continue to apply with caching.
+
 - Optional [SMT316](docs/rules/SMT316.md), enabled with
   `rules: {internal-public-member: warning}`, reviews public module functions and
   ordinary instance methods with no observed external use, including unused

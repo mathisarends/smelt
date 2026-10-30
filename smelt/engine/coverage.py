@@ -126,7 +126,7 @@ def _omitted_members(ctx: AnalysisContext) -> list[dict[str, Any]]:
     analyzed = {
         directory
         for source in ctx.files.sources.values()
-        for directory in source.absolute.resolve().parents
+        for directory in ctx.files.resolve_path(source.absolute).parents
     }
     omitted: list[dict[str, Any]] = []
     for member in workspace_members(ctx.root):

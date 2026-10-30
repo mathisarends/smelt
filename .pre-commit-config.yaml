@@ -41,9 +41,9 @@ repos:
         require_serial: true
       - id: smelt
         name: smelt
-        entry: uv run --frozen smelt check
+        entry: uv run --frozen smelt check --staged --fail-on warning
         language: system
-        files: '(\.py|smelt\.yaml)$'
+        always_run: true
         pass_filenames: false
         require_serial: true
 

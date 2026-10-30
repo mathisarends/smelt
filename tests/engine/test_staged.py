@@ -1,0 +1,306 @@
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+from typing import TYPE_CHECKING, Any
+
+import pytest
+
+from smelt.cli import main
+from smelt.diagnostics.debt import Debt
+from smelt.engine.changes import staged_snapshot
+from smelt.engine.check import snippet_reader
+from tests.helpers import check, write_project
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+
+CONFIG = """version: 1
+project: {root_packages: [app]}
+structure:
+  contracts:
+    api: {match: app, rules: {internal-public-member: warning}}
+"""
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(  # noqa: S603
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/browser.py": "class Browser:\n    def emit(self): pass\n",
+            "app/consumer.py": "from .browser import Browser\nBrowser().emit()\n",
+        },
+    )
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "initial")
+    return tmp_path
+
+
+def _check(
+    root: Path, capsys: pytest.CaptureFixture[str], *args: str
+) -> tuple[int, dict[str, Any]]:
+    code = main(
+        [
+            "check",
+            "--staged",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--format",
+            "json",
+            "--fail-on",
+            "warning",
+            *args,
+        ]
+    )
+    captured = capsys.readouterr()
+    assert not captured.err
+    return code, json.loads(captured.out)
+
+
+def test_staged_change_finds_unchanged_definition_and_matches_uncached(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    _git(repo, "add", "app/consumer.py")
+    # An unstaged caller, including an untracked one, must not hide this finding.
+    (repo / "app/consumer.py").write_text(
+        "from .browser import Browser\nBrowser().emit()"
+    )
+    (repo / "app/untracked.py").write_text(
+        "from .browser import Browser\nBrowser().emit()"
+    )
+
+    cold = _check(repo, capsys)
+    warm = _check(repo, capsys)
+    uncached = _check(repo, capsys, "--no-cache")
+
+    assert cold == warm == uncached
+    code, report = cold
+    assert code == 1
+    assert [(v["code"], v["path"]) for v in report["violations"]] == [
+        ("SMT316", "app/browser.py")
+    ]
+    assert report["scope"]["mode"] == "staged"
+    assert report["comparison"]["working_tree"] is False
+    assert report["comparison"]["index_hash"]
+    assert report["project"]["root"] == repo.resolve().as_posix()
+    assert (repo / "app/consumer.py").read_text().endswith("Browser().emit()")
+
+
+def test_staged_config_is_used_even_when_working_config_is_invalid(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "smelt.yaml").write_text("invalid: [")
+    (repo / "app/browser.py").write_text("invalid python :")
+    code, report = _check(repo, capsys)
+    assert code == 0
+    assert report["violations"] == []
+
+
+def test_reasoned_api_exception_survives_caching_and_staging(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    (repo / "app/browser.py").write_text(
+        "class Browser:\n    def emit(self):  # smelt: ignore[SMT316] -- Called by plugin hosts.\n        pass\n"
+    )
+    _git(repo, "add", "app")
+    for _ in range(2):
+        code, report = _check(repo, capsys)
+        assert code == 0
+        assert report["violations"] == []
+        assert report["summary"]["suppressed"] == 1
+
+
+def test_exception_without_reason_blocks_the_commit(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    (repo / "app/browser.py").write_text(
+        "class Browser:\n    def emit(self):  # smelt: ignore[SMT316]\n        pass\n"
+    )
+    _git(repo, "add", "app")
+    code, report = _check(repo, capsys)
+    assert code == 1
+    assert [v["code"] for v in report["violations"]] == ["SMT902"]
+
+
+def test_first_commit_and_removed_working_config(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    empty = write_project(
+        repo / "new",
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/api.py": "def unused(): pass",
+        },
+    )
+    _git(empty, "init", "-q")
+    _git(empty, "add", ".")
+    (empty / "smelt.yaml").unlink()
+    monkeypatch.chdir(empty)
+    code = main(["check", "--staged", "--format", "json", "--fail-on", "warning"])
+    report = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert report["comparison"]["head"] is None
+    assert [v["code"] for v in report["violations"]] == ["SMT316"]
+
+
+def test_nested_config_and_sibling_source_roots(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_project(
+        repo,
+        {
+            "policy/architecture.yaml": CONFIG.replace(
+                "root_packages: [app]", "root_packages: [app], source_roots: ['..']"
+            ),
+            "app/consumer.py": "",
+        },
+    )
+    _git(repo, "add", "policy", "app")
+    code = main(
+        [
+            "check",
+            "--staged",
+            "--config",
+            str(repo / "policy/architecture.yaml"),
+            "--format",
+            "json",
+            "--fail-on",
+            "warning",
+        ]
+    )
+    report = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert report["project"]["repository_prefix"] == "policy"
+    assert [v["path"] for v in report["violations"]] == ["../app/browser.py"]
+
+
+def test_staged_fixes_and_conflicting_modes_are_usage_errors(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    for args in (("--fix",), ("--changed",)):
+        code, report = _check(repo, capsys, *args)
+        assert code == 2
+        assert report["error"]["kind"] == "usage"
+
+
+def test_staged_python_metadata_determines_version_aware_findings(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "smelt.yaml").write_text(
+        CONFIG.replace(
+            "rules: {internal-public-member: warning}",
+            "future_annotations: when-needed",
+        )
+    )
+    (repo / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.14"\n')
+    (repo / "app/browser.py").write_text(
+        "from __future__ import annotations\nVALUE = 1\n"
+    )
+    _git(repo, "add", "smelt.yaml", "pyproject.toml", "app/browser.py")
+    (repo / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.12"\n')
+    code, report = _check(repo, capsys)
+    assert code == 1
+    assert [v["code"] for v in report["violations"]] == ["SMT310"]
+
+
+def test_staged_debt_with_arbitrary_filename_is_used(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    outcome = check(repo)
+    Debt.from_violations(
+        outcome.report.violations, snippet_reader(outcome.context)
+    ).write(repo / "accepted.baseline")
+    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
+    _git(repo, "add", "smelt.yaml", "accepted.baseline", "app")
+    (repo / "accepted.baseline").write_text("not JSON")
+    code, report = _check(repo, capsys)
+    assert code == 0
+    assert report["summary"]["in_debt"] == 1
+
+
+def test_text_feedback_names_the_decision_and_shows_the_staged_source(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (repo / "app/browser.py").write_text(
+        "class Browser:\n    def callback(self): pass\n"
+    )
+    _git(repo, "add", "app/browser.py")
+    (repo / "app/browser.py").write_text(
+        "class Browser:\n    def _callback(self): pass\n"
+    )
+    for _ in range(2):
+        code = main(
+            [
+                "check",
+                "--staged",
+                "--config",
+                str(repo / "smelt.yaml"),
+                "--fail-on",
+                "warning",
+                "--no-color",
+            ]
+        )
+        output = capsys.readouterr().out
+        assert code == 1
+        assert "def callback(self)" in output
+        assert "smelt: ignore[SMT316]" in output
+        assert "staged Git index" in output
+
+
+def test_debt_uses_the_captured_index_even_if_another_process_stages_again(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    outcome = check(repo)
+    Debt.from_violations(
+        outcome.report.violations, snippet_reader(outcome.context)
+    ).write(repo / "accepted.baseline")
+    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
+    _git(repo, "add", "smelt.yaml", "accepted.baseline", "app")
+
+    def capture(
+        root: Path, dest: Path, **kwargs: Any
+    ) -> tuple[Path, str, dict[str, str]]:
+        captured = staged_snapshot(root, dest, **kwargs)
+        Debt([]).write(repo / "accepted.baseline")
+        _git(repo, "add", "accepted.baseline")
+        return captured
+
+    monkeypatch.setattr("smelt.engine.staged.staged_snapshot", capture)
+    code, report = _check(repo, capsys)
+    assert code == 0
+    assert report["summary"]["in_debt"] == 1

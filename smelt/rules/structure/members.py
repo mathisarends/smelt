@@ -22,7 +22,7 @@ class InternalPublicMember(BaseRule):
         rationale="An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to SMT429. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe.",
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
-        fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or a reasoned suppression for a method. No automatic rename is performed.",
+        fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[SMT316] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
         config=("rules", "structure.contracts", "project.test_roots"),
     )
 
@@ -57,7 +57,7 @@ class InternalPublicMember(BaseRule):
                     "internal_references": list(member.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Review making {qualified} private as {suggested_name}; update calls and callbacks, checking for existing private-name collisions.",
+                hint=f"Review making {qualified} private as {suggested_name}; update calls and callbacks, checking for existing private-name collisions. For a deliberate public API, append `# smelt: ignore[SMT316] -- <specific API reason>` to this definition.",
             )
 
 

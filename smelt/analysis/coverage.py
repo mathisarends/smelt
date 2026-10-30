@@ -104,7 +104,7 @@ class CoverageIndex:
             if not directory.is_dir():
                 continue
             for path in python_files(directory):
-                absolute = path.resolve()
+                absolute = files.resolve_path(path)
                 relative = files.relative(path)
                 if relative in inventory or any(
                     absolute.is_relative_to(root) for root in test_roots

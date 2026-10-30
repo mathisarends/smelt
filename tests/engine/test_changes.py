@@ -20,6 +20,27 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
+def test_export_ignore_does_not_hide_existing_findings(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": LAYERED_CONFIG,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "",
+            "app/infra/__init__.py": "",
+            "app/infra/db.py": "",
+            "app/domain/service.py": "from app.infra import db\n",
+            ".gitattributes": "app/domain/service.py export-ignore\n",
+        },
+    )
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "baseline")
+    assert not violations(tmp_path, CheckOptions(changed=True))
+
+
 def _git(root: Path, *args: str) -> None:
     subprocess.run(  # noqa: S603
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
