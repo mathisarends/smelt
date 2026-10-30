@@ -1,4 +1,4 @@
-"""Conservative use evidence for module functions and direct class helpers."""
+"""Shared conservative use evidence for functions, methods and attributes."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Literal
 
-from smelt.analysis.exports import resolve_dotted
+from smelt.analysis.exports import resolve_dotted, resolve_export
 from smelt.analysis.function_usage import (
     definition_bindings,
     explicit_exports,
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
+    from smelt.analysis.test_syntax import TestSyntaxIndex
 
 type Function = ast.FunctionDef | ast.AsyncFunctionDef
 _REFLECTION_ARGUMENTS = 2
@@ -32,6 +33,7 @@ class Member:
     kind: Literal["function", "method", "staticmethod"]
     internal_references: tuple[int, ...]
     external_use: bool
+    production_external_use: bool
     class_dependencies: bool = False
     occupied_names: frozenset[str] = frozenset()
     module_names: frozenset[str] = frozenset()
@@ -40,9 +42,31 @@ class Member:
 @dataclass(frozen=True)
 class _AttributeUse:
     module: str
+    path: str
     line: int
     owner: ast.ClassDef | None
     internal: bool
+    definition: ast.Attribute | None = None
+
+
+@dataclass(frozen=True)
+class AttributeMember:
+    module: str
+    path: str
+    owner: ast.ClassDef
+    node: ast.Attribute | ast.Name
+    name: str
+    kind: Literal["instance-attribute", "class-attribute"]
+    internal_references: tuple[int, ...]
+    occupied_names: frozenset[str]
+
+
+@dataclass
+class _UsageEvidence:
+    module_uses: dict[tuple[str, str | None], set[str]]
+    production_uses: dict[tuple[str, str | None], set[str]]
+    attributes: dict[str, list[_AttributeUse]]
+    inherited: set[tuple[str, str]]
 
 
 class MemberUsageIndex:
@@ -50,9 +74,9 @@ class MemberUsageIndex:
         self._syntax = syntax
 
     @cached_property
-    def members(self) -> list[Member]:
+    def _modules(self) -> list[ModuleSyntax]:
         syntax = self._syntax
-        self._modules = [
+        return [
             module
             for path in sorted(
                 {s.path for s in syntax.files.sources.values()}
@@ -60,16 +84,22 @@ class MemberUsageIndex:
             )
             if (module := syntax.for_path(path)) is not None
         ]
-        self._module_uses: dict[tuple[str, str | None], set[str]] = {}
-        self._attributes: dict[str, list[_AttributeUse]] = {}
-        self._inherited: set[tuple[str, str]] = set()
+
+    @cached_property
+    def _evidence(self) -> _UsageEvidence:
+        syntax = self._syntax
+        evidence = _UsageEvidence({}, {}, {}, set())
         for module in self._modules:
             for target in module_references(module, syntax):
-                self._module_uses.setdefault(target, set()).add(module.module)
+                evidence.module_uses.setdefault(target, set()).add(module.module)
+                if syntax.files.source_for_path(module.path) is not None:
+                    evidence.production_uses.setdefault(target, set()).add(
+                        module.module
+                    )
             visitor = _UseVisitor(module)
             visitor.visit(module.tree)
             for name, uses in visitor.attributes.items():
-                self._attributes.setdefault(name, []).extend(uses)
+                evidence.attributes.setdefault(name, []).extend(uses)
             for node in ast.walk(module.tree):
                 if isinstance(node, ast.ClassDef):
                     for base in node.bases:
@@ -80,12 +110,152 @@ class MemberUsageIndex:
                             else None
                         )
                         if base_target and base_target[1]:
-                            self._inherited.add((base_target[0], base_target[1]))
+                            evidence.inherited.add((base_target[0], base_target[1]))
+        return evidence
+
+    @cached_property
+    def members(self) -> list[Member]:
         members: list[Member] = []
         for module in self._modules:
-            if syntax.files.source_for_path(module.path) is not None:
+            if self._syntax.files.source_for_path(module.path) is not None:
                 members.extend(self._members_in(module))
         return members
+
+    def test_only_functions(
+        self, tests: TestSyntaxIndex
+    ) -> Iterator[tuple[Member, tuple[tuple[str, int], ...]]]:
+        references: dict[tuple[str, str | None], set[tuple[str, int]]] = {}
+        for test in tests.modules.values():
+            for node, qualified in [*test.imports, *test.attributes]:
+                target = resolve_dotted(qualified, self._syntax.namespace)
+                if target is not None:
+                    references.setdefault(target, set()).add((test.path, node.lineno))
+        for member in self.members:
+            if (
+                member.kind == "function"
+                and not member.node.name.startswith("_")
+                and not member.production_external_use
+                and (uses := references.get((member.module, member.node.name)))
+            ):
+                yield member, tuple(sorted(uses))
+
+    def test_only_attributes(
+        self, tests: TestSyntaxIndex
+    ) -> Iterator[tuple[AttributeMember, tuple[tuple[str, int], ...]]]:
+        references: dict[tuple[str, str, str], set[tuple[str, int]]] = {}
+        for test in tests.modules.values():
+            for node, qualified in [
+                *test.attributes,
+                *((node, name) for node, name, _ in test.instance_attributes),
+            ]:
+                if not isinstance(node.ctx, ast.Load):
+                    continue
+                owner_name, _, name = qualified.rpartition(".")
+                module, _, owner = owner_name.rpartition(".")
+                # resolve_dotted stops at a class even when more attributes
+                # follow. A child object's field is not a field on its parent.
+                target = resolve_export(module, owner, self._syntax.namespace)
+                if target and target[1]:
+                    references.setdefault((target[0], target[1], name), set()).add(
+                        (test.path, node.lineno)
+                    )
+        for member in self.attributes:
+            if uses := references.get((member.module, member.owner.name, member.name)):
+                yield member, tuple(sorted(uses))
+
+    @cached_property
+    def attributes(self) -> list[AttributeMember]:
+        return [
+            member
+            for module in self._modules
+            if self._syntax.files.source_for_path(module.path) is not None
+            for owner in module.tree.body
+            if isinstance(owner, ast.ClassDef)
+            and definition_bindings(module.tree).get(owner.name) == [owner]
+            and self._plain_class(owner, module)
+            for member in self._attributes_in(owner, module)
+        ]
+
+    def _attributes_in(
+        self, owner: ast.ClassDef, module: ModuleSyntax
+    ) -> Iterator[AttributeMember]:
+        definitions = definition_bindings(ast.Module(body=owner.body, type_ignores=[]))
+        # Slots and custom attribute hooks make renaming a field a runtime contract.
+        if {
+            "__slots__",
+            "__getattribute__",
+            "__getattr__",
+            "__setattr__",
+            "__delattr__",
+        }.intersection(definitions):
+            return
+        candidates: dict[
+            str,
+            tuple[
+                ast.Attribute | ast.Name,
+                Literal["instance-attribute", "class-attribute"],
+            ],
+        ] = {}
+        for name, uses in self._evidence.attributes.items():
+            for use in uses:
+                if (
+                    use.owner is owner
+                    and use.definition is not None
+                    and name not in definitions
+                ):
+                    candidates.setdefault(name, (use.definition, "instance-attribute"))
+        for statement in owner.body:
+            if not isinstance(statement, ast.Assign | ast.AnnAssign):
+                continue
+            # A call may construct a descriptor rather than ordinary class data.
+            if statement.value is not None and not isinstance(
+                statement.value,
+                ast.Constant | ast.List | ast.Tuple | ast.Set | ast.Dict,
+            ):
+                continue
+            targets = (
+                statement.targets
+                if isinstance(statement, ast.Assign)
+                else [statement.target]
+            )
+            for target in targets:
+                if isinstance(target, ast.Name) and definitions.get(target.id) == [
+                    target
+                ]:
+                    candidates.setdefault(target.id, (target, "class-attribute"))
+        occupied = frozenset(definitions) | frozenset(
+            name
+            for name, uses in self._evidence.attributes.items()
+            if any(use.owner is owner and use.internal for use in uses)
+        )
+        for name, (node, kind) in candidates.items():
+            if name.startswith("_"):
+                continue
+            uses = self._evidence.attributes.get(name, [])
+            if any(
+                self._syntax.files.source_for_path(use.path) is not None
+                and not (use.owner is owner and use.internal)
+                for use in uses
+            ):
+                continue
+            yield AttributeMember(
+                module.module,
+                module.path,
+                owner,
+                node,
+                name,
+                kind,
+                tuple(
+                    sorted(
+                        {
+                            use.line
+                            for use in uses
+                            if use.owner is owner and use.internal
+                        }
+                    )
+                ),
+                occupied,
+            )
 
     def _members_in(self, module: ModuleSyntax) -> Iterator[Member]:
         definitions = definition_bindings(module.tree)
@@ -115,21 +285,25 @@ class MemberUsageIndex:
                         )
                     ),
                     self._function_external(module.module, node.name),
+                    self._function_external(module.module, node.name, production=True),
                     occupied_names=occupied,
                     module_names=occupied,
                 )
             elif isinstance(node, ast.ClassDef) and self._plain_class(node, module):
                 yield from self._methods_in(node, module)
 
-    def _function_external(self, module: str, name: str) -> bool:
+    def _function_external(
+        self, module: str, name: str, *, production: bool = False
+    ) -> bool:
         parts = module.split(".")
         targets = [
             (module, name),
             *((".".join(parts[:end]), None) for end in range(1, len(parts) + 1)),
         ]
-        return any(
-            self._module_uses.get(target, set()) - {module} for target in targets
+        uses = (
+            self._evidence.production_uses if production else self._evidence.module_uses
         )
+        return any(uses.get(target, set()) - {module} for target in targets)
 
     def _module_names(self, module: ModuleSyntax) -> frozenset[str]:
         namespace = self._syntax.namespace(module.module)
@@ -147,7 +321,7 @@ class MemberUsageIndex:
                 _qualified(base, module) in {"object", "builtins.object"}
                 for base in node.bases
             )
-            and (module.module, node.name) not in self._inherited
+            and (module.module, node.name) not in self._evidence.inherited
         )
 
     def _methods_in(
@@ -156,7 +330,7 @@ class MemberUsageIndex:
         definitions = definition_bindings(ast.Module(body=owner.body, type_ignores=[]))
         occupied = frozenset(definitions) | frozenset(
             name
-            for name, uses in self._attributes.items()
+            for name, uses in self._evidence.attributes.items()
             if any(use.owner is owner and use.internal for use in uses)
         )
         module_names = self._module_names(module)
@@ -180,7 +354,8 @@ class MemberUsageIndex:
                 continue
             references: set[int] = set()
             external = False
-            for use in self._attributes.get(node.name, ()):
+            production_external = False
+            for use in self._evidence.attributes.get(node.name, ()):
                 internal = (
                     use.module == module.module and use.owner is owner and use.internal
                 )
@@ -188,6 +363,8 @@ class MemberUsageIndex:
                     references.add(use.line)
                 else:
                     external = True
+                    if self._syntax.files.source_for_path(use.path) is not None:
+                        production_external = True
             yield Member(
                 module.module,
                 module.path,
@@ -196,6 +373,7 @@ class MemberUsageIndex:
                 kind,
                 tuple(sorted(references)),
                 external,
+                production_external,
                 _class_dependencies(node, owner),
                 occupied,
                 module_names,
@@ -271,20 +449,29 @@ class _UseVisitor(ast.NodeVisitor):
         self.owner: ast.ClassDef | None = None
         self.roots: set[str] = set()
         self.depth = 0
+        self.instance: str | None = None
         self.attributes: dict[str, list[_AttributeUse]] = {}
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        owner, roots, depth = self.owner, self.roots, self.depth
+        owner, roots, depth, instance = (
+            self.owner,
+            self.roots,
+            self.depth,
+            self.instance,
+        )
         self.owner = node
         self.roots = set()
         self.depth = 0
+        self.instance = None
         self.generic_visit(node)
         self.owner = owner
         self.roots = roots
         self.depth = depth
+        self.instance = instance
 
     def visit_FunctionDef(self, node: Function) -> None:
         previous = self.roots
+        previous_instance = self.instance
         args = [*node.args.posonlyargs, *node.args.args]
         bound = set(definition_bindings(ast.Module(body=node.body, type_ignores=[])))
         arguments = [
@@ -307,10 +494,16 @@ class _UseVisitor(ast.NodeVisitor):
         ):
             roots.add(args[0].arg)
         self.roots = roots
+        self.instance = (
+            args[0].arg
+            if self.owner and not self.depth and args and not decorators
+            else None
+        )
         self.depth += 1
         self.generic_visit(node)
         self.depth -= 1
         self.roots = previous
+        self.instance = previous_instance
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.visit_FunctionDef(node)
@@ -351,7 +544,15 @@ class _UseVisitor(ast.NodeVisitor):
         self.visit_ListComp(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        self._record(node.attr, node.value, node.lineno)
+        definition = (
+            node
+            if isinstance(node.ctx, ast.Store)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == self.instance
+            and node.value.id in self.roots
+            else None
+        )
+        self._record(node.attr, node.value, node.lineno, definition)
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -365,12 +566,20 @@ class _UseVisitor(ast.NodeVisitor):
                 self._record(name.value, node.args[0], node.lineno)
         self.generic_visit(node)
 
-    def _record(self, name: str, expression: ast.expr, line: int) -> None:
+    def _record(
+        self,
+        name: str,
+        expression: ast.expr,
+        line: int,
+        definition: ast.Attribute | None = None,
+    ) -> None:
         self.attributes.setdefault(name, []).append(
             _AttributeUse(
                 self.module,
+                self.syntax.path,
                 line,
                 self.owner,
                 isinstance(expression, ast.Name) and expression.id in self.roots,
+                definition,
             )
         )

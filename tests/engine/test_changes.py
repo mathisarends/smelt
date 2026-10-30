@@ -193,6 +193,38 @@ class TestChangedMode:
 
         assert violations(repo, CheckOptions(changed=True, select=("SMT429",))) == []
 
+    @pytest.mark.parametrize("existing_exposure", [False, True])
+    def test_changed_attribute_exposure_reports_only_a_new_public_contract(
+        self, repo: Path, existing_exposure: bool
+    ) -> None:
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text() + "\nrules: {test-only-public-attribute: warning}\n",
+            encoding="utf-8",
+        )
+        test = "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []"
+        files = {
+            "app/application/service.py": "class Worker:\n    def __init__(self): self.pending = []",
+        }
+        if existing_exposure:
+            files["tests/test_service.py"] = test
+        write_project(repo, files)
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "before additional attribute test")
+        write_project(repo, {"tests/test_other.py": test})
+
+        findings = violations(repo, CheckOptions(changed=True, select=("SMT430",)))
+
+        if existing_exposure:
+            assert findings == []
+        else:
+            [finding] = findings
+            assert (finding.code, finding.path, finding.line) == (
+                "SMT430",
+                "app/application/service.py",
+                2,
+            )
+
     def test_new_ordering_inversions_cannot_hide_in_an_existing_section(
         self, repo: Path
     ) -> None:

@@ -338,3 +338,20 @@ def test_custom_roots_and_deterministic_evidence(tmp_path: Path) -> None:
         {"path": "spec/test_a.py", "line": 1},
         {"path": "spec/test_b.py", "line": 1},
     ]
+
+
+def test_shared_private_name_suggestion_avoids_an_existing_function(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/mouse.py": "def _helper(): pass\ndef helper(): pass",
+            "tests/test_mouse.py": "from app.mouse import helper",
+        },
+    )
+    [finding] = violations(tmp_path)
+    assert finding.expected is not None
+    assert finding.expected["suggested_name"] == "_helper_internal"

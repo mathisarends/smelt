@@ -37,6 +37,7 @@
 | [SMT427](SMT427.md) | independent-test-cases | tests | policy | hint |
 | [SMT428](SMT428.md) | async-mock-call-only | tests | policy | warning |
 | [SMT429](SMT429.md) | test-only-public-function | tests | policy | warning |
+| [SMT430](SMT430.md) | test-only-public-attribute | tests | explicit | warning |
 | [SMT901](SMT901.md) | unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |

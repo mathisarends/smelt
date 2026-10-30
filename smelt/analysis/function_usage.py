@@ -1,9 +1,8 @@
-"""Bounded evidence for module functions exposed only to analyzed tests."""
+"""Shared binding, export and reference facts for public-use analysis."""
 
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import resolve_dotted
@@ -13,74 +12,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
-    from smelt.analysis.test_syntax import TestSyntaxIndex
 
-type Function = ast.FunctionDef | ast.AsyncFunctionDef
 type Target = tuple[str, str | None]
-
-
-@dataclass(frozen=True)
-class TestOnlyPublicFunction:
-    module: str
-    path: str
-    node: Function
-    test_references: tuple[tuple[str, int], ...]
-
-
-def test_only_public_functions(
-    syntax: SyntaxIndex, tests: TestSyntaxIndex
-) -> Iterator[TestOnlyPublicFunction]:
-    test_references: dict[Target, set[tuple[str, int]]] = {}
-    for test in tests.modules.values():
-        for reference, qualified in [*test.imports, *test.attributes]:
-            target = resolve_dotted(qualified, syntax.namespace)
-            if target is not None:
-                test_references.setdefault(target, set()).add(
-                    (test.path, reference.lineno)
-                )
-
-    # Imports are evidence of production use even if the imported value is never
-    # read. This also preserves deliberate facades and re-exports.
-    production_uses: dict[Target, set[str]] = {}
-    modules: list[ModuleSyntax] = []
-    for source in sorted(syntax.files.sources.values(), key=lambda source: source.path):
-        module = syntax.for_path(source.path)
-        if module is None:
-            continue
-        modules.append(module)
-        for target in module_references(module, syntax):
-            production_uses.setdefault(target, set()).add(module.module)
-
-    for module in modules:
-        exports = explicit_exports(module.tree)
-        module_parts = module.module.split(".")
-        if any(
-            production_uses.get((".".join(module_parts[:end]), None), set())
-            - {module.module}
-            for end in range(1, len(module_parts) + 1)
-        ):
-            continue
-        definitions = definition_bindings(module.tree)
-        for node in module.tree.body:
-            if (
-                not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                or node.name.startswith("_")
-                or node.decorator_list
-                or exports is None
-                or node.name in exports
-            ):
-                continue
-            target = (module.module, node.name)
-            references = test_references.get(target)
-            if not references or production_uses.get(target, set()) - {module.module}:
-                continue
-            # Rebinding or conditional replacement makes the exported object
-            # uncertain; only an unambiguous top-level definition is a candidate.
-            if definitions.get(node.name) != [node]:
-                continue
-            yield TestOnlyPublicFunction(
-                module.module, module.path, node, tuple(sorted(references))
-            )
 
 
 def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
