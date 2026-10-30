@@ -25,6 +25,7 @@
 | [SMT315](SMT315.md) | prefer-match-type-dispatch | structure | policy | hint |
 | [SMT316](SMT316.md) | internal-public-member | structure | policy | warning |
 | [SMT317](SMT317.md) | prefer-private-module-function | structure | policy | hint |
+| [SMT318](SMT318.md) | redundant-str-enum-value | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | policy | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

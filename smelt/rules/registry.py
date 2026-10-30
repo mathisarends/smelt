@@ -10,6 +10,7 @@ from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppr
 from smelt.rules.structure.assignments import BundledInstanceAssignment
 from smelt.rules.structure.contracts import MissingRequiredModule
 from smelt.rules.structure.coverage import IncompleteCoverage
+from smelt.rules.structure.enum_values import RedundantStrEnumValue
 from smelt.rules.structure.headers import (
     ForbiddenFutureAnnotations,
     ForbiddenModuleDocstring,
@@ -63,6 +64,7 @@ def builtin_rules() -> list[Rule]:
         PreferMatchTypeDispatch(),
         InternalPublicMember(),
         PreferPrivateModuleFunction(),
+        RedundantStrEnumValue(),
         MisplacedTestFile(),
         PrivateTestAccess(),
         ForbiddenTestMock(),
