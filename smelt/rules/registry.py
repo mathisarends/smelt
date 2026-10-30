@@ -35,6 +35,7 @@ from smelt.rules.testing.mocking import (
 )
 from smelt.rules.testing.outcomes import MissingTestAssertion, VacuousTestOutcome
 from smelt.rules.testing.private_access import PrivateTestAccess
+from smelt.rules.testing.public_attributes import TestOnlyPublicAttribute
 from smelt.rules.testing.public_functions import TestOnlyPublicFunction
 from smelt.rules.testing.timing import TestDeadline
 
@@ -76,6 +77,7 @@ def builtin_rules() -> list[Rule]:
         IndependentTestCases(),
         CallOnlyAsyncMock(),
         TestOnlyPublicFunction(),
+        TestOnlyPublicAttribute(),
         UnusedSuppression(),
         SuppressionWithoutReason(),
         ResolvedDebt(),

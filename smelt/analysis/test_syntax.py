@@ -1124,35 +1124,17 @@ class TestSyntaxIndex:
     def __init__(self, files: FileIndex, asts: AstCache) -> None:
         self.modules: dict[str, TestModule] = {}
         config = files.config.tests
-        enabled = (
-            config.forbid_private_imports
-            or config.forbid_mocks_in
-            or config.forbid_string_patch_targets
-            or config.max_patches_per_test is not None
-            or config.require_assertions
-            or config.require_non_vacuous_assertions
-            or config.review_test_deadlines
-            or config.review_case_loops
-            or config.review_async_mock_assertions
-            or config.review_test_only_public_functions
-        )
-        if not enabled:
-            return
-        source_specs = (
-            {
-                qualified: methods
-                for source in files.sources.values()
-                for qualified, methods in _class_async_methods(
-                    asts.parse(source.path), source.module
-                ).items()
-            }
-            if config.forbid_private_imports or config.review_async_mock_assertions
-            else {}
-        )
-        constructors = (
-            frozenset(source_specs) if config.forbid_private_imports else frozenset()
-        )
-        async_specs = dict(source_specs) if config.review_async_mock_assertions else {}
+        # The engine requests this index for selected rules. Evidence is shared
+        # across those rules rather than gated by separate policy switches.
+        source_specs = {
+            qualified: methods
+            for source in files.sources.values()
+            for qualified, methods in _class_async_methods(
+                asts.parse(source.path), source.module
+            ).items()
+        }
+        constructors = frozenset(source_specs)
+        async_specs = dict(source_specs)
         if source_specs:
             namespaces = {
                 source.module: namespace_of(
@@ -1168,12 +1150,10 @@ class TestSyntaxIndex:
                 is not None
                 and f"{resolved[0]}.{resolved[1]}" in source_specs
             }
-            if config.forbid_private_imports:
-                constructors |= frozenset(aliases)
-            if config.review_async_mock_assertions:
-                async_specs.update(
-                    (alias, source_specs[target]) for alias, target in aliases.items()
-                )
+            constructors |= frozenset(aliases)
+            async_specs.update(
+                (alias, source_specs[target]) for alias, target in aliases.items()
+            )
         fixture_scopes: dict[str, dict[str, _Binding]] = {}
         for path in sorted(files.tests, key=lambda path: (path.count("/"), path)):
             if not path.endswith("conftest.py") or any(

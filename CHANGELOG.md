@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT430](docs/rules/SMT430.md), enabled by
+  `rules: {test-only-public-attribute: warning}` or `--select SMT430`, reviews
+  public instance/class data attributes read only by tests outside their class.
+  Findings include test locations and an available private name. Possible
+  production accesses and uncertain class contracts preserve visibility.
+  Public-use rules share the same member index, export/import evidence and
+  private-name suggestions. The new rule is off by default and never renames code
+  automatically; existing visibility policies retain their activation.
 - Optional [SMT318](docs/rules/SMT318.md), enabled with `rules: {SMT318: hint}`
   or `--select SMT318`, reviews direct `StrEnum.MEMBER.value` reads for using the
   string enum member directly. Known import aliases and analyzed re-exports are

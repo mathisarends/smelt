@@ -6,21 +6,10 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.member_names import private_name
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-
-def _private_name(name: str, occupied: frozenset[str]) -> str:
-    preferred = f"_{name.lstrip('_')}"
-    if preferred not in occupied:
-        return preferred
-    candidate = f"{preferred}_internal"
-    suffix = 2
-    while candidate in occupied:
-        candidate = f"{preferred}_internal_{suffix}"
-        suffix += 1
-    return candidate
 
 
 class InternalPublicMember(BaseRule):
@@ -65,7 +54,7 @@ class InternalPublicMember(BaseRule):
             qualified = (
                 f"{member.owner.name}.{node.name}" if member.owner else node.name
             )
-            private_name = _private_name(node.name, member.occupied_names)
+            suggested_name = private_name(node.name, member.occupied_names)
             yield self.violation(
                 f"{qualified} is public, but has no observed use outside its {'class' if member.owner else 'module'}",
                 path=member.path,
@@ -78,14 +67,14 @@ class InternalPublicMember(BaseRule):
                     "kind": member.kind,
                     "class": member.owner.name if member.owner else None,
                     "member": node.name,
-                    "suggested_name": private_name,
+                    "suggested_name": suggested_name,
                     "observed_usage": "internal-only"
                     if member.internal_references
                     else "unused",
                     "internal_references": list(member.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Review making {qualified} private as {private_name}; update calls and callbacks, checking for existing private-name collisions.",
+                hint=f"Review making {qualified} private as {suggested_name}; update calls and callbacks, checking for existing private-name collisions.",
             )
 
 
@@ -126,7 +115,7 @@ class PreferPrivateModuleFunction(BaseRule):
             ):
                 continue
             node = member.node
-            name = _private_name(node.name, member.module_names)
+            name = private_name(node.name, member.module_names)
             yield self.violation(
                 f"{member.owner.name if member.owner else ''}.{node.name} is an internal static helper; prefer a private module function",
                 path=member.path,
