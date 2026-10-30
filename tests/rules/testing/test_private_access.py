@@ -34,7 +34,7 @@ def test_private_production_access(tmp_path: Path, source: str, flagged: bool) -
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "",
             "app/service.py": "def _helper(): pass\ndef public(): pass",
             "app/_internal.py": "",
@@ -79,7 +79,7 @@ def test_private_instance_reads_have_explicit_provenance(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "",
             "app/tabs.py": "class Tabs:\n    def _require_control(self): pass",
             "tests/test_tabs.py": source,
@@ -107,7 +107,7 @@ def test_unknown_receivers_local_fakes_and_instance_writes_are_excluded(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "",
             "app/tabs.py": "class Tabs: pass",
             "tests/test_tabs.py": "from app.tabs import Tabs\ndef test_run():\n    "
@@ -121,7 +121,7 @@ def test_annotated_conftest_fixture_scope_and_override(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "",
             "app/tabs.py": "class Tabs: pass",
             "tests/conftest.py": "import pytest\nfrom app.tabs import Tabs\nfrom collections.abc import Iterator\n@pytest.fixture\ndef tabs() -> Iterator[Tabs]:\n    yield Tabs()",
@@ -152,7 +152,7 @@ def test_returned_fixture_tuple_preserves_known_production_receiver(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "from .tabs import Tabs as Tabs",
             "app/tabs.py": "class Tabs: pass",
             "tests/test_tabs.py": "import pytest\nfrom app import Tabs\n"
@@ -172,7 +172,7 @@ def test_private_class_import_does_not_repeat_for_every_public_instance_operatio
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {forbid_private_imports: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  private-test-access: error\n",
             "app/__init__.py": "",
             "app/service.py": "class _Service: pass",
             "tests/test_service.py": "from app.service import _Service\ndef test_run():\n    service = _Service()\n    service.run()\n    assert service.status == 'ready'\n    service.__str__()\n    service._inspect()",

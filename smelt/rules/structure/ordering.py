@@ -4,28 +4,20 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class DefinitionOrder(BaseRule):
-    activation = PolicyActivation(
-        "A package contract enables ordering.",
-        lambda config: any(
-            contract.ordering is not None and contract.ordering.enabled
-            for contract in config.structure.contracts.values()
-        ),
-    )
+class PublicDefinitionsFirst(BaseRule):
     code = "SMT313"
-    name = "definition-order"
+    name = "public-definitions-first"
     category = Category.STRUCTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.ORDERING})
     doc = RuleDoc(
-        summary="Definitions can follow the configured order without violating modeled execution dependencies.",
+        summary="Definitions are out of public-first order within modeled execution boundaries.",
         rationale=(
             "Public interfaces should be easy to find. A stable topological order "
             "prioritizes configured categories while preserving category order, "
@@ -42,7 +34,7 @@ class DefinitionOrder(BaseRule):
             "Imports, unknown execution and a misplaced main guard require manual "
             "review. Names and visibility are never rewritten by ordering."
         ),
-        config=("structure.contracts", "project.python_version"),
+        config=("rules", "structure.contracts", "project.python_version"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

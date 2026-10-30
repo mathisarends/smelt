@@ -2,6 +2,7 @@ import ast
 import textwrap
 
 import pytest
+from pydantic import ValidationError
 
 from smelt.analysis.ordering import FileOrder, analyze_order
 from smelt.config.models import OrderingConfig
@@ -283,21 +284,17 @@ def test_diagnostic_points_at_the_first_misplaced_definition() -> None:
 
 def test_class_priority_can_be_configured() -> None:
     config = OrderingConfig.model_validate(
-        {"class": ["class-attributes", "init", "dunders", "private", "public"]}
+        {"class": ["class-attributes", "init", "public", "dunders", "private"]}
     )
     result = _analyze(
-        "class Service:\n    def api(self): pass\n    def _helper(self): pass",
+        "class Service:\n    def __str__(self): pass\n    def api(self): pass",
         config=config,
     )
 
     assert result.issues[0].section is not None
-    assert result.issues[0].section.expected == ["_helper", "api"]
+    assert result.issues[0].section.expected == ["api", "__str__"]
 
 
-def test_disabled_policy() -> None:
-    assert (
-        _analyze(
-            "def _helper(): pass\ndef api(): pass", config=OrderingConfig(enabled=False)
-        ).issues
-        == []
-    )
+def test_enabled_is_not_an_ordering_option() -> None:
+    with pytest.raises(ValidationError, match="enabled"):
+        OrderingConfig.model_validate({"enabled": False})

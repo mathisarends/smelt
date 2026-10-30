@@ -11,15 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = """version: 1
-project: {root_packages: [app]}
-structure:
-  contracts:
-    helpers:
-      match: app
-      member_visibility: private-when-internal
-      static_methods: module-functions
-"""
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    helpers:\n      match: app\n      rules:\n        internal-public-member: warning\n        internal-static-helper: hint\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -254,7 +246,7 @@ def test_test_only_module_function_stays_with_smt429_without_duplicate_findings(
     root = _project(
         tmp_path,
         "def normalize(value): return value.strip()",
-        CONFIG + "tests: {review_test_only_public_functions: true}\n",
+        CONFIG + "rules:\n  test-only-public-function: warning\n",
     )
     write_project(root, {"tests/test_browser.py": "from app.browser import normalize"})
     [finding] = violations(root)
@@ -342,23 +334,24 @@ def test_static_extraction_suggests_a_name_free_in_the_module_namespace(
 
 @pytest.mark.parametrize("code", ["SMT316", "SMT317"])
 @pytest.mark.parametrize(
-    "config",
+    ("config", "options"),
     [
-        "version: 1\nproject: {root_packages: [app]}",
-        CONFIG.replace("private-when-internal", "allow").replace(
-            "module-functions", "allow"
+        ("version: 1\nproject: {root_packages: [app]}", CheckOptions()),
+        (
+            CONFIG.replace("warning", "off").replace("hint", "off"),
+            CheckOptions(select=("SMT316", "SMT317")),
         ),
     ],
 )
-def test_member_policies_are_opt_in_even_when_selected(
-    tmp_path: Path, code: str, config: str
+def test_member_rules_are_opt_in_and_package_off_overrides_selection(
+    tmp_path: Path, code: str, config: str, options: CheckOptions
 ) -> None:
     root = _project(
         tmp_path,
         "class Browser:\n    def emit(self): pass\n    @staticmethod\n    def normalize(value): return value.strip()",
         config,
     )
-    assert violations(root, CheckOptions(select=(code,))) == []
+    assert not any(finding.code == code for finding in violations(root, options))
 
 
 def test_closest_allow_overrides_apply_to_both_member_policies(tmp_path: Path) -> None:
@@ -366,7 +359,7 @@ def test_closest_allow_overrides_apply_to_both_member_policies(tmp_path: Path) -
         tmp_path,
         "",
         CONFIG
-        + "    compat: {match: app.compat, member_visibility: allow, static_methods: allow}\n",
+        + "    compat:\n      match: app.compat\n      rules:\n        internal-public-member: 'off'\n        internal-static-helper: 'off'\n",
     )
     write_project(
         root,

@@ -10,14 +10,7 @@ from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.ordering_fixes import apply_ordering_fixes
 from tests.helpers import check, write_project
 
-CONFIG = """
-version: 1
-project: {root_packages: [app]}
-architecture: {shared: [app]}
-structure:
-  contracts:
-    order: {match: app, ordering: {}}
-"""
+CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n"
 SOURCE = "def _helper():\n    return 7\n\ndef api():\n    return _helper()\n"
 OPTIONS = CheckOptions(select=("SMT313",))
 
@@ -159,7 +152,8 @@ def test_user_edit_after_check_is_preserved(tmp_path: Path) -> None:
 
 def test_external_source_root_is_checked_but_never_rewritten(tmp_path: Path) -> None:
     config = CONFIG.replace(
-        "root_packages: [app]", "root_packages: [app], source_roots: [../library/src]"
+        "  root_packages:\n  - app\n",
+        "  root_packages:\n  - app\n  source_roots: [../library/src]\n",
     )
     write_project(
         tmp_path, {"policy/smelt.yaml": config, "library/src/app/service.py": SOURCE}

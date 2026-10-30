@@ -36,11 +36,11 @@ def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    first: {match: app, instance_assignments: separate}\n    second: {match: app, instance_assignments: allow}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    first:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n    second:\n      match: app\n      rules:\n        bundled-instance-assignment: 'off'\n",
             "app/__init__.py": "",
         },
     )
-    with pytest.raises(ConfigError, match="conflicting instance assignment policies"):
+    with pytest.raises(ConfigError, match="conflicting SMT314 settings"):
         check(tmp_path)
 
 

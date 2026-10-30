@@ -5,20 +5,16 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_timing import unbounded_waits
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class TestDeadline(BaseRule):
-    activation = PolicyActivation(
-        "tests.review_test_deadlines is enabled.",
-        lambda config: config.tests.review_test_deadlines,
-    )
+class UnboundedTestWait(BaseRule):
+    scope = "test"
     code = "SMT426"
-    name = "test-deadline"
+    name = "unbounded-test-wait"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})
@@ -29,15 +25,13 @@ class TestDeadline(BaseRule):
         good="def test_import():\n    result = subprocess.run([sys.executable, '-c', 'import app'], capture_output=True, timeout=10)\n    assert result.returncode == 0, result.stderr",
         fix="Use a timeout at the blocking process boundary or around a known async wait. When replacing the scheduler clock, retain an independent real-time guard such as a parent-process timeout. Preserve bounded polling at real external boundaries.",
         config=(
-            "tests.review_test_deadlines",
+            "rules",
             "tests.timeout_helpers",
             "tests.quality_exclude",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.review_test_deadlines:
-            return
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 for call in unbounded_waits(test, ctx.config.tests.timeout_helpers):

@@ -8,7 +8,6 @@ from smelt.config.loader import (
     parse_config,
 )
 from smelt.config.models import SmeltConfig
-from smelt.config.schema import config_json_schema
 
 __all__ = [
     "CONFIG_FILENAME",
@@ -17,7 +16,6 @@ __all__ = [
     "ConfigIssue",
     "LoadedConfig",
     "SmeltConfig",
-    "config_json_schema",
     "discover_config",
     "load_config",
     "parse_config",

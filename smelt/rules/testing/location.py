@@ -288,6 +288,7 @@ def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
 
 
 class MisplacedTestFile(BaseRule):
+    scope = "test"
     activation = PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
     )

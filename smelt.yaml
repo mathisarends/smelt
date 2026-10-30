@@ -52,7 +52,7 @@ structure:
       private_modules: forbid
     instance-fields:
       match: smelt
-      instance_assignments: separate
+      rules: {bundled-instance-assignment: error}
     type-dispatch:
       match: smelt.rules.structure
       type_dispatch: {style: match, min_branches: 3}
@@ -65,5 +65,6 @@ tests:
   layout: mirror
 
 rules:
-  SMT104: error
-  SMT315: error
+  import-cycle: error
+  prefer-match-type-dispatch: error
+# yaml-language-server: $schema=smelt.schema.json

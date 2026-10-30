@@ -5,20 +5,16 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_awaits import call_only_async_mocks
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class CallOnlyAsyncMock(BaseRule):
-    activation = PolicyActivation(
-        "tests.review_async_mock_assertions is enabled.",
-        lambda config: config.tests.review_async_mock_assertions,
-    )
+class AsyncMockWithoutAwaitCheck(BaseRule):
+    scope = "test"
     code = "SMT428"
-    name = "async-mock-call-only"
+    name = "async-mock-without-await-check"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})
@@ -28,12 +24,10 @@ class CallOnlyAsyncMock(BaseRule):
         bad="def test_connect():\n    connect = AsyncMock()\n    run_handler(connect)\n    connect.assert_called_once_with('account')",
         good="def test_connect():\n    connect = AsyncMock()\n    run_handler(connect)\n    connect.assert_awaited_once_with('account')",
         fix="When execution matters, check await arguments/counts or assert_awaited_once_with on this async mock. Preserve intentional scheduling tests with an explicit expectation; keep synchronous interactions unchanged.",
-        config=("tests.review_async_mock_assertions", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.review_async_mock_assertions:
-            return
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 for observation in call_only_async_mocks(test):

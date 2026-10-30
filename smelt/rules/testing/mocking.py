@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class ForbiddenTestMock(BaseRule):
+    scope = "test"
     activation = PolicyActivation(
         "tests.forbid_mocks_in contains test path patterns.",
         lambda config: bool(config.tests.forbid_mocks_in),
@@ -55,10 +56,7 @@ class ForbiddenTestMock(BaseRule):
 
 
 class StringPatchTarget(BaseRule):
-    activation = PolicyActivation(
-        "tests.forbid_string_patch_targets is enabled.",
-        lambda config: config.tests.forbid_string_patch_targets,
-    )
+    scope = "test"
     code = "SMT422"
     name = "string-patch-target"
     category = Category.TESTS
@@ -69,12 +67,10 @@ class StringPatchTarget(BaseRule):
         bad='from unittest.mock import patch\n@patch("app.service.Repository")\ndef test_run(repository): ...',
         good="def test_run():\n    repository = InMemoryRepository()\n    run(repository)\n    assert repository.saved == [42]",
         fix="Prefer an injected collaborator/fake. For deliberate boundary patching, use object-based patching where appropriate and patch the name looked up by the caller. No automatic rewrite is performed.",
-        config=("tests.forbid_string_patch_targets", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.forbid_string_patch_targets:
-            return
         for module in ctx.test_syntax.modules.values():
             for call in module.calls:
                 if call.string_target:
@@ -84,7 +80,6 @@ class StringPatchTarget(BaseRule):
                         line=call.node.lineno,
                         column=call.node.col_offset + 1,
                         expected={
-                            "forbid_string_patch_targets": True,
                             "operation": call.qualified,
                             "family": call.family,
                             "provenance": call.provenance,
@@ -94,6 +89,7 @@ class StringPatchTarget(BaseRule):
 
 
 class ExcessiveTestPatches(BaseRule):
+    scope = "test"
     activation = PolicyActivation(
         "tests.max_patches_per_test is set, including zero.",
         lambda config: config.tests.max_patches_per_test is not None,

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class IncompleteCoverage(BaseRule):
+    scope = "project"
     activation = PolicyActivation(
         "project.coverage is strict, including --strict-coverage; the guard cannot be disabled in strict mode.",
         lambda config: config.project.coverage == "strict",

@@ -45,6 +45,7 @@ def test_contracts_follow_arbitrary_packages_and_namespace_portions(
             "name": "library",
             "package": "acme",
             "match": "acme",
+            "rules": {},
             "required": ["acme.commands", "acme.records"],
             "missing": [],
             "public": ["acme.commands"],

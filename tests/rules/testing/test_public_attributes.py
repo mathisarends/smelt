@@ -293,17 +293,7 @@ def test_run():
     assert worker.pending == [1]
     assert helper() == 1
 """,
-        config="""version: 1
-project: {root_packages: [app]}
-structure:
-  contracts:
-    helpers:
-      match: app
-      member_visibility: private-when-internal
-      static_methods: module-functions
-tests: {review_test_only_public_functions: true}
-rules: {SMT430: warning}
-""",
+        config="version: 1\nproject: {root_packages: [app]}\nrules: {SMT316: warning, SMT317: hint, SMT429: warning, SMT430: warning}\n",
     )
     assert sorted(finding.code for finding in violations(root)) == [
         "SMT316",

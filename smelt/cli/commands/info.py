@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 import yaml
 
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
-from smelt.config import config_json_schema
 from smelt.config.errors import did_you_mean
 from smelt.engine.check import rule_meta
+from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:

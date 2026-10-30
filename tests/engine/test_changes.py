@@ -88,8 +88,8 @@ class TestChangedMode:
     @pytest.mark.parametrize(
         ("code", "policy", "decorator"),
         [
-            ("SMT316", "member_visibility: private-when-internal", ""),
-            ("SMT317", "static_methods: module-functions", "    @staticmethod\n"),
+            ("SMT316", "rules: {internal-public-member: warning}", ""),
+            ("SMT317", "rules: {internal-static-helper: hint}", "    @staticmethod\n"),
         ],
     )
     def test_member_findings_keep_the_owning_class_in_their_identity(
@@ -120,7 +120,7 @@ class TestChangedMode:
         config = repo / "smelt.yaml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    members: {match: app, member_visibility: private-when-internal}\n",
+            + "\nstructure:\n  contracts:\n    members:\n      match: app\n      rules:\n        internal-public-member: warning\n",
             encoding="utf-8",
         )
         write_project(
@@ -140,58 +140,93 @@ class TestChangedMode:
         assert finding.expected is not None
         assert finding.expected["suggested_name"] == "_emit"
 
+    @pytest.mark.parametrize(
+        ("expected", "policy", "source", "test"),
+        [
+            (
+                ("SMT429", 1),
+                "test-only-public-function",
+                "def helper(): pass\ndef run(): helper()",
+                "from app.application.service import helper",
+            ),
+            (
+                ("SMT430", 2),
+                "test-only-public-attribute",
+                "class Worker:\n    def __init__(self): self.pending = []",
+                "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
+            ),
+        ],
+    )
     def test_new_test_exposure_reports_an_unchanged_production_definition(
-        self, repo: Path
+        self, repo: Path, expected: tuple[str, int], policy: str, source: str, test: str
     ) -> None:
+        code, line = expected
         config = repo / "smelt.yaml"
         config.write_text(
-            config.read_text() + "\ntests: {review_test_only_public_functions: true}\n",
+            config.read_text() + f"\nrules: {{{policy}: warning}}\n",
             encoding="utf-8",
         )
         write_project(
             repo,
             {
-                "app/application/service.py": "def helper(): pass\ndef run(): helper()",
+                "app/application/service.py": source,
             },
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "before direct helper tests")
         write_project(
             repo,
-            {"tests/test_service.py": "from app.application.service import helper"},
+            {"tests/test_service.py": test},
         )
 
-        [finding] = violations(repo, CheckOptions(changed=True, select=("SMT429",)))
+        [finding] = violations(repo, CheckOptions(changed=True, select=(code,)))
 
         assert (finding.code, finding.path, finding.line) == (
-            "SMT429",
+            code,
             "app/application/service.py",
-            1,
+            line,
         )
 
+    @pytest.mark.parametrize(
+        ("code", "policy", "source", "test"),
+        [
+            (
+                "SMT429",
+                "test-only-public-function",
+                "def helper(): pass",
+                "from app.application.service import helper",
+            ),
+            (
+                "SMT430",
+                "test-only-public-attribute",
+                "class Worker:\n    def __init__(self): self.pending = []",
+                "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
+            ),
+        ],
+    )
     def test_extra_test_references_do_not_make_an_existing_visibility_finding_new(
-        self, repo: Path
+        self, repo: Path, code: str, policy: str, source: str, test: str
     ) -> None:
         config = repo / "smelt.yaml"
         config.write_text(
-            config.read_text() + "\ntests: {review_test_only_public_functions: true}\n",
+            config.read_text() + f"\nrules: {{{policy}: warning}}\n",
             encoding="utf-8",
         )
         write_project(
             repo,
             {
-                "app/application/service.py": "def helper(): pass",
-                "tests/test_service.py": "from app.application.service import helper",
+                "app/application/service.py": source,
+                "tests/test_service.py": test,
             },
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "existing direct helper test")
         write_project(
             repo,
-            {"tests/test_other.py": "from app.application.service import helper"},
+            {"tests/test_other.py": test},
         )
 
-        assert violations(repo, CheckOptions(changed=True, select=("SMT429",))) == []
+        assert violations(repo, CheckOptions(changed=True, select=(code,))) == []
 
     @pytest.mark.parametrize("existing_exposure", [False, True])
     def test_changed_attribute_exposure_reports_only_a_new_public_contract(
@@ -231,7 +266,7 @@ class TestChangedMode:
         config = repo / "smelt.yaml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -259,7 +294,7 @@ class TestChangedMode:
         config = repo / "smelt.yaml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -289,7 +324,7 @@ class TestChangedMode:
         config = repo / "smelt.yaml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order: {match: app, ordering: {}}\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
             encoding="utf-8",
         )
         write_project(

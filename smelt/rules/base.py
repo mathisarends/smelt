@@ -52,6 +52,7 @@ class BaseRule:
     requires: frozenset[Index] = frozenset()
     enabled_by_default: ClassVar[bool] = False
     activation: ClassVar[PolicyActivation | None] = None
+    scope: ClassVar[str] = "source"
     doc: ClassVar[RuleDoc]
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]:

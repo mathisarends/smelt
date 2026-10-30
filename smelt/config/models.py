@@ -396,7 +396,6 @@ def _class_order() -> list[ClassOrderSlot]:
 
 
 class OrderingConfig(_Model):
-    enabled: bool = True
     module: list[ModuleOrderSlot] = Field(default_factory=_module_order)
     class_order: list[ClassOrderSlot] = Field(
         default_factory=_class_order, alias="class"
@@ -417,6 +416,8 @@ class OrderingConfig(_Model):
             raise ValueError(
                 "module order must contain every module category exactly once"
             )
+        if values.index("public") > values.index("private"):
+            raise ValueError("public-definitions-first requires public before private")
         if (
             values[:3] != ["docstring", "future-imports", "imports"]
             or values[-1] != "main-guard"
@@ -433,6 +434,8 @@ class OrderingConfig(_Model):
             raise ValueError(
                 "class order must contain every class category exactly once"
             )
+        if values.index("public") > values.index("private"):
+            raise ValueError("public-definitions-first requires public before private")
         return values
 
 
@@ -484,21 +487,13 @@ class PackageContract(_Model):
         default=None,
         description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins.",
     )
-    instance_assignments: Literal["allow", "separate"] | None = Field(
-        default=None,
-        description="Optional SMT314 convention: separate rejects an assignment statement writing multiple direct attributes of a method's instance receiver. Local unpacking remains allowed. Closest explicit package policy wins; no automatic splitting.",
-    )
     type_dispatch: TypeDispatchConfig | None = Field(
         default=None,
         description="Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite.",
     )
-    member_visibility: Literal["allow", "private-when-internal"] | None = Field(
-        default=None,
-        description="Optional SMT316 review: suggest a leading underscore for module functions and ordinary instance methods with no observed use outside their module/class, including unused members. Test accesses preserve visibility; SMT429 separately reviews test-only public functions. Closest explicit package policy wins; no automatic rename.",
-    )
-    static_methods: Literal["allow", "module-functions"] | None = Field(
-        default=None,
-        description="Optional SMT317 preference: suggest private module functions for internal static helpers without class namespace dependencies. Explicit static APIs, inheritance and extra decorators are preserved. Closest explicit package policy wins; no automatic extraction.",
+    rules: dict[str, SeverityName] = Field(
+        default_factory=dict,
+        description="Rule severities for production findings in this package. Use the same problem names or SMT codes as top-level rules; the closest package override wins. Options alone do not enable public-definitions-first.",
     )
 
     @field_validator("match")
@@ -546,10 +541,8 @@ class PackageContract(_Model):
             and self.future_annotations is None
             and self.private_modules is None
             and self.ordering is None
-            and self.instance_assignments is None
             and self.type_dispatch is None
-            and self.member_visibility is None
-            and self.static_methods is None
+            and not self.rules
         ):
             raise ValueError("set at least one package contract policy")
         return self
@@ -577,7 +570,7 @@ class StructureConfig(_Model):
 
 
 class TestsConfig(_Model):
-    """Where test files must live."""
+    """Test placement and genuine parameters for test analyses."""
 
     layout: Literal["mirror", "none"] = Field(
         default="none",
@@ -598,54 +591,22 @@ class TestsConfig(_Model):
         default_factory=list,
         description="Project-relative globs excluded from test-quality checks, independently of test mirroring.",
     )
-    forbid_private_imports: bool = Field(
-        default=False,
-        description="Reject private production imports, module access and basic typed/constructor instance reads from tests (SMT420).",
-    )
     forbid_mocks_in: list[str] = Field(
         default_factory=list,
         description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
-    )
-    forbid_string_patch_targets: bool = Field(
-        default=False,
-        description="Reject literal string targets for recognized patch/patch.dict/patch.multiple and MonkeyPatch setattr/delattr calls (SMT422).",
     )
     max_patches_per_test: int | None = Field(
         default=None,
         ge=0,
         description="Maximum recognized patch calls per collected test, including decorators (SMT423). Nested helpers and fixtures are not attributed to callers.",
     )
-    require_assertions: bool = Field(
-        default=False,
-        description="Warn when a collected test has no nontrivial assert, recognized pytest/unittest or mock assertion, bounded Event observation or configured helper (SMT424). Syntactic evidence only.",
-    )
-    require_non_vacuous_assertions: bool = Field(
-        default=False,
-        description="Review tests whose only recognized outcomes depend on possibly empty loops or positive all(...) checks (SMT425). Advisory syntax heuristic, not proof of test effectiveness.",
-    )
     assertion_helpers: list[str] = Field(
         default_factory=list,
         description="Qualified callable names accepted as assertion evidence, e.g. tests.assertions.assert_user.",
     )
-    review_test_deadlines: bool = Field(
-        default=False,
-        description="Review known synchronous/asyncio subprocess and Event/Task/Future waits without local bounds and replacement of the asyncio scheduler clock (SMT426). External runner deadlines and unknown/transitive waits are not inferred.",
-    )
     timeout_helpers: list[str] = Field(
         default_factory=list,
         description="Qualified context/wrapper helpers known to bound async waits, e.g. tests.timing.deadline. They do not supply assertion evidence or bound synchronous subprocess calls.",
-    )
-    review_case_loops: bool = Field(
-        default=False,
-        description="Suggest parametrization for narrow independent-case candidates in small literal test loops (SMT427). Stateful lifecycles remain outside the heuristic.",
-    )
-    review_async_mock_assertions: bool = Field(
-        default=False,
-        description="Review call-only checks on known async mocks and explicit async class-spec methods without await evidence (SMT428). Advisory; unknown methods and general data flow are not inferred.",
-    )
-    review_test_only_public_functions: bool = Field(
-        default=False,
-        description="Review public module functions accessed from tests but not used by other analyzed production modules (SMT429). Suggest a leading underscore; explicit exports and decorated functions are preserved. Advisory, not proof of external API usage.",
     )
 
     @field_validator("quality_exclude", "forbid_mocks_in")
@@ -725,7 +686,8 @@ class SmeltConfig(_Model):
     structure: StructureConfig = Field(default_factory=StructureConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, SeverityName] = Field(
-        default_factory=dict, description="Severity per rule code, or off."
+        default_factory=dict,
+        description="Explicit checks by problem name or stable SMT code. A severity enables the check; off disables it. No additional boolean switch is required for fixed-pattern rules.",
     )
     ignore: list[IgnoreEntry] = Field(
         default_factory=list, description="Rules to skip for modules or paths."
