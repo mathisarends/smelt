@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, violations, write_project
 
@@ -115,4 +117,126 @@ class TestTransitive:
         assert [(link.importer, link.imported) for link in found.import_chain] == [
             ("app.application.service", "app.helpers"),
             ("app.helpers", "app.infra.db"),
+        ]
+
+    def test_allowed_layer_does_not_hide_a_forbidden_dependency(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "app/application/service.py": "from app.domain import user\n",
+                "app/domain/user.py": "from app.infra import db\n",
+            },
+            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+        )
+
+        found = violations(root, ONLY_SMT101)
+
+        assert [(v.source_module, v.target_module) for v in found] == [
+            ("app.application.service", "app.infra.db"),
+            ("app.domain.user", "app.infra.db"),
+        ]
+        assert [link.line for link in found[0].import_chain] == [1, 1]
+
+    def test_shortest_witness_is_stable_and_cycles_terminate(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "app/application/service.py": "from app import z, a, long\n",
+                "app/a.py": "from app import z\n\nfrom app.infra import db\n",
+                "app/z.py": "from app import a\nfrom app.infra import db\n",
+                "app/long.py": "from app import a\n",
+            },
+            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+        )
+
+        [found] = violations(root, ONLY_SMT101)
+
+        assert [link.imported for link in found.import_chain] == [
+            "app.a",
+            "app.infra.db",
+        ]
+        assert [link.line for link in found.import_chain] == [1, 3]
+
+    @pytest.mark.parametrize("guarded_hop", ["first", "middle", "last"])
+    @pytest.mark.parametrize("type_checking", ["include", "ignore"])
+    def test_type_checking_policy_applies_to_every_hop(
+        self, tmp_path: Path, guarded_hop: str, type_checking: str
+    ) -> None:
+        statements = {
+            "first": ("app/application/service.py", "from app import helpers\n"),
+            "middle": ("app/helpers.py", "from app import bridge\n"),
+            "last": ("app/bridge.py", "from app.infra import db\n"),
+        }
+        files = dict(statements.values())
+        path, statement = statements[guarded_hop]
+        files[path] = (
+            "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    " + statement
+        )
+        root = _project(
+            tmp_path,
+            files,
+            LAYERED_CONFIG
+            + f"  imports: {{transitive: true, type_checking: {type_checking}}}\n",
+        )
+
+        found = violations(root, ONLY_SMT101)
+
+        assert len(found) == (1 if type_checking == "include" else 0)
+        if found:
+            assert [link.line for link in found[0].import_chain] == [
+                3 if hop == guarded_hop else 1 for hop in statements
+            ]
+
+    def test_direct_violation_does_not_gain_a_duplicate_indirect_report(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path,
+            {
+                **INDIRECT_FILES,
+                "app/application/service.py": "from app import helpers\nfrom app.infra import db\n",
+            },
+            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+        )
+
+        [found] = violations(root, ONLY_SMT101)
+
+        assert found.line == 2
+        assert found.import_chain == ()
+
+    def test_allowed_reachable_layers_are_clean(self, tmp_path: Path) -> None:
+        root = _project(
+            tmp_path,
+            {
+                "app/application/service.py": "from app import helpers\n",
+                "app/helpers.py": "from app.domain import user\n",
+            },
+            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+        )
+
+        assert violations(root, ONLY_SMT101) == []
+
+    def test_long_chains_have_no_reexport_hop_limit(self, tmp_path: Path) -> None:
+        bridges = [f"app.bridge{i}" for i in range(12)]
+        files = {
+            f"{module.replace('.', '/')}.py": f"import {target}\n"
+            for module, target in zip(
+                bridges, [*bridges[1:], "app.infra.db"], strict=True
+            )
+        }
+        root = _project(
+            tmp_path,
+            {"app/application/service.py": "import app.bridge0\n", **files},
+            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+        )
+
+        [found] = violations(root, ONLY_SMT101)
+
+        assert [link.imported for link in found.import_chain] == [
+            *bridges,
+            "app.infra.db",
         ]

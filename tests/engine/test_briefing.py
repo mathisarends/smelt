@@ -324,7 +324,7 @@ class TestFeatureBriefing:
             "Policy: Layer and feature boundaries apply as configured; wiring and composition roots\n"
             "        have exceptions.\n"
             "Coverage: configured; complete policy assignment for 10 source files.\n"
-            "Imports: direct only (re-exports require architecture.imports.transitive: true)\n"
+            "Imports: direct only (indirect chains require architecture.imports.transitive: true)\n"
             "\n"
             "Layers:\n"
             "  domain         → (nothing)            third-party: only pydantic\n"

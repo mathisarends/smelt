@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `architecture.imports.transitive: true` now checks arbitrary import chains for
+  layer, cross-feature, shared, composition-root and third-party policies, e.g.
+  `domain → shared.utils → sqlalchemy`. Findings include a deterministic shortest
+  chain with each hop's source line; `TYPE_CHECKING` policy applies at every hop.
+  The opt-in now follows all reachable module imports, including allowed layers
+  and unused facade exports, rather than just selected re-exports. External
+  packages remain leaves and the default is still direct imports only. Smelt's
+  own repository policy enables these checks. See
+  [SMT101](docs/rules/SMT101.md) and [SMT103](docs/rules/SMT103.md).
 - **Breaking configuration API:** fixed source/test checks are enabled directly by
   problem name in `rules`, with one value for activation and severity. Removed
   `review_*`, assertion/private-import boolean flags, binary helper conventions,

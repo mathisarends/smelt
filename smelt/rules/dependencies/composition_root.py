@@ -34,7 +34,9 @@ class CompositionRootLeak(BaseRule):
         summary="A module imports the composition root or a declared wiring module.",
         rationale=(
             "Wiring belongs in one place. When features reach for the container or the "
-            "bootstrap module, construction logic spreads and dependencies become hidden."
+            "bootstrap module, construction logic spreads and dependencies become hidden. "
+            "With architecture.imports.transitive, paths through arbitrary project "
+            "modules are checked and reported with a shortest import chain."
         ),
         bad="# voice/application/session.py\nfrom gateway.main import container",
         good=(
@@ -49,6 +51,8 @@ class CompositionRootLeak(BaseRule):
         config=(
             "architecture.composition_root",
             "architecture.wiring",
+            "architecture.imports.transitive",
+            "architecture.imports.type_checking",
         ),
     )
 

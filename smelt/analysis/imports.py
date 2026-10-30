@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -201,6 +201,38 @@ class ImportIndex:
                 continue
             adjacency[detail.importer].add(detail.imported)
         return adjacency
+
+    def shortest_chains_from(
+        self, module: str, *, include_type_checking: bool = True
+    ) -> Iterator[tuple[ImportDetail, ...]]:
+        """Shortest import paths, including external leaves, without revisiting cycles.
+
+        Keep every external statement: Grimp squashes external submodules, but
+        policies may allow ``sqlalchemy.orm`` while denying ``sqlalchemy.sql``.
+        Traverse modules in lexical order and prefer the earliest active import
+        for a deterministic witness. No third-party source is inspected.
+        """
+        previous: dict[str, ImportDetail] = {}
+        visited = {module}
+        queue = deque([module])
+        while queue:
+            current = queue.popleft()
+            for detail in sorted(
+                self.imports_of(current),
+                key=lambda d: (d.imported, d.line, d.column),
+            ):
+                if detail.type_checking and not include_type_checking:
+                    continue
+                if not detail.external:
+                    if detail.imported in visited:
+                        continue
+                    visited.add(detail.imported)
+                    previous[detail.imported] = detail
+                    queue.append(detail.imported)
+                path = [detail]
+                while path[-1].importer != module:
+                    path.append(previous[path[-1].importer])
+                yield tuple(reversed(path))
 
     def _details_for(self, module: str) -> list[ImportDetail]:
         source = self.files.sources.get(module)

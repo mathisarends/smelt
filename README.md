@@ -200,10 +200,37 @@ skipped it (`tool.uv.workspace.exclude`, no Python package); namespace packages 
 Its starter policy explicitly allows third-party packages and checks direct imports.
 Review these decisions: to keep frameworks out of the core, set e.g.
 `domain.third_party: {default: deny, allow: [pydantic]}` under `architecture.layers`.
-Set `architecture.imports.transitive: true` to also detect layer dependencies through
-re-exports, such as a domain importing an infrastructure provider from a feature's
-`__init__.py`. Named re-exports also retain their feature, shared and composition-root
-restrictions. The starter leaves `cross_feature.allow` empty; declare intended
+Set `architecture.imports.transitive: true` to check indirect dependencies through
+all reachable project modules, including helpers, facades and allowed layers:
+
+```yaml
+architecture:
+  imports:
+    transitive: true
+  layers:
+    domain:
+      path: domain
+      third_party: {default: allow, deny: [sqlalchemy, fastapi]}
+```
+
+A chain such as `app.domain.model → app.shared.utils → sqlalchemy` now violates
+the domain's third-party policy even though its own imports look clean. Layer,
+cross-feature, shared and composition-root rules also check reachable targets.
+Findings point at the originating import and include a deterministic shortest
+chain; JSON includes the source line of every hop. Cycles terminate safely, and
+`architecture.imports.type_checking: ignore` removes guarded imports at every hop.
+Direct violations are not repeated as indirect ones for the same target.
+
+This is a module-graph check: importing one name from a facade also makes the
+facade's other imports reachable. A layer's `may_depend_on` and cross-feature
+allowances must permit all reachable targets when transitive checking is enabled.
+The package's public-entry-point contract ([SMT107](docs/rules/SMT107.md)) still
+allows intentional symbol re-exports. External packages are leaves; smelt does
+not inspect their implementation or infer dynamic imports. No `import-linter`
+dependency or separate contracts are needed for these indirect checks.
+Transitive checking remains off by default, including in starter policies.
+
+The starter leaves `cross_feature.allow` empty; declare intended
 feature relationships explicitly. A global `application -> application` pair permits
 that dependency between **every** feature.
 

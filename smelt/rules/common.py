@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from smelt.analysis.exports import resolve_dotted
 from smelt.diagnostics.violation import ImportLink
 from smelt.model import ArchitectureModel, ModuleInfo, ModuleKind, is_within
 
@@ -27,65 +25,40 @@ def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
 def boundary_imports(
     ctx: AnalysisContext,
 ) -> Iterator[tuple[ImportDetail, tuple[ImportLink, ...]]]:
-    """Syntactic imports and named providers reached through re-export facades.
+    """Direct imports and, when enabled, all reachable module dependencies.
 
-    Resolve only the names being consumed, not every implementation dependency of
-    an allowed abstraction. Retain the first import's location for diagnostics.
+    Indirect findings retain the first import's location and the final import's
+    resolved target/names, plus a shortest chain with source lines for each hop.
+    Public facade visibility is a separate, symbol-aware contract (SMT107).
     """
     for detail in ctx.imports.all_imports():
         yield detail, ()
-        if (
-            detail.external
-            or skip_import(ctx, detail)
-            or not ctx.config.architecture.imports.transitive
+    if not ctx.config.architecture.imports.transitive:
+        return
+    include_tc = ctx.config.architecture.imports.type_checking == "include"
+    for module in ctx.imports.modules():
+        seen = {
+            (detail.imported, detail.names)
+            for detail in ctx.imports.imports_of(module)
+            if not skip_import(ctx, detail)
+        }
+        for path in ctx.imports.shortest_chains_from(
+            module, include_type_checking=include_tc
         ):
-            continue
-        seen = {detail.imported}
-        original = ctx.model.info(detail.imported)
-        for name in detail.names:
-            resolved = resolve_dotted(name, ctx.syntax.namespace)
-            if resolved is None or resolved[0] in seen:
+            target = path[-1]
+            key = (target.imported, target.names)
+            if len(path) == 1 or key in seen:
                 continue
-            target = resolved[0]
-            seen.add(target)
-            info = ctx.model.info(target)
-            if info is None:
-                continue
-            # Providers inside the same architectural slot add no new boundary.
-            if original is not None and replace(original, name=info.name) == info:
-                continue
-            path = _provider_path(ctx, detail.imported, target)
-            if path:
-                yield (
-                    replace(detail, imported=target),
-                    (ImportLink(detail.importer, detail.imported, detail.line), *path),
-                )
-
-
-def _provider_path(
-    ctx: AnalysisContext, start: str, target: str
-) -> tuple[ImportLink, ...]:
-    previous: dict[str, ImportLink] = {}
-    queue = deque([start])
-    while queue:
-        module = queue.popleft()
-        for detail in ctx.imports.imports_of(module):
-            child = detail.imported
-            if (
-                detail.external
-                or skip_import(ctx, detail)
-                or child == start
-                or child in previous
-            ):
-                continue
-            previous[child] = ImportLink(module, child, detail.line)
-            if child == target:
-                path = [previous[child]]
-                while path[-1].importer != start:
-                    path.append(previous[path[-1].importer])
-                return tuple(reversed(path))
-            queue.append(child)
-    return ()
+            seen.add(key)
+            yield (
+                replace(
+                    path[0],
+                    imported=target.imported,
+                    names=target.names,
+                    external=target.external,
+                ),
+                tuple(ImportLink(d.importer, d.imported, d.line) for d in path),
+            )
 
 
 def wiring_facade(
