@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT318](docs/rules/SMT318.md), enabled with `rules: {SMT318: hint}`
+  or `--select SMT318`, reviews direct `StrEnum.MEMBER.value` reads for using the
+  string enum member directly. Known import aliases and analyzed re-exports are
+  supported; ordinary enums, uncertain bindings and instance inference are
+  excluded. Exact-string boundaries can still need a conversion, so findings
+  remain advisory and checks stay read-only. The default rule set is unchanged.
 - Optional [SMT316](docs/rules/SMT316.md), configured with package
   `member_visibility: private-when-internal`, reviews public module functions and
   ordinary instance methods with no observed external use, including unused
