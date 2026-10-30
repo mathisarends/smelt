@@ -12,7 +12,7 @@ def test_case_loop_review_remains_an_opt_in_hint(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {review_case_loops: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  independent-test-case-loop: hint\n",
             "app/__init__.py": "",
             "tests/test_selection.py": "def test_selection():\n    for path in ['app/a.py', 'app/b.py']:\n        selected = select(path)\n        assert selected == ['app']",
         },

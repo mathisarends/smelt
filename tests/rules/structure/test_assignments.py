@@ -11,12 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT314",))
-CONFIG = """version: 1
-project: {root_packages: [app]}
-structure:
-  contracts:
-    fields: {match: app, instance_assignments: separate}
-"""
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -126,7 +121,9 @@ def test_implicit_static_and_class_methods_are_excluded(
     "config",
     [
         "version: 1\nproject: {root_packages: [app]}",
-        CONFIG.replace("separate", "allow"),
+        CONFIG.replace(
+            "bundled-instance-assignment: error", "bundled-instance-assignment: off"
+        ),
     ],
 )
 def test_assignment_convention_is_opt_in(tmp_path: Path, config: str) -> None:
@@ -135,14 +132,15 @@ def test_assignment_convention_is_opt_in(tmp_path: Path, config: str) -> None:
         "class Inbox:\n    def __init__(self):\n        self.a, self.b = values",
         config,
     )
-    assert violations(root, OPTIONS) == []
+    assert violations(root) == []
 
 
 def test_closest_allow_override_wins(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
         "",
-        CONFIG + "    exception: {match: app.compat, instance_assignments: allow}\n",
+        CONFIG
+        + "    exception:\n      match: app.compat\n      rules:\n        bundled-instance-assignment: 'off'\n",
     )
     write_project(
         root,
@@ -153,9 +151,14 @@ def test_closest_allow_override_wins(tmp_path: Path) -> None:
     )
     outcome = check(root, OPTIONS)
     assert outcome.report.violations == []
-    policy = outcome.context.contracts.assignment_brief("app.compat.service")
-    assert policy is not None
-    assert policy["instance_assignments"] == "allow"
+    assert (
+        next(
+            contract
+            for contract in outcome.context.contracts.describe("app.compat.service")
+            if contract["package"] == "app.compat"
+        )["rules"]["bundled-instance-assignment"]
+        == "off"
+    )
 
 
 def test_inline_suppression_is_respected(tmp_path: Path) -> None:

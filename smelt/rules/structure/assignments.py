@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -44,13 +43,6 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
 
 
 class BundledInstanceAssignment(BaseRule):
-    activation = PolicyActivation(
-        "A package contract requires separate instance assignments.",
-        lambda config: any(
-            contract.instance_assignments == "separate"
-            for contract in config.structure.contracts.values()
-        ),
-    )
     code = "SMT314"
     name = "bundled-instance-assignment"
     category = Category.STRUCTURE
@@ -61,14 +53,11 @@ class BundledInstanceAssignment(BaseRule):
         bad="class Inbox:\n    def __init__(self, log, control):\n        self.log, self.control = log, control",
         good="class Inbox:\n    def __init__(self, log, control):\n        self.log = log\n        self.control = control",
         fix="Use one direct instance attribute write per statement. Preserve evaluation timing: unpack computed values into locals before assigning fields when appropriate. Parallel assignments, swaps, descriptors and unpacking failures can behave differently when split, so there is no automatic rewrite.",
-        config=("structure.contracts",),
+        config=("rules", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(source.module, "instance_assignments")
-            if contract is None or contract.spec.instance_assignments != "separate":
-                continue
             syntax = ctx.syntax.for_path(source.path)
             if syntax is None:
                 continue
@@ -113,8 +102,6 @@ class BundledInstanceAssignment(BaseRule):
                                 end_column=(assignment.end_col_offset or 0) + 1,
                                 source_module=source.module,
                                 expected={
-                                    "contract": contract.name,
-                                    "instance_assignments": "separate",
                                     "class": cls.name,
                                     "method": method.name,
                                     "attributes": [

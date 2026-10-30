@@ -96,12 +96,12 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "--select",
         metavar="CODES",
-        help="run matching code prefixes or ALL, including opt-in rules; policy is still required",
+        help="run rule names, code prefixes or ALL; architecture/style parameters are still required",
     )
     check.add_argument(
         "--ignore",
         metavar="CODES",
-        help="skip matching code prefixes or ALL; strict coverage remains mandatory",
+        help="skip rule names, code prefixes or ALL; strict coverage remains mandatory",
     )
     check.add_argument(
         "--show-hints",
@@ -118,7 +118,7 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "--fix",
         action="store_true",
-        help="apply permitted safe definition-order fixes, then check again",
+        help="apply permitted safe public-definitions-first fixes, then check again",
     )
     check.add_argument(
         "--strict-coverage",
@@ -162,6 +162,11 @@ def _add_maintenance(sub: Subparsers) -> None:
     )
     init.add_argument(
         "--force", action="store_true", help="overwrite the target if it exists"
+    )
+    init.add_argument(
+        "--maintainability",
+        action="store_true",
+        help="write explicit source/test review rules into the starter (no runtime preset)",
     )
     init.set_defaults(handler=commands.init)
 

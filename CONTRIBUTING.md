@@ -37,6 +37,13 @@ Normal checks stay read-only. A new rule does not need a fixer or a new index.
 
 New BaseRule subclasses are off by default. Choose activation alongside the rule:
 
+Fixed-pattern source/test reviews are selected directly by a problem name in
+`rules`; do not add `review_*`, `require_*` or other duplicate boolean switches.
+Keep real options separate from activation. Package `rules` use the same names
+and severities, with closest-package precedence. Update the canonical class/name,
+CLI explanation, findings, editor schema and documentation together. Stable SMT
+codes preserve diagnostic and debt identities across a documented name migration.
+
 - Reserve `enabled_by_default = True` for reliable baseline diagnostics that need
   no opinionated policy. The baseline set is locked by catalog tests.
 - Use `PolicyActivation(description, matches)` from `smelt.rules.activation` for
@@ -92,6 +99,12 @@ and report metadata; there is no separate hand-maintained catalog manifest.
 `rules --format json` exposes analysis requirements and config paths;
 `explain <code> --format json` adds rationale, examples and repair advice. A rule
 being active by default does not imply that its optional package policy is enabled.
+
+`engine.schema.config_json_schema()` enriches the model schema from the live rule
+catalog, including completion names, severities and bad/good hover examples. Keep
+config models independent of the rule registry. `init` exports the schema locally;
+the checker never reads that editor artifact. Verify schema errors and the CLI
+against the same API, including aliases, package overrides and removed keys.
 
 CI verifies registration completeness, unique codes/names, code/category agreement,
 metadata, and generated-file freshness. Duplicate codes or names also fail when a

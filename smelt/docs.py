@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from smelt.config import config_json_schema
 from smelt.engine.check import rule_meta
+from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:

@@ -7,10 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 from smelt.analysis.coverage import is_governed
 from smelt.config.errors import did_you_mean
+from smelt.config.loader import LoadedConfig
 from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Severity
 from smelt.engine.coverage import policy_hash
+from smelt.engine.rule_settings import RuleSettings
 from smelt.model import ModuleKind, is_within
+from smelt.rules.registry import build_rule_set
 from smelt.rules.testing.location import mirror_path
 
 if TYPE_CHECKING:
@@ -82,9 +85,8 @@ class Briefing:
     ordering_policy: dict[str, Any] | None = None
     python_target: dict[str, Any] = field(default_factory=dict)
     test_policy: dict[str, Any] = field(default_factory=dict)
-    assignment_policy: dict[str, Any] | None = None
     type_dispatch_policy: dict[str, Any] | None = None
-    member_policy: dict[str, Any] = field(default_factory=dict)
+    rules: dict[str, str] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -108,9 +110,8 @@ class Briefing:
             "ordering_policy": self.ordering_policy,
             "python_target": self.python_target,
             "test_policy": self.test_policy,
-            "assignment_policy": self.assignment_policy,
             "type_dispatch_policy": self.type_dispatch_policy,
-            "member_policy": self.member_policy,
+            "rules": self.rules,
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -264,13 +265,23 @@ def build_briefing(
         naming_policy=ctx.contracts.naming_brief(target.module or package),
         ordering_policy=ctx.contracts.ordering_brief(target.module or package),
         test_policy=ctx.config.tests.model_dump(mode="json"),
-        assignment_policy=ctx.contracts.assignment_brief(target.module or package),
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
-        member_policy=ctx.contracts.member_brief(target.module or package),
+        rules=_rule_brief(ctx, target.module or package),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
     )
+
+
+def _rule_brief(ctx: AnalysisContext, module: str | None) -> dict[str, str]:
+    rules = build_rule_set()
+    policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yaml"))
+    return {
+        rule.name: severity.value
+        if (severity := policy.severity(rule, ctx, module))
+        else "off"
+        for rule in rules.rules
+    }
 
 
 def _coverage_brief(ctx: AnalysisContext, target: Target) -> dict[str, Any]:
@@ -457,47 +468,28 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
 
 def _contract_lines(briefing: Briefing) -> list[str]:
     lines = [
-        f"Members: {key}={policy['policy']} ({policy['contract']})"
-        for key, policy in briefing.member_policy.items()
+        f"Rule: {name}: {severity}"
+        for name, severity in briefing.rules.items()
+        if severity != "off"
     ]
     if briefing.type_dispatch_policy:
         policy = briefing.type_dispatch_policy
         lines.append(
             f"Type dispatch: {policy['style']} from {policy['min_branches']} branches ({policy['contract']})"
         )
-    if briefing.assignment_policy:
-        policy = briefing.assignment_policy
-        lines.append(
-            f"Instance assignments: {policy['instance_assignments']} ({policy['contract']})"
-        )
     if briefing.test_policy:
         policy = briefing.test_policy
-        enabled = [
-            name
-            for name in (
-                "forbid_private_imports",
-                "forbid_string_patch_targets",
-                "require_assertions",
-                "require_non_vacuous_assertions",
-                "review_test_deadlines",
-                "review_case_loops",
-                "review_async_mock_assertions",
-                "review_test_only_public_functions",
-            )
-            if policy.get(name)
-        ]
         if (
-            enabled
-            or policy.get("forbid_mocks_in")
+            policy.get("forbid_mocks_in")
             or policy.get("max_patches_per_test") is not None
         ):
             lines.append(
-                f"Test quality: {', '.join(enabled) or 'path/patch policies'}; mocks forbidden in {policy['forbid_mocks_in']}; maximum patches {policy['max_patches_per_test']}; excluded {policy['quality_exclude']}"
+                f"Test quality: path/patch policies; mocks forbidden in {policy['forbid_mocks_in']}; maximum patches {policy['max_patches_per_test']}; excluded {policy['quality_exclude']}"
             )
     if briefing.ordering_policy:
         policy = briefing.ordering_policy
         lines.append(
-            f"Definition ordering: {'enabled' if policy['enabled'] else 'disabled'} ({policy['contract']}); module: {', '.join(policy['module'])}; class: {', '.join(policy['class'])}"
+            f"Definition ordering options ({policy['contract']}); module: {', '.join(policy['module'])}; class: {', '.join(policy['class'])}"
         )
     minimum = briefing.python_target.get("minimum")
     if minimum:

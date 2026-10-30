@@ -23,8 +23,8 @@ GATEWAY = FIXTURES / "gateway"
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("member_visibility", "private-when-internal"),
-        ("static_methods", "module-functions"),
+        ("internal-public-member", "warning"),
+        ("internal-static-helper", "hint"),
     ],
 )
 def test_member_policy_is_available_before_writing_a_module(
@@ -33,7 +33,7 @@ def test_member_policy_is_available_before_writing_a_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, {key}: {value}}}",
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
             "app/__init__.py": "",
         },
     )
@@ -42,8 +42,8 @@ def test_member_policy_is_available_before_writing_a_module(
     briefing = build_briefing(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
-    assert briefing.to_json()["member_policy"][key]["policy"] == value
-    assert f"Members: {key}={value} (helpers)" in render_briefing(briefing, ctx)
+    assert briefing.to_json()["rules"][key] == value
+    assert f"Rule: {key}: {value}" in render_briefing(briefing, ctx)
 
 
 def test_type_dispatch_policy_is_visible_before_writing_a_module(
@@ -71,7 +71,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    fields: {match: app, instance_assignments: separate}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
             "app/__init__.py": "",
         },
     )
@@ -80,19 +80,19 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     briefing = build_briefing(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
-    assert briefing.to_json()["assignment_policy"]["instance_assignments"] == "separate"
-    assert "Instance assignments: separate" in render_briefing(briefing, ctx)
+    assert briefing.to_json()["rules"]["bundled-instance-assignment"] == "error"
+    assert "Rule: bundled-instance-assignment: error" in render_briefing(briefing, ctx)
 
 
 @pytest.mark.parametrize(
     "flag",
     [
-        "require_assertions",
-        "require_non_vacuous_assertions",
-        "review_test_deadlines",
-        "review_case_loops",
-        "review_async_mock_assertions",
-        "review_test_only_public_functions",
+        "test-without-outcome-check",
+        "test-only-checks-possibly-empty-data",
+        "unbounded-test-wait",
+        "independent-test-case-loop",
+        "async-mock-without-await-check",
+        "test-only-public-function",
     ],
 )
 def test_test_quality_policy_is_available_for_planned_placement(
@@ -101,7 +101,7 @@ def test_test_quality_policy_is_available_for_planned_placement(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\ntests: {{{flag}: true}}",
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
             "app/__init__.py": "",
         },
     )
@@ -110,8 +110,8 @@ def test_test_quality_policy_is_available_for_planned_placement(
     briefing = build_briefing(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
-    assert briefing.to_json()["test_policy"][flag] is True
-    assert f"Test quality: {flag};" in render_briefing(briefing, ctx)
+    assert briefing.to_json()["rules"][flag] == "warning"
+    assert f"Rule: {flag}: warning" in render_briefing(briefing, ctx)
 
 
 def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
@@ -137,7 +137,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    order: {match: app, ordering: {constants_exempt: true}}\n",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        public-definitions-first: error\n",
             "app/__init__.py": "",
         },
     )
@@ -150,7 +150,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     policy = briefing.to_json()["ordering_policy"]
 
     assert briefing.target.planned
-    assert policy["enabled"]
+    assert briefing.to_json()["rules"]["public-definitions-first"] == "error"
     assert policy["constants_exempt"]
     assert policy["class"] == [
         "class-attributes",
@@ -159,7 +159,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
         "public",
         "private",
     ]
-    assert "Definition ordering: enabled" in render_briefing(briefing, ctx)
+    assert "Definition ordering options" in render_briefing(briefing, ctx)
 
 
 def test_private_module_convention_is_available_before_writing_a_file(
@@ -310,7 +310,15 @@ class TestFeatureBriefing:
         ctx = outcome.context
         briefing = build_briefing(ctx, resolve_target(ctx, "voice"), outcome.report)
 
-        assert render_briefing(briefing, ctx) == (
+        rendered = render_briefing(briefing, ctx)
+        assert "Rule: layer-boundary: error" in rendered
+        architecture_text = (
+            "\n".join(
+                line for line in rendered.splitlines() if not line.startswith("Rule:")
+            )
+            + "\n"
+        )
+        assert architecture_text == (
             "Feature: voice   (gateway.features.voice)\n"
             "\n"
             "Policy: Layer and feature boundaries apply as configured; wiring and composition roots\n"

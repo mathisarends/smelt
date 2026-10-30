@@ -6,20 +6,16 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_outcomes import vacuous_outcomes
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class MissingTestAssertion(BaseRule):
-    activation = PolicyActivation(
-        "tests.require_assertions is enabled.",
-        lambda config: config.tests.require_assertions,
-    )
+class TestWithoutOutcomeCheck(BaseRule):
+    scope = "test"
     code = "SMT424"
-    name = "missing-test-assertion"
+    name = "test-without-outcome-check"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})
@@ -30,15 +26,13 @@ class MissingTestAssertion(BaseRule):
         good="def test_deactivate():\n    user = deactivate_user(1)\n    assert user.status == 'inactive'",
         fix="Assert a concrete result or observable state, check the expected exception/warning, or configure a known assertion helper. Use a reasoned exception for deliberate smoke/interaction tests. Do not add a meaningless assertion to silence the finding.",
         config=(
-            "tests.require_assertions",
+            "rules",
             "tests.assertion_helpers",
             "tests.quality_exclude",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.require_assertions:
-            return
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 if not test.has_assertion(ctx.config.tests.assertion_helpers):
@@ -48,20 +42,16 @@ class MissingTestAssertion(BaseRule):
                         line=test.node.lineno,
                         expected={
                             "test": test.name,
-                            "require_assertions": True,
                             "assertion_helpers": ctx.config.tests.assertion_helpers,
                         },
                         hint="Check an observable result, state, expected exception/warning, or a configured assertion helper.",
                     )
 
 
-class VacuousTestOutcome(BaseRule):
-    activation = PolicyActivation(
-        "tests.require_non_vacuous_assertions is enabled.",
-        lambda config: config.tests.require_non_vacuous_assertions,
-    )
+class TestOnlyChecksPossiblyEmptyData(BaseRule):
+    scope = "test"
     code = "SMT425"
-    name = "vacuous-test-outcome"
+    name = "test-only-checks-possibly-empty-data"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})
@@ -72,26 +62,23 @@ class VacuousTestOutcome(BaseRule):
         good="def test_codegen():\n    assert generate() == independently_loaded_committed_files()",
         fix="Compare the complete result with an independent expectation, or check expected presence/cardinality before universal checks. Keep intentional empty-result cases explicit; do not add cosmetic assertions.",
         config=(
-            "tests.require_non_vacuous_assertions",
+            "rules",
             "tests.assertion_helpers",
             "tests.quality_exclude",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.require_non_vacuous_assertions:
-            return
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 risks = vacuous_outcomes(test, ctx.config.tests.assertion_helpers)
                 if risks:
                     yield self.violation(
-                        f"{test.name} has only potentially vacuous outcome checks",
+                        f"{test.name} only checks possibly empty data; its assertions can pass or be skipped without checking an item",
                         path=module.path,
                         line=test.node.lineno,
                         expected={
                             "test": test.name,
-                            "require_non_vacuous_assertions": True,
                             "evidence": [
                                 {
                                     "line": node.lineno,

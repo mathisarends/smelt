@@ -96,7 +96,6 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
             ("future_annotations", "future annotation policies"),
             ("private_modules", "private module naming policies"),
             ("ordering", "definition ordering policies"),
-            ("instance_assignments", "instance assignment policies"),
             ("type_dispatch", "type dispatch policies"),
         ):
             policy = getattr(contract.spec, key)

@@ -62,7 +62,7 @@ def test_real_comparison_and_explicit_pytest_targets(
     project = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_run.py": test_source,
         },

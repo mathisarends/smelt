@@ -23,10 +23,10 @@ if TYPE_CHECKING:
     from smelt.config import LoadedConfig
 
 
-def split_codes(raw: str | None) -> tuple[str, ...]:
+def split_selectors(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return ()
-    return tuple(code.strip().upper() for code in raw.split(",") if code.strip())
+    return tuple(code.strip() for code in raw.split(",") if code.strip())
 
 
 def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
@@ -44,8 +44,8 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         paths=_scope(loaded, cwd, args.paths),
         changed=args.changed or args.base is not None,
         base=args.base,
-        select=split_codes(args.select),
-        ignore=split_codes(args.ignore),
+        select=split_selectors(args.select),
+        ignore=split_selectors(args.ignore),
         fail_on=Severity(args.fail_on),
         use_debt=not args.no_debt,
     )

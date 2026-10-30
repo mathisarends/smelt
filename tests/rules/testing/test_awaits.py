@@ -20,7 +20,7 @@ def test_async_review_uses_class_specs_from_a_conftest_fixture_and_facade(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\ntests: {{review_async_mock_assertions: {str(enabled).lower()}}}",
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{async-mock-without-await-check: {'warning' if enabled else 'off'}}}",
             "app/__init__.py": "from app.accounts import Accounts",
             "app/accounts.py": "class Accounts:\n    async def connect(self, key): pass\n    def terminate(self): pass",
             "tests/conftest.py": "import pytest\nfrom unittest.mock import AsyncMock\nfrom app import Accounts\n@pytest.fixture\ndef accounts() -> AsyncMock:\n    return AsyncMock(spec=Accounts)",
@@ -54,7 +54,7 @@ def test_async_review_uses_class_specs_from_a_conftest_fixture_and_facade(
 
 
 def test_async_review_respects_exclusion_and_rule_off(tmp_path: Path) -> None:
-    config = "version: 1\nproject: {root_packages: [app]}\ntests: {review_async_mock_assertions: true, quality_exclude: ['tests/excluded/**']}\nrules: {SMT428: off}"
+    config = "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  quality_exclude:\n  - tests/excluded/**\nrules:\n  async-mock-without-await-check: 'off'\n"
     write_project(
         tmp_path,
         {
@@ -65,7 +65,12 @@ def test_async_review_respects_exclusion_and_rule_off(tmp_path: Path) -> None:
         },
     )
     assert violations(tmp_path, CheckOptions(select=("SMT428",))) == []
-    (tmp_path / "smelt.yaml").write_text(config.replace("\nrules: {SMT428: off}", ""))
+    (tmp_path / "smelt.yaml").write_text(
+        config.replace(
+            "async-mock-without-await-check: 'off'",
+            "async-mock-without-await-check: warning",
+        )
+    )
     [finding] = violations(tmp_path)
     assert finding.path == "tests/test_connect.py"
 
@@ -76,7 +81,7 @@ def test_async_spec_declared_in_conftest_is_available_to_its_consumer(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {review_async_mock_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  async-mock-without-await-check: warning\n",
             "app/__init__.py": "",
             "tests/conftest.py": "import pytest\nfrom unittest.mock import AsyncMock\nclass Accounts:\n    async def connect(self): pass\n@pytest.fixture\ndef accounts():\n    yield AsyncMock(spec=Accounts)",
             "tests/test_accounts.py": "def test_connect(accounts):\n    accounts.connect.assert_called_once()",
@@ -100,7 +105,7 @@ def test_await_assertion_rejects_the_missing_await_mutation(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {review_async_mock_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  async-mock-without-await-check: warning\n",
             "app/__init__.py": "",
             "app/accounts.py": "class Accounts:\n    async def connect(self, key): pass",
             "app/handler.py": "async def handle(accounts):\n    "

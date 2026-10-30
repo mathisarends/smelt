@@ -23,12 +23,20 @@ class TestPackageContracts:
             {"match": "gateway", "future_annotations": "when-needed"},
             {"match": "gateway", "private_modules": "forbid"},
             {"match": "gateway", "private_modules": "allow"},
-            {"match": "gateway", "ordering": {}},
-            {"match": "gateway", "instance_assignments": "separate"},
-            {"match": "gateway", "instance_assignments": "allow"},
+            {
+                "match": "gateway",
+                "ordering": {},
+                "rules": {"public-definitions-first": "error"},
+            },
+            {"match": "gateway", "rules": {"bundled-instance-assignment": "error"}},
+            {"match": "gateway", "rules": {"bundled-instance-assignment": "off"}},
             {"match": "gateway", "type_dispatch": {}},
             {"match": "gateway", "type_dispatch": {"style": "allow"}},
-            {"match": "gateway", "ordering": {"enabled": False}},
+            {
+                "match": "gateway",
+                "ordering": {},
+                "rules": {"public-definitions-first": "off"},
+            },
         ],
     )
     def test_valid_contracts(self, spec: dict[str, object]) -> None:
@@ -52,7 +60,7 @@ class TestPackageContracts:
             {"match": "gateway", "public": ["/api"]},
             {"match": "other", "public": []},
             {"match": "gateway", "imports": {"style": "sometimes"}},
-            {"match": "gateway", "instance_assignments": "sometimes"},
+            {"match": "gateway", "rules": {"bundled-instance-assignment": "sometimes"}},
             {"match": "gateway", "type_dispatch": {"style": "sometimes"}},
             {"match": "gateway", "type_dispatch": {"min_branches": 1}},
             {"match": "gateway", "imports": {"max_relative_level": 0}},
@@ -60,9 +68,21 @@ class TestPackageContracts:
             {"match": "gateway", "module_docstrings": "sometimes"},
             {"match": "gateway", "future_annotations": "always"},
             {"match": "gateway", "private_modules": "sometimes"},
-            {"match": "gateway", "ordering": {"module": ["public", "private"]}},
-            {"match": "gateway", "ordering": {"class": ["init", "public", "private"]}},
-            {"match": "gateway", "ordering": {"fix": "unsafe"}},
+            {
+                "match": "gateway",
+                "ordering": {"module": ["public", "private"]},
+                "rules": {"public-definitions-first": "error"},
+            },
+            {
+                "match": "gateway",
+                "ordering": {"class": ["init", "public", "private"]},
+                "rules": {"public-definitions-first": "error"},
+            },
+            {
+                "match": "gateway",
+                "ordering": {"fix": "unsafe"},
+                "rules": {"public-definitions-first": "error"},
+            },
         ],
     )
     def test_invalid_contracts_fail_explicitly(self, spec: dict[str, object]) -> None:

@@ -6,20 +6,16 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_cases import independent_case_loops
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class IndependentTestCases(BaseRule):
-    activation = PolicyActivation(
-        "tests.review_case_loops is enabled.",
-        lambda config: config.tests.review_case_loops,
-    )
+class IndependentTestCaseLoop(BaseRule):
+    scope = "test"
     code = "SMT427"
-    name = "independent-test-cases"
+    name = "independent-test-case-loop"
     category = Category.TESTS
     default_severity = Severity.HINT
     requires = frozenset({Index.TESTS})
@@ -29,12 +25,10 @@ class IndependentTestCases(BaseRule):
         bad="def test_select():\n    for path in ['app/a.py', 'app/b.py']:\n        selected = select(path)\n        assert selected == ['app']",
         good="@pytest.mark.parametrize('path', ['app/a.py', 'app/b.py'], ids=['a', 'b'])\ndef test_select(path):\n    assert select(path) == ['app']",
         fix="Review whether cases are independent, then use pytest.mark.parametrize with meaningful IDs. Retain loops when later actions depend on earlier state.",
-        config=("tests.review_case_loops", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.review_case_loops:
-            return
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 for loop in independent_case_loops(test):

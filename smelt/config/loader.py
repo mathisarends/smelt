@@ -22,6 +22,21 @@ if TYPE_CHECKING:
 CONFIG_FILENAME = "smelt.yaml"
 CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yml")
 
+_REMOVED_SWITCHES = {
+    "member_visibility": "internal-public-member",
+    "static_methods": "internal-static-helper",
+    "instance_assignments": "bundled-instance-assignment",
+    "forbid_private_imports": "private-test-access",
+    "forbid_string_patch_targets": "string-patch-target",
+    "require_assertions": "test-without-outcome-check",
+    "require_non_vacuous_assertions": "test-only-checks-possibly-empty-data",
+    "review_test_deadlines": "unbounded-test-wait",
+    "review_case_loops": "independent-test-case-loop",
+    "review_async_mock_assertions": "async-mock-without-await-check",
+    "review_test_only_public_functions": "test-only-public-function",
+    "review_test_only_public_attributes": "test-only-public-attribute",
+}
+
 
 class _StrictBoolLoader(yaml.SafeLoader):
     """YAML 1.2 booleans: only ``true``/``false``, so ``off`` stays a string."""
@@ -191,13 +206,30 @@ def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
         if error["type"] == "extra_forbidden":
             key = str(loc[-1])
             known = _known_fields(SmeltConfig, loc[:-1])
-            message = f'unknown key "{key}"{did_you_mean(key, known)}'
+            message = _unknown_key_message(key, known, loc)
         elif error["type"] == "missing":
             message = "required key is missing"
         elif error["type"] == "literal_error":
             message = f"{message}, got {error.get('input')!r}"
         issues.append(ConfigIssue(format_loc(loc), message))
     return issues
+
+
+def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...]) -> str:
+    message = f'unknown key "{key}"{did_you_mean(key, known)}'
+    if key in _REMOVED_SWITCHES:
+        return (
+            message
+            + f"; this switch was removed: configure rules.{_REMOVED_SWITCHES[key]} with error, warning, hint or off instead"
+        )
+    if key == "enabled" and "ordering" in loc:
+        return message + "; enable or disable rules.public-definitions-first instead"
+    if key == "preset":
+        return (
+            message
+            + "; presets were removed: init --maintainability writes explicit rule entries"
+        )
+    return message
 
 
 def _known_fields(model: type[BaseModel], loc: Sequence[str | int]) -> list[str]:

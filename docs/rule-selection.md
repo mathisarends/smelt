@@ -1,55 +1,62 @@
 # Rule activation and migration
 
-All catalog rules ship with Smelt, but most are opt-in. The catalog distinguishes
-three activation modes, independently of severity:
-
-| Mode | Rules | Activation |
-| --- | --- | --- |
-| `default` | SMT301, SMT901, SMT902, SMT903 | Unknown-layer diagnostics and suppression/debt hygiene |
-| `policy` | Architecture, package contracts, conventions and test policies | Declaring the relevant policy activates its check automatically |
-| `explicit` | SMT104 import cycles, SMT305 unclassified-module hints | Enable via `rules` or CLI selection |
-
-For example, declaring layer dependencies activates SMT101; `private_modules:
-forbid` activates SMT312; `tests.layout: mirror` activates SMT401. There is no
-second enable switch for a declared policy. An empty public list still declares a
-private API, and a patch limit of zero still forbids patches. An `allow` policy or
-`ordering.enabled: false` does not activate that convention by itself.
+Configure a fixed pattern by name in `rules`, with its severity as the single
+activation setting. There is no separate boolean flag or runtime preset:
 
 ```yaml
 rules:
-  SMT104: error    # opt in to cycle detection
-  SMT305: warning  # opt in to unclassified-module hints
-  SMT315: warning  # severity override; the match preference still needs its policy
+  public-definitions-first: error
+  internal-public-member: warning
+  internal-static-helper: hint
+  test-without-outcome-check: warning
+  unbounded-test-wait: warning
+  async-mock-without-await-check: warning
 ```
+
+The catalog distinguishes three modes, independently of severity:
+
+| Mode | Activation |
+| --- | --- |
+| `default` | SMT301 and suppression/debt hygiene SMT901–SMT903 |
+| `policy` | Explicit architecture/interface policies or real parameters such as import style, mirror layout, mock paths and patch limits |
+| `explicit` | Fixed source/test patterns, import cycles and unclassified-module hints; enable with `rules` or CLI selection |
+
+Declaring layer dependencies activates SMT101; `tests.layout: mirror` activates
+SMT401. An empty public list still declares a private API, and a patch limit of
+zero still forbids patches. Mere ordering options do not activate SMT313.
 
 ```bash
-smelt rules --format json             # full catalog with activation mode/reason
-smelt check --select SMT3             # run this prefix, including opt-in rules
-smelt check --select ALL              # run every rule against declared policies
-smelt check --select ALL --ignore SMT104
+smelt rules --format json
+smelt explain internal-public-member
+smelt check --select internal-public-member,unbounded-test-wait
+smelt check --select SMT3
+smelt check --select ALL --ignore import-cycle
 ```
 
-`--select` replaces the normal default/policy rule selection. Code prefixes and
-`ALL` activate matching opt-in checks. `rules.<code>: off` and `--ignore` win over
-selection. Selection never invents a style or architecture: a convention without
-its required policy remains inapplicable. Cycle scope settings under
-`architecture.imports.cycles` control SMT104's scope and do not enable it alone.
-Invalid configuration, discovery and source-analysis errors remain fatal.
+`--select` replaces normal selection and accepts canonical names, stable code
+prefixes and `ALL`. `--ignore` accepts the same selectors. A selection enables
+fixed patterns without additional policy switches. Architecture/style checks
+still require their actual model or parameters where the catalog says so.
 
-Strict coverage is the exception to filtering: declaring `project.coverage:
-strict` or passing `--strict-coverage` keeps SMT306 mandatory, even outside a select
-prefix. Turning it off, lowering its severity or ignoring it is rejected.
+Project `rules.<name>: off` disables that rule even under explicit selection.
+Package overrides use the same rule names, and the closest package entry wins;
+they can disable a global rule, change severity or enable it locally. CLI ignores
+apply across the run. Duplicate name/code entries and conflicting settings for
+the same concrete package are config errors.
 
-Migration from earlier defaults: SMT104 and SMT305 no longer run automatically.
-Enable them explicitly to preserve the previous inventory; a smaller finding
-count from turning checks off does not mean defects were fixed. Existing explicit
-package/test policies continue activating their checks. Debt for inactive rules
-is retained during recording/pruning and is not reported as resolved. Enable a
-rule again before pruning its old entries; hint-only entries are also retained by
-the debt command rather than silently removed.
+Strict coverage is mandatory: `project.coverage: strict` or `--strict-coverage`
+keeps SMT306 enabled outside a select prefix. Lowering its severity, ignoring it
+or overriding it inside a package is rejected. Invalid configuration, discovery
+and source-analysis errors remain fatal independently of selection.
 
-`smelt init` still proposes architecture, but leaves naming conventions and test
-mirroring off. A detected mirror pattern is retained as a setting, with a comment
-showing how to activate it after review. New contributed rules start off unless
-they declare a typed policy activation condition or deliberately join the small
-default set. See [the generated catalog](rules/README.md) for every decision.
+Debt for inactive rules or disabled packages remains unassessed. Recording and
+pruning retain it; disabling checks does not mean violations were fixed. Hint-only
+debt is also retained by the debt command. Changed checks compare source under
+the current explicit policy on both sides.
+
+Use `smelt init --maintainability` to write a visible selection of source/test
+reviews. Plain `init` infers architecture and leaves those conventions opt-in;
+both commands write an editor schema beside the YAML. The complete small-project
+API, package exceptions, editor setup and removed-field/name mapping are in
+[configuration and migration](configuration.md). See the
+[generated catalog](rules/README.md) for every rule's activation decision.

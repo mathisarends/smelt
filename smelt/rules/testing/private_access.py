@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -16,10 +15,7 @@ def _private(name: str) -> bool:
 
 
 class PrivateTestAccess(BaseRule):
-    activation = PolicyActivation(
-        "tests.forbid_private_imports is enabled.",
-        lambda config: config.tests.forbid_private_imports,
-    )
+    scope = "test"
     code = "SMT420"
     name = "private-test-access"
     category = Category.TESTS
@@ -30,12 +26,10 @@ class PrivateTestAccess(BaseRule):
         bad="from app.service import _normalize\ndef test_normalize():\n    assert _normalize('A') == 'a'",
         good="from app.service import normalize\ndef test_normalize():\n    assert normalize('A') == 'a'",
         fix="Exercise the supported behavior that uses the helper. Keep a reasoned exception for a deliberate implementation/protocol test; do not expose internals solely to silence a warning.",
-        config=("tests.forbid_private_imports", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.forbid_private_imports:
-            return
         known = set(ctx.files.sources) | set(ctx.files.packages)
         for module in ctx.test_syntax.modules.values():
             seen: set[tuple[int, int, str]] = set()
@@ -78,7 +72,6 @@ class PrivateTestAccess(BaseRule):
                     column=node.col_offset + 1,
                     target_module=target,
                     expected={
-                        "forbid_private_imports": True,
                         "private_target": target,
                         "access": access,
                         "provenance": provenance,

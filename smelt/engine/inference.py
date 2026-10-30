@@ -642,25 +642,31 @@ def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
     inferred.wiring.sort()
 
 
-def render_config(inferred: InferredConfig) -> str:
+def render_config(inferred: InferredConfig, *, maintainability: bool = False) -> str:
     out = [
-        "# Architecture guardrails for smelt. Reference: `smelt config schema`,",
+        "# yaml-language-server: $schema=.smelt.schema.json",
+        "# Python guardrails for smelt. Reference: `smelt config schema`,",
         "# rule details: `smelt explain <code>`.",
         "version: 1",
-        "",
-        "project:",
-        f"  source_roots: {_list(inferred.source_roots)}",
-        f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
-        f"  test_roots: {_list(inferred.test_roots)}",
-        '  # exclude: ["**/migrations/**"]',
     ]
+    out.extend(
+        [
+            "",
+            "project:",
+            f"  source_roots: {_list(inferred.source_roots)}",
+            f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
+            f"  test_roots: {_list(inferred.test_roots)}",
+            '  # exclude: ["**/migrations/**"]',
+        ]
+    )
     out.extend(
         f"  # not analyzed: workspace member {member.path} ({member.skipped})"
         for member in inferred.members
         if member.skipped
     )
-    out.extend(["", "architecture:"])
-    out.extend(_architecture(inferred))
+    if not maintainability or inferred.layers:
+        out.extend(["", "architecture:"])
+        out.extend(_architecture(inferred))
     out.extend(
         [
             "",
@@ -676,6 +682,25 @@ def render_config(inferred: InferredConfig) -> str:
         out.append(f'  mirror: "{inferred.mirror.pattern}"')
     if inferred.tests_layout == "mirror":
         out.append("  # Detected a mirrored layout; use layout: mirror to enforce it.")
+    if maintainability:
+        out.extend(
+            [
+                "",
+                "# Each named check is explicit; hover for examples and analysis limits.",
+                "rules:",
+                "  public-definitions-first: error",
+                "  bundled-instance-assignment: error",
+                "  internal-public-member: warning",
+                "  internal-static-helper: hint",
+                "  test-without-outcome-check: warning",
+                "  test-only-checks-possibly-empty-data: warning",
+                "  unbounded-test-wait: warning",
+                "  independent-test-case-loop: hint",
+                "  async-mock-without-await-check: warning",
+                "  test-only-public-function: warning",
+                "  test-only-public-attribute: warning",
+            ]
+        )
     out.extend(
         [
             "",

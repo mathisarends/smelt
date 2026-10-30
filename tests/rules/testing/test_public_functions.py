@@ -11,11 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = """
-version: 1
-project: {root_packages: [app]}
-tests: {review_test_only_public_functions: true}
-"""
+CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-only-public-function: warning\n"
 
 
 def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
@@ -269,7 +265,7 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app], exclude: ['app/generated/**']}\ntests: {review_test_only_public_functions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\n  exclude:\n  - app/generated/**\nrules:\n  test-only-public-function: warning\n",
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "app/generated/consumer.py": "from app.mouse import helper",
@@ -283,26 +279,26 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
 @pytest.mark.parametrize(
     ("policy", "options"),
     [
-        ("", CheckOptions(select=("SMT429",))),
+        ("", CheckOptions()),
         (
-            "tests: {review_test_only_public_functions: false}",
+            "rules:\n  test-only-public-function: 'off'\n",
             CheckOptions(select=("ALL",)),
         ),
         (
-            "tests: {review_test_only_public_functions: true}\nrules: {SMT429: off}",
+            "rules: {SMT429: off}\n",
             CheckOptions(),
         ),
         (
-            "tests: {review_test_only_public_functions: true}",
+            "rules:\n  test-only-public-function: warning\n",
             CheckOptions(ignore=("SMT429",)),
         ),
         (
-            "tests: {review_test_only_public_functions: true, quality_exclude: ['tests/**']}",
+            "tests:\n  quality_exclude:\n  - tests/**\nrules:\n  test-only-public-function: warning\n",
             CheckOptions(),
         ),
     ],
 )
-def test_policy_selection_and_test_evidence_exclusions(
+def test_rule_selection_and_test_evidence_exclusions(
     tmp_path: Path, policy: str, options: CheckOptions
 ) -> None:
     write_project(
@@ -323,7 +319,7 @@ def test_custom_roots_and_deterministic_evidence(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app], source_roots: [src], test_roots: [spec]}\ntests: {review_test_only_public_functions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\n  source_roots:\n  - src\n  test_roots:\n  - spec\nrules:\n  test-only-public-function: warning\n",
             "src/app/__init__.py": "",
             "src/app/mouse.py": "def helper(): pass",
             "spec/test_b.py": "from app.mouse import helper",

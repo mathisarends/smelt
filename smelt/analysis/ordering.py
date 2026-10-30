@@ -14,13 +14,13 @@ from smelt.analysis.definition_blocks import (
     build_blocks,
     is_main_guard,
 )
+from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.files import FileIndex, SourceFile
     from smelt.analysis.parsing import AstCache
     from smelt.analysis.python_version import PythonTargetIndex
-    from smelt.config.models import OrderingConfig
 
 
 @dataclass(frozen=True)
@@ -323,8 +323,6 @@ def analyze_order(
         contract,
         deferred,
     )
-    if not config.enabled:
-        return result
     reflection = (
         "runtime namespace or annotation introspection requires manual review"
         if _reflective(tree)
@@ -348,12 +346,6 @@ class DefinitionOrderIndex:
         self.files: dict[str, FileOrder] = {}
         for source in files.sources.values():
             contract = contracts.policy_for(source.module, "ordering")
-            if (
-                contract is None
-                or contract.spec.ordering is None
-                or not contract.spec.ordering.enabled
-            ):
-                continue
             tree = asts.parse(source.path)
             future = any(
                 isinstance(node, ast.ImportFrom)
@@ -367,9 +359,13 @@ class DefinitionOrderIndex:
             )
             self.files[source.path] = analyze_order(
                 tree,
-                contract.spec.ordering,
+                contract.spec.ordering
+                if contract and contract.spec.ordering
+                else OrderingConfig(),
                 source=source,
-                contract=contract.name,
+                contract=contract.name
+                if contract
+                else "rules.public-definitions-first",
                 deferred=deferred,
             )
 

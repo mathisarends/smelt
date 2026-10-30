@@ -7,35 +7,51 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- **Breaking configuration API:** fixed source/test checks are enabled directly by
+  problem name in `rules`, with one value for activation and severity. Removed
+  `review_*`, assertion/private-import boolean flags, binary helper conventions,
+  `ordering.enabled` and the experimental preset. Public-first ordering needs an
+  explicit rule entry; options alone do not enable it. Package `rules` use the
+  same names and closest-package precedence. Stable SMT codes, debt identities
+  and architecture-policy activation are retained. See the complete
+  [migration table and developer-facing YAML API](docs/configuration.md).
+- `--select` and `--ignore` accept the same canonical names as YAML and `explain`.
+  `context` reports effective rule severities for existing and planned modules.
+  Scoped-off debt is retained as unassessed when recording/pruning.
+- `smelt init --maintainability` writes explicit individual checks, plus a local
+  `.smelt.schema.json` and YAML modeline. Editor completions, validation and hover
+  examples come from the real catalog and work offline. Plain `init` keeps its
+  conservative check selection. Existing configs can export `smelt config schema`
+  and add the modeline; see [editor setup](docs/configuration.md#editor-completion-hover-and-validation).
 - Optional [SMT430](docs/rules/SMT430.md), enabled by
-  `rules: {test-only-public-attribute: warning}` or `--select SMT430`, reviews
-  public instance/class data attributes read only by tests outside their class.
-  Findings include test locations and an available private name. Possible
-  production accesses and uncertain class contracts preserve visibility.
-  Public-use rules share the same member index, export/import evidence and
-  private-name suggestions. The new rule is off by default and never renames code
-  automatically; existing visibility policies retain their activation.
+  `rules: {test-only-public-attribute: warning}` or `--select SMT430`,
+  reviews public instance/class data attributes read only by tests outside their
+  class. Findings include test locations and a collision-free private name.
+  Possible production accesses and uncertain class contracts preserve visibility;
+  checks never rename code. Public-use rules now share the same member index,
+  export/import evidence and private-name suggestions. The new rule is off by
+  default and never renames code automatically.
 - Optional [SMT318](docs/rules/SMT318.md), enabled with `rules: {SMT318: hint}`
   or `--select SMT318`, reviews direct `StrEnum.MEMBER.value` reads for using the
   string enum member directly. Known import aliases and analyzed re-exports are
   supported; ordinary enums, uncertain bindings and instance inference are
   excluded. Exact-string boundaries can still need a conversion, so findings
   remain advisory and checks stay read-only. The default rule set is unchanged.
-- Optional [SMT316](docs/rules/SMT316.md), configured with package
-  `member_visibility: private-when-internal`, reviews public module functions and
+- Optional [SMT316](docs/rules/SMT316.md), enabled with
+  `rules: {internal-public-member: warning}`, reviews public module functions and
   ordinary instance methods with no observed external use, including unused
   definitions. Findings suggest a private name and list internal uses/callbacks
   so agents can review renames. Existing private names are avoided. Explicit
   exports, decorators, inheritance and possible external method accesses preserve
   public APIs; test-only public module functions remain covered by SMT429.
-- Optional [SMT317](docs/rules/SMT317.md), configured with package
-  `static_methods: module-functions`, suggests extracting internal static helpers
+- Optional [SMT317](docs/rules/SMT317.md), enabled with
+  `rules: {internal-static-helper: hint}`, suggests extracting internal static helpers
   to private module functions. Class dependencies, inheritance, extra decorators
   and possible external callers preserve deliberate static APIs. Both new
-  policies support closest `allow` overrides and appear in `smelt context`.
+  rules support closest package `off` overrides and appear in `smelt context`.
   Checks remain read-only and the default rule set is unchanged.
 - Optional [SMT429](docs/rules/SMT429.md), enabled by
-  `tests.review_test_only_public_functions`, reviews public module functions
+  `rules: {test-only-public-function: warning}`, reviews public module functions
   accessed from tests but not from other analyzed production modules. Findings
   suggest a leading underscore and include test locations so agents can review
   the rename and test the public caller. Explicit exports and decorated functions

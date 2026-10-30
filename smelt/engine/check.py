@@ -25,6 +25,7 @@ from smelt.diagnostics.violation import (
 from smelt.engine.changes import Comparison, base_snapshot
 from smelt.engine.coverage import effective_coverage
 from smelt.engine.paths import missing_paths, project_metadata
+from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
@@ -99,47 +100,38 @@ def rule_meta(rule: Rule) -> RuleMeta:
             if activation
             else "Enable by rule setting or --select.",
         },
+        scope=getattr(rule, "scope", "source"),
     )
 
 
 def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
     """Key ``rules:`` overrides by code; the config may name a rule by code or name."""
-    codes = {rule.code: rule.code for rule in rules.rules}
-    codes.update({rule.name: rule.code for rule in rules.rules})
-    settings: dict[str, str] = {}
-    issues: list[ConfigIssue] = []
-    for key, setting in loaded.config.rules.items():
-        code = codes.get(key)
-        if code is None:
-            issues.append(
-                ConfigIssue(
-                    f"rules.{key}", f'unknown rule "{key}"{did_you_mean(key, codes)}'
-                )
-            )
-        elif code in settings:
-            issues.append(ConfigIssue(f"rules.{key}", f"{code} is already configured"))
-        else:
-            settings[code] = setting
-    if issues:
-        raise ConfigError(issues, loaded.path.name)
-    return settings
+    return RuleSettings(rules, loaded).global_rules
 
 
 def resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
 ) -> list[tuple[Rule, Severity]]:
-    settings = _settings_by_code(rules, loaded)
+    policy = RuleSettings(rules, loaded)
+    settings = policy.global_rules
     known = {rule.code for rule in rules.rules}
+    names = {rule.name: rule.code for rule in rules.rules}
+    normalized: dict[str, tuple[str, ...]] = {}
     for key in ("select", "ignore"):
+        selectors: list[str] = []
         for prefix in getattr(options, key):
-            if prefix.strip().upper() == "ALL":
-                continue
-            if not any(code.startswith(prefix.strip().upper()) for code in known):
+            selector = names.get(prefix.strip().lower(), prefix.strip().upper())
+            if selector != "ALL" and not any(
+                code.startswith(selector) for code in known
+            ):
                 msg = (
                     f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
                     "`smelt rules` lists valid codes"
                 )
                 raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
+            selectors.append(selector)
+        normalized[key] = tuple(selectors)
+    options = replace(options, select=normalized["select"], ignore=normalized["ignore"])
 
     active: list[tuple[Rule, Severity]] = []
     for rule in rules.rules:
@@ -151,15 +143,14 @@ def resolve_active_rules(
         explicitly_selected = bool(options.select) and _matches_prefix(
             rule.code, options.select
         )
-        activation = getattr(rule, "activation", None)
-        if setting == "off":
+        package_enabled = policy.has_package_activation(rule.code)
+        if setting == "off" and not package_enabled:
             continue
-        if setting is not None:
+        if setting is not None and setting != "off":
             severity = Severity(setting)
         elif (
-            getattr(rule, "enabled_by_default", False)
-            or explicitly_selected
-            or (activation is not None and activation.matches(loaded.config))
+            policy.globally_enabled(rule, selected=explicitly_selected)
+            or package_enabled
         ):
             severity = rule.default_severity
         else:
@@ -235,8 +226,9 @@ def run_check(
     issues = missing_paths(ctx)
     if issues:
         raise ConfigError(issues, loaded.path.name)
+    RuleSettings(rules, loaded).validate_packages(ctx)
     _validate_scope(ctx, options.paths)
-    violations, suppressed = _collect(ctx, rules, loaded, active)
+    violations, suppressed = _collect(ctx, rules, loaded, active, options)
     unfiltered = list(violations)
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]
     violations = [v for v in violations if v.code != _COVERAGE]
@@ -247,7 +239,19 @@ def run_check(
     if options.use_debt and config.debt:
         debt = Debt.load(loaded.root / config.debt)
         # Inactive rules have not been checked; their debt is not resolved.
-        debt = Debt([entry for entry in debt.entries if entry.code in severity_of])
+        policy = RuleSettings(rules, loaded)
+        debt = Debt(
+            [
+                entry
+                for entry in debt.entries
+                if entry.code in severity_of
+                and (rule := rules.by_code(entry.code)) is not None
+                and policy.severity_for_path(
+                    rule, ctx, entry.path, selected=bool(options.select)
+                )
+                is not None
+            ]
+        )
         violations, known, resolved = debt.match(violations, snippet_reader(ctx))
         in_debt = len(known)
         full_run = not options.paths and not options.changed
@@ -260,7 +264,7 @@ def run_check(
         violations, comparison = _introduced(
             ctx,
             violations,
-            lambda before: _collect(before, rules, loaded, active)[0],
+            lambda before: _collect(before, rules, loaded, active, options)[0],
             base=options.base,
         )
 
@@ -336,19 +340,25 @@ def _collect(
     rules: RuleSet,
     loaded: LoadedConfig,
     active: list[tuple[Rule, Severity]],
+    options: CheckOptions,
 ) -> tuple[list[Violation], int]:
     """Every violation after ignores and suppressions, and the suppressed count."""
     requires = frozenset(index for rule, _ in active for index in rule.requires)
     ctx.ensure(requires)
 
-    violations = [
-        violation.with_severity(severity)
-        for rule, severity in active
-        if rule.code not in _META
-        for violation in rule.check(ctx)
-    ]
+    policy = RuleSettings(rules, loaded)
+    violations: list[Violation] = []
+    for rule, _ in active:
+        if rule.code in _META:
+            continue
+        for violation in rule.check(ctx):
+            severity = policy.severity(
+                rule, ctx, violation.source_module, selected=bool(options.select)
+            )
+            if severity is not None:
+                violations.append(violation.with_severity(severity))
     violations = deduplicate(violations)
-    violations = _apply_ignores(ctx, violations)
+    violations = _apply_ignores(ctx, violations, rules)
 
     active_codes = {rule.code for rule, _ in active}
     severity_of = {rule.code: severity for rule, severity in active}
@@ -380,11 +390,12 @@ def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
 
 
 def _apply_ignores(
-    ctx: AnalysisContext, violations: list[Violation]
+    ctx: AnalysisContext, violations: list[Violation], rules: RuleSet
 ) -> list[Violation]:
     entries = ctx.config.ignore
     if not entries:
         return violations
+    names = {rule.name: rule.code for rule in rules.rules}
     kept: list[Violation] = []
     for violation in violations:
         if violation.code == _COVERAGE:
@@ -392,7 +403,10 @@ def _apply_ignores(
             continue
         module = violation.source_module or _module_for_path(ctx, violation.path)
         ignored = any(
-            violation.code.startswith(entry.rule)
+            (
+                entry.rule == "ALL"
+                or violation.code.startswith(names.get(entry.rule, entry.rule))
+            )
             and (
                 (module and any(module_matches(p, module) for p in entry.modules))
                 or (

@@ -40,6 +40,7 @@ def effective_coverage(
         "mode": project.coverage,
         **inventory.summary(),
         "policy_hash": policy_hash(config),
+        "rules": dict(config.rules),
         "root_packages": list(project.root_packages),
         "source_roots": list(project.source_roots),
         "test_roots": list(project.test_roots),

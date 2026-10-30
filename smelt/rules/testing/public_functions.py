@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.member_names import private_name
 
@@ -13,10 +12,6 @@ if TYPE_CHECKING:
 
 
 class TestOnlyPublicFunction(BaseRule):
-    activation = PolicyActivation(
-        "tests.review_test_only_public_functions is enabled.",
-        lambda config: config.tests.review_test_only_public_functions,
-    )
     code = "SMT429"
     name = "test-only-public-function"
     category = Category.TESTS
@@ -28,12 +23,10 @@ class TestOnlyPublicFunction(BaseRule):
         bad="__all__ = ['drag']\nasync def drag_gesture(tab): ...\nasync def drag(tab):\n    await drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag_gesture",
         good="__all__ = ['drag']\nasync def _drag_gesture(tab): ...\nasync def drag(tab):\n    await _drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag",
         fix="If this is an internal helper, add a leading underscore and update internal references. Prefer testing the public behavior that calls it. If direct helper tests are deliberate, keep a reasoned private-access exception; if it is a supported external API, declare it in __all__ or document a reasoned suppression. Review callers before renaming.",
-        config=("tests.review_test_only_public_functions", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not ctx.config.tests.review_test_only_public_functions:
-            return
         for function, references in ctx.member_usage.test_only_functions(
             ctx.test_syntax
         ):

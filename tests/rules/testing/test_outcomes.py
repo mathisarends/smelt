@@ -32,7 +32,7 @@ def test_outcome_evidence(tmp_path: Path, body: str, flagged: bool) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_service.py": "import pytest\ndef test_run():\n    "
             + body
@@ -50,7 +50,7 @@ def test_assertion_helper_is_configurable_and_alias_aware(tmp_path: Path) -> Non
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, assertion_helpers: [tests.assertions.assert_user]}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  assertion_helpers:\n  - tests.assertions.assert_user\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_service.py": "from tests.assertions import assert_user as verify\ndef test_run(): verify(user)",
         },
@@ -62,7 +62,7 @@ def test_event_observations_share_deadline_recognition(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, review_test_deadlines: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n  unbounded-test-wait: warning\n",
             "app/__init__.py": "",
             "tests/test_events.py": """
                 import asyncio
@@ -99,7 +99,12 @@ def test_default_configuration_keeps_quality_rules_opt_in(tmp_path: Path) -> Non
             "tests/test_service.py": "from app import _secret\nfrom unittest.mock import Mock, patch\ndef test_run():\n    patch('app.repo')\n    Mock()\n",
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT42",))) == []
+    assert violations(tmp_path) == []
+    assert {v.code for v in violations(tmp_path, CheckOptions(select=("SMT42",)))} == {
+        "SMT420",
+        "SMT422",
+        "SMT424",
+    }
 
 
 def test_vacuity_review_is_separate_from_missing_outcomes_and_honors_exclusion(
@@ -108,7 +113,7 @@ def test_vacuity_review_is_separate_from_missing_outcomes_and_honors_exclusion(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true, require_non_vacuous_assertions: true, quality_exclude: ['tests/excluded/**']}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  quality_exclude:\n  - tests/excluded/**\nrules:\n  test-without-outcome-check: warning\n  test-only-checks-possibly-empty-data: warning\n",
             "app/__init__.py": "",
             "tests/test_codegen.py": "def test_codegen():\n    for name, content in generate().items():\n        assert committed[name] == content",
             "tests/excluded/test_codegen.py": "def test_codegen():\n    assert all(generate())",
@@ -127,7 +132,7 @@ def test_typed_conftest_mock_fixture_can_express_an_adapter_contract(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/conftest.py": "import pytest\nfrom unittest.mock import AsyncMock\n@pytest.fixture\ndef transport() -> AsyncMock: return AsyncMock()",
             "tests/test_adapter.py": "async def test_adapter(transport):\n    await navigate(transport)\n    transport.assert_awaited_once_with('Page.navigate', url='https://example.test')",
@@ -153,7 +158,7 @@ def test_codegen_review_is_backed_by_an_executed_empty_output_probe(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {require_non_vacuous_assertions: true}",
+            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-only-checks-possibly-empty-data: warning\n",
             "app/__init__.py": "",
             "app/generator.py": "def generate():\n    return "
             + ("{}" if empty_output else "{'client.py': 'client'}"),

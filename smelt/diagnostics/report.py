@@ -35,6 +35,7 @@ class RuleMeta:
     requires: tuple[str, ...] = ()
     config: tuple[str, ...] = ()
     activation: dict[str, str] = field(default_factory=dict)
+    scope: str = "source"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -48,6 +49,7 @@ class RuleMeta:
             "requires": list(self.requires),
             "config": list(self.config),
             "activation": self.activation,
+            "scope": self.scope,
         }
 
 

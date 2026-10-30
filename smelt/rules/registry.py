@@ -20,24 +20,27 @@ from smelt.rules.structure.import_style import ImportStyle
 from smelt.rules.structure.layout import UnclassifiedModule, UnknownLayer
 from smelt.rules.structure.members import (
     InternalPublicMember,
-    PreferPrivateModuleFunction,
+    InternalStaticHelper,
 )
 from smelt.rules.structure.naming import ForbiddenPackageName, NoPrivateModules
-from smelt.rules.structure.ordering import DefinitionOrder
+from smelt.rules.structure.ordering import PublicDefinitionsFirst
 from smelt.rules.structure.type_dispatch import PreferMatchTypeDispatch
-from smelt.rules.testing.awaits import CallOnlyAsyncMock
-from smelt.rules.testing.cases import IndependentTestCases
+from smelt.rules.testing.awaits import AsyncMockWithoutAwaitCheck
+from smelt.rules.testing.cases import IndependentTestCaseLoop
 from smelt.rules.testing.location import MisplacedTestFile
 from smelt.rules.testing.mocking import (
     ExcessiveTestPatches,
     ForbiddenTestMock,
     StringPatchTarget,
 )
-from smelt.rules.testing.outcomes import MissingTestAssertion, VacuousTestOutcome
+from smelt.rules.testing.outcomes import (
+    TestOnlyChecksPossiblyEmptyData,
+    TestWithoutOutcomeCheck,
+)
 from smelt.rules.testing.private_access import PrivateTestAccess
 from smelt.rules.testing.public_attributes import TestOnlyPublicAttribute
 from smelt.rules.testing.public_functions import TestOnlyPublicFunction
-from smelt.rules.testing.timing import TestDeadline
+from smelt.rules.testing.timing import UnboundedTestWait
 
 
 def builtin_rules() -> list[Rule]:
@@ -60,22 +63,22 @@ def builtin_rules() -> list[Rule]:
         ForbiddenFutureAnnotations(),
         UnnecessaryFutureAnnotations(),
         NoPrivateModules(),
-        DefinitionOrder(),
+        PublicDefinitionsFirst(),
         BundledInstanceAssignment(),
         PreferMatchTypeDispatch(),
         InternalPublicMember(),
-        PreferPrivateModuleFunction(),
+        InternalStaticHelper(),
         RedundantStrEnumValue(),
         MisplacedTestFile(),
         PrivateTestAccess(),
         ForbiddenTestMock(),
         StringPatchTarget(),
         ExcessiveTestPatches(),
-        MissingTestAssertion(),
-        VacuousTestOutcome(),
-        TestDeadline(),
-        IndependentTestCases(),
-        CallOnlyAsyncMock(),
+        TestWithoutOutcomeCheck(),
+        TestOnlyChecksPossiblyEmptyData(),
+        UnboundedTestWait(),
+        IndependentTestCaseLoop(),
+        AsyncMockWithoutAwaitCheck(),
         TestOnlyPublicFunction(),
         TestOnlyPublicAttribute(),
         UnusedSuppression(),

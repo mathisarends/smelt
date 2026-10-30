@@ -15,10 +15,11 @@ if TYPE_CHECKING:
 def _project(
     tmp_path: Path, source: str, policy: str, path: str = "tests/domain/test_service.py"
 ) -> Path:
+    section = "tests:\n" if policy.startswith("  ") else ""
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\ntests:\n{policy}",
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\n{section}{policy}",
             "app/__init__.py": "",
             path: source,
         },
@@ -84,7 +85,7 @@ def test_string_patch_policy_is_precise(
     root = _project(
         tmp_path,
         f"from unittest.mock import patch\ndef test_run():\n    {expression}\n",
-        "  forbid_string_patch_targets: true\n",
+        "rules: {string-patch-target: error}\n",
     )
     assert bool(violations(root, CheckOptions(select=("SMT422",)))) is flagged
 
@@ -113,7 +114,7 @@ def test_scope_and_inline_suppression_are_honored(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
         "from unittest.mock import patch\ndef test_run():\n    patch('app.repo')  # smelt: ignore[SMT422] -- deliberately test lookup\n",
-        "  forbid_string_patch_targets: true\n",
+        "rules: {string-patch-target: error}\n",
     )
     write_project(
         root,
@@ -183,7 +184,7 @@ def test_monkeypatch_dotted_target_overloads(
     root = _project(
         tmp_path,
         f"def test_run(monkeypatch):\n    {expression}\n",
-        "  forbid_string_patch_targets: true\n",
+        "rules: {string-patch-target: error}\n",
     )
     found = violations(root, CheckOptions(select=("SMT422",)))
     assert bool(found) is flagged
@@ -209,7 +210,7 @@ def test_monkeypatch_aliases_types_and_context_are_counted(
     root = _project(
         tmp_path,
         source,
-        "  forbid_mocks_in: ['tests/domain/**']\n  forbid_string_patch_targets: true\n  max_patches_per_test: 0\n",
+        "  forbid_mocks_in: ['tests/domain/**']\n  max_patches_per_test: 0\nrules: {string-patch-target: error}\n",
     )
     found = violations(root)
     assert {finding.code for finding in found} == {"SMT421", "SMT422", "SMT423"}

@@ -1,13 +1,16 @@
 # smelt
 
-Architecture guardrails for Python, built for reviewing what coding agents change. Describe
-your features and layers in `smelt.yaml`; `smelt check` reports findings
+Static guardrails for Python packages, from small libraries to layered workspaces,
+built for reviewing what coding agents change. Adopt maintainability conventions
+and describe your architecture in `smelt.yaml`; `smelt check` reports findings
 with the exact location, what is allowed instead and how to fix it:
 
 - **Boundaries:** an import that crosses a layer, a feature or the composition root.
 - **Package contracts:** required modules and explicit public entry points.
 - **Coverage:** production code without a declared architecture policy.
 - **Test mirroring:** a test file that does not sit at the mirrored path of a source module.
+- **Maintainability:** public definitions first, internal helpers exposed as public,
+  and concrete test-quality review candidates.
 
 ## Installation
 
@@ -24,6 +27,46 @@ named `smelt`. To run without installing, use `uvx --from smelt-cli smelt check`
 From a local checkout, use `uv tool install .`. The PyPI package named `smelt` belongs
 to a different project; `pip install smelt` and bare `uvx smelt` install that project.
 
+## Small packages and explicit checks
+
+Small packages need no features or layers. Start from the project root:
+
+```bash
+smelt init --maintainability
+smelt check --show-hints --fail-on warning
+```
+
+`init --maintainability` writes individually named checks into `smelt.yaml`.
+There is no runtime preset. The file records exactly which conventions the repo
+adopts, from public-first ordering and internal helpers to test outcome reviews.
+A small `src/` package can use:
+
+```yaml
+# yaml-language-server: $schema=.smelt.schema.json
+version: 1
+project:
+  root_packages: [harnessed]
+  source_roots: [src]
+  test_roots: [tests]
+
+rules:
+  public-definitions-first: error
+  internal-public-member: warning
+  internal-static-helper: hint
+  test-without-outcome-check: warning
+  unbounded-test-wait: warning
+  async-mock-without-await-check: warning
+```
+
+For a flat package, use `source_roots: ["."]`. `init` also discovers namespace
+packages and uv workspace members, and keeps inferred architecture when layers
+exist. Named rules apply without additional boolean switches. Genuine options,
+package overrides, architecture policies and reasoned exclusions remain explicit.
+
+`init` also writes a local `.smelt.schema.json` for editor completion, validation
+and hover examples. The checker reads only the YAML, not this editor artifact.
+See [configuration, editor setup and breaking-change migration](docs/configuration.md).
+
 ## Usage
 
 See the [changelog](CHANGELOG.md) for new capabilities, fixes and migration notes
@@ -37,7 +80,8 @@ See [rule activation and migration](docs/rule-selection.md) and the
 
 ```bash
 smelt init                           # draft smelt.yaml from the code (also uv workspaces)
-smelt init --config other.yaml       # write elsewhere; only that file is checked and overwritten
+smelt init --maintainability         # write individually named source/test review checks
+smelt init --config other.yaml       # write a config and editor schema in that directory
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --changed --base origin/main --format json
@@ -56,7 +100,7 @@ Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usa
 A config entry that points at nothing (a mistyped package, a missing test root) is a
 config error, not a silently disabled rule.
 Explicit check paths must exist and contain analyzed source or test files; unknown
-`--select`/`--ignore` prefixes are usage errors. JSON includes the reporting scope, file
+`--select`/`--ignore` selectors are usage errors. JSON includes the reporting scope, file
 count and active rule codes. `--config PATH` works before or after a subcommand.
 A stored JSON report explains itself: `scope.mode` is `full` or `changed`, and
 `comparison` names the requested `base`, the resolved `merge_base`, the
@@ -326,7 +370,8 @@ structure:
   contracts:
     instance-fields:
       match: app
-      instance_assignments: separate
+      rules:
+        bundled-instance-assignment: error
 ```
 
 This reports `self.log, self.control = log, control` and chained assignments such
@@ -345,8 +390,8 @@ helper bodies are outside the check. Nested classes use their own receiver.
 Recognized static/class methods are excluded; arbitrary decorator and assignment
 aliases are not inferred. Only analyzed production modules are covered.
 
-The closest explicit package policy wins; `instance_assignments: allow` exempts
-a package. The effective policy appears in `context`, including planned modules.
+The closest package rule wins; `rules: {bundled-instance-assignment: off}` exempts
+a package. Effective rule severities appear in `context`, including planned modules.
 This is an optional readability convention. There is no autofix: parallel
 assignment, properties, swaps and unpacking failures can change behavior when
 split. When unpacking a computed pair, consider unpacking into locals first and
@@ -535,7 +580,7 @@ package exception where its string-based behavior is intentional.
 
 ### Definition order with execution dependencies
 
-Enable `SMT313 definition-order` to put the public interface first while keeping
+Enable `SMT313 public-definitions-first` to put the public interface first while keeping
 prerequisites, binding versions and runtime boundaries intact:
 
 ```yaml
@@ -544,17 +589,31 @@ structure:
     definition-order:
       match: app
       ordering:
-        enabled: true
-        module: [docstring, future-imports, imports, dunder-assignments, type-vars, public, private, main-guard]
-        class: [class-attributes, init, dunders, public, private]
+        module:
+        - docstring
+        - future-imports
+        - imports
+        - dunder-assignments
+        - type-vars
+        - public
+        - private
+        - main-guard
+        class:
+        - class-attributes
+        - init
+        - dunders
+        - public
+        - private
         constants_exempt: false
         fix: safe-only
+      rules:
+        public-definitions-first: error
 ```
 
 The defaults are shown above. Each list must contain its categories exactly once;
 module docstrings, future imports and imports form the fixed prefix, and the
-main guard belongs last. The closest package policy wins; `enabled: false` can
-exempt a package. This extends `smelt.yaml` package contracts rather than adding
+main guard belongs last. Use package `rules: {public-definitions-first: off}` to exempt a package.
+The closest explicit rule setting wins; ordering options alone do not activate the check. This extends `smelt.yaml` package contracts rather than adding
 a second `[tool.smelt.ordering]` configuration source.
 
 The analyzer partitions module and directly nested class bodies into sections.
@@ -622,12 +681,14 @@ structure:
   contracts:
     internal-helpers:
       match: app
-      member_visibility: private-when-internal
-      static_methods: module-functions
+      rules:
+        internal-public-member: warning
+        internal-static-helper: hint
     deliberate-api:
       match: app.integrations
-      member_visibility: allow
-      static_methods: allow
+      rules:
+        internal-public-member: 'off'
+        internal-static-helper: 'off'
 ```
 
 [SMT316](docs/rules/SMT316.md) reviews public module functions and ordinary instance
@@ -638,15 +699,15 @@ internal reference lines and distinguishes unused members from internal helpers.
 Existing private-name collisions get a distinct suggested name. Explicit module
 exports, decorated members and inherited/subclassed classes are preserved.
 Discovered test accesses count as external uses; SMT429 separately reviews
-test-only public module functions when its test policy is enabled.
+test-only public module functions when that named rule is enabled.
 
 [SMT317](docs/rules/SMT317.md) suggests moving an internal `@staticmethod` helper
 to a private module function, such as `Browser._normalize(value)` becoming
 `_normalize(value)`. It supports sync/async helpers and builtin decorator aliases;
 class-namespace dependencies, inheritance, extra decorators and possible external
-method accesses are excluded. Neither policy performs automatic changes.
+method accesses are excluded. Neither rule performs automatic changes.
 
-Both policies use the closest explicit package setting. They are advisory:
+Both named rules use the closest explicit package rule setting. They are advisory:
 unknown same-named attribute access outside a class conservatively preserves its
 methods, and external users or dynamic reflection cannot be ruled out. Review
 the intended API before renaming or extracting a helper. `smelt context` includes
@@ -662,19 +723,23 @@ your unit-test conventions in the existing YAML configuration:
 ```yaml
 tests:
   layout: mirror
-  forbid_private_imports: true
-  forbid_mocks_in: ["**/tests/**/domain/**"]
-  forbid_string_patch_targets: true
+  forbid_mocks_in:
+  - '**/tests/**/domain/**'
   max_patches_per_test: 2
-  require_assertions: true
-  require_non_vacuous_assertions: true
-  review_test_deadlines: true
-  review_case_loops: true
-  review_async_mock_assertions: true
-  review_test_only_public_functions: true
-  assertion_helpers: [tests.assertions.assert_user]
-  timeout_helpers: [tests.timing.deadline]
+  assertion_helpers:
+  - tests.assertions.assert_user
+  timeout_helpers:
+  - tests.timing.deadline
   quality_exclude: []
+rules:
+  private-test-access: error
+  string-patch-target: error
+  test-without-outcome-check: warning
+  test-only-checks-possibly-empty-data: warning
+  unbounded-test-wait: warning
+  independent-test-case-loop: hint
+  async-mock-without-await-check: warning
+  test-only-public-function: warning
 ```
 
 | Code | Checks |
@@ -920,8 +985,9 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
-Every rule has a page under [docs/rules](docs/rules/), and `smelt.schema.json` gives editors
-autocompletion and a description for every key of `smelt.yaml`.
+Every rule has a page under [docs/rules](docs/rules/). `smelt init` writes a local
+editor schema with completion, validation and bad/good hover examples derived
+from that same catalog. See [editor setup](docs/configuration.md#editor-completion-hover-and-validation).
 
 ## Python versions
 
