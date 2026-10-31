@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Checks select built-in rules using a generated lightweight catalog, loading only
+  the needed implementations. Staged results can survive edits to unobserved
+  content while preserving the current index hash in JSON/SARIF; additions,
+  deletions, observed source, config, metadata and debt still invalidate them.
+  Normal cached staged retries capture repository/HEAD and index in two Git
+  invocations. A separate benchmark measures a retained Python worker including
+  fresh client startup and IPC; the installed hooks remain process-per-check.
+  See [the performance measurements](docs/agent-workflow.md).
 - Staged checks read captured Git blobs directly instead of writing temporary
   source trees. An unchanged retry can reuse its exact result before loading the
   analysis engine. Per-file import, member and test facts and selected findings

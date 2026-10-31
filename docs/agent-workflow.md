@@ -112,6 +112,13 @@ overrides hash the actual analyzer source instead. SQLite transactions
 allow simultaneous readers/writers without sharing mutable graph caches. A busy
 writer causes a quick fallback instead of making a commit wait for another check.
 
+The rule catalog contains generated selection metadata, so inactive rule
+implementations are not imported during checking. Activation predicates are shared
+with the implementations; `smelt rules`, explanations and generated documentation
+retain the complete catalog. Normal cached staged retries capture repository/HEAD
+together and then read the index, requiring two Git processes when invoked inside
+the repository. Explicit configs in a different repository need another lookup.
+
 This is not a fully incremental implementation of every rule. Inventory and global
 evidence are rebuilt from cached facts, and architecture graph decisions and some
 cross-file syntax rules still run against the current complete project. There is
@@ -134,6 +141,8 @@ uv run python scripts/benchmark_checks.py --modules 250 --methods 12 --repeats 5
 uv run python scripts/benchmark_checks.py --baseline ../smelt-before
 # Compare the same staged workflow on both versions; also exercise import rules:
 uv run python scripts/benchmark_checks.py --baseline ../smelt-before --baseline-mode staged --policy architecture
+# Include transitive import policies and repeated documentation edits:
+uv run python scripts/benchmark_checks.py --baseline ../smelt-before --baseline-mode staged --policy transitive
 ```
 
 The runner creates a disposable Git repository, commits existing public-helper
@@ -147,6 +156,68 @@ working-tree changes by default; `--baseline-mode staged` compares the same stag
 workflow. The `architecture` policy adds layers and native import scanning to the
 member review. Synthetic policies do not represent every architecture, test-quality
 policy, machine or repository size. With few samples, p95 is effectively the maximum.
+
+### Retained-worker experiment
+
+```bash
+uv run python scripts/benchmark_session.py benchmark --candidate IMPORT_ROOT --policy transitive
+```
+
+This script owns a temporary loopback worker and shuts it down after the run.
+Each measured request launches a new Python client and includes IPC, fresh Git
+capture, checking and rendering. Worker startup and the first client request are
+reported separately. Execution order alternates. Direct and worker checks run in
+separate clones with the same HEAD and staged contents, with independent caches;
+only absolute project prefixes are normalized when comparing complete reports.
+Every edited worker report must also match an independent uncached check.
+
+The prototype retains imported Python modules, not project indexes. Requests are
+serialized and limited to the worker's original project. Analyzer changes require
+a worker restart; invalid configuration does not prevent a subsequent valid
+request. Transport failures fail the benchmark rather than silently falling back.
+The worker has bounded startup/shutdown and an idle timeout. This is a measurement
+harness, not a supported service or a new installed hook mode. Automatic startup,
+fallback and concurrent-client lifecycle behavior would require further product
+work before a production daemon entry could be enabled.
+
+### Follow-up against merged PR #37
+
+Measurements on 2026-10-31 use main `a5a2a49cfdcedf849a80f0d7bc810b0840ef0e51`
+and installed wheels in the same Windows 11 / CPython 3.14 environment. Each fixture
+has 250 modules and twelve methods per module. The second policy enables transitive
+imports on a simple layered graph. The counterbalanced control pass alternates
+baseline/candidate execution order and retains seven samples per scenario.
+
+| Scenario | Main median (s) | New median (s) | New p95 / max (s) |
+| --- | ---: | ---: | ---: |
+| Members, unchanged retry | 0.558 | 0.727 | 1.036 |
+| Members, first check after Python edit | 2.257 | 1.620 | 3.986 |
+| Members, first check after README edit | 2.066 | 0.715 | 0.786 |
+| Transitive imports + members, unchanged retry | 0.501 | 0.578 | 0.671 |
+| Transitive imports + members, Python edit | 2.218 | 1.953 | 2.734 |
+| Transitive imports + members, README edit | 2.348 | 0.717 | 1.108 |
+
+The initial fixed-order pass also improved README edits, but Python-edit medians
+were worse: 1.088 → 1.358 seconds for members and 2.421 → 2.488 with transitive
+imports. Those samples are retained alongside the control pass. Unchanged retries
+regressed in the control pass. These results support the unobserved-content fast
+path, not a blanket claim that every check is faster. One instrumented edit profile
+reduced import-loader invocations from 321 to 287; its timings are not CLI samples.
+
+The separate worker experiment alternates direct/worker order on independent
+caches and includes client startup and IPC:
+
+| Python edit scenario | Direct CLI median (s) | Worker median (s) | Worker p95 / max (s) |
+| --- | ---: | ---: | ---: |
+| Members | 1.391 | 0.932 | 1.086 |
+| Transitive imports + members | 1.315 | 0.771 | 1.435 |
+
+The worker improves these edit samples, but does not achieve 500 ms. Removing
+repeated imports alone still leaves inventory/global evidence reconstruction,
+Git capture and client startup. A production worker would need further work on
+retained project state and lifecycle behavior. The
+[complete raw evidence and wheel hashes](benchmarks/incremental-followup-2026-10-31.json)
+include both CLI passes, worker startup/first-request observations and all samples.
 
 ### Direct Git reads and incremental decisions
 

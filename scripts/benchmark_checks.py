@@ -80,6 +80,8 @@ def summarize(samples: list[float]) -> dict[str, float]:
 
 
 def create_project(args: argparse.Namespace, root: Path) -> Path:
+    (root / "README.md").write_text("Benchmark project\n", encoding="utf-8")
+    (root / ".gitignore").write_text(".smelt_cache/\n", encoding="utf-8")
     package = root / "app"
     package.mkdir()
     (package / "__init__.py").write_text("", encoding="utf-8")
@@ -92,6 +94,8 @@ def create_project(args: argparse.Namespace, root: Path) -> Path:
         package.mkdir()
         (package / "__init__.py").write_text("", encoding="utf-8")
         architecture_config = "architecture:\n  layers:\n    application: {path: application, may_depend_on: [domain]}\n    domain: {path: domain, may_depend_on: []}\n"
+        if args.policy == "transitive":
+            architecture_config += "  imports: {transitive: true}\n"
     (root / "smelt.yaml").write_text(
         "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n"
         "    api: {match: app, rules: {internal-public-member: warning}}\n"
@@ -132,21 +136,15 @@ def benchmark(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "policy": args.policy,
         "environment": {"platform": platform.platform(), "python": sys.version},
         "baseline_mode": args.baseline_mode if args.baseline else None,
+        "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
         "seconds": {},
         "samples_seconds": {},
     }
     times = results["seconds"]
     if args.baseline:
-        first, _ = invoke(root, args.baseline, f"--{args.baseline_mode}")
+        first, before = invoke(root, args.baseline, f"--{args.baseline_mode}")
         times["baseline_first_check"] = first
-        samples = [
-            invoke(root, args.baseline, f"--{args.baseline_mode}")
-            for _ in range(args.repeats)
-        ]
-        label = f"baseline_{args.baseline_mode}"
-        times[label] = statistics.median(t for t, _ in samples)
-        results["samples_seconds"][label] = [t for t, _ in samples]
-        reference = identity(samples[-1][1])
+        reference = identity(before)
     else:
         reference = None
     elapsed, uncached = invoke(root, args.candidate, "--staged", "--no-cache")
@@ -157,12 +155,23 @@ def benchmark(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     times["staged_cold_cache"] = elapsed
     if cold != uncached:
         raise RuntimeError("cold cache changed the report")
-    samples = [invoke(root, args.candidate, "--staged") for _ in range(args.repeats)]
+    samples, previous = [], []
+    for index in range(args.repeats):
+        pair = paired_invoke(root, args, index)
+        samples.append(pair["candidate"])
+        if args.baseline:
+            previous.append(pair["baseline"])
     if any(report != uncached for _, report in samples):
         raise RuntimeError("warm cache changed the report")
     times["staged_warm_median"] = statistics.median(t for t, _ in samples)
     times["staged_warm_max"] = max(t for t, _ in samples)
     results["samples_seconds"]["staged_warm"] = [t for t, _ in samples]
+    if previous:
+        if any(identity(report) != reference for _, report in previous):
+            raise RuntimeError("baseline warm cache changed the findings")
+        label = f"baseline_{args.baseline_mode}"
+        times[label] = statistics.median(t for t, _ in previous)
+        results["samples_seconds"][label] = [t for t, _ in previous]
     edit_samples, baseline_edits, edited = benchmark_edits(root, changed, args)
     times["staged_one_file_edit"] = statistics.median(edit_samples)
     results["samples_seconds"]["staged_one_file_edit"] = edit_samples
@@ -170,12 +179,36 @@ def benchmark(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         label = f"baseline_{args.baseline_mode}_one_file_edit"
         times[label] = statistics.median(baseline_edits)
         results["samples_seconds"][label] = baseline_edits
+    document_edits, baseline_documents = benchmark_documents(root, args)
+    results["samples_seconds"]["staged_document_edit"] = document_edits
+    if baseline_documents:
+        results["samples_seconds"][f"baseline_{args.baseline_mode}_document_edit"] = (
+            baseline_documents
+        )
     results["distributions_seconds"] = {
         name: summarize(values) for name, values in results["samples_seconds"].items()
     }
     results["introduced_findings"] = len(edited["violations"])
     results["reports_match"] = True
     return results
+
+
+def paired_invoke(
+    root: Path,
+    args: argparse.Namespace,
+    index: int,
+) -> dict[str, tuple[float, dict[str, Any]]]:
+    order = ["baseline", "candidate"] if args.baseline else ["candidate"]
+    if index % 2:
+        order.reverse()
+    return {
+        name: invoke(
+            root,
+            args.baseline if name == "baseline" else args.candidate,
+            f"--{args.baseline_mode}" if name == "baseline" else "--staged",
+        )
+        for name in order
+    }
 
 
 def benchmark_edits(
@@ -192,10 +225,11 @@ def benchmark_edits(
         )
         previous_name = name
         git(root, "add", changed.relative_to(root).as_posix())
+        pair = paired_invoke(root, args, index)
         if args.baseline:
-            elapsed, before = invoke(root, args.baseline, f"--{args.baseline_mode}")
+            elapsed, before = pair["baseline"]
             baseline_samples.append(elapsed)
-        elapsed, edited = invoke(root, args.candidate, "--staged")
+        elapsed, edited = pair["candidate"]
         edit_samples.append(elapsed)
         _, verified = invoke(root, args.candidate, "--staged", "--no-cache")
         if edited != verified:
@@ -203,6 +237,29 @@ def benchmark_edits(
         if args.baseline and identity(before) != identity(edited):
             raise RuntimeError("baseline and incremental decisions differ")
     return edit_samples, baseline_samples, edited
+
+
+def benchmark_documents(
+    root: Path, args: argparse.Namespace
+) -> tuple[list[float], list[float]]:
+    samples, baseline_samples = [], []
+    for index in range(args.repeats):
+        (root / "README.md").write_text(
+            f"Documentation revision {index}\n", encoding="utf-8"
+        )
+        git(root, "add", "README.md")
+        pair = paired_invoke(root, args, index)
+        if args.baseline:
+            elapsed, before = pair["baseline"]
+            baseline_samples.append(elapsed)
+        elapsed, edited = pair["candidate"]
+        samples.append(elapsed)
+        _, independent = invoke(root, args.candidate, "--staged", "--no-cache")
+        if edited != independent or (
+            args.baseline and identity(before) != identity(edited)
+        ):
+            raise RuntimeError("document edit changed the cached verdict")
+    return samples, baseline_samples
 
 
 def main() -> None:
@@ -215,7 +272,7 @@ def main() -> None:
         "--baseline-mode", choices=["changed", "staged"], default="changed"
     )
     parser.add_argument(
-        "--policy", choices=["members", "architecture"], default="members"
+        "--policy", choices=["members", "architecture", "transitive"], default="members"
     )
     parser.add_argument("--modules", type=int, default=250)
     parser.add_argument("--methods", type=int, default=12)
