@@ -125,8 +125,17 @@ The rule catalog contains generated selection metadata, so inactive rule
 implementations are not imported during checking. Activation predicates are shared
 with the implementations; `smelt rules`, explanations and generated documentation
 retain the complete catalog. Normal cached staged retries capture repository/HEAD
-together and then read the index, requiring two Git processes when invoked inside
-the repository. Explicit configs in a different repository need another lookup.
+together and then read the index. The installed native client provides a persistent
+read-only Rust service: default cached staged checks capture HEAD and the complete
+current index together, then read objects directly, without Git child processes.
+The service supports SHA-1/SHA-256, packed objects, linked worktrees, split indexes
+and `GIT_INDEX_FILE`, including temporary indexes used for partial commits. It
+drops repository handles after each operation and idles outside the project.
+Unsupported inputs, other Git environment overrides or a failed service fall
+back to Git. The fallback retry needs two Git processes inside the repository;
+explicit configs in another repository need another lookup. `--base` resolution
+still uses Git. `SMELT_NATIVE_GIT=0` disables the native reader for diagnosis;
+`--no-cache` bypasses it as well as all analysis caches.
 
 Member-local decisions also maintain a persistent reverse dependency index.
 Changed file contributions replace their previous usage counts; namespace changes
@@ -135,16 +144,41 @@ decision fingerprints are recomputed. Equal contributions stop propagation, and
 unchanged member-local findings do not deserialize all definition objects.
 Architecture graph decisions and other cross-file rules still operate on the
 current complete project. Inventory capture remains proportional to project size.
+Workers retain validated member dependency state across requests, avoiding another
+database read and JSON deserialization of that graph. Every use still compares
+the complete current file identities and namespace inventory. State is scoped by
+project, policy and analyzer identity. At most two snapshots are retained with an
+8 MiB serialized-content budget; Python object overhead is additional. Oversized
+states use the disk path. Borrowed state is removed before mutation and only a
+completed update returns to the worker, so failures cannot poison the next check.
+Current and historical analyses within one request never borrow the same live
+mutable state. Source syntax objects are not retained between requests.
 
 The installed Rust client reuses a local worker for read-only checks. Workers are
 scoped to the interpreter, complete environment and invocation directory, serialize
 requests and expire after 120 idle seconds. Git, config and source identities are
 captured on every request. Analyzer changes restart the worker; startup or IPC
 failures run the normal foreground checker. Workers idle outside the project so
-they do not pin a Windows worktree. They do not retain analyzed source objects
-between requests. CI defaults to foreground execution; `SMELT_DAEMON=0` disables
+they do not pin a Windows worktree. Requests are serialized into complete TCP
+frames before sending. CI defaults to foreground execution; `SMELT_DAEMON=0` disables
 workers and `SMELT_DAEMON=1` explicitly enables them. `python -m smelt` always takes
 the direct Python path. Fixes and other commands run directly.
+
+Worker transport has bounded waits: an existing worker must acknowledge a request
+within 250 ms; an acknowledged request has a five-second absolute response budget.
+Partial output cannot reset that budget. Failure after acknowledgement falls
+directly back to foreground checking, without a second worker attempt. A busy
+worker also uses foreground checking. Initial worker startup remains bounded to
+five seconds. These limits bound worker overhead, not the complete check: normal
+foreground analysis and hook-runner time are additional.
+
+An in-worker watchdog exits a stuck dispatch after five seconds when Python can
+schedule it; the native client's absolute deadline also applies when it cannot.
+The client never kills a PID from endpoint metadata. It only queries liveness to
+distinguish a terminated worker from a live busy one. Four OS-owned slots limit
+background worker sessions per cache directory across invocation directories and
+environments. Extra checks run in the foreground. The actual worker owns its slot,
+and the OS releases the lock on termination, including behind Windows launchers.
 
 ```bash
 smelt check --staged --fail-on warning
@@ -178,6 +212,72 @@ working-tree changes by default; `--baseline-mode staged` compares the same stag
 workflow. The `architecture` policy adds layers and native import scanning to the
 member review. Synthetic policies do not represent every architecture, test-quality
 policy, machine or repository size. With few samples, p95 is effectively the maximum.
+
+### Native Git, retained worker state and bounded failure handling
+
+Paired installed-wheel measurements compare main `f7fd415` with `81dbcfa` on
+Windows 11 / CPython 3.14, 250 modules with twelve methods each. Seven samples
+alternate execution order; every edit matches independent fresh-process
+`--no-cache` checking. CLI timing includes startup, IPC, fresh Git capture,
+analysis and JSON output; complete hook timing adds its runner and single Smelt
+hook. Environment installation and other hooks are excluded.
+
+| Scenario | Main median (ms) | New median (ms) | Main → new p95 / max (ms) |
+| --- | ---: | ---: | ---: |
+| CLI, members, retry | 150 | 65 | 170 → 80 |
+| CLI, members, Python edit | 384 | 261 | 616 → 408 |
+| CLI, members, README edit | 119 | 58 | 224 → 84 |
+| CLI, transitive imports + members, retry | 132 | 49 | 158 → 59 |
+| CLI, transitive imports + members, Python edit | 587 | 380 | 972 → 620 |
+| CLI, transitive imports + members, README edit | 148 | 58 | 652 → 867 |
+| Complete prek staged hook, retry | 346 | 227 | 403 → 356 |
+| Complete prek staged hook, Python edit | 662 | 612 | 821 → 1,198 |
+| Complete pre-commit staged hook, retry | 1,353 | 1,462 | 1,978 → 1,945 |
+| Complete pre-commit staged hook, Python edit | 1,579 | 1,967 | 3,600 → 2,866 |
+
+CLI edit medians improve 32–35% and retry medians 57–63% in this run. The full
+pre-commit medians regress, and the prek edit maximum regresses. Runner overhead
+and machine load remain substantial; this is not a universal hook speedup or a
+latency guarantee. Single first-cache observations are 2,668 → 2,632 ms for members
+and 2,826 → 3,909 ms with transitive imports, so no cold-CI improvement is claimed.
+
+The earlier fifteen-sample control from `dd7603e` is also retained: member CLI
+edits were 455 → 296 ms, transitive edits 478 → 328 ms, prek edits 695 → 450 ms
+and pre-commit edits 4,117 → 3,076 ms. Its transitive edit maximum regressed from
+797 to 1,356 ms. A separate twenty-retry framing control has a lower median but
+a worse maximum for buffered requests. None of these controls is dropped in
+favor of a faster run. Absolute timings should only be compared within a paired
+run. The final transport-only follow-up `03f3171` prevents retries after accepted
+failures; its Python package bytes are identical to the measured build. A separate
+success-path parity control checks its installed wheel against `81dbcfa`. That
+control shares the disk cache and can reuse the other build's work, so its edit
+timings do not establish an independent speedup.
+
+A separate psutil 7.2.2 observation measures the whole worker process groups,
+including native Git helpers and Windows Python launchers, on the same fixture:
+
+| Warm background sessions | Processes | Summed RSS / working set (MiB) | Summed private USS (MiB) |
+| --- | ---: | ---: | ---: |
+| 1 | 4 | 92.6 | 61.7 |
+| 2 | 8 | 182.6 | 120.8 |
+| 3 | 12 | 273.1 | 180.4 |
+| 4 | 16 | 363.3 | 239.9 |
+
+The fifth project runs in the foreground without increasing background sessions
+beyond four and matches independent uncached checking. Sampling every 25 ms
+observed a peak summed RSS of 462.6 MiB across up to 21 processes, including that
+foreground process tree. RSS counts shared pages in multiple processes; USS is
+private memory. Sampling can miss shorter peaks. Project size, rules and Python
+object overhead affect memory; the 8 MiB retained-state budget is not a quota for
+the complete process. The worker count is bounded, while foreground checks retain
+their normal lifecycle.
+
+The [complete evidence](benchmarks/native-git-retained-state-2026-10-31.json)
+contains all samples, memory snapshots, controls, wheel/binary hashes, matching
+Python package bytes and installed dependency versions. Build each wheel in a
+separate environment and use the installed executables as `--baseline` and
+`--candidate` with the commands below; the measured hook modes use normal staged
+invocation, not `--all-files`.
 
 ### Policy blob reuse after the native-client change
 

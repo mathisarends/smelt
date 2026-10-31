@@ -7,6 +7,20 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Worker transport now acknowledges requests within 250 ms and bounds accepted
+  responses to five seconds, including partial output. Failures fall back to
+  foreground checking without repeating accepted requests. A watchdog and four
+  OS-owned worker slots bound background sessions; terminated workers release
+  capacity. Whole-process memory observations include helpers and Windows
+  launchers; the retained-state budget is not a total-process memory quota.
+- Default cached staged checks read HEAD, the index and Git objects through a
+  persistent native reader, avoiding Git child-process starts. The reader supports
+  SHA-1/SHA-256, packed objects, linked worktrees, split indexes and alternate
+  commit indexes. Unsupported repositories, other Git overrides and reader
+  failures fall back to Git; `--no-cache` keeps independent reads. Workers also
+  retain bounded member dependency state, validating current inputs before reuse
+  and discarding borrowed state on failed updates. Worker requests are sent as
+  complete TCP frames. See the [paired CLI and complete-hook measurements](docs/agent-workflow.md).
 - Staged checks reuse verified policy blobs before parsing configuration, avoiding
   a redundant Git blob subprocess after source edits. Policy changes still use
   their captured object ID; `--no-cache` keeps independent reads. Paired Windows
