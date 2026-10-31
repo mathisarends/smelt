@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-31
+
 - Visibility reviews (SMT316/SMT317/SMT429/SMT430) explicitly limit their claims to
   analyzed callers and expose `usage_scope`, including exclusions and unassessed
   maintainer scripts, unselected packages and external consumers. They do not
@@ -324,7 +326,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mathisarends/smelt/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/mathisarends/smelt/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/mathisarends/smelt/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mathisarends/smelt/compare/v0.1.3...v0.1.4
