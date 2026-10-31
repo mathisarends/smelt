@@ -33,13 +33,18 @@ def git(root: Path, *args: str) -> None:
 
 
 def invoke(root: Path, analyzer: Path, *args: str) -> tuple[float, dict[str, Any]]:
-    env = {**os.environ, "PYTHONPATH": str(analyzer), "PYTHONIOENCODING": "utf-8"}
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    if analyzer.is_file():
+        command = [str(analyzer)]
+        env.pop("PYTHONPATH", None)
+        env["SMELT_DAEMON"] = "0" if "--no-cache" in args else "1"
+    else:
+        command = [sys.executable, "-m", "smelt"]
+        env["PYTHONPATH"] = str(analyzer)
     started = time.perf_counter()
     completed = subprocess.run(  # noqa: S603
         [
-            sys.executable,
-            "-m",
-            "smelt",
+            *command,
             "check",
             *args,
             "--format",

@@ -29,6 +29,11 @@ The existing `smelt` hook retains full-project behavior. A manual invocation of 
 staged hook, including `pre-commit run --all-files`, still checks the Git index.
 Use `smelt check` for the full working-tree inventory and CI.
 
+Installing this native build from a Git checkout, including the hook's Python
+environment, requires Rust 1.88+ and a platform linker during installation. Release
+wheels contain the compiled client. The same hook entry works with pre-commit and
+prek; the invoking repository chooses its runner.
+
 `--staged` reads immutable Git blobs: source, config, Python metadata and debt all
 come from the captured index. Partial staging works; untracked files and unstaged
 repairs cannot change its verdict. The default comparison is HEAD; `--base REF`
@@ -119,10 +124,23 @@ retain the complete catalog. Normal cached staged retries capture repository/HEA
 together and then read the index, requiring two Git processes when invoked inside
 the repository. Explicit configs in a different repository need another lookup.
 
-This is not a fully incremental implementation of every rule. Inventory and global
-evidence are rebuilt from cached facts, and architecture graph decisions and some
-cross-file syntax rules still run against the current complete project. There is
-no background process. CLI startup and imports remain part of a new analysis.
+Member-local decisions also maintain a persistent reverse dependency index.
+Changed file contributions replace their previous usage counts; namespace changes
+invalidate the referencing files, including unresolved lookups. Only affected
+decision fingerprints are recomputed. Equal contributions stop propagation, and
+unchanged member-local findings do not deserialize all definition objects.
+Architecture graph decisions and other cross-file rules still operate on the
+current complete project. Inventory capture remains proportional to project size.
+
+The installed Rust client reuses a local worker for read-only checks. Workers are
+scoped to the interpreter, complete environment and invocation directory, serialize
+requests and expire after 120 idle seconds. Git, config and source identities are
+captured on every request. Analyzer changes restart the worker; startup or IPC
+failures run the normal foreground checker. Workers idle outside the project so
+they do not pin a Windows worktree. They do not retain analyzed source objects
+between requests. CI defaults to foreground execution; `SMELT_DAEMON=0` disables
+workers and `SMELT_DAEMON=1` explicitly enables them. `python -m smelt` always takes
+the direct Python path. Fixes and other commands run directly.
 
 ```bash
 smelt check --staged --fail-on warning
@@ -156,6 +174,72 @@ working-tree changes by default; `--baseline-mode staged` compares the same stag
 workflow. The `architecture` policy adds layers and native import scanning to the
 member review. Synthetic policies do not represent every architecture, test-quality
 policy, machine or repository size. With few samples, p95 is effectively the maximum.
+
+### Native client and persistent member dependencies
+
+Measurements on 2026-10-31 compare main `3589c02` with the native-client build from
+`f2fad41` (Python engine changes in `0eb45c2`). Both use installed wheels with the
+same dependency versions on Windows 11 / CPython 3.14. Each fixture has 250 modules
+with twelve methods per module. Seven samples alternate baseline/candidate order;
+every edited report matches an independent fresh-process `--no-cache` check.
+
+| Scenario | Main median (ms) | Native median (ms) | Native p95 / max (ms) |
+| --- | ---: | ---: | ---: |
+| CLI, members, unchanged retry | 282 | 76 | 98 |
+| CLI, members, Python edit | 724 | 246 | 250 |
+| CLI, transitive imports + members, retry | 286 | 76 | 105 |
+| CLI, transitive imports + members, Python edit | 750 | 264 | 282 |
+| Complete prek staged hook, retry | 390 | 184 | 197 |
+| Complete prek staged hook, Python edit | 823 | 344 | 360 |
+| Complete pre-commit staged hook, retry | 1,031 | 821 | 856 |
+| Complete pre-commit staged hook, Python edit | 1,491 | 1,018 | 1,138 |
+
+CLI samples include native client startup, IPC, fresh Git capture, checking and
+JSON output. Hook samples additionally include runner startup and its single
+Smelt hook, using pre-commit 4.7.0 or prek 0.5.9. Other hooks and environment
+installation are excluded. The hook runner uses separate repositories/caches for
+baseline and candidate. Each hook report is compared with independent uncached
+execution in its own repository. The native CLI preserves the Python engine;
+these gains combine persistent dependency decisions with reused imports.
+
+The normal prek edit median and maximum are below 500 ms in this run. Python
+pre-commit edit medians remain over one second. Earlier-client `--all-files` runs retain
+the runner's complete file classification overhead: candidate edit medians are
+747 ms with prek and 1,534 ms with pre-commit, with maxima above 2.6 seconds.
+Those are separate invocation modes, not replacements for the staged-hook data.
+The earlier client control measured normal prek edits at 464 ms with a 550 ms
+maximum, and member CLI edits at 266 ms with a 336 ms maximum. These and the first
+85 ms retry / 260 ms edit pass remain in the raw evidence with their own build
+identities. The last client also prevents project-package shadowing at interpreter
+startup; no additional speedup is attributed to that correction. Machine/load
+variation and these synthetic policies limit generalization.
+
+Cold execution has not received a native analysis rewrite. Single first-cache
+observations, including worker startup, are 1,295 → 1,345 ms for members and
+1,405 → 1,395 ms for the transitive policy. Earlier-client observations were
+1,423 → 1,590 ms and 2,006 → 3,117 ms respectively. These are not repeated medians or CI
+speedup claims. CI remains in the foreground by default, with validated disk
+facts restored separately; imports, cold parsing and global graph rules remain
+costs. A new source installation also pays compilation/setup once.
+
+Reproduce installed CLI and complete hook measurements with:
+
+```bash
+uv run python scripts/benchmark_checks.py --candidate /path/to/native/env/bin/smelt --baseline /path/to/main/import-root --baseline-mode staged --policy transitive --repeats 7
+uv run python scripts/benchmark_hooks.py --candidate /path/to/native/env/bin/smelt --baseline /path/to/main/import-root --repeats 7
+uv run python scripts/benchmark_hooks.py --candidate /path/to/native/env/bin/smelt --baseline /path/to/main/import-root --runner /path/to/prek --repeats 7
+# Add --all-files to benchmark_hooks.py for that separate invocation mode.
+```
+
+For a native candidate the CLI runner explicitly enables workers; `--no-cache`
+references explicitly disable them to create independent processes. Build/install
+the candidate wheel in its own environment before pointing the runner at its
+executable. Baseline imports use the benchmark interpreter, so keep its dependency
+versions equal to the candidate environment. The
+[complete evidence](benchmarks/native-checks-2026-10-31.json) records all samples,
+wheel/native binary hashes, byte-for-byte package verification and active wheel
+identities. The baseline package bytes match main; candidate package and binary
+bytes match the measured checkout/build.
 
 ### Retained-worker experiment
 

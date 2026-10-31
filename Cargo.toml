@@ -1,0 +1,25 @@
+[package]
+name = "smelt-cli"
+version = "0.1.6"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+description = "Native client for Smelt's Python guardrail engine"
+repository = "https://github.com/mathisarends/smelt"
+
+[[bin]]
+name = "smelt"
+path = "native/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_Security"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

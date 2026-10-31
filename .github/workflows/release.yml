@@ -25,6 +25,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
@@ -40,6 +43,9 @@ jobs:
           from pathlib import Path
 
           project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          cargo = tomllib.loads(Path("Cargo.toml").read_text())["package"]
+          if project["version"] != cargo["version"]:
+              raise SystemExit("Python and native package versions differ")
           expected_tag = f"v{project['version']}"
           actual_tag = os.environ["GITHUB_REF_NAME"]
           if actual_tag != expected_tag:
@@ -48,30 +54,54 @@ jobs:
       - run: uv run --frozen pre-commit run --all-files --show-diff-on-failure
       - run: uv run --frozen pytest
       - run: uv run --frozen smelt check --strict
-      - run: uv build --no-sources
-      - name: Install and smoke-test the wheel and source distribution
-        run: |
-          for distribution in dist/*.whl dist/*.tar.gz; do
-            smoke_env="$RUNNER_TEMP/$(basename "$distribution").venv"
-            uv venv --python 3.12 "$smoke_env"
-            uv pip install --python "$smoke_env/bin/python" "$distribution"
-            (
-              cd "$RUNNER_TEMP"
-              "$smoke_env/bin/smelt" --version
-              "$smoke_env/bin/smelt" rules
-              "$smoke_env/bin/smelt" explain SMT101
-              "$smoke_env/bin/smelt" config schema
-            )
-          done
+      - run: uv build --no-sources --sdist
+      - name: Install and smoke-test the source distribution
+        run: uv run --frozen python scripts/smoke_distribution.py dist
       - uses: actions/upload-artifact@v7
         with:
-          name: python-distributions
+          name: python-distributions-source
           path: dist/
+          if-no-files-found: error
+
+  wheels:
+    name: Wheel (${{ matrix.target }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          manylinux: '2_28'
+          args: --release --locked --out dist --compatibility pypi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions-${{ matrix.target }}
+          path: dist/*.whl
           if-no-files-found: error
 
   publish:
     name: Publish distributions to PyPI
-    needs: build
+    needs: [build, wheels]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -81,7 +111,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: python-distributions
+          pattern: python-distributions-*
+          merge-multiple: true
           path: dist/
       - name: Publish with PyPI Trusted Publishing
         uses: pypa/gh-action-pypi-publish@release/v1

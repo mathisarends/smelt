@@ -65,7 +65,7 @@ class AnalysisContext:
     def member_view(self, path: str) -> AnalysisContext:
         view = copy(self)
         view.member_usage = copy(self.member_usage)
-        view.member_usage.members = self.member_usage.member_files[path]
+        view.member_usage.members = self.member_usage.members_for_path(path)
         return view
 
     @cached_property

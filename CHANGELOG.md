@@ -7,13 +7,25 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- The installed CLI now uses a native Rust client and bounded local workers for
+  read-only checks. Fresh clients reuse imports, while every check captures current
+  Git/config inputs. CI, fixes and other commands stay in the foreground; worker
+  startup/transport failures fall back to checking. Workers restart when analyzer
+  identity changes and expire after 120 idle seconds. Source installs, including
+  pre-commit environments from Git, now require Rust; release wheels include the
+  compiled client. `python -m smelt` retains the direct Python entry point.
+- Member-local checks maintain a persistent reverse dependency index and replace
+  only changed usage contributions. Unchanged decisions can be reused without
+  loading all definition objects. Removed callers, re-exports, missing namespaces,
+  inheritance and inventory changes remain part of invalidation.
+
 - Checks select built-in rules using a generated lightweight catalog, loading only
   the needed implementations. Staged results can survive edits to unobserved
   content while preserving the current index hash in JSON/SARIF; additions,
   deletions, observed source, config, metadata and debt still invalidate them.
   Normal cached staged retries capture repository/HEAD and index in two Git
   invocations. A separate benchmark measures a retained Python worker including
-  fresh client startup and IPC; the installed hooks remain process-per-check.
+  fresh client startup and IPC; it preceded the native client above.
   See [the performance measurements](docs/agent-workflow.md).
 - Staged checks read captured Git blobs directly instead of writing temporary
   source trees. An unchanged retry can reuse its exact result before loading the

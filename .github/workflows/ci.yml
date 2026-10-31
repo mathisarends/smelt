@@ -14,9 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml', 'uv.lock') }}
       - run: uv sync --locked
       - run: uv run pre-commit run --all-files --show-diff-on-failure
 
@@ -32,6 +39,7 @@ jobs:
       UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -43,26 +51,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: .smelt_cache
+          key: ${{ runner.os }}-smelt-v2-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-smelt-v2-${{ hashFiles('uv.lock') }}-
       - run: uv sync --locked
       - run: uv run smelt check --format github
 
   package:
-    runs-on: ubuntu-latest
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - run: uv build
       - name: Install and smoke-test the built wheel outside the checkout
         run: |
-          uv venv "$RUNNER_TEMP/smelt-release"
-          uv pip install --python "$RUNNER_TEMP/smelt-release/bin/python" dist/*.whl
-          cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/smelt-release/bin/smelt" --version
-          "$RUNNER_TEMP/smelt-release/bin/smelt" rules
-          "$RUNNER_TEMP/smelt-release/bin/smelt" explain SMT101
-          "$RUNNER_TEMP/smelt-release/bin/smelt" config schema
+          uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist

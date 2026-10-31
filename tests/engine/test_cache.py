@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.cache import FactCache
 from smelt.analysis.context import AnalysisContext
+from smelt.analysis.members import MemberUsageIndex
 from smelt.analysis.parsing import AnalysisError, AstCache
 from smelt.config import load_config
 from smelt.diagnostics.render.machine import render_json
@@ -208,3 +209,86 @@ def test_cached_member_facts_only_parse_the_changed_file(
     assert parsed == {"app/caller.py"}
     emit = next(member for member in members if member.node.name == "emit")
     assert not emit.external_use
+
+
+def test_incremental_members_only_rebuild_changed_contributions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/service.py": "class Browser:\n    def emit(self): pass",
+            "app/other.py": "class Other:\n    def unrelated(self): pass",
+            "app/caller.py": "def _run(x): x.emit()",
+        },
+    )
+    check(tmp_path)
+    original = MemberUsageIndex._summary
+    rebuilt: list[str] = []
+
+    def summary(self: MemberUsageIndex, path: str) -> object:
+        rebuilt.append(path)
+        return original(self, path)
+
+    monkeypatch.setattr(MemberUsageIndex, "_summary", summary)
+    (tmp_path / "app/caller.py").write_text("def _run(x): x.skip()")
+    cached = check(tmp_path).report
+    assert rebuilt == ["app/caller.py"]
+    assert render_json(cached) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
+    assert {v.path for v in cached.violations} == {"app/service.py", "app/other.py"}
+
+
+def test_incremental_members_track_reexports_inheritance_and_missing_namespaces(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/service.py": "__all__ = []\ndef emit(): pass\nclass Base:\n    def run(self): pass",
+            "app/facade.py": "from .service import emit, Base",
+            "app/caller.py": "from .facade import emit, Base\nfrom .missing import helper\nemit()\nclass Child(Base): pass\nhelper()",
+        },
+    )
+    check(tmp_path)
+    edits: list[tuple[str, str | None]] = [
+        ("app/facade.py", "from .other import emit, Base"),
+        ("app/other.py", "def emit(): pass\nclass Base: pass"),
+        ("app/missing.py", "__all__ = []\ndef helper(): pass"),
+        ("app/caller.py", "from .service import emit\nemit()"),
+        ("app/other.py", None),
+        ("app/caller.py", ""),
+        ("app/facade.py", "from .service import *"),
+        ("app/caller.py", "from .facade import emit\nemit()"),
+    ]
+    for path, content in edits:
+        target = tmp_path / path
+        if content is None:
+            target.unlink()
+        else:
+            target.write_text(content)
+        assert render_json(check(tmp_path).report) == render_json(
+            check(tmp_path, CheckOptions(use_cache=False)).report
+        ), path
+
+
+def test_incremental_members_keep_duplicate_same_line_uses(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG,
+            "app/__init__.py": "",
+            "app/service.py": "class Browser:\n    def emit(self): pass\n    def _run(self): self.emit(); self.emit()",
+            "app/caller.py": "def _run(x): x.emit()",
+        },
+    )
+    check(tmp_path)
+    (tmp_path / "app/caller.py").write_text("")
+    assert render_json(check(tmp_path).report) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )

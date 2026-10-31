@@ -32,6 +32,18 @@ repos:
 
   - repo: local
     hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all -- --check
+        language: system
+        files: '(^Cargo\.(toml|lock)$|\.rs$)'
+        pass_filenames: false
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --locked --all-targets -- -D warnings
+        language: system
+        files: '(^Cargo\.(toml|lock)$|\.rs$)'
+        pass_filenames: false
       - id: mypy
         name: mypy
         entry: uv run --frozen mypy
