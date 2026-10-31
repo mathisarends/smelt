@@ -85,7 +85,9 @@ fn python() -> io::Result<PathBuf> {
 
 fn direct(python: &Path, arguments: &[OsString]) -> io::Result<i32> {
     let mut command = Command::new(python);
-    command.args(["-m", "smelt"]).args(arguments);
+    // Like the former console entry point, import the installed analyzer rather
+    // than a same-named package in the directory being checked.
+    command.args(["-P", "-m", "smelt"]).args(arguments);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -243,7 +245,15 @@ fn run() -> io::Result<i32> {
         Ok("1") => true,
         _ => env::var_os("CI").is_none(),
     };
+    // Workers start outside the project. Relative Python search-path overrides
+    // must keep their caller-relative meaning in a foreground process.
+    let relative_python_paths = ["PYTHONPATH", "PYTHONHOME", "PYTHONUSERBASE"]
+        .into_iter()
+        .filter_map(env::var_os)
+        .filter(|value| !value.is_empty())
+        .any(|value| env::split_paths(&value).any(|path| path.is_relative()));
     if enabled
+        && !relative_python_paths
         && let Some(text) = text
         && text.first().map(String::as_str) == Some("check")
         && !text.iter().any(|value| {

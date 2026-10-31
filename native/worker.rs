@@ -6,7 +6,7 @@ use std::path::Path;
 pub fn spawn(python: &Path, endpoint: &Path, root: &Path) -> io::Result<std::process::Child> {
     use std::process::{Command, Stdio};
     Command::new(python)
-        .args(["-m", "smelt.cli.session"])
+        .args(["-P", "-m", "smelt.cli.session"])
         .arg(endpoint)
         .arg(root)
         .current_dir(
@@ -83,7 +83,7 @@ mod windows {
             format!("\"{}{}\"", text, "\\".repeat(trailing))
         }
         let mut arguments: Vec<u16> = format!(
-            "{} -m smelt.cli.session {} {}",
+            "{} -P -m smelt.cli.session {} {}",
             quoted(python),
             quoted(endpoint),
             quoted(root)

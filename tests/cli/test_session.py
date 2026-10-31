@@ -100,7 +100,7 @@ def _invoke(
 
 
 def _fresh(root: Path) -> tuple[int, dict[str, Any]]:
-    return _invoke([sys.executable, "-m", "smelt"], root, "--no-cache")
+    return _invoke([sys.executable, "-P", "-m", "smelt"], root, "--no-cache")
 
 
 def _endpoint(project: Path) -> Path:
@@ -258,3 +258,24 @@ def test_copied_native_client_can_find_interpreter_on_path(
     )
     assert _invoke([str(binary)], project) == _fresh(project)
     _endpoint(project)
+
+
+@pytest.mark.parametrize("mode", ["0", "1"])
+def test_project_package_cannot_shadow_installed_analyzer(
+    project: Path, native: Path, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    shadow = project / "smelt"
+    shadow.mkdir()
+    (shadow / "__init__.py").write_text(
+        "raise RuntimeError('analyzed project code must not execute')\n"
+    )
+    monkeypatch.setenv("SMELT_DAEMON", mode)
+    assert _invoke([str(native)], project) == _fresh(project)
+
+
+def test_relative_pythonpath_keeps_foreground_semantics(
+    project: Path, native: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PYTHONPATH", ".")
+    assert _invoke([str(native)], project) == _fresh(project)
+    assert not list((project.parent / "sessions").rglob("*.json"))

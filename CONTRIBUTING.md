@@ -18,6 +18,11 @@ commands and CI run directly; `SMELT_DAEMON=0` disables workers and
 back to the foreground checker. Tests must cover fresh-client output/exit codes,
 partial staging, restart, concurrent startup and independent `--no-cache` results.
 
+Native interpreter launches use Python's safe-path mode so a project package named
+`smelt` cannot replace the installed analyzer. Explicit PYTHONPATH overrides are
+retained; relative PYTHONPATH/PYTHONHOME/PYTHONUSERBASE entries use the foreground
+path to preserve their interpretation relative to the caller's directory.
+
 An agent mistake is evidence for a regression, not automatically a new rule. Start
 with the smallest reproducible example, the intended result and a nearby valid
 counterexample. Fix an existing rule when its documented contract already covers
@@ -231,8 +236,9 @@ environment name must match the workflow exactly.
 
 ### Release procedure
 
-1. Bump matching versions in `pyproject.toml` and `Cargo.toml`, run `uv lock`, and merge the version change
-   and release workflow into `main` after CI passes. Each release needs a new PyPI
+1. Bump matching versions in `pyproject.toml` and `Cargo.toml`, run `uv lock` and
+   `cargo check` to refresh both lockfiles, and merge the version change and
+   release workflow into `main` after CI passes. Each release needs a new PyPI
    version; this setup does not bump or publish the existing `0.1.3` automatically.
 2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
    For example, after merging version `0.1.4`:
