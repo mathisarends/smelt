@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.cache import FactCache
 from smelt.analysis.errors import AnalysisError
 from smelt.config import discover_config, load_config
 from smelt.config.errors import ConfigError, ConfigIssue
@@ -30,7 +31,11 @@ class StagedProject:
 
 @contextmanager
 def staged_project(
-    cwd: Path, config: str | None, *, index: GitIndex | None = None
+    cwd: Path,
+    config: str | None,
+    *,
+    index: GitIndex | None = None,
+    use_cache: bool = False,
 ) -> Iterator[StagedProject]:
     requested = lexical_path(cwd / config) if config is not None else None
     repository = index.repository if index else git_repository(cwd, requested)
@@ -43,7 +48,18 @@ def staged_project(
         raise ConfigError(
             [ConfigIssue("", "no smelt.yaml found in the staged Git index")]
         )
-    loaded = load_config(path, store=store)
+    # Policy is read before run_check creates the analysis cache. Reuse verified
+    # immutable blobs here too, instead of starting cat-file for the same config
+    # after every source edit. Close this transaction before analysis opens its
+    # own cache connection, including when policy validation fails.
+    cache = FactCache(path.parent / ".smelt_cache") if use_cache else None
+    store.cache = cache
+    try:
+        loaded = load_config(path, store=store)
+    finally:
+        if cache is not None:
+            cache.close()
+        store.cache = None
     for directory in [
         *loaded.config.project.source_roots,
         *loaded.config.project.test_roots,

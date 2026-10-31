@@ -357,6 +357,53 @@ def test_corrupt_exact_result_and_cached_blob_fall_back_to_analysis(
     assert cached == _check(repo, capsys, "--no-cache")
 
 
+@pytest.mark.parametrize("use_cache", [True, False])
+def test_staged_policy_blob_reuse_respects_no_cache(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    use_cache: bool,
+) -> None:
+    _check(repo, capsys)
+    policy_oid = capture_index(repo).blobs["smelt.yaml"]
+    (repo / "app/consumer.py").write_text("# Removed the last caller.\n")
+    _git(repo, "add", "app/consumer.py")
+    source_oid = capture_index(repo).blobs["app/consumer.py"]
+    fetched: list[str] = []
+    module = import_module("smelt.engine.git_source")
+    original = module.read_blobs
+
+    def read(root: Path, identifiers: list[str]) -> dict[str, bytes]:
+        fetched.extend(identifiers)
+        return original(root, identifiers)  # type: ignore[no-any-return]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(module, "read_blobs", read)
+        actual = _check(repo, capsys, *([] if use_cache else ["--no-cache"]))
+    assert (policy_oid in fetched) is not use_cache
+    if use_cache:
+        assert fetched == [source_oid]
+    assert actual[0] == 1
+    assert actual == _check(repo, capsys, "--no-cache")
+
+
+def test_changed_staged_policy_cannot_reuse_previous_blob(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (repo / "app/consumer.py").write_text("")
+    _git(repo, "add", "app/consumer.py")
+    assert _check(repo, capsys)[0] == 1
+    config = repo / "smelt.yaml"
+    config.write_text(
+        CONFIG.replace("internal-public-member: warning", "internal-public-member: off")
+    )
+    _git(repo, "add", "smelt.yaml")
+    config.write_text("invalid: [")
+    actual = _check(repo, capsys)
+    assert actual[0] == 0
+    assert actual == _check(repo, capsys, "--no-cache")
+
+
 @pytest.mark.parametrize("output", ["json", "sarif"])
 def test_document_content_edits_reuse_analysis_with_fresh_index_provenance(
     repo: Path,
