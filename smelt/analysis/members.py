@@ -15,6 +15,12 @@ from smelt.analysis.function_usage import (
     explicit_exports,
     reference_names,
 )
+from smelt.analysis.member_state import (
+    MEMBER_STATE,
+    MemberIndexState,
+    MemberSummary,
+    update_members,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -113,6 +119,138 @@ class MemberUsageIndex:
     def __init__(self, syntax: SyntaxIndex) -> None:
         self._syntax = syntax
         self._decision_keys: dict[str, str] = {}
+
+    @cached_property
+    def _local_state(self) -> MemberIndexState:
+        syntax = self._syntax
+        cache = syntax.cache
+        if cache is None:
+            raise ValueError("member dependency state requires a fact cache")
+        key = cache.key(
+            "member-state",
+            [str(syntax.files.root), syntax.files.config.model_dump(mode="json")],
+        )
+        previous = cache.read(key, MEMBER_STATE) or MemberIndexState()
+        identities = {
+            path: self._fact_key(path)
+            for path in sorted(set(syntax.files.by_path) | syntax.files.tests.keys())
+        }
+        namespaces = {
+            name: self._namespace_identity(name)
+            for name in syntax.files.sources.keys() | syntax.files.packages.keys()
+        }
+
+        def decision(summary: MemberSummary, totals: dict[str, int]) -> str:
+            return cache.key(
+                "member-decision",
+                [summary.identity, [totals.get(query, 0) for query in summary.queries]],
+            )
+
+        state = update_members(
+            previous, identities, namespaces, self._summary, decision
+        )
+        cache.write(key, state, MEMBER_STATE)
+        return state
+
+    def local_paths(self) -> Iterator[str]:
+        """Yield decisions without deserializing unchanged definition objects."""
+        for path, summary in self._local_state.files.items():
+            if summary.has_members:
+                yield path
+
+    def members_for_path(self, path: str) -> list[Member]:
+        cache = self._syntax.cache
+        if cache is None:
+            return self.member_files.get(path, [])
+        state = self._local_state
+        key = state.files[path].decision
+
+        def build() -> list[Member]:
+            file = self._facts(path)
+            states: list[MemberState] = []
+            for candidate in file.candidates:
+                owner = candidate.owner
+                if owner is None:
+                    states.append(
+                        (
+                            self._counted_external(file.module, candidate.node.name),
+                            self._counted_external(
+                                file.module, candidate.node.name, production=True
+                            ),
+                            candidate.internal_references,
+                            False,
+                        )
+                    )
+                    continue
+                local = [
+                    line
+                    for line, line_owner, internal in file.attributes.get(
+                        candidate.node.name, []
+                    )
+                    if line_owner == owner.lineno and internal
+                ]
+                name = candidate.node.name
+                states.append(
+                    (
+                        state.totals.get(f"a:{name}", 0) > len(local),
+                        state.totals.get(f"p:{name}", 0) > len(local),
+                        tuple(sorted(set(local))),
+                        bool(state.totals.get(f"i:{file.module}:{owner.name}", 0)),
+                    )
+                )
+            return self._resolve_file(file, states)
+
+        return cache.get("member-values", key, _MEMBERS, build)
+
+    def _counted_external(
+        self, module: str, name: str, *, production: bool = False
+    ) -> bool:
+        totals = self._local_state.totals
+        prefix = "pf" if production else "f"
+        return any(
+            totals.get(f"{prefix}:{target}", 0)
+            > totals.get(f"{prefix}:{target}:{module}", 0)
+            for target in _function_targets(module, name)
+        )
+
+    def _summary(self, path: str) -> MemberSummary:
+        file = self._facts(path)
+        references = self._references(file)
+        contributions: dict[str, int] = {}
+        for module, name in set(references.targets):
+            target = f"{module}:{name or ''}"
+            for prefix in ("f", "pf") if file.production else ("f",):
+                contributions[f"{prefix}:{target}"] = 1
+                contributions[f"{prefix}:{target}:{file.module}"] = 1
+        for module, name in set(references.inherited):
+            contributions[f"i:{module}:{name}"] = 1
+        for name, uses in file.attributes.items():
+            contributions[f"a:{name}"] = len(uses)
+            if file.production:
+                contributions[f"p:{name}"] = len(uses)
+        queries: set[str] = set()
+        for candidate in file.candidates:
+            if candidate.owner is None:
+                for target in _function_targets(file.module, candidate.node.name):
+                    for prefix in ("f", "pf"):
+                        queries.update(
+                            (f"{prefix}:{target}", f"{prefix}:{target}:{file.module}")
+                        )
+            else:
+                queries.update(
+                    (
+                        f"a:{candidate.node.name}",
+                        f"p:{candidate.node.name}",
+                        f"i:{file.module}:{candidate.owner.name}",
+                    )
+                )
+        return MemberSummary(
+            self._fact_key(path),
+            references.dependencies,
+            contributions,
+            sorted(queries),
+            bool(file.candidates),
+        )
 
     @cached_property
     def _files(self) -> list[_FileFacts]:
@@ -279,6 +417,8 @@ class MemberUsageIndex:
         return groups
 
     def decision_key(self, path: str) -> str:
+        if self._syntax.cache is not None:
+            return self._local_state.files[path].decision
         return self._decision_keys[path]
 
     def _resolve_file(
@@ -405,6 +545,13 @@ class MemberUsageIndex:
         for member in self.attributes:
             if uses := references.get((member.module, member.owner.name, member.name)):
                 yield member, tuple(sorted(uses))
+
+
+def _function_targets(module: str, name: str) -> Iterator[str]:
+    yield f"{module}:{name}"
+    parts = module.split(".")
+    for end in range(1, len(parts) + 1):
+        yield f"{'.'.join(parts[:end])}:"
 
 
 def _file_facts(

@@ -85,7 +85,7 @@ def member_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
         return
     policy = cache.key("member-policy", ctx.config.model_dump(mode="json"))
     index = ctx.member_usage
-    for path in index.member_files:
+    for path in index.local_paths():
         key = cache.key("member-check", [rule.code, policy, index.decision_key(path)])
         findings = cache.read(key, _VIOLATIONS)
         if findings is None:
