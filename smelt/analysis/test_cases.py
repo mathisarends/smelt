@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
 
-_MAX_CASES = 12
-_MIN_CASES = 2
-
 
 def independent_case_loops(test: TestFunction) -> list[ast.For]:
     candidates: list[ast.For] = []
@@ -28,6 +25,10 @@ def independent_case_loops(test: TestFunction) -> list[ast.For]:
         if _independent_body(node):
             candidates.append(node)
     return candidates
+
+
+_MAX_CASES = 12
+_MIN_CASES = 2
 
 
 def _literal(node: ast.AST) -> bool:

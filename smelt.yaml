@@ -47,6 +47,10 @@ architecture:
 structure:
   forbidden_names: [utils, helpers]
   contracts:
+    maintainability:
+      match: smelt
+      future_annotations: when-needed
+      ordering: {fix: safe-only}
     module-names:
       match: smelt
       private_modules: forbid
@@ -67,4 +71,16 @@ tests:
 rules:
   import-cycle: error
   prefer-match-type-dispatch: error
+  public-definitions-first: error
+  internal-public-member: warning
+  internal-static-helper: warning
+  unnecessary-future-annotations: warning
+  test-only-public-function: warning
+  test-only-public-attribute: warning
+  private-test-access: warning
+  test-without-outcome-check: warning
+  test-only-checks-possibly-empty-data: warning
+  unbounded-test-wait: warning
+  independent-test-case-loop: warning
+  async-mock-without-await-check: warning
 # yaml-language-server: $schema=smelt.schema.json

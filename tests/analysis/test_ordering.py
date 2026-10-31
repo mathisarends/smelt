@@ -4,14 +4,17 @@ import textwrap
 import pytest
 from pydantic import ValidationError
 
-from smelt.analysis.ordering import FileOrder, analyze_order
+from smelt.analysis.ordering import (
+    FileOrder,
+    _analyze_order,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+)
 from smelt.config.models import OrderingConfig
 
 
 def _analyze(
     source: str, *, deferred: bool = False, config: OrderingConfig | None = None
 ) -> FileOrder:
-    return analyze_order(
+    return _analyze_order(
         ast.parse(textwrap.dedent(source)),
         config or OrderingConfig(),
         deferred=deferred,

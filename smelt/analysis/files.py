@@ -254,10 +254,6 @@ class FileIndex:
         return "/".join(parts) + ("/" if package else ".py")
 
 
-def _contains_python(directory: Path, *, store: SourceStore | None = None) -> bool:
-    return any(True for _ in python_files(directory, store=store))
-
-
 def python_files(
     directory: Path, *, store: SourceStore | None = None
 ) -> Iterable[Path]:
@@ -277,3 +273,7 @@ def python_files(
                     pending.append(entry)
             elif entry.suffix == ".py":
                 yield entry
+
+
+def _contains_python(directory: Path, *, store: SourceStore | None = None) -> bool:
+    return any(True for _ in python_files(directory, store=store))

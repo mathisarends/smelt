@@ -45,7 +45,7 @@ class _Parser(argparse.ArgumentParser):
         raise _ParseError(self, message)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="smelt",
         description="Static guardrails for Python architecture.",
@@ -203,7 +203,7 @@ def _add_config(sub: Subparsers) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     configure_streams()
     console = Console(sys.stdout, sys.stderr)
-    parser = build_parser()
+    parser = _build_parser()
     raw = list(sys.argv[1:] if argv is None else argv)
     try:
         args = parser.parse_args(raw)

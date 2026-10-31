@@ -11,17 +11,6 @@ if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
 
 
-def _possibly_empty(node: ast.expr, known: set[ast.expr]) -> bool:
-    if isinstance(node, ast.GeneratorExp | ast.ListComp | ast.SetComp | ast.DictComp):
-        return any(
-            generator.ifs
-            or generator.is_async
-            or _possibly_empty(generator.iter, known)
-            for generator in node.generators
-        )
-    return node not in known and not nonempty_literal(node)
-
-
 def vacuous_outcomes(
     test: TestFunction, helpers: list[str]
 ) -> list[ast.For | ast.AsyncFor | ast.Call]:
@@ -69,3 +58,14 @@ def vacuous_outcomes(
         if risky not in risks:
             risks.append(risky)
     return risks
+
+
+def _possibly_empty(node: ast.expr, known: set[ast.expr]) -> bool:
+    if isinstance(node, ast.GeneratorExp | ast.ListComp | ast.SetComp | ast.DictComp):
+        return any(
+            generator.ifs
+            or generator.is_async
+            or _possibly_empty(generator.iter, known)
+            for generator in node.generators
+        )
+    return node not in known and not nonempty_literal(node)

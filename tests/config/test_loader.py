@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError, discover_config, load_config, parse_config
-from smelt.config.loader import load_yaml
+from smelt.config.loader import (
+    _load_yaml,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 from tests.helpers import FIXTURES, write_project
 
 if TYPE_CHECKING:
@@ -81,7 +83,7 @@ class TestParsing:
 
     def test_yaml_merge_can_be_overridden_explicitly(self) -> None:
         config, _ = parse_config(
-            load_yaml(
+            _load_yaml(
                 "version: 1\nproject: {root_packages: [app]}\n"
                 "architecture:\n  layers:\n"
                 "    domain: &base {path: domain}\n"
@@ -147,7 +149,7 @@ class TestParsing:
             parse_config(raw)
 
     def test_severity_off_is_not_a_boolean(self) -> None:
-        raw = load_yaml(
+        raw = _load_yaml(
             "version: 1\nproject: {root_packages: [app]}\nrules:\n  SMT101: off\n"
         )
 

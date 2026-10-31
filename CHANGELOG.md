@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Smelt now checks its own sources with public-first ordering, internal-member
+  visibility, test-only public API reviews, when-needed future annotations and
+  test-quality reviews. CI and release validation fail on warnings too. Internal
+  helpers are private, obsolete snapshot helpers are removed, and deliberate
+  primitive/cache tests carry local, reasoned exceptions. Consumer defaults stay
+  unchanged.
+- SMT420 locates private imports on the imported name, including aliases in
+  multiline imports. A reasoned exception on that name now survives Ruff
+  formatting and does not suppress neighboring import lines; put multiline
+  import exceptions next to the affected name.
 - Optional [SMT319](docs/rules/SMT319.md), enabled with
   `rules: {prefer-package-import: hint}` or `--select SMT319`, suggests existing
   package re-exports so callers can combine imports through a common `__init__.py`.

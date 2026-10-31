@@ -98,6 +98,18 @@ class _Mirror:
     root: str | None
 
 
+def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
+    """The mirrored test path of ``module`` under the test root of its package.
+
+    Segments may be placeholders such as ``<layer>``; they are kept as written.
+    """
+    root = module.split(".", 1)[0]
+    for test_root in ctx.config.project.test_roots:
+        if root in _member_roots(ctx, test_root.strip("/")):
+            return _mirror_target(ctx, test_root.strip("/"), module)
+    return None
+
+
 def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
     relative = test.path.removeprefix(f"{test.test_root}/")
     match = _mirror_regex(ctx.config.tests.mirror).fullmatch(relative)
@@ -109,13 +121,13 @@ def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
 
 
 def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
-    roots = member_roots(ctx, test_root)
+    roots = _member_roots(ctx, test_root)
     if mirror.root is None:
         return roots
     return [mirror.root] if mirror.root in roots else []
 
 
-def member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
+def _member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
     """The root packages a test root belongs to.
 
     In a workspace, ``libs/agent/tests`` tests the package under ``libs/agent/src``:
@@ -166,7 +178,7 @@ def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bo
 
 
 def _missing_module(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
-    root = (_roots(ctx, mirror, test_root) or member_roots(ctx, test_root))[0]
+    root = (_roots(ctx, mirror, test_root) or _member_roots(ctx, test_root))[0]
     return ".".join([root, *mirror.directories, mirror.module])
 
 
@@ -252,7 +264,7 @@ def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) ->
     if "{root}" in pattern or not mirror.directories:
         return ""
     root, *directories = mirror.directories
-    if root not in member_roots(ctx, test_root):
+    if root not in _member_roots(ctx, test_root):
         return ""
     if not _mirrors_source(ctx, _Mirror(directories, mirror.module, root), test_root):
         return ""
@@ -273,18 +285,6 @@ def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
         .replace("{root}", root)
     )
     return f"{test_root}/{relative}"
-
-
-def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
-    """The mirrored test path of ``module`` under the test root of its package.
-
-    Segments may be placeholders such as ``<layer>``; they are kept as written.
-    """
-    root = module.split(".", 1)[0]
-    for test_root in ctx.config.project.test_roots:
-        if root in member_roots(ctx, test_root.strip("/")):
-            return _mirror_target(ctx, test_root.strip("/"), module)
-    return None
 
 
 class MisplacedTestFile(BaseRule):
@@ -495,7 +495,7 @@ def _ranked(
     Within the mirrored package, names closer to the test's name come first; that
     orders the evidence, it adds no module the test does not import.
     """
-    roots = member_roots(ctx, test_root)
+    roots = _member_roots(ctx, test_root)
     package, name = missing.rsplit(".", 1)
     return sorted(
         (m for m in modules if m.split(".")[0] in roots),

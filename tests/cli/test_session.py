@@ -205,7 +205,7 @@ def test_concurrent_first_clients_preserve_reports(project: Path, native: Path) 
     expected = _fresh(project)
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(lambda _: _invoke([str(native)], project), range(4)))
-    assert all(result == expected for result in results)
+    assert results == [expected] * 4
     _endpoint(project)
 
 
@@ -377,8 +377,8 @@ def test_worker_watchdog_exits_a_hung_dispatch(project: Path) -> None:
     endpoint = project.parent / "watchdog.json"
     script = (
         "import sys,time; from pathlib import Path; from smelt.cli import session; "
-        "session.dispatch=lambda *args,**kwargs: time.sleep(60); "
-        "session.serve(Path(sys.argv[1]),root=sys.argv[2])"
+        "session._dispatch=lambda *args,**kwargs: time.sleep(60); "
+        "session._serve_internal(Path(sys.argv[1]),root=sys.argv[2])"
     )
     process = subprocess.Popen(  # noqa: S603 - fixed interpreter and owned test worker
         [sys.executable, "-P", "-c", script, str(endpoint), str(project)],

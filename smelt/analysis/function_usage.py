@@ -5,13 +5,12 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from smelt.analysis.exports import resolve_dotted
 from smelt.analysis.parsing import resolve_relative
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
+    from smelt.analysis.syntax import ModuleSyntax
 
 type Target = tuple[str, str | None]
 
@@ -24,18 +23,6 @@ def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             definitions.setdefault(node.name, []).append(node)
     return definitions
-
-
-def module_references(module: ModuleSyntax, syntax: SyntaxIndex) -> Iterator[Target]:
-    imports, loads, stars = reference_names(module)
-    yield from ((name, None) for name in stars)
-    for qualified in imports:
-        target = resolve_dotted(qualified, syntax.namespace)
-        if target and target[1] is not None:
-            yield target
-    for qualified in loads:
-        if target := resolve_dotted(qualified, syntax.namespace):
-            yield target
 
 
 def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[str]]:
@@ -84,14 +71,6 @@ def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[st
     return sorted(imports), sorted(loads), sorted(stars)
 
 
-def _qualified(node: ast.AST, bindings: dict[str, set[str]]) -> Iterator[str]:
-    if isinstance(node, ast.Name):
-        yield from sorted(bindings.get(node.id, ()))
-    elif isinstance(node, ast.Attribute):
-        for base in _qualified(node.value, bindings):
-            yield f"{base}.{node.attr}"
-
-
 def explicit_exports(tree: ast.Module) -> frozenset[str] | None:
     """None means a dynamic export declaration whose intent we cannot narrow."""
     exports: set[str] = set()
@@ -134,3 +113,11 @@ def explicit_exports(tree: ast.Module) -> frozenset[str] | None:
     ):
         return None
     return frozenset(exports)
+
+
+def _qualified(node: ast.AST, bindings: dict[str, set[str]]) -> Iterator[str]:
+    if isinstance(node, ast.Name):
+        yield from sorted(bindings.get(node.id, ()))
+    elif isinstance(node, ast.Attribute):
+        for base in _qualified(node.value, bindings):
+            yield f"{base}.{node.attr}"

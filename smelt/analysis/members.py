@@ -427,6 +427,27 @@ class MemberUsageIndex:
             return self._local_state.files[path].decision
         return self._decision_keys[path]
 
+    def test_only_functions(
+        self, tests: TestSyntaxIndex
+    ) -> Iterator[tuple[Member, tuple[tuple[str, int], ...]]]:
+        references: dict[tuple[str, str | None], set[tuple[str, int]]] = {}
+        for path, test in tests.references():
+            for line, qualified in [
+                *test.imports,
+                *((line, name) for line, name, _ in test.attributes),
+            ]:
+                target = resolve_dotted(qualified, self._syntax.namespace)
+                if target is not None:
+                    references.setdefault(target, set()).add((path, line))
+        for member in self.members:
+            if (
+                member.kind == "function"
+                and not member.node.name.startswith("_")
+                and not member.production_external_use
+                and (uses := references.get((member.module, member.node.name)))
+            ):
+                yield member, tuple(sorted(uses))
+
     def _resolve_file(
         self, file: _FileFacts, states: list[MemberState]
     ) -> list[Member]:
@@ -494,27 +515,6 @@ class MemberUsageIndex:
             for target in targets
             if (users := uses.get(target))
         )
-
-    def test_only_functions(
-        self, tests: TestSyntaxIndex
-    ) -> Iterator[tuple[Member, tuple[tuple[str, int], ...]]]:
-        references: dict[tuple[str, str | None], set[tuple[str, int]]] = {}
-        for path, test in tests.references():
-            for line, qualified in [
-                *test.imports,
-                *((line, name) for line, name, _ in test.attributes),
-            ]:
-                target = resolve_dotted(qualified, self._syntax.namespace)
-                if target is not None:
-                    references.setdefault(target, set()).add((path, line))
-        for member in self.members:
-            if (
-                member.kind == "function"
-                and not member.node.name.startswith("_")
-                and not member.production_external_use
-                and (uses := references.get((member.module, member.node.name)))
-            ):
-                yield member, tuple(sorted(uses))
 
     @cached_property
     def attributes(self) -> list[AttributeMember]:

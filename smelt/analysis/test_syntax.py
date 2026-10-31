@@ -952,16 +952,6 @@ class _Visitor(ast.NodeVisitor):
         self.visit(node.test)
         self._branches([node.body, node.orelse])
 
-    def _branches(self, bodies: Sequence[Sequence[ast.AST]]) -> None:
-        outer = self.env
-        for body in bodies:
-            self.env = dict(outer)
-            for statement in body:
-                self.visit(statement)
-        self.env = outer
-        for name in _locals([statement for body in bodies for statement in body]):
-            self.env.pop(name, None)
-
     def visit_For(self, node: ast.For | ast.AsyncFor) -> None:
         self.visit(node.iter)
         for name in _names(node.target):
@@ -1081,6 +1071,16 @@ class _Visitor(ast.NodeVisitor):
         for name in _locals([node]):
             self.env.pop(name, None)
 
+    def _branches(self, bodies: Sequence[Sequence[ast.AST]]) -> None:
+        outer = self.env
+        for body in bodies:
+            self.env = dict(outer)
+            for statement in body:
+                self.visit(statement)
+        self.env = outer
+        for name in _locals([statement for body in bodies for statement in body]):
+            self.env.pop(name, None)
+
 
 def _declared_fixtures(
     tree: ast.Module,
@@ -1095,7 +1095,7 @@ def _declared_fixtures(
     return visitor.defined_fixtures
 
 
-def analyze_test_syntax(
+def _analyze_test_syntax(
     tree: ast.Module,
     path: str,
     *,
@@ -1293,7 +1293,7 @@ class TestSyntaxIndex:
             ]
 
         def load(path: str) -> TestModule:
-            module = analyze_test_syntax(
+            module = _analyze_test_syntax(
                 asts.parse(path),
                 path,
                 constructors=constructors,

@@ -3,7 +3,9 @@ import ast
 import pytest
 
 from smelt.analysis.test_outcomes import vacuous_outcomes
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 
 
 @pytest.mark.parametrize(
@@ -68,7 +70,7 @@ from smelt.analysis.test_syntax import analyze_test_syntax
 def test_vacuous_outcomes_and_intentional_counterexamples(
     body: str, flagged: bool
 ) -> None:
-    module = analyze_test_syntax(
+    module = _analyze_test_syntax(
         ast.parse("from unittest.mock import Mock\ndef test_run():\n    " + body),
         "tests/test_run.py",
     )

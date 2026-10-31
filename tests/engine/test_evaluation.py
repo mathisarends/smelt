@@ -9,9 +9,9 @@ import pytest
 
 from smelt.engine.evaluation import (
     EvaluationOptions,
-    compare_reports,
+    _compare_reports,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _run_process,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
     evaluate,
-    run_process,
 )
 from tests.helpers import write_project
 
@@ -24,7 +24,7 @@ def test_comparison_retains_multiplicity_and_changed_evidence() -> None:
         "expected": {"operation": "unittest.mock.patch"},
     }
     revised = {**original, "expected": {**original["expected"], "provenance": "import"}}
-    result = compare_reports(
+    result = _compare_reports(
         {"violations": [original, original]}, {"violations": [revised]}
     )
     assert result["before"] == {"SMT422": 2}
@@ -35,7 +35,7 @@ def test_comparison_retains_multiplicity_and_changed_evidence() -> None:
 
 
 def test_execution_deadline_is_independent_of_the_child_clock(tmp_path: Path) -> None:
-    result = run_process(
+    result = _run_process(
         [
             sys.executable,
             "-c",

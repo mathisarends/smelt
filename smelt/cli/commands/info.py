@@ -65,24 +65,6 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return EXIT_OK
 
 
-def _suggestion(raw: str, rules: RuleSet) -> str:
-    """A close rule name, or a code that differs in one character only."""
-    wanted = raw.strip().upper()
-    if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
-        return did_you_mean(raw.strip(), [r.name for r in rules.rules])
-    close = [
-        r.code
-        for r in rules.rules
-        if len(r.code) == len(wanted)
-        and sum(a != b for a, b in zip(r.code, wanted, strict=True)) == 1
-    ]
-    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
-
-
-def _indent(text: str) -> str:
-    return "\n".join(f"  {line}" if line else "" for line in text.splitlines())
-
-
 def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rule_set = build_rule_set()
     metas = [rule_meta(rule) for rule in rule_set.rules]
@@ -110,3 +92,21 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 def config_schema(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     console.print(json.dumps(config_json_schema(), indent=2))
     return EXIT_OK
+
+
+def _suggestion(raw: str, rules: RuleSet) -> str:
+    """A close rule name, or a code that differs in one character only."""
+    wanted = raw.strip().upper()
+    if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
+        return did_you_mean(raw.strip(), [r.name for r in rules.rules])
+    close = [
+        r.code
+        for r in rules.rules
+        if len(r.code) == len(wanted)
+        and sum(a != b for a, b in zip(r.code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
+
+
+def _indent(text: str) -> str:
+    return "\n".join(f"  {line}" if line else "" for line in text.splitlines())

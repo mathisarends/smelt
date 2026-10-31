@@ -44,6 +44,43 @@ class Move:
         return Span(self.parts[0].start, self.parts[-1].end)
 
 
+def rewrite_order(source: str, result: FileOrder, sections: list[OrderSection]) -> str:
+    if not sections:
+        return source
+    if any(section.fix_reason for section in sections):
+        raise AnalysisError("an ordering section requires manual review")
+    if _FIX_BOUNDARY.search(source):
+        raise AnalysisError(
+            "formatter or suppression region prevents safe ordering fixes"
+        )
+    if any(
+        "\t" in line[: len(line) - len(line.lstrip())] for line in source.splitlines()
+    ):
+        raise AnalysisError("tab indentation requires manual ordering review")
+    if ast.dump(ast.parse(source), include_attributes=False) != ast.dump(
+        result.tree, include_attributes=False
+    ):
+        raise AnalysisError("source changed since ordering analysis")
+    _compile_source(source, result.path)
+    newline = "\r\n" if "\r\n" in source else "\n"
+    rewritten = _render(source, Span(0, len(source)), _moves(source, sections), newline)
+    if not source.endswith(("\n", "\r")) and rewritten.endswith(newline):
+        rewritten = rewritten[: -len(newline)]
+    try:
+        parsed = ast.parse(rewritten)
+    except SyntaxError as exc:
+        raise AnalysisError("ordering rewrite did not preserve valid source") from exc
+    expected = _expected_tree(result.tree, sections)
+    if ast.dump(parsed, include_attributes=False) != ast.dump(
+        expected, include_attributes=False
+    ):
+        raise AnalysisError(
+            "ordering rewrite changed more than the approved statement order"
+        )
+    _compile_source(rewritten, result.path)
+    return rewritten
+
+
 def _header_lines(source: str, owner: ScopeNode) -> int:
     if isinstance(owner, ast.Module):
         first = statement_line(owner.body[0]) if owner.body else 1
@@ -193,40 +230,3 @@ def _compile_source(source: str, path: str) -> None:
             compile(source, path, "exec", dont_inherit=True)
     except SyntaxError as exc:
         raise AnalysisError(f"source cannot be safely compiled: {exc.msg}") from exc
-
-
-def rewrite_order(source: str, result: FileOrder, sections: list[OrderSection]) -> str:
-    if not sections:
-        return source
-    if any(section.fix_reason for section in sections):
-        raise AnalysisError("an ordering section requires manual review")
-    if _FIX_BOUNDARY.search(source):
-        raise AnalysisError(
-            "formatter or suppression region prevents safe ordering fixes"
-        )
-    if any(
-        "\t" in line[: len(line) - len(line.lstrip())] for line in source.splitlines()
-    ):
-        raise AnalysisError("tab indentation requires manual ordering review")
-    if ast.dump(ast.parse(source), include_attributes=False) != ast.dump(
-        result.tree, include_attributes=False
-    ):
-        raise AnalysisError("source changed since ordering analysis")
-    _compile_source(source, result.path)
-    newline = "\r\n" if "\r\n" in source else "\n"
-    rewritten = _render(source, Span(0, len(source)), _moves(source, sections), newline)
-    if not source.endswith(("\n", "\r")) and rewritten.endswith(newline):
-        rewritten = rewritten[: -len(newline)]
-    try:
-        parsed = ast.parse(rewritten)
-    except SyntaxError as exc:
-        raise AnalysisError("ordering rewrite did not preserve valid source") from exc
-    expected = _expected_tree(result.tree, sections)
-    if ast.dump(parsed, include_attributes=False) != ast.dump(
-        expected, include_attributes=False
-    ):
-        raise AnalysisError(
-            "ordering rewrite changed more than the approved statement order"
-        )
-    _compile_source(rewritten, result.path)
-    return rewritten

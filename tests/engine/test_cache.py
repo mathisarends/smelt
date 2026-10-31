@@ -225,7 +225,7 @@ def test_incremental_members_only_rebuild_changed_contributions(
         },
     )
     check(tmp_path)
-    original = MemberUsageIndex._summary
+    original = MemberUsageIndex._summary  # smelt: ignore[SMT420] -- Instrument contribution rebuilds to verify incremental cache reuse.
     rebuilt: list[str] = []
 
     def summary(self: MemberUsageIndex, path: str) -> object:
@@ -255,7 +255,7 @@ def test_incremental_members_track_reexports_inheritance_and_missing_namespaces(
             "app/caller.py": "from .facade import emit, Base\nfrom .missing import helper\nemit()\nclass Child(Base): pass\nhelper()",
         },
     )
-    check(tmp_path)
+    assert check(tmp_path).report.violations == []
     edits: list[tuple[str, str | None]] = [
         ("app/facade.py", "from .other import emit, Base"),
         ("app/other.py", "def emit(): pass\nclass Base: pass"),

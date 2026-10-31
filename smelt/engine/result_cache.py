@@ -149,32 +149,6 @@ class ResultCache:
             return None
         return None
 
-    def _valid(self, data: object) -> bool:
-        return (
-            isinstance(data, list)
-            and len(data) == _RESULT_FIELDS
-            and type(data[0]) is int
-            and data[0] in {0, 1}
-            and all(isinstance(data[index], str) for index in (1, 2, 3))
-            and isinstance(data[4], dict)
-            and all(
-                isinstance(path, str) and isinstance(oid, str)
-                for path, oid in data[4].items()
-            )
-        )
-
-    def _refresh(self, output: str) -> str:
-        if self.format not in {"json", "sarif"}:
-            return output
-        report = json.loads(output)
-        comparison = (
-            report["comparison"]
-            if self.format == "json"
-            else report["runs"][0]["properties"]["comparison"]
-        )
-        comparison["index_hash"] = self.index.identity
-        return json.dumps(report, indent=2, ensure_ascii=False) + "\n"
-
     def write(
         self,
         code: int,
@@ -206,3 +180,29 @@ class ResultCache:
                 )
         except (OSError, sqlite3.Error):
             return
+
+    def _valid(self, data: object) -> bool:
+        return (
+            isinstance(data, list)
+            and len(data) == _RESULT_FIELDS
+            and type(data[0]) is int
+            and data[0] in {0, 1}
+            and all(isinstance(data[index], str) for index in (1, 2, 3))
+            and isinstance(data[4], dict)
+            and all(
+                isinstance(path, str) and isinstance(oid, str)
+                for path, oid in data[4].items()
+            )
+        )
+
+    def _refresh(self, output: str) -> str:
+        if self.format not in {"json", "sarif"}:
+            return output
+        report = json.loads(output)
+        comparison = (
+            report["comparison"]
+            if self.format == "json"
+            else report["runs"][0]["properties"]["comparison"]
+        )
+        comparison["index_hash"] = self.index.identity
+        return json.dumps(report, indent=2, ensure_ascii=False) + "\n"

@@ -38,19 +38,6 @@ class GitService:
             max_workers=1, thread_name_prefix="smelt-git"
         )
 
-    def _exchange(self, message: dict[str, Any]) -> dict[str, Any]:
-        if self.process.stdin is None or self.process.stdout is None:
-            raise OSError("closed native Git service")
-        self.process.stdin.write(json.dumps(message).encode() + b"\n")
-        self.process.stdin.flush()
-        line = self.process.stdout.readline(_LIMIT)
-        if not line.endswith(b"\n"):
-            raise OSError("incomplete native Git response")
-        response = json.loads(line)
-        if not isinstance(response, dict):
-            raise ValueError("invalid native Git response")
-        return response
-
     def request(self, message: dict[str, Any]) -> dict[str, Any]:
         return self.executor.submit(self._exchange, message).result(timeout=10)
 
@@ -66,9 +53,18 @@ class GitService:
                 with contextlib.suppress(OSError):
                     stream.close()
 
-
-_service: GitService | None = None
-_failed = False
+    def _exchange(self, message: dict[str, Any]) -> dict[str, Any]:
+        if self.process.stdin is None or self.process.stdout is None:
+            raise OSError("closed native Git service")
+        self.process.stdin.write(json.dumps(message).encode() + b"\n")
+        self.process.stdin.flush()
+        line = self.process.stdout.readline(_LIMIT)
+        if not line.endswith(b"\n"):
+            raise OSError("incomplete native Git response")
+        response = json.loads(line)
+        if not isinstance(response, dict):
+            raise ValueError("invalid native Git response")
+        return response
 
 
 def close() -> None:
@@ -77,6 +73,10 @@ def close() -> None:
         with contextlib.suppress(OSError, subprocess.TimeoutExpired):
             _service.close()
         _service = None
+
+
+_service: GitService | None = None
+_failed = False
 
 
 atexit.register(close)
@@ -91,21 +91,6 @@ def check_scope(*, enabled: bool) -> Iterator[None]:
     finally:
         _CAPTURED.reset(captured)
         _ENABLED.reset(active)
-
-
-def _executable() -> str | None:
-    if (
-        not _ENABLED.get()
-        or _failed
-        or os.environ.get("SMELT_NATIVE_GIT") == "0"
-        or any(
-            name.startswith("GIT_")
-            and name not in {"GIT_PAGER", "GIT_OPTIONAL_LOCKS", "GIT_INDEX_FILE"}
-            for name in os.environ
-        )
-    ):
-        return None
-    return os.environ.get("SMELT_NATIVE_CLIENT")
 
 
 def request(operation: str, root: Path, **values: object) -> dict[str, Any] | None:
@@ -188,3 +173,18 @@ def tree_records(repository: Path, revision: str) -> bytes | None:
         )
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def _executable() -> str | None:
+    if (
+        not _ENABLED.get()
+        or _failed
+        or os.environ.get("SMELT_NATIVE_GIT") == "0"
+        or any(
+            name.startswith("GIT_")
+            and name not in {"GIT_PAGER", "GIT_OPTIONAL_LOCKS", "GIT_INDEX_FILE"}
+            for name in os.environ
+        )
+    ):
+        return None
+    return os.environ.get("SMELT_NATIVE_CLIENT")

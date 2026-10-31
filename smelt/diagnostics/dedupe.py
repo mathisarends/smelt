@@ -15,12 +15,6 @@ SPECIFICITY: dict[str, frozenset[str]] = {
 }
 
 
-def _key(violation: Violation) -> tuple[str | None, str | int | None]:
-    if violation.target_module:
-        return violation.path, violation.target_module
-    return violation.path, violation.line
-
-
 def deduplicate(violations: list[Violation]) -> list[Violation]:
     """Drop violations that a more specific rule already reports for the same cause."""
     codes_by_key: dict[tuple[str | None, str | int | None], set[str]] = defaultdict(set)
@@ -39,3 +33,9 @@ def deduplicate(violations: list[Violation]) -> list[Violation]:
         if not redundant:
             kept.append(violation)
     return kept
+
+
+def _key(violation: Violation) -> tuple[str | None, str | int | None]:
+    if violation.target_module:
+        return violation.path, violation.target_module
+    return violation.path, violation.line

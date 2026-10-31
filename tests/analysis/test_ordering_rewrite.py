@@ -3,14 +3,16 @@ import textwrap
 
 import pytest
 
-from smelt.analysis.ordering import analyze_order
+from smelt.analysis.ordering import (
+    _analyze_order,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 from smelt.analysis.ordering_rewrite import rewrite_order
 from smelt.analysis.parsing import AnalysisError
 from smelt.config.models import OrderingConfig
 
 
 def _rewrite(source: str) -> str:
-    result = analyze_order(ast.parse(source), OrderingConfig())
+    result = _analyze_order(ast.parse(source), OrderingConfig())
     sections = [
         section
         for section in result.sections
@@ -150,7 +152,7 @@ def test_compiler_only_errors_prevent_source_rewrites() -> None:
 
 def test_source_changes_after_analysis_are_rejected() -> None:
     source = "def _helper(): pass\ndef api(): pass\n"
-    result = analyze_order(ast.parse(source), OrderingConfig())
+    result = _analyze_order(ast.parse(source), OrderingConfig())
 
     with pytest.raises(AnalysisError, match="changed"):
         rewrite_order(

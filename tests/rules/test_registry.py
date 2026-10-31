@@ -15,7 +15,7 @@ from smelt.analysis.context import Index
 from smelt.config.models import SmeltConfig
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import BaseRule, RuleSet
-from smelt.rules.registry import build_rule_set, builtin_rules
+from smelt.rules.registry import build_rule_set
 
 
 class TestBuiltins:
@@ -32,13 +32,13 @@ class TestBuiltins:
                 ):
                     implementations.add(cls)
 
-        registered = {type(rule) for rule in builtin_rules()}
+        registered = {type(rule) for rule in build_rule_set().rules}
         assert implementations == registered, (
             "Register new rules in smelt/rules/registry.py; keep abstract helpers private",
             implementations ^ registered,
         )
 
-    @pytest.mark.parametrize("rule", builtin_rules(), ids=lambda rule: rule.code)
+    @pytest.mark.parametrize("rule", build_rule_set().rules, ids=lambda rule: rule.code)
     def test_catalog_contract(self, rule: BaseRule) -> None:
         family = {
             Category.DEPENDENCIES: "1",
@@ -58,7 +58,7 @@ class TestBuiltins:
             assert path.split(".")[0] in SmeltConfig.model_fields, path
 
     def test_codes_are_unique(self) -> None:
-        codes = [rule.code for rule in builtin_rules()]
+        codes = [rule.code for rule in build_rule_set().rules]
 
         assert len(codes) == len(set(codes))
 
@@ -77,7 +77,7 @@ class TestBuiltins:
 
 @pytest.mark.parametrize("attribute", ["code", "name"])
 def test_ambiguous_catalog_is_rejected(attribute: str) -> None:
-    first, second = (copy(rule) for rule in builtin_rules()[:2])
+    first, second = (copy(rule) for rule in build_rule_set().rules[:2])
     setattr(second, attribute, getattr(first, attribute))
 
     with pytest.raises(ValueError, match=f"duplicate rule {attribute}"):
@@ -86,7 +86,10 @@ def test_ambiguous_catalog_is_rejected(attribute: str) -> None:
 
 def test_lazy_selection_preserves_catalog_metadata() -> None:
     eager = build_rule_set()
-    for rule in build_rule_set(lazy=True).rules:
+    lazy = build_rule_set(lazy=True)
+    assert {rule.code for rule in lazy.rules} == {rule.code for rule in eager.rules}
+    assert lazy.rules
+    for rule in lazy.rules:
         original = eager.by_code(rule.code)
         assert original is not None
         for attribute in (
@@ -119,12 +122,13 @@ assert 'smelt.rules.structure.members' in sys.modules
 assert 'smelt.rules.testing.awaits' not in sys.modules
 assert 'smelt.analysis.test_syntax' not in sys.modules
 """
-    subprocess.run(  # noqa: S603 - fixed Python regression script
+    completed = subprocess.run(  # noqa: S603 - fixed Python regression script
         [sys.executable, "-c", script],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])},
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
         timeout=20,
     )
+    assert completed.returncode == 0, completed.stderr

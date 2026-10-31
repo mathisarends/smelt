@@ -53,7 +53,7 @@ jobs:
           PY
       - run: uv run --frozen pre-commit run --all-files --show-diff-on-failure
       - run: uv run --frozen pytest
-      - run: uv run --frozen smelt check --strict
+      - run: uv run --frozen smelt check --strict-coverage --fail-on warning
       - run: uv build --no-sources --sdist
       - name: Install and smoke-test the source distribution
         run: uv run --frozen python scripts/smoke_distribution.py dist

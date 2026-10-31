@@ -32,7 +32,7 @@ class Capture(io.StringIO):
         return self._tty
 
 
-def dispatch(
+def _dispatch(
     message: dict[str, Any],
     root: str,
     identity: str,
@@ -67,7 +67,7 @@ def dispatch(
     return {"code": code, "out": out.getvalue(), "err": err.getvalue()}
 
 
-def serve(
+def _serve_internal(
     endpoint: Path, *, root: str | None = None, idle_seconds: float = 120
 ) -> None:
     with worker_slot(endpoint.parent) as available:
@@ -154,10 +154,10 @@ def _respond(
         )
     if message.get("arguments") == ["shutdown"]:
         return {"code": 0, "out": "", "err": "", "restart": True}
-    return dispatch(message, root, identity, state=state)
+    return _dispatch(message, root, identity, state=state)
 
 
 if __name__ == "__main__":
     if client := sys.argv[3:]:
         os.environ["SMELT_NATIVE_CLIENT"] = client[0]
-    serve(Path(sys.argv[1]), root=sys.argv[2])
+    _serve_internal(Path(sys.argv[1]), root=sys.argv[2])

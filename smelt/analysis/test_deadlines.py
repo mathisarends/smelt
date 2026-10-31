@@ -9,15 +9,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-_CONTEXT_TIMEOUTS = {
-    "asyncio.timeout": "delay",
-    "asyncio.timeout_at": "when",
-    "anyio.fail_after": "delay",
-    "anyio.move_on_after": "delay",
-    "trio.fail_after": "seconds",
-    "trio.move_on_after": "seconds",
-}
-
 
 def has_timeout(
     call: ast.Call, name: str = "timeout", position: int | None = None
@@ -28,6 +19,16 @@ def has_timeout(
     return value is not None and not (
         isinstance(value, ast.Constant) and value.value is None
     )
+
+
+_CONTEXT_TIMEOUTS = {
+    "asyncio.timeout": "delay",
+    "asyncio.timeout_at": "when",
+    "anyio.fail_after": "delay",
+    "anyio.move_on_after": "delay",
+    "trio.fail_after": "seconds",
+    "trio.move_on_after": "seconds",
+}
 
 
 @dataclass(frozen=True)

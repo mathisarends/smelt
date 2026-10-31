@@ -42,6 +42,39 @@ class _Prepared:
     sections: int
 
 
+def apply_ordering_fixes(outcome: CheckOutcome) -> OrderingFixes:
+    """Fix only visible SMT313 sections after scope, selection, ignores and debt."""
+    fixes = OrderingFixes()
+    selected: dict[str, set[str]] = defaultdict(set)
+    for violation in outcome.report.violations:
+        if violation.code != "SMT313" or violation.path is None:
+            continue
+        expected = violation.expected or {}
+        if not expected.get("fixable") or not isinstance(expected.get("section"), str):
+            fixes.skip(
+                violation.path,
+                str(expected.get("fix_reason") or "section requires manual review"),
+            )
+            continue
+        selected[violation.path].add(expected["section"])
+    pending: list[_Prepared] = []
+    for path, keys in sorted(selected.items()):
+        try:
+            prepared = _prepare(outcome, path, keys)
+            if prepared.replacement != prepared.original:
+                pending.append(prepared)
+        except (AnalysisError, OSError, UnicodeError, SyntaxError) as exc:
+            fixes.skip(path, str(exc))
+    for prepared in pending:
+        try:
+            _write(prepared, outcome.context.root)
+            fixes.files.append(prepared.path)
+            fixes.sections += prepared.sections
+        except (AnalysisError, OSError) as exc:
+            fixes.skip(prepared.path, str(exc))
+    return fixes
+
+
 def _local_target(target: Path, root: Path) -> bool:
     return target.resolve().is_relative_to(root) and not any(
         part.is_symlink()
@@ -97,36 +130,3 @@ def _write(prepared: _Prepared, root: Path) -> None:
         if temporary is not None and temporary.exists():
             temporary.chmod(stat.S_IMODE(temporary.stat().st_mode) | stat.S_IWUSR)
             temporary.unlink()
-
-
-def apply_ordering_fixes(outcome: CheckOutcome) -> OrderingFixes:
-    """Fix only visible SMT313 sections after scope, selection, ignores and debt."""
-    fixes = OrderingFixes()
-    selected: dict[str, set[str]] = defaultdict(set)
-    for violation in outcome.report.violations:
-        if violation.code != "SMT313" or violation.path is None:
-            continue
-        expected = violation.expected or {}
-        if not expected.get("fixable") or not isinstance(expected.get("section"), str):
-            fixes.skip(
-                violation.path,
-                str(expected.get("fix_reason") or "section requires manual review"),
-            )
-            continue
-        selected[violation.path].add(expected["section"])
-    pending: list[_Prepared] = []
-    for path, keys in sorted(selected.items()):
-        try:
-            prepared = _prepare(outcome, path, keys)
-            if prepared.replacement != prepared.original:
-                pending.append(prepared)
-        except (AnalysisError, OSError, UnicodeError, SyntaxError) as exc:
-            fixes.skip(path, str(exc))
-    for prepared in pending:
-        try:
-            _write(prepared, outcome.context.root)
-            fixes.files.append(prepared.path)
-            fixes.sections += prepared.sections
-        except (AnalysisError, OSError) as exc:
-            fixes.skip(prepared.path, str(exc))
-    return fixes

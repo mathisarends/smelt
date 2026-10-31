@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.analysis.context import AnalysisContext
-from smelt.analysis.python_version import minimum_from_requires_python
+from smelt.analysis.python_version import (
+    _minimum_from_requires_python,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 from smelt.config import load_config
 from tests.helpers import write_project
 
@@ -33,7 +35,7 @@ if TYPE_CHECKING:
 def test_validated_lower_bounds(
     spec: str, minimum: tuple[int, int] | None, deferred: bool
 ) -> None:
-    target = minimum_from_requires_python(spec, "pyproject.toml")
+    target = _minimum_from_requires_python(spec, "pyproject.toml")
 
     assert target.minimum == minimum
     assert target.deferred_annotations is deferred

@@ -27,35 +27,6 @@ class FactCache:
         self._connection: sqlite3.Connection | None = None
         self._disabled = False
 
-    def _connect(self) -> sqlite3.Connection | None:
-        if self._disabled:
-            return None
-        if self._connection is None:
-            try:
-                self.directory.mkdir(parents=True, exist_ok=True)
-                self._connection = sqlite3.connect(
-                    self.directory / "facts.sqlite3", timeout=0.02
-                )
-                self._connection.execute("PRAGMA journal_mode=WAL")
-                self._connection.execute("PRAGMA synchronous=NORMAL")
-                self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
-                )
-                self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
-                )
-                self._connection.commit()
-            except (OSError, sqlite3.Error):
-                self._disable()
-        return self._connection
-
-    def _disable(self) -> None:
-        self._disabled = True
-        if self._connection is not None:
-            with suppress(sqlite3.Error):
-                self._connection.close()
-            self._connection = None
-
     def close(self) -> None:
         self._disabled = True
         if self._connection is not None:
@@ -123,6 +94,35 @@ class FactCache:
                 )
             except sqlite3.Error:
                 self._disable()
+
+    def _connect(self) -> sqlite3.Connection | None:
+        if self._disabled:
+            return None
+        if self._connection is None:
+            try:
+                self.directory.mkdir(parents=True, exist_ok=True)
+                self._connection = sqlite3.connect(
+                    self.directory / "facts.sqlite3", timeout=0.02
+                )
+                self._connection.execute("PRAGMA journal_mode=WAL")
+                self._connection.execute("PRAGMA synchronous=NORMAL")
+                self._connection.execute(
+                    "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                )
+                self._connection.execute(
+                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                )
+                self._connection.commit()
+            except (OSError, sqlite3.Error):
+                self._disable()
+        return self._connection
+
+    def _disable(self) -> None:
+        self._disabled = True
+        if self._connection is not None:
+            with suppress(sqlite3.Error):
+                self._connection.close()
+            self._connection = None
 
     def read[T](self, key: str, adapter: TypeAdapter[T]) -> T | None:
         connection = self._connect()

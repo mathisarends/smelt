@@ -10,7 +10,7 @@ import pytest
 from smelt.analysis.parsing import AnalysisError
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
-from smelt.engine.changes import base_snapshot, capture_repository, resolve_comparison
+from smelt.engine.changes import capture_repository, export_base, resolve_comparison
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, check, codes_at, violations, write_project
 
@@ -96,7 +96,8 @@ class TestBaseSnapshot:
         (repo / "app/application/service.py").write_text("x = 1\n")
         dest = tmp_path_factory.mktemp("base")
 
-        snapshot, comparison = base_snapshot(repo, None, dest)
+        repository, comparison = resolve_comparison(repo, None)
+        snapshot = export_base(repo, repository, comparison, dest)
 
         assert snapshot == dest
         assert (dest / "app/application/service.py").read_text() == ""
@@ -108,8 +109,9 @@ class TestBaseSnapshot:
     ) -> None:
         _git(tmp_path, "init", "-q")
 
-        snapshot, comparison = base_snapshot(
-            tmp_path, None, tmp_path_factory.mktemp("base")
+        repository, comparison = resolve_comparison(tmp_path, None)
+        snapshot = export_base(
+            tmp_path, repository, comparison, tmp_path_factory.mktemp("base")
         )
 
         assert snapshot is None
@@ -629,6 +631,7 @@ class TestChangedMode:
             check=True,
             capture_output=True,
             text=True,
+            timeout=10,
         ).stdout.strip()
         assert document["scope"]["mode"] == "changed"
         comparison = document["comparison"]

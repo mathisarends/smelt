@@ -10,6 +10,30 @@ if TYPE_CHECKING:
     from smelt.analysis.test_syntax import MockObservation, TestFunction
 
 
+def call_only_async_mocks(test: TestFunction) -> list[MockObservation]:
+    asserted = _asserted_nodes(test)
+    parents = {
+        child: parent
+        for parent in ast.walk(test.node)
+        for child in ast.iter_child_nodes(parent)
+    }
+    observations = [
+        item
+        for item in test.mock_observations
+        if isinstance(item.node, ast.Call) or item.node in asserted
+    ]
+    awaited = {item.origin for item in observations if item.kind == "await"}
+    risks: dict[str, MockObservation] = {}
+    for item in observations:
+        if item.kind == "call" and item.origin not in awaited:
+            if isinstance(item.node, ast.Attribute) and _checks_no_call(
+                item.node, parents
+            ):
+                continue
+            risks.setdefault(item.origin, item)
+    return list(risks.values())
+
+
 def _asserted_nodes(test: TestFunction) -> set[ast.AST]:
     writes = Counter(
         node.id
@@ -65,27 +89,3 @@ def _checks_no_call(node: ast.Attribute, parents: dict[ast.AST, ast.AST]) -> boo
             )
         )
     return False
-
-
-def call_only_async_mocks(test: TestFunction) -> list[MockObservation]:
-    asserted = _asserted_nodes(test)
-    parents = {
-        child: parent
-        for parent in ast.walk(test.node)
-        for child in ast.iter_child_nodes(parent)
-    }
-    observations = [
-        item
-        for item in test.mock_observations
-        if isinstance(item.node, ast.Call) or item.node in asserted
-    ]
-    awaited = {item.origin for item in observations if item.kind == "await"}
-    risks: dict[str, MockObservation] = {}
-    for item in observations:
-        if item.kind == "call" and item.origin not in awaited:
-            if isinstance(item.node, ast.Attribute) and _checks_no_call(
-                item.node, parents
-            ):
-                continue
-            risks.setdefault(item.origin, item)
-    return list(risks.values())

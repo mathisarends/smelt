@@ -50,6 +50,20 @@ composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yaml`.
 
+The repository also enables public-first ordering, internal-member/static-helper
+visibility, test-only public functions/attributes and test-quality reviews. Future
+annotations follow `when-needed` using the supported Python minimum in package
+metadata (currently 3.12), not the developer's interpreter. Keep imports needed for
+forward references, TYPE_CHECKING or runtime annotation consumers.
+
+Run `uv run smelt check --strict-coverage --fail-on warning` before committing.
+CI and release validation use the same warning threshold; the staged hook checks
+new findings against HEAD. Do not record debt or disable rules to adopt a change.
+Prefer private helpers and test public behavior. A direct unit test of a parser,
+rewriter or cache invalidation boundary can use a local `SMT420` exception with a
+specific reason; in multiline imports put it on the imported name. Entry points
+used by excluded maintainer scripts have deliberate `__all__` exports.
+
 The checker selects rules through generated `smelt/rules/catalog.json` metadata
 and imports implementations only when needed. Register implementation paths in
 `rules/registry.py`; rule classes remain the metadata source. Shared pure policy
@@ -129,7 +143,8 @@ code or name. Reconcile allocations when concurrent PRs introduce rules.
    Include a concrete location, useful `expected` policy data and an actionable
    hint. Keep output deterministic. Avoid a report for every alias when one
    architectural decision explains them all.
-3. Register the class in `builtin_rules()`. Keep abstract helper classes private.
+3. Register the implementation path in `_IMPLEMENTATIONS` in `rules/registry.py`.
+   Keep abstract helper classes private; `build_rule_set()` is the public factory.
    Production registration stays explicit; test discovery detects forgotten rules.
 4. Add policy to the existing typed configuration only if needed. Preserve package
    ownership, closest-policy overrides and conservative behavior for unknown
@@ -187,7 +202,7 @@ uv run pytest tests/rules/<category>/test_<concept>.py
 uv run python scripts/generate.py
 uv run pytest tests/rules/test_registry.py tests/test_docs.py
 uv run smelt explain <code> --format json
-uv run smelt check --strict --format json
+uv run smelt check --strict-coverage --fail-on warning --format json
 uv run pre-commit run --all-files
 uv run pytest
 ```
