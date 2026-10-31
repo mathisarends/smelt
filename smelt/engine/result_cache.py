@@ -14,7 +14,7 @@ from smelt.analysis.identity import analyzer_identity
 from smelt.engine.changes import (
     GitIndex,
     capture_index,
-    git_repository,
+    capture_repository,
     lexical_path,
     resolve_comparison,
 )
@@ -58,12 +58,13 @@ class ResultCache:
         if args.command != "check" or not args.staged or args.no_cache or args.fix:
             return None
         requested = lexical_path(cwd / args.config) if args.config is not None else None
-        repository = git_repository(cwd, requested)
+        captured = capture_repository(cwd, requested)
+        repository = captured.path
         if requested is not None and not requested.is_relative_to(repository):
             return None
         index = capture_index(repository)
         args._staged_index = index
-        _, comparison = resolve_comparison(repository, args.base, repository=repository)
+        _, comparison = resolve_comparison(repository, args.base, captured=captured)
         args._comparison = comparison
         config = requested
         if config is None:

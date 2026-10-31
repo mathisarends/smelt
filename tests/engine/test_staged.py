@@ -305,6 +305,28 @@ def test_exact_retry_bypasses_the_engine_and_its_imports(
     assert json.loads(executed.stdout) == expected[1]
 
 
+def test_staged_retry_needs_two_git_processes(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(repo)
+    expected = _check(repo, capsys)
+    calls: list[list[str]] = []
+    original = subprocess.run
+
+    def run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        calls.append(args[0])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert _check(repo, capsys) == expected
+    assert len(calls) == 2
+    assert "--show-toplevel" in calls[0]
+    assert "HEAD" in calls[0]
+    assert "ls-files" in calls[1]
+
+
 def test_head_advance_invalidates_the_exact_result(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
