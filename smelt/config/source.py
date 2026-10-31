@@ -50,3 +50,7 @@ class SourceStore:
 
     def inventory(self) -> Iterable[Path] | None:
         return None
+
+    def dependencies(self) -> dict[str, str]:
+        """Immutable inputs observed by this view; disk checks cannot reuse these."""
+        return {}

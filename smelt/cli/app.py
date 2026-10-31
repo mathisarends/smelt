@@ -238,7 +238,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         recording = Console(cast("TextIO", out_stream), cast("TextIO", err_stream))
         code = handler(args, recording, cwd)
-        cache.write(code, "".join(out_stream.parts), "".join(err_stream.parts))
+        cache.write(
+            code,
+            "".join(out_stream.parts),
+            "".join(err_stream.parts),
+            dependencies=getattr(args, "_staged_inputs", None),
+        )
         return code
     except (
         AnalysisError,

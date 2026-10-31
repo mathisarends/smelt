@@ -96,6 +96,15 @@ config location, working directory, CLI options and rendering mode. An unavailab
 or damaged result cache falls back to normal checking. `--no-cache` bypasses both
 result and fact caches. Normal working-tree checks hash contents and rediscover
 inventory; they do not trust modification time alone.
+
+If only unobserved file contents change, a staged result can also be reused across
+different index hashes. Git-backed reads and content-identity queries record their
+object dependencies, including config, Python metadata and arbitrary debt filenames.
+Cached whole analyses retain those dependencies too. The complete path inventory
+must still match, protecting namespace discovery, workspace globs and missing-file
+queries. JSON and SARIF provenance is refreshed with the current captured index hash.
+This is intentionally conservative: additions, deletions and directory changes
+still require checking even when the changed filename looks like documentation.
 Policy, Python metadata and analyzer/dependency versions invalidate relevant data.
 Installed wheels use their recorded build hashes; reinstalls with different code
 invalidate the cache even if the version is unchanged. Editable and `PYTHONPATH`

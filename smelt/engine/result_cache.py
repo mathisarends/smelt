@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, TextIO
 
 from smelt.analysis.identity import analyzer_identity
 from smelt.engine.changes import (
+    GitIndex,
     capture_index,
     git_repository,
     lexical_path,
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     import argparse
     from pathlib import Path
 
-_RESULT_FIELDS = 3
+_RESULT_FIELDS = 5
 
 
 class RecordingStream(io.TextIOBase):
@@ -46,6 +47,9 @@ class RecordingStream(io.TextIOBase):
 class ResultCache:
     path: Path
     key: str
+    family: str
+    index: GitIndex
+    format: str
 
     @classmethod
     def prepare(
@@ -87,19 +91,21 @@ class ResultCache:
             for key, value in vars(args).items()
             if key != "handler" and not key.startswith("_")
         }
+        inputs = [
+            2,
+            str(cwd.resolve()),
+            str(config),
+            comparison.to_json(),
+            options,
+            color,
+        ]
         key = hashlib.sha256(
-            json.dumps(
-                [
-                    1,
-                    str(cwd.resolve()),
-                    str(config),
-                    index.identity,
-                    comparison.to_json(),
-                    options,
-                    color,
-                ],
-                sort_keys=True,
-            ).encode()
+            json.dumps([inputs, index.identity], sort_keys=True).encode()
+        ).hexdigest()
+        # Inventory protects negative existence queries, package/namespace discovery
+        # and workspace globbing. Contents only need to match observed inputs.
+        family = hashlib.sha256(
+            json.dumps([inputs, sorted(index.blobs)], sort_keys=True).encode()
         ).hexdigest()
         return cls(
             config.parent
@@ -108,6 +114,9 @@ class ResultCache:
             / analyzer_identity()
             / "results.sqlite3",
             key,
+            family,
+            index,
+            args.format,
         )
 
     def read(self) -> tuple[int, str, str] | None:
@@ -117,29 +126,70 @@ class ResultCache:
             with closing(
                 sqlite3.connect(f"{self.path.as_uri()}?mode=ro", uri=True, timeout=0.02)
             ) as connection:
-                row = connection.execute(
-                    "SELECT payload, digest FROM results WHERE key = ?", (self.key,)
-                ).fetchone()
-            if row is None or hashlib.sha256(row[0]).hexdigest() != row[1]:
-                return None
-            data = json.loads(row[0])
-            if (
-                not isinstance(data, list)
-                or len(data) != _RESULT_FIELDS
-                or type(data[0]) is not int
-                or data[0] not in {0, 1}
-                or not isinstance(data[1], str)
-                or not isinstance(data[2], str)
-            ):
-                return None
-            return data[0], data[1], data[2]
-        except (OSError, ValueError, TypeError, sqlite3.Error):
+                for key in (self.key, self.family):
+                    row = connection.execute(
+                        "SELECT payload, digest FROM results WHERE key = ?", (key,)
+                    ).fetchone()
+                    if row is None or hashlib.sha256(row[0]).hexdigest() != row[1]:
+                        continue
+                    data = json.loads(row[0])
+                    if not self._valid(data):
+                        continue
+                    code, out, err, previous, dependencies = data
+                    if previous != self.index.identity:
+                        if not dependencies or any(
+                            self.index.blobs.get(path) != oid
+                            for path, oid in dependencies.items()
+                        ):
+                            continue
+                        out = self._refresh(out)
+                    return code, out, err
+        except (OSError, ValueError, TypeError, KeyError, IndexError, sqlite3.Error):
             return None
+        return None
 
-    def write(self, code: int, out: str, err: str) -> None:
+    def _valid(self, data: object) -> bool:
+        return (
+            isinstance(data, list)
+            and len(data) == _RESULT_FIELDS
+            and type(data[0]) is int
+            and data[0] in {0, 1}
+            and all(isinstance(data[index], str) for index in (1, 2, 3))
+            and isinstance(data[4], dict)
+            and all(
+                isinstance(path, str) and isinstance(oid, str)
+                for path, oid in data[4].items()
+            )
+        )
+
+    def _refresh(self, output: str) -> str:
+        if self.format not in {"json", "sarif"}:
+            return output
+        report = json.loads(output)
+        comparison = (
+            report["comparison"]
+            if self.format == "json"
+            else report["runs"][0]["properties"]["comparison"]
+        )
+        comparison["index_hash"] = self.index.identity
+        return json.dumps(report, indent=2, ensure_ascii=False) + "\n"
+
+    def write(
+        self,
+        code: int,
+        out: str,
+        err: str,
+        *,
+        dependencies: dict[str, str] | None = None,
+    ) -> None:
         if code not in {0, 1}:
             return
-        payload = json.dumps([code, out, err]).encode()
+        payload = json.dumps(
+            [code, out, err, self.index.identity, dependencies or {}]
+        ).encode()
+        rows = [(self.key, payload, hashlib.sha256(payload).hexdigest())]
+        if dependencies:
+            rows.append((self.family, payload, rows[0][2]))
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with (
@@ -149,9 +199,9 @@ class ResultCache:
                 connection.execute(
                     "CREATE TABLE IF NOT EXISTS results (key TEXT PRIMARY KEY, payload BLOB NOT NULL, digest TEXT NOT NULL)"
                 )
-                connection.execute(
+                connection.executemany(
                     "INSERT OR REPLACE INTO results VALUES (?, ?, ?)",
-                    (self.key, payload, hashlib.sha256(payload).hexdigest()),
+                    rows,
                 )
         except (OSError, sqlite3.Error):
             return

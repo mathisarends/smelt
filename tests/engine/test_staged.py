@@ -334,6 +334,60 @@ def test_corrupt_exact_result_and_cached_blob_fall_back_to_analysis(
     assert cached == _check(repo, capsys, "--no-cache")
 
 
+@pytest.mark.parametrize("output", ["json", "sarif"])
+def test_document_content_edits_reuse_analysis_with_fresh_index_provenance(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    output: str,
+) -> None:
+    (repo / "README.md").write_text("before\n")
+    _git(repo, "add", "README.md")
+    # Also cover a result built from an already cached whole analysis.
+    _check(repo, capsys, "--statistics", "--format", output)
+    before = _check(repo, capsys, "--format", output)
+    (repo / "README.md").write_text("after\n")
+    _git(repo, "add", "README.md")
+
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("unobserved content changes must reuse the result before analysis")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            import_module("smelt.cli.commands.check"), "staged_project", unexpected
+        )
+        cached = _check(repo, capsys, "--format", output)
+    assert cached != before  # provenance must describe the new captured index
+    assert cached == _check(repo, capsys, "--no-cache", "--format", output)
+
+
+def test_arbitrary_markdown_debt_file_is_an_observed_input(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    Debt([]).write(repo / "accepted.md")
+    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.md\n")
+    _git(repo, "add", "smelt.yaml", "accepted.md")
+    assert _check(repo, capsys)[0] == 0
+    (repo / "accepted.md").write_text("broken JSON")
+    _git(repo, "add", "accepted.md")
+    cached = _check(repo, capsys)
+    assert cached[0] == 2
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
+def test_inventory_changes_invalidate_reused_results(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _check(repo, capsys)
+    (repo / "app/new.py").write_text("def helper(): pass\n")
+    _git(repo, "add", "app/new.py")
+    cached = _check(repo, capsys)
+    assert cached[0] == 1
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
 def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -52,6 +52,8 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         with staged_project(
             cwd, args.config, index=getattr(args, "_staged_index", None)
         ) as staged:
+            if staged.loaded.source is not None:
+                args._staged_inputs = staged.loaded.source.dependencies()
             return _check_loaded(
                 args,
                 console,

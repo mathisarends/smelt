@@ -298,9 +298,11 @@ def _run_check(
             ),
             len(ctx.files.sources),
             list(ctx.files.all_python_paths()),
+            dict(ctx.store.dependencies()),
         )
         if cache and key:
             cache.write(key, analyzed, ANALYSIS)
+    ctx.store.dependencies().update(analyzed.dependencies)
     violations, suppressed = list(analyzed.violations), analyzed.suppressed
     unfiltered = list(violations)
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]
