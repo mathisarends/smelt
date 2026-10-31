@@ -62,6 +62,17 @@ def test_public_instance_state_is_not_justified_by_a_test_read(tmp_path: Path) -
         "internal_references": [3, 5],
         "test_references": [{"path": "tests/test_worker.py", "line": 5}],
         "automatic_rename": False,
+        "usage_scope": {
+            "root_packages": ["app"],
+            "source_roots": ["."],
+            "test_roots": ["tests"],
+            "excluded_paths": [],
+            "unassessed_consumers": [
+                "excluded files (including maintainer scripts)",
+                "files outside selected packages and roots",
+                "external consumers and arbitrary dynamic access",
+            ],
+        },
     }
 
 

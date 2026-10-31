@@ -20,7 +20,10 @@ class InternalPublicMember(BaseRule):
     requires = frozenset({Index.MEMBERS})
     doc = RuleDoc(
         summary="A public module function or instance method has no observed use outside its module or class.",
-        rationale="An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to SMT429. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe.",
+        rationale=(
+            "An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to SMT429. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe."
+            " Excluded files, unselected packages and external consumers are unassessed; findings expose usage_scope so absence of observed callers is not mistaken for a whole-project proof."
+        ),
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
         fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[SMT316] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
@@ -52,13 +55,14 @@ class InternalPublicMember(BaseRule):
                     "class": member.owner.name if member.owner else None,
                     "member": node.name,
                     "suggested_name": suggested_name,
+                    "usage_scope": ctx.member_usage.usage_scope,
                     "observed_usage": "internal-only"
                     if member.internal_references
                     else "unused",
                     "internal_references": list(member.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Review making {qualified} private as {suggested_name}; update calls and callbacks, checking for existing private-name collisions. For a deliberate public API, append `# smelt: ignore[SMT316] -- <specific API reason>` to this definition.",
+                hint=f"Review making {qualified} private as {suggested_name}; excluded files (including maintainer scripts), unselected packages and external consumers were not assessed. Check those callers before renaming. For a deliberate public API, append `# smelt: ignore[SMT316] -- <specific API reason>` to this definition.",
             )
 
 
@@ -71,7 +75,10 @@ class InternalStaticHelper(BaseRule):
     requires = frozenset({Index.MEMBERS})
     doc = RuleDoc(
         summary="An internal static helper can be reviewed for extraction to a private module function.",
-        rationale="A helper that needs neither instance nor class state is often easier to find and reuse as a private module function. This package convention reviews direct sync/async methods carrying only the recognized builtin staticmethod decorator, including import aliases. Known or unresolved external same-named attribute access preserves static APIs. Classes with inheritance, subclasses or decorators, additional method decorators, special methods, __class__/super references and detected class-namespace dependencies are excluded. This is a placement preference, not proof of equivalent runtime behavior; external/dynamic consumers and definition-time dependencies still need review.",
+        rationale=(
+            "A helper that needs neither instance nor class state is often easier to find and reuse as a private module function. This package convention reviews direct sync/async methods carrying only the recognized builtin staticmethod decorator, including import aliases. Known or unresolved external same-named attribute access preserves static APIs. Classes with inheritance, subclasses or decorators, additional method decorators, special methods, __class__/super references and detected class-namespace dependencies are excluded. This is a placement preference, not proof of equivalent runtime behavior; external/dynamic consumers and definition-time dependencies still need review."
+            " Excluded files, unselected packages and external consumers are unassessed; findings expose usage_scope so absence of observed callers is not mistaken for a whole-project proof."
+        ),
         bad="class Browser:\n    @staticmethod\n    def _normalize(value):\n        return value.strip()\n    def send(self, value):\n        return self._normalize(value)",
         good="def _normalize(value):\n    return value.strip()\n\nclass Browser:\n    def send(self, value):\n        return _normalize(value)",
         fix="Move the helper to module scope with a leading underscore, remove @staticmethod, and update class/instance-qualified calls and callback references. Preserve annotations, defaults, evaluation order and dependencies; choose a distinct name if the module already binds it. Keep deliberate static APIs with a closest package rule set to off or reasoned suppression. No automatic extraction is performed.",
@@ -100,9 +107,10 @@ class InternalStaticHelper(BaseRule):
                     "class": member.owner.name if member.owner else None,
                     "method": node.name,
                     "suggested_name": name,
+                    "usage_scope": ctx.member_usage.usage_scope,
                     "destination": member.module,
                     "internal_references": list(member.internal_references),
                     "automatic_extraction": False,
                 },
-                hint=f"Review moving this helper to {name} at module scope and update qualified calls and callbacks, preserving defaults and annotations.",
+                hint=f"Review moving this helper to {name} at module scope, preserving defaults and annotations. Excluded files (including maintainer scripts), unselected packages and external consumers were not assessed; check those callers first.",
             )

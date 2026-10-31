@@ -16,6 +16,103 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize(
     ("body", "flagged"),
     [
+        (
+            "subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, timeout=1)",
+            False,
+        ),
+        (
+            "script = 'assert result == 1'\n    subprocess.check_call([sys.executable, '-P', '-c', script], timeout=1)",
+            False,
+        ),
+        (
+            "subprocess.check_output([sys.executable, '-c', 'assert result == 1'], timeout=1)",
+            False,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'assert result == 1'], timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'assert True'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'def unused():\\n    assert result == 1'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'if False: assert result == 1'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-O', '-c', 'assert result == 1'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, shell=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, env={'PYTHONOPTIMIZE': '1'}, timeout=1)",
+            True,
+        ),
+        (
+            "script = build_script()\n    subprocess.run([sys.executable, '-c', script], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "subprocess = unknown\n    subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "sys.executable = 'other'\n    subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, timeout=1)",
+            True,
+        ),
+        (
+            "try:\n        subprocess.run([sys.executable, '-c', 'assert result == 1'], check=True, timeout=1)\n    except subprocess.CalledProcessError:\n        pass",
+            True,
+        ),
+        (
+            "from subprocess import run as execute\n    from sys import executable as python\n    execute([python, '-c', 'assert result == 1'], check=True, timeout=1)",
+            False,
+        ),
+    ],
+)
+def test_checked_inline_python_assertions_are_static_evidence(
+    tmp_path: Path, body: str, flagged: bool
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+            "app/__init__.py": "",
+            "tests/test_service.py": "import subprocess\nimport sys\ndef test_run():\n    "
+            + body
+            + "\n",
+        },
+    )
+    found = violations(tmp_path)
+    assert [finding.code for finding in found] == (["SMT424"] if flagged else [])
+
+
+@pytest.mark.parametrize("observed", [0, 1])
+def test_child_assertion_failure_is_observed_by_the_parent(
+    tmp_path: Path, observed: int
+) -> None:
+    source = f"import subprocess, sys\nsubprocess.run([sys.executable, '-c', 'assert {observed} == 1'], check=True, timeout=5)"
+    child = tmp_path / "child_contract.py"
+    child.write_text(source, encoding="utf-8")
+    result = subprocess.run(  # noqa: S603 - fixed synthetic contract written by this test
+        [sys.executable, str(child)], capture_output=True, timeout=10, check=False
+    )
+    assert (result.returncode == 0) is (observed == 1)
+    if observed == 0:
+        assert b"CalledProcessError" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("body", "flagged"),
+    [
         ("run()", True),
         ("assert True", True),
         ("mock.save.assert_called_once()", True),

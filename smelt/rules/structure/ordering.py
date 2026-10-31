@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -33,6 +34,8 @@ class PublicDefinitionsFirst(BaseRule):
             "can apply bounded moves where the package permits safe-only fixes. "
             "Imports, unknown execution and a misplaced main guard require manual "
             "review. Names and visibility are never rewritten by ordering."
+            " Refused sections identify the triggering expression and its source "
+            "location in fix_blocker and fix_reason; the safety boundary stays in place."
         ),
         config=("rules", "structure.contracts", "project.python_version"),
     )
@@ -42,6 +45,23 @@ class PublicDefinitionsFirst(BaseRule):
             for issue in result.issues:
                 section = issue.section
                 reason = issue.reason or (section.fix_reason if section else None)
+                blocker = issue.fix_node or (
+                    section.fix_blocker.node
+                    if section and section.fix_blocker
+                    else None
+                )
+                location = (
+                    {
+                        "path": result.path,
+                        "line": blocker.lineno,
+                        "column": blocker.col_offset + 1,
+                        "expression": ast.unparse(blocker).splitlines()[0],
+                    }
+                    if blocker is not None
+                    else None
+                )
+                if reason and location:
+                    reason += f" ({result.path}:{location['line']}:{location['column']}: {location['expression']})"
                 yield self.violation(
                     issue.message,
                     path=result.path,
@@ -56,6 +76,7 @@ class PublicDefinitionsFirst(BaseRule):
                         "order": section.expected if section else None,
                         "fixable": section is not None and reason is None,
                         "fix_reason": reason,
+                        "fix_blocker": location,
                         "deferred_annotations": result.deferred,
                     },
                     hint=f"Keep execution boundaries and prerequisite definitions in place. {reason or 'Use the expected order; bounded fixes require explicit --fix.'}",

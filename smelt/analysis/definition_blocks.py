@@ -39,6 +39,7 @@ class DefinitionBlock:
     reads: frozenset[str]
     barrier: str | None = None
     fix_reason: str | None = None
+    fix_node: ast.expr | None = None
 
     @property
     def line(self) -> int:
@@ -322,7 +323,12 @@ def build_blocks(
             >= statement_line(body[index + 1])
         ):
             reason = "statements share a physical line"
-        fix_reason = _factory_fix_reason(node, aliases)
+        fix_node = _factory_fix_node(node, aliases)
+        fix_reason = (
+            "nonliteral type-variable construction requires review"
+            if fix_node
+            else None
+        )
         blocks.append(
             DefinitionBlock(
                 tuple(group),
@@ -335,6 +341,7 @@ def build_blocks(
                 frozenset(reads),
                 reason,
                 fix_reason,
+                fix_node,
             )
         )
         aliases.clear()
@@ -549,14 +556,14 @@ def _family(body: list[ast.stmt], first: int) -> list[ast.stmt]:
     return group
 
 
-def _factory_fix_reason(node: ast.stmt, aliases: dict[str, str]) -> str | None:
+def _factory_fix_node(node: ast.stmt, aliases: dict[str, str]) -> ast.expr | None:
     if (
         not _type_factory(node, aliases)
         or not isinstance(node, ast.Assign | ast.AnnAssign)
         or not isinstance(node.value, ast.Call)
     ):
         return None
-    literal = all(isinstance(value, ast.Constant) for value in node.value.args) and all(
-        isinstance(item.value, ast.Constant) for item in node.value.keywords
+    values = [*node.value.args, *(item.value for item in node.value.keywords)]
+    return next(
+        (value for value in values if not isinstance(value, ast.Constant)), None
     )
-    return None if literal else "nonliteral type-variable construction requires review"

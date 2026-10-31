@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-31",
+  "purpose": "Read-only evaluation of review feedback; raw findings are not independent defects.",
+  "baseline_analyzer_commit": "b945019",
+  "candidate_analyzer_commit": "53c5e5329395def263a337f8436b66ed3ecd28f0",
+  "package_version": "0.1.6 (unreleased source checkouts, not PyPI comparison)",
+  "consumer": "maximus-trading, root workspace and independent Hermes extension",
+  "consumer_revision": "5805b5e1386ec420f54d726f343d767bbacbfc16",
+  "consumer_integrity": {
+    "status_before": "clean",
+    "status_after": "clean",
+    "revision_unchanged": true,
+    "source_writes": false,
+    "configuration_writes": false,
+    "debt_writes": false,
+    "consumer_tests_executed": false,
+    "cache_enabled": false
+  },
+  "review_profile": {
+    "rules": {
+      "import-cycle": "error",
+      "public-definitions-first": "warning",
+      "bundled-instance-assignment": "warning",
+      "internal-public-member": "warning",
+      "internal-static-helper": "warning",
+      "redundant-str-enum-value": "hint",
+      "prefer-package-import": "hint",
+      "private-test-access": "warning",
+      "string-patch-target": "warning",
+      "test-without-outcome-check": "warning",
+      "test-only-checks-possibly-empty-data": "warning",
+      "unbounded-test-wait": "warning",
+      "independent-test-case-loop": "hint",
+      "async-mock-without-await-check": "warning",
+      "test-only-public-function": "warning",
+      "test-only-public-attribute": "warning"
+    },
+    "package_options": {
+      "future_annotations": "when-needed"
+    },
+    "architecture": "preserved from each existing config",
+    "scope": "existing package/root selection; independent strict-coverage inventory"
+  },
+  "subjects": {
+    "root": {
+      "modules_analyzed": 839,
+      "configured_policy_hash": "sha256:a73001440c5af95c",
+      "review_policy_hash": "sha256:6c73ca5f1d435bd8",
+      "configured_counts": {
+        "SMT101": 9,
+        "SMT102": 4522,
+        "SMT106": 225
+      },
+      "baseline_review_counts": {
+        "SMT101": 9,
+        "SMT102": 4522,
+        "SMT104": 1,
+        "SMT106": 225,
+        "SMT313": 53,
+        "SMT314": 2,
+        "SMT316": 32,
+        "SMT317": 10,
+        "SMT318": 6,
+        "SMT319": 34,
+        "SMT420": 6,
+        "SMT422": 7,
+        "SMT424": 15,
+        "SMT425": 2,
+        "SMT426": 11,
+        "SMT428": 3,
+        "SMT429": 3
+      },
+      "candidate_review_counts": {
+        "SMT101": 9,
+        "SMT102": 4522,
+        "SMT104": 1,
+        "SMT106": 225,
+        "SMT313": 53,
+        "SMT314": 2,
+        "SMT316": 32,
+        "SMT317": 10,
+        "SMT318": 6,
+        "SMT319": 34,
+        "SMT420": 6,
+        "SMT422": 7,
+        "SMT424": 13,
+        "SMT425": 2,
+        "SMT426": 11,
+        "SMT428": 3,
+        "SMT429": 3
+      },
+      "additional_review_findings": 183,
+      "removed_findings_by_rule": {
+        "SMT424": 2
+      },
+      "added_findings_by_rule": {},
+      "strict_coverage_counts": {
+        "governed": 818,
+        "facade": 21,
+        "unclassified": 0,
+        "uncovered": 100,
+        "excluded": 0
+      },
+      "distinct_architecture_edge_labels": {
+        "SMT101": 1,
+        "SMT102": 125,
+        "SMT106": 30
+      },
+      "cold_and_warm_cache_match_uncached_report": true
+    },
+    "hermes": {
+      "modules_analyzed": 180,
+      "configured_policy_hash": "sha256:6f620a532f5ad322",
+      "review_policy_hash": "sha256:c64621dc154c36f8",
+      "configured_counts": {
+        "SMT102": 24,
+        "SMT301": 1
+      },
+      "baseline_review_counts": {
+        "SMT102": 24,
+        "SMT301": 1,
+        "SMT313": 7,
+        "SMT316": 24,
+        "SMT317": 2,
+        "SMT318": 1,
+        "SMT319": 2,
+        "SMT422": 9,
+        "SMT426": 7,
+        "SMT429": 16
+      },
+      "candidate_review_counts": {
+        "SMT102": 24,
+        "SMT301": 1,
+        "SMT313": 7,
+        "SMT316": 24,
+        "SMT317": 2,
+        "SMT318": 1,
+        "SMT319": 2,
+        "SMT422": 9,
+        "SMT426": 7,
+        "SMT429": 16
+      },
+      "additional_review_findings": 68,
+      "removed_findings_by_rule": {},
+      "added_findings_by_rule": {},
+      "strict_coverage_counts": {
+        "governed": 165,
+        "facade": 14,
+        "unclassified": 1,
+        "uncovered": 0,
+        "excluded": 0
+      },
+      "distinct_architecture_edge_labels": {
+        "SMT102": 1
+      },
+      "cold_and_warm_cache_match_uncached_report": true
+    }
+  },
+  "reviewed_evidence": [
+    "Two removed SMT424 findings are real import-isolation assertions in checked sys.executable -c subprocesses; test sources were inspected, not executed.",
+    "Two remaining SMT425 findings involve output-dependent code-generation loops. They require presence/full-result review; fixture/helper behavior was not proved.",
+    "Visibility findings now explicitly qualify the scanned scope; deliberate external and framework entry points still need review.",
+    "Root transitive architecture messages repeat across importers and reachable targets; use edge groups for triage rather than treating the raw total as independent bugs."
+  ],
+  "limits": [
+    "Single consumer workspace; no universal precision or recall claim.",
+    "100 root workspace Python sources remain outside the configured package selection.",
+    "Hermes has one unclassified source in the strict inventory.",
+    "No runtime, database, browser, deployment or consumer-test validation was performed."
+  ],
+  "cache_parity": {
+    "first_and_warm_reports_match_uncached": true,
+    "cache_location": "Smelt worktree only; no consumer cache writes",
+    "performance_claim": false
+  }
+}

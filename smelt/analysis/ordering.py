@@ -31,6 +31,7 @@ class OrderSection:
     order: tuple[int, ...]
     edges: tuple[str, ...]
     fix_reason: str | None = None
+    fix_blocker: _FixBlocker | None = None
 
     @property
     def key(self) -> str:
@@ -57,6 +58,7 @@ class OrderIssue:
     edges: tuple[str, ...]
     section: OrderSection | None = None
     reason: str | None = None
+    fix_node: ast.stmt | ast.expr | ast.type_param | None = None
 
 
 @dataclass
@@ -119,6 +121,12 @@ class DefinitionOrderIndex:
         return [result.summary() for _, result in sorted(self.files.items())]
 
 
+@dataclass(frozen=True)
+class _FixBlocker:
+    reason: str
+    node: ast.stmt | ast.expr | ast.type_param
+
+
 def _precedence(blocks: tuple[DefinitionBlock, ...]) -> list[set[int]]:
     """Preserve group order, binding versions, and reads before later rebinding."""
     before: list[set[int]] = [set() for _ in blocks]
@@ -179,7 +187,7 @@ def _section(
     owner: ScopeNode,
     scope: str,
     blocks: list[DefinitionBlock],
-    fix_reason: str | None,
+    fix_blocker: _FixBlocker | None,
 ) -> None:
     if not blocks:
         return
@@ -197,12 +205,17 @@ def _section(
         for right in range(left + 1, len(group))
         if positions[left] > positions[right]
     )
-    reason = fix_reason or next(
-        (block.fix_reason for block in group if block.fix_reason), None
+    factory = next((block for block in group if block.fix_reason), None)
+    blocker = fix_blocker or (
+        _FixBlocker(factory.fix_reason, factory.fix_node or factory.nodes[0])
+        if factory and factory.fix_reason
+        else None
     )
+    reason = blocker.reason if blocker else None
     if result.config.fix == "off":
         reason = "ordering fixes are disabled for this package"
-    section = OrderSection(owner, scope, group, order, edges, reason)
+        blocker = None
+    section = OrderSection(owner, scope, group, order, edges, reason, blocker)
     result.sections.append(section)
     if edges:
         first_changed = next(
@@ -266,6 +279,7 @@ def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
                         f"{block.category} appear after later definition groups",
                         edges,
                         reason="imports are execution barriers; review placement manually",
+                        fix_node=block.nodes[0],
                     )
                 )
         if is_main_guard(block.nodes[0]) and index + 1 < len(blocks):
@@ -279,14 +293,17 @@ def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
                     "the main guard must be the final module statement",
                     edges,
                     reason="moving the main guard changes execution timing; review manually",
+                    fix_node=block.nodes[0],
                 )
             )
         seen.append(block)
 
 
-def _reflective(tree: ast.Module) -> bool:
-    return any(
-        isinstance(node, ast.Global | ast.Nonlocal)
+def _reflective(tree: ast.Module) -> _FixBlocker | None:
+    found = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Global | ast.Nonlocal)
         or (
             isinstance(node, ast.Name)
             and node.id
@@ -297,7 +314,14 @@ def _reflective(tree: ast.Module) -> bool:
             and node.attr
             in {"__dict__", "__annotations__", "__code__", "settrace", "setprofile"}
         )
-        for node in ast.walk(tree)
+    ]
+    return (
+        _FixBlocker(
+            "runtime namespace or annotation introspection requires manual review",
+            min(found, key=lambda node: (node.lineno, node.col_offset)),
+        )
+        if found
+        else None
     )
 
 
@@ -306,7 +330,7 @@ def _body(
     owner: ScopeNode,
     scope: str,
     aliases: dict[str, str],
-    reason: str | None,
+    fix_blocker: _FixBlocker | None,
 ) -> None:
     blocks, children = build_blocks(
         owner,
@@ -321,28 +345,34 @@ def _body(
     group: list[DefinitionBlock] = []
     for block in blocks:
         if block.barrier:
-            _section(result, owner, scope, group, reason)
+            _section(result, owner, scope, group, fix_blocker)
             group = []
             result.barriers.append(
                 {"scope": scope, "line": block.line, "reason": block.barrier}
             )
         else:
             group.append(block)
-    _section(result, owner, scope, group, reason)
+    _section(result, owner, scope, group, fix_blocker)
     counts: dict[str, int] = defaultdict(int)
     for child, child_aliases in children:
         ordinal = counts[child.name]
         counts[child.name] += 1
         child_scope = f"{scope}.{child.name}#{ordinal}"
-        child_reason = reason or (
-            "class bases, metaclass or decorators may inspect definition order"
-            if child.bases
-            or child.keywords
-            or child.decorator_list
-            or child.type_params
+        triggers: list[ast.expr | ast.type_param] = [
+            *child.decorator_list,
+            *child.bases,
+            *(keyword.value for keyword in child.keywords),
+            *child.type_params,
+        ]
+        child_blocker = fix_blocker or (
+            _FixBlocker(
+                "class bases, metaclass or decorators may inspect definition order",
+                min(triggers, key=lambda node: (node.lineno, node.col_offset)),
+            )
+            if triggers
             else None
         )
-        _body(result, child, child_scope, child_aliases, child_reason)
+        _body(result, child, child_scope, child_aliases, child_blocker)
 
 
 def _analyze_order(
@@ -361,11 +391,7 @@ def _analyze_order(
         contract,
         deferred,
     )
-    reflection = (
-        "runtime namespace or annotation introspection requires manual review"
-        if _reflective(tree)
-        else None
-    )
+    reflection = _reflective(tree)
     aliases = {
         name: f"builtins.{name}" for name in ("property", "staticmethod", "classmethod")
     }

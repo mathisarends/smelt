@@ -14,6 +14,35 @@ if TYPE_CHECKING:
 CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-only-public-function: warning\n"
 
 
+def test_excluded_script_callers_are_explicitly_unassessed(tmp_path: Path) -> None:
+    config = CONFIG.replace(
+        "  root_packages:", "  exclude: ['scripts/**']\n  root_packages:"
+    )
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": config,
+            "app/__init__.py": "",
+            "app/service.py": "def helper(): return 1\n",
+            "tests/test_service.py": "from app.service import helper\ndef test_run(): assert helper() == 1\n",
+            "scripts/generate.py": "from app.service import helper\nhelper()\n",
+        },
+    )
+    [finding] = violations(tmp_path)
+    assert finding.expected is not None
+    scope = finding.expected["usage_scope"]
+    assert scope["excluded_paths"] == ["scripts/**"]
+    assert "among analyzed modules" in finding.message
+    assert finding.hint is not None
+    assert "maintainer scripts" in finding.hint
+    assert "not assessed" in finding.hint
+    assert (
+        (tmp_path / "scripts/generate.py")
+        .read_text(encoding="utf-8")
+        .startswith("from app.service")
+    )
+
+
 def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
     tmp_path: Path,
 ) -> None:
@@ -45,6 +74,17 @@ def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
         "function": "drag_gesture",
         "suggested_name": "_drag_gesture",
         "test_references": [{"path": "tests/test_mouse.py", "line": 1}],
+        "usage_scope": {
+            "root_packages": ["app"],
+            "source_roots": ["."],
+            "test_roots": ["tests"],
+            "excluded_paths": [],
+            "unassessed_consumers": [
+                "excluded files (including maintainer scripts)",
+                "files outside selected packages and roots",
+                "external consumers and arbitrary dynamic access",
+            ],
+        },
     }
     assert finding.hint is not None
     assert "_drag_gesture" in finding.hint

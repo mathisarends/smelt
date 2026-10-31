@@ -7,6 +7,20 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Visibility reviews (SMT316/SMT317/SMT429/SMT430) explicitly limit their claims to
+  analyzed callers and expose `usage_scope`, including exclusions and unassessed
+  maintainer scripts, unselected packages and external consumers. They do not
+  scan excluded code or infer that unobserved callers cannot exist.
+- SMT313 fix refusals identify the triggering expression and source location in
+  `fix_blocker` and the human-readable reason, including inherited/decorated
+  classes, namespace inspection and nonliteral type variables. Existing safety
+  refusals are retained; skipped-fix output carries the same location.
+- SMT425 recognizes locally assigned nonempty list/set/dict literals, including
+  annotations and aliases, and discards that evidence after possible mutations,
+  calls or branch merges. SMT424/SMT425 also recognize direct assertions in
+  statically known, checked `sys.executable -c` subprocesses. Unchecked exits,
+  optimized Python, dynamic scripts, files and potentially swallowed failures
+  remain outside recognition; subprocess review hints explain that boundary.
 - Smelt now checks its own sources with public-first ordering, internal-member
   visibility, test-only public API reviews, when-needed future annotations and
   test-quality reviews. CI and release validation fail on warnings too. Internal

@@ -31,6 +31,16 @@ def test_normal_check_never_changes_source(tmp_path: Path) -> None:
     assert source.read_bytes() == original
 
 
+def test_refused_fix_keeps_source_and_reports_the_exact_trigger(tmp_path: Path) -> None:
+    source = "def _helper(): pass\ndef api():\n    return globals()\n"
+    root = _project(tmp_path, source=source)
+    fixes = apply_ordering_fixes(check(root, OPTIONS))
+    assert fixes.files == []
+    assert len(fixes.skipped) == 1
+    assert "app/service.py:3:12: globals" in fixes.skipped[0]["reason"]
+    assert (root / "app/service.py").read_text(encoding="utf-8") == source
+
+
 def test_explicit_fix_and_second_run_are_idempotent(tmp_path: Path) -> None:
     root = _project(tmp_path)
 
