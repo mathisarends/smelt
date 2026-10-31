@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
@@ -19,12 +19,7 @@ if TYPE_CHECKING:
 
 
 class CompositionRootLeak(BaseRule):
-    activation = PolicyActivation(
-        "architecture.composition_root or architecture.wiring declares assembly boundaries.",
-        lambda config: bool(
-            config.architecture.composition_root or config.architecture.wiring
-        ),
-    )
+    activation = POLICIES["SMT106"]
     code = "SMT106"
     name = "composition-root-leak"
     category = Category.DEPENDENCIES

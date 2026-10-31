@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
@@ -29,13 +29,7 @@ def is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
 
 
 class ThirdPartyDenied(BaseRule):
-    activation = PolicyActivation(
-        "A layer's third_party policy restricts dependencies.",
-        lambda config: any(
-            layer.third_party.default == "deny" or layer.third_party.deny
-            for layer in config.architecture.layers.values()
-        ),
-    )
+    activation = POLICIES["SMT103"]
     code = "SMT103"
     name = "third-party-denied"
     category = Category.DEPENDENCIES

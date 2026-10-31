@@ -246,7 +246,7 @@ def _run_check(
             update={"project": config.project.model_copy(update={"coverage": "strict"})}
         )
         loaded = replace(loaded, config=config)
-    rules = rules or build_rule_set()
+    rules = rules or build_rule_set(lazy=True)
     active = resolve_active_rules(rules, loaded, options)
     ctx = (
         context

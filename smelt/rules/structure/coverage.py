@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 
 if TYPE_CHECKING:
@@ -13,10 +13,7 @@ if TYPE_CHECKING:
 
 class IncompleteCoverage(BaseRule):
     scope = "project"
-    activation = PolicyActivation(
-        "project.coverage is strict, including --strict-coverage; the guard cannot be disabled in strict mode.",
-        lambda config: config.project.coverage == "strict",
-    )
+    activation = POLICIES["SMT306"]
     code = "SMT306"
     name = "incomplete-coverage"
     category = Category.STRUCTURE

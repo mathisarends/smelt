@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.engine.check import rule_meta
 from smelt.engine.schema import config_json_schema
-from smelt.rules.registry import build_rule_set
+from smelt.rules.registry import build_rule_set, catalog_metadata
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,6 +76,7 @@ def generated_files() -> dict[str, str]:
     """Every generated file, keyed by its path relative to the repository root."""
     rules = build_rule_set().rules
     files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
+    files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
     files[f"{DOCS_DIR}/README.md"] = rule_index(rules)
     for rule in rules:
         files[f"{DOCS_DIR}/{rule.code}.md"] = rule_page(rule)

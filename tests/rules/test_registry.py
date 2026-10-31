@@ -1,8 +1,12 @@
 import importlib
 import inspect
+import os
 import pkgutil
 import re
+import subprocess
+import sys
 from copy import copy
+from pathlib import Path
 
 import pytest
 
@@ -78,3 +82,49 @@ def test_ambiguous_catalog_is_rejected(attribute: str) -> None:
 
     with pytest.raises(ValueError, match=f"duplicate rule {attribute}"):
         RuleSet([first, second])
+
+
+def test_lazy_selection_preserves_catalog_metadata() -> None:
+    eager = build_rule_set()
+    for rule in build_rule_set(lazy=True).rules:
+        original = eager.by_code(rule.code)
+        assert original is not None
+        for attribute in (
+            "name",
+            "category",
+            "default_severity",
+            "requires",
+            "scope",
+            "enabled_by_default",
+            "activation",
+            "file_local",
+            "test_local",
+            "member_local",
+        ):
+            assert getattr(rule, attribute) == getattr(original, attribute)
+        assert rule.explain() == original.explain()
+
+
+def test_member_check_does_not_import_inactive_test_rules(tmp_path: Path) -> None:
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app/__init__.py").write_text("def helper(): pass\n")
+    (tmp_path / "smelt.yaml").write_text(
+        "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n"
+    )
+    script = """
+import sys
+from smelt.cli import main
+assert main(['check', '--no-cache']) == 0
+assert 'smelt.rules.structure.members' in sys.modules
+assert 'smelt.rules.testing.awaits' not in sys.modules
+assert 'smelt.analysis.test_syntax' not in sys.modules
+"""
+    subprocess.run(  # noqa: S603 - fixed Python regression script
+        [sys.executable, "-c", script],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])},
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=20,
+    )

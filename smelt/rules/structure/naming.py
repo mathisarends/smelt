@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import last_segment
 from smelt.rules.structure.layout import package_location
@@ -15,10 +15,7 @@ if TYPE_CHECKING:
 
 
 class ForbiddenPackageName(BaseRule):
-    activation = PolicyActivation(
-        "structure.forbidden_names contains naming restrictions.",
-        lambda config: bool(config.structure.forbidden_names),
-    )
+    activation = POLICIES["SMT302"]
     code = "SMT302"
     name = "forbidden-package-name"
     category = Category.STRUCTURE
@@ -70,13 +67,7 @@ class ForbiddenPackageName(BaseRule):
 
 
 class NoPrivateModules(BaseRule):
-    activation = PolicyActivation(
-        "A package contract forbids private module names.",
-        lambda config: any(
-            contract.private_modules == "forbid"
-            for contract in config.structure.contracts.values()
-        ),
-    )
+    activation = POLICIES["SMT312"]
     code = "SMT312"
     name = "no-private-modules"
     category = Category.STRUCTURE
