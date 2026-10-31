@@ -208,10 +208,17 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
     if !accepted.accepted || accepted.pid != metadata.pid {
         return Err(io::Error::other("unexpected worker acceptance"));
     }
-    let line = read_frame(&mut reader, Instant::now() + REQUEST_TIMEOUT)?;
+    // Once accepted, any failure must go straight to foreground checking. A
+    // watchdog disconnect must not start a second five-second worker attempt.
+    receive_response(&mut reader, metadata.pid)
+        .map_err(|error| io::Error::new(io::ErrorKind::ConnectionAborted, error))
+}
+
+fn receive_response(reader: &mut BufReader<TcpStream>, pid: u32) -> io::Result<Response> {
+    let line = read_frame(reader, Instant::now() + REQUEST_TIMEOUT)?;
     let response: Response = serde_json::from_slice(&line)?;
     trace(format!("received {} bytes", line.len()));
-    if response.pid != metadata.pid || !(0..=2).contains(&response.code) {
+    if response.pid != pid || !(0..=2).contains(&response.code) {
         return Err(io::Error::other("unexpected worker response"));
     }
     Ok(response)
@@ -225,6 +232,7 @@ fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
     let path = endpoint(python, &cwd)?;
     match request(&path, name, arguments) {
         Ok(response) if !response.restart => return Ok(response),
+        Err(error) if error.kind() == io::ErrorKind::ConnectionAborted => return Err(error),
         Err(error)
             if matches!(
                 error.kind(),

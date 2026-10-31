@@ -286,11 +286,17 @@ def test_relative_pythonpath_keeps_foreground_semantics(
 
 
 @contextlib.contextmanager
-def _stalled_endpoint(project: Path, native: Path, *, accepted: bool) -> Iterator[Path]:
+def _stalled_endpoint(
+    project: Path, native: Path, *, accepted: bool, disconnect: bool = False
+) -> Iterator[Path]:
     _invoke([str(native)], project)
     endpoint = _endpoint(project)
     metadata = json.loads(endpoint.read_text())
     _request(endpoint, project, ["shutdown"])
+    deadline = time.monotonic() + 5
+    while endpoint.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not endpoint.exists()
     stop = threading.Event()
     with socket.create_server(("127.0.0.1", 0)) as listener:
         listener.settimeout(5)
@@ -309,6 +315,8 @@ def _stalled_endpoint(project: Path, native: Path, *, accepted: bool) -> Iterato
                         + b"\n"
                     )
                 # Slow partial output must not reset the overall response budget.
+                if disconnect:
+                    return
                 while not stop.wait(0.05):
                     if accepted:
                         stream.sendall(b" ")
@@ -337,6 +345,16 @@ def test_unresponsive_worker_falls_back_with_a_bounded_deadline(
         if accepted:
             assert elapsed >= 4.5
         # Neither a busy nor a stuck endpoint may trigger another worker spawn.
+        assert endpoint.read_bytes() == metadata
+
+
+def test_accepted_disconnect_never_retries_in_another_worker(
+    project: Path, native: Path
+) -> None:
+    expected = _fresh(project)
+    with _stalled_endpoint(project, native, accepted=True, disconnect=True) as endpoint:
+        metadata = endpoint.read_bytes()
+        assert _invoke([str(native)], project) == expected
         assert endpoint.read_bytes() == metadata
 
 
