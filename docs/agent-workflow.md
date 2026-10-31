@@ -119,10 +119,23 @@ retain the complete catalog. Normal cached staged retries capture repository/HEA
 together and then read the index, requiring two Git processes when invoked inside
 the repository. Explicit configs in a different repository need another lookup.
 
-This is not a fully incremental implementation of every rule. Inventory and global
-evidence are rebuilt from cached facts, and architecture graph decisions and some
-cross-file syntax rules still run against the current complete project. There is
-no background process. CLI startup and imports remain part of a new analysis.
+Member-local decisions also maintain a persistent reverse dependency index.
+Changed file contributions replace their previous usage counts; namespace changes
+invalidate the referencing files, including unresolved lookups. Only affected
+decision fingerprints are recomputed. Equal contributions stop propagation, and
+unchanged member-local findings do not deserialize all definition objects.
+Architecture graph decisions and other cross-file rules still operate on the
+current complete project. Inventory capture remains proportional to project size.
+
+The installed Rust client reuses a local worker for read-only checks. Workers are
+scoped to the interpreter, complete environment and invocation directory, serialize
+requests and expire after 120 idle seconds. Git, config and source identities are
+captured on every request. Analyzer changes restart the worker; startup or IPC
+failures run the normal foreground checker. Workers idle outside the project so
+they do not pin a Windows worktree. They do not retain analyzed source objects
+between requests. CI defaults to foreground execution; `SMELT_DAEMON=0` disables
+workers and `SMELT_DAEMON=1` explicitly enables them. `python -m smelt` always takes
+the direct Python path. Fixes and other commands run directly.
 
 ```bash
 smelt check --staged --fail-on warning

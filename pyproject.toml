@@ -17,16 +17,24 @@ Repository = "https://github.com/mathisarends/smelt"
 Issues = "https://github.com/mathisarends/smelt/issues"
 Documentation = "https://github.com/mathisarends/smelt#readme"
 
-[project.scripts]
-smelt = "smelt.cli:main"
-
 [build-system]
-requires = ["uv_build>=0.12.19,<0.14"]
-build-backend = "uv_build"
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
 
-[tool.uv.build-backend]
-module-root = ""
+[tool.maturin]
+bindings = "bin"
 module-name = "smelt"
+python-source = "."
+python-packages = ["smelt"]
+include = [{ path = "smelt/rules/catalog.json", format = ["sdist", "wheel"] }]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "Cargo.lock" },
+    { file = "native/**/*.rs" },
+]
 
 [dependency-groups]
 dev = [

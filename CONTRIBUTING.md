@@ -2,6 +2,22 @@
 
 Use [the vision](vision.md) as the scope and acceptance filter for proposed changes.
 
+Development requires Python 3.12+ and Rust 1.88+ with rustfmt/clippy and a platform
+linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
+keys include the Cargo manifests and native Rust sources. `python -m smelt` keeps
+the direct Python entry point for debugging and uncached comparisons. Installed
+wheels include both the native client and the Python engine. Keep Cargo.toml's
+version equal to pyproject.toml's version when releasing.
+
+The native client reuses a worker for read-only local checks. Workers are scoped
+to the interpreter, environment and invocation directory, serialize requests and
+expire after 120 idle seconds. Every request captures Git/configuration again.
+Changes to analyzer sources/dependency identity restart the worker. `--fix`, other
+commands and CI run directly; `SMELT_DAEMON=0` disables workers and
+`SMELT_DAEMON=1` enables them explicitly in CI. Transport/startup failures fall
+back to the foreground checker. Tests must cover fresh-client output/exit codes,
+partial staging, restart, concurrent startup and independent `--no-cache` results.
+
 An agent mistake is evidence for a regression, not automatically a new rule. Start
 with the smallest reproducible example, the intended result and a nearby valid
 counterexample. Fix an existing rule when its documented contract already covers
@@ -47,6 +63,12 @@ source contents, resolved policy and Python target fully determine its decision.
 inventory inputs. `member_local` rules consume resolved member facts, including
 current external-use and inheritance evidence. Global rules must retain their
 cross-file dependencies.
+
+Member-local decisions use a persisted dependency index. File summaries contribute
+reference/attribute/inheritance counts and record both positive and missing
+namespace dependencies. Changed contributions invalidate reverse readers; equal
+contributions do not propagate to unrelated definitions. Keep the uncached member
+analysis independent so differential tests can detect invalidation errors.
 
 Keep related rules together when they share a concept, as in `structure/headers.py`.
 Give a growing concept its own module rather than expanding a catch-all file.

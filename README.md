@@ -16,6 +16,17 @@ with the exact location, what is allowed instead and how to fix it:
 
 Requires Python 3.12 or newer.
 
+The installed `smelt` command uses a small native client. Local read-only checks
+reuse a bounded worker to avoid repeated Python imports; CI runs in the foreground
+by default. `SMELT_DAEMON=0 smelt check` disables reuse, and `python -m smelt check`
+always runs directly. Rules, staged inputs and exit codes are the same.
+The client uses its environment's Python or searches PATH; `SMELT_PYTHON` can
+select an explicit interpreter for a copied binary or a custom installation.
+
+Building from a checkout or source distribution requires Rust 1.88 or newer and a
+platform linker. This includes a pre-commit environment installed from a Git ref.
+Release wheels contain the compiled client for supported platforms.
+
 ```bash
 uv tool install smelt-cli
 # or install into your project's environment:

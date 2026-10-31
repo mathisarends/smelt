@@ -8,6 +8,7 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+target/
 *.egg-info/
 
 # Tooling caches
