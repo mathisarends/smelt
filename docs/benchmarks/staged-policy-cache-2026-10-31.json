@@ -1,0 +1,364 @@
+{
+  "date": "2026-10-31",
+  "baseline_revision": "f7fd415f47847a2363a0c4d7360784aeb34a8ad4",
+  "candidate_runtime_revision": "ba5ed9346676488d134b4c8a2a4b4cbd5b66d308",
+  "builds": {
+    "baseline": {
+      "wheel_sha256": "09fb58ccf8c042d05689413f928e15a881b95569b73710fdb268f14d04ab3524",
+      "source_files": 121,
+      "matches_main_after_line_ending_normalization": true,
+      "byte_identical_to_main": true,
+      "installed_package_bytes_match_wheel": true,
+      "installed_native_bytes_match_wheel": true,
+      "native_binary_sha256": "b495439dff7c9430b0378f3dee4a1149ce66203441706e013c1310f6fd1443ff",
+      "installed_environment": {
+        "package": "C:\\Users\\mathi\\.codex\\visualizations\\2026\\10\\30\\01a18dba-993f-7021-9aa0-8971484d9800\\smelt-breakthrough\\installed-native\\Lib\\site-packages\\smelt\\__init__.py",
+        "wheel_record_active": true,
+        "dependencies": {
+          "smelt-cli": "0.1.6",
+          "grimp": "3.17",
+          "pydantic": "2.14.1",
+          "pydantic-core": "2.50.1",
+          "packaging": "26.3",
+          "pyyaml": "6.0.3"
+        }
+      }
+    },
+    "candidate": {
+      "wheel_sha256": "4c694c75201dee5f7d8803efd17225ba76a78a7e29054cb5280f38ecc04d8eb3",
+      "source_files": 121,
+      "package_bytes_match_checkout": true,
+      "installed_package_bytes_match_wheel": true,
+      "installed_native_bytes_match_wheel": true,
+      "native_binary_sha256": "ad5dd5bf5f8f33e57fc19152e3559b9154c1f07df985bc3a847f9088886d7cce",
+      "installed_environment": {
+        "package": "C:\\Users\\mathi\\.codex\\visualizations\\2026\\10\\30\\01a18dba-993f-7021-9aa0-8971484d9800\\smelt-policy-cache\\candidate-env\\Lib\\site-packages\\smelt\\__init__.py",
+        "wheel_record_active": true,
+        "dependencies": {
+          "smelt-cli": "0.1.6",
+          "grimp": "3.17",
+          "pydantic": "2.14.1",
+          "pydantic-core": "2.50.1",
+          "packaging": "26.3",
+          "pyyaml": "6.0.3"
+        }
+      }
+    }
+  },
+  "compiler": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+  "target": "x86_64-pc-windows-gnu",
+  "profile": "release; thin LTO; one codegen unit; stripped",
+  "cli_members": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "members",
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "baseline_mode": "staged",
+    "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+    "seconds": {
+      "baseline_first_check": 1.9880878999829292,
+      "staged_uncached": 2.143818399985321,
+      "staged_cold_cache": 1.51974709998467,
+      "staged_warm_median": 0.0929595000052359,
+      "staged_warm_max": 0.15088900001137517,
+      "baseline_staged": 0.09426730000996031,
+      "staged_one_file_edit": 0.28245590001461096,
+      "baseline_staged_one_file_edit": 0.3179392000020016
+    },
+    "samples_seconds": {
+      "staged_warm": [
+        0.15088900001137517,
+        0.09797100001014769,
+        0.09302269999170676,
+        0.0876589999825228,
+        0.08955569998943247,
+        0.08696839999174699,
+        0.0929595000052359
+      ],
+      "baseline_staged": [
+        0.11335239998879842,
+        0.09186790001695044,
+        0.0848919999843929,
+        0.09713429998373613,
+        0.09094350002123974,
+        0.09426730000996031,
+        0.12341619998915121
+      ],
+      "staged_one_file_edit": [
+        0.24228979999315925,
+        0.3372998000122607,
+        0.28245590001461096,
+        0.2657689999905415,
+        0.27427399999578483,
+        0.28598519999650307,
+        0.3073703999980353
+      ],
+      "baseline_staged_one_file_edit": [
+        0.27105030001257546,
+        0.38525929997558706,
+        0.32864550000522286,
+        0.2923540000047069,
+        0.31656680000014603,
+        0.3179392000020016,
+        0.31900029999087565
+      ],
+      "staged_document_edit": [
+        0.12232759999460541,
+        0.09021900000516325,
+        0.09379610000178218,
+        0.12000799999805167,
+        0.09986799999023788,
+        0.12975249998271465,
+        0.19932250000420026
+      ],
+      "baseline_staged_document_edit": [
+        0.0953657999925781,
+        0.09300999998231418,
+        0.09423650000826456,
+        0.11078820002148859,
+        0.12915009999414906,
+        0.128582200006349,
+        0.17347280000103638
+      ]
+    },
+    "distributions_seconds": {
+      "staged_warm": {
+        "median": 0.0929595000052359,
+        "p95": 0.15088900001137517,
+        "max": 0.15088900001137517
+      },
+      "baseline_staged": {
+        "median": 0.09426730000996031,
+        "p95": 0.12341619998915121,
+        "max": 0.12341619998915121
+      },
+      "staged_one_file_edit": {
+        "median": 0.28245590001461096,
+        "p95": 0.3372998000122607,
+        "max": 0.3372998000122607
+      },
+      "baseline_staged_one_file_edit": {
+        "median": 0.3179392000020016,
+        "p95": 0.38525929997558706,
+        "max": 0.38525929997558706
+      },
+      "staged_document_edit": {
+        "median": 0.12000799999805167,
+        "p95": 0.19932250000420026,
+        "max": 0.19932250000420026
+      },
+      "baseline_staged_document_edit": {
+        "median": 0.11078820002148859,
+        "p95": 0.17347280000103638,
+        "max": 0.17347280000103638
+      }
+    },
+    "introduced_findings": 1,
+    "reports_match": true
+  },
+  "cli_transitive": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "transitive",
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "baseline_mode": "staged",
+    "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+    "seconds": {
+      "baseline_first_check": 2.2163042000029236,
+      "staged_uncached": 2.425808200001484,
+      "staged_cold_cache": 1.957379100000253,
+      "staged_warm_median": 0.10433619999093935,
+      "staged_warm_max": 0.13525679998565465,
+      "baseline_staged": 0.10302310000406578,
+      "staged_one_file_edit": 0.3635290999955032,
+      "baseline_staged_one_file_edit": 0.40657439999631606
+    },
+    "samples_seconds": {
+      "staged_warm": [
+        0.11571750001166947,
+        0.10310979999485426,
+        0.13525679998565465,
+        0.09855549997882918,
+        0.10065960002248175,
+        0.10433619999093935,
+        0.11002690001623705
+      ],
+      "baseline_staged": [
+        0.12158549999003299,
+        0.12129689997527748,
+        0.10183060000417754,
+        0.10302310000406578,
+        0.10260390001349151,
+        0.10252620000392199,
+        0.10818779998226091
+      ],
+      "staged_one_file_edit": [
+        0.3635290999955032,
+        0.38198529998771846,
+        0.34699770002043806,
+        0.29661079999641515,
+        0.33025510000879876,
+        0.8038277000014205,
+        0.40678340001613833
+      ],
+      "baseline_staged_one_file_edit": [
+        0.3637808999919798,
+        0.7630228000052739,
+        0.40657439999631606,
+        0.3357285999809392,
+        0.31264409999130294,
+        0.6287919000023976,
+        0.5830603999784216
+      ],
+      "staged_document_edit": [
+        0.20956920000026003,
+        0.2521829000033904,
+        0.11822070000926033,
+        0.38182430001324974,
+        0.5235582999885082,
+        0.2671414000215009,
+        0.1328227999911178
+      ],
+      "baseline_staged_document_edit": [
+        0.28073099997709505,
+        0.21132740000030026,
+        0.12225909999688156,
+        0.20624349999707192,
+        0.2158410000265576,
+        0.3965609000006225,
+        0.17280400000163354
+      ]
+    },
+    "distributions_seconds": {
+      "staged_warm": {
+        "median": 0.10433619999093935,
+        "p95": 0.13525679998565465,
+        "max": 0.13525679998565465
+      },
+      "baseline_staged": {
+        "median": 0.10302310000406578,
+        "p95": 0.12158549999003299,
+        "max": 0.12158549999003299
+      },
+      "staged_one_file_edit": {
+        "median": 0.3635290999955032,
+        "p95": 0.8038277000014205,
+        "max": 0.8038277000014205
+      },
+      "baseline_staged_one_file_edit": {
+        "median": 0.40657439999631606,
+        "p95": 0.7630228000052739,
+        "max": 0.7630228000052739
+      },
+      "staged_document_edit": {
+        "median": 0.2521829000033904,
+        "p95": 0.5235582999885082,
+        "max": 0.5235582999885082
+      },
+      "baseline_staged_document_edit": {
+        "median": 0.21132740000030026,
+        "p95": 0.3965609000006225,
+        "max": 0.3965609000006225
+      }
+    },
+    "introduced_findings": 1,
+    "reports_match": true
+  },
+  "hook_prek_staged": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "members",
+    "runner": "prek 0.5.9 (48c8a3ec4 2026-10-30)",
+    "all_files": false,
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "execution_order": "Alternating order on separate repositories and caches.",
+    "first_hook_seconds": {
+      "baseline": 2.8397080000140704,
+      "candidate": 2.8311645000067074
+    },
+    "samples_seconds": {
+      "baseline_retry": [
+        0.5247341000067536,
+        0.40260259999195114,
+        0.39420400001108646,
+        0.29334560001734644,
+        0.2994872000126634,
+        0.2775950999930501,
+        0.2733066999935545
+      ],
+      "candidate_retry": [
+        0.38637250001193024,
+        0.3126509999856353,
+        0.3648541999864392,
+        0.37212809998891316,
+        0.2682844000228215,
+        0.2886541999760084,
+        0.28229089998058043
+      ],
+      "baseline_python_edit": [
+        1.4699123000027612,
+        0.9393119000014849,
+        0.7526932000182569,
+        1.2931721000059042,
+        0.7794595999876037,
+        0.7361919000104535,
+        0.8496444000047632
+      ],
+      "candidate_python_edit": [
+        1.0799370000022464,
+        0.8108483999967575,
+        0.8366574000101537,
+        0.693846999987727,
+        1.1692523999954574,
+        1.2975945000071079,
+        0.49753399999463
+      ]
+    },
+    "distributions_seconds": {
+      "baseline_retry": {
+        "median": 0.2994872000126634,
+        "p95": 0.5247341000067536,
+        "max": 0.5247341000067536
+      },
+      "candidate_retry": {
+        "median": 0.3126509999856353,
+        "p95": 0.38637250001193024,
+        "max": 0.38637250001193024
+      },
+      "baseline_python_edit": {
+        "median": 0.8496444000047632,
+        "p95": 1.4699123000027612,
+        "max": 1.4699123000027612
+      },
+      "candidate_python_edit": {
+        "median": 0.8366574000101537,
+        "p95": 1.2975945000071079,
+        "max": 1.2975945000071079
+      }
+    },
+    "reports_match": true
+  },
+  "limits": [
+    "Both baseline and candidate use installed native clients and retained Python workers with identical dependencies.",
+    "Windows 11 / CPython 3.14, synthetic 250 modules x 12 methods; timings vary with machine load and are not latency guarantees.",
+    "Seven samples per scenario, alternating execution order; nearest-rank p95 equals maximum.",
+    "CLI includes native startup, IPC, fresh Git capture, analysis and JSON output; worker/cache initialization is separate.",
+    "The normal staged prek hook includes runner startup and its single Smelt hook; installation and other hooks are excluded.",
+    "Each edited report matches an independent fresh-process --no-cache report. Hook comparisons use separate repositories/caches.",
+    "CLI edit medians improve by about 11%; unchanged retries and document edits have no demonstrated improvement.",
+    "The transitive CLI edit p95/max regresses from 763 to 804 ms. The complete prek edit median changes only from 850 to 837 ms amid substantial noise.",
+    "No additional cold-CI or universal end-to-end speedup is claimed; this removes the unchanged-policy blob subprocess only."
+  ]
+}

@@ -2,6 +2,20 @@
 use std::io;
 use std::path::Path;
 
+#[cfg(unix)]
+pub fn running(pid: u32) -> bool {
+    let Ok(pid) = i32::try_from(pid) else {
+        return true;
+    };
+    if pid <= 0 {
+        return true;
+    }
+    // SAFETY: POSIX signal zero checks existence/permission without signalling.
+    unsafe {
+        libc::kill(pid, 0) == 0 || io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+    }
+}
+
 #[cfg(not(windows))]
 pub fn spawn(python: &Path, endpoint: &Path, root: &Path) -> io::Result<std::process::Child> {
     use std::process::{Command, Stdio};
@@ -9,6 +23,7 @@ pub fn spawn(python: &Path, endpoint: &Path, root: &Path) -> io::Result<std::pro
         .args(["-P", "-m", "smelt.cli.session"])
         .arg(endpoint)
         .arg(root)
+        .arg(std::env::current_exe()?)
         .current_dir(
             endpoint
                 .parent()
@@ -26,13 +41,25 @@ mod windows {
     use std::os::windows::ffi::OsStrExt;
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
     use windows_sys::Win32::System::Threading::{
-        CREATE_NO_WINDOW, CreateProcessW, GetExitCodeProcess, PROCESS_INFORMATION, STARTUPINFOW,
-        TerminateProcess, WaitForSingleObject,
+        CREATE_NO_WINDOW, CreateProcessW, GetExitCodeProcess, OpenProcess, PROCESS_INFORMATION,
+        PROCESS_QUERY_LIMITED_INFORMATION, STARTUPINFOW, TerminateProcess, WaitForSingleObject,
     };
 
     pub struct Worker {
         handle: OwnedHandle,
         pid: u32,
+    }
+
+    pub fn running(pid: u32) -> bool {
+        // SAFETY: only query access is requested; this never signals a process.
+        let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+        if handle.is_null() {
+            return io::Error::last_os_error().raw_os_error() != Some(87);
+        }
+        // SAFETY: successful OpenProcess transfers a valid owned handle.
+        let handle = unsafe { OwnedHandle::from_raw_handle(handle) };
+        let mut code = 0;
+        unsafe { GetExitCodeProcess(handle.as_raw_handle(), &mut code) == 0 || code == 259 }
     }
 
     impl Worker {
@@ -83,10 +110,11 @@ mod windows {
             format!("\"{}{}\"", text, "\\".repeat(trailing))
         }
         let mut arguments: Vec<u16> = format!(
-            "{} -P -m smelt.cli.session {} {}",
+            "{} -P -m smelt.cli.session {} {} {}",
             quoted(python),
             quoted(endpoint),
-            quoted(root)
+            quoted(root),
+            quoted(&std::env::current_exe()?)
         )
         .encode_utf16()
         .chain([0])
@@ -128,4 +156,4 @@ mod windows {
 }
 
 #[cfg(windows)]
-pub use windows::spawn;
+pub use windows::{running, spawn};

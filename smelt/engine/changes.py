@@ -7,9 +7,14 @@ from pathlib import Path
 from typing import Any
 
 from smelt.analysis.errors import AnalysisError
+from smelt.engine import native_git
 
 
 def _git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
+    if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
+        native = native_git.tree_records(root, args[3])
+        if native is not None:
+            return native
     try:
         result = subprocess.run(  # noqa: S603
             ["git", *args],  # noqa: S607
@@ -78,6 +83,9 @@ def capture_repository(cwd: Path, requested: Path | None = None) -> GitRepositor
     """Read repository location and HEAD with one Git process, including unborn HEAD."""
 
     def inspect(anchor: Path) -> GitRepository:
+        native = native_git.capture(anchor)
+        if native is not None:
+            return GitRepository(*native)
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel", "--verify", "--quiet", "HEAD"],  # noqa: S607
             cwd=anchor,
@@ -137,7 +145,9 @@ class GitIndex:
 
 def capture_index(repository: Path) -> GitIndex:
     """Capture one immutable manifest, including stage/mode validation."""
-    records = _git(repository, "ls-files", "--stage", "-z")
+    records = native_git.index_records(repository)
+    if records is None:
+        records = _git(repository, "ls-files", "--stage", "-z")
     blobs: dict[str, str] = {}
     for record in records.split(b"\0"):
         if not record:
@@ -284,6 +294,9 @@ def _copy_blobs(repository: Path, files: list[tuple[str, Path]]) -> None:
 def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     if not identifiers:
         return {}
+    native = native_git.read_blobs(repository, identifiers)
+    if native is not None:
+        return native
     contents = io.BytesIO(
         _git(
             repository,
