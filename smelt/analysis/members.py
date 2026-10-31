@@ -121,6 +121,21 @@ class MemberUsageIndex:
         self._syntax = syntax
         self._decision_keys: dict[str, str] = {}
 
+    @property
+    def usage_scope(self) -> dict[str, object]:
+        project = self._syntax.files.config.project
+        return {
+            "root_packages": list(project.root_packages),
+            "source_roots": list(project.source_roots),
+            "test_roots": list(project.test_roots),
+            "excluded_paths": project.exclude_patterns,
+            "unassessed_consumers": [
+                "excluded files (including maintainer scripts)",
+                "files outside selected packages and roots",
+                "external consumers and arbitrary dynamic access",
+            ],
+        }
+
     @cached_property
     def _local_state(self) -> MemberIndexState:
         syntax = self._syntax

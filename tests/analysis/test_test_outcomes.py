@@ -47,6 +47,32 @@ from smelt.analysis.test_syntax import (
         ),
         ("values = (1, 2)\n    assert all(valid(value) for value in values)", False),
         (
+            "values = [1, 2]\n    for value in values:\n        assert valid(value)",
+            False,
+        ),
+        (
+            "values: list[int] = [1, 2]\n    for value in values:\n        assert valid(value)",
+            False,
+        ),
+        ("values = {1, 2}\n    assert all(valid(value) for value in values)", False),
+        ("values = {'a': 1}\n    for key in values:\n        assert valid(key)", False),
+        ("values = [1, 2]\n    alias = values\n    assert all(alias)", False),
+        ("values = []\n    assert all(values)", True),
+        ("values = [*unknown]\n    assert all(values)", True),
+        (
+            "values = [1, 2]\n    alias = values\n    alias.clear()\n    assert all(values)",
+            True,
+        ),
+        (
+            "values = [1, 2]\n    if flag:\n        values.clear()\n    assert all(values)",
+            True,
+        ),
+        ("values = [1, 2]\n    values[:] = []\n    assert all(values)", True),
+        ("values = [1, 2]\n    mutate()\n    assert all(values)", True),
+        ("values = [1, 2]\n    consume(values)\n    assert all(values)", True),
+        ("values = [1, 2]\n    del values[:]\n    assert all(values)", True),
+        ("values = [1, 2]\n    values *= 0\n    assert all(values)", True),
+        (
             "values = [1, 2]\n    values.clear()\n    for value in values:\n        assert valid(value)",
             True,
         ),

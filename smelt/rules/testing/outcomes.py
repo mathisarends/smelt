@@ -22,7 +22,10 @@ class TestWithoutOutcomeCheck(BaseRule):
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
         summary="A collected test has no recognized explicit outcome assertion.",
-        rationale="A test that merely calls production code can pass when its result is wrong. This opt-in syntactic check accepts assert (except literal assert True), pytest.raises/warns/deprecated_call, unittest.TestCase assertions, known Mock/AsyncMock interaction assertion methods, awaited typed Event.wait observations bounded by wait_for or timeout contexts that raise on expiry, and configured qualified helpers. A move_on_after scope or a configured timeout helper alone does not establish outcome evidence. Mock receivers come from recognized constructors, aliases, patch results or explicit fixture annotations, never arbitrary assert_* method names. Nested functions and fixture bodies do not supply evidence to callers. It neither proves assertions execute nor judges their strength; a frozen scheduler clock can also defeat a timeout. Positive validation/smoke tests can be intentional exceptions.",
+        rationale=(
+            "A test that merely calls production code can pass when its result is wrong. This opt-in syntactic check accepts assert (except literal assert True), pytest.raises/warns/deprecated_call, unittest.TestCase assertions, known Mock/AsyncMock interaction assertion methods, awaited typed Event.wait observations bounded by wait_for or timeout contexts that raise on expiry, and configured qualified helpers. A move_on_after scope or a configured timeout helper alone does not establish outcome evidence. Mock receivers come from recognized constructors, aliases, patch results or explicit fixture annotations, never arbitrary assert_* method names. Nested functions and fixture bodies do not supply evidence to callers. It neither proves assertions execute nor judges their strength; a frozen scheduler clock can also defeat a timeout. Positive validation/smoke tests can be intentional exceptions."
+            " Checked inline Python subprocesses using an unshadowed sys.executable and literal or locally bound script text can provide direct top-level assert evidence. Dynamic scripts, files, optimized Python, shell commands and unchecked exits remain unknown; no analyzed code is executed."
+        ),
         bad="def test_deactivate():\n    deactivate_user(1)",
         good="def test_deactivate():\n    user = deactivate_user(1)\n    assert user.status == 'inactive'",
         fix="Assert a concrete result or observable state, check the expected exception/warning, or configure a known assertion helper. Use a reasoned exception for deliberate smoke/interaction tests. Do not add a meaningless assertion to silence the finding.",
@@ -37,15 +40,33 @@ class TestWithoutOutcomeCheck(BaseRule):
         for module in ctx.test_syntax.modules.values():
             for test in module.tests:
                 if not test.has_assertion(ctx.config.tests.assertion_helpers):
+                    children = [
+                        call
+                        for call in test.calls
+                        if call.qualified.startswith("subprocess.")
+                    ]
                     yield self.violation(
                         f"{test.name} has no recognized outcome assertion",
                         path=module.path,
                         line=test.node.lineno,
                         expected={
                             "test": test.name,
+                            "subprocess_review": [
+                                {
+                                    "line": call.node.lineno,
+                                    "operation": call.qualified,
+                                    "child_assertions": "not inferred",
+                                }
+                                for call in children
+                            ],
                             "assertion_helpers": ctx.config.tests.assertion_helpers,
                         },
-                        hint="Check an observable result, state, expected exception/warning, or a configured assertion helper.",
+                        hint="Check an observable result, state, expected exception/warning, or a configured assertion helper."
+                        + (
+                            " Child assertions were not inferred: only checked sys.executable -c calls with statically known script text and direct assertions are recognized. Assert the parent-visible outcome for dynamic scripts or files."
+                            if children
+                            else ""
+                        ),
                     )
 
 
@@ -59,7 +80,10 @@ class TestOnlyChecksPossiblyEmptyData(BaseRule):
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
         summary="Every recognized outcome can disappear or pass trivially on empty input.",
-        rationale="Assertions confined to a result-dependent loop never execute if the result is empty. A positive all(...) assertion also accepts an empty collection. This opt-in review aid reports tests whose entire recognized evidence has one of these shapes. Literal nonempty iteration without filters, explicit empty-result comparisons and tests with an additional independent outcome check are retained. It does not prove collection cardinality, reachability or test effectiveness, and can flag intentional universal properties over empty collections.",
+        rationale=(
+            "Assertions confined to a result-dependent loop never execute if the result is empty. A positive all(...) assertion also accepts an empty collection. This opt-in review aid reports tests whose entire recognized evidence has one of these shapes. Literal nonempty iteration without filters, explicit empty-result comparisons and tests with an additional independent outcome check are retained. It does not prove collection cardinality, reachability or test effectiveness, and can flag intentional universal properties over empty collections."
+            " Checked inline Python subprocesses using an unshadowed sys.executable and literal or locally bound script text can provide direct top-level assert evidence. Dynamic scripts, files, optimized Python, shell commands and unchecked exits remain unknown; no analyzed code is executed."
+        ),
         bad="def test_codegen():\n    for name, content in generate().items():\n        assert committed[name] == content",
         good="def test_codegen():\n    assert generate() == independently_loaded_committed_files()",
         fix="Compare the complete result with an independent expectation, or check expected presence/cardinality before universal checks. Keep intentional empty-result cases explicit; do not add cosmetic assertions.",

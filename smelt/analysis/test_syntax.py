@@ -17,6 +17,10 @@ from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.literals import nonempty_literal
 from smelt.analysis.parsing import resolve_relative
 from smelt.analysis.test_deadlines import async_deadline
+from smelt.analysis.test_subprocesses import (
+    checked_python_assertions,
+    child_status_propagates,
+)
 from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
@@ -104,6 +108,8 @@ class _Binding:
     mock_spec: str | None = None
     async_callable: str | None = None
     mock_origin: str | None = field(default=None, compare=False)
+    mutable: bool = False
+    text: str | None = None
 
 
 _BINDINGS = TypeAdapter(dict[str, _Binding])
@@ -323,6 +329,7 @@ class TestFunction:
     awaited_tasks: list[tuple[ast.Await, str, str]] = field(default_factory=list)
     nonempty_iterables: set[ast.expr] = field(default_factory=set)
     mock_observations: list[MockObservation] = field(default_factory=list)
+    child_assertions: list[ast.Call] = field(default_factory=list)
 
     def has_assertion(self, helpers: list[str]) -> bool:
         return bool(self.outcome_evidence(helpers))
@@ -365,6 +372,11 @@ class TestFunction:
                 and (deadline := async_deadline(call.node, calls, parents)).awaited
                 and deadline.raises_on_timeout
             )
+        )
+        evidence.extend(
+            call
+            for call in self.child_assertions
+            if child_status_propagates(call, parents)
         )
         return evidence
 
@@ -521,8 +533,21 @@ class _Visitor(ast.NodeVisitor):
                 "literal",
                 tuple(self.value_binding(item) for item in node.elts),
             )
+        if (
+            isinstance(node, ast.List | ast.Set | ast.Dict)
+            and self.test
+            and nonempty_literal(node)
+        ):
+            return _Binding("", "nonempty", "literal", mutable=True)
         if isinstance(node, ast.Tuple | ast.Constant) and nonempty_literal(node):
-            return _Binding("", "nonempty", "literal")
+            return _Binding(
+                "",
+                "nonempty",
+                "literal",
+                text=node.value
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+                else None,
+            )
         if isinstance(node, ast.Call):
             return self.call_result(node, context=context)
         return self.binding(node)
@@ -774,6 +799,10 @@ class _Visitor(ast.NodeVisitor):
             self.result.calls.append(call)
             if self.test:
                 self.test.calls.append(call)
+                if checked_python_assertions(
+                    node, binding.qualified, self.qualified, self._literal_text
+                ):
+                    self.test.child_assertions.append(node)
                 result = self.value_binding(node)
                 if result and result.kind == "nonempty":
                     self.test.nonempty_iterables.add(node)
@@ -794,6 +823,11 @@ class _Visitor(ast.NodeVisitor):
                     "await" if "await" in name else "call",
                 )
         self.generic_visit(node)
+
+        # Unknown calls can mutate an escaped local collection, including through
+        # a closure or alias. Evidence at earlier reads remains valid; subsequent
+        # reads must establish cardinality again.
+        self._forget_mutable_iterables()
 
     def record_mock_observation(
         self, node: ast.Call | ast.Attribute, receiver: ast.expr, kind: str
@@ -919,6 +953,14 @@ class _Visitor(ast.NodeVisitor):
             self.visit(target)
             self.forget_mock_spec(target)
             self.bind_target(target, binding)
+            if isinstance(target, ast.Subscript | ast.Attribute):
+                self._forget_mutable_iterables()
+                if (
+                    isinstance(target, ast.Attribute)
+                    and self.qualified(target) == "sys.executable"
+                    and isinstance(target.value, ast.Name)
+                ):
+                    self.env.pop(target.value.id, None)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         self.visit(node.target)
@@ -928,21 +970,27 @@ class _Visitor(ast.NodeVisitor):
         for name in _names(node.target):
             self.env.pop(name, None)
         annotation = _annotation(node.annotation, self.env)
-        if isinstance(node.target, ast.Name) and annotation:
+        if isinstance(node.target, ast.Name):
             value = self.value_binding(node.value) if node.value else None
             binding = (
                 value
-                if value and value.qualified == annotation
+                if value and (value.kind == "nonempty" or value.qualified == annotation)
                 else _instance(annotation, "annotation")
+                if annotation
+                else None
             )
             self.bind_target(node.target, binding)
+        elif node.value:
+            self._forget_mutable_iterables()
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self.visit(node.value)
+        self._forget_mutable_iterables()
         for name in _names(node.target):
             self.env.pop(name, None)
 
     def visit_Delete(self, node: ast.Delete) -> None:
+        self._forget_mutable_iterables()
         for target in node.targets:
             self.forget_mock_spec(target)
             for name in _names(target):
@@ -1040,6 +1088,8 @@ class _Visitor(ast.NodeVisitor):
             self.visit(value)
         self.env = outer
 
+        self._forget_mutable_iterables()
+
     def visit_SetComp(self, node: ast.SetComp) -> None:
         self.visit_ListComp(node)
 
@@ -1068,6 +1118,7 @@ class _Visitor(ast.NodeVisitor):
             for statement in case.body:
                 self.visit(statement)
         self.env = outer
+        self._forget_mutable_iterables()
         for name in _locals([node]):
             self.env.pop(name, None)
 
@@ -1078,8 +1129,20 @@ class _Visitor(ast.NodeVisitor):
             for statement in body:
                 self.visit(statement)
         self.env = outer
+        self._forget_mutable_iterables()
         for name in _locals([statement for body in bodies for statement in body]):
             self.env.pop(name, None)
+
+    def _forget_mutable_iterables(self) -> None:
+        for name, binding in list(self.env.items()):
+            if binding.mutable:
+                self.env.pop(name)
+
+    def _literal_text(self, node: ast.expr) -> str | None:
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        binding = self.env.get(node.id) if isinstance(node, ast.Name) else None
+        return binding.text if binding else None
 
 
 def _declared_fixtures(

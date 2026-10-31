@@ -15,6 +15,42 @@ OPTIONS = CheckOptions(select=("SMT313",))
 
 
 @pytest.mark.parametrize(
+    ("source", "line", "expression"),
+    [
+        ("def _helper(): pass\ndef api():\n    return globals()\n", 3, "globals"),
+        (
+            "class C(Base):\n    def _helper(self): pass\n    def api(self): pass\n",
+            1,
+            "Base",
+        ),
+        (
+            "@decorate\nclass C:\n    def _helper(self): pass\n    def api(self): pass\n",
+            1,
+            "decorate",
+        ),
+        (
+            "from typing import TypeVar\ndef api(): pass\n_T = TypeVar(\n    '_T',\n    bound=Bound,\n)\n",
+            5,
+            "Bound",
+        ),
+    ],
+)
+def test_fix_refusal_identifies_the_trigger_without_changing_source(
+    tmp_path: Path, source: str, line: int, expression: str
+) -> None:
+    write_project(tmp_path, {"smelt.yaml": CONFIG, "app/module.py": source})
+    [finding] = violations(tmp_path, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["fixable"] is False
+    blocker = finding.expected["fix_blocker"]
+    assert blocker["path"] == "app/module.py"
+    assert blocker["line"] == line
+    assert blocker["expression"] == expression
+    assert f"app/module.py:{line}:" in finding.expected["fix_reason"]
+    assert (tmp_path / "app/module.py").read_text(encoding="utf-8") == source
+
+
+@pytest.mark.parametrize(
     ("minimum", "future", "count"),
     [(None, False, 0), ("3.13", False, 0), ("3.14", False, 1), ("3.13", True, 1)],
 )
