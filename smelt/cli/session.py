@@ -116,4 +116,6 @@ def serve(
 
 
 if __name__ == "__main__":
+    if client := sys.argv[3:]:
+        os.environ["SMELT_NATIVE_CLIENT"] = client[0]
     serve(Path(sys.argv[1]), root=sys.argv[2])

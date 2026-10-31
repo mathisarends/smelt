@@ -9,6 +9,7 @@ pub fn spawn(python: &Path, endpoint: &Path, root: &Path) -> io::Result<std::pro
         .args(["-P", "-m", "smelt.cli.session"])
         .arg(endpoint)
         .arg(root)
+        .arg(std::env::current_exe()?)
         .current_dir(
             endpoint
                 .parent()
@@ -83,10 +84,11 @@ mod windows {
             format!("\"{}{}\"", text, "\\".repeat(trailing))
         }
         let mut arguments: Vec<u16> = format!(
-            "{} -P -m smelt.cli.session {} {}",
+            "{} -P -m smelt.cli.session {} {} {}",
             quoted(python),
             quoted(endpoint),
-            quoted(root)
+            quoted(root),
+            quoted(&std::env::current_exe()?)
         )
         .encode_utf16()
         .chain([0])

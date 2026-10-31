@@ -19,6 +19,7 @@ from smelt.cli.support import (
 )
 from smelt.config import ConfigError
 from smelt.diagnostics.render.machine import render_error_json
+from smelt.engine.native_git import check_scope
 from smelt.engine.result_cache import RecordingStream, ResultCache
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
@@ -217,6 +218,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if handler is None:
         parser.print_help(sys.stderr)
         return EXIT_ERROR
+    with check_scope(enabled=not getattr(args, "no_cache", False)):
+        return _run(args, console, handler)
+
+
+def _run(args: argparse.Namespace, console: Console, handler: Handler) -> int:
     try:
         cwd = Path.cwd()
         cache = ResultCache.prepare(

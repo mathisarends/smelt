@@ -12,6 +12,7 @@ use std::process::{self, Command};
 use std::thread;
 use std::time::{Duration, Instant};
 
+mod git;
 mod worker;
 
 const PROTOCOL: u32 = 1;
@@ -88,6 +89,7 @@ fn direct(python: &Path, arguments: &[OsString]) -> io::Result<i32> {
     // Like the former console entry point, import the installed analyzer rather
     // than a same-named package in the directory being checked.
     command.args(["-P", "-m", "smelt"]).args(arguments);
+    command.env("SMELT_NATIVE_CLIENT", env::current_exe()?);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -230,6 +232,9 @@ fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
 
 fn run() -> io::Result<i32> {
     let arguments: Vec<OsString> = env::args_os().skip(1).collect();
+    if arguments == [OsString::from("--internal-git")] {
+        return git::serve();
+    }
     if arguments == [OsString::from("--version")] {
         println!("smelt {}", env!("CARGO_PKG_VERSION"));
         return Ok(0);
