@@ -158,8 +158,12 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
         arguments,
         tty: io::stdout().is_terminal(),
     };
-    serde_json::to_writer(&mut stream, &payload)?;
-    stream.write_all(b"\n")?;
+    // A streaming serializer issues many tiny TCP writes. With Nagle enabled,
+    // the final newline can wait for a delayed ACK while the worker waits for
+    // that newline. Send the complete framed request in one write instead.
+    let mut encoded = serde_json::to_vec(&payload)?;
+    encoded.push(b'\n');
+    stream.write_all(&encoded)?;
     trace("request sent");
     let mut line = Vec::new();
     BufReader::new(stream)
