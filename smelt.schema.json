@@ -1130,6 +1130,21 @@
             "hint"
           ]
         },
+        "prefer-package-import": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT319: Prefer an existing package re-export over an implementation import.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**SMT319 \u2014 prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain prefer-package-import` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1717,6 +1732,21 @@
             "hint"
           ]
         },
+        "^SMT319$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT319: Prefer an existing package re-export over an implementation import.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**SMT319 \u2014 prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain prefer-package-import` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2294,6 +2324,21 @@
             "hint"
           ]
         },
+        "prefer-package-import": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT319: Prefer an existing package re-export over an implementation import.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**SMT319 \u2014 prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain prefer-package-import` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -2667,6 +2712,21 @@
           "title": "SMT318: Review .value on a known StrEnum member for direct use of the member.",
           "description": "Review .value on a known StrEnum member for direct use of the member. StrEnum members are already strings, so extracting .value often adds noise and loses the enum type unnecessarily. This opt-in hint recognizes direct Class.MEMBER.value reads on analyzed, top-level classes inheriting directly from enum.StrEnum, including import aliases, relative imports and analyzed re-exports. Simple string, auto() and member-alias declarations are supported. Ordinary Enum, str/Enum mixins, unknown or shadowed bindings, custom enum construction/value access, instance variables and dynamic lookups are excluded. Shadowing anywhere in a module conservatively limits recognition there. Repair: Prefer the member directly when the consumer accepts string subclasses. Review boundary behavior first: exact str checks, identity, repr and serialization contracts can distinguish the member from its raw value. Keep .value or an explicit str(member) conversion where a plain string is intentional, and suppress the hint with a reason. No automatic rewrite is performed; analyzed code is never executed.",
           "markdownDescription": "**SMT318 \u2014 redundant-str-enum-value**\n\nReview .value on a known StrEnum member for direct use of the member.\n\nStrEnum members are already strings, so extracting .value often adds noise and loses the enum type unnecessarily. This opt-in hint recognizes direct Class.MEMBER.value reads on analyzed, top-level classes inheriting directly from enum.StrEnum, including import aliases, relative imports and analyzed re-exports. Simple string, auto() and member-alias declarations are supported. Ordinary Enum, str/Enum mixins, unknown or shadowed bindings, custom enum construction/value access, instance variables and dynamic lookups are excluded. Shadowing anywhere in a module conservatively limits recognition there.\n\n**Problem**\n```python\nfrom enum import StrEnum\n\nclass MouseEventKind(StrEnum):\n    WHEEL = \"mouseWheel\"\n\ndispatch_mouse_event(type=MouseEventKind.WHEEL.value)\n```\n\n**Preferred**\n```python\nfrom enum import StrEnum\n\nclass MouseEventKind(StrEnum):\n    WHEEL = \"mouseWheel\"\n\ndispatch_mouse_event(type=MouseEventKind.WHEEL)\n```\n\nPrefer the member directly when the consumer accepts string subclasses. Review boundary behavior first: exact str checks, identity, repr and serialization contracts can distinguish the member from its raw value. Keep .value or an explicit str(member) conversion where a plain string is intentional, and suppress the hint with a reason. No automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain redundant-str-enum-value` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT319$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT319: Prefer an existing package re-export over an implementation import.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**SMT319 \u2014 prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Imports inside that package are excluded to avoid routing its own implementation through its initializer. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain prefer-package-import` for details.",
           "examples": [
             "hint"
           ]

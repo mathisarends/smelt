@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT319](docs/rules/SMT319.md), enabled with
+  `rules: {prefer-package-import: hint}` or `--select SMT319`, suggests existing
+  package re-exports so callers can combine imports through a common `__init__.py`.
+  All names must have direct, unconditional public re-exports in analyzed code;
+  internal package imports and unscanned third-party packages are excluded.
+  Findings preserve aliases in their suggestions; checks never rewrite imports.
 - Worker transport now acknowledges requests within 250 ms and bounds accepted
   responses to five seconds, including partial output. Failures fall back to
   foreground checking without repeating accepted requests. A watchdog and four
