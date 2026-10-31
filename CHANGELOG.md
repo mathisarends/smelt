@@ -206,7 +206,7 @@ current configuration and complete rule contracts, see the [README](README.md),
   structured recognition changes and independently bounded logs, then optionally
   execute explicitly selected pytest targets. Invalid analysis, timeouts and
   incomplete collection remain distinct from test failures; normal checks never
-  execute analyzed tests. See the [evaluation workflow](README.md#evaluate-a-test-quality-change).
+  execute analyzed tests. See the [evaluation workflow](docs/testing.md#evaluate-a-test-quality-change).
 - Test outcome review now recognizes known mock interaction assertions, annotated
   fixture receivers and awaited, bounded asyncio Event observations. Unused
   `pytest.raises`/`warns` context objects no longer count as checks. Unknown

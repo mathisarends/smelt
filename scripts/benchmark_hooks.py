@@ -78,7 +78,7 @@ def hook_check(
 
 
 def benchmark(args: argparse.Namespace, parent: Path) -> dict[str, Any]:
-    runner = [str(args.runner)] if args.runner else [sys.executable, "-m", "pre_commit"]
+    runner = [str(args.runner)] if args.runner else ["prek"]
     runner_version = subprocess.run(  # noqa: S603 - explicit runner selected by maintainer
         [*runner, "--version"], capture_output=True, text=True, check=True, timeout=30
     ).stdout.strip()

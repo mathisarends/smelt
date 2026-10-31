@@ -1,6 +1,6 @@
 # Extending Smelt
 
-Use [the vision](vision.md) as the scope and acceptance filter for proposed changes.
+Use [the vision](docs/vision.md) as the scope and acceptance filter for proposed changes.
 
 Development requires Python 3.12+ and Rust 1.88+ with rustfmt/clippy and a platform
 linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
@@ -48,7 +48,7 @@ the same decision before adding another finding.
 Rules depend on analysis/config/model/diagnostics, never engine or CLI. The engine
 composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
-Smelt checks these architecture boundaries with its own `smelt.yaml`.
+Smelt checks these architecture boundaries with its own `smelt.yml`.
 
 The repository also enables public-first ordering, internal-member/static-helper
 visibility, test-only public functions/attributes and test-quality reviews. Future
@@ -189,6 +189,11 @@ and refusal tests for uncertain execution or concurrent edits.
 
 ## Verification and PR scope
 
+Install the [uv](https://docs.astral.sh/uv/) and Rust toolchains, then run
+`uv sync --locked` and `uv run prek install`. After editing, run
+`uv run prek run --all-files`, inspect any hook fixes, and repeat until it passes.
+The install also enables the Conventional Commits hook.
+
 Update [CHANGELOG.md](CHANGELOG.md) under `Unreleased` for user-visible features,
 fixes and behavior changes. State what an agent can do differently, required
 policy or opt-in settings, compatibility changes and relevant limits. Keep entries
@@ -203,7 +208,7 @@ uv run python scripts/generate.py
 uv run pytest tests/rules/test_registry.py tests/test_docs.py
 uv run smelt explain <code> --format json
 uv run smelt check --strict-coverage --fail-on warning --format json
-uv run pre-commit run --all-files
+uv run prek run --all-files
 uv run pytest
 ```
 
@@ -268,7 +273,7 @@ environment name must match the workflow exactly.
 3. Follow the `Publish to PyPI` run in
    [GitHub Actions](https://github.com/mathisarends/smelt/actions/workflows/release.yml).
    The workflow requires the tagged commit to be reachable from `main` and the tag
-   to equal `v` followed by the package version. It runs pre-commit, pytest and
+   to equal `v` followed by the package version. It runs prek, pytest and
    Smelt, validates a source distribution outside the checkout, then builds native
    Linux x86_64/aarch64, Windows x86_64 and macOS x86_64/aarch64 wheels. CI also
    installs and exercises native wheels on Linux, Windows and macOS. A separate

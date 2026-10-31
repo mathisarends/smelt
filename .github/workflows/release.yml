@@ -51,7 +51,7 @@ jobs:
           if actual_tag != expected_tag:
               raise SystemExit(f"Expected tag {expected_tag!r}, got {actual_tag!r}")
           PY
-      - run: uv run --frozen pre-commit run --all-files --show-diff-on-failure
+      - run: uv run --frozen prek run --all-files --show-diff-on-failure
       - run: uv run --frozen pytest
       - run: uv run --frozen smelt check --strict-coverage --fail-on warning
       - run: uv build --no-sources --sdist

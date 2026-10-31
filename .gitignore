@@ -30,8 +30,6 @@ coverage.xml
 
 # Editors / OS
 .idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
 .DS_Store
 Thumbs.db

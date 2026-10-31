@@ -104,7 +104,7 @@ or from one representative codebase.
 Changed/staged checks now reuse content-addressed results, per-file facts and
 historical analysis; native clients can retain bounded member dependency state
 and avoid Git process starts. See the paired measurements in
-[the agent workflow](docs/agent-workflow.md). These improvements do not make
+[the agent workflow](agent-workflow.md). These improvements do not make
 filename-only analysis correct: a removed caller can affect an unchanged method.
 
 Continue measuring cold checks, architecture-heavy edits, complete hooks and
@@ -172,7 +172,7 @@ selection and one unclassified Hermes source. They are not covered by the 1,019
 analyzed-module total. Static visibility reviews still cannot prove absence of
 external/framework callers; findings now expose this scope explicitly.
 
-The [aggregate evidence](docs/benchmarks/review-feedback-2026-10-31.json) records
+The [aggregate evidence](benchmarks/review-feedback-2026-10-31.json) records
 both analyzer revisions, the consumer revision, effective-policy hashes, rule
 selections, per-rule counts and coverage limits. Detailed consumer reports remain
 local; the aggregate contains no consumer source snippets. Reproduce with

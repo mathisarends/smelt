@@ -22,10 +22,10 @@ jobs:
           enable-cache: true
       - uses: actions/cache@v6
         with:
-          path: ~/.cache/pre-commit
-          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml', 'uv.lock') }}
+          path: ~/.cache/prek
+          key: ${{ runner.os }}-prek-${{ hashFiles('.pre-commit-config.yml', 'uv.lock') }}
       - run: uv sync --locked
-      - run: uv run pre-commit run --all-files --show-diff-on-failure
+      - run: uv run prek run --all-files --show-diff-on-failure
 
   test:
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
