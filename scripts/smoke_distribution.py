@@ -31,7 +31,7 @@ def smoke(directory: Path) -> None:
         raise ValueError("no distributions to smoke-test")
     for distribution in distributions:
         with tempfile.TemporaryDirectory(prefix="smelt-wheel-") as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             environment = root / "environment"
             run(["uv", "venv", "--python", sys.executable, str(environment)], root)
             scripts = environment / ("Scripts" if os.name == "nt" else "bin")
@@ -46,7 +46,7 @@ def smoke(directory: Path) -> None:
                     [str(python), "-c", "import smelt; print(smelt.__file__)"], root
                 ).strip()
             )
-            if not package.is_relative_to(environment):
+            if not package.resolve().is_relative_to(environment.resolve()):
                 raise AssertionError(
                     f"smoke test imported outside its wheel: {package}"
                 )

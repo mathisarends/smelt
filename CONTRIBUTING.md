@@ -231,7 +231,7 @@ environment name must match the workflow exactly.
 
 ### Release procedure
 
-1. Bump the version in `pyproject.toml`, run `uv lock`, and merge the version change
+1. Bump matching versions in `pyproject.toml` and `Cargo.toml`, run `uv lock`, and merge the version change
    and release workflow into `main` after CI passes. Each release needs a new PyPI
    version; this setup does not bump or publish the existing `0.1.3` automatically.
 2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
@@ -248,8 +248,10 @@ environment name must match the workflow exactly.
    [GitHub Actions](https://github.com/mathisarends/smelt/actions/workflows/release.yml).
    The workflow requires the tagged commit to be reachable from `main` and the tag
    to equal `v` followed by the package version. It runs pre-commit, pytest and
-   Smelt, builds both distributions, and installs and exercises each outside the
-   checkout. A separate job downloads those exact artifacts and publishes them
+   Smelt, validates a source distribution outside the checkout, then builds native
+   Linux x86_64/aarch64, Windows x86_64 and macOS x86_64/aarch64 wheels. CI also
+   installs and exercises native wheels on Linux, Windows and macOS. A separate
+   job downloads the validated release artifacts and publishes them
    with OIDC and the publishing action's default attestations enabled.
 
 Maintainers and coding agents with permission to push release tags can use this
