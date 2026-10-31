@@ -17,6 +17,7 @@ def run(command: list[str], root: Path) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env={**os.environ, "SMELT_DAEMON": "0"},
         check=False,
         timeout=240,
     )
@@ -60,6 +61,33 @@ def smoke(directory: Path) -> None:
                 ["config", "schema"],
             ):
                 run([str(binary), *arguments], root)
+            project = root / "project"
+            package = project / "app/domain"
+            package.mkdir(parents=True)
+            (project / "app/__init__.py").write_text("")
+            (package / "__init__.py").write_text("")
+            (package / "browser.py").write_text(
+                "class Browser:\n    def emit(self): pass\n"
+            )
+            caller = package / "caller.py"
+            caller.write_text("from .browser import Browser\nBrowser().emit()\n")
+            (project / "smelt.yaml").write_text(
+                "version: 1\nproject: {root_packages: [app]}\n"
+                "architecture:\n  layers:\n    domain: {path: domain}\n"
+                "  imports: {transitive: true}\n"
+                "structure:\n  contracts:\n"
+                "    api: {match: app, rules: {internal-public-member: warning}}\n"
+            )
+            command = [str(binary), "check", "--format", "json"]
+            if json.loads(run(command, project))["violations"]:
+                raise AssertionError("installed checker reported the valid caller")
+            caller.write_text("")
+            edited = json.loads(run(command, project))
+            independent = json.loads(run([*command, "--no-cache"], project))
+            if edited != independent or [
+                finding["code"] for finding in edited["violations"]
+            ] != ["SMT316"]:
+                raise AssertionError("installed checker lost the removed caller")
             print(f"Installed and checked {distribution.name}")  # noqa: T201
 
 
