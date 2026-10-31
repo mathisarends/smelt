@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Staged checks reuse verified policy blobs before parsing configuration, avoiding
+  a redundant Git blob subprocess after source edits. Policy changes still use
+  their captured object ID; `--no-cache` keeps independent reads. Paired Windows
+  CLI edit medians improve about 11%; complete-hook gains remain inconclusive.
 - The installed CLI now uses a native Rust client and bounded local workers for
   read-only checks. Fresh clients reuse imports, while every check captures current
   Git/config inputs. CI, fixes and other commands stay in the foreground; worker

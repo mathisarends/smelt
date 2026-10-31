@@ -83,6 +83,10 @@ including the historical comparison. They do not create temporary source trees.
 Cached blob bytes are checked against Git's object ID before use. File discovery,
 coverage, config discovery, Python targets and the native import scanner all use
 the same captured view, including files removed or repaired only in the working tree.
+The staged policy loader uses this verified blob cache before analysis starts,
+then closes its transaction before the analysis cache opens. An unchanged policy
+does not require another Git blob subprocess after every source edit. YAML is
+still parsed from the captured policy object; a changed object ID selects new bytes.
 
 Per-file facts cover functions, methods, SMT430 attribute candidates, native import
 scans, resolved import details, namespaces, suppressions, test constructor/async
@@ -174,6 +178,43 @@ working-tree changes by default; `--baseline-mode staged` compares the same stag
 workflow. The `architecture` policy adds layers and native import scanning to the
 member review. Synthetic policies do not represent every architecture, test-quality
 policy, machine or repository size. With few samples, p95 is effectively the maximum.
+
+### Policy blob reuse after the native-client change
+
+Measurements on 2026-10-31 compare merged main `f7fd415` with `ba5ed93`.
+Both are installed native-client wheels, with identical dependencies, on Windows
+11 / CPython 3.14. Fixtures contain 250 modules with twelve methods each. Seven
+samples alternate baseline/candidate order; every edited report matches an
+independent fresh-process `--no-cache` check.
+
+| Scenario | Main median (ms) | New median (ms) | Main → new p95 / max (ms) |
+| --- | ---: | ---: | ---: |
+| CLI, members, unchanged retry | 94 | 93 | 123 → 151 |
+| CLI, members, Python edit | 318 | 282 | 385 → 337 |
+| CLI, members, README edit | 111 | 120 | 173 → 199 |
+| CLI, transitive imports + members, retry | 103 | 104 | 122 → 135 |
+| CLI, transitive imports + members, Python edit | 407 | 364 | 763 → 804 |
+| CLI, transitive imports + members, README edit | 211 | 252 | 397 → 524 |
+| Complete prek staged hook, retry | 299 | 313 | 525 → 386 |
+| Complete prek staged hook, Python edit | 850 | 837 | 1,470 → 1,298 |
+
+The CLI edit medians improve about 11% by reusing unchanged policy bytes before
+configuration parsing. A normal source edit needs three Git subprocesses instead
+of four: repository/HEAD capture, index capture and changed-source blob reads.
+Exact-result retries already bypass configuration loading and are unaffected by
+this change. There is no demonstrated gain for retries or README edits; the
+transitive edit maximum also regresses. The complete prek 0.5.9 edit median changes
+only about 1.5% amid substantial noise, so no clear hook-level gain is claimed.
+
+These machine-load-sensitive observations must be compared within this paired
+run, rather than against the earlier native-client measurements below. CLI timing
+includes native startup, IPC, Git, analysis and JSON output. Hook timing additionally
+includes runner startup and its single Smelt hook, on separate repositories/caches;
+installation and other hooks are excluded. Cold observations are retained separately
+and do not establish a cold-CI improvement. The
+[raw evidence and verified build identities](benchmarks/staged-policy-cache-2026-10-31.json)
+retain every sample, including regressions. Reproduce with the commands below using
+the two installed native executables as both `--baseline` and `--candidate`.
 
 ### Native client and persistent member dependencies
 
