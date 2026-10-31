@@ -273,6 +273,55 @@ def build_briefing(
     )
 
 
+def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
+    lines = _header(briefing, ctx)
+    lines.append("")
+    lines.append(
+        textwrap.fill(
+            briefing.boundary_policy,
+            width=88,
+            initial_indent="Policy: ",
+            subsequent_indent="        ",
+        )
+    )
+    coverage = briefing.coverage
+    lines.append(
+        textwrap.fill(
+            f"Coverage: {coverage.get('mode', 'configured')}; "
+            + (
+                f"{coverage['status']}. {coverage.get('reason', '')}"
+                if "status" in coverage
+                else f"{'complete' if coverage.get('complete') else 'incomplete'} policy assignment for {coverage.get('files', 0)} source files."
+            ),
+            width=88,
+        )
+    )
+    lines.append(
+        "Imports: direct and transitive dependencies checked (layers, features, shared, composition roots, third-party)"
+        if briefing.transitive
+        else "Imports: direct only (indirect chains require architecture.imports.transitive: true)"
+    )
+    lines.extend(_contract_lines(briefing))
+    lines.append("")
+    if briefing.module_kind is ModuleKind.UNCLASSIFIED:
+        lines.extend((*_wrap_tests(briefing.tests), "", _violation_line(briefing)))
+        return "\n".join(lines) + "\n"
+    if briefing.layers:
+        lines.extend(_layer_lines(briefing))
+    if briefing.cross_feature is not None:
+        lines.append(f"Cross-feature:    {briefing.cross_feature}")
+    if briefing.shared:
+        lines.append(
+            f"Shared:           {', '.join(briefing.shared)} (must not import features)"
+        )
+    if briefing.composition_root:
+        lines.append(f"Composition root: {', '.join(briefing.composition_root)}")
+    if briefing.wiring:
+        lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
+    lines.extend(("", *_wrap_tests(briefing.tests), "", _violation_line(briefing)))
+    return "\n".join(lines) + "\n"
+
+
 def _rule_brief(ctx: AnalysisContext, module: str | None) -> dict[str, str]:
     rules = build_rule_set()
     policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yaml"))
@@ -415,55 +464,6 @@ def _tests(ctx: AnalysisContext, target: Target) -> tuple[str, ...]:
         if path:
             return (f"mirror at {path}",)
     return (f"mirror the source tree ({tests.mirror})",)
-
-
-def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
-    lines = _header(briefing, ctx)
-    lines.append("")
-    lines.append(
-        textwrap.fill(
-            briefing.boundary_policy,
-            width=88,
-            initial_indent="Policy: ",
-            subsequent_indent="        ",
-        )
-    )
-    coverage = briefing.coverage
-    lines.append(
-        textwrap.fill(
-            f"Coverage: {coverage.get('mode', 'configured')}; "
-            + (
-                f"{coverage['status']}. {coverage.get('reason', '')}"
-                if "status" in coverage
-                else f"{'complete' if coverage.get('complete') else 'incomplete'} policy assignment for {coverage.get('files', 0)} source files."
-            ),
-            width=88,
-        )
-    )
-    lines.append(
-        "Imports: direct and transitive dependencies checked (layers, features, shared, composition roots, third-party)"
-        if briefing.transitive
-        else "Imports: direct only (indirect chains require architecture.imports.transitive: true)"
-    )
-    lines.extend(_contract_lines(briefing))
-    lines.append("")
-    if briefing.module_kind is ModuleKind.UNCLASSIFIED:
-        lines.extend((*_wrap_tests(briefing.tests), "", _violation_line(briefing)))
-        return "\n".join(lines) + "\n"
-    if briefing.layers:
-        lines.extend(_layer_lines(briefing))
-    if briefing.cross_feature is not None:
-        lines.append(f"Cross-feature:    {briefing.cross_feature}")
-    if briefing.shared:
-        lines.append(
-            f"Shared:           {', '.join(briefing.shared)} (must not import features)"
-        )
-    if briefing.composition_root:
-        lines.append(f"Composition root: {', '.join(briefing.composition_root)}")
-    if briefing.wiring:
-        lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
-    lines.extend(("", *_wrap_tests(briefing.tests), "", _violation_line(briefing)))
-    return "\n".join(lines) + "\n"
 
 
 def _contract_lines(briefing: Briefing) -> list[str]:

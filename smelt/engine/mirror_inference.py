@@ -24,32 +24,6 @@ class MirrorGuess:
     name_clashes: tuple[str, ...] = ()
 
 
-def clashing_test_roots(root: Path, test_roots: list[str]) -> tuple[str, ...]:
-    """Test roots whose mirrored test files would collide under pytest's defaults.
-
-    Mirroring repeats file names (``auth/test_router.py``, ``user/test_router.py``).
-    pytest's default import mode only tells them apart inside packages, so it needs
-    ``__init__.py`` files or ``--import-mode=importlib``.
-    """
-    found: list[str] = []
-    for test_root in test_roots:
-        directory = root / test_root
-        if not directory.is_dir() or any(directory.rglob("__init__.py")):
-            continue
-        configs = [
-            base / name
-            for base in dict.fromkeys((root, directory.parent))
-            for name in _PYTEST_CONFIGS
-        ]
-        if not any(
-            config.is_file()
-            and _IMPORTLIB.search(config.read_text(encoding="utf-8", errors="replace"))
-            for config in configs
-        ):
-            found.append(test_root)
-    return tuple(found)
-
-
 def infer_mirror(
     root: Path, test_roots: list[str], packages: list[Path]
 ) -> MirrorGuess | None:
@@ -73,8 +47,34 @@ def infer_mirror(
     if counts[pattern] == 0:
         return None
     return MirrorGuess(
-        pattern, counts[pattern], total, clashing_test_roots(root, test_roots)
+        pattern, counts[pattern], total, _clashing_test_roots(root, test_roots)
     )
+
+
+def _clashing_test_roots(root: Path, test_roots: list[str]) -> tuple[str, ...]:
+    """Test roots whose mirrored test files would collide under pytest's defaults.
+
+    Mirroring repeats file names (``auth/test_router.py``, ``user/test_router.py``).
+    pytest's default import mode only tells them apart inside packages, so it needs
+    ``__init__.py`` files or ``--import-mode=importlib``.
+    """
+    found: list[str] = []
+    for test_root in test_roots:
+        directory = root / test_root
+        if not directory.is_dir() or any(directory.rglob("__init__.py")):
+            continue
+        configs = [
+            base / name
+            for base in dict.fromkeys((root, directory.parent))
+            for name in _PYTEST_CONFIGS
+        ]
+        if not any(
+            config.is_file()
+            and _IMPORTLIB.search(config.read_text(encoding="utf-8", errors="replace"))
+            for config in configs
+        ):
+            found.append(test_root)
+    return tuple(found)
 
 
 def _module_paths(package: Path) -> set[str]:

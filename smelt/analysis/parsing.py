@@ -72,6 +72,34 @@ def python_note(root: Path, *, store: SourceStore | None = None) -> str:
     return note
 
 
+def type_checking_lines(tree: ast.Module) -> frozenset[int]:
+    """Line numbers inside ``if TYPE_CHECKING:`` blocks."""
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and _is_type_checking_test(node.test):
+            for child in node.body:
+                end = child.end_lineno or child.lineno
+                lines.update(range(child.lineno, end + 1))
+    return frozenset(lines)
+
+
+def resolve_relative(
+    module: str, *, is_package: bool, level: int, target: str | None
+) -> str:
+    """Resolve ``from <level dots><target> import ...`` inside ``module``."""
+    if level == 0:
+        return target or ""
+    parts = module.split(".")
+    if not is_package:
+        parts = parts[:-1]
+    if level > 1:
+        parts = parts[: len(parts) - (level - 1)]
+    base = ".".join(parts)
+    if target:
+        return f"{base}.{target}" if base else target
+    return base
+
+
 def _target_python(root: Path, *, store: SourceStore) -> tuple[int, int] | None:
     found: list[tuple[int, int]] = []
     try:
@@ -90,37 +118,9 @@ def _target_python(root: Path, *, store: SourceStore) -> tuple[int, int] | None:
     return max(found, default=None)
 
 
-def type_checking_lines(tree: ast.Module) -> frozenset[int]:
-    """Line numbers inside ``if TYPE_CHECKING:`` blocks."""
-    lines: set[int] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.If) and _is_type_checking_test(node.test):
-            for child in node.body:
-                end = child.end_lineno or child.lineno
-                lines.update(range(child.lineno, end + 1))
-    return frozenset(lines)
-
-
 def _is_type_checking_test(test: ast.expr) -> bool:
     if isinstance(test, ast.Name):
         return test.id == "TYPE_CHECKING"
     if isinstance(test, ast.Attribute):
         return test.attr == "TYPE_CHECKING"
     return False
-
-
-def resolve_relative(
-    module: str, *, is_package: bool, level: int, target: str | None
-) -> str:
-    """Resolve ``from <level dots><target> import ...`` inside ``module``."""
-    if level == 0:
-        return target or ""
-    parts = module.split(".")
-    if not is_package:
-        parts = parts[:-1]
-    if level > 1:
-        parts = parts[: len(parts) - (level - 1)]
-    base = ".".join(parts)
-    if target:
-        return f"{base}.{target}" if base else target
-    return base

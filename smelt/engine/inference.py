@@ -20,6 +20,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.analysis.exports import Loader
+# layer -> directory names, most conventional first
+LAYER_ALIASES: dict[str, tuple[str, ...]] = {
+    "domain": ("domain", "entities"),
+    "application": ("application", "use_cases", "usecases", "services"),
+    "infrastructure": ("infrastructure", "infra", "adapters", "persistence"),
+    "presentation": ("presentation", "api", "web", "http", "interfaces", "ui"),
+}
 
 _FEATURE_CONTAINERS = (
     "features",
@@ -60,13 +67,6 @@ _COMPOSITION_NAMES = (
     "__main__",
     "lifespan",
 )
-# layer -> directory names, most conventional first
-LAYER_ALIASES: dict[str, tuple[str, ...]] = {
-    "domain": ("domain", "entities"),
-    "application": ("application", "use_cases", "usecases", "services"),
-    "infrastructure": ("infrastructure", "infra", "adapters", "persistence"),
-    "presentation": ("presentation", "api", "web", "http", "interfaces", "ui"),
-}
 _LAYER_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "domain": (),
     "application": ("domain",),
@@ -483,6 +483,81 @@ _TRACE_LIMIT = 2000
 _SERVER_TARGET = re.compile(r"([A-Za-z_][\w.]*):([A-Za-z_]\w*)")
 
 
+def render_config(inferred: InferredConfig, *, maintainability: bool = False) -> str:
+    out = [
+        "# yaml-language-server: $schema=.smelt.schema.json",
+        "# Python guardrails for smelt. Reference: `smelt config schema`,",
+        "# rule details: `smelt explain <code>`.",
+        "version: 1",
+    ]
+    out.extend(
+        [
+            "",
+            "project:",
+            f"  source_roots: {_list(inferred.source_roots)}",
+            f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
+            f"  test_roots: {_list(inferred.test_roots)}",
+            '  # exclude: ["**/migrations/**"]',
+        ]
+    )
+    out.extend(
+        f"  # not analyzed: workspace member {member.path} ({member.skipped})"
+        for member in inferred.members
+        if member.skipped
+    )
+    if not maintainability or inferred.layers:
+        out.extend(["", "architecture:"])
+        out.extend(_architecture(inferred))
+    out.extend(
+        [
+            "",
+            "# Optional naming convention:",
+            "# structure:",
+            "#   forbidden_names: [utils, helpers]",
+            "",
+            "tests:",
+            "  layout: none  # opt in to mirror after reviewing the test layout",
+        ]
+    )
+    if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:
+        out.append(f'  mirror: "{inferred.mirror.pattern}"')
+    if inferred.tests_layout == "mirror":
+        out.append("  # Detected a mirrored layout; use layout: mirror to enforce it.")
+    if maintainability:
+        out.extend(
+            [
+                "",
+                "# Each named check is explicit; hover for examples and analysis limits.",
+                "rules:",
+                "  public-definitions-first: error",
+                "  bundled-instance-assignment: error",
+                "  internal-public-member: warning",
+                "  internal-static-helper: hint",
+                "  test-without-outcome-check: warning",
+                "  test-only-checks-possibly-empty-data: warning",
+                "  unbounded-test-wait: warning",
+                "  independent-test-case-loop: hint",
+                "  async-mock-without-await-check: warning",
+                "  test-only-public-function: warning",
+                "  test-only-public-attribute: warning",
+            ]
+        )
+    out.extend(
+        [
+            "",
+            "# Severity overrides by rule name or code: error | warning | hint | off",
+            "# rules:",
+            "#   SMT104: error  # opt in to import-cycle detection",
+            "#   SMT305: warning  # opt in to unclassified-module hints",
+            "#   unclassified-module: off  # same as SMT305: off",
+            "",
+            "# Adopt incrementally: `smelt debt` records today's violations.",
+            "# debt: .smelt/debt.json",
+        ]
+    )
+    return "\n".join(out) + "\n"
+
+
 def _loader(packages: list[Path]) -> Loader:
     cache: dict[str, Namespace | None] = {}
 
@@ -640,81 +715,6 @@ def _infer_wiring(inferred: InferredConfig, packages: list[Path]) -> None:
                 continue
             inferred.wiring.append(".".join(relative.with_suffix("").parts))
     inferred.wiring.sort()
-
-
-def render_config(inferred: InferredConfig, *, maintainability: bool = False) -> str:
-    out = [
-        "# yaml-language-server: $schema=.smelt.schema.json",
-        "# Python guardrails for smelt. Reference: `smelt config schema`,",
-        "# rule details: `smelt explain <code>`.",
-        "version: 1",
-    ]
-    out.extend(
-        [
-            "",
-            "project:",
-            f"  source_roots: {_list(inferred.source_roots)}",
-            f"  # root_packages: {_list(inferred.root_packages)}  # discovered from source_roots",
-            f"  test_roots: {_list(inferred.test_roots)}",
-            '  # exclude: ["**/migrations/**"]',
-        ]
-    )
-    out.extend(
-        f"  # not analyzed: workspace member {member.path} ({member.skipped})"
-        for member in inferred.members
-        if member.skipped
-    )
-    if not maintainability or inferred.layers:
-        out.extend(["", "architecture:"])
-        out.extend(_architecture(inferred))
-    out.extend(
-        [
-            "",
-            "# Optional naming convention:",
-            "# structure:",
-            "#   forbidden_names: [utils, helpers]",
-            "",
-            "tests:",
-            "  layout: none  # opt in to mirror after reviewing the test layout",
-        ]
-    )
-    if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:
-        out.append(f'  mirror: "{inferred.mirror.pattern}"')
-    if inferred.tests_layout == "mirror":
-        out.append("  # Detected a mirrored layout; use layout: mirror to enforce it.")
-    if maintainability:
-        out.extend(
-            [
-                "",
-                "# Each named check is explicit; hover for examples and analysis limits.",
-                "rules:",
-                "  public-definitions-first: error",
-                "  bundled-instance-assignment: error",
-                "  internal-public-member: warning",
-                "  internal-static-helper: hint",
-                "  test-without-outcome-check: warning",
-                "  test-only-checks-possibly-empty-data: warning",
-                "  unbounded-test-wait: warning",
-                "  independent-test-case-loop: hint",
-                "  async-mock-without-await-check: warning",
-                "  test-only-public-function: warning",
-                "  test-only-public-attribute: warning",
-            ]
-        )
-    out.extend(
-        [
-            "",
-            "# Severity overrides by rule name or code: error | warning | hint | off",
-            "# rules:",
-            "#   SMT104: error  # opt in to import-cycle detection",
-            "#   SMT305: warning  # opt in to unclassified-module hints",
-            "#   unclassified-module: off  # same as SMT305: off",
-            "",
-            "# Adopt incrementally: `smelt debt` records today's violations.",
-            "# debt: .smelt/debt.json",
-        ]
-    )
-    return "\n".join(out) + "\n"
 
 
 def _architecture(inferred: InferredConfig) -> list[str]:

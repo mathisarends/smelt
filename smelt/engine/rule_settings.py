@@ -26,9 +26,9 @@ class RuleSettings:
             for rule in rules.rules
             if getattr(rule, "scope", "source") != "source"
         }
-        self.global_rules = self.normalize(loaded.config.rules, "rules")
+        self.global_rules = self._normalize(loaded.config.rules, "rules")
         self.packages = {
-            name: self.normalize(contract.rules, f"structure.contracts.{name}.rules")
+            name: self._normalize(contract.rules, f"structure.contracts.{name}.rules")
             for name, contract in loaded.config.structure.contracts.items()
         }
         for index, entry in enumerate(loaded.config.ignore):
@@ -56,28 +56,6 @@ class RuleSettings:
                     ],
                     self.source,
                 )
-
-    def normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
-        result: dict[str, str] = {}
-        issues: list[ConfigIssue] = []
-        for key, value in raw.items():
-            code = self.codes.get(key)
-            if code is None:
-                issues.append(
-                    ConfigIssue(
-                        f"{location}.{key}",
-                        f'unknown rule "{key}"{did_you_mean(key, self.codes)}',
-                    )
-                )
-            elif code in result:
-                issues.append(
-                    ConfigIssue(f"{location}.{key}", f"{code} is already configured")
-                )
-            else:
-                result[code] = value
-        if issues:
-            raise ConfigError(issues, self.source)
-        return result
 
     def validate_packages(self, ctx: AnalysisContext) -> None:
         seen: dict[tuple[str, str], str] = {}
@@ -162,3 +140,25 @@ class RuleSettings:
                         module = ".".join(parts)
                         break
         return self.severity(rule, ctx, module, selected=selected)
+
+    def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
+        result: dict[str, str] = {}
+        issues: list[ConfigIssue] = []
+        for key, value in raw.items():
+            code = self.codes.get(key)
+            if code is None:
+                issues.append(
+                    ConfigIssue(
+                        f"{location}.{key}",
+                        f'unknown rule "{key}"{did_you_mean(key, self.codes)}',
+                    )
+                )
+            elif code in result:
+                issues.append(
+                    ConfigIssue(f"{location}.{key}", f"{code} is already configured")
+                )
+            else:
+                result[code] = value
+        if issues:
+            raise ConfigError(issues, self.source)
+        return result

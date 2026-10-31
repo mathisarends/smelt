@@ -41,40 +41,6 @@ class PythonTarget:
         }
 
 
-def minimum_from_requires_python(spec: str, source: str) -> PythonTarget:
-    """A conservative lower bound. Exclusions never raise the inferred minimum."""
-    bounds: list[Version] = []
-    try:
-        for item in SpecifierSet(spec):
-            if item.operator in {">=", ">", "~=", "=="}:
-                version = Version(item.version.removesuffix(".*"))
-                if version.is_prerelease or version.is_devrelease:
-                    return PythonTarget(
-                        None,
-                        source,
-                        spec,
-                        "prerelease minimum is not a stable Python target",
-                    )
-                bounds.append(version)
-            elif item.operator == "===":
-                return PythonTarget(
-                    None,
-                    source,
-                    spec,
-                    "arbitrary version equality has no inferred Python minimum",
-                )
-    except (InvalidSpecifier, InvalidVersion) as exc:
-        return PythonTarget(None, source, spec, f"invalid requires-python: {exc}")
-    if not bounds:
-        return PythonTarget(
-            None, source, spec, "requires-python has no explicit lower bound"
-        )
-    release = max(bounds).release
-    return PythonTarget(
-        (release[0], release[1] if len(release) > 1 else 0), source, spec
-    )
-
-
 class PythonTargetIndex:
     def __init__(self, files: FileIndex) -> None:
         self.files = files
@@ -130,6 +96,17 @@ class PythonTargetIndex:
             self._cache[current] = result
         return result
 
+    def describe(self) -> list[dict[str, Any]]:
+        targets = {
+            self.for_path(source.absolute) for source in self.files.sources.values()
+        }
+        return [
+            target.to_json()
+            for target in sorted(
+                targets, key=lambda item: (item.source or "", item.minimum or (0, 0))
+            )
+        ]
+
     def _read(self, path: Path) -> PythonTarget | None:
         source = self.files.relative(path)
         try:
@@ -150,15 +127,38 @@ class PythonTargetIndex:
             return PythonTarget(
                 None, source, uncertainty="project has no string requires-python"
             )
-        return minimum_from_requires_python(spec, source)
+        return _minimum_from_requires_python(spec, source)
 
-    def describe(self) -> list[dict[str, Any]]:
-        targets = {
-            self.for_path(source.absolute) for source in self.files.sources.values()
-        }
-        return [
-            target.to_json()
-            for target in sorted(
-                targets, key=lambda item: (item.source or "", item.minimum or (0, 0))
-            )
-        ]
+
+def _minimum_from_requires_python(spec: str, source: str) -> PythonTarget:
+    """A conservative lower bound. Exclusions never raise the inferred minimum."""
+    bounds: list[Version] = []
+    try:
+        for item in SpecifierSet(spec):
+            if item.operator in {">=", ">", "~=", "=="}:
+                version = Version(item.version.removesuffix(".*"))
+                if version.is_prerelease or version.is_devrelease:
+                    return PythonTarget(
+                        None,
+                        source,
+                        spec,
+                        "prerelease minimum is not a stable Python target",
+                    )
+                bounds.append(version)
+            elif item.operator == "===":
+                return PythonTarget(
+                    None,
+                    source,
+                    spec,
+                    "arbitrary version equality has no inferred Python minimum",
+                )
+    except (InvalidSpecifier, InvalidVersion) as exc:
+        return PythonTarget(None, source, spec, f"invalid requires-python: {exc}")
+    if not bounds:
+        return PythonTarget(
+            None, source, spec, "requires-python has no explicit lower bound"
+        )
+    release = max(bounds).release
+    return PythonTarget(
+        (release[0], release[1] if len(release) > 1 else 0), source, spec
+    )

@@ -15,18 +15,18 @@ if TYPE_CHECKING:
     from smelt.model import ArchitectureModel
 
 
-def child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
+def package_location(files: FileIndex, package: PackageDir) -> str:
+    init = files.sources.get(package.module)
+    return init.path if init is not None else package.path
+
+
+def _child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
     prefix = f"{parent}."
     return [
         package
         for name, package in sorted(files.packages.items())
         if name.startswith(prefix) and "." not in name[len(prefix) :]
     ]
-
-
-def package_location(files: FileIndex, package: PackageDir) -> str:
-    init = files.sources.get(package.module)
-    return init.path if init is not None else package.path
 
 
 class UnknownLayer(BaseRule):
@@ -71,7 +71,7 @@ class UnknownLayer(BaseRule):
         model = ctx.model
         if model.has_features:
             yield from self._loose_modules(ctx, parent)
-        for package in child_packages(ctx.files, parent):
+        for package in _child_packages(ctx.files, parent):
             info = model.info(package.module)
             if info is not None and (
                 info.wiring

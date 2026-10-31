@@ -2,7 +2,9 @@ import ast
 
 import pytest
 
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 from smelt.analysis.test_timing import unbounded_waits
 
 
@@ -97,7 +99,7 @@ def test_known_waits_and_local_deadlines(body: str, flagged: bool) -> None:
         "import subprocess\nimport asyncio\nimport anyio\nfrom asyncio import create_subprocess_exec as spawn\nfrom asyncio.subprocess import Process as Child\nfrom tests.timing import deadline\nasync def test_run():\n    "
         + body
     )
-    [test] = analyze_test_syntax(ast.parse(source), "tests/test_run.py").tests
+    [test] = _analyze_test_syntax(ast.parse(source), "tests/test_run.py").tests
     assert bool(unbounded_waits(test, ["tests.timing.deadline"])) is flagged
 
 
@@ -116,7 +118,7 @@ def test_known_waits_and_local_deadlines(body: str, flagged: bool) -> None:
 def test_scheduler_clock_provenance_is_distinct_from_domain_time(
     body: str, flagged: bool
 ) -> None:
-    [test] = analyze_test_syntax(
+    [test] = _analyze_test_syntax(
         ast.parse("import asyncio\ndef test_run(monkeypatch):\n    " + body),
         "tests/test_run.py",
     ).tests

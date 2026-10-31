@@ -16,7 +16,11 @@ if TYPE_CHECKING:
 
     import pytest
 
-    from smelt.analysis.members import Member, MemberState, _FileFacts
+    from smelt.analysis.members import (
+        Member,
+        MemberState,
+        _FileFacts,  # smelt: ignore[SMT420] -- Type the instrumentation hook without exposing cache facts as public API.
+    )
 
 
 def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_decisions(
@@ -37,7 +41,7 @@ def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_de
     before = check(tmp_path).report
     assert {v.path for v in before.violations} == {"app/b.py", "app/unrelated.py"}
     rebuilt: list[str] = []
-    original = MemberUsageIndex._resolve_file
+    original = MemberUsageIndex._resolve_file  # smelt: ignore[SMT420] -- Count resolution work independently of the cached result.
 
     def resolve(
         self: MemberUsageIndex, file: _FileFacts, states: list[MemberState]

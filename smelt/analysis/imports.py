@@ -173,7 +173,6 @@ class ImportIndex:
             m for m in graph.modules if any(is_within(m, r) for r in roots)
         )
         self._outgoing: dict[str, list[ImportDetail]] = {}
-        self._incoming: dict[str, list[ImportDetail]] | None = None
         self._chains: dict[tuple[str, bool], tuple[tuple[ImportDetail, ...], ...]] = {}
         self._chain_hops = 0
 
@@ -232,9 +231,6 @@ class ImportIndex:
             )
         return cls(graph, files, asts, cache=cache, inventory=inventory)
 
-    def is_external(self, module: str) -> bool:
-        return module not in self.first_party
-
     def modules(self) -> list[str]:
         return sorted(m for m in self.first_party if m in self.files.sources)
 
@@ -260,14 +256,6 @@ class ImportIndex:
             )
             self._outgoing[module] = cached
         return cached
-
-    def importers_of(self, module: str) -> list[ImportDetail]:
-        if self._incoming is None:
-            incoming: dict[str, list[ImportDetail]] = defaultdict(list)
-            for detail in self.all_imports():
-                incoming[detail.imported].append(detail)
-            self._incoming = dict(incoming)
-        return self._incoming.get(module, [])
 
     def all_imports(self) -> Iterator[ImportDetail]:
         for module in self.modules():

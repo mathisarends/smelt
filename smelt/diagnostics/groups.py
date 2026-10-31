@@ -16,14 +16,6 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.violation import Violation
 
-_CYCLE = "SMT104"
-_TEST_LOCATION = "SMT401"
-
-
-def is_transitive(violation: Violation) -> bool:
-    """An import finding reached through other modules, not the import itself."""
-    return violation.code != _CYCLE and len(violation.import_chain) > 1
-
 
 def group_findings(violations: list[Violation]) -> list[dict[str, Any]]:
     """Facades, dependency edges, cycles and test moves behind several findings.
@@ -38,6 +30,15 @@ def group_findings(violations: list[Violation]) -> list[dict[str, Any]]:
         *_groups("test_move", violations, _test_move, minimum=2),
     ]
     return sorted(groups, key=lambda g: (-g["count"], g["kind"], g["key"]))
+
+
+_CYCLE = "SMT104"
+_TEST_LOCATION = "SMT401"
+
+
+def _is_transitive(violation: Violation) -> bool:
+    """An import finding reached through other modules, not the import itself."""
+    return violation.code != _CYCLE and len(violation.import_chain) > 1
 
 
 def _groups(
@@ -68,7 +69,7 @@ def _group(kind: str, key: str, found: list[Violation]) -> dict[str, Any]:
         "violations": [v.finding_id for v in found],
     }
     if kind in ("facade", "edge"):
-        transitive = sum(is_transitive(v) for v in found)
+        transitive = sum(_is_transitive(v) for v in found)
         group["direct"] = len(found) - transitive
         group["transitive"] = transitive
     if kind == "facade":
@@ -84,7 +85,7 @@ def _group(kind: str, key: str, found: list[Violation]) -> dict[str, Any]:
 
 def _facade(violation: Violation) -> str | None:
     """The module relaying a transitive import: narrowing it fixes the chain."""
-    if not is_transitive(violation):
+    if not _is_transitive(violation):
         return None
     return violation.import_chain[0].imported
 

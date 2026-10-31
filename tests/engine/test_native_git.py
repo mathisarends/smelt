@@ -114,7 +114,7 @@ def test_native_failure_and_git_environment_use_independent_git_fallback(
         patch.setenv("GIT_CONFIG_COUNT", "0")
         assert native_git.capture(tmp_path) is None
         assert capture_index(tmp_path) == expected
-    native_git._service.process.kill()  # type: ignore[union-attr]
+    native_git._service.process.kill()  # type: ignore[union-attr]  # smelt: ignore[SMT420] -- Crash the owned helper to verify Git fallback after an abrupt failure.
     with native_git.check_scope(enabled=True):
         assert capture_repository(tmp_path).path == tmp_path.resolve()
         assert capture_index(tmp_path) == expected

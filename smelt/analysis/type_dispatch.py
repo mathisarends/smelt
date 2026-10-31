@@ -26,6 +26,36 @@ class TypeDispatch:
     scope: str
 
 
+def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
+    checkers = _checker_names(tree)
+    if not checkers:
+        return
+    conditions = [node for node in ast.walk(tree) if isinstance(node, ast.If)]
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+    tails = {id(tail) for node in conditions if (tail := _elif(node)) is not None}
+    for root in conditions:
+        if id(root) in tails:
+            continue
+        node: ast.If | None = root
+        branches: list[DispatchBranch] = []
+        subject: str | None = None
+        supported = True
+        while node is not None:
+            head = _head(node.test, checkers)
+            if head is None or (subject is not None and head[0] != subject):
+                supported = False
+                break
+            subject, types, guard = head
+            branches.append(DispatchBranch(node.lineno, types, guard))
+            node = _elif(node)
+        if supported and subject is not None and len(branches) >= minimum:
+            yield TypeDispatch(root, subject, tuple(branches), _scope(root, parents))
+
+
 def _bound_names(node: ast.AST) -> tuple[str, ...]:
     match node:
         case (
@@ -161,33 +191,3 @@ def _scope(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> str:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             names.append(node.name)
     return ".".join(["module", *reversed(names)])
-
-
-def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
-    checkers = _checker_names(tree)
-    if not checkers:
-        return
-    conditions = [node for node in ast.walk(tree) if isinstance(node, ast.If)]
-    parents = {
-        child: parent
-        for parent in ast.walk(tree)
-        for child in ast.iter_child_nodes(parent)
-    }
-    tails = {id(tail) for node in conditions if (tail := _elif(node)) is not None}
-    for root in conditions:
-        if id(root) in tails:
-            continue
-        node: ast.If | None = root
-        branches: list[DispatchBranch] = []
-        subject: str | None = None
-        supported = True
-        while node is not None:
-            head = _head(node.test, checkers)
-            if head is None or (subject is not None and head[0] != subject):
-                supported = False
-                break
-            subject, types, guard = head
-            branches.append(DispatchBranch(node.lineno, types, guard))
-            node = _elif(node)
-        if supported and subject is not None and len(branches) >= minimum:
-            yield TypeDispatch(root, subject, tuple(branches), _scope(root, parents))

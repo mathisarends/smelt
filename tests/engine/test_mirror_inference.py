@@ -6,7 +6,7 @@ from smelt.engine.mirror_inference import (
     DEFAULT_MIRROR,
     ROOT_MIRROR,
     MirrorGuess,
-    clashing_test_roots,
+    _clashing_test_roots,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
     infer_mirror,
 )
 from tests.helpers import write_project
@@ -63,7 +63,7 @@ class TestClashingTestRoots:
     def test_without_packages_or_importlib(self, tmp_path: Path) -> None:
         write_project(tmp_path, {"tests/billing/test_invoice.py": ""})
 
-        assert clashing_test_roots(tmp_path, ["tests"]) == ("tests",)
+        assert _clashing_test_roots(tmp_path, ["tests"]) == ("tests",)
 
     def test_test_packages_tell_files_apart(self, tmp_path: Path) -> None:
         write_project(
@@ -71,7 +71,7 @@ class TestClashingTestRoots:
             {"tests/__init__.py": "", "tests/billing/test_invoice.py": ""},
         )
 
-        assert clashing_test_roots(tmp_path, ["tests"]) == ()
+        assert _clashing_test_roots(tmp_path, ["tests"]) == ()
 
     def test_importlib_in_the_member_pyproject(self, tmp_path: Path) -> None:
         write_project(
@@ -87,4 +87,4 @@ class TestClashingTestRoots:
 
         roots = ["backend/tests", "libs/agent/tests"]
 
-        assert clashing_test_roots(tmp_path, roots) == ("libs/agent/tests",)
+        assert _clashing_test_roots(tmp_path, roots) == ("libs/agent/tests",)

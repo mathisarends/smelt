@@ -165,19 +165,6 @@ def capture_index(repository: Path) -> GitIndex:
     return GitIndex(repository, hashlib.sha256(records).hexdigest(), blobs)
 
 
-def base_snapshot(
-    root: Path, base: str | None, dest: Path
-) -> tuple[Path | None, Comparison]:
-    """Export the commit the working tree is compared with into ``dest``.
-
-    That is ``HEAD``, or its merge-base with ``base``. Returns the project root
-    inside the snapshot, or None when there is no commit to compare with yet, and
-    the resolved revisions.
-    """
-    toplevel, comparison = resolve_comparison(root, base)
-    return export_base(root, toplevel, comparison, dest), comparison
-
-
 def resolve_comparison(
     root: Path,
     base: str | None,
@@ -228,59 +215,12 @@ def export_base(
     return project if project.is_dir() else None
 
 
-def staged_snapshot(
-    root: Path,
-    dest: Path,
-    *,
-    config: Path | None = None,
-    repository: Path | None = None,
-    index: GitIndex | None = None,
-) -> tuple[Path, str, dict[str, str]]:
-    """Read immutable index blobs without checkout filters or worktree mutations."""
-    repository = repository or Path(
-        os.fsdecode(_git(root, "rev-parse", "--show-toplevel")).strip()
-    )
-    index = index or capture_index(repository)
-    selected: list[tuple[str, Path]] = []
-    blobs = index.blobs
-    for relative, object_id in blobs.items():
-        path = Path(relative)
-        target = _snapshot_path(dest, path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        # Source discovery only consumes Python, project metadata and the config.
-        # Debt may have any filename, so its blob is copied on demand below.
-        if (
-            path.suffix == ".py"
-            or path.name
-            in {"pyproject.toml", ".python-version", "smelt.yaml", "smelt.yml"}
-            or (config is not None and path == config.relative_to(repository))
-        ):
-            selected.append((object_id, target))
-    _copy_blobs(repository, selected)
-    return (
-        dest / root.resolve().relative_to(repository.resolve()),
-        index.identity,
-        blobs,
-    )
-
-
 def _snapshot_path(dest: Path, path: Path) -> Path:
     # Snapshots start empty and never create symlinks. Validate the relative
     # components without a filesystem round trip for every repository file.
     if path.drive or path.is_absolute() or ".." in path.parts:
         raise AnalysisError(f"unsafe path in Git snapshot: {path}")
     return dest / path
-
-
-def copy_index_file(
-    repository: Path, relative: Path, target: Path, *, blobs: dict[str, str]
-) -> None:
-    """Copy an optional debt file from stage zero, including arbitrary filenames."""
-    object_id = blobs.get(relative.as_posix())
-    if object_id is None:
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _copy_blobs(repository, [(object_id, target)])
 
 
 def _copy_blobs(repository: Path, files: list[tuple[str, Path]]) -> None:

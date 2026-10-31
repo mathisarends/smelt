@@ -114,12 +114,61 @@ def rule_meta(rule: Rule) -> RuleMeta:
     )
 
 
+def run_check(
+    loaded: LoadedConfig,
+    options: CheckOptions,
+    *,
+    rules: RuleSet | None = None,
+    context: AnalysisContext | None = None,
+) -> CheckOutcome:
+    cache = (
+        FactCache(options.cache_dir or loaded.root / ".smelt_cache")
+        if options.use_cache and rules is None and context is None
+        else None
+    )
+    try:
+        return _run_check(loaded, options, rules=rules, context=context, cache=cache)
+    finally:
+        if cache is not None:
+            cache.close()
+
+
+def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
+    # A cached snapshot needs source lines, not source discovery, to compare
+    # fingerprints. A lightweight FileIndex provides the same decoding/cache.
+    files = ctx.__dict__.get("files") or FileIndex(
+        ctx.root, ctx.config, store=ctx.store
+    )
+
+    def snippet(violation: Violation) -> str:
+        if not violation.path or not violation.line:
+            return ""
+        try:
+            return files.line(violation.path, violation.line)
+        except OSError:
+            return ""
+
+    return snippet
+
+
+def relative_scope(
+    root: Path, cwd: Path, raw: str, *, store: SourceStore | None = None
+) -> str:
+    absolute = store.resolve(cwd / raw) if store else (cwd / raw).resolve()
+    try:
+        return absolute.relative_to(
+            store.resolve(root) if store else root.resolve()
+        ).as_posix()
+    except ValueError:
+        return Path(raw).as_posix()
+
+
 def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
     """Key ``rules:`` overrides by code; the config may name a rule by code or name."""
     return RuleSettings(rules, loaded).global_rules
 
 
-def resolve_active_rules(
+def _resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
 ) -> list[tuple[Rule, Severity]]:
     policy = RuleSettings(rules, loaded)
@@ -213,25 +262,6 @@ def _prefix_suggestion(raw: str, known: set[str]) -> str:
     return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
 
 
-def run_check(
-    loaded: LoadedConfig,
-    options: CheckOptions,
-    *,
-    rules: RuleSet | None = None,
-    context: AnalysisContext | None = None,
-) -> CheckOutcome:
-    cache = (
-        FactCache(options.cache_dir or loaded.root / ".smelt_cache")
-        if options.use_cache and rules is None and context is None
-        else None
-    )
-    try:
-        return _run_check(loaded, options, rules=rules, context=context, cache=cache)
-    finally:
-        if cache is not None:
-            cache.close()
-
-
 def _run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
@@ -247,7 +277,7 @@ def _run_check(
         )
         loaded = replace(loaded, config=config)
     rules = rules or build_rule_set(lazy=True)
-    active = resolve_active_rules(rules, loaded, options)
+    active = _resolve_active_rules(rules, loaded, options)
     ctx = (
         context
         if context is not None and context.config == config
@@ -482,7 +512,7 @@ def _collect(
     known_codes = {rule.code for rule in rules.rules}
     # The rules a full run with this config would execute; the others are off and
     # cannot need a suppression.
-    enabled = resolve_active_rules(rules, loaded, CheckOptions())
+    enabled = _resolve_active_rules(rules, loaded, CheckOptions())
     enabled_codes = {rule.code for rule, _ in enabled} - _META
     violations.extend(
         _suppression_violations(
@@ -490,24 +520,6 @@ def _collect(
         )
     )
     return violations, suppressed
-
-
-def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
-    # A cached snapshot needs source lines, not source discovery, to compare
-    # fingerprints. A lightweight FileIndex provides the same decoding/cache.
-    files = ctx.__dict__.get("files") or FileIndex(
-        ctx.root, ctx.config, store=ctx.store
-    )
-
-    def snippet(violation: Violation) -> str:
-        if not violation.path or not violation.line:
-            return ""
-        try:
-            return files.line(violation.path, violation.line)
-        except OSError:
-            return ""
-
-    return snippet
 
 
 def _apply_ignores(
@@ -710,15 +722,3 @@ def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:
         if path == normalized or path.startswith(f"{normalized}/"):
             return True
     return False
-
-
-def relative_scope(
-    root: Path, cwd: Path, raw: str, *, store: SourceStore | None = None
-) -> str:
-    absolute = store.resolve(cwd / raw) if store else (cwd / raw).resolve()
-    try:
-        return absolute.relative_to(
-            store.resolve(root) if store else root.resolve()
-        ).as_posix()
-    except ValueError:
-        return Path(raw).as_posix()

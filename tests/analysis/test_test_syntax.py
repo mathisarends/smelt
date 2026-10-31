@@ -3,11 +3,13 @@ import ast
 import pytest
 
 from smelt.analysis.test_syntax import TestModule as SyntaxModule
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 
 
 def _analyze(source: str) -> SyntaxModule:
-    return analyze_test_syntax(ast.parse(source), "tests/test_service.py")
+    return _analyze_test_syntax(ast.parse(source), "tests/test_service.py")
 
 
 @pytest.mark.parametrize(

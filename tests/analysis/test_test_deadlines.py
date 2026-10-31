@@ -3,7 +3,9 @@ import ast
 import pytest
 
 from smelt.analysis.test_deadlines import async_deadline
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 
 
 @pytest.mark.parametrize(
@@ -54,7 +56,7 @@ from smelt.analysis.test_syntax import analyze_test_syntax
 def test_deadlines_distinguish_awaiting_bounding_and_outcome_evidence(
     body: str, awaited: bool, bounded: bool, raises: bool
 ) -> None:
-    [test] = analyze_test_syntax(
+    [test] = _analyze_test_syntax(
         ast.parse(
             "import asyncio\nimport anyio\nfrom tests.timing import deadline\n"
             "async def test_event():\n    event = asyncio.Event()\n    " + body

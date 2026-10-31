@@ -62,7 +62,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-smelt-v2-${{ hashFiles('uv.lock') }}-
       - run: uv sync --locked
-      - run: uv run smelt check --format github
+      - run: uv run smelt check --strict-coverage --fail-on warning --format github
 
   package:
     name: Package (${{ matrix.os }})

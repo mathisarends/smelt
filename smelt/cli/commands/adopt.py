@@ -82,6 +82,63 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return EXIT_OK
 
 
+DEFAULT_DEBT = ".smelt/debt.json"
+
+
+def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+    loaded = load_project_config(args.config, cwd)
+    configured = loaded.config.debt
+    relative = configured or DEFAULT_DEBT
+    path = loaded.root / relative
+    outcome = run_check(loaded, CheckOptions(use_debt=False))
+    if any(v.code == "SMT306" for v in outcome.unfiltered):
+        raise CliError(
+            "Resolve strict coverage gaps before recording or pruning debt; coverage cannot be accepted as debt."
+        )
+    snippet = snippet_reader(outcome.context)
+    current = [
+        v
+        for v in outcome.unfiltered
+        if v.code != "SMT903" and v.severity is not Severity.HINT
+    ]
+    existing = Debt.load(path)
+    policy = RuleSettings(outcome.rules, loaded)
+    active = {rule.code: rule for rule, _ in outcome.active if rule.code != "SMT903"}
+    eligible = [
+        entry
+        for entry in existing.entries
+        if (rule := active.get(entry.code)) is not None
+        and policy.severity_for_path(rule, outcome.context, entry.path)
+        not in (None, Severity.HINT)
+    ]
+    dormant = [entry for entry in existing.entries if entry not in eligible]
+    if args.prune:
+        checked = Debt(eligible)
+        _, known, resolved = checked.match(current, snippet)
+        # Upgrade legacy import fingerprints without accepting any new debt.
+        updated = Debt.from_violations(known, snippet)
+        Debt([*updated.entries, *dormant]).write(path)
+        remaining = len(existing.entries) - len(resolved)
+        console.print(
+            f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
+            f"from {relative} ({remaining} remain)"
+        )
+    else:
+        updated = Debt.from_violations(current, snippet)
+        Debt([*updated.entries, *dormant]).write(path)
+        console.print(
+            f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
+        )
+    if dormant:
+        console.print(
+            f"Kept {len(dormant)} unassessed debt entries for inactive or hint-only rules."
+        )
+    if configured is None:
+        _enable_debt(loaded.path, relative)
+        console.print(f"Added `debt: {relative}` to {loaded.path.name}")
+    return EXIT_OK
+
+
 def _init_target(custom: str | None, cwd: Path) -> tuple[Path, str]:
     """The one file ``init`` writes: ``--config``, else the default config here.
 
@@ -201,63 +258,6 @@ def _violation_summary(path: Path) -> str:
         f"{warnings} warning{'s' * (warnings != 1)}. Review {path.name}, then run "
         "`smelt check`, or `smelt debt` to adopt incrementally."
     )
-
-
-DEFAULT_DEBT = ".smelt/debt.json"
-
-
-def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-    loaded = load_project_config(args.config, cwd)
-    configured = loaded.config.debt
-    relative = configured or DEFAULT_DEBT
-    path = loaded.root / relative
-    outcome = run_check(loaded, CheckOptions(use_debt=False))
-    if any(v.code == "SMT306" for v in outcome.unfiltered):
-        raise CliError(
-            "Resolve strict coverage gaps before recording or pruning debt; coverage cannot be accepted as debt."
-        )
-    snippet = snippet_reader(outcome.context)
-    current = [
-        v
-        for v in outcome.unfiltered
-        if v.code != "SMT903" and v.severity is not Severity.HINT
-    ]
-    existing = Debt.load(path)
-    policy = RuleSettings(outcome.rules, loaded)
-    active = {rule.code: rule for rule, _ in outcome.active if rule.code != "SMT903"}
-    eligible = [
-        entry
-        for entry in existing.entries
-        if (rule := active.get(entry.code)) is not None
-        and policy.severity_for_path(rule, outcome.context, entry.path)
-        not in (None, Severity.HINT)
-    ]
-    dormant = [entry for entry in existing.entries if entry not in eligible]
-    if args.prune:
-        checked = Debt(eligible)
-        _, known, resolved = checked.match(current, snippet)
-        # Upgrade legacy import fingerprints without accepting any new debt.
-        updated = Debt.from_violations(known, snippet)
-        Debt([*updated.entries, *dormant]).write(path)
-        remaining = len(existing.entries) - len(resolved)
-        console.print(
-            f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
-            f"from {relative} ({remaining} remain)"
-        )
-    else:
-        updated = Debt.from_violations(current, snippet)
-        Debt([*updated.entries, *dormant]).write(path)
-        console.print(
-            f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
-        )
-    if dormant:
-        console.print(
-            f"Kept {len(dormant)} unassessed debt entries for inactive or hint-only rules."
-        )
-    if configured is None:
-        _enable_debt(loaded.path, relative)
-        console.print(f"Added `debt: {relative}` to {loaded.path.name}")
-    return EXIT_OK
 
 
 def _enable_debt(config: Path, relative: str) -> None:

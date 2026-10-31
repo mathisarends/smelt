@@ -95,10 +95,6 @@ class _LazyRule:
         return self._implementation.explain()
 
 
-def builtin_rules() -> list[Rule]:
-    return [_load(target) for target in _IMPLEMENTATIONS]
-
-
 def catalog_metadata() -> list[dict[str, Any]]:
     return [
         {
@@ -119,7 +115,7 @@ def catalog_metadata() -> list[dict[str, Any]]:
             },
             "scope": getattr(rule, "scope", "source"),
         }
-        for rule in sorted(builtin_rules(), key=lambda rule: rule.code)
+        for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
     ]
 
 
@@ -129,4 +125,8 @@ def build_rule_set(*, lazy: bool = False) -> RuleSet:
             Path(__file__).with_name("catalog.json").read_text(encoding="utf-8")
         )
         return RuleSet([_LazyRule(entry) for entry in entries])
-    return RuleSet(sorted(builtin_rules(), key=lambda rule: rule.code))
+    return RuleSet(sorted(_builtin_rules(), key=lambda rule: rule.code))
+
+
+def _builtin_rules() -> list[Rule]:
+    return [_load(target) for target in _IMPLEMENTATIONS]

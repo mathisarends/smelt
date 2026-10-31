@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -26,7 +27,7 @@ class PrivateTestAccess(BaseRule):
         rationale="Testing an observable public contract lets internal helpers change without rewriting tests. This opt-in convention checks imports, module-qualified accesses and direct instance reads/calls into analyzed production modules. Instance provenance comes from known production constructors (including analyzed facade re-exports), explicit annotations, and fixture returns/yields with an annotation or consistent known constructor/alias shape. Fixed tuple fixtures preserve known component types when unpacked. Unknown factories, conflicting outputs, reflection, local fakes and dunder names are excluded. Instance assignments are excluded so intentional immutability probes remain valid. A deliberate public re-export remains public. No general type inference or fixture execution is performed.",
         bad="from app.service import _normalize\ndef test_normalize():\n    assert _normalize('A') == 'a'",
         good="from app.service import normalize\ndef test_normalize():\n    assert normalize('A') == 'a'",
-        fix="Exercise the supported behavior that uses the helper. Keep a reasoned exception for a deliberate implementation/protocol test; do not expose internals solely to silence a warning.",
+        fix="Exercise the supported behavior that uses the helper. Keep a reasoned exception for a deliberate implementation/protocol test; do not expose internals solely to silence a warning. In multiline imports, place the exception on the affected imported name so formatting preserves its scope.",
         config=("rules", "tests.quality_exclude"),
     )
 
@@ -62,15 +63,26 @@ class PrivateTestAccess(BaseRule):
                     if access == "instance"
                     else ".".join(parts[: private + 1])
                 )
-                key = (node.lineno, node.col_offset, target)
+                location: ast.alias | ast.Attribute | ast.Import | ast.ImportFrom = node
+                if isinstance(node, ast.Import | ast.ImportFrom):
+                    location = next(
+                        (
+                            alias
+                            for alias in node.names
+                            if qualified == alias.name
+                            or qualified.endswith("." + alias.name)
+                        ),
+                        node,
+                    )
+                key = (location.lineno, location.col_offset, target)
                 if key in seen:
                     continue
                 seen.add(key)
                 yield self.violation(
                     f"test accesses private production name {target}",
                     path=module.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
+                    line=location.lineno,
+                    column=location.col_offset + 1,
                     target_module=target,
                     expected={
                         "private_target": target,

@@ -25,6 +25,25 @@ class StrEnumValueAccess:
     member: str
 
 
+def str_enum_value_accesses(syntax: SyntaxIndex) -> Iterator[StrEnumValueAccess]:
+    enums = _Enums(syntax)
+    for module in enums.modules.values():
+        namespace = enums.namespaces[module.module]
+        for node in ast.walk(module.tree):
+            if not (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.ctx, ast.Load)
+                and node.attr == "value"
+                and isinstance(node.value, ast.Attribute)
+            ):
+                continue
+            enum = enums.resolve(node.value.value, namespace)
+            if enum is not None and node.value.attr in enums.members.get(enum, ()):
+                yield StrEnumValueAccess(
+                    module.module, module.path, node, enum, node.value.attr
+                )
+
+
 def _bound_names(node: ast.AST) -> tuple[str, ...]:
     match node:
         case (
@@ -196,22 +215,3 @@ class _Enums:
                     if isinstance(target, ast.Name) and not target.id.startswith("_")
                 )
         return frozenset(members)
-
-
-def str_enum_value_accesses(syntax: SyntaxIndex) -> Iterator[StrEnumValueAccess]:
-    enums = _Enums(syntax)
-    for module in enums.modules.values():
-        namespace = enums.namespaces[module.module]
-        for node in ast.walk(module.tree):
-            if not (
-                isinstance(node, ast.Attribute)
-                and isinstance(node.ctx, ast.Load)
-                and node.attr == "value"
-                and isinstance(node.value, ast.Attribute)
-            ):
-                continue
-            enum = enums.resolve(node.value.value, namespace)
-            if enum is not None and node.value.attr in enums.members.get(enum, ()):
-                yield StrEnumValueAccess(
-                    module.module, module.path, node, enum, node.value.attr
-                )

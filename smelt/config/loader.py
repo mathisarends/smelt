@@ -75,7 +75,7 @@ _StrictBoolLoader.add_implicit_resolver(
 )
 
 
-def load_yaml(text: str) -> object:
+def _load_yaml(text: str) -> object:
     return yaml.load(text, Loader=_StrictBoolLoader)  # noqa: S506
 
 
@@ -107,7 +107,7 @@ def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | 
 def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig:
     source = path.name
     try:
-        raw = load_yaml((store or SourceStore()).read_text(path))
+        raw = _load_yaml((store or SourceStore()).read_text(path))
     except (OSError, UnicodeError) as exc:
         raise ConfigError([ConfigIssue("", f"cannot read {path}: {exc}")]) from exc
     except yaml.YAMLError as exc:

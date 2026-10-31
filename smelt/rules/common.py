@@ -95,9 +95,9 @@ def import_violation(  # noqa: PLR0913
         target = (
             detail.imported.split(".")[0]
             if detail.external
-            else architecture_node(ctx, target_module)
+            else _architecture_node(ctx, target_module)
         )
-        edge = f"{architecture_node(ctx, detail.importer)} -> {target}"
+        edge = f"{_architecture_node(ctx, detail.importer)} -> {target}"
     return rule.violation(
         message,
         path=source.path,
@@ -114,23 +114,6 @@ def import_violation(  # noqa: PLR0913
         hint=hint,
         edge=edge,
     )
-
-
-def architecture_node(ctx: AnalysisContext, module: str) -> str:
-    """The part of the architecture ``module`` belongs to: ``user.domain``,
-    a central package, a shared or composition root entry, else the module."""
-    info = ctx.model.info(module)
-    if info is None:
-        return module
-    if info.in_grid and (info.feature or info.layer):
-        return ".".join(part for part in (info.feature, info.layer) if part)
-    architecture = ctx.config.architecture
-    entries = {
-        ModuleKind.SHARED: architecture.shared,
-        ModuleKind.COMPOSITION_ROOT: architecture.composition_root,
-    }.get(info.kind, list(architecture.modules) if info.central else [])
-    matching = [entry for entry in entries if is_within(module, entry)]
-    return max(matching, key=len) if matching else module
 
 
 def matches_any(name: str, entries: list[str]) -> bool:
@@ -162,3 +145,20 @@ def join(values: list[str] | tuple[str, ...], empty: str = "(nothing)") -> str:
 
 def last_segment(name: str) -> str:
     return name.rsplit(".", 1)[-1]
+
+
+def _architecture_node(ctx: AnalysisContext, module: str) -> str:
+    """The part of the architecture ``module`` belongs to: ``user.domain``,
+    a central package, a shared or composition root entry, else the module."""
+    info = ctx.model.info(module)
+    if info is None:
+        return module
+    if info.in_grid and (info.feature or info.layer):
+        return ".".join(part for part in (info.feature, info.layer) if part)
+    architecture = ctx.config.architecture
+    entries = {
+        ModuleKind.SHARED: architecture.shared,
+        ModuleKind.COMPOSITION_ROOT: architecture.composition_root,
+    }.get(info.kind, list(architecture.modules) if info.central else [])
+    matching = [entry for entry in entries if is_within(module, entry)]
+    return max(matching, key=len) if matching else module

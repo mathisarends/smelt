@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from smelt.config.models import ThirdPartyPolicy
 
 
-def is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
+def _is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
     if policy.default == "allow":
         return any(matches_any(name, policy.deny) for name in names)
     return not all(matches_any(name, policy.allow) for name in names)
@@ -76,7 +76,7 @@ class ThirdPartyDenied(BaseRule):
                 continue
             policy = model.layers[source.layer].third_party
             names = detail.names or (detail.imported,)
-            if not is_denied(policy, names):
+            if not _is_denied(policy, names):
                 continue
             key = (detail.importer, detail.imported)
             if chain and key in reported:
@@ -120,7 +120,7 @@ def _hint(ctx: AnalysisContext, detail: ImportDetail, layer: str) -> str:
     welcoming = [
         name
         for name, config in ctx.model.layers.items()
-        if name != layer and not is_denied(config.third_party, names)
+        if name != layer and not _is_denied(config.third_party, names)
     ]
     if welcoming:
         return (

@@ -103,7 +103,7 @@ class CoverageIndex:
                 files.resolve_path(directory / name) for name in ("tests", "test")
             )
         inventory = {
-            source.path: classify_source(source, files, model, asts)
+            source.path: _classify_source(source, files, model, asts)
             for source in files.sources.values()
         }
         # The most specific import root names a module in nested workspaces.
@@ -200,7 +200,19 @@ class CoverageIndex:
         }
 
 
-def classify_source(
+def is_governed(info: ModuleInfo | None, *, layers_declared: bool = True) -> bool:
+    return bool(
+        info
+        and (
+            info.layer
+            or (info.feature is not None and not layers_declared)
+            or info.wiring
+            or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
+        )
+    )
+
+
+def _classify_source(
     source: SourceFile, files: FileIndex, model: ArchitectureModel, asts: AstCache
 ) -> CoverageEntry:
     info = model.info(source.module)
@@ -227,18 +239,6 @@ def classify_source(
         reason=reason,
         policies=_policies(info),
         source_root=files.source_root_dir(source.module),
-    )
-
-
-def is_governed(info: ModuleInfo | None, *, layers_declared: bool = True) -> bool:
-    return bool(
-        info
-        and (
-            info.layer
-            or (info.feature is not None and not layers_declared)
-            or info.wiring
-            or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
-        )
     )
 
 

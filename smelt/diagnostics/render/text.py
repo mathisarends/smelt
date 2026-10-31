@@ -23,24 +23,6 @@ _COLORS = {
     Severity.WARNING: "\x1b[33m",
     Severity.HINT: "\x1b[36m",
 }
-_BOLD = "\x1b[1m"
-_DIM = "\x1b[2m"
-_GREEN = "\x1b[32m"
-_RED = "\x1b[31m"
-_YELLOW = "\x1b[33m"
-_RESET = "\x1b[0m"
-# Longer listings end with a per-rule breakdown so the overview survives scrolling.
-_STATISTICS_THRESHOLD = 10
-
-
-class _Style:
-    def __init__(self, color: bool) -> None:
-        self.color = color
-
-    def __call__(self, text: str, *codes: str) -> str:
-        if not self.color or not codes:
-            return text
-        return "".join(codes) + text + _RESET
 
 
 def render_text(
@@ -97,6 +79,26 @@ def render_text(
         )
     lines.append(_summary(report, style, show_hints=show_hints))
     return "\n".join(lines) + "\n"
+
+
+_BOLD = "\x1b[1m"
+_DIM = "\x1b[2m"
+_GREEN = "\x1b[32m"
+_RED = "\x1b[31m"
+_YELLOW = "\x1b[33m"
+_RESET = "\x1b[0m"
+# Longer listings end with a per-rule breakdown so the overview survives scrolling.
+_STATISTICS_THRESHOLD = 10
+
+
+class _Style:
+    def __init__(self, color: bool) -> None:
+        self.color = color
+
+    def __call__(self, text: str, *codes: str) -> str:
+        if not self.color or not codes:
+            return text
+        return "".join(codes) + text + _RESET
 
 
 def _group_unclassified(violations: list[Violation]) -> list[Violation]:

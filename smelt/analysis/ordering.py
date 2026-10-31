@@ -81,6 +81,44 @@ class FileOrder:
         }
 
 
+class DefinitionOrderIndex:
+    def __init__(
+        self,
+        files: FileIndex,
+        contracts: ContractIndex,
+        asts: AstCache,
+        python_targets: PythonTargetIndex,
+    ) -> None:
+        self.files: dict[str, FileOrder] = {}
+        for source in files.sources.values():
+            contract = contracts.policy_for(source.module, "ordering")
+            tree = asts.parse(source.path)
+            future = any(
+                isinstance(node, ast.ImportFrom)
+                and node.module == "__future__"
+                and node.level == 0
+                and any(alias.name == "annotations" for alias in node.names)
+                for node in tree.body
+            )
+            deferred = (
+                future or python_targets.for_path(source.absolute).deferred_annotations
+            )
+            self.files[source.path] = _analyze_order(
+                tree,
+                contract.spec.ordering
+                if contract and contract.spec.ordering
+                else OrderingConfig(),
+                source=source,
+                contract=contract.name
+                if contract
+                else "rules.public-definitions-first",
+                deferred=deferred,
+            )
+
+    def summary(self) -> list[dict[str, Any]]:
+        return [result.summary() for _, result in sorted(self.files.items())]
+
+
 def _precedence(blocks: tuple[DefinitionBlock, ...]) -> list[set[int]]:
     """Preserve group order, binding versions, and reads before later rebinding."""
     before: list[set[int]] = [set() for _ in blocks]
@@ -105,7 +143,7 @@ def _precedence(blocks: tuple[DefinitionBlock, ...]) -> list[set[int]]:
     return before
 
 
-def canonical_order(
+def _canonical_order(
     blocks: tuple[DefinitionBlock, ...], priorities: list[str]
 ) -> tuple[int, ...]:
     dependencies = _precedence(blocks)
@@ -151,7 +189,7 @@ def _section(
         if isinstance(owner, ast.ClassDef)
         else result.config.module
     )
-    order = canonical_order(group, list(priorities))
+    order = _canonical_order(group, list(priorities))
     positions = {index: position for position, index in enumerate(order)}
     edges = tuple(
         f"{group[left].key} -> {group[right].key}"
@@ -307,7 +345,7 @@ def _body(
         _body(result, child, child_scope, child_aliases, child_reason)
 
 
-def analyze_order(
+def _analyze_order(
     tree: ast.Module,
     config: OrderingConfig,
     *,
@@ -333,41 +371,3 @@ def analyze_order(
     }
     _body(result, tree, "module", aliases, reflection)
     return result
-
-
-class DefinitionOrderIndex:
-    def __init__(
-        self,
-        files: FileIndex,
-        contracts: ContractIndex,
-        asts: AstCache,
-        python_targets: PythonTargetIndex,
-    ) -> None:
-        self.files: dict[str, FileOrder] = {}
-        for source in files.sources.values():
-            contract = contracts.policy_for(source.module, "ordering")
-            tree = asts.parse(source.path)
-            future = any(
-                isinstance(node, ast.ImportFrom)
-                and node.module == "__future__"
-                and node.level == 0
-                and any(alias.name == "annotations" for alias in node.names)
-                for node in tree.body
-            )
-            deferred = (
-                future or python_targets.for_path(source.absolute).deferred_annotations
-            )
-            self.files[source.path] = analyze_order(
-                tree,
-                contract.spec.ordering
-                if contract and contract.spec.ordering
-                else OrderingConfig(),
-                source=source,
-                contract=contract.name
-                if contract
-                else "rules.public-definitions-first",
-                deferred=deferred,
-            )
-
-    def summary(self) -> list[dict[str, Any]]:
-        return [result.summary() for _, result in sorted(self.files.items())]

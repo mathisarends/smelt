@@ -15,14 +15,6 @@ if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
 
 
-def __getattr__(name: str) -> Any:
-    if name == "SmeltConfig":
-        return getattr(import_module("smelt.config.models"), name)
-    if name in __all__:
-        return getattr(import_module("smelt.config.loader"), name)
-    raise AttributeError(name)
-
-
 __all__ = [
     "CONFIG_FILENAME",
     "CONFIG_FILENAMES",
@@ -34,3 +26,11 @@ __all__ = [
     "load_config",
     "parse_config",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    if name == "SmeltConfig":
+        return getattr(import_module("smelt.config.models"), name)
+    if name in __all__:
+        return getattr(import_module("smelt.config.loader"), name)
+    raise AttributeError(name)

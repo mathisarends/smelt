@@ -49,6 +49,36 @@ def test_private_production_access(tmp_path: Path, source: str, flagged: bool) -
 
 
 @pytest.mark.parametrize(
+    "source",
+    [
+        "from app.service import (\n    _first as first,  # smelt: ignore[SMT420] -- Deliberate parser boundary test.\n    _second as second,\n)\n",
+        "import app._first as first, \\\n    app._second as second  # smelt: ignore[SMT420] -- Deliberate parser boundary test.\n",
+    ],
+)
+def test_multiline_import_exceptions_cover_only_the_named_alias(
+    tmp_path: Path, source: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {private-test-access: error}\n",
+            "app/__init__.py": "",
+            "app/service.py": "def _first(): pass\ndef _second(): pass\n",
+            "app/_first.py": "",
+            "app/_second.py": "",
+            "tests/test_service.py": source,
+        },
+    )
+    found = violations(tmp_path)
+    assert len(found) == 1
+    assert found[0].code == "SMT420"
+    assert found[0].line == (3 if source.startswith("from") else 1)
+    assert found[0].target_module == (
+        "app.service._second" if source.startswith("from") else "app._first"
+    )
+
+
+@pytest.mark.parametrize(
     ("source", "provenance"),
     [
         (

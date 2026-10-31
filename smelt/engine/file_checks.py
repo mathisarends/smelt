@@ -21,10 +21,10 @@ _VIOLATIONS = TypeAdapter(list[Violation])
 def rule_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
     cache = ctx.cache
     if cache is not None and getattr(rule, "member_local", False):
-        yield from member_findings(rule, ctx)
+        yield from _member_findings(rule, ctx)
         return
     if cache is not None and getattr(rule, "test_local", False):
-        yield from test_findings(rule, ctx)
+        yield from _test_findings(rule, ctx)
         return
     if cache is None or not getattr(rule, "file_local", False):
         yield from rule.check(ctx)
@@ -56,7 +56,7 @@ def rule_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
         yield from findings
 
 
-def test_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
+def _test_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
     cache = ctx.cache
     if cache is None:
         yield from rule.check(ctx)
@@ -78,7 +78,7 @@ def test_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
         yield from findings
 
 
-def member_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
+def _member_findings(rule: Rule, ctx: AnalysisContext) -> Iterator[Violation]:
     cache = ctx.cache
     if cache is None:
         yield from rule.check(ctx)

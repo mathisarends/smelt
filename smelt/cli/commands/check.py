@@ -28,19 +28,6 @@ if TYPE_CHECKING:
     from smelt.engine.staged import StagedProject
 
 
-def split_selectors(raw: str | None) -> tuple[str, ...]:
-    if not raw:
-        return ()
-    return tuple(code.strip() for code in raw.split(",") if code.strip())
-
-
-def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
-    paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
-    # A changed config can break any file, so it widens the scope to the project.
-    config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)
-    return () if config in paths else paths
-
-
 def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if args.staged:
         if args.fix:
@@ -68,6 +55,19 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return _check_loaded(args, console, cwd, loaded)
 
 
+def _split_selectors(raw: str | None) -> tuple[str, ...]:
+    if not raw:
+        return ()
+    return tuple(code.strip() for code in raw.split(",") if code.strip())
+
+
+def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
+    paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
+    # A changed config can break any file, so it widens the scope to the project.
+    config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)
+    return () if config in paths else paths
+
+
 def _check_loaded(
     args: argparse.Namespace,
     console: Console,
@@ -85,8 +85,8 @@ def _check_loaded(
         paths=_scope(origin, cwd, args.paths),
         changed=args.changed or args.staged or args.base is not None,
         base=args.base,
-        select=split_selectors(args.select),
-        ignore=split_selectors(args.ignore),
+        select=_split_selectors(args.select),
+        ignore=_split_selectors(args.ignore),
         fail_on=Severity(args.fail_on),
         use_debt=not args.no_debt,
         use_cache=not args.no_cache,

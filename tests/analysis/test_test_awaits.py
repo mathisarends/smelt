@@ -3,7 +3,9 @@ import ast
 import pytest
 
 from smelt.analysis.test_awaits import call_only_async_mocks
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 
 
 @pytest.mark.parametrize(
@@ -112,7 +114,7 @@ def test_call_only_review_requires_known_async_assertion_evidence(
         "class Accounts:\n    async def connect(self): pass\n    def terminate(self): pass\n"
         "def test_connect():\n    " + body
     )
-    [test] = analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
+    [test] = _analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
     assert [item.receiver for item in call_only_async_mocks(test)] == receivers
 
 
@@ -126,7 +128,7 @@ def test_fixture_return_keeps_known_spec_with_or_without_mock_annotation(
         f"@pytest.fixture\ndef accounts(){annotation}:\n    return AsyncMock(spec=Accounts)\n"
         "def test_connect(accounts):\n    accounts.connect.assert_called_once()"
     )
-    [test] = analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
+    [test] = _analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
     [finding] = call_only_async_mocks(test)
     assert finding.async_callable == "tests.test_accounts.Accounts.connect"
     assert finding.provenance == (
@@ -146,5 +148,5 @@ def test_unknown_decorators_do_not_establish_async_spec_methods(
         f"class Accounts:\n    {decorator}async def connect(self): pass\n"
         "def test_connect():\n    accounts = AsyncMock(spec=Accounts)\n    accounts.connect.assert_called_once()"
     )
-    [test] = analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
+    [test] = _analyze_test_syntax(ast.parse(source), "tests/test_accounts.py").tests
     assert bool(call_only_async_mocks(test)) is flagged

@@ -200,13 +200,6 @@ class _Classifier:
             wiring,
         )
 
-    def _root_layer(self, module: str) -> str | None:
-        """Without features, layers sit directly in a root package."""
-        for root in self._roots:
-            if module.startswith(f"{root}."):
-                return self._match_layer(module[len(root) + 1 :].split("."))
-        return None
-
     def feature_package(self, module: str) -> str | None:
         match = self._match_feature(module)
         if match is None:
@@ -214,6 +207,13 @@ class _Classifier:
         _, rest = match
         segments = module.split(".")
         return ".".join(segments[: len(segments) - len(rest)])
+
+    def _root_layer(self, module: str) -> str | None:
+        """Without features, layers sit directly in a root package."""
+        for root in self._roots:
+            if module.startswith(f"{root}."):
+                return self._match_layer(module[len(root) + 1 :].split("."))
+        return None
 
     def _match_feature(self, module: str) -> tuple[str, list[str]] | None:
         prefix = self._feature_prefix

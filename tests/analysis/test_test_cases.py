@@ -3,7 +3,9 @@ import ast
 import pytest
 
 from smelt.analysis.test_cases import independent_case_loops
-from smelt.analysis.test_syntax import analyze_test_syntax
+from smelt.analysis.test_syntax import (
+    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+)
 
 
 @pytest.mark.parametrize(
@@ -54,14 +56,14 @@ from smelt.analysis.test_syntax import analyze_test_syntax
 def test_case_candidates_preserve_replay_and_lifecycle_loops(
     body: str, flagged: bool
 ) -> None:
-    [test] = analyze_test_syntax(
+    [test] = _analyze_test_syntax(
         ast.parse("def test_run():\n    " + body), "tests/test_run.py"
     ).tests
     assert bool(independent_case_loops(test)) is flagged
 
 
 def test_action_can_be_observed_directly_in_the_assertion() -> None:
-    [test] = analyze_test_syntax(
+    [test] = _analyze_test_syntax(
         ast.parse(
             "def test_run():\n    for path in ['app/a.py', 'app/b.py']:\n        assert selected(path)"
         ),

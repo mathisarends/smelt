@@ -8,7 +8,7 @@ from smelt.config.models import SmeltConfig
 from smelt.engine.check import (
     CheckOptions,
     InvalidOptionError,
-    resolve_active_rules,
+    _resolve_active_rules,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
     rule_meta,
 )
 from smelt.rules.activation import PolicyActivation
@@ -25,7 +25,7 @@ def _active(extra: dict[str, object], options: CheckOptions | None = None) -> se
     loaded = LoadedConfig(config, Path("smelt.yaml"))
     return {
         rule.code
-        for rule, _ in resolve_active_rules(
+        for rule, _ in _resolve_active_rules(
             build_rule_set(), loaded, options or CheckOptions()
         )
     }

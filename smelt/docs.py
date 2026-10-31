@@ -12,11 +12,26 @@ if TYPE_CHECKING:
 
     from smelt.rules.base import Rule
 
+# Maintainer scripts outside the analyzed package use this generator entry point.
+__all__ = ["write_generated_files"]
+
 SCHEMA_FILE = "smelt.schema.json"
 DOCS_DIR = "docs/rules"
 
 
-def rule_page(rule: Rule) -> str:
+def write_generated_files(root: Path) -> list[str]:
+    """Write the schema and the rule pages, and report what changed."""
+    changed = []
+    for name, content in _generated_files().items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.is_file() or path.read_text(encoding="utf-8") != content:
+            path.write_text(content, encoding="utf-8", newline="\n")
+            changed.append(name)
+    return changed
+
+
+def _rule_page(rule: Rule) -> str:
     """The reference page for one rule, the same content `smelt explain` prints."""
     doc = rule.explain()
     meta = rule_meta(rule)
@@ -55,7 +70,7 @@ def rule_page(rule: Rule) -> str:
     return "\n".join(lines) + "\n"
 
 
-def rule_index(rules: list[Rule]) -> str:
+def _rule_index(rules: list[Rule]) -> str:
     lines = [
         "# Rules",
         "",
@@ -72,24 +87,12 @@ def rule_index(rules: list[Rule]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def generated_files() -> dict[str, str]:
+def _generated_files() -> dict[str, str]:
     """Every generated file, keyed by its path relative to the repository root."""
     rules = build_rule_set().rules
     files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
     files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
-    files[f"{DOCS_DIR}/README.md"] = rule_index(rules)
+    files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
     for rule in rules:
-        files[f"{DOCS_DIR}/{rule.code}.md"] = rule_page(rule)
+        files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
     return files
-
-
-def write_generated_files(root: Path) -> list[str]:
-    """Write the schema and the rule pages, and report what changed."""
-    changed = []
-    for name, content in generated_files().items():
-        path = root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if not path.is_file() or path.read_text(encoding="utf-8") != content:
-            path.write_text(content, encoding="utf-8", newline="\n")
-            changed.append(name)
-    return changed
