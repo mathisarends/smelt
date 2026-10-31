@@ -1384,6 +1384,7 @@ version = "0.1.6"
 dependencies = [
  "base64",
  "gix",
+ "libc",
  "serde",
  "serde_json",
  "sha2 0.10.9",

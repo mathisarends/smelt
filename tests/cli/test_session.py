@@ -4,18 +4,22 @@ import concurrent.futures
 import contextlib
 import json
 import os
+import secrets
 import shutil
 import signal
 import socket
 import subprocess
 import sys
 import sysconfig
+import threading
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 import smelt
+from smelt.cli.session_slots import worker_slot
 from tests.helpers import write_project
 
 if TYPE_CHECKING:
@@ -279,3 +283,112 @@ def test_relative_pythonpath_keeps_foreground_semantics(
     monkeypatch.setenv("PYTHONPATH", ".")
     assert _invoke([str(native)], project) == _fresh(project)
     assert not list((project.parent / "sessions").rglob("*.json"))
+
+
+@contextlib.contextmanager
+def _stalled_endpoint(project: Path, native: Path, *, accepted: bool) -> Iterator[Path]:
+    _invoke([str(native)], project)
+    endpoint = _endpoint(project)
+    metadata = json.loads(endpoint.read_text())
+    _request(endpoint, project, ["shutdown"])
+    stop = threading.Event()
+    with socket.create_server(("127.0.0.1", 0)) as listener:
+        listener.settimeout(5)
+        metadata["port"] = listener.getsockname()[1]
+        metadata["pid"] = os.getpid()
+        metadata["token"] = secrets.token_hex(32)
+        endpoint.write_text(json.dumps(metadata))
+
+        def hang() -> None:
+            with contextlib.suppress(OSError), listener.accept()[0] as stream:
+                with stream.makefile("rb") as incoming:
+                    incoming.readline()
+                if accepted:
+                    stream.sendall(
+                        json.dumps({"accepted": True, "pid": metadata["pid"]}).encode()
+                        + b"\n"
+                    )
+                # Slow partial output must not reset the overall response budget.
+                while not stop.wait(0.05):
+                    if accepted:
+                        stream.sendall(b" ")
+
+        thread = threading.Thread(target=hang, daemon=True)
+        thread.start()
+        try:
+            yield endpoint
+        finally:
+            stop.set()
+            thread.join(timeout=6)
+            endpoint.unlink(missing_ok=True)
+
+
+@pytest.mark.parametrize("accepted", [False, True])
+def test_unresponsive_worker_falls_back_with_a_bounded_deadline(
+    project: Path, native: Path, accepted: bool
+) -> None:
+    expected = _fresh(project)
+    with _stalled_endpoint(project, native, accepted=accepted) as endpoint:
+        metadata = endpoint.read_bytes()
+        started = time.perf_counter()
+        assert _invoke([str(native)], project) == expected
+        elapsed = time.perf_counter() - started
+        assert elapsed < (8 if accepted else 3)
+        if accepted:
+            assert elapsed >= 4.5
+        # Neither a busy nor a stuck endpoint may trigger another worker spawn.
+        assert endpoint.read_bytes() == metadata
+
+
+def test_worker_cap_falls_back_and_releases_capacity(
+    project: Path, native: Path
+) -> None:
+    directory = project.parent / "sessions/smelt/sessions-v1"
+    directory.mkdir(parents=True)
+    expected = _fresh(project)
+    with contextlib.ExitStack() as slots:
+        for _ in range(4):
+            assert slots.enter_context(worker_slot(directory))
+        assert _invoke([str(native)], project) == expected
+        assert not list(directory.glob("*.json"))
+    assert _invoke([str(native)], project) == expected
+    _endpoint(project)
+
+
+def test_worker_watchdog_exits_a_hung_dispatch(project: Path) -> None:
+    endpoint = project.parent / "watchdog.json"
+    script = (
+        "import sys,time; from pathlib import Path; from smelt.cli import session; "
+        "session.dispatch=lambda *args,**kwargs: time.sleep(60); "
+        "session.serve(Path(sys.argv[1]),root=sys.argv[2])"
+    )
+    process = subprocess.Popen(  # noqa: S603 - fixed interpreter and owned test worker
+        [sys.executable, "-P", "-c", script, str(endpoint), str(project)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 5
+        while not endpoint.is_file() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        metadata = json.loads(endpoint.read_text())
+        with socket.create_connection(
+            ("127.0.0.1", metadata["port"]), timeout=8
+        ) as stream:
+            stream.sendall(
+                json.dumps(
+                    {
+                        "token": metadata["token"],
+                        "cwd": str(project),
+                        "arguments": ["check"],
+                    }
+                ).encode()
+                + b"\n"
+            )
+            started = time.perf_counter()
+            assert process.wait(timeout=8) == 2
+            assert time.perf_counter() - started < 8
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)

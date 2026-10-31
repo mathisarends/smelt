@@ -9,15 +9,18 @@ import os
 import secrets
 import socket
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 
 from smelt.analysis.identity import analyzer_identity
 from smelt.analysis.retained import RetainedAnalysis, retain
 from smelt.cli.app import main
+from smelt.cli.session_slots import worker_slot
 
 _LIMIT = 1024 * 1024
-_PROTOCOL = 1
+_PROTOCOL = 2
+_REQUEST_SECONDS = 5
 
 
 class Capture(io.StringIO):
@@ -67,6 +70,12 @@ def dispatch(
 def serve(
     endpoint: Path, *, root: str | None = None, idle_seconds: float = 120
 ) -> None:
+    with worker_slot(endpoint.parent) as available:
+        if available:
+            _serve(endpoint, root=root, idle_seconds=idle_seconds)
+
+
+def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
     identity = analyzer_identity()
     state = RetainedAnalysis()
     root = root or os.getcwd()  # noqa: PTH109 - match the native client's lexical cwd
@@ -94,34 +103,58 @@ def serve(
                 except TimeoutError:
                     break
                 with stream:
-                    stream.settimeout(120)
+                    stream.settimeout(0.25)
+                    stream.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    # This process owns the timeout. No PID from a stale endpoint
+                    # is killed by a client, and OS locks/SQLite recover on exit.
+                    watchdog = threading.Timer(_REQUEST_SECONDS, os._exit, args=(2,))
+                    watchdog.daemon = True
+                    watchdog.start()
                     try:
-                        with stream.makefile("rb") as incoming:
-                            line = incoming.readline(_LIMIT)
-                        message = json.loads(line)
-                        if (
-                            not isinstance(message, dict)
-                            or message.get("token") != token
-                        ):
-                            raise ValueError("invalid worker token")
-                        response = (
-                            {"code": 0, "out": "", "err": "", "restart": True}
-                            if message.get("arguments") == ["shutdown"]
-                            else dispatch(message, root, identity, state=state)
-                        )
-                    except (ValueError, KeyError, TypeError, OSError):
-                        # Invalid transport metadata restarts or falls back to
-                        # checking; it must not become the check's verdict.
-                        response = {"code": 2, "out": "", "err": "", "restart": True}
-                    response["pid"] = os.getpid()
-                    with contextlib.suppress(OSError):
-                        stream.sendall(json.dumps(response).encode() + b"\n")
+                        try:
+                            response = _respond(stream, token, root, identity, state)
+                        except (ValueError, KeyError, TypeError, OSError):
+                            # Transport failure is never the check's verdict.
+                            response = {
+                                "code": 2,
+                                "out": "",
+                                "err": "",
+                                "restart": True,
+                            }
+                        response["pid"] = os.getpid()
+                        with contextlib.suppress(OSError):
+                            stream.sendall(json.dumps(response).encode() + b"\n")
+                    finally:
+                        watchdog.cancel()
+                        watchdog.join()
                     if response.get("restart"):
                         break
         finally:
             with contextlib.suppress(OSError, ValueError):
                 if json.loads(endpoint.read_text(encoding="utf-8"))["token"] == token:
                     endpoint.unlink()
+
+
+def _respond(
+    stream: socket.socket,
+    token: str,
+    root: str,
+    identity: str,
+    state: RetainedAnalysis,
+) -> dict[str, Any]:
+    with stream.makefile("rb") as incoming:
+        line = incoming.readline(_LIMIT)
+    message = json.loads(line)
+    if not isinstance(message, dict) or message.get("token") != token:
+        raise ValueError("invalid worker token")
+    stream.settimeout(_REQUEST_SECONDS)
+    if message.get("ack") is True:
+        stream.sendall(
+            json.dumps({"accepted": True, "pid": os.getpid()}).encode() + b"\n"
+        )
+    if message.get("arguments") == ["shutdown"]:
+        return {"code": 0, "out": "", "err": "", "restart": True}
+    return dispatch(message, root, identity, state=state)
 
 
 if __name__ == "__main__":

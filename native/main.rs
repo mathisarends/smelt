@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
@@ -15,8 +15,10 @@ use std::time::{Duration, Instant};
 mod git;
 mod worker;
 
-const PROTOCOL: u32 = 1;
+const PROTOCOL: u32 = 2;
 const LIMIT: u64 = 64 * 1024 * 1024;
+const ACCEPT_TIMEOUT: Duration = Duration::from_millis(250);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn trace(message: impl std::fmt::Display) {
     if env::var_os("SMELT_TRACE").is_some() {
@@ -38,6 +40,13 @@ struct Request<'a> {
     cwd: &'a str,
     arguments: &'a [String],
     tty: bool,
+    ack: bool,
+}
+
+#[derive(Deserialize)]
+struct Accepted {
+    accepted: bool,
+    pid: u32,
 }
 
 #[derive(Deserialize)]
@@ -142,6 +151,34 @@ fn endpoint(python: &Path, cwd: &Path) -> io::Result<PathBuf> {
     Ok(directory.join(format!("{:x}.json", hasher.finalize())))
 }
 
+fn read_frame(reader: &mut BufReader<TcpStream>, deadline: Instant) -> io::Result<Vec<u8>> {
+    let mut line = Vec::new();
+    loop {
+        let remaining = deadline
+            .checked_duration_since(Instant::now())
+            .filter(|remaining| !remaining.is_zero())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "worker deadline exceeded"))?;
+        reader.get_ref().set_read_timeout(Some(remaining))?;
+        let available = reader.fill_buf()?;
+        if available.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "worker disconnected",
+            ));
+        }
+        let end = available.iter().position(|byte| *byte == b'\n');
+        let count = end.map_or(available.len(), |end| end + 1);
+        if line.len() as u64 + count as u64 > LIMIT {
+            return Err(io::Error::other("oversized worker response"));
+        }
+        line.extend_from_slice(&available[..count]);
+        reader.consume(count);
+        if end.is_some() {
+            return Ok(line);
+        }
+    }
+}
+
 fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response> {
     trace(format!("connecting via {}", path.display()));
     let metadata: Endpoint = serde_json::from_slice(&fs::read(path)?)?;
@@ -150,13 +187,13 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
     }
     let address = SocketAddr::from(([127, 0, 0, 1], metadata.port));
     let mut stream = TcpStream::connect_timeout(&address, Duration::from_millis(100))?;
-    stream.set_read_timeout(Some(Duration::from_secs(120)))?;
-    stream.set_write_timeout(Some(Duration::from_secs(10)))?;
+    stream.set_write_timeout(Some(ACCEPT_TIMEOUT))?;
     let payload = Request {
         token: &metadata.token,
         cwd,
         arguments,
         tty: io::stdout().is_terminal(),
+        ack: true,
     };
     // A streaming serializer issues many tiny TCP writes. With Nagle enabled,
     // the final newline can wait for a delayed ACK while the worker waits for
@@ -165,10 +202,13 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
     encoded.push(b'\n');
     stream.write_all(&encoded)?;
     trace("request sent");
-    let mut line = Vec::new();
-    BufReader::new(stream)
-        .take(LIMIT)
-        .read_until(b'\n', &mut line)?;
+    let mut reader = BufReader::new(stream);
+    let accepted: Accepted =
+        serde_json::from_slice(&read_frame(&mut reader, Instant::now() + ACCEPT_TIMEOUT)?)?;
+    if !accepted.accepted || accepted.pid != metadata.pid {
+        return Err(io::Error::other("unexpected worker acceptance"));
+    }
+    let line = read_frame(&mut reader, Instant::now() + REQUEST_TIMEOUT)?;
     let response: Response = serde_json::from_slice(&line)?;
     trace(format!("received {} bytes", line.len()));
     if response.pid != metadata.pid || !(0..=2).contains(&response.code) {
@@ -183,10 +223,25 @@ fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
         .to_str()
         .ok_or_else(|| io::Error::other("non-UTF-8 cwd"))?;
     let path = endpoint(python, &cwd)?;
-    if let Ok(response) = request(&path, name, arguments)
-        && !response.restart
-    {
-        return Ok(response);
+    match request(&path, name, arguments) {
+        Ok(response) if !response.restart => return Ok(response),
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+            ) =>
+        {
+            // A busy or stuck worker must not cause another worker to be spawned
+            // for the same endpoint. The caller runs directly instead.
+            let running = fs::read(&path)
+                .ok()
+                .and_then(|data| serde_json::from_slice::<Endpoint>(&data).ok())
+                .is_none_or(|endpoint| worker::running(endpoint.pid));
+            if running {
+                return Err(error);
+            }
+        }
+        _ => {}
     }
     // An atomic directory arbitrates concurrent first clients. Only its owner
     // starts a worker. A crashed starter only delays other clients briefly;
