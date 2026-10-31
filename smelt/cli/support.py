@@ -61,7 +61,10 @@ def use_color(stream: TextIO, *, disabled: bool) -> bool:
 
 
 def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
-    from smelt.config.loader import discover_config, load_config  # noqa: PLC0415 - keep schemas out of CLI startup
+    from smelt.config.loader import (  # noqa: PLC0415 - keep schemas out of CLI startup
+        discover_config,
+        load_config,
+    )
 
     if config_path:
         path = Path(config_path)

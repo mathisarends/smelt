@@ -70,19 +70,20 @@ class AnalysisContext:
 
     @cached_property
     def files(self) -> FileIndex:
-        from smelt.analysis.files import FileIndex  # noqa: PLC0415 - load only requested analysis indexes
+        # Load indexes only when the selected checks need them.
+        from smelt.analysis.files import FileIndex  # noqa: PLC0415
 
         return FileIndex.discover(self.root, self.config, store=self.store)
 
     @cached_property
     def asts(self) -> AstCache:
-        from smelt.analysis.parsing import AstCache  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.parsing import AstCache  # noqa: PLC0415
 
         return AstCache(self.files, cache=self.cache)
 
     @cached_property
     def model(self) -> ArchitectureModel:
-        from smelt.model import ArchitectureModel  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.model import ArchitectureModel  # noqa: PLC0415
 
         return ArchitectureModel.build(
             self.config, self.files.sources, self.files.packages
@@ -90,31 +91,31 @@ class AnalysisContext:
 
     @cached_property
     def coverage(self) -> CoverageIndex:
-        from smelt.analysis.coverage import CoverageIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.coverage import CoverageIndex  # noqa: PLC0415
 
         return CoverageIndex.build(self.files, self.model, self.asts)
 
     @cached_property
     def imports(self) -> ImportIndex:
-        from smelt.analysis.imports import ImportIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.imports import ImportIndex  # noqa: PLC0415
 
         return ImportIndex.build(self.files, self.asts, cache=self.cache)
 
     @cached_property
     def syntax(self) -> SyntaxIndex:
-        from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415
 
         return SyntaxIndex(self.files, self.asts, cache=self.cache)
 
     @cached_property
     def member_usage(self) -> MemberUsageIndex:
-        from smelt.analysis.members import MemberUsageIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.members import MemberUsageIndex  # noqa: PLC0415
 
         return MemberUsageIndex(self.syntax)
 
     @cached_property
     def test_syntax(self) -> TestSyntaxIndex:
-        from smelt.analysis.test_syntax import TestSyntaxIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.test_syntax import TestSyntaxIndex  # noqa: PLC0415
 
         return TestSyntaxIndex(
             self.files, self.asts, cache=self.cache, syntax=self.syntax
@@ -122,19 +123,19 @@ class AnalysisContext:
 
     @cached_property
     def contracts(self) -> ContractIndex:
-        from smelt.analysis.contracts import ContractIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.contracts import ContractIndex  # noqa: PLC0415
 
         return ContractIndex(self.files)
 
     @cached_property
     def python_targets(self) -> PythonTargetIndex:
-        from smelt.analysis.python_version import PythonTargetIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.python_version import PythonTargetIndex  # noqa: PLC0415
 
         return PythonTargetIndex(self.files)
 
     @cached_property
     def ordering(self) -> DefinitionOrderIndex:
-        from smelt.analysis.ordering import DefinitionOrderIndex  # noqa: PLC0415 - load only requested analysis indexes
+        from smelt.analysis.ordering import DefinitionOrderIndex  # noqa: PLC0415
 
         return DefinitionOrderIndex(
             self.files, self.contracts, self.asts, self.python_targets

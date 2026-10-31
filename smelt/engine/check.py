@@ -9,7 +9,9 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.cache import FactCache
 from smelt.analysis.context import AnalysisContext
-from smelt.analysis.errors import InvalidOptionError as InvalidOptionError  # noqa: PLC0414 - preserve the public engine exception import
+from smelt.analysis.errors import (
+    InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
+)
 from smelt.analysis.files import FileIndex
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches

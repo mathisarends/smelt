@@ -28,7 +28,9 @@ from smelt.analysis.parsing import (
     resolve_relative,
     type_checking_lines,
 )
-from smelt.analysis.parsing import is_stdlib as is_stdlib  # noqa: PLC0414 - preserve the public import helper
+from smelt.analysis.parsing import (
+    is_stdlib as is_stdlib,  # noqa: PLC0414 - preserve the public import helper
+)
 from smelt.model import is_within
 
 if TYPE_CHECKING:

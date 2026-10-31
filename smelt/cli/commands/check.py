@@ -94,7 +94,7 @@ def _check_loaded(
     )
     outcome = run_check(loaded, options)
     if args.fix:
-        from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415 - only fixes need the rewriter
+        from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
 
         fixes = apply_ordering_fixes(outcome)
         if fixes.files:
