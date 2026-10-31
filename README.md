@@ -564,6 +564,15 @@ by default; it does not fail the usual error gate. Choose `public: ['.']` instea
 to require facade-only imports regardless of their count. No facade or import is
 rewritten automatically.
 
+When the exports already exist, enable `rules: {prefer-package-import: hint}`
+or `--select SMT319`. For example, if `app.observation.__init__` directly exports
+`Observe` and `Snapshot`, it suggests replacing
+`from app.observation.models import Snapshot` with a package import that can join
+`from app.observation import Observe, Snapshot`. Every imported name must have a
+direct, unconditional public re-export; aliases and relative imports are preserved
+in suggestions. Internal imports, package initializers, uncertain exports and
+unscanned third-party packages are excluded. See [SMT319](docs/rules/SMT319.md).
+
 ### Module headers and Python-version-aware annotations
 
 Module docstrings and future imports can be governed independently:

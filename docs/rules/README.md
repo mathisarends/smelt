@@ -26,6 +26,7 @@
 | [SMT316](SMT316.md) | internal-public-member | structure | explicit | warning |
 | [SMT317](SMT317.md) | internal-static-helper | structure | explicit | hint |
 | [SMT318](SMT318.md) | redundant-str-enum-value | structure | explicit | hint |
+| [SMT319](SMT319.md) | prefer-package-import | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

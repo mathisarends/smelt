@@ -361,6 +361,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.package_imports:PreferPackageImport",
+    "code": "SMT319",
+    "name": "prefer-package-import",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

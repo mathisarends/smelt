@@ -45,6 +45,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.members:InternalPublicMember",
     "smelt.rules.structure.members:InternalStaticHelper",
     "smelt.rules.structure.enum_values:RedundantStrEnumValue",
+    "smelt.rules.structure.package_imports:PreferPackageImport",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
