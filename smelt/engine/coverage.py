@@ -81,9 +81,7 @@ def effective_coverage(
         report["test_quality"] = {
             "mode": "syntactic",
             "files": len(ctx.test_syntax.modules),
-            "collected_tests": sum(
-                len(module.tests) for module in ctx.test_syntax.modules.values()
-            ),
+            "collected_tests": ctx.test_syntax.collected_tests(),
             "fixture_traversal": False,
             "fixture_return_annotations": True,
             "fixture_return_inference": "consistent known constructor/alias or fixed tuple; no execution",
@@ -129,7 +127,7 @@ def _omitted_members(ctx: AnalysisContext) -> list[dict[str, Any]]:
         for directory in ctx.files.resolve_path(source.absolute).parents
     }
     omitted: list[dict[str, Any]] = []
-    for member in workspace_members(ctx.root):
+    for member in workspace_members(ctx.root, store=ctx.store):
         if member.skipped:
             omitted.append({"path": member.path, "reason": member.skipped})
             continue
@@ -140,7 +138,8 @@ def _omitted_members(ctx: AnalysisContext) -> list[dict[str, Any]]:
             f"{member.source_root}/{name}"
             for name in member.packages
             if name in configured
-            and (ctx.root / member.source_root / name).resolve() not in analyzed
+            and ctx.files.resolve_path(ctx.root / member.source_root / name)
+            not in analyzed
         ]
         reasons = []
         if missing:

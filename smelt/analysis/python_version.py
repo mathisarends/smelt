@@ -94,9 +94,11 @@ class PythonTargetIndex:
         boundary = self.files.root
         if not directory.is_relative_to(self.files.root):
             source_roots = [
-                (self.files.root / entry).resolve()
+                self.files.resolve_path(self.files.root / entry)
                 for entry in self.files.config.project.source_roots
-                if directory.is_relative_to((self.files.root / entry).resolve())
+                if directory.is_relative_to(
+                    self.files.resolve_path(self.files.root / entry)
+                )
             ]
             if not source_roots:
                 return PythonTarget(
@@ -115,7 +117,7 @@ class PythonTargetIndex:
             if current in self._cache:
                 target = self._cache[current]
                 break
-            if metadata.is_file():
+            if self.files.store.is_file(metadata):
                 target = self._read(metadata)
                 if target is not None:
                     break
@@ -131,7 +133,7 @@ class PythonTargetIndex:
     def _read(self, path: Path) -> PythonTarget | None:
         source = self.files.relative(path)
         try:
-            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            data = tomllib.loads(self.files.store.read_text(path))
         except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
             return PythonTarget(
                 None, source, uncertainty=f"cannot read Python metadata: {exc}"

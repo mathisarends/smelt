@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class AsyncMockWithoutAwaitCheck(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT428"
     name = "async-mock-without-await-check"

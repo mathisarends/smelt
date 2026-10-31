@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class ForbiddenTestMock(BaseRule):
+    test_local = True
     scope = "test"
     activation = PolicyActivation(
         "tests.forbid_mocks_in contains test path patterns.",
@@ -56,6 +57,7 @@ class ForbiddenTestMock(BaseRule):
 
 
 class StringPatchTarget(BaseRule):
+    test_local = True
     scope = "test"
     code = "SMT422"
     name = "string-patch-target"
@@ -89,6 +91,7 @@ class StringPatchTarget(BaseRule):
 
 
 class ExcessiveTestPatches(BaseRule):
+    test_local = True
     scope = "test"
     activation = PolicyActivation(
         "tests.max_patches_per_test is set, including zero.",

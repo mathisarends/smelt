@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
 
-from smelt.config import ConfigError, LoadedConfig, discover_config, load_config
-from smelt.config.errors import ConfigIssue
+from smelt.config.errors import ConfigError, ConfigIssue
+
+if TYPE_CHECKING:
+    from smelt.config.loader import LoadedConfig
 
 EXIT_OK = 0
 EXIT_VIOLATIONS = 1
@@ -57,6 +61,11 @@ def use_color(stream: TextIO, *, disabled: bool) -> bool:
 
 
 def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
+    from smelt.config.loader import (  # noqa: PLC0415 - keep schemas out of CLI startup
+        discover_config,
+        load_config,
+    )
+
     if config_path:
         path = Path(config_path)
         if not path.is_absolute():

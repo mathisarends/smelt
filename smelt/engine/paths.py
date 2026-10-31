@@ -12,7 +12,9 @@ if TYPE_CHECKING:
 
 
 def project_metadata(loaded: LoadedConfig) -> dict[str, str]:
-    root = loaded.root.resolve()
+    root = (
+        loaded.source.resolve(loaded.root) if loaded.source else loaded.root.resolve()
+    )
     repository = next(
         (
             directory
@@ -24,7 +26,11 @@ def project_metadata(loaded: LoadedConfig) -> dict[str, str]:
     prefix = root.relative_to(repository).as_posix()
     return {
         "root": root.as_posix(),
-        "config": loaded.path.resolve().as_posix(),
+        "config": (
+            loaded.source.resolve(loaded.path)
+            if loaded.source
+            else loaded.path.resolve()
+        ).as_posix(),
         "repository_root": repository.as_posix(),
         "repository_prefix": "" if prefix == "." else prefix,
     }
@@ -35,7 +41,7 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
     issues: list[ConfigIssue] = []
     project = ctx.config.project
     for index, directory in enumerate(project.source_roots):
-        if not (ctx.root / directory).is_dir():
+        if not ctx.store.is_dir(ctx.root / directory):
             issues.append(
                 ConfigIssue(
                     f"project.source_roots[{index}]",
@@ -44,7 +50,7 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
             )
     if ctx.config.tests.layout == "mirror":
         for index, directory in enumerate(project.test_roots):
-            if not (ctx.root / directory).is_dir():
+            if not ctx.store.is_dir(ctx.root / directory):
                 issues.append(
                     ConfigIssue(
                         f"project.test_roots[{index}]",

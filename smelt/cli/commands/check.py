@@ -17,7 +17,6 @@ from smelt.diagnostics.render.machine import render_github, render_json, render_
 from smelt.diagnostics.render.text import render_text
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check
-from smelt.engine.ordering_fixes import apply_ordering_fixes
 from smelt.engine.paths import project_metadata
 from smelt.engine.staged import staged_project
 
@@ -36,9 +35,9 @@ def split_selectors(raw: str | None) -> tuple[str, ...]:
 
 
 def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
-    paths = tuple(relative_scope(loaded.root, cwd, p) for p in raw)
+    paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
     # A changed config can break any file, so it widens the scope to the project.
-    config = relative_scope(loaded.root, cwd, str(loaded.path))
+    config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)
     return () if config in paths else paths
 
 
@@ -50,7 +49,9 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 option="--fix",
                 value="--staged",
             )
-        with staged_project(cwd, args.config) as staged:
+        with staged_project(
+            cwd, args.config, index=getattr(args, "_staged_index", None)
+        ) as staged:
             return _check_loaded(
                 args,
                 console,
@@ -89,9 +90,12 @@ def _check_loaded(
         staged=args.staged,
         snapshot_id=index_hash,
         repository_root=staged.repository if staged else None,
+        comparison=getattr(args, "_comparison", None),
     )
     outcome = run_check(loaded, options)
     if args.fix:
+        from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
+
         fixes = apply_ordering_fixes(outcome)
         if fixes.files:
             outcome = run_check(loaded, options)
@@ -106,7 +110,7 @@ def _check_loaded(
         if report.comparison is not None:
             report.comparison = {**report.comparison, "index_hash": index_hash}
     files = outcome.context.__dict__.get("files") or FileIndex(
-        outcome.context.root, outcome.context.config
+        outcome.context.root, outcome.context.config, store=outcome.context.store
     )
 
     def read_line(path: str, line: int) -> str:

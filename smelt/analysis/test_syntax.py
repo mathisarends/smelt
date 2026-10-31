@@ -3,19 +3,29 @@
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
+from collections.abc import Mapping
+from copy import copy
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import TYPE_CHECKING
 
+from pydantic import TypeAdapter
+
 from smelt.analysis.exports import namespace_of, resolve_dotted
+from smelt.analysis.literals import nonempty_literal
 from smelt.analysis.parsing import resolve_relative
 from smelt.analysis.test_deadlines import async_deadline
 from smelt.config.patterns import path_matches
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
+    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
     from smelt.analysis.parsing import AstCache
+    from smelt.analysis.syntax import SyntaxIndex
 
 type Function = ast.FunctionDef | ast.AsyncFunctionDef
 
@@ -94,6 +104,10 @@ class _Binding:
     mock_spec: str | None = None
     async_callable: str | None = None
     mock_origin: str | None = field(default=None, compare=False)
+
+
+_BINDINGS = TypeAdapter(dict[str, _Binding])
+_ASYNC_SPECS = TypeAdapter(dict[str, frozenset[str]])
 
 
 def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
@@ -194,20 +208,6 @@ def _class_async_methods(tree: ast.Module, module: str) -> dict[str, frozenset[s
         for node in tree.body
         if isinstance(node, ast.ClassDef)
     }
-
-
-def nonempty_literal(node: ast.AST) -> bool:
-    if isinstance(node, ast.List | ast.Tuple | ast.Set):
-        return bool(node.elts) and not any(
-            isinstance(item, ast.Starred) for item in node.elts
-        )
-    if isinstance(node, ast.Dict):
-        return bool(node.keys) and None not in node.keys
-    return (
-        isinstance(node, ast.Constant)
-        and isinstance(node.value, str | bytes)
-        and bool(node.value)
-    )
 
 
 def _nonempty_range(node: ast.Call) -> bool:
@@ -1120,24 +1120,94 @@ def analyze_test_syntax(
     return module
 
 
+def _fixture_facts(
+    asts: AstCache,
+    path: str,
+    constructors: frozenset[str],
+    inherited: dict[str, _Binding],
+    async_specs: dict[str, frozenset[str]],
+) -> dict[str, _Binding]:
+    return _declared_fixtures(
+        asts.parse(path), path, constructors, inherited, async_specs
+    )
+
+
+@dataclass
+class TestReferences:
+    imports: list[tuple[int, str]]
+    attributes: list[tuple[int, str, bool]]
+    instance_attributes: list[tuple[int, str, bool]]
+
+
+_REFERENCES = TypeAdapter(TestReferences)
+_COUNT = TypeAdapter(int)
+
+
+class _TestModules(Mapping[str, TestModule]):
+    def __init__(
+        self, paths: tuple[str, ...], load: Callable[[str], TestModule]
+    ) -> None:
+        self.paths = dict.fromkeys(paths)
+        self._load = load
+        self._cache: dict[str, TestModule] = {}
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.paths)
+
+    def __getitem__(self, path: str) -> TestModule:
+        if path not in self.paths:
+            raise KeyError(path)
+        if path not in self._cache:
+            self._cache[path] = self._load(path)
+        return self._cache[path]
+
+
 class TestSyntaxIndex:
-    def __init__(self, files: FileIndex, asts: AstCache) -> None:
-        self.modules: dict[str, TestModule] = {}
+    def __init__(
+        self,
+        files: FileIndex,
+        asts: AstCache,
+        *,
+        cache: FactCache | None = None,
+        syntax: SyntaxIndex | None = None,
+    ) -> None:
+        self._cache = cache
+        self._files = files
+        self._inputs: dict[str, object] = {}
         config = files.config.tests
+
         # The engine requests this index for selected rules. Evidence is shared
         # across those rules rather than gated by separate policy switches.
+        def specs(path: str, module: str) -> dict[str, frozenset[str]]:
+            def build() -> dict[str, frozenset[str]]:
+                return _class_async_methods(asts.parse(path), module)
+
+            return (
+                build()
+                if cache is None
+                else cache.get(
+                    "test-source-specs",
+                    [path, module, files.content_id(path)],
+                    _ASYNC_SPECS,
+                    build,
+                )
+            )
+
         source_specs = {
             qualified: methods
             for source in files.sources.values()
-            for qualified, methods in _class_async_methods(
-                asts.parse(source.path), source.module
-            ).items()
+            for qualified, methods in specs(source.path, source.module).items()
         }
         constructors = frozenset(source_specs)
         async_specs = dict(source_specs)
         if source_specs:
             namespaces = {
-                source.module: namespace_of(
+                source.module: syntax.namespace(source.module)
+                if syntax is not None
+                else namespace_of(
                     asts.parse(source.path), source.module, is_package=source.is_package
                 )
                 for source in files.sources.values()
@@ -1145,6 +1215,7 @@ class TestSyntaxIndex:
             aliases = {
                 f"{module}.{name}": f"{resolved[0]}.{resolved[1]}"
                 for module, namespace in namespaces.items()
+                if namespace is not None
                 for name in namespace.imported
                 if (resolved := resolve_dotted(f"{module}.{name}", namespaces.get))
                 is not None
@@ -1166,18 +1237,44 @@ class TestSyntaxIndex:
                 if path.startswith(scope)
                 for name, binding in bindings.items()
             }
-            async_specs.update(
-                _class_async_methods(
-                    asts.parse(path), path.removesuffix(".py").replace("/", ".")
+            async_specs.update(specs(path, path.removesuffix(".py").replace("/", ".")))
+
+            build_fixtures = partial(
+                _fixture_facts, asts, path, constructors, inherited, async_specs
+            )
+
+            fixture_scopes[path.removesuffix("conftest.py")] = (
+                build_fixtures()
+                if cache is None
+                else cache.get(
+                    "test-fixtures",
+                    [
+                        path,
+                        files.content_id(path),
+                        sorted(constructors),
+                        _BINDINGS.dump_python(inherited, mode="json"),
+                        [
+                            (name, sorted(methods))
+                            for name, methods in sorted(async_specs.items())
+                        ],
+                    ],
+                    _BINDINGS,
+                    build_fixtures,
                 )
             )
-            fixture_scopes[path.removesuffix("conftest.py")] = _declared_fixtures(
-                asts.parse(path),
-                path,
-                constructors,
-                inherited,
-                async_specs,
-            )
+        environment = hashlib.sha256(
+            json.dumps(
+                [
+                    sorted(constructors),
+                    [
+                        (name, sorted(methods))
+                        for name, methods in sorted(async_specs.items())
+                    ],
+                ],
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        fixtures_by_path: dict[str, dict[str, _Binding]] = {}
         for path in sorted(files.tests):
             if any(path_matches(pattern, path) for pattern in config.quality_exclude):
                 continue
@@ -1187,10 +1284,79 @@ class TestSyntaxIndex:
                 if path.startswith(scope)
                 for name, binding in fixture_scopes[scope].items()
             }
-            self.modules[path] = analyze_test_syntax(
+            fixtures_by_path[path] = fixtures
+            self._inputs[path] = [
+                path,
+                files.content_id(path),
+                environment,
+                _BINDINGS.dump_python(fixtures, mode="json"),
+            ]
+
+        def load(path: str) -> TestModule:
+            module = analyze_test_syntax(
                 asts.parse(path),
                 path,
                 constructors=constructors,
-                fixtures=fixtures,
+                fixtures=fixtures_by_path[path],
                 async_specs=async_specs,
             )
+            if cache is not None:
+                cache.write(
+                    cache.key("test-count", self.inputs(path)),
+                    len(module.tests),
+                    _COUNT,
+                )
+            return module
+
+        self.modules: Mapping[str, TestModule] = _TestModules(
+            tuple(fixtures_by_path), load
+        )
+
+    def inputs(self, path: str) -> object:
+        return self._inputs[path]
+
+    def for_file(self, path: str) -> TestSyntaxIndex:
+        view = copy(self)
+        view.modules = {path: self.modules[path]}
+        return view
+
+    def collected_tests(self) -> int:
+        def count(path: str) -> int:
+            return len(self.modules[path].tests)
+
+        return sum(
+            count(path)
+            if self._cache is None
+            else self._cache.get(
+                "test-count", self.inputs(path), _COUNT, partial(count, path)
+            )
+            for path in self.modules
+        )
+
+    def references(self) -> Iterator[tuple[str, TestReferences]]:
+        def extract(path: str) -> TestReferences:
+            module = self.modules[path]
+            return TestReferences(
+                [(node.lineno, name) for node, name in module.imports],
+                [
+                    (node.lineno, name, isinstance(node.ctx, ast.Load))
+                    for node, name in module.attributes
+                ],
+                [
+                    (node.lineno, name, isinstance(node.ctx, ast.Load))
+                    for node, name, _ in module.instance_attributes
+                ],
+            )
+
+        for path in self.modules:
+            cached = (
+                extract(path)
+                if self._cache is None
+                else self._cache.get(
+                    "test-references",
+                    self.inputs(path),
+                    _REFERENCES,
+                    partial(extract, path),
+                )
+            )
+            yield path, cached

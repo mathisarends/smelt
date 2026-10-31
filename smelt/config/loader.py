@@ -13,6 +13,7 @@ from pydantic import BaseModel, ValidationError
 from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_loc
 from smelt.config.models import SmeltConfig
+from smelt.config.source import SourceStore
 from smelt.config.validation import validate_semantics
 
 if TYPE_CHECKING:
@@ -83,6 +84,7 @@ class LoadedConfig:
     config: SmeltConfig
     path: Path
     warnings: tuple[ConfigIssue, ...] = ()
+    source: SourceStore | None = None
 
     @property
     def root(self) -> Path:
@@ -90,31 +92,41 @@ class LoadedConfig:
         return self.path.parent
 
 
-def discover_config(start: Path) -> Path | None:
+def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
     """Walk up from ``start`` looking for ``smelt.yaml`` or ``smelt.yml``."""
-    current = start.resolve()
+    store = store or SourceStore()
+    current = store.resolve(start)
     for directory in (current, *current.parents):
         for filename in CONFIG_FILENAMES:
             candidate = directory / filename
-            if candidate.is_file():
+            if store.is_file(candidate):
                 return candidate
     return None
 
 
-def load_config(path: Path) -> LoadedConfig:
+def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig:
     source = path.name
     try:
-        raw = load_yaml(path.read_text(encoding="utf-8"))
+        raw = load_yaml((store or SourceStore()).read_text(path))
     except (OSError, UnicodeError) as exc:
         raise ConfigError([ConfigIssue("", f"cannot read {path}: {exc}")]) from exc
     except yaml.YAMLError as exc:
         raise ConfigError([ConfigIssue("", f"invalid YAML: {exc}")], source) from exc
-    config, warnings = parse_config(raw, source=source, root=path.parent)
-    return LoadedConfig(config=config, path=path.resolve(), warnings=warnings)
+    config, warnings = parse_config(raw, source=source, root=path.parent, store=store)
+    return LoadedConfig(
+        config=config,
+        path=(store or SourceStore()).resolve(path),
+        warnings=warnings,
+        source=store,
+    )
 
 
 def parse_config(
-    raw: object, *, source: str | None = None, root: Path | None = None
+    raw: object,
+    *,
+    source: str | None = None,
+    root: Path | None = None,
+    store: SourceStore | None = None,
 ) -> tuple[SmeltConfig, tuple[ConfigIssue, ...]]:
     """Validate a raw config; ``root`` lets omitted root_packages be discovered."""
     if raw is None:
@@ -127,7 +139,7 @@ def parse_config(
         config = SmeltConfig.model_validate(raw)
     except ValidationError as exc:
         raise ConfigError(_issues_from_validation(exc), source) from exc
-    config = _with_root_packages(config, root, source)
+    config = _with_root_packages(config, root, source, store=store)
     errors, warnings = validate_semantics(config)
     if errors:
         raise ConfigError(errors, source)
@@ -135,7 +147,11 @@ def parse_config(
 
 
 def _with_root_packages(
-    config: SmeltConfig, root: Path | None, source: str | None
+    config: SmeltConfig,
+    root: Path | None,
+    source: str | None,
+    *,
+    store: SourceStore | None = None,
 ) -> SmeltConfig:
     project = config.project
     if project.root_packages:
@@ -145,7 +161,7 @@ def _with_root_packages(
             dict.fromkeys(
                 package.name
                 for source_root in project.source_roots
-                for package in packages_in(root / source_root)
+                for package in packages_in(root / source_root, store=store)
             )
         )
         if root is not None

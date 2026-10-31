@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.discovery import build_package_settings, packages_in
+from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,28 +31,34 @@ class WorkspaceMember:
         }
 
 
-def import_root(directory: Path) -> tuple[Path, list[Path], list[Path]] | None:
+def import_root(
+    directory: Path, *, store: SourceStore | None = None
+) -> tuple[Path, list[Path], list[Path]] | None:
     """The source root of a project or member, its packages and their namespaces.
 
     ``src/`` wins when it holds a package; it and a project whose build backend
     declares ``namespace`` or a ``module-name`` may hold namespace packages.
     Otherwise the directory itself, with regular packages only.
     """
-    declared, namespace = build_package_settings(directory)
+    store = store or SourceStore()
+    declared, namespace = build_package_settings(directory, store=store)
     for base in (directory / "src", directory):
         allowed = base.name == "src" or namespace or bool(declared)
-        found = packages_in(base, namespace=allowed)
+        found = packages_in(base, namespace=allowed, store=store)
         if declared:
             found = [p for p in found if p.name in declared] or found
         if found:
-            namespaces = [p for p in found if not any(p.glob("*.py"))]
+            namespaces = [p for p in found if not any(store.glob(p, "*.py"))]
             return base, found, namespaces
     return None
 
 
-def workspace_members(root: Path, *, strict: bool = False) -> list[WorkspaceMember]:
+def workspace_members(
+    root: Path, *, strict: bool = False, store: SourceStore | None = None
+) -> list[WorkspaceMember]:
     """Every member ``tool.uv.workspace`` declares, with its packages or why it has none."""
-    workspace = _pyproject(root, strict=strict)
+    store = store or SourceStore()
+    workspace = _pyproject(root, strict=strict, store=store)
     for key in ("tool", "uv", "workspace"):
         value = workspace.get(key, {})
         if not isinstance(value, dict):
@@ -67,15 +74,15 @@ def workspace_members(root: Path, *, strict: bool = False) -> list[WorkspaceMemb
     excluded = _strings(
         workspace.get("exclude"), strict=strict, field="tool.uv.workspace.exclude"
     )
-    resolved_root = root.resolve()
+    resolved_root = store.resolve(root)
     found: dict[str, WorkspaceMember] = {}
     for pattern in patterns:
         matches = [
             candidate
-            for candidate in root.glob(pattern)
-            if candidate.is_dir()
-            and candidate.resolve().is_relative_to(resolved_root)
-            and candidate.resolve() != resolved_root
+            for candidate in store.glob(root, pattern)
+            if store.is_dir(candidate)
+            and store.resolve(candidate).is_relative_to(resolved_root)
+            and store.resolve(candidate) != resolved_root
         ]
         if not matches:
             found.setdefault(
@@ -83,17 +90,17 @@ def workspace_members(root: Path, *, strict: bool = False) -> list[WorkspaceMemb
             )
         for candidate in matches:
             relative = candidate.relative_to(root).as_posix()
-            if any(candidate in root.glob(entry) for entry in excluded):
+            if any(candidate in store.glob(root, entry) for entry in excluded):
                 reason = "excluded by tool.uv.workspace.exclude"
                 found[relative] = WorkspaceMember(relative, skipped=reason)
             else:
-                found[relative] = _member(root, candidate)
+                found[relative] = _member(root, candidate, store=store)
     return [found[key] for key in sorted(found)]
 
 
-def _member(root: Path, directory: Path) -> WorkspaceMember:
+def _member(root: Path, directory: Path, *, store: SourceStore) -> WorkspaceMember:
     relative = directory.relative_to(root).as_posix()
-    located = import_root(directory)
+    located = import_root(directory, store=store)
     if located is None:
         reason = "no Python package in src/ or the member directory"
         return WorkspaceMember(relative, skipped=reason)
@@ -106,9 +113,11 @@ def _member(root: Path, directory: Path) -> WorkspaceMember:
     )
 
 
-def _pyproject(directory: Path, *, strict: bool = False) -> dict[str, Any]:
+def _pyproject(
+    directory: Path, *, strict: bool = False, store: SourceStore
+) -> dict[str, Any]:
     try:
-        text = (directory / "pyproject.toml").read_text(encoding="utf-8")
+        text = store.read_text(directory / "pyproject.toml")
         return tomllib.loads(text)
     except FileNotFoundError:
         return {}

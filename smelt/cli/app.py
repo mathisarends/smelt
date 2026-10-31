@@ -5,20 +5,21 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import NoReturn
+from typing import NoReturn, TextIO, cast
 
 from smelt import __version__
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError, InvalidOptionError
 from smelt.cli import commands
 from smelt.cli.support import (
     EXIT_ERROR,
     CliError,
     Console,
     configure_streams,
+    use_color,
 )
 from smelt.config import ConfigError
 from smelt.diagnostics.render.machine import render_error_json
-from smelt.engine.check import InvalidOptionError
+from smelt.engine.result_cache import RecordingStream, ResultCache
 
 type Handler = Callable[[argparse.Namespace, Console, Path], int]
 
@@ -141,18 +142,18 @@ def _add_check(sub: Subparsers) -> None:
         action="store_true",
         help="include the per-file coverage inventory in JSON or text output",
     )
-    check.set_defaults(handler=commands.check)
+    check.set_defaults(handler=commands.handler("check"))
 
 
 def _add_discovery(sub: Subparsers) -> None:
     explain = sub.add_parser("explain", help="explain a rule")
     explain.add_argument("rule", metavar="CODE|NAME")
     explain.add_argument("--format", choices=["text", "json"], default="text")
-    explain.set_defaults(handler=commands.explain)
+    explain.set_defaults(handler=commands.handler("explain"))
 
     rules = sub.add_parser("rules", help="list all rules")
     rules.add_argument("--format", choices=["text", "json"], default="text")
-    rules.set_defaults(handler=commands.rules)
+    rules.set_defaults(handler=commands.handler("rules"))
 
     context = sub.add_parser(
         "context",
@@ -160,7 +161,7 @@ def _add_discovery(sub: Subparsers) -> None:
     )
     context.add_argument("target", nargs="?", metavar="FEATURE|MODULE|PATH")
     context.add_argument("--format", choices=["text", "json"], default="text")
-    context.set_defaults(handler=commands.context)
+    context.set_defaults(handler=commands.handler("context"))
 
 
 def _add_maintenance(sub: Subparsers) -> None:
@@ -179,13 +180,13 @@ def _add_maintenance(sub: Subparsers) -> None:
         action="store_true",
         help="write explicit source/test review rules into the starter (no runtime preset)",
     )
-    init.set_defaults(handler=commands.init)
+    init.set_defaults(handler=commands.handler("init"))
 
     debt = sub.add_parser("debt", help="record current violations as known debt")
     debt.add_argument(
         "--prune", action="store_true", help="only remove resolved entries"
     )
-    debt.set_defaults(handler=commands.debt)
+    debt.set_defaults(handler=commands.handler("debt"))
 
 
 def _add_config(sub: Subparsers) -> None:
@@ -193,9 +194,9 @@ def _add_config(sub: Subparsers) -> None:
     config_sub = config.add_subparsers(dest="config_command", metavar="ACTION")
     show = config_sub.add_parser("show", help="print the resolved config")
     show.add_argument("--format", choices=["yaml", "json"], default="yaml")
-    show.set_defaults(handler=commands.config_show)
+    show.set_defaults(handler=commands.handler("config_show"))
     schema = config_sub.add_parser("schema", help="print the JSON schema")
-    schema.set_defaults(handler=commands.config_schema)
+    schema.set_defaults(handler=commands.handler("config_schema"))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -217,7 +218,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help(sys.stderr)
         return EXIT_ERROR
     try:
-        return handler(args, console, Path.cwd())
+        cwd = Path.cwd()
+        cache = ResultCache.prepare(
+            args,
+            cwd,
+            color=use_color(console.out, disabled=getattr(args, "no_color", False)),
+        )
+        if cache is None:
+            return handler(args, console, cwd)
+        cached = cache.read()
+        if cached is not None:
+            code, out, err = cached
+            console.out.write(out)
+            console.err.write(err)
+            return code
+        out_stream, err_stream = (
+            RecordingStream(console.out),
+            RecordingStream(console.err),
+        )
+        recording = Console(cast("TextIO", out_stream), cast("TextIO", err_stream))
+        code = handler(args, recording, cwd)
+        cache.write(code, "".join(out_stream.parts), "".join(err_stream.parts))
+        return code
     except (
         AnalysisError,
         CliError,

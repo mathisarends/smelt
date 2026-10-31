@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from smelt.analysis.test_syntax import nonempty_literal
+from smelt.analysis.literals import nonempty_literal
 
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction

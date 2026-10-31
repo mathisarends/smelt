@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.imports import ImportDetail, is_stdlib
+from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import BaseRule, RuleDoc
@@ -18,6 +18,7 @@ from smelt.rules.common import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.imports import ImportDetail
     from smelt.config.models import ThirdPartyPolicy
 
 

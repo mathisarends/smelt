@@ -53,6 +53,9 @@ class BaseRule:
     enabled_by_default: ClassVar[bool] = False
     activation: ClassVar[PolicyActivation | None] = None
     scope: ClassVar[str] = "source"
+    file_local: ClassVar[bool] = False
+    test_local: ClassVar[bool] = False
+    member_local: ClassVar[bool] = False
     doc: ClassVar[RuleDoc]
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]:

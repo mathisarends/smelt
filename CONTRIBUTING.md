@@ -29,6 +29,19 @@ composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yaml`.
 
+Checks read project inputs through `config.source.SourceStore`. Use the store on
+the analysis context or file index for reads, existence tests, discovery and path
+resolution; direct `Path` reads can accidentally inspect unstaged files during a
+Git-index check. Keep configured paths inside the captured repository. Cached
+facts must include content identity and any module, inventory, metadata or policy
+inputs that affect their meaning. Verify results against `--no-cache` after edits,
+deletions, re-exports and fixture changes. Mark a rule `file_local` only when its
+source contents, resolved policy and Python target fully determine its decision.
+`test_local` rules additionally receive resolved constructor, fixture and module
+inventory inputs. `member_local` rules consume resolved member facts, including
+current external-use and inheritance evidence. Global rules must retain their
+cross-file dependencies.
+
 Keep related rules together when they share a concept, as in `structure/headers.py`.
 Give a growing concept its own module rather than expanding a catch-all file.
 Normal checks stay read-only. A new rule does not need a fixer or a new index.

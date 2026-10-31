@@ -5,35 +5,18 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-import sys
 from contextlib import suppress
-from functools import cache
-from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter, ValidationError
 
+from smelt.analysis.identity import analyzer_identity
+
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
-
-@cache
-def analyzer_identity() -> str:
-    """Invalidate editable checkouts too, even without a package version bump."""
-    digest = hashlib.sha256()
-    package = Path(__file__).resolve().parent.parent
-    for path in sorted(package.rglob("*.py")):
-        digest.update(path.relative_to(package).as_posix().encode())
-        digest.update(path.read_bytes())
-    digest.update(str(sys.version_info).encode())
-    for dependency in ("smelt-cli", "grimp", "pydantic", "packaging", "pyyaml"):
-        try:
-            installed = version(dependency)
-        except PackageNotFoundError:
-            installed = "uninstalled"
-        digest.update(f"{dependency}:{installed}".encode())
-    return digest.hexdigest()
+_SHA1_LENGTH = 40
 
 
 class FactCache:
@@ -57,6 +40,9 @@ class FactCache:
                 self._connection.execute("PRAGMA synchronous=NORMAL")
                 self._connection.execute(
                     "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                )
+                self._connection.execute(
+                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
                 )
                 self._connection.commit()
             except (OSError, sqlite3.Error):
@@ -83,6 +69,60 @@ class FactCache:
     def key(self, kind: str, inputs: object) -> str:
         payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)
         return hashlib.sha256(payload.encode()).hexdigest()
+
+    def missing(self, keys: list[str]) -> set[str]:
+        """Plan batched source reads; payloads still go through validated read()."""
+        connection = self._connect()
+        if connection is None:
+            return set(keys)
+        present: set[str] = set()
+        try:
+            for start in range(0, len(keys), 500):
+                batch = keys[start : start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                query = f"SELECT key FROM facts WHERE key IN ({placeholders})"  # noqa: S608 - placeholders only; values are bound
+                present.update(row[0] for row in connection.execute(query, batch))
+        except sqlite3.Error:
+            return set(keys)
+        return set(keys) - present
+
+    def read_blobs(self, identifiers: list[str]) -> dict[str, bytes]:
+        """Validate cached bytes against Git's object ID before using them."""
+        connection = self._connect()
+        result: dict[str, bytes] = {}
+        if connection is None:
+            return result
+        try:
+            for start in range(0, len(identifiers), 500):
+                batch = identifiers[start : start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                query = (
+                    f"SELECT oid, payload FROM objects WHERE oid IN ({placeholders})"  # noqa: S608 - placeholders only; IDs are bound
+                )
+                for oid, data in connection.execute(query, batch):
+                    if not isinstance(data, bytes):
+                        continue
+                    digest = hashlib.new(
+                        "sha1" if len(oid) == _SHA1_LENGTH else "sha256",
+                        usedforsecurity=False,
+                    )
+                    digest.update(f"blob {len(data)}\0".encode("ascii"))
+                    digest.update(data)
+                    if digest.hexdigest() == oid:
+                        result[oid] = data
+        except (ValueError, TypeError, sqlite3.Error):
+            return {}
+        return result
+
+    def write_blobs(self, contents: dict[str, bytes]) -> None:
+        connection = self._connect()
+        if connection is not None:
+            try:
+                connection.executemany(
+                    "INSERT OR REPLACE INTO objects VALUES (?, ?)", contents.items()
+                )
+            except sqlite3.Error:
+                self._disable()
 
     def read[T](self, key: str, adapter: TypeAdapter[T]) -> T | None:
         connection = self._connect()
