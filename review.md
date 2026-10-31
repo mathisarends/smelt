@@ -1,6 +1,6 @@
 # Smelt review: remaining gaps for agent verification
 
-Updated on 2026-10-28. This is an open backlog, not a history of completed fixes.
+Updated on 2026-10-31. This is an open backlog, not a history of completed fixes.
 Resolved findings and their reproductions remain available in Git and the merged
 pull requests. The real projects below are evaluation examples; Smelt's contracts
 must generalize across repository layouts, frameworks and naming conventions.
@@ -87,32 +87,34 @@ severities, tool version and baseline provenance. Publish and validate an output
 JSON Schema; `smelt.schema.json` describes configuration, not the report protocol.
 Keep display finding IDs separate from semantic baseline identities.
 
-## C07 — Adoption needs explicit analysis profiles
+## C07 — Adoption needs clear starter guarantees
 
 The inferred starter permits third-party imports and disables transitive checks.
 Strict policy coverage makes ownership explicit, but does not turn those choices
 into strict dependency analysis or infer intended public interfaces.
 
-Offer clearly documented adoption and strict architecture profiles, exposing each
-profile's actual guarantees in reports. Keep generated examples exercised. Avoid
+Document explicit starter rule selections and their actual guarantees in reports;
+do not reintroduce opaque runtime presets or duplicate enable switches. Keep
+generated examples exercised. Avoid
 inferring restrictive public APIs or mandatory module templates solely from names
 or from one representative codebase.
 
 ## C08 — Changed checks repeat full graph work
 
-`--changed` builds the working-tree graph, archives the historical project and
-builds another graph. Grimp caching is disabled. Earlier single-run observations
-on the root example were about 7 seconds for a full check and 14 seconds for a
-changed check; they are not a portable performance benchmark.
+Changed/staged checks now reuse content-addressed results, per-file facts and
+historical analysis; native clients can retain bounded member dependency state
+and avoid Git process starts. See the paired measurements in
+[the agent workflow](docs/agent-workflow.md). These improvements do not make
+filename-only analysis correct: a removed caller can affect an unchanged method.
 
-Benchmark before setting a latency target. Consider caching immutable base
-analysis by revision, effective policy, interpreter and tool version. Keep the
-full graph for affected dependencies: filename-only checking misses effects in
-unchanged importers. Measure archive overhead from non-Python assets as well.
+Continue measuring cold checks, architecture-heavy edits, complete hooks and
+memory on representative layouts. Keep independent `--no-cache` parity checks
+for every optimization. Earlier single-run timings are historical observations,
+not a portable latency guarantee.
 
 ## Multi-project CI and report usability
 
-The read-only maximus-trading evaluation found these integration gaps:
+An earlier read-only maximus-trading evaluation recorded these integration gaps:
 
 - Its existing quality jobs, pre-commit and aggregate local checks did not run
   Smelt automatically.
@@ -134,6 +136,56 @@ example's selected packages (browser: 65, browser_protocol: 2, browser_client: 3
 Hermes had one unclassified strategy entry point. The root's existing auth/user
 cycle and steering-to-llm dependency remain consumer policy decisions. No consumer
 source, configuration, baseline or dependency pin was changed.
+
+## Review-feedback evaluation, 2026-10-31
+
+The new evaluation compared main `b945019` with the review-feedback implementation
+on identical effective policies and the same clean consumer revision. Source,
+configuration, debt and dependency pins were not changed. Caching was disabled;
+no consumer imports or tests were executed. The two configurations remain
+independent; their module inventories do not overlap.
+
+Additional cold-cache and warm-cache runs used a cache directory in the Smelt
+worktree, never the consumer repository. Both projects' complete JSON reports
+matched independent uncached reports. These parity controls are not a portable
+performance benchmark.
+
+| Scope | Analyzed modules | Existing-policy raw findings | Expanded-review raw findings | Added review candidates |
+| --- | ---: | ---: | ---: | ---: |
+| Workspace | 839 | 4,756 | 4,939 | 183 |
+| Hermes extension | 180 | 25 | 93 | 68 |
+
+The existing transitive architecture policies account for most raw findings:
+workspace SMT102 has 4,522 messages across 125 distinct edge labels, SMT106 has
+225 across 30, and Hermes SMT102 has 24 across one. These totals are not counts
+of independent bugs. Triage the existing grouped witnesses before changing a
+consumer policy or source layout.
+
+With the same review policies, two SMT424 false alarms disappear: both tests
+execute inline Python assertions with checked subprocess status. Their source
+was inspected to verify the recognition change. Two code-generation loop reviews
+remain; output presence/full-result expectations and helper behavior need review
+before deciding whether either test is defective.
+
+Strict coverage separately confirms 100 workspace sources outside package
+selection and one unclassified Hermes source. They are not covered by the 1,019
+analyzed-module total. Static visibility reviews still cannot prove absence of
+external/framework callers; findings now expose this scope explicitly.
+
+The [aggregate evidence](docs/benchmarks/review-feedback-2026-10-31.json) records
+both analyzer revisions, the consumer revision, effective-policy hashes, rule
+selections, per-rule counts and coverage limits. Detailed consumer reports remain
+local; the aggregate contains no consumer source snippets. Reproduce with
+`load_config` for each existing YAML, an in-memory copy of the recorded explicit
+rules and `future_annotations: when-needed` package contracts, then
+`run_check(..., CheckOptions(use_cache=False, show_coverage=True))`. Use a separate
+`strict_coverage=True` run for coverage; do not write the temporary policy to the
+consumer repository.
+
+Next adoption priorities are clearer multi-config execution, explicit scope and
+grouped triage, while retaining direct uncached comparisons and bounded inference.
+This single workspace is evidence for concrete regressions, not proof that every
+Python project will have the same precision or defaults.
 
 ## Next priorities and acceptance criteria
 
