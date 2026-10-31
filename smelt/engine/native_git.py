@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 _LIMIT = 64 * 1024 * 1024
 _ENABLED = ContextVar("native_git_enabled", default=False)
-_CAPTURED: ContextVar[tuple[Path, bytes] | None] = ContextVar(
+_CAPTURED: ContextVar[tuple[Path, str | None, bytes] | None] = ContextVar(
     "native_git_index", default=None
 )
 
@@ -32,7 +32,7 @@ class GitService:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         self.executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="smelt-git"
@@ -61,7 +61,10 @@ class GitService:
         self.executor.shutdown(wait=True, cancel_futures=True)
         for stream in (self.process.stdin, self.process.stdout):
             if stream is not None:
-                stream.close()
+                # Closing a buffered input after the child crashed can itself
+                # raise BrokenPipeError. Still close the output pipe as well.
+                with contextlib.suppress(OSError):
+                    stream.close()
 
 
 _service: GitService | None = None
@@ -96,7 +99,8 @@ def _executable() -> str | None:
         or _failed
         or os.environ.get("SMELT_NATIVE_GIT") == "0"
         or any(
-            name.startswith("GIT_") and name not in {"GIT_PAGER", "GIT_OPTIONAL_LOCKS"}
+            name.startswith("GIT_")
+            and name not in {"GIT_PAGER", "GIT_OPTIONAL_LOCKS", "GIT_INDEX_FILE"}
             for name in os.environ
         )
     ):
@@ -113,7 +117,12 @@ def request(operation: str, root: Path, **values: object) -> dict[str, Any] | No
         if _service is None:
             _service = GitService(executable)
         response = _service.request(
-            {"operation": operation, "root": str(root), **values}
+            {
+                "operation": operation,
+                "root": str(root),
+                "index_file": os.environ.get("GIT_INDEX_FILE"),
+                **values,
+            }
         )
         return None if "fallback" in response else response
     except (OSError, ValueError, TimeoutError, subprocess.SubprocessError):
@@ -132,7 +141,7 @@ def capture(root: Path) -> tuple[Path, str | None] | None:
         if head is not None and not isinstance(head, str):
             return None
         records = base64.b64decode(response["records"], validate=True)
-        _CAPTURED.set((repository, records))
+        _CAPTURED.set((repository, os.environ.get("GIT_INDEX_FILE"), records))
         return repository, head
     except (KeyError, TypeError, ValueError):
         return None
@@ -142,8 +151,11 @@ def index_records(repository: Path) -> bytes | None:
     if not _executable():
         return None
     captured = _CAPTURED.get()
-    if captured is not None and captured[0] == repository:
-        return captured[1]
+    if captured is not None and captured[:2] == (
+        repository,
+        os.environ.get("GIT_INDEX_FILE"),
+    ):
+        return captured[2]
     response = request("index", repository)
     try:
         return (

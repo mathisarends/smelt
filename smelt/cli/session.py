@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from smelt.analysis.identity import analyzer_identity
+from smelt.analysis.retained import RetainedAnalysis, retain
 from smelt.cli.app import main
 
 _LIMIT = 1024 * 1024
@@ -28,7 +29,13 @@ class Capture(io.StringIO):
         return self._tty
 
 
-def dispatch(message: dict[str, Any], root: str, identity: str) -> dict[str, Any]:
+def dispatch(
+    message: dict[str, Any],
+    root: str,
+    identity: str,
+    *,
+    state: RetainedAnalysis | None = None,
+) -> dict[str, Any]:
     analyzer_identity.cache_clear()
     if analyzer_identity() != identity:
         return {"code": 2, "out": "", "err": "", "restart": True}
@@ -48,6 +55,7 @@ def dispatch(message: dict[str, Any], root: str, identity: str) -> dict[str, Any
     out = Capture(tty=message.get("tty") is True)
     err = Capture(tty=False)
     with (
+        retain(state),
         contextlib.chdir(root),
         contextlib.redirect_stdout(out),
         contextlib.redirect_stderr(err),
@@ -60,6 +68,7 @@ def serve(
     endpoint: Path, *, root: str | None = None, idle_seconds: float = 120
 ) -> None:
     identity = analyzer_identity()
+    state = RetainedAnalysis()
     root = root or os.getcwd()  # noqa: PTH109 - match the native client's lexical cwd
     # Neither the Python worker nor its Windows environment redirector may keep
     # an idle project's directory open and prevent worktree deletion or renames.
@@ -98,7 +107,7 @@ def serve(
                         response = (
                             {"code": 0, "out": "", "err": "", "restart": True}
                             if message.get("arguments") == ["shutdown"]
-                            else dispatch(message, root, identity)
+                            else dispatch(message, root, identity, state=state)
                         )
                     except (ValueError, KeyError, TypeError, OSError):
                         # Invalid transport metadata restarts or falls back to

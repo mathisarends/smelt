@@ -111,7 +111,7 @@ def test_native_failure_and_git_environment_use_independent_git_fallback(
     with native_git.check_scope(enabled=False):
         expected = capture_index(tmp_path)
     with monkeypatch.context() as patch:
-        patch.setenv("GIT_INDEX_FILE", str(tmp_path / ".git/index"))
+        patch.setenv("GIT_CONFIG_COUNT", "0")
         assert native_git.capture(tmp_path) is None
         assert capture_index(tmp_path) == expected
     native_git._service.process.kill()  # type: ignore[union-attr]
@@ -140,6 +140,26 @@ def test_split_index_never_produces_an_incomplete_native_manifest(
         index = capture_index(tmp_path)
     with native_git.check_scope(enabled=False):
         assert index == capture_index(tmp_path)
+
+
+def test_commit_hook_alternate_index_uses_its_captured_blobs(
+    tmp_path: Path, service: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "a.py").write_text("# ordinary index\n")
+    git(tmp_path, "add", "a.py")
+    ordinary = git(tmp_path, "ls-files", "--stage", "-z")
+    alternate = tmp_path / ".git/commit-index"
+    alternate.write_bytes((tmp_path / ".git/index").read_bytes())
+    monkeypatch.setenv("GIT_INDEX_FILE", ".git/commit-index")
+    (tmp_path / "a.py").write_text("# partial commit\n")
+    git(tmp_path, "add", "a.py")
+    assert native_git.capture(tmp_path) is not None
+    records = native_git.index_records(tmp_path)
+    assert records == git(tmp_path, "ls-files", "--stage", "-z")
+    assert records != ordinary
+    monkeypatch.delenv("GIT_INDEX_FILE")
+    assert native_git.index_records(tmp_path) == ordinary
 
 
 def test_complete_staged_check_needs_no_git_process_with_native_service(

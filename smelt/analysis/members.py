@@ -21,6 +21,7 @@ from smelt.analysis.member_state import (
     MemberSummary,
     update_members,
 )
+from smelt.analysis.retained import current
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -130,7 +131,10 @@ class MemberUsageIndex:
             "member-state",
             [str(syntax.files.root), syntax.files.config.model_dump(mode="json")],
         )
-        previous = cache.read(key, MEMBER_STATE) or MemberIndexState()
+        retained = current()
+        state_key = str(cache.directory), key
+        previous = retained.take(state_key) if retained is not None else None
+        previous = previous or cache.read(key, MEMBER_STATE) or MemberIndexState()
         identities = {
             path: self._fact_key(path)
             for path in sorted(set(syntax.files.by_path) | syntax.files.tests.keys())
@@ -150,6 +154,8 @@ class MemberUsageIndex:
             previous, identities, namespaces, self._summary, decision
         )
         cache.write(key, state, MEMBER_STATE)
+        if retained is not None:
+            retained.put(state_key, state, size=len(MEMBER_STATE.dump_json(state)))
         return state
 
     def local_paths(self) -> Iterator[str]:

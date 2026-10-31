@@ -13,6 +13,8 @@ struct Request {
     root: PathBuf,
     #[serde(default)]
     identifiers: Vec<String>,
+    #[serde(default)]
+    index_file: Option<PathBuf>,
 }
 
 fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
@@ -25,7 +27,19 @@ fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send +
     let root = root.to_str().ok_or("non-UTF-8 repository root")?;
     match request.operation.as_str() {
         "capture" | "index" => {
-            let index = repo.index_or_empty()?;
+            // Match ls-files' repository-relative cwd, including the temporary
+            // index Git supplies to partial-commit hooks. Ignore gix-only index
+            // config settings that the Git command does not interpret.
+            let index_path = request
+                .index_file
+                .map(|path| std::path::Path::new(root).join(path))
+                .unwrap_or_else(|| repo.git_dir().join("index"));
+            let index = gix::index::File::at_or_default(
+                index_path,
+                repo.object_hash(),
+                false,
+                Default::default(),
+            )?;
             let mut records = Vec::new();
             for entry in index.entries() {
                 if entry.mode == gix::index::entry::Mode::DIR {
