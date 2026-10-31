@@ -178,21 +178,21 @@ policy, machine or repository size. With few samples, p95 is effectively the max
 ### Native client and persistent member dependencies
 
 Measurements on 2026-10-31 compare main `3589c02` with the native-client build from
-`5d17b5c` (Python runtime changes in `0eb45c2`). Both use installed wheels with the
+`f2fad41` (Python engine changes in `0eb45c2`). Both use installed wheels with the
 same dependency versions on Windows 11 / CPython 3.14. Each fixture has 250 modules
 with twelve methods per module. Seven samples alternate baseline/candidate order;
 every edited report matches an independent fresh-process `--no-cache` check.
 
 | Scenario | Main median (ms) | Native median (ms) | Native p95 / max (ms) |
 | --- | ---: | ---: | ---: |
-| CLI, members, unchanged retry | 309 | 81 | 96 |
-| CLI, members, Python edit | 756 | 266 | 336 |
-| CLI, transitive imports + members, retry | 563 | 165 | 175 |
-| CLI, transitive imports + members, Python edit | 1,020 | 387 | 460 |
-| Complete prek staged hook, retry | 415 | 198 | 250 |
-| Complete prek staged hook, Python edit | 1,098 | 464 | 550 |
-| Complete pre-commit staged hook, retry | 1,224 | 996 | 1,048 |
-| Complete pre-commit staged hook, Python edit | 1,775 | 1,215 | 1,315 |
+| CLI, members, unchanged retry | 282 | 76 | 98 |
+| CLI, members, Python edit | 724 | 246 | 250 |
+| CLI, transitive imports + members, retry | 286 | 76 | 105 |
+| CLI, transitive imports + members, Python edit | 750 | 264 | 282 |
+| Complete prek staged hook, retry | 390 | 184 | 197 |
+| Complete prek staged hook, Python edit | 823 | 344 | 360 |
+| Complete pre-commit staged hook, retry | 1,031 | 821 | 856 |
+| Complete pre-commit staged hook, Python edit | 1,491 | 1,018 | 1,138 |
 
 CLI samples include native client startup, IPC, fresh Git capture, checking and
 JSON output. Hook samples additionally include runner startup and its single
@@ -202,18 +202,22 @@ baseline and candidate. Each hook report is compared with independent uncached
 execution in its own repository. The native CLI preserves the Python engine;
 these gains combine persistent dependency decisions with reused imports.
 
-The median normal prek edit is below 500 ms, but its maximum is 550 ms. Python
-pre-commit remains over one second in this run. Separate `--all-files` runs retain
+The normal prek edit median and maximum are below 500 ms in this run. Python
+pre-commit edit medians remain over one second. Earlier-client `--all-files` runs retain
 the runner's complete file classification overhead: candidate edit medians are
 747 ms with prek and 1,534 ms with pre-commit, with maxima above 2.6 seconds.
 Those are separate invocation modes, not replacements for the staged-hook data.
-An initial installed-wheel CLI pass also measured members at 85 ms for retries
-and 260 ms for edits; its raw samples/build hash are retained beside the final
-control. Machine/load variation and these synthetic policies limit generalization.
+The earlier client control measured normal prek edits at 464 ms with a 550 ms
+maximum, and member CLI edits at 266 ms with a 336 ms maximum. These and the first
+85 ms retry / 260 ms edit pass remain in the raw evidence with their own build
+identities. The last client also prevents project-package shadowing at interpreter
+startup; no additional speedup is attributed to that correction. Machine/load
+variation and these synthetic policies limit generalization.
 
 Cold execution has not received a native analysis rewrite. Single first-cache
-observations, including worker startup, are 1,423 → 1,590 ms for members and
-2,006 → 3,117 ms for the transitive policy. They are not repeated medians or CI
+observations, including worker startup, are 1,295 → 1,345 ms for members and
+1,405 → 1,395 ms for the transitive policy. Earlier-client observations were
+1,423 → 1,590 ms and 2,006 → 3,117 ms respectively. These are not repeated medians or CI
 speedup claims. CI remains in the foreground by default, with validated disk
 facts restored separately; imports, cold parsing and global graph rules remain
 costs. A new source installation also pays compilation/setup once.
