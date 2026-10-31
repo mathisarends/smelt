@@ -21,7 +21,9 @@ def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] 
             (
                 file
                 for file in installed.files or ()
-                if file.parts and file.parts[0] == "smelt" and file.suffix == ".py"
+                if file.parts
+                and file.parts[0] == "smelt"
+                and file.suffix in {".py", ".json"}
             ),
             key=str,
         )
@@ -47,7 +49,9 @@ def analyzer_identity() -> str:
         digest.update(json.dumps(record).encode())
     else:
         digest.update(b"source\0")
-        for path in sorted(package.rglob("*.py")):
+        for path in sorted(
+            path for path in package.rglob("*") if path.suffix in {".py", ".json"}
+        ):
             digest.update(path.relative_to(package).as_posix().encode())
             digest.update(path.read_bytes())
     digest.update(str(sys.version_info).encode())

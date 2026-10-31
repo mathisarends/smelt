@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter
@@ -23,6 +23,7 @@ class CachedAnalysis:
     coverage: dict[str, Any]
     modules: int
     paths: list[str]
+    dependencies: dict[str, str] = field(default_factory=dict)
 
 
 ANALYSIS = TypeAdapter(CachedAnalysis)

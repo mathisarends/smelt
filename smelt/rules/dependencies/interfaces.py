@@ -7,7 +7,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.exports import resolve_dotted
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import import_violation, join, skip_import
 
@@ -18,13 +18,7 @@ if TYPE_CHECKING:
 
 
 class PrivateModuleImport(BaseRule):
-    activation = PolicyActivation(
-        "A package contract declares public entry points, including an explicitly empty public list.",
-        lambda config: any(
-            contract.public is not None
-            for contract in config.structure.contracts.values()
-        ),
-    )
+    activation = POLICIES["SMT107"]
     code = "SMT107"
     name = "private-module-import"
     category = Category.DEPENDENCIES

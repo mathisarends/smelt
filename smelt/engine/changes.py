@@ -68,6 +68,46 @@ def git_repository(cwd: Path, requested: Path | None = None) -> Path:
     ).resolve()
 
 
+@dataclass(frozen=True)
+class GitRepository:
+    path: Path
+    head: str | None
+
+
+def capture_repository(cwd: Path, requested: Path | None = None) -> GitRepository:
+    """Read repository location and HEAD with one Git process, including unborn HEAD."""
+
+    def inspect(anchor: Path) -> GitRepository:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel", "--verify", "--quiet", "HEAD"],  # noqa: S607
+            cwd=anchor,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode not in {0, 1} or not result.stdout:
+            raise AnalysisError(result.stderr.decode("utf-8", errors="replace").strip())
+        output = result.stdout.rstrip(b"\n")
+        if result.returncode == 1:
+            return GitRepository(Path(os.fsdecode(output)).resolve(), None)
+        root, head = output.rsplit(b"\n", 1)
+        return GitRepository(Path(os.fsdecode(root)).resolve(), head.decode("ascii"))
+
+    try:
+        captured = inspect(cwd)
+    except AnalysisError:
+        if requested is None:
+            raise
+    else:
+        if requested is None or requested.is_relative_to(captured.path):
+            return captured
+    if requested is None:
+        raise AnalysisError("changed/staged checks need a Git repository")
+    anchor = next(
+        (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
+    )
+    return inspect(anchor)
+
+
 @dataclass(frozen=True, slots=True)
 class Comparison:
     """What ``--changed`` compared the working tree with."""
@@ -133,11 +173,12 @@ def resolve_comparison(
     base: str | None,
     *,
     repository: Path | None = None,
+    captured: GitRepository | None = None,
 ) -> tuple[Path, Comparison]:
-    toplevel = repository or Path(
+    toplevel = (captured.path if captured else repository) or Path(
         os.fsdecode(_git(root, "rev-parse", "--show-toplevel")).strip()
     )
-    head = _head(root)
+    head = captured.head if captured is not None else _head(root)
     if base is not None:
         ref = _git(root, "merge-base", head or "HEAD", base).decode().strip()
     elif head is not None:

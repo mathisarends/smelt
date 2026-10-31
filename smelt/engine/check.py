@@ -246,7 +246,7 @@ def _run_check(
             update={"project": config.project.model_copy(update={"coverage": "strict"})}
         )
         loaded = replace(loaded, config=config)
-    rules = rules or build_rule_set()
+    rules = rules or build_rule_set(lazy=True)
     active = resolve_active_rules(rules, loaded, options)
     ctx = (
         context
@@ -298,9 +298,11 @@ def _run_check(
             ),
             len(ctx.files.sources),
             list(ctx.files.all_python_paths()),
+            dict(ctx.store.dependencies()),
         )
         if cache and key:
             cache.write(key, analyzed, ANALYSIS)
+    ctx.store.dependencies().update(analyzed.dependencies)
     violations, suppressed = list(analyzed.violations), analyzed.suppressed
     unfiltered = list(violations)
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]

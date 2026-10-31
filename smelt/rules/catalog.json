@@ -1,0 +1,585 @@
+[
+  {
+    "target": "smelt.rules.dependencies.layers:LayerBoundary",
+    "code": "SMT101",
+    "name": "layer-boundary",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.features:CrossFeatureImport",
+    "code": "SMT102",
+    "name": "cross-feature-import",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.third_party:ThirdPartyDenied",
+    "code": "SMT103",
+    "name": "third-party-denied",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.cycles:ImportCycle",
+    "code": "SMT104",
+    "name": "import-cycle",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.features:SharedImportsFeature",
+    "code": "SMT105",
+    "name": "shared-imports-feature",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.composition_root:CompositionRootLeak",
+    "code": "SMT106",
+    "name": "composition-root-leak",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.interfaces:PrivateModuleImport",
+    "code": "SMT107",
+    "name": "private-module-import",
+    "category": "dependencies",
+    "default_severity": "error",
+    "requires": [
+      "imports",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.fanout:PackageImportFanout",
+    "code": "SMT108",
+    "name": "package-import-fanout",
+    "category": "dependencies",
+    "default_severity": "hint",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.layout:UnknownLayer",
+    "code": "SMT301",
+    "name": "unknown-layer",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.naming:ForbiddenPackageName",
+    "code": "SMT302",
+    "name": "forbidden-package-name",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.layout:UnclassifiedModule",
+    "code": "SMT305",
+    "name": "unclassified-module",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.coverage:IncompleteCoverage",
+    "code": "SMT306",
+    "name": "incomplete-coverage",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  },
+  {
+    "target": "smelt.rules.structure.contracts:MissingRequiredModule",
+    "code": "SMT307",
+    "name": "missing-required-module",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.import_style:ImportStyle",
+    "code": "SMT308",
+    "name": "import-style",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.headers:ForbiddenModuleDocstring",
+    "code": "SMT309",
+    "name": "forbidden-module-docstring",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.headers:ForbiddenFutureAnnotations",
+    "code": "SMT310",
+    "name": "forbidden-future-annotations",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.headers:UnnecessaryFutureAnnotations",
+    "code": "SMT311",
+    "name": "unnecessary-future-annotations",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.naming:NoPrivateModules",
+    "code": "SMT312",
+    "name": "no-private-modules",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.ordering:PublicDefinitionsFirst",
+    "code": "SMT313",
+    "name": "public-definitions-first",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "ordering"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.assignments:BundledInstanceAssignment",
+    "code": "SMT314",
+    "name": "bundled-instance-assignment",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.type_dispatch:PreferMatchTypeDispatch",
+    "code": "SMT315",
+    "name": "prefer-match-type-dispatch",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.members:InternalPublicMember",
+    "code": "SMT316",
+    "name": "internal-public-member",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "member_usage"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": true,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.members:InternalStaticHelper",
+    "code": "SMT317",
+    "name": "internal-static-helper",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "member_usage"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": true,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.enum_values:RedundantStrEnumValue",
+    "code": "SMT318",
+    "name": "redundant-str-enum-value",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.testing.location:MisplacedTestFile",
+    "code": "SMT401",
+    "name": "test-location",
+    "category": "tests",
+    "default_severity": "error",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.private_access:PrivateTestAccess",
+    "code": "SMT420",
+    "name": "private-test-access",
+    "category": "tests",
+    "default_severity": "error",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.mocking:ForbiddenTestMock",
+    "code": "SMT421",
+    "name": "forbidden-test-mock",
+    "category": "tests",
+    "default_severity": "error",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.mocking:StringPatchTarget",
+    "code": "SMT422",
+    "name": "string-patch-target",
+    "category": "tests",
+    "default_severity": "error",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.mocking:ExcessiveTestPatches",
+    "code": "SMT423",
+    "name": "excessive-test-patches",
+    "category": "tests",
+    "default_severity": "error",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.outcomes:TestWithoutOutcomeCheck",
+    "code": "SMT424",
+    "name": "test-without-outcome-check",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.outcomes:TestOnlyChecksPossiblyEmptyData",
+    "code": "SMT425",
+    "name": "test-only-checks-possibly-empty-data",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.timing:UnboundedTestWait",
+    "code": "SMT426",
+    "name": "unbounded-test-wait",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.cases:IndependentTestCaseLoop",
+    "code": "SMT427",
+    "name": "independent-test-case-loop",
+    "category": "tests",
+    "default_severity": "hint",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.awaits:AsyncMockWithoutAwaitCheck",
+    "code": "SMT428",
+    "name": "async-mock-without-await-check",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
+    "target": "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
+    "code": "SMT429",
+    "name": "test-only-public-function",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "member_usage",
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.testing.public_attributes:TestOnlyPublicAttribute",
+    "code": "SMT430",
+    "name": "test-only-public-attribute",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "member_usage",
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.meta:UnusedSuppression",
+    "code": "SMT901",
+    "name": "unused-suppression",
+    "category": "meta",
+    "default_severity": "warning",
+    "requires": [],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  },
+  {
+    "target": "smelt.rules.meta:SuppressionWithoutReason",
+    "code": "SMT902",
+    "name": "suppression-without-reason",
+    "category": "meta",
+    "default_severity": "error",
+    "requires": [],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  },
+  {
+    "target": "smelt.rules.meta:ResolvedDebt",
+    "code": "SMT903",
+    "name": "resolved-debt",
+    "category": "meta",
+    "default_severity": "warning",
+    "requires": [],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  }
+]

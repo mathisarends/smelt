@@ -26,6 +26,7 @@ class GitSourceStore(SourceStore):
         self.blobs = blobs
         self.cache = cache
         self._contents: dict[str, bytes] = {}
+        self._dependencies: dict[str, str] = {}
         self._children: dict[Path, set[Path]] = {repository: set()}
         self._objects = {repository / path: oid for path, oid in blobs.items()}
         self._files = set(self._objects)
@@ -102,8 +103,14 @@ class GitSourceStore(SourceStore):
         yield from visit(root, parts)
 
     def identity(self, path: Path) -> str | None:
-        oid = self._objects.get(path) or self._objects.get(self.resolve(path))
+        resolved = path if path in self._objects else self.resolve(path)
+        oid = self._objects.get(resolved)
+        if oid is not None:
+            self._dependencies[resolved.relative_to(self.repository).as_posix()] = oid
         return f"git:{oid}" if oid is not None else None
+
+    def dependencies(self) -> dict[str, str]:
+        return self._dependencies
 
     def prefetch(self, paths: Iterable[Path]) -> None:
         identifiers = set()
@@ -124,9 +131,10 @@ class GitSourceStore(SourceStore):
                 self.cache.write_blobs(fetched)
 
     def read_bytes(self, path: Path) -> bytes:
-        oid = self._objects.get(path) or self._objects.get(self.resolve(path))
-        if oid is None:
+        identity = self.identity(path)
+        if identity is None:
             raise FileNotFoundError(str(path))
+        oid = identity.removeprefix("git:")
         if oid not in self._contents:
             self.prefetch([path])
         return self._contents[oid]

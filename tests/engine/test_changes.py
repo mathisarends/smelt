@@ -10,7 +10,7 @@ import pytest
 from smelt.analysis.parsing import AnalysisError
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
-from smelt.engine.changes import base_snapshot
+from smelt.engine.changes import base_snapshot, capture_repository, resolve_comparison
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, check, codes_at, violations, write_project
 
@@ -18,6 +18,24 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+
+
+@pytest.mark.parametrize("committed", [False, True])
+def test_repository_capture_keeps_the_observed_head_when_head_moves(
+    tmp_path: Path,
+    committed: bool,
+) -> None:
+    _git(tmp_path, "init", "-q", "-b", "main")
+    if committed:
+        _git(tmp_path, "commit", "--allow-empty", "-qm", "initial")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    captured = capture_repository(nested)
+    assert captured.path == tmp_path.resolve()
+    assert (captured.head is not None) == committed
+    _git(tmp_path, "commit", "--allow-empty", "-qm", "later")
+    _, comparison = resolve_comparison(tmp_path, None, captured=captured)
+    assert comparison.head == comparison.revision == captured.head
 
 
 def test_export_ignore_does_not_hide_existing_findings(

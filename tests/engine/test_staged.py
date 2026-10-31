@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import shutil
 import sqlite3
 import subprocess
@@ -305,6 +306,28 @@ def test_exact_retry_bypasses_the_engine_and_its_imports(
     assert json.loads(executed.stdout) == expected[1]
 
 
+def test_staged_retry_needs_two_git_processes(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(repo)
+    expected = _check(repo, capsys)
+    calls: list[list[str]] = []
+    original = subprocess.run
+
+    def run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        calls.append(args[0])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert _check(repo, capsys) == expected
+    assert len(calls) == 2
+    assert "--show-toplevel" in calls[0]
+    assert "HEAD" in calls[0]
+    assert "ls-files" in calls[1]
+
+
 def test_head_advance_invalidates_the_exact_result(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -332,6 +355,94 @@ def test_corrupt_exact_result_and_cached_blob_fall_back_to_analysis(
     cached = _check(repo, capsys)
     assert cached[0] == 1
     assert cached == _check(repo, capsys, "--no-cache")
+
+
+@pytest.mark.parametrize("output", ["json", "sarif"])
+def test_document_content_edits_reuse_analysis_with_fresh_index_provenance(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    output: str,
+) -> None:
+    (repo / "README.md").write_text("before\n")
+    _git(repo, "add", "README.md")
+    # Also cover a result built from an already cached whole analysis.
+    _check(repo, capsys, "--statistics", "--format", output)
+    before = _check(repo, capsys, "--format", output)
+    (repo / "README.md").write_text("after\n")
+    _git(repo, "add", "README.md")
+
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("unobserved content changes must reuse the result before analysis")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            import_module("smelt.cli.commands.check"), "staged_project", unexpected
+        )
+        cached = _check(repo, capsys, "--format", output)
+    assert cached != before  # provenance must describe the new captured index
+    assert cached == _check(repo, capsys, "--no-cache", "--format", output)
+
+
+def test_arbitrary_markdown_debt_file_is_an_observed_input(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    Debt([]).write(repo / "accepted.md")
+    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.md\n")
+    _git(repo, "add", "smelt.yaml", "accepted.md")
+    assert _check(repo, capsys)[0] == 0
+    (repo / "accepted.md").write_text("broken JSON")
+    _git(repo, "add", "accepted.md")
+    cached = _check(repo, capsys)
+    assert cached[0] == 2
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
+def test_inventory_changes_invalidate_reused_results(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _check(repo, capsys)
+    (repo / "app/new.py").write_text("def helper(): pass\n")
+    _git(repo, "add", "app/new.py")
+    cached = _check(repo, capsys)
+    assert cached[0] == 1
+    assert cached == _check(repo, capsys, "--no-cache")
+
+
+def test_retained_worker_matches_fresh_checks_after_edits_errors_and_head_changes(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(repo)
+    project = Path(__file__).resolve().parents[2]
+    # The benchmark harness is a standalone script, not an installed package.
+    harness = runpy.run_path(str(project / "scripts/benchmark_session.py"))
+    invoke_client = harness["invoke_client"]
+    with harness["session"](repo, project) as (endpoint, _):
+        _, initial = invoke_client(repo, endpoint)
+        assert initial == _check(repo, capsys, "--no-cache")[1]
+        (repo / "app/consumer.py").write_text("")
+        _git(repo, "add", "app/consumer.py")
+        # The retained process must still inspect captured source, not this repair.
+        (repo / "app/consumer.py").write_text(
+            "from .browser import Browser\nBrowser().emit()\n"
+        )
+        _, edited = invoke_client(repo, endpoint)
+        assert edited["violations"][0]["path"] == "app/browser.py"
+        assert edited == _check(repo, capsys, "--no-cache")[1]
+        (repo / "smelt.yaml").write_text("broken: [")
+        _git(repo, "add", "smelt.yaml")
+        with pytest.raises(RuntimeError, match="worker check failed"):
+            invoke_client(repo, endpoint)
+        (repo / "smelt.yaml").write_text(CONFIG)
+        _git(repo, "add", "smelt.yaml")
+        _git(repo, "commit", "-qm", "accept finding")
+        _, committed = invoke_client(repo, endpoint)
+        assert not committed["violations"]
+        assert committed == _check(repo, capsys, "--no-cache")[1]
 
 
 def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(

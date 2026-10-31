@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
-from smelt.rules.activation import PolicyActivation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import BaseRule, RuleDoc
 from smelt.rules.common import import_violation, skip_import
 
@@ -17,13 +17,7 @@ if TYPE_CHECKING:
 
 
 class PackageImportFanout(BaseRule):
-    activation = PolicyActivation(
-        "A package contract sets bundle_imports_at.",
-        lambda config: any(
-            contract.bundle_imports_at is not None
-            for contract in config.structure.contracts.values()
-        ),
-    )
+    activation = POLICIES["SMT108"]
     code = "SMT108"
     name = "package-import-fanout"
     category = Category.DEPENDENCIES

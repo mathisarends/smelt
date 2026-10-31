@@ -29,6 +29,12 @@ composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yaml`.
 
+The checker selects rules through generated `smelt/rules/catalog.json` metadata
+and imports implementations only when needed. Register implementation paths in
+`rules/registry.py`; rule classes remain the metadata source. Shared pure policy
+predicates live in `rules/activation.py`. Refresh the catalog together with the
+reference using `python scripts/generate.py`.
+
 Checks read project inputs through `config.source.SourceStore`. Use the store on
 the analysis context or file index for reads, existence tests, discovery and path
 resolution; direct `Path` reads can accidentally inspect unstaged files during a
