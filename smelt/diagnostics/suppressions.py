@@ -66,12 +66,13 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
         tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
     except (tokenize.TokenError, SyntaxError):
         return found
-    statements: list[tuple[int, int]] = []
+    statements: list[tuple[int, int, bool]] = []
     start: int | None = None
+    import_statement = False
     for token in tokens:
         if token.type == tokenize.NEWLINE:
             if start is not None:
-                statements.append((start, token.start[0]))
+                statements.append((start, token.start[0], import_statement))
                 start = None
         elif (
             token.type
@@ -85,6 +86,7 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
             and start is None
         ):
             start = token.start[0]
+            import_statement = token.string in {"from", "import"}
     for token in tokens:
         if token.type != tokenize.COMMENT:
             continue
@@ -97,16 +99,22 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
             if code.strip()
         )
         reason = (match.group("reason") or "").strip() or None
-        # A comment on a statement's opening or closing line follows the logical
-        # statement through formatting. Interior import-name comments stay local.
+        # Inline exceptions follow their logical statement through formatting.
+        # Interior import-name comments stay local to the affected name's line.
         span = next(
             (
                 (first, last)
-                for first, last in statements
-                if token.start[0] in (first, last)
+                for first, last, is_import in statements
+                if first <= token.start[0] <= last
                 and (
-                    token.start[0] == first
-                    or token.line[: token.start[1]].lstrip().startswith((")", "]", "}"))
+                    not is_import
+                    or token.start[0] == first
+                    or (
+                        token.start[0] == last
+                        and token.line[: token.start[1]]
+                        .lstrip()
+                        .startswith((")", "]", "}"))
+                    )
                 )
             ),
             (None, None),

@@ -36,6 +36,8 @@ class TestWait:
     node: ast.Call | ast.Await
     qualified: str
     provenance: str
+    helper: str | None = None
+    helper_call_line: int | None = None
 
 
 def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
@@ -73,4 +75,24 @@ def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
         deadline = async_deadline(call.node, calls, parents, helpers)
         if deadline.awaited and not deadline.bounded:
             unbounded.append(call)
+    reported = {wait.node for wait in unbounded}
+    for helper in test.helpers:
+        outer_deadline = async_deadline(helper.node, calls, parents, helpers)
+        for wait in unbounded_waits(helper.function, helpers):
+            # A caller's async deadline can guard an awaited coroutine's waits,
+            # but cannot interrupt a synchronous subprocess inside that helper.
+            if wait.qualified not in _PROCESS_WAITS and outer_deadline.bounded:
+                continue
+            if wait.node in reported:
+                continue
+            reported.add(wait.node)
+            unbounded.append(
+                TestWait(
+                    wait.node,
+                    wait.qualified,
+                    wait.provenance,
+                    helper.function.name,
+                    helper.node.lineno,
+                )
+            )
     return unbounded

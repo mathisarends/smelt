@@ -41,7 +41,7 @@ def checked_python_assertions(
     )
 
 
-def child_status_propagates(call: ast.Call, parents: Mapping[ast.AST, ast.AST]) -> bool:
+def child_status_propagates(call: ast.AST, parents: Mapping[ast.AST, ast.AST]) -> bool:
     node: ast.AST = call
     while node in parents:
         node = parents[node]

@@ -35,7 +35,7 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
-Comments on a logical statement's opening line or dedicated closing-bracket line cover that statement,
+Comments within a logical statement cover that statement,
 including its continuation lines, so formatting a long call or signature does
 not invalidate the exception. The scope ends before the next statement; a
 comment on a function signature does not cover its body. Comments beside an

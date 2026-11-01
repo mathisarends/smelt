@@ -17,6 +17,11 @@ from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.literals import nonempty_literal
 from smelt.analysis.parsing import resolve_relative
 from smelt.analysis.test_deadlines import async_deadline
+from smelt.analysis.test_helpers import (
+    helper_executes,
+    local_helpers,
+    outcome_propagates,
+)
 from smelt.analysis.test_subprocesses import (
     checked_python_assertions,
     child_status_propagates,
@@ -110,6 +115,7 @@ class _Binding:
     mock_origin: str | None = field(default=None, compare=False)
     mutable: bool = False
     text: str | None = None
+    helper_line: int | None = None
 
 
 _BINDINGS = TypeAdapter(dict[str, _Binding])
@@ -249,6 +255,7 @@ class TestCall:
     qualified: str
     provenance: str = "import"
     mock_receiver: bool = False
+    helper_line: int | None = None
 
     @property
     def patch(self) -> bool:
@@ -320,6 +327,28 @@ class MockObservation:
 
 
 @dataclass
+class HelperCall:
+    node: ast.Call
+    function: TestFunction
+
+    def outcomes(self, helpers: list[str]) -> list[ast.Assert | ast.Call]:
+        parents = {
+            child: parent
+            for parent in ast.walk(self.function.node)
+            for child in ast.iter_child_nodes(parent)
+        }
+        return [
+            node
+            for node in self.function.outcome_evidence(helpers)
+            if outcome_propagates(
+                node,
+                parents,
+                {call.node: call.qualified for call in self.function.calls},
+            )
+        ]
+
+
+@dataclass
 class TestFunction:
     node: Function
     name: str
@@ -330,6 +359,7 @@ class TestFunction:
     nonempty_iterables: set[ast.expr] = field(default_factory=set)
     mock_observations: list[MockObservation] = field(default_factory=list)
     child_assertions: list[ast.Call] = field(default_factory=list)
+    helpers: list[HelperCall] = field(default_factory=list)
 
     def has_assertion(self, helpers: list[str]) -> bool:
         return bool(self.outcome_evidence(helpers))
@@ -378,6 +408,12 @@ class TestFunction:
             for call in self.child_assertions
             if child_status_propagates(call, parents)
         )
+        evidence.extend(
+            helper.node
+            for helper in self.helpers
+            if helper.outcomes(helpers)
+            and outcome_propagates(helper.node, parents, calls)
+        )
         return evidence
 
 
@@ -397,6 +433,7 @@ class TestModule:
     attributes: list[tuple[ast.Attribute, str]] = field(default_factory=list)
     calls: list[TestCall] = field(default_factory=list)
     tests: list[TestFunction] = field(default_factory=list)
+    helpers: dict[int, TestFunction] = field(default_factory=dict)
     instance_attributes: list[tuple[ast.Attribute, str, str]] = field(
         default_factory=list
     )
@@ -463,6 +500,7 @@ class _Visitor(ast.NodeVisitor):
         constructors: frozenset[str],
         fixtures: Mapping[str, _Binding],
         async_specs: Mapping[str, frozenset[str]],
+        helpers: Mapping[int, Function] | None = None,
     ) -> None:
         self.result = module
         self.env: dict[str, _Binding] = {
@@ -479,6 +517,7 @@ class _Visitor(ast.NodeVisitor):
         self.function_depth = 0
         self.class_name: str | None = None
         self.unittest = False
+        self.helpers = helpers or {}
 
     def qualified(self, node: ast.AST) -> str | None:
         binding = self.binding(node)
@@ -659,21 +698,17 @@ class _Visitor(ast.NodeVisitor):
                 or self.unittest
             )
         )
-        self.test = (
-            TestFunction(
-                node, f"{self.class_name}.{node.name}" if self.class_name else node.name
-            )
-            if collected
-            else None
-        )
-        if self.test:
-            self.result.tests.append(self.test)
+        function = self._function_context(node, collected=collected)
+        # Nested defaults/decorators execute while defining the helper, before
+        # any later call-site deadline. Only its body belongs to its summary.
+        self.test = function if collected else test
         for expression in [
             *node.decorator_list,
             *node.args.defaults,
             *(value for value in node.args.kw_defaults if value is not None),
         ]:
             self.visit(expression)
+        self.test = function
         self.env = dict(
             self.module_env if self.class_name and self.function_depth == 0 else outer
         )
@@ -732,7 +767,7 @@ class _Visitor(ast.NodeVisitor):
                 and annotation is None
             ):
                 self.env[arg.arg] = _instance(_MONKEYPATCH, "fixture")
-        if self.unittest and node.args.args:
+        if self.unittest and self.function_depth == 0 and node.args.args:
             self.env[node.args.args[0].arg] = _instance(
                 "unittest.TestCase", "unittest-self"
             )
@@ -749,6 +784,8 @@ class _Visitor(ast.NodeVisitor):
         self.fixture_outputs = outer_outputs
         self.fixture_yielded = outer_yielded
         self.env.pop(node.name, None)
+        if node.lineno in self.helpers:
+            self.env[node.name] = self._helper_binding(node)
 
     def record_fixture(self, node: Function, env: Mapping[str, _Binding]) -> None:
         if self.function_depth != 0:
@@ -794,7 +831,11 @@ class _Visitor(ast.NodeVisitor):
         binding = self.binding(node.func)
         if binding:
             call = TestCall(
-                node, binding.qualified, binding.provenance, binding.kind == "mock"
+                node,
+                binding.qualified,
+                binding.provenance,
+                binding.kind == "mock",
+                binding.helper_line,
             )
             self.result.calls.append(call)
             if self.test:
@@ -1122,6 +1163,26 @@ class _Visitor(ast.NodeVisitor):
         for name in _locals([node]):
             self.env.pop(name, None)
 
+    def _helper_binding(self, node: Function) -> _Binding:
+        module = self.result.path.removesuffix(".py").replace("/", ".")
+        return _Binding(
+            f"{module}.{node.name}", "helper", "local-helper", helper_line=node.lineno
+        )
+
+    def _function_context(
+        self, node: Function, *, collected: bool
+    ) -> TestFunction | None:
+        if not collected and node.lineno not in self.helpers:
+            return None
+        function = TestFunction(
+            node, f"{self.class_name}.{node.name}" if self.class_name else node.name
+        )
+        if collected:
+            self.result.tests.append(function)
+        else:
+            self.result.helpers[node.lineno] = function
+        return function
+
     def _branches(self, bodies: Sequence[Sequence[ast.AST]]) -> None:
         outer = self.env
         for body in bodies:
@@ -1171,7 +1232,8 @@ def _analyze_test_syntax(
         **(async_specs or {}),
         **_class_async_methods(tree, path.removesuffix(".py").replace("/", ".")),
     }
-    _Visitor(
+    definitions = local_helpers(tree)
+    visitor = _Visitor(
         module,
         constructors,
         {
@@ -1179,7 +1241,26 @@ def _analyze_test_syntax(
             **_declared_fixtures(tree, path, constructors, fixtures or {}, specs),
         },
         specs,
-    ).visit(tree)
+        definitions,
+    )
+    for node in tree.body:
+        if (
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and node.lineno in definitions
+        ):
+            visitor.env[node.name] = visitor._helper_binding(node)
+    visitor.visit(tree)
+    for test in module.tests:
+        parents = {
+            child: parent
+            for parent in ast.walk(test.node)
+            for child in ast.iter_child_nodes(parent)
+        }
+        calls = {call.node: call.qualified for call in test.calls}
+        for call in test.calls:
+            helper = module.helpers.get(call.helper_line or -1)
+            if helper and helper_executes(helper.node, call.node, calls, parents):
+                test.helpers.append(HelperCall(call.node, helper))
     return module
 
 

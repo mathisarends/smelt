@@ -2,10 +2,45 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.helpers import violations, write_project
+from smelt.diagnostics.render.machine import render_json
+from smelt.engine.check import CheckOptions
+from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def test_same_file_helper_reports_operation_and_invalidates_after_edits(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning, unbounded-test-wait: warning}\n",
+            "app/__init__.py": "",
+            "tests/test_compiler.py": (
+                "import subprocess\n"
+                "def verify():\n"
+                "    result = subprocess.run(['compiler'], check=False)\n"
+                "    assert result.returncode == 0\n"
+                "def test_compile():\n"
+                "    verify()\n"
+            ),
+        },
+    )
+    [finding] = violations(tmp_path)
+    assert (finding.code, finding.line) == ("SMT426", 3)
+    assert finding.expected is not None
+    assert finding.expected["helper"] == {"name": "verify", "call_line": 6}
+    path = tmp_path / "tests/test_compiler.py"
+    path.write_text(path.read_text().replace("check=False", "check=False, timeout=10"))
+    cached = check(tmp_path).report
+    uncached = check(tmp_path, CheckOptions(use_cache=False)).report
+    assert cached.violations == []
+    assert render_json(cached) == render_json(uncached)
+    path.write_text(path.read_text().replace("assert result.returncode == 0", "pass"))
+    [finding] = violations(tmp_path)
+    assert finding.code == "SMT424"
 
 
 def test_deadline_review_reports_unbounded_process_and_shared_clock(

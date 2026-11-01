@@ -2,8 +2,12 @@
 
 ## Optional test quality policies
 
-Test mirroring and test quality are independent. Enable the policies that match
-your unit-test conventions in the existing YAML configuration:
+Test mirroring and test quality are independent.
+When `project.test_roots` overlap, the most specific declared root owns each test,
+independent of list order. Mirror paths are relative to that root.
+
+Enable the policies that match your unit-test conventions in the existing YAML
+configuration:
 
 ```yaml
 tests:
@@ -66,8 +70,13 @@ An awaited `asyncio.wait_for(known_event.wait(), timeout=...)` or an equivalent
 Event wait inside a timeout context that raises on expiry also supplies
 observable lifecycle evidence. `move_on_after` and configured timeout helpers
 alone do not. A frozen scheduler clock can still defeat that
-deadline. Assertions inside a nested helper or fixture are not attributed to a
-caller. Positive validation/smoke tests can justify an exception. `assert result`
+deadline. One direct call to an unambiguous, undecorated, non-generator helper in
+the same file also supplies evidence, including nested functions and async helpers
+executed with `await` or `asyncio.run`. Assertions whose failure could be swallowed
+by a try/context scope do not supply helper evidence; known raising timeout
+contexts retain it. Uncalled definitions, unexecuted coroutines, imported helper
+bodies, fixture execution, callbacks and further helper calls remain unknown.
+Positive validation/smoke tests can justify an exception. `assert result`
 still counts: this rule detects missing explicit checks, not assertion quality,
 reachability or correct behavior. Neither a literal threshold nor syntax proves
 that a test protects a requirement.
@@ -80,6 +89,10 @@ aliases remain unknown because other calls can empty them. An additional indepen
 explicit empty-result comparison, or alternative empty case is retained. Prefer
 complete generated/expected mappings over loops that check only returned files.
 This check does not prove collection cardinality or assertion reachability.
+Possibly empty iteration inside a directly executed helper or around its call
+retains the same review. An assertion on an unfiltered collection does not prove
+that a filtered subset contains any items; prefer expected artifacts or an
+explicit check of the collection actually iterated.
 
 SMT426 checks known subprocess calls for their own timeout, and known asyncio
 Event/Task/Future and subprocess Process waits for local guards such as `wait_for`, `asyncio.timeout`,
@@ -90,6 +103,11 @@ Async processes are recognized from awaited `asyncio.create_subprocess_exec` /
 `create_subprocess_shell` and explicit `asyncio.subprocess.Process` annotations.
 Each awaited `wait()` or `communicate()` needs its own guard: a preceding bounded
 read or `kill()` does not bound the later exit wait.
+The same direct helper calls are reviewed for known waits. Findings point at the
+operation inside the helper and include its name and call line in JSON. An async
+deadline around the caller guards async waits, while synchronous subprocesses
+still need their own timeout. Arguments, arbitrary callbacks and transitive
+helper execution are not inferred.
 External runner deadlines and general task/fixture flow are not resolved.
 Bounded real-boundary polling and `asyncio.sleep(0)` are valid; positive sleeps
 are not prohibited. SMT427 only suggests parametrization for narrow literal-loop

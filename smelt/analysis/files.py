@@ -168,7 +168,12 @@ class FileIndex:
 
     def _discover_tests(self) -> None:
         source_paths = {source.path for source in self.sources.values()}
-        for test_root in self.config.project.test_roots:
+        # Visit broad roots first so the most specific declared root owns a
+        # test, independently of the order in the configuration.
+        for test_root in sorted(
+            self.config.project.test_roots,
+            key=lambda root: (len(self.resolve_path(self.root / root).parts), root),
+        ):
             directory = self.root / test_root
             if not self.store.is_dir(directory):
                 continue

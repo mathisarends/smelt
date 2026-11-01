@@ -7,6 +7,17 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt-in SMT424/SMT425/SMT426 outcome and deadline reviews follow one direct call
+  to an unambiguous, undecorated, non-generator helper in the same file, including local async
+  helpers executed with `await` or `asyncio.run`. Assertions retain empty-loop
+  review, and hidden unbounded operations report their helper and call site.
+  Caller async deadlines guard async waits, never synchronous subprocesses.
+  Uncalled definitions, unexecuted coroutines, callbacks, imported helper bodies
+  and further helper calls remain outside inference; configured assertion helpers
+  continue to work. No analyzed code is executed.
+- Overlapping test roots consistently assign a test to the most specific declared
+  root, independent of configuration order. Mirror checks retain separate
+  workspace-member roots.
 - Package contracts can set `export_at` for SMT109 `facade-export-gap`: one
   advisory finding per widely imported implementation name missing from its
   facade, with definition location, importer lists, other re-exports and a bounded
@@ -25,9 +36,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   Text omits empty details, prints visibility limits once, and groups related
   late-import SMT313 findings with their affected lines. JSON keeps individual
   findings plus an `ordering` group; debt fingerprints are retained.
-- Statement-opening/closing suppressions follow logical continuation lines,
-  including formatted calls and signatures. Interior import-name exceptions stay
-  local and never cover neighboring names or the next statement. See
+- Inline suppressions follow logical continuation lines, including interior
+  comments in multiline assertions, formatted calls and signatures. Interior
+  import-name exceptions stay local and never cover neighboring names, the next
+  statement or a function body. Unused-suppression checks remain active. See
   [suppression scope](docs/adoption.md).
 - Visibility rules preserve public members of classes exported through static
   package facades or `__all__`, including aliases and re-export chains; cache
