@@ -173,6 +173,40 @@ def test_native_worker_recovers_after_invalid_staged_config(
     assert _pid(project) == pid
 
 
+def test_native_worker_reloads_inherited_index_policy(
+    project: Path, native: Path
+) -> None:
+    write_project(
+        project,
+        {
+            "smelt.yaml": "extends: policy/base.yml\n",
+            "policy/base.yml": CONFIG,
+        },
+    )
+    _git(project, "add", "smelt.yaml", "policy/base.yml")
+    _git(project, "commit", "-qm", "share policy")
+    (project / "app/caller.py").write_text("", encoding="utf-8")
+    _git(project, "add", "app/caller.py")
+    before = _invoke([str(native)], project)
+    assert before == _fresh(project)
+    assert before[0] == 1
+    pid = _pid(project)
+
+    (project / "policy/base.yml").write_text("invalid: [", encoding="utf-8")
+    assert _invoke([str(native)], project) == before
+    assert _pid(project) == pid
+
+    (project / "policy/base.yml").write_text(
+        CONFIG.replace("warning", "off"), encoding="utf-8"
+    )
+    _git(project, "add", "policy/base.yml")
+    after = _invoke([str(native)], project)
+    assert after == _fresh(project)
+    assert after[0] == 0
+    assert after[1]["violations"] == []
+    assert _pid(project) == pid
+
+
 def test_native_worker_restarts_after_analyzer_changes(
     project: Path, native: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

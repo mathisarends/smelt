@@ -2,6 +2,15 @@ from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set
 
 
+def test_editor_schema_accepts_local_extends_and_policy_fragments() -> None:
+    schema = config_json_schema()
+
+    assert schema["properties"]["extends"]["type"] == "string"
+    assert schema["properties"]["extends"]["minLength"] == 1
+    assert "required" not in schema
+    assert "required" not in schema["$defs"]["LayerConfig"]
+
+
 def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
     schema = config_json_schema()
     settings = schema["$defs"]["RuleSettings"]

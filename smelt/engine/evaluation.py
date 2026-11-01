@@ -14,6 +14,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from smelt.config import ConfigError, load_config
+
 # scripts/evaluate.py is a consumer outside project.root_packages.
 __all__ = ["EvaluationOptions", "evaluate"]
 
@@ -54,6 +56,7 @@ def evaluate(options: EvaluationOptions) -> dict[str, Any]:
         raise ValueError("timeout must be finite and positive")
     config = options.config.resolve()
     policy_hash = hashlib.sha256(config.read_bytes()).hexdigest()
+    policy_inputs = _policy_inputs(config)
     output = options.reports.resolve()
     output.mkdir(parents=True, exist_ok=True)
     checks: dict[str, Any] = {}
@@ -95,9 +98,7 @@ def evaluate(options: EvaluationOptions) -> dict[str, Any]:
             json.dumps(payload, indent=2) + "\n", encoding="utf-8"
         )
     try:
-        policy_unchanged = (
-            hashlib.sha256(config.read_bytes()).hexdigest() == policy_hash
-        )
+        policy_unchanged = _policy_inputs(config) == policy_inputs
     except OSError:
         policy_unchanged = False
     analysis_ok = len(reports) == len(checks) and policy_unchanged
@@ -149,6 +150,7 @@ def evaluate(options: EvaluationOptions) -> dict[str, Any]:
         "exit_code": exit_code,
         "config": str(config),
         "config_sha256": policy_hash,
+        "config_inputs": policy_inputs,
         "policy_unchanged": policy_unchanged,
         "source_revision": options.source_revision,
         "analysis": checks,
@@ -166,6 +168,17 @@ def evaluate(options: EvaluationOptions) -> dict[str, Any]:
         json.dumps(document, indent=2) + "\n", encoding="utf-8"
     )
     return document
+
+
+def _policy_inputs(config: Path) -> dict[str, str]:
+    try:
+        files = load_config(config).inputs
+    except ConfigError:
+        # Invalid policies still receive the normal analyzer error reports.
+        files = (config,)
+    return {
+        path.as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in files
+    }
 
 
 def _identity(finding: dict[str, Any]) -> str:

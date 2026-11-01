@@ -4,6 +4,8 @@ import os
 import sqlite3
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.analysis.cache import FactCache
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.members import MemberUsageIndex
@@ -17,15 +19,43 @@ from tests.helpers import LAYERED_CONFIG, check, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import pytest
-
-
 CONFIG = """version: 1
 project: {root_packages: [app]}
 structure:
   contracts:
     api: {match: app, rules: {internal-public-member: warning}}
 """
+
+
+@pytest.mark.parametrize("workspace", ["first", "second"])
+def test_editing_only_a_shared_policy_invalidates_each_workspace(
+    tmp_path: Path,
+    workspace: str,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: off}\n",
+            "first/smelt.yaml": "extends: ../base.yml\n",
+            "second/smelt.yaml": "extends: ../base.yml\n",
+            "first/app/__init__.py": "",
+            "second/app/__init__.py": "",
+            "first/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
+            "second/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
+        },
+    )
+    root = tmp_path / workspace
+    assert not check(root).report.violations
+
+    (tmp_path / "base.yml").write_text(
+        "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: error}\n",
+        encoding="utf-8",
+    )
+
+    cached = check(root).report
+    fresh = check(root, CheckOptions(use_cache=False)).report
+    assert render_json(cached) == render_json(fresh)
+    assert [v.code for v in cached.violations] == ["SMT426"]
 
 
 def test_cache_creates_an_ignore_file_and_preserves_existing_content(

@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Independent workspaces can share a local policy fragment with `extends` and
+  explicit child overrides. Mappings merge; lists replace, including `[]`.
+  Project paths remain relative to the selected workspace. `config show --sources`
+  explains effective inputs and origins; staged checks and cache dependencies
+  include all bases. Both published hooks now run on every commit, including
+  policy-only edits. See [shared configuration](docs/configuration.md#shared-local-policy).
+
 - [SMT901](docs/rules/SMT901.md) diagnoses unknown inline suppression identifiers,
   including readable rule names where stable SMT codes are required. Known
   inactive rules retain their narrowed-check behavior.

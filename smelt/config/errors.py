@@ -12,9 +12,11 @@ if TYPE_CHECKING:
 class ConfigIssue:
     path: str
     message: str
+    source: str | None = None
 
     def __str__(self) -> str:
-        return f"{self.path}: {self.message}" if self.path else self.message
+        detail = f"{self.path}: {self.message}" if self.path else self.message
+        return f"{self.source}: {detail}" if self.source else detail
 
 
 class ConfigError(Exception):

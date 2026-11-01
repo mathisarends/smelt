@@ -38,6 +38,11 @@ checker as appropriate for the change.
 
 ## prek and pre-commit
 
+Both published hooks run on every commit so edits to shared local policy files
+are checked even when no Python or workspace config file changed. A base file
+can affect unchanged modules. Keep `always_run: true` in local hook definitions
+when using [shared configuration](configuration.md#shared-local-policy).
+
 Install [prek](https://prek.j178.dev/installation/) and add the hook to
 `.pre-commit-config.yml`:
 

@@ -29,6 +29,7 @@ smelt rules                          # full catalog with activation and severity
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
 smelt config show                    # the resolved config
+smelt config show --sources --format json  # policy inputs and explicit value origins
 smelt config schema                  # the JSON schema of smelt.yaml
 ```
 
