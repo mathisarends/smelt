@@ -1,4 +1,6 @@
 import json
+import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -15,6 +17,42 @@ from smelt.engine.check import rule_meta
 from smelt.rules.registry import build_rule_set
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+class TestReleaseMetadata:
+    def test_python_native_and_lockfile_versions_agree(self) -> None:
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        cargo = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+        versions = [project["project"]["version"], cargo["package"]["version"]]
+        for filename in ("uv.lock", "Cargo.lock"):
+            lock = tomllib.loads((ROOT / filename).read_text(encoding="utf-8"))
+            [package] = [p for p in lock["package"] if p["name"] == "smelt-cli"]
+            versions.append(package["version"])
+
+        assert len(set(versions)) == 1, f"Release versions differ: {versions}"
+
+    def test_current_release_has_dated_notes_and_upgrade_entry_points(self) -> None:
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        version = project["project"]["version"]
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+        assert re.search(
+            rf"^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$",
+            changelog,
+            re.MULTILINE,
+        )
+        assert (
+            f"[Unreleased]: https://github.com/mathisarends/smelt/compare/v{version}...HEAD"
+            in changelog
+        )
+        assert (
+            f"[{version}]: https://github.com/mathisarends/smelt/compare/" in changelog
+        )
+        assert (ROOT / "docs/upgrading.md").is_file()
+        assert "docs/upgrading.md" in (ROOT / "README.md").read_text(encoding="utf-8")
+        integrations = (ROOT / "docs/integrations.md").read_text(encoding="utf-8")
+        assert set(re.findall(r"smelt-cli==([\d.]+)", integrations)) == {version}
+        assert set(re.findall(r"rev: v([\d.]+)", integrations)) == {version}
 
 
 class TestGeneratedFiles:

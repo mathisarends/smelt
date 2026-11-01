@@ -256,18 +256,21 @@ environment name must match the workflow exactly.
 
 ### Release procedure
 
-1. Bump matching versions in `pyproject.toml` and `Cargo.toml`, run `uv lock` and
-   `cargo check` to refresh both lockfiles, and merge the version change and
-   release workflow into `main` after CI passes. Each release needs a new PyPI
-   version; this setup does not bump or publish the existing `0.1.3` automatically.
+1. Review changes since the last tag. Update the [upgrade guide](docs/upgrading.md),
+   README feature summary and pinned hook/CI examples in
+   [integrations](docs/integrations.md), including any report-format migration.
+   Move `Unreleased` entries to a dated version section and update the changelog's
+   comparison links. Bump matching versions in `pyproject.toml` and `Cargo.toml`,
+   run `uv lock` and `cargo check` to refresh both lockfiles, and merge the release
+   preparation into `main` after CI passes. Each release needs a new PyPI version.
 2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
-   For example, after merging version `0.1.4`:
+   For example, after merging version `0.3.0`:
 
    ```bash
    git switch main
    git pull --ff-only
-   git tag v0.1.4
-   git push origin v0.1.4
+   git tag v0.3.0
+   git push origin v0.3.0
    ```
 
 3. Follow the `Publish to PyPI` run in
@@ -276,14 +279,16 @@ environment name must match the workflow exactly.
    to equal `v` followed by the package version. It runs prek, pytest and
    Smelt, validates a source distribution outside the checkout, then builds native
    Linux x86_64/aarch64, Windows x86_64 and macOS x86_64/aarch64 wheels. CI also
-   installs and exercises native wheels on Linux, Windows and macOS. A separate
-   job downloads the validated release artifacts and publishes them
+   installs and exercises native wheels on Linux, Windows and macOS. The release
+   workflow also smoke-tests its exact Linux x86_64, Windows x86_64 and macOS
+   aarch64 wheels before uploading them for publication; the other targets are
+   cross-compiled. A separate job downloads the validated release artifacts and publishes them
    with OIDC and the publishing action's default attestations enabled.
 
 Maintainers and coding agents with permission to push release tags can use this
 procedure without local PyPI credentials. Ordinary branch pushes and pull requests
 do not publish. Manual workflow runs must select an existing `v`-prefixed tag
-(`gh workflow run release.yml --ref v0.1.4`); branch runs skip publishing.
+(`gh workflow run release.yml --ref v0.3.0`); branch runs skip publishing.
 
 If the upload fails because account configuration is missing, finish that setup
 and rerun the failed publishing job so it reuses the validated build artifacts.

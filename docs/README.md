@@ -5,6 +5,7 @@ guide for the decision or task at hand:
 
 | If you want to... | Read |
 | --- | --- |
+| See new features and migrate from an earlier release | [Upgrading Smelt](upgrading.md) and the [changelog](../CHANGELOG.md) |
 | Describe boundaries, features, layers or strict policy coverage | [Architecture as code](architecture.md) |
 | Define package interfaces and source conventions | [Package contracts and source conventions](structure.md) |
 | Configure test layout and quality checks | [Test policies](testing.md) |

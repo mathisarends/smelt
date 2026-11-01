@@ -2,6 +2,7 @@
 
 See the [changelog](../CHANGELOG.md) for new capabilities, fixes and migration notes
 by release, including changes to agent workflows and rule defaults.
+For the schema 1 to 2 transition, see the [upgrade checklist and parser example](upgrading.md#json-report-consumers).
 
 Most rules are opt-in. Smelt enables declared architecture/package/test policies
 without a second switch; only unknown-layer and suppression/debt diagnostics run
