@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -143,6 +145,78 @@ class TestIgnoreEntries:
 
 
 class TestSuppressions:
+    def test_ruff_format_preserves_a_definition_exception(self, tmp_path: Path) -> None:
+        source = "def public_function(first_parameter: int, second_parameter: int, third_parameter: int):  # smelt: ignore[SMT316] -- deliberate external API\n    return first_parameter\n"
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+                "app/__init__.py": "",
+                "app/api.py": source,
+            },
+        )
+        assert check(tmp_path).report.suppressed == 1
+        formatted = subprocess.run(
+            [sys.executable, "-m", "ruff", "format", "--line-length", "40", "-"],
+            input=source,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        assert formatted.returncode == 0, formatted.stderr
+        assert formatted.stdout != source
+        (tmp_path / "app/api.py").write_text(formatted.stdout, encoding="utf-8")
+
+        outcome = check(tmp_path)
+        assert outcome.report.violations == []
+        assert outcome.report.suppressed == 1
+
+    def test_signature_suppression_does_not_cover_function_body(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, bundled-instance-assignment: warning}\n",
+                "app/__init__.py": "",
+                "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[SMT316, SMT314] -- deliberate API\n        self.first = self.second = 0\n",
+            },
+        )
+        outcome = check(tmp_path)
+
+        assert outcome.report.suppressed == 1
+        assert {(v.code, v.line) for v in outcome.report.violations} == {
+            ("SMT314", 5),
+            ("SMT901", 4),
+        }
+
+    @pytest.mark.parametrize("comment_line", ["opening", "closing"])
+    def test_multiline_statement_suppression_survives_formatting(
+        self, tmp_path: Path, comment_line: str
+    ) -> None:
+        comment = "  # smelt: ignore[SMT101] -- migration"
+        source = (
+            "from app.infra import ("
+            + (comment if comment_line == "opening" else "")
+            + "\n    db,\n)"
+            + (comment if comment_line == "closing" else "")
+            + "\n"
+        )
+        outcome = check(_layered(tmp_path, source))
+
+        assert outcome.report.violations == []
+        assert outcome.report.suppressed == 1
+
+    def test_statement_suppression_does_not_cover_the_next_statement(
+        self, tmp_path: Path
+    ) -> None:
+        source = "from app.infra import (\n    db,\n)  # smelt: ignore[SMT101] -- migration\nfrom app.infra import db\n"
+        outcome = check(_layered(tmp_path, source))
+
+        assert [(v.code, v.line) for v in outcome.report.violations] == [("SMT101", 4)]
+        assert outcome.report.suppressed == 1
+
     def test_inline_suppression_with_reason(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path, "from app.infra import db  # smelt: ignore[SMT101] -- migrating\n"

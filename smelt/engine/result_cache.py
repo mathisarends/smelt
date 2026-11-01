@@ -168,6 +168,13 @@ class ResultCache:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with (
+                suppress(FileExistsError),
+                (self.path.parents[2] / ".gitignore").open(
+                    "x", encoding="utf-8"
+                ) as ignore,
+            ):
+                ignore.write("*\n")
+            with (
                 closing(sqlite3.connect(self.path, timeout=0.02)) as connection,
                 connection,
             ):

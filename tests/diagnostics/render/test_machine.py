@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from smelt.diagnostics.render.machine import render_github, render_json, render_sarif
@@ -18,7 +19,7 @@ class TestJson:
     def test_document_shape(self, report: Report) -> None:
         document = _loads(render_json(report))
 
-        assert document["schema_version"] == 1
+        assert document["schema_version"] == 2
         assert document["status"] == "failed"
         assert document["summary"] == {
             "errors": 1,
@@ -71,6 +72,39 @@ class TestJson:
 
         assert document["status"] == "passed"
         assert document["violations"] == []
+
+    def test_policy_details_are_explicit_and_usage_limits_are_shared(
+        self, report: Report
+    ) -> None:
+        report.coverage = {
+            "policy_hash": "sha256:policy",
+            "complete": False,
+            "counts": {"uncovered": 2},
+            "contracts": [{"expected_order": list(range(1000))}],
+            "inventory": [{"path": "app/a.py"}],
+        }
+        scope = {"unassessed_consumers": ["external consumers"]}
+        report.violations = [
+            replace(v, expected={"usage_scope": scope}) for v in report.violations
+        ]
+        compact = _loads(render_json(report))
+        detailed = _loads(render_json(report, show_coverage=True))
+
+        assert compact["coverage"] == {
+            "policy_hash": "sha256:policy",
+            "complete": False,
+            "counts": {"uncovered": 2},
+        }
+        assert detailed["coverage"] == report.coverage
+        assert compact["usage_scopes"] == [scope]
+        assert all(
+            v["expected"] == {"usage_scope_index": 0} for v in compact["violations"]
+        )
+        assert all(v.expected == {"usage_scope": scope} for v in report.violations)
+        assert _loads(render_sarif(report, "0.2.0"))["runs"][0]["properties"][
+            "usageScopes"
+        ] == [scope]
+        assert render_github(report).count("Usage limits:") == 1
 
 
 class TestSarif:

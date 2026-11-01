@@ -112,7 +112,7 @@ class ImportStyle(BaseRule):
                 else f"Use an absolute import from {target}."
             )
             yield self.violation(
-                f'contract "{contract}" expects an {expected_style} import of {target}',
+                f'contract "{contract}" expects {"a" if wants_relative else "an"} {expected_style} import of {target}',
                 path=source.path,
                 line=node.lineno,
                 column=node.col_offset + 1,

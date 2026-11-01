@@ -22,6 +22,7 @@ class TestOnlyPublicFunction(BaseRule):
         rationale=(
             "Leaving an internal helper public just so tests can call it enlarges the apparent API and couples tests to implementation details. This opt-in review identifies undecorated top-level sync/async functions without a leading underscore, referenced by analyzed tests and not imported or accessed by another analyzed production module. Uses inside the defining module do not justify public visibility. Aliased/relative imports and analyzed re-exports are resolved; production imports, star imports and escaped module values conservatively preserve the API. Explicit __all__ exports, dynamic export declarations, decorated functions, rebound names, methods and nested functions are excluded. Test-quality exclusions apply to test evidence. External consumers, packaging entry points and arbitrary dynamic access are not fully known; a finding is a review candidate, not proof that a function can be made private safely."
             " Excluded files (including maintainer scripts), packages outside source selection and external consumers are unassessed, not proven absent. Findings expose the configured usage_scope."
+            " When no references exist inside the defining module either, the finding says unused outside tests among analyzed modules and lists the internal reference evidence. This is not proof of dead code for unassessed consumers."
         ),
         bad="__all__ = ['drag']\nasync def drag_gesture(tab): ...\nasync def drag(tab):\n    await drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag_gesture",
         good="__all__ = ['drag']\nasync def _drag_gesture(tab): ...\nasync def drag(tab):\n    await _drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag",
@@ -35,8 +36,13 @@ class TestOnlyPublicFunction(BaseRule):
         ):
             node = function.node
             suggested_name = private_name(node.name, function.occupied_names)
+            usage = (
+                "among analyzed modules, only tests access it outside its defining module"
+                if function.internal_references
+                else "unused outside tests among analyzed modules"
+            )
             yield self.violation(
-                f"{function.module}.{node.name} is public; among analyzed modules, only tests access it outside its defining module",
+                f"{function.module}.{node.name} is public; {usage}",
                 path=function.path,
                 line=node.lineno,
                 source_module=function.module,
@@ -44,9 +50,15 @@ class TestOnlyPublicFunction(BaseRule):
                     "function": node.name,
                     "suggested_name": suggested_name,
                     "usage_scope": ctx.member_usage.usage_scope,
+                    "observed_usage": "internal-and-tests"
+                    if function.internal_references
+                    else "tests-only",
+                    "internal_references": list(function.internal_references),
                     "test_references": [
                         {"path": path, "line": line} for path, line in references
                     ],
                 },
-                hint=f"Before renaming {node.name} to {suggested_name}, review excluded files (including maintainer scripts), unselected packages and external consumers: their uses were not assessed. Preserve deliberate public APIs explicitly; otherwise test the public caller.",
+                hint=f"Review removing {node.name} or renaming it to {suggested_name}; preserve deliberate public APIs explicitly."
+                if not function.internal_references
+                else f"Review renaming {node.name} to {suggested_name} and test its public caller; preserve deliberate public APIs explicitly.",
             )

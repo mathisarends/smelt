@@ -38,6 +38,7 @@ def effective_coverage(
     inventory = ctx.coverage
     report = {
         "mode": project.coverage,
+        "architecture_configured": bool(architecture.model_fields_set),
         **inventory.summary(),
         "policy_hash": policy_hash(config),
         "rules": dict(config.rules),

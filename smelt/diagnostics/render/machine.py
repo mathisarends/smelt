@@ -5,7 +5,7 @@ import posixpath
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
-from smelt.diagnostics.groups import group_findings
+from smelt.diagnostics.groups import finding_usage_scopes, group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
 if TYPE_CHECKING:
@@ -13,12 +13,35 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.report import Report
 
-JSON_SCHEMA_VERSION = 1
+JSON_SCHEMA_VERSION = 2
 SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
 TOOL_URI = "https://github.com/mathisarends/smelt"
 
 
-def render_json(report: Report) -> str:
+def render_json(report: Report, *, show_coverage: bool = False) -> str:
+    coverage = dict(report.coverage) if report.coverage else None
+    if coverage is not None and not show_coverage:
+        coverage = {
+            key: value
+            for key, value in coverage.items()
+            if key
+            in {
+                "mode",
+                "complete",
+                "counts",
+                "policy_hash",
+                "architecture_configured",
+                "discovery_errors",
+                "omitted_workspace_members",
+            }
+        }
+    violations = [v.to_json() for v in report.violations]
+    usage_scopes = finding_usage_scopes(report.violations)
+    for violation in violations:
+        expected = violation.get("expected")
+        if expected and "usage_scope" in expected:
+            scope = expected.pop("usage_scope")
+            expected["usage_scope_index"] = usage_scopes.index(scope)
     document = {
         "schema_version": JSON_SCHEMA_VERSION,
         "status": report.status,
@@ -32,14 +55,16 @@ def render_json(report: Report) -> str:
             "rules": [rule.code for rule in report.rules],
         },
         "comparison": dict(report.comparison) if report.comparison else None,
-        "coverage": dict(report.coverage) if report.coverage else None,
+        "coverage": coverage,
         "project": dict(report.project) if report.project else None,
-        "violations": [v.to_json() for v in report.violations],
+        "violations": violations,
         "configuration_diagnostics": [
             diagnostic.to_json() for diagnostic in report.configuration_diagnostics
         ],
         "groups": group_findings(report.violations),
     }
+    if usage_scopes:
+        document["usage_scopes"] = usage_scopes
     if report.fixes is not None:
         document["fixes"] = dict(report.fixes)
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
@@ -146,6 +171,11 @@ def _sarif_properties(report: Report) -> dict[str, Any]:
         else "full",
         "comparison": dict(report.comparison) if report.comparison else None,
         "policyHash": coverage.get("policy_hash"),
+        **(
+            {"usageScopes": scopes}
+            if (scopes := finding_usage_scopes(report.violations))
+            else {}
+        ),
         **({"fixes": dict(report.fixes)} if report.fixes is not None else {}),
         "project": dict(report.project) if report.project else None,
     }
@@ -200,6 +230,10 @@ def render_github(report: Report) -> str:
         for diagnostic in report.configuration_diagnostics
     )
     summary = report.summary_json()
+    if finding_usage_scopes(report.violations):
+        lines.append(
+            "Usage limits: excluded files, unselected packages and external/dynamic consumers were not assessed; review them before renaming."
+        )
     lines.append(
         f"smelt: {summary['errors']} errors, {summary['warnings']} warnings, "
         f"{summary['hints']} hints, {summary['modules']} modules"

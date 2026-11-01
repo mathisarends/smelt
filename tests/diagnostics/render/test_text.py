@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.render.text import render_text
+from smelt.diagnostics.render.text import render_concise, render_text
 from smelt.diagnostics.violation import ImportLink
 from tests.diagnostics.render.conftest import read_line
 
@@ -12,6 +12,62 @@ if TYPE_CHECKING:
 
 
 class TestViolations:
+    def test_concise_lists_findings_without_detail_blocks(self, report: Report) -> None:
+        out = render_concise(report)
+
+        assert (
+            "gw/features/voice/domain/calls.py:1:1 SMT101 domain must not import infrastructure -> Depend on a port instead."
+            in out
+        )
+        assert "Chain:" not in out
+        assert "Expected" not in out
+        assert "[error]" not in out
+
+    def test_empty_details_and_duplicate_fix_explanations_are_hidden(
+        self, report: Report
+    ) -> None:
+        report.violations = [
+            replace(
+                report.violations[0],
+                expected={
+                    "section": None,
+                    "internal_references": [],
+                    "fix_reason": "preserve imports",
+                    "fix_blocker": {"line": 1},
+                },
+                hint="Review ordering: preserve imports",
+            )
+        ]
+        out = render_text(report, read_line)
+
+        assert "None" not in out
+        assert "(none)" not in out
+        assert "fix blocker" not in out
+        assert out.count("preserve imports") == 1
+
+    def test_related_import_ordering_findings_share_one_display(
+        self, report: Report
+    ) -> None:
+        report.violations = [
+            replace(
+                report.violations[0],
+                code="SMT313",
+                rule="public-definitions-first",
+                path="app/__init__.py",
+                edge=None,
+                import_chain=(),
+                message="imports appear after later definition groups",
+                line=line,
+                expected={"scope": "module"},
+            )
+            for line in (2, 3, 4)
+        ]
+        out = render_text(report, read_line)
+
+        assert out.count("SMT313") == 1
+        assert "lines 2, 3, 4" in out
+        assert len(report.violations) == 3
+
     def test_full_report(self, report: Report) -> None:
         assert render_text(report, read_line) == (
             "gw/features/voice/domain/calls.py:1:1  SMT101 layer-boundary  [error]\n"
@@ -165,6 +221,19 @@ class TestStatistics:
 
 
 class TestSummary:
+    def test_no_architecture_has_no_incomplete_policy_banner(
+        self, clean_report: Report
+    ) -> None:
+        clean_report.coverage = {
+            "architecture_configured": False,
+            "complete": False,
+            "mode": "configured",
+            "counts": {"uncovered": 12},
+        }
+        assert "Policy coverage" not in render_text(clean_report, read_line)
+        clean_report.coverage = {**clean_report.coverage, "mode": "strict"}
+        assert "Policy coverage: incomplete" in render_text(clean_report, read_line)
+
     def test_clean_report_lists_the_categories(self, clean_report: Report) -> None:
         assert render_text(clean_report, read_line) == (
             "✓ dependencies ✓ structure · 4 modules\n"

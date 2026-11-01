@@ -82,7 +82,7 @@ class UnnecessaryFutureAnnotations(BaseRule):
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Review an annotations future import with no detected postponement need.",
-        rationale="On targets before Python 3.14 or with an unknown minimum, when-needed mode retains imports for quoted and unresolved forward references, TYPE_CHECKING, runtime annotation inspection, decorated definitions and complex annotation expressions. Other cases get a conservative review hint, not proof of safe removal. Declared Python 3.14+ targets are handled by SMT310.",
+        rationale="On targets before Python 3.14 or with an unknown minimum, when-needed mode retains imports for quoted and unresolved forward references, TYPE_CHECKING, runtime annotation inspection, decorated definitions and complex annotation expressions. This includes dataclasses and Pydantic models: decoration can consume annotations, so modern decorated code may receive no hint even when removal happens to work. Other cases get a conservative review hint, not proof of safe removal. Declared Python 3.14+ targets are handled by SMT310.",
         bad="from __future__ import annotations\n\ndef count(value: int) -> int:\n    return value",
         good="def count(value: int) -> int:\n    return value",
         fix="Review whether postponement is part of the module's runtime contract, then remove unnecessary boilerplate and verify types and behavior. Keep the import if it serves a real purpose; annotate a justified exception if required.",

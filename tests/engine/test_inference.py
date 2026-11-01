@@ -23,6 +23,26 @@ def _layers(layers: list[InferredLayer]) -> list[tuple[str, str, list[str]]]:
 
 
 class TestInferConfig:
+    def test_partial_mirror_evidence_is_reported_as_counts(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "app/__init__.py": "",
+                "app/alpha.py": "",
+                "tests/test_alpha.py": "",
+                "tests/test_other.py": "",
+            },
+        )
+        inferred = infer_config(tmp_path)
+
+        assert inferred is not None
+        text = render_config(inferred)
+        assert "1 of 2 test files match this mirror pattern" in text
+        assert "Detected a mirrored layout" not in text
+        assert "layout: none" in text
+
     def test_workspace_member_scaffolding_does_not_become_a_package(
         self, tmp_path: Path
     ) -> None:

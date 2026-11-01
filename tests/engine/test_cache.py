@@ -28,6 +28,47 @@ structure:
 """
 
 
+def test_cache_creates_an_ignore_file_and_preserves_existing_content(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {"smelt.yaml": CONFIG, "app/__init__.py": "", "app/a.py": "VALUE = 1\n"},
+    )
+    check(tmp_path)
+    ignore = tmp_path / ".smelt_cache/.gitignore"
+    assert ignore.read_text(encoding="utf-8") == "*\n"
+    ignore.write_text("# custom\n*\n", encoding="utf-8")
+    check(tmp_path, CheckOptions(select=("SMT104",)))
+    assert ignore.read_text(encoding="utf-8") == "# custom\n*\n"
+
+
+def test_facade_exports_invalidate_public_member_decisions(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-attribute: warning}\n",
+            "app/__init__.py": "",
+            "app/models.py": "class Tab:\n    def __init__(self): self.loading = False\n    def reload(self): pass\n",
+            "tests/test_tab.py": "from app.models import Tab\ndef test_tab(): assert Tab().loading is False\n",
+        },
+    )
+    before = check(tmp_path).report
+    assert {v.code for v in before.violations} == {"SMT316", "SMT430"}
+
+    for facade, exported in [
+        ("from .models import Tab\n", True),
+        ("from .models import Tab\n__all__ = []\n", False),
+        ("from .models import Tab as BrowserTab\n__all__ = ['BrowserTab']\n", True),
+        ("", False),
+    ]:
+        (tmp_path / "app/__init__.py").write_text(facade, encoding="utf-8")
+        cached = check(tmp_path).report
+        uncached = check(tmp_path, CheckOptions(use_cache=False)).report
+        assert render_json(cached) == render_json(uncached)
+        assert (not cached.violations) is exported
+
+
 def test_content_changes_invalidate_even_with_identical_size_and_mtime(
     tmp_path: Path,
 ) -> None:

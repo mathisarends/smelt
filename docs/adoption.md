@@ -35,6 +35,13 @@ Silence a single finding inline, always with a reason:
 from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
 ```
 
+Comments on a logical statement's opening line or dedicated closing-bracket line cover that statement,
+including its continuation lines, so formatting a long call or signature does
+not invalidate the exception. The scope ends before the next statement; a
+comment on a function signature does not cover its body. Comments beside an
+individual name inside a multiline import stay local to that name's line, so
+neighboring private imports still receive review.
+
 Every rule has a page under [docs/rules](rules/). `smelt init` writes a local
 editor schema with completion, validation and bad/good hover examples derived
 from that same catalog. See [editor setup](configuration.md#editor-completion-hover-and-validation).

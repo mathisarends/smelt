@@ -87,6 +87,7 @@ class _UsageEvidence:
     production_uses: dict[tuple[str, str | None], set[str]]
     attributes: dict[str, list[tuple[str, int, int | None, bool, bool]]]
     inherited: set[tuple[str, str | None]]
+    public_exports: set[tuple[str, str | None]] = field(default_factory=set)
 
 
 @dataclass
@@ -99,6 +100,7 @@ class _FileFacts:
     attributes: dict[str, list[tuple[int, int | None, bool]]]
     bases: list[str]
     attribute_candidates: list[AttributeMember] = field(default_factory=list)
+    public_exports: list[str] = field(default_factory=list)
 
 
 _FACTS = TypeAdapter(_FileFacts)
@@ -109,6 +111,7 @@ class _ResolvedReferences:
     targets: list[tuple[str, str | None]]
     inherited: list[tuple[str, str | None]]
     dependencies: dict[str, tuple[str, str, bool] | None]
+    public_exports: list[tuple[str, str | None]] = field(default_factory=list)
 
 
 _REFERENCES = TypeAdapter(_ResolvedReferences)
@@ -216,7 +219,15 @@ class MemberUsageIndex:
                         state.totals.get(f"a:{name}", 0) > len(local),
                         state.totals.get(f"p:{name}", 0) > len(local),
                         tuple(sorted(set(local))),
-                        bool(state.totals.get(f"i:{file.module}:{owner.name}", 0)),
+                        bool(
+                            state.totals.get(f"i:{file.module}:{owner.name}", 0)
+                            or (
+                                not candidate.node.name.startswith("_")
+                                and state.totals.get(
+                                    f"api:{file.module}:{owner.name}", 0
+                                )
+                            )
+                        ),
                     )
                 )
             return self._resolve_file(file, states)
@@ -245,6 +256,8 @@ class MemberUsageIndex:
                 contributions[f"{prefix}:{target}:{file.module}"] = 1
         for module, name in set(references.inherited):
             contributions[f"i:{module}:{name}"] = 1
+        for module, name in set(references.public_exports):
+            contributions[f"api:{module}:{name}"] = 1
         for name, uses in file.attributes.items():
             contributions[f"a:{name}"] = len(uses)
             if file.production:
@@ -263,6 +276,7 @@ class MemberUsageIndex:
                         f"a:{candidate.node.name}",
                         f"p:{candidate.node.name}",
                         f"i:{file.module}:{candidate.owner.name}",
+                        f"api:{file.module}:{candidate.owner.name}",
                     )
                 )
         return MemberSummary(
@@ -306,6 +320,7 @@ class MemberUsageIndex:
                     for line, owner, internal in uses
                 )
             evidence.inherited.update(references.inherited)
+            evidence.public_exports.update(references.public_exports)
         return evidence
 
     def _namespace_identity(self, module: str) -> tuple[str, str, bool] | None:
@@ -366,7 +381,12 @@ class MemberUsageIndex:
             for name in file.bases
             if (target := resolve(name)) is not None and target[1] is not None
         ]
-        result = _ResolvedReferences(targets, inherited, dependencies)
+        public_exports = [
+            target
+            for name in file.public_exports
+            if (target := resolve(name)) is not None and target[1] is not None
+        ]
+        result = _ResolvedReferences(targets, inherited, dependencies, public_exports)
         if cache and key:
             cache.write(key, result, _REFERENCES)
         return result
@@ -394,7 +414,10 @@ class MemberUsageIndex:
                     references = candidate.internal_references
                     inherited = False
                 else:
-                    inherited = (file.module, owner.name) in evidence.inherited
+                    inherited = (file.module, owner.name) in evidence.inherited or (
+                        not candidate.node.name.startswith("_")
+                        and (file.module, owner.name) in evidence.public_exports
+                    )
                     local = [
                         line
                         for line, line_owner, internal in file.attributes.get(
@@ -536,7 +559,10 @@ class MemberUsageIndex:
         result: list[AttributeMember] = []
         for file in self._files:
             for candidate in file.attribute_candidates:
-                if (file.module, candidate.owner.name) in self._evidence.inherited:
+                if (file.module, candidate.owner.name) in self._evidence.inherited or (
+                    file.module,
+                    candidate.owner.name,
+                ) in self._evidence.public_exports:
                     continue
                 local = sum(
                     owner == candidate.owner.lineno and internal
@@ -610,6 +636,15 @@ def _file_facts(
         namespace.defined | frozenset(namespace.imported) if namespace else frozenset()
     )
     exports = explicit_exports(module.tree)
+    if exports is None:
+        public_names = occupied
+    elif "__all__" in occupied:
+        public_names = exports
+    elif module.is_package:
+        public_names = frozenset(name for name in occupied if not name.startswith("_"))
+    else:
+        public_names = frozenset()
+    result.public_exports = [f"{module.module}.{name}" for name in sorted(public_names)]
     loads: dict[str, set[int]] = {}
     for node in nodes:
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):

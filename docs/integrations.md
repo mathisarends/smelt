@@ -43,25 +43,36 @@ Install [prek](https://prek.j178.dev/installation/) and add the hook to
 
 ```yaml
 repos:
-  - repo: https://github.com/mathisarends/smelt
-    rev: v0.1.6
+  - repo: local
     hooks:
-      - id: smelt
+      - id: smelt-staged
+        name: smelt (new staged findings)
+        entry: smelt check --staged --fail-on warning
+        language: python
+        additional_dependencies: [smelt-cli==0.2.0]
+        pass_filenames: false
+        always_run: true
+        require_serial: true
 ```
 
 Run `prek install` to enable the commit hook and `prek run --all-files`
-to check tracked files before committing or in CI. The Smelt hook checks the
-whole project when Python files or `smelt.yaml` / `smelt.yml` change. Checking
-only changed filenames can miss violations in modules that import them. Other
-hooks can modify files; inspect their changes, rerun and stage the result.
+to run the hooks. This isolated Python environment installs the pinned PyPI wheel,
+which contains the native client, without building Smelt from Git. Wheels are
+published for Linux x86_64/aarch64, Windows x86_64 and macOS x86_64/aarch64;
+other platforms can require a source build and Rust. The staged hook checks the
+Git index, including partial staging, policy edits and deletions, and fails on
+new warnings and errors. It also runs with `--all-files`, but still checks the
+index; run `smelt check` separately for a full working-tree check. Other hooks
+can modify files; inspect their changes, rerun and stage the result.
 
-For versions containing the `smelt-staged` hook, use that ID for commit-time
-feedback on the Git index. It checks staged source and policy, including partial
-staging and deletions, and fails on new warnings and errors. The `smelt` hook
-above runs a full working-tree check. See the [agent workflow](agent-workflow.md)
-for cache behavior and limitations. Git refs containing the native client require
-Rust 1.88+ and a platform linker to build. The `v0.1.6` example above predates the
-native client and `smelt-staged`.
+Projects already depending on Smelt can instead use a local `language: system`
+hook with `entry: uv run --locked smelt check --staged --fail-on warning`.
+To install from source, use `repo: https://github.com/mathisarends/smelt`,
+`rev: v0.2.0` and `id: smelt-staged` (or `id: smelt` for full checks). This source
+installation requires Rust 1.88+ and a platform linker. Use the release's
+matching `v`-prefixed Git tag. See the [agent workflow](agent-workflow.md) for
+cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
+own `.gitignore`; cache files should not enter commits.
 
 Smelt also supports upstream [pre-commit](https://pre-commit.com/): use its
 default `.pre-commit-config.yaml` filename and `pre-commit` commands. The
@@ -77,9 +88,9 @@ Install prek in the CI environment before running it (or use `uvx prek run`).
 ```yaml
 - uses: astral-sh/setup-uv@v7
 - run: prek run --all-files --show-diff-on-failure
-- run: uvx --from smelt-cli==0.1.6 smelt check --format github
+- run: uvx --from smelt-cli==0.2.0 smelt check --format github
 # optional: code scanning
-- run: uvx --from smelt-cli==0.1.6 smelt check --format sarif > smelt.sarif || true
+- run: uvx --from smelt-cli==0.2.0 smelt check --format sarif > smelt.sarif || true
 - uses: github/codeql-action/upload-sarif@v3
   with:
     sarif_file: smelt.sarif
