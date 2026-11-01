@@ -10,6 +10,10 @@ from smelt.analysis.errors import AnalysisError
 from smelt.engine import native_git
 
 
+def lexical_path(path: Path) -> Path:
+    return Path(os.path.abspath(path))  # noqa: PTH100 - captured Git paths must not follow unstaged symlinks
+
+
 def _git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
     if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
         native = native_git.tree_records(root, args[3])
@@ -45,10 +49,6 @@ def _head(root: Path) -> str | None:
     if result.returncode == 1:
         return None
     raise AnalysisError(result.stderr.decode("utf-8", errors="replace").strip())
-
-
-def lexical_path(path: Path) -> Path:
-    return Path(os.path.abspath(path))  # noqa: PTH100 - captured Git paths must not follow unstaged symlinks
 
 
 def git_repository(cwd: Path, requested: Path | None = None) -> Path:

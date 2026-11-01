@@ -7,6 +7,23 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT313 now recognizes unions of unshadowed builtin types and `None` in eager
+  function annotations for declared Python 3.10+ targets, so a helper annotated
+  `str | bytes` no longer silently blocks public-first ordering on Python 3.12/3.13.
+  Imported/user-defined operands, shadowed names, explicit namespace mutations and unions in defaults remain
+  execution barriers. Inspect barriers with `check --format json --show-coverage`.
+- New opt-in [SMT320](docs/rules/SMT320.md) `internal-public-module-symbol`
+  reviews single, unconditional uppercase module assignments and PEP 695 type
+  aliases with no observed external use or public-signature evidence. Enable it
+  with `rules: {internal-public-module-symbol: warning}` or `--select SMT320`.
+  Exports, imports/re-exports, test accesses, escaped modules and public annotation
+  dependencies preserve names. Dynamic namespaces and uncertain bindings are
+  skipped; external consumers remain unassessed. No automatic renaming.
+- SMT311/SMT313 explanations clarify that Python 3.12/3.13 projects can retain
+  an annotations future import for forward references in their chosen public-first
+  order. Eager dependencies still take priority when the import is absent. `Self`
+  requires a subclass-preserving return contract; no automatic replacement of a
+  matching class-name annotation is suggested. See [definition ordering](docs/structure.md#definition-order-with-execution-dependencies).
 - Opt-in SMT424/SMT425/SMT426 outcome and deadline reviews follow one direct call
   to an unambiguous, undecorated, non-generator helper in the same file, including local async
   helpers executed with `await` or `asyncio.run`. Assertions retain empty-loop

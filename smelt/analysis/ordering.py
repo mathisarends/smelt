@@ -12,6 +12,7 @@ from smelt.analysis.definition_blocks import (
     DefinitionBlock,
     ScopeNode,
     build_blocks,
+    builtin_type_aliases,
     is_main_guard,
 )
 from smelt.config.models import OrderingConfig
@@ -69,6 +70,7 @@ class FileOrder:
     config: OrderingConfig
     contract: str
     deferred: bool
+    builtin_unions: bool = False
     sections: list[OrderSection] = field(default_factory=list)
     issues: list[OrderIssue] = field(default_factory=list)
     barriers: list[dict[str, Any]] = field(default_factory=list)
@@ -102,9 +104,8 @@ class DefinitionOrderIndex:
                 and any(alias.name == "annotations" for alias in node.names)
                 for node in tree.body
             )
-            deferred = (
-                future or python_targets.for_path(source.absolute).deferred_annotations
-            )
+            target = python_targets.for_path(source.absolute)
+            deferred = future or target.deferred_annotations
             self.files[source.path] = _analyze_order(
                 tree,
                 contract.spec.ordering
@@ -115,6 +116,7 @@ class DefinitionOrderIndex:
                 if contract
                 else "rules.public-definitions-first",
                 deferred=deferred,
+                builtin_unions=target.minimum is not None and target.minimum >= (3, 10),
             )
 
     def summary(self) -> list[dict[str, Any]]:
@@ -338,6 +340,7 @@ def _body(
         config=result.config,
         aliases=dict(aliases),
         deferred=result.deferred,
+        builtin_unions=result.builtin_unions,
     )
     blocks = _property_boundaries(blocks)
     if isinstance(owner, ast.Module):
@@ -375,13 +378,14 @@ def _body(
         _body(result, child, child_scope, child_aliases, child_blocker)
 
 
-def _analyze_order(
+def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics are separate
     tree: ast.Module,
     config: OrderingConfig,
     *,
     source: SourceFile | None = None,
     contract: str = "ordering",
     deferred: bool = False,
+    builtin_unions: bool = False,
 ) -> FileOrder:
     result = FileOrder(
         source.path if source else "module.py",
@@ -390,10 +394,31 @@ def _analyze_order(
         config,
         contract,
         deferred,
+        builtin_unions and not _mutates_builtins(tree),
     )
     reflection = _reflective(tree)
-    aliases = {
+    aliases = builtin_type_aliases() | {
         name: f"builtins.{name}" for name in ("property", "staticmethod", "classmethod")
     }
     _body(result, tree, "module", aliases, reflection)
     return result
+
+
+def _mutates_builtins(tree: ast.Module) -> bool:
+    modules = {"builtins"} | {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name == "builtins"
+    }
+    return any(
+        isinstance(node, ast.Global | ast.Nonlocal)
+        or (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.ctx, ast.Store | ast.Del)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in modules
+        )
+        for node in ast.walk(tree)
+    )

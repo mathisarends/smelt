@@ -131,3 +131,116 @@ def test_ordering_is_opt_in(tmp_path: Path) -> None:
 
     assert violations(tmp_path) == []
     assert [v.code for v in violations(tmp_path, OPTIONS)] == ["SMT313"]
+
+
+@pytest.mark.parametrize("minimum", ["3.12", "3.13", "3.14"])
+@pytest.mark.parametrize(
+    "annotation", ["str | bytes", "str | bytes | None", "None | int"]
+)
+def test_builtin_union_annotations_allow_public_first(
+    tmp_path: Path, minimum: str, annotation: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG.replace(
+                "project:\n", f'project:\n  python_version: "{minimum}"\n'
+            ),
+            "app/module.py": f"def _helper(value: {annotation}): return value\ndef api(value): return _helper(value)\n",
+        },
+    )
+    [finding] = violations(tmp_path, OPTIONS)
+    assert finding.code == "SMT313"
+    assert finding.expected is not None
+    assert finding.expected["order"] == ["api", "_helper"]
+    assert finding.expected["fixable"]
+
+
+@pytest.mark.parametrize("minimum", [None, "3.9"])
+def test_builtin_unions_remain_unknown_without_a_supported_declared_target(
+    tmp_path: Path, minimum: str | None
+) -> None:
+    config = (
+        CONFIG
+        if minimum is None
+        else CONFIG.replace("project:\n", f'project:\n  python_version: "{minimum}"\n')
+    )
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": config,
+            "app/module.py": "def _helper(value: str | bytes): pass\ndef api(): pass\n",
+        },
+    )
+    outcome = check(tmp_path, OPTIONS)
+    assert outcome.report.violations == []
+    assert outcome.report.coverage is not None
+    assert (
+        "eager annotation"
+        in outcome.report.coverage["ordering"][0]["barriers"][0]["reason"]
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from other import Text\ndef _helper(value: Text | bytes): pass\ndef api(): pass\n",
+        "class Text: pass\ndef _helper(value: Text | bytes): pass\ndef api(): pass\n",
+        "str = custom\ndef _helper(value: str | bytes): pass\ndef api(): pass\n",
+        "def _helper(value=str | bytes): pass\ndef api(): pass\n",
+        "def _helper(value: str | 1): pass\ndef api(): pass\n",
+        "def _helper(value: None | None | int): pass\ndef api(): pass\n",
+        "class Service:\n    str = custom\n    def _helper(self, value: str | bytes): pass\n    def api(self): pass\n",
+        "def _replace():\n    global str\n    str = custom\n_replace()\ndef _helper(value: str | bytes): pass\ndef api(): pass\n",
+        "import builtins as b\ndef _replace():\n    b.str = custom\n_replace()\ndef _helper(value: str | bytes): pass\ndef api(): pass\n",
+    ],
+)
+def test_unknown_union_operands_shadowing_and_defaults_stay_pinned(
+    tmp_path: Path, source: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG.replace(
+                "project:\n", 'project:\n  python_version: "3.12"\n'
+            ),
+            "app/module.py": source,
+        },
+    )
+    outcome = check(tmp_path, OPTIONS)
+    assert outcome.report.violations == []
+    assert outcome.report.coverage is not None
+    assert any(item["barriers"] for item in outcome.report.coverage["ordering"])
+
+
+def test_builtin_import_aliases_and_method_return_unions_are_supported(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG.replace(
+                "project:\n", 'project:\n  python_version: "3.12"\n'
+            ),
+            "app/module.py": "from builtins import str as Text\nclass Service:\n    def _helper(self) -> Text | bytes: pass\n    def api(self): pass\n",
+        },
+    )
+    [finding] = violations(tmp_path, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["order"] == ["api", "_helper"]
+
+
+def test_public_first_retains_a_needed_future_import(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": CONFIG.replace(
+                "project:\n", 'project:\n  python_version: "3.12"\n'
+            ).replace(
+                "      ordering: {}",
+                "      ordering: {}\n      future_annotations: when-needed",
+            ),
+            "app/module.py": "from __future__ import annotations\nclass Keyboard:\n    def press(self, value: _Stroke): pass\nclass _Stroke: pass\n",
+        },
+    )
+    assert violations(tmp_path, CheckOptions(select=("SMT311", "SMT313"))) == []

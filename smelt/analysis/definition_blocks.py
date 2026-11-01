@@ -25,6 +25,31 @@ _WRAPPERS = frozenset(
     {"builtins.property", "builtins.staticmethod", "builtins.classmethod"}
 )
 _INIT = frozenset({"__init__", "__new__", "__post_init__"})
+_UNION_BUILTINS = frozenset(
+    {
+        "bool",
+        "bytearray",
+        "bytes",
+        "complex",
+        "dict",
+        "float",
+        "frozenset",
+        "int",
+        "list",
+        "memoryview",
+        "object",
+        "range",
+        "set",
+        "slice",
+        "str",
+        "tuple",
+        "type",
+    }
+)
+
+
+def builtin_type_aliases() -> dict[str, str]:
+    return {name: f"builtins.{name}" for name in _UNION_BUILTINS}
 
 
 @dataclass(frozen=True)
@@ -194,6 +219,21 @@ def _qualified_name(node: ast.expr, aliases: dict[str, str]) -> str | None:
     return None
 
 
+def _annotations(node: FunctionNode) -> list[ast.expr]:
+    args = node.args
+    parameters = [
+        *args.posonlyargs,
+        *args.args,
+        *args.kwonlyargs,
+        *([args.vararg] if args.vararg else []),
+        *([args.kwarg] if args.kwarg else []),
+    ]
+    return [
+        *(arg.annotation for arg in parameters if arg.annotation is not None),
+        *([node.returns] if node.returns is not None else []),
+    ]
+
+
 def _eager_expressions(node: ast.stmt, *, deferred: bool) -> list[ast.expr]:
     if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
         args = node.args
@@ -203,18 +243,7 @@ def _eager_expressions(node: ast.stmt, *, deferred: bool) -> list[ast.expr]:
             *(item for item in args.kw_defaults if item is not None),
         ]
         if not deferred:
-            parameters = [
-                *args.posonlyargs,
-                *args.args,
-                *args.kwonlyargs,
-                *([args.vararg] if args.vararg else []),
-                *([args.kwarg] if args.kwarg else []),
-            ]
-            found.extend(
-                arg.annotation for arg in parameters if arg.annotation is not None
-            )
-            if node.returns is not None:
-                found.append(node.returns)
+            found.extend(_annotations(node))
         return found
     if isinstance(node, ast.ClassDef):
         return [
@@ -248,13 +277,14 @@ class _Reads(ast.NodeVisitor):
             self.visit(value)
 
 
-def build_blocks(
+def build_blocks(  # noqa: PLR0913 - independent scope, policy and evaluation inputs
     owner: ScopeNode,
     *,
     scope: str,
     config: OrderingConfig,
     aliases: dict[str, str],
     deferred: bool,
+    builtin_unions: bool = False,
 ) -> tuple[list[DefinitionBlock], list[tuple[ast.ClassDef, dict[str, str]]]]:
     body = owner.body
     in_class = isinstance(owner, ast.ClassDef)
@@ -291,7 +321,9 @@ def build_blocks(
         for member in group:
             reads.update(_definition_reads(member, deferred=deferred) - binds)
             binds.update(_bound_names(member))
-            reason = reason or _barrier(member, member_aliases, deferred=deferred)
+            reason = reason or _barrier(
+                member, member_aliases, deferred=deferred, builtin_unions=builtin_unions
+            )
             property_member = isinstance(
                 member, ast.FunctionDef | ast.AsyncFunctionDef
             ) and any(
@@ -402,19 +434,53 @@ def _wrapper(node: ast.expr, function: FunctionNode, aliases: dict[str, str]) ->
 
 
 def _safe_function(
-    node: FunctionNode, aliases: dict[str, str], *, deferred: bool
+    node: FunctionNode,
+    aliases: dict[str, str],
+    *,
+    deferred: bool,
+    builtin_unions: bool,
 ) -> str | None:
     if node.type_params:
         return "generic type parameters are an execution boundary"
     if not all(_wrapper(decorator, node, aliases) for decorator in node.decorator_list):
         return "unrecognized decorators execute at definition time"
-    expressions = _eager_expressions(node, deferred=deferred)[
-        len(node.decorator_list) :
-    ]
+    defaults = _eager_expressions(node, deferred=True)[len(node.decorator_list) :]
+    annotations = [] if deferred else _annotations(node)
     return (
         None
-        if all(_pure_expression(value) for value in expressions)
+        if all(_pure_expression(value) for value in defaults)
+        and all(
+            _pure_expression(value)
+            or (builtin_unions and _builtin_union(value, aliases))
+            for value in annotations
+        )
         else "default or eager annotation evaluation may execute code"
+    )
+
+
+def _builtin_union(node: ast.expr, aliases: dict[str, str]) -> bool:
+    if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.BitOr):
+        return False
+
+    def operand(value: ast.expr) -> bool:
+        qualified = _qualified_name(value, aliases)
+        return (
+            (
+                qualified is not None
+                and qualified.startswith("builtins.")
+                and qualified.removeprefix("builtins.") in _UNION_BUILTINS
+            )
+            or (isinstance(value, ast.Constant) and value.value is None)
+            or _builtin_union(value, aliases)
+        )
+
+    return (
+        operand(node.left)
+        and operand(node.right)
+        and not all(
+            isinstance(value, ast.Constant) and value.value is None
+            for value in (node.left, node.right)
+        )
     )
 
 
@@ -498,10 +564,15 @@ def _category(
 
 
 def _class_barrier(
-    node: ast.ClassDef, aliases: dict[str, str], *, deferred: bool
+    node: ast.ClassDef,
+    aliases: dict[str, str],
+    *,
+    deferred: bool,
+    builtin_unions: bool,
 ) -> str | None:
     if node.bases or node.keywords or node.decorator_list or node.type_params:
         return "class creation may execute bases, decorators or metaclass behavior"
+    class_aliases = dict(aliases)
     for child in node.body:
         if isinstance(child, ast.ClassDef):
             return "nested class creation is an execution boundary"
@@ -511,16 +582,32 @@ def _class_barrier(
             and isinstance(child.value.value, str)
         ):
             continue
-        if _barrier(child, aliases, deferred=deferred) is not None:
+        if (
+            _barrier(
+                child, class_aliases, deferred=deferred, builtin_unions=builtin_unions
+            )
+            is not None
+        ):
             return "class body contains an execution boundary"
+        _update_aliases(child, class_aliases)
     return None
 
 
-def _barrier(node: ast.stmt, aliases: dict[str, str], *, deferred: bool) -> str | None:
+def _barrier(
+    node: ast.stmt,
+    aliases: dict[str, str],
+    *,
+    deferred: bool,
+    builtin_unions: bool,
+) -> str | None:
     if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-        return _safe_function(node, aliases, deferred=deferred)
+        return _safe_function(
+            node, aliases, deferred=deferred, builtin_unions=builtin_unions
+        )
     if isinstance(node, ast.ClassDef):
-        return _class_barrier(node, aliases, deferred=deferred)
+        return _class_barrier(
+            node, aliases, deferred=deferred, builtin_unions=builtin_unions
+        )
     if isinstance(node, ast.Assign | ast.AnnAssign):
         if _assignment_name(node) is None:
             return "mutation or multiple assignment targets"

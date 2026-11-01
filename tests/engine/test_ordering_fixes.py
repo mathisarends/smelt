@@ -54,6 +54,28 @@ def test_explicit_fix_and_second_run_are_idempotent(tmp_path: Path) -> None:
     assert (root / "app/service.py").read_text().lstrip().startswith("def api")
 
 
+def test_builtin_union_fix_preserves_annotations_and_later_rebinding(
+    tmp_path: Path,
+) -> None:
+    source = "from builtins import str as _Text\n\ndef _helper(value: _Text | bytes) -> _Text | bytes:\n    return value\n\ndef api(value):\n    return _helper(value)\n\n_Text = custom\n"
+    root = _project(
+        tmp_path,
+        source=source,
+        config=CONFIG.replace("project:\n", 'project:\n  python_version: "3.12"\n'),
+    )
+    fixed = apply_ordering_fixes(check(root, OPTIONS))
+    assert fixed.files == ["app/service.py"]
+    rewritten = (root / "app/service.py").read_text()
+    assert (
+        rewritten.index("def api")
+        < rewritten.index("def _helper")
+        < rewritten.index("_Text = custom")
+    )
+    assert "value: _Text | bytes) -> _Text | bytes" in rewritten
+    assert not check(root, OPTIONS).report.violations
+    assert apply_ordering_fixes(check(root, OPTIONS)).files == []
+
+
 def test_source_bytes_keep_bom_crlf_and_permissions(tmp_path: Path) -> None:
     root = _project(tmp_path)
     source = root / "app/service.py"
