@@ -240,6 +240,12 @@ multiple symbols from one module, and imports in separate callers do not inflate
 the count. Imports from inside the package and symbols already exported by its
 facade do not count. The threshold is configurable and disabled when omitted.
 
+For overlapping `bundle_imports_at` and `export_at` contracts matching the same
+concrete package, the pattern with more literal segments wins. An exact package
+match overrides a wildcard. Identical equally specific settings produce one
+decision; conflicting equally specific settings are configuration errors.
+These thresholds do not inherit into unmatched child packages.
+
 After deliberately defining the exports, the caller can use a combined import
 such as `from app.features.users.application import DeleteUser, GetUser, UpdateUser`.
 Review dependency direction and cycles before adding exports. This is a `hint`
@@ -255,6 +261,49 @@ or `--select SMT319`. For example, if `app.observation.__init__` directly export
 direct, unconditional public re-export; aliases and relative imports are preserved
 in suggestions. Internal imports, package initializers, uncertain exports and
 unscanned third-party packages are excluded. See [SMT319](rules/SMT319.md).
+
+To find names that are widely imported but missing from a facade, configure
+[SMT109 `facade-export-gap`](rules/SMT109.md):
+
+```yaml
+structure:
+  contracts:
+    browser-api:
+      match: app.browser
+      export_at: 3
+      count_tests: false  # default; true also counts discovered test files
+```
+
+SMT109 counts distinct outside modules importing each public implementation name,
+including mixed import statements that SMT319 cannot shorten yet. It reports one
+hint per name and package, anchored at the definition, with source/test importer
+lists, existing re-exports elsewhere and a concrete import suggestion. Repeated
+imports and aliases in one caller count once. Static re-export chains are resolved
+to the defining module. Imports already using a package facade do not count as
+deep coupling. Only selected source and discovered tests are visible; excluded,
+unselected and external consumers are not assessed.
+Other package exports and explicit `__all__` re-exports in regular modules are
+listed as context, without selecting a canonical import path.
+
+Private names and `TYPE_CHECKING`-only imports never count, even when the global
+import policy includes type-checking edges. Namespace packages without an analyzed
+initializer, conflicting or uncertain bindings, star exports and dynamic facade
+exports recognized through `__getattr__`, dynamic `__all__`, `exec` or namespace
+inspection calls are skipped. Arbitrary runtime mutation is not inferred.
+Static `__all__` is respected; an existing binding excluded
+from it needs only an `__all__` change. A contract that forbids access to its own
+facade does not receive export suggestions. `count_tests: true` requires
+`export_at`, whose minimum is two importers.
+
+The cycle check tests the proposed facade-to-definition dependency against the
+analyzed explicit runtime import graph and reports a deterministic return path.
+`no-cycle-found` does **not** establish safe initialization: dynamic imports,
+implicit initializer execution and import order are outside this check. Existing
+cycles can also appear in the witness. Treat the result as a design review;
+frequency alone does not establish API ownership. No source or configuration is
+changed, and `--fix` still only supports SMT313 ordering fixes. Once exports are
+deliberately added, SMT319 can suggest the corresponding caller imports, and
+`public: ['.']` can enforce a chosen facade boundary through SMT107.
 
 ## Module headers and Python-version-aware annotations
 

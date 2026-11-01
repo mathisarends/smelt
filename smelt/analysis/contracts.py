@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.config.patterns import module_matches
 from smelt.model import is_within
 
@@ -45,6 +46,36 @@ class ContractIndex:
             for package in sorted(files.packages)
             if module_matches(spec.match, package)
         )
+
+    def facade_policies(
+        self, policy: Literal["bundle_imports_at", "export_at"]
+    ) -> tuple[ResolvedContract, ...]:
+        """One threshold per concrete package; more literal match segments win."""
+        candidates: dict[str, list[ResolvedContract]] = {}
+        for contract in self.resolved:
+            if getattr(contract.spec, policy) is not None:
+                candidates.setdefault(contract.package, []).append(contract)
+        chosen: list[ResolvedContract] = []
+        for package, matches in sorted(candidates.items()):
+            rank = min(c.spec.match.split(".").count("*") for c in matches)
+            winners = [c for c in matches if c.spec.match.split(".").count("*") == rank]
+            first = winners[0]
+            for other in winners[1:]:
+                if getattr(first.spec, policy) != getattr(other.spec, policy) or (
+                    policy == "export_at"
+                    and first.spec.count_tests != other.spec.count_tests
+                ):
+                    raise ConfigError(
+                        [
+                            ConfigIssue(
+                                f"structure.contracts.{other.name}.{policy}",
+                                f"conflicting {policy} policies for {package} with equally specific matches",
+                            )
+                        ],
+                        "smelt configuration",
+                    )
+            chosen.append(first)
+        return tuple(chosen)
 
     def style_for(self, module: str) -> ResolvedContract | None:
         return self.policy_for(module, "imports")
@@ -189,6 +220,14 @@ class ContractIndex:
                 **(
                     {"bundle_imports_at": contract.spec.bundle_imports_at}
                     if contract.spec.bundle_imports_at is not None
+                    else {}
+                ),
+                **(
+                    {
+                        "export_at": contract.spec.export_at,
+                        "count_tests": contract.spec.count_tests,
+                    }
+                    if contract.spec.export_at is not None
                     else {}
                 ),
                 **(

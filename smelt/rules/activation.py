@@ -57,6 +57,13 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT109": PolicyActivation(
+        "A package contract sets export_at.",
+        lambda config: any(
+            contract.export_at is not None
+            for contract in config.structure.contracts.values()
+        ),
+    ),
     "SMT302": PolicyActivation(
         "structure.forbidden_names contains naming restrictions.",
         lambda config: bool(config.structure.forbidden_names),

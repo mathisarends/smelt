@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Package contracts can set `export_at` for SMT109 `facade-export-gap`: one
+  advisory finding per widely imported implementation name missing from its
+  facade, with definition location, importer lists, other re-exports and a bounded
+  cycle check. Tests count only with `count_tests: true`; type-checking-only
+  imports and uncertain exports are skipped. No automatic API or import changes.
+  See [facade reviews](docs/structure.md#suggestions-to-bundle-implementation-imports).
+- Overlapping SMT108/SMT109 thresholds now choose the most specific pattern per
+  concrete package, removing duplicate hints and allowing exact overrides of
+  wildcard contracts. Equally specific conflicting settings are config errors.
 - **JSON report schema 2:** `check --format json` emits a small coverage summary
   by default; `--show-coverage` restores full policy details and the per-file
   inventory. Repeated visibility boundaries move to report-level `usage_scopes`,

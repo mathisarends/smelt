@@ -43,7 +43,7 @@ class PackageImportFanout(BaseRule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for contract in ctx.contracts.resolved:
+        for contract in ctx.contracts.facade_policies("bundle_imports_at"):
             threshold = contract.spec.bundle_imports_at
             if threshold is None:
                 continue

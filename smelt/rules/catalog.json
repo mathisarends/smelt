@@ -121,6 +121,22 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.dependencies.facades:FacadeExportGap",
+    "code": "SMT109",
+    "name": "facade-export-gap",
+    "category": "dependencies",
+    "default_severity": "hint",
+    "requires": [
+      "imports",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.layout:UnknownLayer",
     "code": "SMT301",
     "name": "unknown-layer",

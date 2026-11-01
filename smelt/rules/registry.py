@@ -29,6 +29,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.composition_root:CompositionRootLeak",
     "smelt.rules.dependencies.interfaces:PrivateModuleImport",
     "smelt.rules.dependencies.fanout:PackageImportFanout",
+    "smelt.rules.dependencies.facades:FacadeExportGap",
     "smelt.rules.structure.layout:UnknownLayer",
     "smelt.rules.structure.naming:ForbiddenPackageName",
     "smelt.rules.structure.layout:UnclassifiedModule",

@@ -392,6 +392,26 @@
           "description": "Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
           "title": "Bundle Imports At"
         },
+        "export_at": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+          "title": "Export At"
+        },
+        "count_tests": {
+          "default": false,
+          "description": "Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
+          "title": "Count Tests",
+          "type": "boolean"
+        },
         "module_docstrings": {
           "anyOf": [
             {
@@ -886,6 +906,21 @@
           "title": "SMT108: One caller imports many implementation modules of the same package.",
           "description": "One caller imports many implementation modules of the same package. Repeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository. Repair: Consider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.",
           "markdownDescription": "**SMT108 \u2014 package-import-fanout**\n\nOne caller imports many implementation modules of the same package.\n\nRepeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository.\n\n**Problem**\n```python\n# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser\n```\n\n**Preferred**\n```python\n# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser\n```\n\nConsider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.\n\nRun `smelt explain package-import-fanout` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "facade-export-gap": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT109: A public implementation name has many outside importers but no package export.",
+          "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
+          "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
           "examples": [
             "hint"
           ]
@@ -1488,6 +1523,21 @@
           "title": "SMT108: One caller imports many implementation modules of the same package.",
           "description": "One caller imports many implementation modules of the same package. Repeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository. Repair: Consider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.",
           "markdownDescription": "**SMT108 \u2014 package-import-fanout**\n\nOne caller imports many implementation modules of the same package.\n\nRepeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository.\n\n**Problem**\n```python\n# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser\n```\n\n**Preferred**\n```python\n# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser\n```\n\nConsider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.\n\nRun `smelt explain package-import-fanout` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT109$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT109: A public implementation name has many outside importers but no package export.",
+          "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
+          "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
           "examples": [
             "hint"
           ]
@@ -2099,6 +2149,21 @@
             "hint"
           ]
         },
+        "facade-export-gap": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT109: A public implementation name has many outside importers but no package export.",
+          "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
+          "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "unknown-layer": {
           "type": "string",
           "enum": [
@@ -2487,6 +2552,21 @@
           "title": "SMT108: One caller imports many implementation modules of the same package.",
           "description": "One caller imports many implementation modules of the same package. Repeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository. Repair: Consider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.",
           "markdownDescription": "**SMT108 \u2014 package-import-fanout**\n\nOne caller imports many implementation modules of the same package.\n\nRepeated imports of neighboring implementation modules can indicate a missing package API. This is an opt-in design hint, not proof of poor architecture. Count distinct target modules per source file and contracted package, not statements, symbols, or imports across the whole repository.\n\n**Problem**\n```python\n# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser\n```\n\n**Preferred**\n```python\n# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser\n```\n\nConsider exporting the caller's supported API from the package facade. Check dependency direction and cycles before changing exports. If these independent dependencies are intentional, retain them or adjust the advisory threshold. Declare public: ['.'] to enforce facade-only imports.\n\nRun `smelt explain package-import-fanout` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT109$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT109: A public implementation name has many outside importers but no package export.",
+          "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
+          "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
           "examples": [
             "hint"
           ]

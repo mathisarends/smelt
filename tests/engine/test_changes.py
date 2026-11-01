@@ -20,6 +20,40 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
+def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
+    tmp_path: Path,
+) -> None:
+    caller = "from app.api.impl import Item\n"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "app/__init__.py": "",
+            "app/api/__init__.py": "",
+            "app/api/impl.py": "class Item: pass\n",
+            "app/first.py": caller,
+            "app/second.py": "",
+        },
+    )
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "initial")
+    options = CheckOptions(select=("SMT109",), changed=True)
+    assert violations(tmp_path, options) == []
+    write_project(tmp_path, {"app/second.py": caller})
+    [finding] = violations(tmp_path, options)
+    assert finding.path == "app/api/impl.py"
+    assert finding.expected is not None
+    assert finding.expected["count"] == 2
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "accept existing gap")
+    assert violations(tmp_path, options) == []
+    write_project(tmp_path, {"app/third.py": caller})
+    [expanded] = violations(tmp_path, options)
+    assert expanded.expected is not None
+    assert expanded.expected["count"] == 3
+
+
 @pytest.mark.parametrize("committed", [False, True])
 def test_repository_capture_keeps_the_observed_head_when_head_moves(
     tmp_path: Path,
