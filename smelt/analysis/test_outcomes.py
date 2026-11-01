@@ -19,7 +19,12 @@ def vacuous_outcomes(
     An additional explicit check is evidence, not a proof of a nonempty collection.
     No attempt is made to judge persistence semantics or general reachability.
     """
-    evidence = test.outcome_evidence(helpers)
+    return _vacuous_evidence(test, helpers, test.outcome_evidence(helpers))
+
+
+def _vacuous_evidence(
+    test: TestFunction, helpers: list[str], evidence: list[ast.Assert | ast.Call]
+) -> list[ast.For | ast.AsyncFor | ast.Call]:
     if not evidence:
         return []
     parents = {
@@ -28,6 +33,7 @@ def vacuous_outcomes(
         for child in ast.iter_child_nodes(node)
     }
     universal = {call.node for call in test.calls if call.qualified == "builtins.all"}
+    executions = {helper.node: helper for helper in test.helpers}
     risks: list[ast.For | ast.AsyncFor | ast.Call] = []
     for outcome in evidence:
         child: ast.AST = outcome
@@ -53,6 +59,13 @@ def vacuous_outcomes(
                 and _possibly_empty(expression.args[0], test.nonempty_iterables)
             ):
                 risky = expression
+        if risky is None and isinstance(outcome, ast.Call) and outcome in executions:
+            execution = executions[outcome]
+            helper_risks = _vacuous_evidence(
+                execution.function, helpers, execution.outcomes(helpers)
+            )
+            if helper_risks:
+                risky = helper_risks[0]
         if risky is None:
             return []
         if risky not in risks:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import textwrap
 from typing import TYPE_CHECKING
 
 import pytest
@@ -145,6 +146,53 @@ class TestIgnoreEntries:
 
 
 class TestSuppressions:
+    @pytest.mark.parametrize("kind", ["assertion", "assignment", "return"])
+    def test_interior_expression_exception_survives_ruff(
+        self, tmp_path: Path, kind: str
+    ) -> None:
+        expression = (
+            "(\n    service._state()\n"
+            "    is None  # smelt: ignore[SMT420] -- deliberate internal seam\n)\n"
+        )
+        statement = {
+            "assertion": "assert " + expression,
+            "assignment": "result = " + expression,
+            "return": "return " + expression,
+        }[kind]
+        source = (
+            "import app.service as service\ndef test_state():\n"
+            + textwrap.indent(statement, "    ")
+            + "    service._state()\n"
+        )
+        formatted = subprocess.run(
+            [sys.executable, "-m", "ruff", "format", "-"],
+            input=source,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        assert formatted.returncode == 0, formatted.stderr
+        write_project(
+            tmp_path,
+            {
+                "smelt.yaml": (
+                    "version: 1\nproject: {root_packages: [app]}\n"
+                    "rules: {private-test-access: error, unused-suppression: error}\n"
+                ),
+                "app/__init__.py": "",
+                "app/service.py": "def _state(): return None\n",
+                "tests/test_service.py": formatted.stdout,
+            },
+        )
+
+        outcome = check(tmp_path)
+
+        assert outcome.report.suppressed == 1
+        [remaining] = outcome.report.violations
+        assert remaining.code == "SMT420"
+        assert remaining.line == len(formatted.stdout.splitlines())
+
     def test_ruff_format_preserves_a_definition_exception(self, tmp_path: Path) -> None:
         source = "def public_function(first_parameter: int, second_parameter: int, third_parameter: int):  # smelt: ignore[SMT316] -- deliberate external API\n    return first_parameter\n"
         write_project(

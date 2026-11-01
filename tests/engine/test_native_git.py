@@ -23,6 +23,7 @@ def git(root: Path, *args: str) -> bytes:
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
         cwd=root,
         stderr=subprocess.PIPE,
+        timeout=10,
     )
 
 

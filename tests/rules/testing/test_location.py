@@ -31,6 +31,28 @@ def _mirror(tmp_path: Path, tests: dict[str, str], options: str = "") -> Path:
 
 
 class TestMirrorLayout:
+    @pytest.mark.parametrize(
+        "test_roots", [["tests", "tests/unit"], ["tests/unit", "tests"]]
+    )
+    def test_overlapping_roots_use_the_most_specific_root(
+        self, tmp_path: Path, test_roots: list[str]
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": (
+                    "version: 1\nproject:\n  root_packages: [app]\n"
+                    f"  test_roots: {json.dumps(test_roots)}\n"
+                    "tests: {layout: mirror}\n"
+                ),
+                **MIRROR_SOURCES,
+                "tests/unit/billing/test_invoice.py": "",
+                "tests/billing/test_payment.py": "",
+            },
+        )
+
+        assert violations(root, ONLY_SMT401) == []
+
     @pytest.mark.parametrize("prefix", ["", "./"])
     @pytest.mark.parametrize("separator", ["/", "\\"])
     def test_workspace_roots_have_canonical_paths(
