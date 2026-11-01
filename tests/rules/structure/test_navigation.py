@@ -37,8 +37,125 @@ def test_repeated_navigation_reports_one_hint_per_whole_call(tmp_path: Path) -> 
         "stored_path": "self.browser.input",
         "stored_depth": 2,
         "automatic_rewrite": False,
+        "review_required": True,
+        "namespace_evidence": {
+            "status": "unproven",
+            "root_type": None,
+            "unresolved_path": "self.browser",
+            "unresolved_type": None,
+        },
     }
     assert (root / "app/control.py").read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("source", "root_type", "unresolved_path", "unresolved_type"),
+    [
+        (
+            "from sdk import Client as API\nclass Controller:\n    def __init__(self, api: API): self.api = api\n    def run(self): self.api.chat.completions.create()",
+            "sdk.Client",
+            "self.api",
+            "sdk.Client",
+        ),
+        (
+            "from dataclasses import dataclass\nclass Service: pass\n@dataclass\nclass State:\n    service: Service\nclass Controller:\n    state: State\n    def run(self): self.state.service.run()",
+            "app.control.State",
+            "self.state.service",
+            "app.control.Service",
+        ),
+    ],
+)
+def test_unproven_namespaces_include_evidence_for_agent_review(
+    tmp_path: Path,
+    source: str,
+    root_type: str,
+    unresolved_path: str,
+    unresolved_type: str,
+) -> None:
+    [finding] = violations(_project(tmp_path, source))
+
+    assert finding.severity.value == "hint"
+    assert finding.expected is not None
+    assert finding.expected["review_required"] is True
+    assert finding.expected["automatic_rewrite"] is False
+    assert finding.expected["namespace_evidence"] == {
+        "status": "unproven",
+        "root_type": root_type,
+        "unresolved_path": unresolved_path,
+        "unresolved_type": unresolved_type,
+    }
+    assert finding.hint is not None
+    assert "public API contract" in finding.hint
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import sdk as api\nclass Controller:\n    def __init__(self): self.api = api\n    def run(self): self.api.chat.completions.create()",
+        "from types import ModuleType as Module\nclass Controller:\n    def __init__(self, api: Module): self.api = api\n    def run(self): self.api.chat.completions.create()",
+        "from types import SimpleNamespace as NS\nclass Controller:\n    def __init__(self): self.api = NS(chat=NS(completions=NS()))\n    def run(self): self.api.chat.completions.create()",
+        "from dataclasses import dataclass as record\n@record\nclass State:\n    calls: list[str]\nclass Controller:\n    def __init__(self, state: State): self.state = state\n    def run(self): self.state.calls.append('run')",
+        "from dataclasses import dataclass\n@dataclass\nclass State:\n    path: str\nclass Controller:\n    state: 'State | None'\n    def run(self): self.state.path.removesuffix('.py').replace('/', '.')",
+        "from pathlib import Path\nclass Controller:\n    path: Path\n    def run(self): self.path.parent.mkdir(parents=True)",
+        "import subprocess as processes\nclass Controller:\n    def __init__(self): self.process = processes.Popen([])\n    def run(self): self.process.stdin.write(b'run')",
+        "from dataclasses import dataclass\nfrom functools import cached_property\n@dataclass\nclass State:\n    calls: list[str]\nclass Controller:\n    @cached_property\n    def state(self) -> State: ...\n    def run(self): self.state.calls.append('run')",
+    ],
+)
+def test_statically_evidenced_namespaces_and_value_apis_are_allowed(
+    tmp_path: Path, source: str
+) -> None:
+    assert violations(_project(tmp_path, source), OPTIONS) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "class Controller:\n    def run(self): self.api.chat.completions.create()",
+        "class Service:\n    calls: list[str]\nclass Controller:\n    def __init__(self, service: Service): self.service = service\n    def run(self): self.service.calls.append('run')",
+        "from dataclasses import dataclass\nclass Service: pass\n@dataclass\nclass State:\n    service: Service\nclass Controller:\n    state: State\n    def run(self): self.state.service.run()",
+        "from types import SimpleNamespace as NS\nclass Service: pass\nclass Controller:\n    def __init__(self): self.api = NS(service=Service())\n    def run(self): self.api.service.run()",
+        "import sdk as api\napi = object()\nclass Controller:\n    def __init__(self): self.api = api\n    def run(self): self.api.chat.run()",
+        "import sdk as api\nclass Controller:\n    def __init__(self, api): self.api = api\n    def run(self): self.api.chat.run()",
+        "import sdk as api\nclass Controller:\n    def __init__(self):\n        api = service\n        self.api = api\n    def run(self): self.api.chat.run()",
+        "import sdk as api\nclass Controller:\n    def __init__(self): self.api = api\n    def change(self, service): self.api = service\n    def run(self): self.api.chat.run()",
+        "from types import SimpleNamespace as NS\nclass Controller:\n    def __init__(self, NS): self.api = NS(chat=NS())\n    def run(self): self.api.chat.run()",
+        "from types import ModuleType\nclass Controller:\n    @staticmethod\n    def prepare(other): other.api: ModuleType\n    def run(self): self.api.chat.run()",
+        "from types import ModuleType\nclass Controller:\n    @classmethod\n    def prepare(cls): cls.api: ModuleType\n    def run(self): self.api.chat.run()",
+        "import sdk as api\nclass Controller:\n    def __init__(self):\n        self = other\n        self.api = api\n    def run(self): self.api.chat.run()",
+    ],
+)
+def test_namespace_spelling_services_shadowing_and_rebinding_do_not_exempt_calls(
+    tmp_path: Path, source: str
+) -> None:
+    assert len(violations(_project(tmp_path, source), OPTIONS)) == 1
+
+
+@pytest.mark.parametrize("kind", ["dataclass", "pydantic"])
+def test_imported_record_changes_invalidate_namespace_evidence(
+    tmp_path: Path, kind: str
+) -> None:
+    record = (
+        "from dataclasses import dataclass\n@dataclass\nclass State:\n    calls: list[str]\n"
+        if kind == "dataclass"
+        else "from pydantic import BaseModel\nclass State(BaseModel):\n    calls: list[str]\n"
+    )
+    root = _project(
+        tmp_path,
+        "from .api import State\nclass Controller:\n    def __init__(self, state: State): self.state = state\n    def run(self): self.state.calls.append('run')",
+    )
+    write_project(
+        root, {"app/api.py": "from .state import State\n", "app/state.py": record}
+    )
+    assert violations(root) == []
+
+    # The unchanged caller must be reviewed when the dependency becomes a service.
+    write_project(root, {"app/state.py": "class State:\n    calls: list[str]\n"})
+
+    cached = violations(root)
+    assert len(cached) == 1
+    assert cached == violations(root, CheckOptions(use_cache=False))
+    write_project(root, {"app/state.py": record})
+    assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
 
 
 @pytest.mark.parametrize(

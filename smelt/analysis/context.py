@@ -131,7 +131,7 @@ class AnalysisContext:
     def python_targets(self) -> PythonTargetIndex:
         from smelt.analysis.python_version import PythonTargetIndex  # noqa: PLC0415
 
-        return PythonTargetIndex(self.files)
+        return PythonTargetIndex(self.files, self.store)
 
     @cached_property
     def ordering(self) -> DefinitionOrderIndex:

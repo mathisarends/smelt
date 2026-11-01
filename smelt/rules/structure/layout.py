@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind, is_within
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import display_module_path, join, last_segment
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ def _child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
     ]
 
 
-class UnknownLayer(BaseRule):
+class UnknownLayer(Rule):
     enabled_by_default = True
     code = "SMT301"
     name = "unknown-layer"
@@ -126,7 +126,7 @@ class UnknownLayer(BaseRule):
             )
 
 
-class UnclassifiedModule(BaseRule):
+class UnclassifiedModule(Rule):
     code = "SMT305"
     name = "unclassified-module"
     category = Category.STRUCTURE

@@ -11,7 +11,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.graphs import shortest_cycle, strongly_connected_components
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.model import ModuleInfo, ModuleKind, is_within
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, skip_import, wiring_facade
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class _Graph[T: Hashable]:
         return graph
 
 
-class ImportCycle(BaseRule):
+class ImportCycle(Rule):
     code = "SMT104"
     name = "import-cycle"
     category = Category.DEPENDENCIES

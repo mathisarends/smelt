@@ -95,7 +95,7 @@ Normal checks stay read-only. A new rule does not need a fixer or a new index.
 
 ## One rule, one catalog entry
 
-New BaseRule subclasses are off by default. Choose activation alongside the rule:
+New Rule subclasses are off by default. Choose activation alongside the rule:
 
 Fixed-pattern source/test reviews are selected directly by a problem name in
 `rules`; do not add `review_*`, `require_*` or other duplicate boolean switches.
@@ -122,7 +122,7 @@ also activate opt-in rules, while explicit off/ignore and strict coverage retain
 their precedence. The generated catalog and CLI metadata derive activation from
 the rule class; there is no second registration list of activation decisions.
 
-Use `BaseRule`, a stable code, a unique kebab-case name, a category, explicit
+Use `Rule`, a stable code, a unique kebab-case name, a category, explicit
 `requires` and a complete `RuleDoc`. Allocate an unused code from the live catalog:
 
 | Range | Category |

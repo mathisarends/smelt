@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
     from smelt.diagnostics.violation import Violation
-    from smelt.rules.base import Rule, RuleDoc
+    from smelt.rules.base import RuleContract, RuleDoc
 
 _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.layers:LayerBoundary",
@@ -50,6 +50,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.module_symbols:InternalPublicModuleSymbol",
     "smelt.rules.structure.none_defaults:ImplicitOptionalDefault",
     "smelt.rules.structure.navigation:DeepObjectNavigation",
+    "smelt.rules.structure.naming:NoBaseClassPrefix",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
@@ -68,9 +69,9 @@ _IMPLEMENTATIONS = (
 )
 
 
-def _load(target: str) -> Rule:
+def _load(target: str) -> RuleContract:
     module, name = target.split(":")
-    return cast("Rule", getattr(import_module(module), name)())
+    return cast("RuleContract", getattr(import_module(module), name)())
 
 
 class _LazyRule:
@@ -89,7 +90,7 @@ class _LazyRule:
         self._target = str(metadata["target"])
 
     @cached_property
-    def _implementation(self) -> Rule:
+    def _implementation(self) -> RuleContract:
         return _load(self._target)
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
@@ -132,5 +133,5 @@ def build_rule_set(*, lazy: bool = False) -> RuleSet:
     return RuleSet(sorted(_builtin_rules(), key=lambda rule: rule.code))
 
 
-def _builtin_rules() -> list[Rule]:
+def _builtin_rules() -> list[RuleContract]:
     return [_load(target) for target in _IMPLEMENTATIONS]

@@ -4,15 +4,15 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.navigation import NavigationNamespaces
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class DeepObjectNavigation(BaseRule):
-    file_local = True
+class DeepObjectNavigation(Rule):
     code = "SMT322"
     name = "deep-object-navigation"
     category = Category.STRUCTURE
@@ -20,7 +20,25 @@ class DeepObjectNavigation(BaseRule):
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Review a method call reached through multiple instance attributes.",
-        rationale="An instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review.",
+        rationale=(
+            "An instance method that reaches through several stored collaborators depends on their internal arrangement. "
+            "This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the "
+            "instance receiver before the first method call, such as self.browser.input.motor(). One finding covers "
+            "a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from "
+            "a direct collaborator are excluded. Module objects stored from unshadowed imports or declared as ModuleType, "
+            "explicit SimpleNamespace trees, and typed dataclass/Pydantic record paths ending in known containers or "
+            "values are namespaces rather than collaborator graphs. Known pathlib parent paths and subprocess pipes "
+            "also retain their standard APIs. Namespace evidence comes from annotations, direct constructor assignments "
+            "and property return annotations; analyzed imports and re-exports are followed without executing code. "
+            "Every intermediate object must be a known namespace or value: a record containing a service does not "
+            "exempt navigation into that service. Names such as api, client, get or append alone exempt nothing. "
+            "Unknown SDK types and dynamic property/data flow remain review limitations. Decorated and implicit "
+            "class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through "
+            "parameters, aliases or subscripts are outside the review. This is a bounded review, not proof of a design defect."
+            " When namespace evidence is incomplete, the finding includes the declared/constructed root type and "
+            "the unresolved step. These are review inputs for an agent, not proof that the API is poorly designed. "
+            "Inspect the public API contract before choosing a refactor; an intentional namespace can be a valid conclusion."
+        ),
         bad="class Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)",
         good="class Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)",
         fix="Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.",
@@ -28,10 +46,14 @@ class DeepObjectNavigation(BaseRule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        namespaces = NavigationNamespaces(ctx.syntax, ctx.files)
         for source in ctx.files.sources.values():
             for cls, method, receiver in _instance_methods(ctx.asts.parse(source.path)):
                 for statement in method.body:
                     for call, attributes in _calls(statement, receiver):
+                        evidence = namespaces.assess(source.module, cls, attributes)
+                        if evidence.proven:
+                            continue
                         path = ".".join((receiver, *attributes))
                         yield self.violation(
                             f"review method call through {path}; it traverses {len(attributes)} instance attributes",
@@ -48,8 +70,17 @@ class DeepObjectNavigation(BaseRule):
                                 "stored_path": path,
                                 "stored_depth": len(attributes),
                                 "automatic_rewrite": False,
+                                "review_required": True,
+                                "namespace_evidence": {
+                                    "status": "unproven",
+                                    "root_type": evidence.root_type,
+                                    "unresolved_path": ".".join(
+                                        (receiver, *(evidence.unresolved_at or ()))
+                                    ),
+                                    "unresolved_type": evidence.unresolved_type,
+                                },
                             },
-                            hint="Consider injecting the needed collaborator or delegating the operation to a direct collaborator; review intentional API navigation.",
+                            hint="Inspect the receiver type and public API contract: this may be intentional namespace navigation. If it crosses collaborator responsibilities, consider direct injection or delegation. The finding is a review candidate, not a confirmed defect.",
                         )
 
 

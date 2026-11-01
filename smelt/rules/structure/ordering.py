@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class PublicDefinitionsFirst(BaseRule):
+class PublicDefinitionsFirst(Rule):
     code = "SMT313"
     name = "public-definitions-first"
     category = Category.STRUCTURE

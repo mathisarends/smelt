@@ -10,7 +10,7 @@ from smelt.rules.registry import build_rule_set, catalog_metadata
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from smelt.rules.base import Rule
+    from smelt.rules.base import RuleContract
 
 # Maintainer scripts outside the analyzed package use this generator entry point.
 __all__ = ["write_generated_files"]
@@ -31,7 +31,7 @@ def write_generated_files(root: Path) -> list[str]:
     return changed
 
 
-def _rule_page(rule: Rule) -> str:
+def _rule_page(rule: RuleContract) -> str:
     """The reference page for one rule, the same content `smelt explain` prints."""
     doc = rule.explain()
     meta = rule_meta(rule)
@@ -70,7 +70,7 @@ def _rule_page(rule: Rule) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _rule_index(rules: list[Rule]) -> str:
+def _rule_index(rules: list[RuleContract]) -> str:
     lines = [
         "# Rules",
         "",

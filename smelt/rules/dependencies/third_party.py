@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
     import_violation,
@@ -28,7 +28,7 @@ def _is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
     return not all(matches_any(name, policy.allow) for name in names)
 
 
-class ThirdPartyDenied(BaseRule):
+class ThirdPartyDenied(Rule):
     activation = POLICIES["SMT103"]
     code = "SMT103"
     name = "third-party-denied"

@@ -256,3 +256,204 @@ class TestNoPrivateModules:
             ConfigError, match="conflicting private module naming policies"
         ):
             violations(root, MODULE_OPTIONS)
+
+
+CLASS_CONFIG = """
+version: 1
+project:
+  root_packages: [app]
+structure:
+  contracts:
+    class-names:
+      match: app
+      rules: {no-base-class-prefix: error}
+"""
+CLASS_OPTIONS = CheckOptions(select=("SMT323",))
+
+
+class TestNoBaseClassPrefix:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "BaseService",
+            "_BaseService",
+            "__BaseService",
+            "BaseHTTPClient",
+            "Base_Service",
+            "Base",
+            "_Base",
+        ],
+    )
+    def test_definitions_are_reported_at_the_class_without_renaming(
+        self, tmp_path: Path, name: str
+    ) -> None:
+        source = f"@decorate\nclass {name}:\n    pass\n"
+        root = _module_project(tmp_path, {"app/service.py": source}, CLASS_CONFIG)
+
+        found = violations(root)
+
+        assert codes_at(found) == [("SMT323", "app/service.py", 2)]
+        assert found[0].column == 1
+        assert found[0].source_module == "app.service"
+        assert found[0].expected == {
+            "forbidden_prefix": "Base",
+            "class": name,
+            "automatic_rename": False,
+        }
+        assert (root / "app/service.py").read_text(encoding="utf-8") == source
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Service",
+            "_Service",
+            "Baseline",
+            "_Baseline",
+            "Baseball",
+            "Base64",
+            "Base64Encoder",
+            "Database",
+            "ServiceBase",
+        ],
+    )
+    def test_nearby_names_are_valid(self, tmp_path: Path, name: str) -> None:
+        root = _module_project(
+            tmp_path, {"app/service.py": f"class {name}: pass\n"}, CLASS_CONFIG
+        )
+
+        assert violations(root) == []
+
+    def test_nested_local_and_conditional_definitions_are_checked(
+        self, tmp_path: Path
+    ) -> None:
+        root = _module_project(
+            tmp_path,
+            {
+                "app/service.py": "class Container:\n    class BaseNested: pass\ndef create():\n    class _BaseLocal: pass\nif enabled:\n    class BaseConditional: pass\n",
+            },
+            CLASS_CONFIG,
+        )
+
+        found = violations(root)
+
+        assert codes_at(found) == [
+            ("SMT323", "app/service.py", 2),
+            ("SMT323", "app/service.py", 4),
+            ("SMT323", "app/service.py", 6),
+        ]
+        assert [v.column for v in found] == [5, 5, 5]
+
+    def test_imports_aliases_inheritance_functions_and_tests_are_valid(
+        self, tmp_path: Path
+    ) -> None:
+        root = _module_project(
+            tmp_path,
+            {
+                "app/service.py": "from pydantic import BaseModel\nfrom external import Service as BaseService\nclass Service(BaseModel): pass\nBaseAlias = Service\ndef BaseFactory(): return Service()\n",
+                "tests/test_service.py": "class BaseTestService: pass\n",
+            },
+            CLASS_CONFIG,
+        )
+
+        assert violations(root) == []
+
+    @pytest.mark.parametrize("selector", ["SMT323", "no-base-class-prefix"])
+    def test_default_is_off_and_explicit_selection_activates_the_rule(
+        self, tmp_path: Path, selector: str
+    ) -> None:
+        root = _module_project(
+            tmp_path,
+            {"app/service.py": "class BaseService: pass\n"},
+            "version: 1\nproject: {root_packages: [app]}\n",
+        )
+
+        assert violations(root) == []
+        assert codes_at(violations(root, CheckOptions(select=(selector,)))) == [
+            ("SMT323", "app/service.py", 1)
+        ]
+
+    def test_closest_package_off_override_and_reactivation(
+        self, tmp_path: Path
+    ) -> None:
+        config = (
+            CLASS_CONFIG
+            + "    compatibility:\n      match: app.compat\n      rules: {no-base-class-prefix: off}\n"
+            + "    modern:\n      match: app.compat.modern\n      rules: {SMT323: error}\n"
+        )
+        root = _module_project(
+            tmp_path,
+            {
+                "app/service.py": "class BaseService: pass\n",
+                "app/compat/__init__.py": "class BaseLegacy: pass\n",
+                "app/compat/legacy.py": "class BaseLegacy: pass\n",
+                "app/compat/modern/__init__.py": "class BaseModern: pass\n",
+            },
+            config,
+        )
+
+        assert codes_at(violations(root)) == [
+            ("SMT323", "app/compat/modern/__init__.py", 1),
+            ("SMT323", "app/service.py", 1),
+        ]
+
+    def test_only_matching_packages_and_included_source_are_checked(
+        self, tmp_path: Path
+    ) -> None:
+        config = CLASS_CONFIG.replace("match: app", "match: app.api").replace(
+            "root_packages: [app]",
+            "root_packages: [app]\n  exclude: [app/api/generated.py]",
+        )
+        root = _module_project(
+            tmp_path,
+            {
+                "app/service.py": "class BaseService: pass\n",
+                "app/api/__init__.py": "class BaseEndpoint: pass\n",
+                "app/api/generated.py": "class BaseGenerated: pass\n",
+            },
+            config,
+        )
+
+        assert codes_at(violations(root)) == [("SMT323", "app/api/__init__.py", 1)]
+
+    def test_global_rule_activation_needs_no_additional_policy(
+        self, tmp_path: Path
+    ) -> None:
+        root = _module_project(
+            tmp_path,
+            {"app/service.py": "class BaseService: pass\n"},
+            "version: 1\nproject: {root_packages: [app]}\nrules: {no-base-class-prefix: error}\n",
+        )
+
+        assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
+
+    def test_explicit_off_wins_over_selection(self, tmp_path: Path) -> None:
+        root = _module_project(
+            tmp_path,
+            {"app/service.py": "class BaseService: pass\n"},
+            CLASS_CONFIG.replace(
+                "no-base-class-prefix: error", "no-base-class-prefix: off"
+            ),
+        )
+
+        assert violations(root, CLASS_OPTIONS) == []
+
+    def test_conflicting_package_rules_are_rejected(self, tmp_path: Path) -> None:
+        root = _module_project(
+            tmp_path,
+            {},
+            CLASS_CONFIG
+            + "    contradictory:\n      match: app\n      rules: {SMT323: off}\n",
+        )
+
+        with pytest.raises(ConfigError, match="conflicting SMT323"):
+            violations(root)
+
+    def test_cached_check_observes_renamed_classes(self, tmp_path: Path) -> None:
+        root = _module_project(
+            tmp_path, {"app/service.py": "class BaseService: pass\n"}, CLASS_CONFIG
+        )
+        assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
+
+        (root / "app/service.py").write_text("class Service: pass\n", encoding="utf-8")
+
+        assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []

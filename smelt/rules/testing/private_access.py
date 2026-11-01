@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -15,7 +15,7 @@ def _private(name: str) -> bool:
     return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
-class PrivateTestAccess(BaseRule):
+class PrivateTestAccess(Rule):
     test_local = True
     scope = "test"
     code = "SMT420"

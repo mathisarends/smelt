@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
     from smelt.config.loader import LoadedConfig
-    from smelt.rules.base import Rule, RuleSet
+    from smelt.rules.base import RuleContract, RuleSet
 
 
 class RuleSettings:
@@ -73,7 +73,7 @@ class RuleSettings:
         if issues:
             raise ConfigError(issues, self.source)
 
-    def globally_enabled(self, rule: Rule, *, selected: bool = False) -> bool:
+    def globally_enabled(self, rule: RuleContract, *, selected: bool = False) -> bool:
         setting = self.global_rules.get(rule.code)
         if setting is not None:
             return setting != "off"
@@ -91,7 +91,7 @@ class RuleSettings:
 
     def severity(
         self,
-        rule: Rule,
+        rule: RuleContract,
         ctx: AnalysisContext,
         module: str | None,
         *,
@@ -120,7 +120,7 @@ class RuleSettings:
 
     def severity_for_path(
         self,
-        rule: Rule,
+        rule: RuleContract,
         ctx: AnalysisContext,
         path: str | None,
         *,

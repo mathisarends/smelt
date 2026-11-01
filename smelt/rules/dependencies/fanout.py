@@ -7,7 +7,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, skip_import
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from smelt.analysis.imports import ImportDetail
 
 
-class PackageImportFanout(BaseRule):
+class PackageImportFanout(Rule):
     activation = POLICIES["SMT108"]
     code = "SMT108"
     name = "package-import-fanout"

@@ -8,13 +8,13 @@ from smelt.analysis.package_exports import direct_package_exports
 from smelt.analysis.parsing import resolve_relative, type_checking_lines
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class PreferPackageImport(BaseRule):
+class PreferPackageImport(Rule):
     code = "SMT319"
     name = "prefer-package-import"
     category = Category.STRUCTURE

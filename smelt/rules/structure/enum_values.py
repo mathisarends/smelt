@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.enum_values import str_enum_value_accesses
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class RedundantStrEnumValue(BaseRule):
+class RedundantStrEnumValue(Rule):
     code = "SMT318"
     name = "redundant-str-enum-value"
     category = Category.STRUCTURE

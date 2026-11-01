@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.diagnostics.violation import Category, Severity
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from smelt.diagnostics.violation import Violation
 
 
-class _EngineRule(BaseRule):
+class _EngineRule(Rule):
     """Meta rules are evaluated by the engine after filtering, not by ``check``."""
 
     category = Category.META

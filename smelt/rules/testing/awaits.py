@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_awaits import call_only_async_mocks
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class AsyncMockWithoutAwaitCheck(BaseRule):
+class AsyncMockWithoutAwaitCheck(Rule):
     test_local = True
     scope = "test"
     code = "SMT428"

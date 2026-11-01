@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
     import_violation,
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class CompositionRootLeak(BaseRule):
+class CompositionRootLeak(Rule):
     activation = POLICIES["SMT106"]
     code = "SMT106"
     name = "composition-root-leak"

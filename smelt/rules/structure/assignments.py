@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -42,7 +42,7 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
     return None
 
 
-class BundledInstanceAssignment(BaseRule):
+class BundledInstanceAssignment(Rule):
     file_local = True
     code = "SMT314"
     name = "bundled-instance-assignment"

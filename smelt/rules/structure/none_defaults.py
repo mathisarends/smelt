@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.none_defaults import none_defaults
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class ImplicitOptionalDefault(BaseRule):
+class ImplicitOptionalDefault(Rule):
     file_local = True
     code = "SMT321"
     name = "implicit-optional-default"

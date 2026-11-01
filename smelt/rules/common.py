@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
     from smelt.analysis.imports import ImportDetail
     from smelt.diagnostics.violation import Violation
-    from smelt.rules.base import BaseRule
+    from smelt.rules.base import Rule
 
 
 def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
@@ -76,7 +76,7 @@ def wiring_facade(
 
 
 def import_violation(  # noqa: PLR0913
-    rule: BaseRule,
+    rule: Rule,
     ctx: AnalysisContext,
     detail: ImportDetail,
     message: str,

@@ -16,6 +16,7 @@ from smelt.model import is_within
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.files import FileIndex
     from smelt.analysis.imports import ImportIndex
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
@@ -59,9 +60,15 @@ class FacadeGap:
 
 class FacadeUsage:
     def __init__(
-        self, syntax: SyntaxIndex, imports: ImportIndex, *, count_tests: bool
+        self,
+        syntax: SyntaxIndex,
+        imports: ImportIndex,
+        *,
+        files: FileIndex,
+        count_tests: bool,
     ) -> None:
         self._syntax = syntax
+        self._files = files
         self._bindings: dict[str, _Bindings] = {}
         self._resolved: dict[tuple[str, str], _Definition | None] = {}
         self._uses = tuple(self._collect_uses(count_tests=count_tests))
@@ -109,7 +116,7 @@ class FacadeUsage:
         return verified, issues
 
     def gaps(self, package: str, *, count_tests: bool) -> Iterator[FacadeGap]:
-        source = self._syntax.files.sources.get(package)
+        source = self._files.sources.get(package)
         if source is None or not source.is_package:
             return
         facade = self._syntax.for_path(source.path)
@@ -159,7 +166,7 @@ class FacadeUsage:
 
     def _for_module(self, module: str) -> _Bindings:
         if module not in self._bindings:
-            source = self._syntax.files.sources.get(module)
+            source = self._files.sources.get(module)
             syntax = self._syntax.for_path(source.path) if source else None
             self._bindings[module] = (
                 _static_bindings(syntax) if syntax else _Bindings(opaque=True)
@@ -181,14 +188,11 @@ class FacadeUsage:
                 return None
             binding = bindings.known.get(name)
             if isinstance(binding, str):
-                if (
-                    binding in self._syntax.files.sources
-                    or binding in self._syntax.files.packages
-                ):
+                if binding in self._files.sources or binding in self._files.packages:
                     return None  # a module, rather than a symbol
                 module, _, name = binding.rpartition(".")
             elif binding is not None:
-                source = self._syntax.files.sources[module]
+                source = self._files.sources[module]
                 return _Definition(
                     module, name, source.path, binding.lineno, binding.col_offset + 1
                 )
@@ -197,7 +201,7 @@ class FacadeUsage:
         return None
 
     def _collect_uses(self, *, count_tests: bool) -> Iterator[_Use]:
-        files = self._syntax.files
+        files = self._files
         test_roots = tuple(
             root.rstrip("/") + "/" for root in files.config.project.test_roots
         )
@@ -235,7 +239,7 @@ class FacadeUsage:
 
     def _collect_exports(self) -> dict[_Definition, set[str]]:
         result: dict[_Definition, set[str]] = defaultdict(set)
-        for source in self._syntax.files.sources.values():
+        for source in self._files.sources.values():
             syntax = self._syntax.for_path(source.path)
             if syntax is None:
                 continue

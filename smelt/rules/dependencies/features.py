@@ -6,14 +6,14 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import boundary_imports, import_violation, join, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class CrossFeatureImport(BaseRule):
+class CrossFeatureImport(Rule):
     activation = POLICIES["SMT102"]
     code = "SMT102"
     name = "cross-feature-import"
@@ -106,7 +106,7 @@ _MAY_IMPORT = {
 }
 
 
-class SharedImportsFeature(BaseRule):
+class SharedImportsFeature(Rule):
     activation = POLICIES["SMT105"]
     code = "SMT105"
     name = "shared-imports-feature"

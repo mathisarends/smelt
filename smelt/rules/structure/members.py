@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.member_names import private_name
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class InternalPublicMember(BaseRule):
+class InternalPublicMember(Rule):
     member_local = True
     code = "SMT316"
     name = "internal-public-member"
@@ -68,7 +68,7 @@ class InternalPublicMember(BaseRule):
             )
 
 
-class InternalStaticHelper(BaseRule):
+class InternalStaticHelper(Rule):
     member_local = True
     code = "SMT317"
     name = "internal-static-helper"
