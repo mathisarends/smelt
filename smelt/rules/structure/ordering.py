@@ -25,6 +25,9 @@ class PublicDefinitionsFirst(BaseRule):
             "definition-time reads, rebinding and execution barriers. Function bodies "
             "are deferred; decorators, defaults, assignments and eager annotations "
             "are not. Future imports and declared Python 3.14+ targets defer annotations. "
+            "Unions of recognized, unshadowed builtin types (and None) are modeled "
+            "in eager function annotations for declared Python 3.10+ targets; imported "
+            "or user-defined types and operator expressions in defaults remain unknown. "
             "Overload/property families remain atomic. Unknown execution is pinned."
         ),
         bad="def _load():\n    return 1\n\ndef get():\n    return _load()",
@@ -36,6 +39,10 @@ class PublicDefinitionsFirst(BaseRule):
             "review. Names and visibility are never rewritten by ordering."
             " Refused sections identify the triggering expression and its source "
             "location in fix_blocker and fix_reason; the safety boundary stays in place."
+            " Pinned definitions are listed under coverage.ordering[].barriers with "
+            "check --format json --show-coverage. Dependencies take precedence over "
+            "public-first order. On Python 3.12/3.13, keep a needed annotations future "
+            "import when the chosen order uses forward references; SMT311 retains it."
         ),
         config=("rules", "structure.contracts", "project.python_version"),
     )

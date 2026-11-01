@@ -392,6 +392,22 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.module_symbols:InternalPublicModuleSymbol",
+    "code": "SMT320",
+    "name": "internal-public-module-symbol",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "member_usage",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

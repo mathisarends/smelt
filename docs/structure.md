@@ -407,6 +407,23 @@ reads and later rebindings are preserved. Unknown Python minima are treated
 conservatively as eager; the future import or a declared Python 3.14+ minimum
 defers annotations, while defaults remain eager.
 
+For a declared Python 3.10+ minimum, unions of recognized, unshadowed builtin
+types and `None` in function annotations are modeled without an execution barrier.
+For example, `str | bytes` does not pin an otherwise movable helper on Python
+3.12/3.13. Imports from `builtins`, including aliases, are recognized; other
+imported or user-defined types, subscriptions and unions in defaults remain
+conservative execution boundaries. Shadowing and later rebindings still preserve
+definition-time reads. Modules with explicit global/nonlocal mutation declarations
+or detected writes to the `builtins` module retain conservative union barriers.
+
+On Python 3.12/3.13, keep `from __future__ import annotations` when the chosen
+public-first order uses forward references. SMT311's `when-needed` policy retains
+the import in that case. Without it, eager annotation dependencies take priority
+over public-first order; Smelt does not require inserting a future import just
+to reorder definitions. `Self` is an alternative only when a method's return
+contract follows the receiver's subclass, such as returning `self` or constructing
+`cls`. A method that always constructs the named base class cannot promise `Self`.
+
 Calls, unknown decorators, imports, control flow, `TYPE_CHECKING`, mutations,
 operator/protocol evaluation and unsupported generic constructs are execution
 barriers. Smelt keeps them in place. Literal construction through recognized
@@ -493,3 +510,28 @@ unknown same-named attribute access outside a class conservatively preserves its
 methods, and external users or dynamic reflection cannot be ruled out. Review
 the intended API before renaming or extracting a helper. `smelt context` includes
 the effective policies even for planned files.
+
+## Internal public module constants and type aliases
+
+Enable [SMT320](rules/SMT320.md) separately to review module data:
+
+```yaml
+rules:
+  internal-public-module-symbol: warning
+```
+
+The rule covers single, unconditional uppercase assignments and PEP 695
+`type Alias = ...` declarations in implementation modules. It suggests reviewing
+private names for data used only internally, including definitions with no observed
+uses. Package initializers, static exports, imports and analyzed re-exports, test
+accesses and escaped module values preserve visibility. Public signatures and
+fields also preserve annotation dependencies, including quoted and transitive
+type aliases: `Secret.value: SecretValue` is evidence for keeping `SecretValue`
+public, not a reason to rename it automatically or require a facade export.
+
+Rebound or shadowed names, star imports, dynamic export declarations and detected
+namespace reflection are excluded. Ordinary assignment-style aliases and classes
+are outside this check. Findings expose the selected roots, exclusions and
+unassessed consumers through `usage_scope`; absence of observed use does not prove
+an external API is unused. The closest package rule override applies. Review the
+API before renaming; there is no automatic rewrite.

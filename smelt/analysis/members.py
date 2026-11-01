@@ -486,6 +486,10 @@ class MemberUsageIndex:
             ):
                 yield member, tuple(sorted(uses))
 
+    def module_name_used_externally(self, module: str, name: str) -> bool:
+        """Include imports, re-exports, tests and escaped module values."""
+        return self._function_external(module, name)
+
     def _resolve_file(
         self, file: _FileFacts, states: list[MemberState]
     ) -> list[Member]:
