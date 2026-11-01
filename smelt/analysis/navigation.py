@@ -54,6 +54,17 @@ class _Type:
     fields: dict[str, _Type | None] | None = None
 
 
+@dataclass(frozen=True)
+class NamespaceEvidence:
+    root_type: str | None
+    unresolved_at: tuple[str, ...] | None
+    unresolved_type: str | None
+
+    @property
+    def proven(self) -> bool:
+        return self.unresolved_at is None
+
+
 class NavigationNamespaces:
     def __init__(self, syntax: SyntaxIndex, files: FileIndex) -> None:
         self._syntax = syntax
@@ -62,18 +73,23 @@ class NavigationNamespaces:
         self._records: dict[str, bool] = {}
         self._owners: dict[tuple[str, int], dict[str, _Type | None]] = {}
 
-    def contains(
+    def assess(
         self, module: str, owner: ast.ClassDef, attributes: tuple[str, ...]
-    ) -> bool:
+    ) -> NamespaceEvidence:
         key = module, owner.lineno
         if key not in self._owners:
             self._owners[key] = self._instance_fields(module, owner)
         value = self._owners[key].get(attributes[0])
-        for attribute in attributes[1:]:
+        root_type = value.name if value else None
+        for depth, attribute in enumerate(attributes[1:], start=1):
             if value is None or not self._namespace(value):
-                return False
+                return NamespaceEvidence(
+                    root_type, attributes[:depth], value.name if value else None
+                )
             value = self._attribute(value, attribute)
-        return value is not None and self._namespace(value)
+        if value is not None and self._namespace(value):
+            return NamespaceEvidence(root_type, None, None)
+        return NamespaceEvidence(root_type, attributes, value.name if value else None)
 
     def _qualified(self, module: str, node: ast.AST) -> str | None:
         if isinstance(node, ast.Name):

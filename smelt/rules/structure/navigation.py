@@ -35,6 +35,9 @@ class DeepObjectNavigation(Rule):
             "Unknown SDK types and dynamic property/data flow remain review limitations. Decorated and implicit "
             "class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through "
             "parameters, aliases or subscripts are outside the review. This is a bounded review, not proof of a design defect."
+            " When namespace evidence is incomplete, the finding includes the declared/constructed root type and "
+            "the unresolved step. These are review inputs for an agent, not proof that the API is poorly designed. "
+            "Inspect the public API contract before choosing a refactor; an intentional namespace can be a valid conclusion."
         ),
         bad="class Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)",
         good="class Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)",
@@ -48,7 +51,8 @@ class DeepObjectNavigation(Rule):
             for cls, method, receiver in _instance_methods(ctx.asts.parse(source.path)):
                 for statement in method.body:
                     for call, attributes in _calls(statement, receiver):
-                        if namespaces.contains(source.module, cls, attributes):
+                        evidence = namespaces.assess(source.module, cls, attributes)
+                        if evidence.proven:
                             continue
                         path = ".".join((receiver, *attributes))
                         yield self.violation(
@@ -66,8 +70,17 @@ class DeepObjectNavigation(Rule):
                                 "stored_path": path,
                                 "stored_depth": len(attributes),
                                 "automatic_rewrite": False,
+                                "review_required": True,
+                                "namespace_evidence": {
+                                    "status": "unproven",
+                                    "root_type": evidence.root_type,
+                                    "unresolved_path": ".".join(
+                                        (receiver, *(evidence.unresolved_at or ()))
+                                    ),
+                                    "unresolved_type": evidence.unresolved_type,
+                                },
                             },
-                            hint="Consider injecting the needed collaborator or delegating the operation to a direct collaborator; review intentional API navigation.",
+                            hint="Inspect the receiver type and public API contract: this may be intentional namespace navigation. If it crosses collaborator responsibilities, consider direct injection or delegation. The finding is a review candidate, not a confirmed defect.",
                         )
 
 

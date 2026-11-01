@@ -25,6 +25,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   SMT322 recognizes statically evidenced module/data namespaces and known value
   APIs, preserving unknown collaborator findings. Changes to imported record
   definitions are considered on every check; no code is executed or rewritten.
+  Unproven namespaces remain advisory review candidates, with known receiver
+  types and the unresolved step included for agent API-contract review. A finding
+  alone does not require an architecture change.
 - Rule implementations now inherit `smelt.rules.base.Rule` instead of `BaseRule`.
   The former structural `Rule` protocol is named `RuleContract`; lazy rule
   implementations retain the same interface. Update custom rule imports and

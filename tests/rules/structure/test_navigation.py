@@ -37,8 +37,55 @@ def test_repeated_navigation_reports_one_hint_per_whole_call(tmp_path: Path) -> 
         "stored_path": "self.browser.input",
         "stored_depth": 2,
         "automatic_rewrite": False,
+        "review_required": True,
+        "namespace_evidence": {
+            "status": "unproven",
+            "root_type": None,
+            "unresolved_path": "self.browser",
+            "unresolved_type": None,
+        },
     }
     assert (root / "app/control.py").read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("source", "root_type", "unresolved_path", "unresolved_type"),
+    [
+        (
+            "from sdk import Client as API\nclass Controller:\n    def __init__(self, api: API): self.api = api\n    def run(self): self.api.chat.completions.create()",
+            "sdk.Client",
+            "self.api",
+            "sdk.Client",
+        ),
+        (
+            "from dataclasses import dataclass\nclass Service: pass\n@dataclass\nclass State:\n    service: Service\nclass Controller:\n    state: State\n    def run(self): self.state.service.run()",
+            "app.control.State",
+            "self.state.service",
+            "app.control.Service",
+        ),
+    ],
+)
+def test_unproven_namespaces_include_evidence_for_agent_review(
+    tmp_path: Path,
+    source: str,
+    root_type: str,
+    unresolved_path: str,
+    unresolved_type: str,
+) -> None:
+    [finding] = violations(_project(tmp_path, source))
+
+    assert finding.severity.value == "hint"
+    assert finding.expected is not None
+    assert finding.expected["review_required"] is True
+    assert finding.expected["automatic_rewrite"] is False
+    assert finding.expected["namespace_evidence"] == {
+        "status": "unproven",
+        "root_type": root_type,
+        "unresolved_path": unresolved_path,
+        "unresolved_type": unresolved_type,
+    }
+    assert finding.hint is not None
+    assert "public API contract" in finding.hint
 
 
 @pytest.mark.parametrize(
