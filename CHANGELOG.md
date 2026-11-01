@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
+Report schema 2, YAML version 1 and the default rule set remain unchanged.
+Custom rules must update `BaseRule` imports to `Rule` and annotations for the
+former `Rule` protocol to `RuleContract`. Update installation, hook and CI pins
+together to `0.4.0` (`v0.4.0`) and refresh the editor schema. See the
+[upgrade checklist](docs/upgrading.md#030-to-040).
+
 - Use `.yml` consistently in configuration examples, fixtures and maintainer
   scripts. `smelt init` now creates `smelt.yml`, which takes precedence when both
   supported filenames exist. Existing `smelt.yaml` files still work. The published
@@ -490,7 +498,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mathisarends/smelt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mathisarends/smelt/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mathisarends/smelt/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/mathisarends/smelt/compare/v0.1.5...v0.1.6
