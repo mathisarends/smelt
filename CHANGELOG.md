@@ -20,6 +20,13 @@ current configuration and complete rule contracts, see the [README](README.md),
   include all bases. Both published hooks now run on every commit, including
   policy-only edits. See [shared configuration](docs/configuration.md#shared-local-policy).
 
+- New opt-in [SMT322](docs/rules/SMT322.md) `deep-object-navigation` reviews
+  method calls reached through multiple stored instance attributes, such as
+  `self.browser.input.motor().aim()`. Enable with
+  `rules: {deep-object-navigation: hint}` or `--select SMT322`; package rule
+  overrides and inline suppressions preserve intentional navigation. Direct
+  collaborator calls, pure data reads and direct-collaborator fluent chains
+  remain quiet. This bounded syntax review has no automatic rewrite.
 - [SMT901](docs/rules/SMT901.md) diagnoses unknown inline suppression identifiers,
   including readable rule names where stable SMT codes are required. Known
   inactive rules retain their narrowed-check behavior.

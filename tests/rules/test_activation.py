@@ -68,6 +68,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"rules": {"async-mock-without-await-check": "warning"}}, {"SMT428"}),
         ({"rules": {"test-only-public-function": "warning"}}, {"SMT429"}),
         ({"rules": {"test-only-public-attribute": "warning"}}, {"SMT430"}),
+        ({"rules": {"deep-object-navigation": "hint"}}, {"SMT322"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(
@@ -95,6 +96,7 @@ def test_explicit_project_policy_activates_its_checks(
         ({"type_dispatch": {}}, {"SMT315"}),
         ({"rules": {"internal-public-member": "warning"}}, {"SMT316"}),
         ({"rules": {"internal-static-helper": "hint"}}, {"SMT317"}),
+        ({"rules": {"deep-object-navigation": "hint"}}, {"SMT322"}),
         (
             {
                 "module_docstrings": "allow",
