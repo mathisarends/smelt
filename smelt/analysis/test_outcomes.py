@@ -6,6 +6,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.literals import nonempty_literal
+from smelt.analysis.test_helpers import outcome_propagates
 
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
@@ -20,6 +21,42 @@ def vacuous_outcomes(
     No attempt is made to judge persistence semantics or general reachability.
     """
     return _vacuous_evidence(test, helpers, test.outcome_evidence(helpers))
+
+
+def helper_outcome_review(
+    test: TestFunction, helpers: list[str]
+) -> list[dict[str, object]]:
+    """Explain existing inference boundaries without following additional bodies."""
+    parents = {
+        child: parent
+        for parent in ast.walk(test.node)
+        for child in ast.iter_child_nodes(parent)
+    }
+    calls = {call.node: call.qualified for call in test.calls}
+    followed = {helper.node: helper for helper in test.helpers}
+    review: list[dict[str, object]] = []
+    for call in test.calls:
+        helper = followed.get(call.node)
+        if helper is not None:
+            reason = "no-recognized-evidence-within-one-hop"
+            if helper.function.outcome_evidence(helpers) and not helper.outcomes(
+                helpers
+            ):
+                reason = "helper-context-may-swallow-evidence"
+            elif helper.outcomes(helpers) and not outcome_propagates(
+                call.node, parents, calls
+            ):
+                reason = "caller-context-may-swallow-evidence"
+        elif call.helper_line is not None:
+            reason = "local-coroutine-not-recognized-as-executed"
+        elif call.provenance == "import":
+            reason = "imported-body-not-analyzed"
+        else:
+            continue
+        review.append(
+            {"call": call.qualified, "line": call.node.lineno, "reason": reason}
+        )
+    return review
 
 
 def _vacuous_evidence(

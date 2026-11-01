@@ -7,6 +7,26 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- [SMT901](docs/rules/SMT901.md) diagnoses unknown inline suppression identifiers,
+  including readable rule names where stable SMT codes are required. Known
+  inactive rules retain their narrowed-check behavior.
+- [SMT426](docs/rules/SMT426.md) groups shared-helper operations by one repair in
+  text and adds deterministic `shared_helper` JSON groups. Individual findings,
+  identities, counts, suppressions and debt remain unchanged. [SMT424](docs/rules/SMT424.md)
+  explains known helper inference limits at the affected call sites.
+- [SMT104](docs/rules/SMT104.md) adds the opt-in `cycles: [modules]` scope and
+  independent `type_checking_cycles: ignore`. Existing scopes are explicitly
+  labeled as aggregated; witnesses include edge phases. Default scopes stay unchanged.
+- [SMT109](docs/rules/SMT109.md) accepts optional, statically verified
+  `structure.canonical_exports` ownership and distinguishes same-root/other-root
+  importers. Existing exports inform the review; frequency alone never expands API.
+- Literal lazy-export tables with a matching guarded `import_module`/`getattr`
+  forwarder now contribute export identity and visibility evidence. Unsupported
+  dynamic handlers, escaped/mutated tables and type stubs alone remain unverified.
+- [SMT313](docs/rules/SMT313.md) permits bounded ordering fixes around unrelated
+  nested-function dictionaries and `nonlocal` closure writes. Reflection on
+  unknown receivers or ordered namespaces retains its manual-review barrier.
+
 - New opt-in [SMT321](docs/rules/SMT321.md) `implicit-optional-default`
   reviews `parameter or fallback` for explicitly optional parameters with a
   `None` default. Enable with `rules: {implicit-optional-default: warning}` or

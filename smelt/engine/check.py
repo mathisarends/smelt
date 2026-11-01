@@ -12,6 +12,7 @@ from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
+from smelt.analysis.facade_usage import FacadeUsage
 from smelt.analysis.files import FileIndex
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
@@ -285,6 +286,7 @@ def _run_check(
     )
     if isinstance(ctx.store, GitSourceStore):
         ctx.store.cache = cache
+    _validate_ownership(ctx, loaded)
     key = (
         cache.key(
             "index-analysis",
@@ -407,6 +409,23 @@ def _run_check(
         ],
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
+
+
+def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
+    declarations = ctx.config.structure.canonical_exports
+    if not declarations:
+        return
+    _, issues = FacadeUsage(
+        ctx.syntax, ctx.imports, count_tests=False
+    ).canonical_exports(declarations)
+    if issues:
+        raise ConfigError(
+            [
+                ConfigIssue(f"structure.canonical_exports.{symbol}", message)
+                for symbol, message in issues
+            ],
+            loaded.path.name,
+        )
 
 
 def _introduced(
@@ -640,6 +659,22 @@ def _suppression_violations(
             )
         if "SMT901" not in active_codes:
             continue
+        unknown = [
+            prefix
+            for prefix in suppression.codes
+            if not any(code.startswith(prefix) for code in codes[0])
+        ]
+        if unknown:
+            results.append(
+                unused_rule.violation(
+                    f"unknown suppression identifiers ({', '.join(unknown)})",
+                    path=suppression.path,
+                    line=suppression.line,
+                    column=suppression.column + 1,
+                    expected={"unknown_identifiers": unknown},
+                    hint="Inline suppressions require stable SMT codes or code prefixes; use `smelt rules` to find the code for a rule name.",
+                ).with_severity(severity_of["SMT901"])
+            )
         unused = _unused_codes(suppression, checked, *codes)
         if unused is None:
             continue

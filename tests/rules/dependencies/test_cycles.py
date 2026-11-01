@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
 
@@ -9,6 +11,96 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 ONLY_SMT104 = CheckOptions(select=("SMT104",))
+
+
+def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
+    tmp_path: Path,
+) -> None:
+    config = "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [siblings]}}\n"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": config,
+            "app/__init__.py": "",
+            "app/left/__init__.py": "",
+            "app/right/__init__.py": "",
+            "app/left/consumer.py": "from app.right.contract import Item\n",
+            "app/right/consumer.py": "from app.left.contract import Item\n",
+            "app/left/contract.py": "class Item: pass\n",
+            "app/right/contract.py": "class Item: pass\n",
+        },
+    )
+    [aggregate] = violations(tmp_path, ONLY_SMT104)
+    assert aggregate.expected is not None
+    assert aggregate.expected["graph_kind"] == "aggregated"
+    write_project(tmp_path, {"smelt.yaml": config.replace("[siblings]", "[modules]")})
+    assert violations(tmp_path, ONLY_SMT104) == []
+
+
+@pytest.mark.parametrize("annotation_policy", ["include", "ignore"])
+def test_concrete_annotation_cycles_have_separate_selection_and_phase_witnesses(
+    tmp_path: Path, annotation_policy: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\narchitecture: {{imports: {{cycles: [modules], type_checking_cycles: {annotation_policy}}}}}\n",
+            "app/__init__.py": "",
+            "app/a.py": "from app import b\n",
+            "app/b.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import a\n",
+        },
+    )
+    found = violations(tmp_path, ONLY_SMT104)
+    assert len(found) == int(annotation_policy == "include")
+    if found:
+        expected = found[0].expected
+        assert expected is not None
+        assert expected["graph_kind"] == "concrete-modules"
+        assert [edge["phase"] for edge in expected["witness_edges"]] == [
+            "runtime",
+            "type-checking",
+        ]
+
+
+def test_runtime_witness_is_preferred_over_a_shorter_annotation_cycle(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [modules]}}\n",
+            "app/__init__.py": "",
+            "app/a.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import b\n",
+            "app/b.py": "from app import a, c\n",
+            "app/c.py": "from app import d\n",
+            "app/d.py": "from app import b\n",
+        },
+    )
+    [finding] = violations(tmp_path, ONLY_SMT104)
+    assert "type checking only" not in finding.message
+    assert finding.expected is not None
+    assert finding.expected["cycle"] == ["app.b", "app.c", "app.d", "app.b"]
+    assert {edge["phase"] for edge in finding.expected["witness_edges"]} == {"runtime"}
+
+
+def test_excluding_annotation_cycles_keeps_annotation_layer_checks(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    domain: {path: domain}\n    infra: {path: infra}\n  imports: {cycles: [modules], type_checking: include, type_checking_cycles: ignore}\n",
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "",
+            "app/infra/__init__.py": "",
+            "app/domain/model.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.infra import adapter\n",
+            "app/infra/adapter.py": "",
+        },
+    )
+    assert [
+        finding.code
+        for finding in violations(tmp_path, CheckOptions(select=("SMT101", "SMT104")))
+    ] == ["SMT101"]
 
 
 class TestSiblingCycles:
@@ -82,6 +174,21 @@ class TestSiblingCycles:
             "members": ["a", "b"],
             "cyclic_edges": ["modules in app:a -> b", "modules in app:b -> a"],
             "type_checking_only": ["b -> a"],
+            "graph_kind": "aggregated",
+            "witness_edges": [
+                {
+                    "importer": "app.a",
+                    "imported": "app.b",
+                    "line": 1,
+                    "phase": "runtime",
+                },
+                {
+                    "importer": "app.b",
+                    "imported": "app.a",
+                    "line": 3,
+                    "phase": "type-checking",
+                },
+            ],
         }
         assert found.hint is not None
         assert found.hint.startswith(
@@ -115,6 +222,21 @@ class TestSiblingCycles:
             "cycle": ["a", "b", "a"],
             "members": ["a", "b"],
             "cyclic_edges": ["modules in app:a -> b", "modules in app:b -> a"],
+            "graph_kind": "aggregated",
+            "witness_edges": [
+                {
+                    "importer": "app.a",
+                    "imported": "app.b",
+                    "line": 1,
+                    "phase": "runtime",
+                },
+                {
+                    "importer": "app.b",
+                    "imported": "app.a",
+                    "line": 3,
+                    "phase": "type-checking",
+                },
+            ],
         }
 
     def test_import_of_parent_package_is_not_a_cycle(self, tmp_path: Path) -> None:

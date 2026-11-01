@@ -10,6 +10,7 @@ import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from smelt.analysis.lazy_exports import static_lazy_exports
 from smelt.analysis.parsing import resolve_relative
 
 if TYPE_CHECKING:
@@ -61,6 +62,9 @@ def namespace_of(tree: ast.Module, module: str, *, is_package: bool) -> Namespac
                 defined.add(name)
                 imported.pop(name, None)
                 references[name] = tuple(_dotted_names(node))
+    for name, target in (static_lazy_exports(tree) or {}).items():
+        if name not in defined and name not in imported:
+            imported[name] = target
     return Namespace(module, imported, frozenset(defined), references)
 
 

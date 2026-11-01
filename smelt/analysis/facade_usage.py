@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import MAX_HOPS
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
+from smelt.analysis.lazy_exports import static_lazy_exports
 from smelt.analysis.parsing import resolve_relative, type_checking_lines
 from smelt.model import is_within
 
@@ -67,6 +68,46 @@ class FacadeUsage:
         self._exports = self._collect_exports()
         self._adjacency = imports.first_party_edges(include_type_checking=False)
 
+    def canonical_exports(
+        self, declarations: dict[str, str]
+    ) -> tuple[dict[str, str], list[tuple[str, str]]]:
+        """Verify explicit decisions against identity and actual static exports."""
+        verified: dict[str, str] = {}
+        issues: list[tuple[str, str]] = []
+        owners: dict[_Definition, str] = {}
+        for symbol, export in sorted(declarations.items()):
+            module, _, name = symbol.rpartition(".")
+            definition = self._resolve(module, name)
+            owner, _, public_name = export.rpartition(".")
+            target = self._resolve(owner, public_name)
+            if definition is None:
+                issues.append(
+                    (
+                        symbol,
+                        f"cannot statically resolve {symbol}; use an analyzed, unambiguous definition or static re-export",
+                    )
+                )
+            elif target != definition or export not in self._exports.get(
+                definition, ()
+            ):
+                issues.append(
+                    (
+                        symbol,
+                        f"{export} is not a verified public export of {symbol}; declare a static re-export and include it in __all__ when declared. Unsupported dynamic exports cannot verify ownership.",
+                    )
+                )
+            elif definition in owners and owners[definition] != export:
+                issues.append(
+                    (
+                        symbol,
+                        f"conflicting canonical exports for {definition.module}.{definition.name}: {owners[definition]} and {export}; choose one public owner",
+                    )
+                )
+            else:
+                owners[definition] = export
+                verified[f"{definition.module}.{definition.name}"] = export
+        return verified, issues
+
     def gaps(self, package: str, *, count_tests: bool) -> Iterator[FacadeGap]:
         source = self._syntax.files.sources.get(package)
         if source is None or not source.is_package:
@@ -75,7 +116,7 @@ class FacadeUsage:
         if facade is None:
             return
         bindings = self._for_module(package)
-        exports = explicit_exports(facade.tree)
+        exports = _public_names(facade.tree)
         if bindings.opaque or exports is None:
             return
         declares_all = _declares_all(facade.tree)
@@ -198,7 +239,7 @@ class FacadeUsage:
             syntax = self._syntax.for_path(source.path)
             if syntax is None:
                 continue
-            exports = explicit_exports(syntax.tree)
+            exports = _public_names(syntax.tree)
             if exports is None or (
                 not source.is_package and not _declares_all(syntax.tree)
             ):
@@ -238,6 +279,7 @@ def _declares_all(tree: ast.Module) -> bool:
 
 
 def _static_bindings(module: ModuleSyntax) -> _Bindings:
+    lazy = static_lazy_exports(module.tree)
     definitions = definition_bindings(module.tree)
     imports: dict[str, list[ast.AST]] = defaultdict(list)
     for node in ast.walk(module.tree):
@@ -245,6 +287,7 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
             and node.func.id in {"exec", "eval", "globals", "locals", "vars"}
+            and lazy is None
         ):
             return _Bindings(opaque=True)
         if isinstance(node, ast.Import | ast.ImportFrom):
@@ -258,7 +301,8 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
                 )
                 imports[name].append(node)
     result = _Bindings(
-        bound=set(definitions) | set(imports), opaque="__getattr__" in definitions
+        bound=set(definitions) | set(imports) | set(lazy or {}),
+        opaque="__getattr__" in definitions and lazy is None,
     )
     for node in module.tree.body:
         if isinstance(node, ast.ImportFrom):
@@ -276,7 +320,22 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
             for name in _definition_names(node):
                 if len(definitions.get(name, ())) == 1 and name not in imports:
                     result.known[name] = node
+    result.known.update(
+        {
+            name: target
+            for name, target in (lazy or {}).items()
+            if name not in result.known
+            and name not in definitions
+            and name not in imports
+        }
+    )
     return result
+
+
+def _public_names(tree: ast.Module) -> frozenset[str] | None:
+    names = explicit_exports(tree)
+    lazy = static_lazy_exports(tree)
+    return frozenset(lazy) if names is None and lazy is not None else names
 
 
 def _definition_names(node: ast.stmt) -> list[str]:

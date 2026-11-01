@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Callable, Hashable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.graphs import shortest_cycle, strongly_connected_components
@@ -45,6 +45,14 @@ class _Graph[T: Hashable]:
         """Every import from ``a`` to ``b`` sits under ``if TYPE_CHECKING:``."""
         return all(d.type_checking for d in self.witnesses[(a, b)])
 
+    def runtime(self) -> _Graph[T]:
+        graph: _Graph[T] = _Graph()
+        for (a, b), imports in self.witnesses.items():
+            for detail in imports:
+                if not detail.type_checking:
+                    graph.add(a, b, detail)
+        return graph
+
 
 class ImportCycle(BaseRule):
     code = "SMT104"
@@ -53,7 +61,7 @@ class ImportCycle(BaseRule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(
-        summary="Import cycles between features, between layers, or between sibling modules.",
+        summary="Import cycles between architecture nodes or explicitly selected concrete modules.",
         rationale=(
             "Cycles mean two parts can only be understood, tested and changed together. "
             "They also cause import-order bugs at runtime, unless one edge is imported "
@@ -62,6 +70,7 @@ class ImportCycle(BaseRule):
             "already forbid (SMT101, SMT102, SMT106) and outbound imports from "
             "declared wiring are left out, so a cycle report means the cycle is built "
             "entirely from ordinary allowed dependencies."
+            " Existing features/layers/siblings scopes aggregate nodes and do not prove a connected concrete runtime module cycle. The opt-in modules scope uses exact resolved modules; its witness prefers runtime edges when a runtime cycle exists. witness_edges records each selected edge's runtime or type-checking phase. Runtime here means outside TYPE_CHECKING, including deferred imports; it does not prove eager import-time failure. type_checking_cycles: ignore excludes annotation edges from cycle analysis while other boundary checks can still include them. Defaults and existing finding identities are retained."
         ),
         bad=(
             "# billing/application/invoices.py\n"
@@ -77,7 +86,11 @@ class ImportCycle(BaseRule):
             "Break one edge of the cycle: extract the shared piece into a module both can "
             "import, invert one dependency behind an abstraction, or merge the parts."
         ),
-        config=("architecture.imports.cycles", "architecture.imports.type_checking"),
+        config=(
+            "architecture.imports.cycles",
+            "architecture.imports.type_checking",
+            "architecture.imports.type_checking_cycles",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -85,10 +98,18 @@ class ImportCycle(BaseRule):
         features: _Graph[str] = _Graph()
         layers: _Graph[tuple[str | None, str]] = _Graph()
         siblings: dict[str, _Graph[str]] = defaultdict(_Graph)
+        modules: _Graph[str] = _Graph()
         skip_packages = _packages_covered_by_other_scopes(ctx, scopes)
 
         for detail in ctx.imports.all_imports():
-            if detail.external or skip_import(ctx, detail):
+            if (
+                detail.external
+                or skip_import(ctx, detail)
+                or (
+                    detail.type_checking
+                    and ctx.config.architecture.imports.type_checking_cycles == "ignore"
+                )
+            ):
                 continue
             source = ctx.model.info(detail.importer)
             target = ctx.model.info(detail.imported)
@@ -107,6 +128,7 @@ class ImportCycle(BaseRule):
                         (target.feature, target.layer),
                         detail,
                     )
+            modules.add(detail.importer, detail.imported, detail)
             parent, a, b = _sibling_pair(detail.importer, detail.imported)
             if parent is not None and parent not in skip_packages:
                 siblings[parent].add(a, b, detail)
@@ -134,6 +156,8 @@ class ImportCycle(BaseRule):
                     _last_segment,
                     partial(_child_of, parent),
                 )
+        if "modules" in scopes:
+            yield from self._report(ctx, modules, "concrete modules", str, str)
 
     def _report[T: Hashable](
         self,
@@ -148,18 +172,25 @@ class ImportCycle(BaseRule):
                 continue
             start = min(component, key=str)
             cycle = shortest_cycle(start, graph.adjacency, component)
+            witness_graph = graph
+            if scope == "concrete modules":
+                runtime = graph.runtime()
+                runtime_cycle = _runtime_cycle(runtime, component)
+                if runtime_cycle is not None:
+                    cycle, witness_graph = runtime_cycle, runtime
             if cycle is None:
                 continue
-            hops = graph.chain(cycle)
+            hops = witness_graph.chain(cycle)
+            chain = _witness(ctx, hops, node_of)
             names = [label(node) for node in cycle]
             static = [
                 f"{label(a)} -> {label(b)}"
                 for a, b in itertools.pairwise(cycle)
-                if graph.type_checking_only(a, b)
+                if witness_graph.type_checking_only(a, b)
             ]
             message = f"import cycle between {scope}: {' -> '.join(names)}"
             members = sorted(label(node) for node in component)
-            expected: dict[str, list[str]] = {
+            expected: dict[str, Any] = {
                 "cycle": names,
                 "members": members,
                 "cyclic_edges": sorted(
@@ -168,11 +199,17 @@ class ImportCycle(BaseRule):
                     for b in graph.adjacency.get(a, ())
                     if b in component
                 ),
+                "graph_kind": "concrete-modules"
+                if scope == "concrete modules"
+                else "aggregated",
+                "witness_edges": _edge_phases(ctx, chain),
             }
             hint = (
                 "Break one edge: extract what both sides need into a separate module, "
                 "or invert one dependency behind an abstraction."
             )
+            if scope != "concrete modules":
+                hint += " This graph aggregates architecture nodes; its witness does not prove a concrete module runtime cycle. Select architecture.imports.cycles: [modules] to review concrete module edges."
             if len(component) > len(set(cycle)):
                 hint += f" The cyclic group contains: {', '.join(members)}."
             if static:
@@ -193,12 +230,41 @@ class ImportCycle(BaseRule):
                 expected=expected,
                 hint=hint,
                 edge=" -> ".join(names),
-                chain=_witness(ctx, hops, node_of),
+                chain=chain,
             )
 
 
 # A witness hop inside one node is short; a longer path explains little.
 _MAX_INNER_HOPS = 6
+
+
+def _runtime_cycle[T: Hashable](graph: _Graph[T], within: set[T]) -> list[T] | None:
+    for component in sorted(
+        strongly_connected_components(graph.adjacency),
+        key=lambda group: str(min(group, key=str)),
+    ):
+        if len(component) > 1 and component <= within:
+            return shortest_cycle(min(component, key=str), graph.adjacency, component)
+    return None
+
+
+def _edge_phases(
+    ctx: AnalysisContext, chain: tuple[ImportLink, ...]
+) -> list[dict[str, Any]]:
+    return [
+        {
+            **link.to_json(),
+            "phase": next(
+                (
+                    "type-checking" if detail.type_checking else "runtime"
+                    for detail in ctx.imports.imports_of(link.importer)
+                    if detail.imported == link.imported and detail.line == link.line
+                ),
+                "unknown",
+            ),
+        }
+        for link in chain
+    ]
 
 
 def _witness[T: Hashable](
@@ -212,7 +278,10 @@ def _witness[T: Hashable](
     from ``platform.auth.guard``; the witness adds ``platform.auth -> ...guard``.
     Where no path inside the node joins two hops, the gap stays visible.
     """
-    include = ctx.config.architecture.imports.type_checking == "include"
+    include = (
+        ctx.config.architecture.imports.type_checking == "include"
+        and ctx.config.architecture.imports.type_checking_cycles == "include"
+    )
     adjacency = ctx.imports.first_party_edges(include_type_checking=include)
     links: list[ImportLink] = []
     for hop, following in itertools.zip_longest(hops, hops[1:]):
@@ -221,7 +290,8 @@ def _witness[T: Hashable](
             continue
         path = _path_within(adjacency, hop.imported, following.importer, node_of)
         links.extend(
-            ImportLink(a, b, _line(ctx, a, b)) for a, b in itertools.pairwise(path)
+            ImportLink(a, b, _line(ctx, a, b, include_type_checking=include))
+            for a, b in itertools.pairwise(path)
         )
     return tuple(links)
 
@@ -252,9 +322,15 @@ def _path_within[T: Hashable](
     return []
 
 
-def _line(ctx: AnalysisContext, importer: str, imported: str) -> int | None:
+def _line(
+    ctx: AnalysisContext, importer: str, imported: str, *, include_type_checking: bool
+) -> int | None:
     return next(
-        (d.line for d in ctx.imports.imports_of(importer) if d.imported == imported),
+        (
+            d.line
+            for d in ctx.imports.imports_of(importer)
+            if d.imported == imported and (include_type_checking or not d.type_checking)
+        ),
         None,
     )
 

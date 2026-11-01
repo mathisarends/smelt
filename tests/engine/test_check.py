@@ -347,6 +347,30 @@ class TestSuppressions:
         assert found.message == "unused suppression (all codes)"
 
 
+@pytest.mark.parametrize(
+    "identifier", ["SMT999", "private-test-access", "SMTX", "SMT1010"]
+)
+def test_unknown_suppression_identifiers_are_diagnosed_in_narrowed_checks(
+    tmp_path: Path, identifier: str
+) -> None:
+    root = _layered(tmp_path, f"import os  # smelt: ignore[{identifier}] -- reviewed\n")
+    [finding] = violations(root, CheckOptions(select=("SMT101", "SMT901")))
+    assert finding.code == "SMT901"
+    assert finding.expected == {"unknown_identifiers": [identifier.upper()]}
+    assert finding.line == 1
+    assert "stable SMT codes" in (finding.hint or "")
+
+
+def test_unknown_identifier_does_not_hide_a_valid_suppression(tmp_path: Path) -> None:
+    root = _layered(
+        tmp_path,
+        "from app.infra import db  # smelt: ignore[SMT101, SMT999] -- reviewed\n",
+    )
+    outcome = check(root)
+    assert outcome.report.suppressed == 1
+    assert [finding.code for finding in outcome.report.violations] == ["SMT901"]
+
+
 class TestDebt:
     def test_existing_debt_with_comments_remains_readable(self, tmp_path: Path) -> None:
         source = "from app.infra import db  # old comment\n"

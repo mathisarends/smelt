@@ -28,10 +28,11 @@ class UnusedSuppression(_EngineRule):
     name = "unused-suppression"
     default_severity = Severity.WARNING
     doc = RuleDoc(
-        summary="An inline `# smelt: ignore[...]` comment that suppresses nothing.",
+        summary="An inline suppression is unused or names an unknown identifier.",
         rationale=(
             "Stale suppressions hide future violations on the same line and make readers "
             "believe there is an exception where there is none."
+            " Unknown identifiers, including rule names instead of SMT codes, are diagnosed even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Inline comments continue to accept stable SMT codes and prefixes; YAML and CLI also accept rule names."
         ),
         bad="import os  # smelt: ignore[SMT101] -- legacy",
         good="import os",

@@ -33,6 +33,49 @@ def test_comments_and_blank_lines_travel_with_the_definition() -> None:
     assert _rewrite(rewritten) == rewritten
 
 
+@pytest.mark.parametrize(
+    "access", ["vars(configure)['_flag'] = True", "configure.__dict__['_flag'] = True"]
+)
+def test_nested_function_namespace_does_not_block_enclosing_definition_moves(
+    access: str,
+) -> None:
+    source = f"def _helper(): pass\n\ndef api():\n    def configure(): return 7\n    {access}\n    return configure\n"
+    rewritten = _rewrite(source)
+    assert rewritten.index("def api") < rewritten.index("def _helper")
+    assert access in rewritten
+    assert _rewrite(rewritten) == rewritten
+
+
+def test_unrelated_nonlocal_closure_does_not_block_module_ordering() -> None:
+    source = "def _helper(): pass\n\ndef api():\n    count = 0\n    def advance():\n        nonlocal count\n        count += 1\n        return count\n    return advance\n"
+    rewritten = _rewrite(source)
+    assert rewritten.index("def api") < rewritten.index("def _helper")
+    assert "nonlocal count\n        count += 1" in rewritten
+    assert _rewrite(rewritten) == rewritten
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "return vars(other)",
+        "return other.__dict__",
+        "return globals()",
+        "return vars()",
+        "def configure(): pass\n    configure = other\n    return vars(configure)",
+        "@decorate\n    def configure(): pass\n    return vars(configure)",
+        "def configure(): pass\n    def inspect(configure):\n        return vars(configure)\n    return inspect",
+        "def configure(): pass\n    return configure.__code__",
+    ],
+)
+def test_uncertain_or_ordered_namespace_reflection_still_refuses_fixes(
+    body: str,
+) -> None:
+    source = f"def _helper(): pass\ndef api(other):\n    {body}\n"
+    analyzed = _analyze_order(ast.parse(source), OrderingConfig())
+    assert any(section.edges and section.fix_reason for section in analyzed.sections)
+    assert _rewrite(source) == source
+
+
 def test_preamble_shebang_coding_and_file_pragmas_stay_at_the_top() -> None:
     source = "#!/usr/bin/env python\n# coding: utf-8\n# ruff: noqa\n# type: ignore\n# helper\ndef _helper(): pass\n\n# public\ndef api(): pass\n"
 

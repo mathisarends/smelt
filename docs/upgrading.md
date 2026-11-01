@@ -1,5 +1,27 @@
 # Upgrading Smelt
 
+## Unreleased adoption-feedback improvements
+
+Report schema 2 and YAML version 1 are retained. Shared-helper grouping and
+cycle/helper context add metadata without replacing individual findings. The
+default cycle scopes and rule activation are unchanged. Unused new configuration
+options do not change existing policy hashes.
+
+Unknown inline suppression identifiers now produce SMT901 instead of silently
+doing nothing. Inline comments use SMT codes/prefixes; YAML and CLI also accept
+rule names. Existing recognized suppression identities are unchanged.
+
+Literal lazy-export tables require a matching guarded `importlib` forwarding
+handler. Supported `__all__` declarations are literal names or sorted/list/tuple
+of that table. Arbitrary handler code, table mutation/escape, shadowed forwarding
+operations and a `.pyi` export alone do not verify a runtime API. This evidence is
+shared by visibility reviews, facade export review and canonical ownership.
+This identifies symbol ownership; it does not infer dynamic import execution.
+Layer/cycle analysis retains its existing explicit import graph, and SMT319
+retains its direct static re-export requirement. Dynamic loading remains an
+analysis limit; no new routing advice or architecture exemption is introduced.
+See [configuration](configuration.md) for the optional ownership and cycle keys.
+
 ## 0.2.0 to 0.3.0
 
 0.3.0 changes the JSON check-report contract. Existing YAML configurations keep

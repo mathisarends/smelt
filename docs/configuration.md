@@ -49,6 +49,45 @@ reasoned exclusion.
 
 ## Options and package exceptions
 
+API ownership can be stated separately from export-frequency review:
+
+```yaml
+structure:
+  canonical_exports:
+    app.error.types.FeatureError: app.FeatureError
+  contracts:
+    errors:
+      match: app.error
+      export_at: 3
+```
+
+Both names must resolve to the same analyzed symbol through bounded static
+re-export chains. The target must actually be public, including `__all__` when
+declared. Missing, conflicting and unverifiable ownership is a config error,
+even when SMT109 is not selected. Without an ownership declaration, existing
+SMT109 behavior is retained. Declaring one owner prevents duplicate facade advice
+for that symbol; it does not make other internal aliases public or exempt imports
+from layers, package-public contracts or cycle checks. No callers or exports are
+rewritten. Review the existing export paths before adding another API declaration.
+
+Cycle analysis can separately select exact module edges and annotation participation:
+
+```yaml
+architecture:
+  imports:
+    cycles: [modules]
+    type_checking: include
+    type_checking_cycles: ignore
+```
+
+This retains annotation imports in dependency-boundary checks while excluding
+them from cycle graphs. Defaults remain `cycles: [features, layers, siblings]`
+and `type_checking_cycles: include`; `include` respects the global `type_checking`
+setting. Existing scopes aggregate architecture nodes and can form cycles without
+a connected concrete module cycle. Runtime witness
+edges mean outside `TYPE_CHECKING`, including deferred imports, and do not prove
+eager import-time failure.
+
 Fixed patterns need no additional policy. Real parameters stay with their concept:
 
 ```yaml

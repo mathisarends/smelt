@@ -29,6 +29,7 @@ class PublicDefinitionsFirst(BaseRule):
             "in eager function annotations for declared Python 3.10+ targets; imported "
             "or user-defined types and operator expressions in defaults remain unknown. "
             "Overload/property families remain atomic. Unknown execution is pinned."
+            " Attribute dictionaries of unambiguous undecorated nested functions are distinct from the enclosing ordered namespace, so vars(local_function) and local_function.__dict__ alone do not block enclosing moves. Nonlocal closure writes alone are also unrelated to module/class definition order. Unknown receivers, globals, locals, vars(), global writes and code/annotation introspection still require review."
         ),
         bad="def _load():\n    return 1\n\ndef get():\n    return _load()",
         good="def get():\n    return _load()\n\ndef _load():\n    return 1",

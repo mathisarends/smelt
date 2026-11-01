@@ -20,6 +20,28 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Service}}\narchitecture: {imports: {cycles: [modules], type_checking_cycles: ignore}}\n",
+            "app/__init__.py": "from .api import Service\n",
+            "app/api.py": "class Service: pass\n",
+        },
+    )
+    outcome = check(tmp_path)
+    briefing = build_briefing(
+        outcome.context, resolve_target(outcome.context, None), outcome.report
+    )
+    assert briefing.to_json()["canonical_exports"] == {"app.api.Service": "app.Service"}
+    assert briefing.to_json()["imports"]["type_checking_cycles"] == "ignore"
+    assert "Canonical export: app.api.Service -> app.Service" in render_briefing(
+        briefing, outcome.context
+    )
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     [
@@ -363,6 +385,7 @@ class TestFeatureBriefing:
             "transitive": ctx.config.architecture.imports.transitive,
             "type_checking": "include",
             "cycles": list(ctx.config.architecture.imports.cycles),
+            "type_checking_cycles": "include",
         }
         assert data["cross_feature_policy"] == {
             "default": "deny",

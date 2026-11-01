@@ -33,6 +33,7 @@ class FacadeExportGap(BaseRule):
             "explicit __all__ re-exports in other modules are "
             "context, not coverage for this facade. Frequency suggests an API review, "
             "not a requirement to expand the public API. Counts cover analyzed code only."
+            " Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before."
         ),
         bad=(
             "# app/browser/__init__.py is empty\n"
@@ -54,7 +55,7 @@ class FacadeExportGap(BaseRule):
             "Dynamic imports, implicit package initialization and import order are "
             "not proven. No exports, imports or policy are rewritten automatically."
         ),
-        config=("structure.contracts",),
+        config=("structure.contracts", "structure.canonical_exports"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -66,6 +67,7 @@ class FacadeExportGap(BaseRule):
             ctx.imports,
             count_tests=any(c.spec.count_tests for c in contracts),
         )
+        ownership, _ = usage.canonical_exports(ctx.config.structure.canonical_exports)
         for contract in contracts:
             threshold = contract.spec.export_at
             if threshold is None or any(
@@ -81,6 +83,8 @@ class FacadeExportGap(BaseRule):
                 if len(importers) < threshold:
                     continue
                 qualified = f"{gap.module}.{gap.name}"
+                if qualified in ownership:
+                    continue
                 preview = ", ".join(importers[:_IMPORTER_PREVIEW])
                 if len(importers) > _IMPORTER_PREVIEW:
                     preview += f", … (+{len(importers) - _IMPORTER_PREVIEW})"
@@ -111,6 +115,16 @@ class FacadeExportGap(BaseRule):
                         "export_at": threshold,
                         "count_tests": contract.spec.count_tests,
                         "source_importers": list(gap.source_importers),
+                        "same_root_importers": [
+                            caller
+                            for caller in gap.source_importers
+                            if caller.split(".")[0] == gap.module.split(".")[0]
+                        ],
+                        "other_root_importers": [
+                            caller
+                            for caller in gap.source_importers
+                            if caller.split(".")[0] != gap.module.split(".")[0]
+                        ],
                         "test_importers": list(gap.test_importers),
                         "count": len(importers),
                         "reexports": list(gap.reexports),
@@ -129,6 +143,7 @@ class FacadeExportGap(BaseRule):
                     hint=f"{repair}. Importers: {preview}. Cycle check: {cycle}."
                     + (
                         f" Existing exports: {', '.join(gap.reexports)}."
+                        " Review whether one is already the canonical API before adding another export."
                         if gap.reexports
                         else ""
                     ),
