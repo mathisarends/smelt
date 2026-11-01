@@ -4,7 +4,7 @@ Status: draft, not implemented.
 
 ## Problem
 
-`smelt.yaml` v1 mixes three kinds of settings in the same sections:
+`smelt.yml` v1 mixes three kinds of settings in the same sections:
 
 | Kind | Question it answers | v1 keys today |
 |---|---|---|
@@ -119,7 +119,7 @@ verify: []
 - `version: 2` selects the new layout. `version: 1` keeps loading: the loader rewrites
   it in memory using the table above and reports one deprecation warning per moved
   key. This reuses the mechanism that already migrates `wiring` and `di_frameworks`.
-- `smelt config migrate` rewrites `smelt.yaml` to v2 in place, keeping comments where
+- `smelt config migrate` rewrites `smelt.yml` to v2 in place, keeping comments where
   possible (a round-trip YAML library such as ruamel.yaml would be a new dependency;
   without it, comments are lost and the command says so).
 - `smelt init` writes v2 from the first release that supports it.

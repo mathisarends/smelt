@@ -20,7 +20,7 @@ def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/left/__init__.py": "",
             "app/right/__init__.py": "",
@@ -33,7 +33,7 @@ def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
     [aggregate] = violations(tmp_path, ONLY_SMT104)
     assert aggregate.expected is not None
     assert aggregate.expected["graph_kind"] == "aggregated"
-    write_project(tmp_path, {"smelt.yaml": config.replace("[siblings]", "[modules]")})
+    write_project(tmp_path, {"smelt.yml": config.replace("[siblings]", "[modules]")})
     assert violations(tmp_path, ONLY_SMT104) == []
 
 
@@ -44,7 +44,7 @@ def test_concrete_annotation_cycles_have_separate_selection_and_phase_witnesses(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\narchitecture: {{imports: {{cycles: [modules], type_checking_cycles: {annotation_policy}}}}}\n",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\narchitecture: {{imports: {{cycles: [modules], type_checking_cycles: {annotation_policy}}}}}\n",
             "app/__init__.py": "",
             "app/a.py": "from app import b\n",
             "app/b.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import a\n",
@@ -68,7 +68,7 @@ def test_runtime_witness_is_preferred_over_a_shorter_annotation_cycle(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [modules]}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [modules]}}\n",
             "app/__init__.py": "",
             "app/a.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import b\n",
             "app/b.py": "from app import a, c\n",
@@ -89,7 +89,7 @@ def test_excluding_annotation_cycles_keeps_annotation_layer_checks(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    domain: {path: domain}\n    infra: {path: infra}\n  imports: {cycles: [modules], type_checking: include, type_checking_cycles: ignore}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    domain: {path: domain}\n    infra: {path: infra}\n  imports: {cycles: [modules], type_checking: include, type_checking_cycles: ignore}\n",
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/infra/__init__.py": "",
@@ -108,7 +108,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/a.py": "from app import b\n",
                 "app/b.py": "from app import c\n",
@@ -127,7 +127,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/features/__init__.py": "",
                 "app/features/admin.py": "from app.platform.auth import ERRORS\n",
@@ -153,7 +153,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/a.py": "from app import b\n",
                 "app/b.py": (
@@ -202,7 +202,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/a.py": "from app import b\n",
                 "app/b.py": (
@@ -243,7 +243,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "from app.sub import thing\n",
                 "app/sub/__init__.py": "",
                 "app/sub/thing.py": "import app\n",
@@ -256,7 +256,7 @@ class TestSiblingCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app]\n"
                     "architecture:\n  imports:\n    cycles: [features]\n"
                 ),
@@ -276,7 +276,7 @@ class TestLayerCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                     version: 1
                     project:
                       root_packages: [app]
@@ -304,7 +304,7 @@ class TestFeatureCycles:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                     version: 1
                     project: {root_packages: [app]}
                     architecture:

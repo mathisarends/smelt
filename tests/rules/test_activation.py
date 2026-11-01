@@ -22,7 +22,7 @@ def _active(extra: dict[str, object], options: CheckOptions | None = None) -> se
     config = SmeltConfig.model_validate(
         {"version": 1, "project": {"root_packages": ["app"]}, **extra}
     )
-    loaded = LoadedConfig(config, Path("smelt.yaml"))
+    loaded = LoadedConfig(config, Path("smelt.yml"))
     return {
         rule.code
         for rule, _ in _resolve_active_rules(

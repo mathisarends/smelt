@@ -13,7 +13,7 @@ guide for the decision or task at hand:
 | Choose checks and understand what enables them | [Rule activation](rule-selection.md) and the [rule catalog](rules/README.md) |
 | Interpret commands, changed checks and machine-readable reports | [CLI and reports](cli.md) |
 | Introduce Smelt to an existing codebase | [Adoption and debt](adoption.md) |
-| Set up an agent loop, prek, pre-commit or CI | [Agents, hooks and CI](integrations.md) |
+| Set up an agent loop, prek or CI | [Agents, hooks and CI](integrations.md) |
 | Extend Smelt, run its checks or publish a release | [Contributing](../CONTRIBUTING.md) |
 | Review staged agent changes, caching and performance | [Agent workflow](agent-workflow.md) |
 | Understand project direction and known gaps | [Vision](vision.md) and [review backlog](review.md) |

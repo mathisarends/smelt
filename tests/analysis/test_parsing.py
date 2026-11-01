@@ -31,7 +31,7 @@ def _project(tmp_path: Path, service: str, requires: str = ">=3.12") -> Path:
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "pyproject.toml": f'[project]\nname = "app"\nrequires-python = "{requires}"\n',
             "app/__init__.py": "",
             "app/domain/__init__.py": "",

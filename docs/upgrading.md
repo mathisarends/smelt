@@ -1,5 +1,12 @@
 # Upgrading Smelt
 
+## Unreleased configuration filenames
+
+`smelt init` now creates `smelt.yml`. Existing `smelt.yaml` files continue to
+work, and `init --force` updates an existing file in place. If both filenames
+exist in one directory, `smelt.yml` takes precedence; use `--config` to select
+the other file explicitly. Cached and staged checks use the same preference.
+
 ## Unreleased adoption-feedback improvements
 
 Report schema 2 and YAML version 1 are retained. Shared-helper grouping and

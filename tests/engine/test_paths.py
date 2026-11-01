@@ -24,7 +24,7 @@ def test_conflicting_type_dispatch_policies_are_rejected(tmp_path: Path) -> None
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    first: {match: app, type_dispatch: {min_branches: 3}}\n    second: {match: app, type_dispatch: {min_branches: 4}}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    first: {match: app, type_dispatch: {min_branches: 3}}\n    second: {match: app, type_dispatch: {min_branches: 4}}",
             "app/__init__.py": "",
         },
     )
@@ -36,7 +36,7 @@ def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    first:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n    second:\n      match: app\n      rules:\n        bundled-instance-assignment: 'off'\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    first:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n    second:\n      match: app\n      rules:\n        bundled-instance-assignment: 'off'\n",
             "app/__init__.py": "",
         },
     )
@@ -52,7 +52,7 @@ def _issues(tmp_path: Path, architecture: str, tests: str = "") -> list[str]:
         "  layers: {domain: {path: domain}}\n"
         f"{tests}"
     )
-    write_project(tmp_path, {**SOURCES, "smelt.yaml": config})
+    write_project(tmp_path, {**SOURCES, "smelt.yml": config})
     with pytest.raises(ConfigError) as caught:
         check(tmp_path)
     return [str(issue) for issue in caught.value.issues]
@@ -112,7 +112,7 @@ class TestMissingPaths:
             tmp_path,
             {
                 **SOURCES,
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\n"
                     "project: {root_packages: [app], source_roots: [src, .]}\n"
                 ),
@@ -132,7 +132,7 @@ class TestMissingPaths:
             {
                 **SOURCES,
                 "tests/__init__.py": "",
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\n"
                     "project: {root_packages: [app]}\n"
                     "architecture:\n"

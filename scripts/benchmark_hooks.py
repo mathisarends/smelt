@@ -32,7 +32,7 @@ def prepare(root: Path, analyzer: Path, args: argparse.Namespace) -> Path:
         "pass_filenames": False,
         "always_run": True,
     }
-    config = root / ".pre-commit-config.yaml"
+    config = root / ".pre-commit-config.yml"
     config.write_text(yaml.safe_dump({"repos": [{"repo": "local", "hooks": [hook]}]}))
     git(root, "add", config.name)
     # Commit only hook setup, preserving the intentionally staged source edit.
@@ -54,6 +54,8 @@ def hook_check(
         [
             *runner,
             "run",
+            "--config",
+            ".pre-commit-config.yml",
             "smelt",
             *(["--all-files"] if all_files else []),
             "--show-diff-on-failure",
@@ -154,7 +156,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", required=True, type=Path)
     parser.add_argument("--candidate", required=True, type=Path)
-    parser.add_argument("--runner", type=Path, help="Optional native runner, e.g. prek")
+    parser.add_argument("--runner", type=Path, help="Hook runner path (default: prek)")
     parser.add_argument(
         "--all-files",
         action="store_true",

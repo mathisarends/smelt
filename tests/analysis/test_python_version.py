@@ -46,11 +46,11 @@ def _context(tmp_path: Path, project: str = "") -> AnalysisContext:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject:\n  root_packages: [app]\n{project}",
+            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]\n{project}",
             "app/main.py": "",
         },
     )
-    return AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yaml").config)
+    return AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yml").config)
 
 
 def test_unknown_does_not_infer_running_interpreter_or_pin(tmp_path: Path) -> None:
@@ -122,14 +122,14 @@ def test_external_source_root_uses_its_own_metadata(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "policy/smelt.yaml": "version: 1\nproject: {root_packages: [app], source_roots: [../member/src]}\n",
+            "policy/smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [../member/src]}\n",
             "policy/pyproject.toml": '[project]\nrequires-python = ">=3.14"\n',
             "member/pyproject.toml": '[project]\nrequires-python = ">=3.12"\n',
             "member/src/app/module.py": "",
         },
     )
     ctx = AnalysisContext(
-        tmp_path / "policy", load_config(tmp_path / "policy/smelt.yaml").config
+        tmp_path / "policy", load_config(tmp_path / "policy/smelt.yml").config
     )
 
     target = ctx.python_targets.for_path(

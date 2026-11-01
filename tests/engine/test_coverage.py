@@ -39,11 +39,11 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
         },
     )
-    config = load_config(tmp_path / "smelt.yaml").config
+    config = load_config(tmp_path / "smelt.yml").config
     legacy = config.model_dump(mode="json")
     legacy["structure"].pop("canonical_exports")
     legacy["architecture"]["imports"].pop("type_checking_cycles")
@@ -58,7 +58,7 @@ def _project(root: Path) -> Path:
     return write_project(
         root,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["app", "libs/*"]\n',
             "app/src/app/__init__.py": "",
             "app/src/app/main.py": "",
@@ -90,7 +90,7 @@ class TestEffectiveCoverage:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app]\n  "
                     + project_settings
                     + "\n"
@@ -117,7 +117,7 @@ class TestEffectiveCoverage:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app]\n"
                     "  source_roots: [backend/src]\n"
                 ),
@@ -185,8 +185,8 @@ class TestEffectiveCoverage:
 
     def test_policy_hash_changes_with_the_policy_only(self, tmp_path: Path) -> None:
         root = _project(tmp_path)
-        before = policy_hash(load_config(root / "smelt.yaml").config)
-        config = root / "smelt.yaml"
+        before = policy_hash(load_config(root / "smelt.yml").config)
+        config = root / "smelt.yml"
         config.write_text(
             "# a comment does not change the policy\n"
             + config.read_text(encoding="utf-8"),

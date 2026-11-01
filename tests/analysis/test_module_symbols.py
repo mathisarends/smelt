@@ -19,13 +19,13 @@ def _symbols(
     write_project(
         root,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/models.py": source,
             **(extra or {}),
         },
     )
-    context = AnalysisContext(root, load_config(root / "smelt.yaml").config)
+    context = AnalysisContext(root, load_config(root / "smelt.yml").config)
     return list(internal_module_symbols(context.syntax, context.member_usage))
 
 

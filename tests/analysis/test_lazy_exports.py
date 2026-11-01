@@ -104,7 +104,7 @@ def test_lazy_exports_protect_actual_api_and_invalidate_after_table_edits(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-function: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-function: warning}\n",
             "app/__init__.py": LAZY,
             "app/__init__.pyi": "from .api import Service as Public\n",
             "app/api.py": "class Service:\n    def run(self): pass\n",
@@ -129,7 +129,7 @@ def test_stub_alone_does_not_prove_a_runtime_export(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
             "app/__init__.py": "",
             "app/__init__.pyi": "from .api import Service as Public\n",
             "app/api.py": "class Service:\n    def run(self): pass\n",
@@ -142,7 +142,7 @@ def test_verified_lazy_export_can_establish_canonical_ownership(tmp_path: Path) 
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Public}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Public}}\n",
             "app/__init__.py": LAZY,
             "app/api.py": "class Service: pass\n",
         },

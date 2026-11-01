@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Use `.yml` consistently in configuration examples, fixtures and maintainer
+  scripts. `smelt init` now creates `smelt.yml`, which takes precedence when both
+  supported filenames exist. Existing `smelt.yaml` files still work. The published
+  `.pre-commit-hooks.yaml` manifest retains its required filename. Integration
+  instructions consistently use prek.
+
 - Independent workspaces can share a local policy fragment with `extends` and
   explicit child overrides. Mappings merge; lists replace, including `[]`.
   Project paths remain relative to the selected workspace. `config show --sources`

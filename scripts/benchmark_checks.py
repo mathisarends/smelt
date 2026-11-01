@@ -101,7 +101,7 @@ def create_project(args: argparse.Namespace, root: Path) -> Path:
         architecture_config = "architecture:\n  layers:\n    application: {path: application, may_depend_on: [domain]}\n    domain: {path: domain, may_depend_on: []}\n"
         if args.policy == "transitive":
             architecture_config += "  imports: {transitive: true}\n"
-    (root / "smelt.yaml").write_text(
+    (root / "smelt.yml").write_text(
         "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n"
         "    api: {match: app, rules: {internal-public-member: warning}}\n"
         + architecture_config,

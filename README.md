@@ -2,8 +2,8 @@
 
 Smelt is a static checker for Python codebases maintained by people and coding
 agents. Describe your architecture and adopt source and test conventions in
-`smelt.yaml`; Smelt turns those decisions into actionable checks that can run
-locally, in pre-commit and in CI.
+`smelt.yml`; Smelt turns those decisions into actionable checks that can run
+locally, in prek hooks and in CI.
 
 Use it both as **architecture as code** and as an executable style guide:
 agents can inspect the policy before editing, check their changes, and iterate
@@ -17,7 +17,7 @@ on findings before the same project-wide checks run in CI.
 | Package contracts | Required modules and public entry points; checks for imports of private implementation modules | [Package contracts](docs/structure.md) |
 | Source conventions | Package-scoped import styles, module names and headers, public-first ordering, internal helpers, and selected readability checks | [Source conventions](docs/structure.md) |
 | Test conventions | Mirrored test paths and opt-in reviews of outcomes, mocks, private access, async awaits, waits, and test-only public members | [Test policies](docs/testing.md) |
-| Agent and CI workflows | Policy briefings, staged and changed checks, JSON, GitHub annotations, SARIF, pre-commit and debt baselines | [Integrations](docs/integrations.md), [agent workflow](docs/agent-workflow.md), [CLI and reports](docs/cli.md), [adoption](docs/adoption.md) |
+| Agent and CI workflows | Policy briefings, staged and changed checks, JSON, GitHub annotations, SARIF, prek and debt baselines | [Integrations](docs/integrations.md), [agent workflow](docs/agent-workflow.md), [CLI and reports](docs/cli.md), [adoption](docs/adoption.md) |
 
 The [rule catalog](docs/rules/README.md) lists each check, its activation and
 default severity. Most rules are opt-in; a declared architecture, package or
@@ -48,7 +48,7 @@ uv tool install smelt-cli
 From your project root:
 
 ```bash
-smelt init --maintainability  # draft smelt.yaml and select source/test checks
+smelt init --maintainability  # draft smelt.yml and select source/test checks
 smelt check --show-hints --fail-on warning
 smelt context <feature-or-path>  # inspect the policy before making a change
 smelt explain SMT101             # understand a finding and its configuration
@@ -79,7 +79,7 @@ discovered production file to have a role or a reasoned exclusion. Changed check
 compare against `HEAD` by default, including uncommitted changes. For PRs,
 `--changed --base origin/main` compares against the merge base. The
 [integration guide](docs/integrations.md) includes a reusable agent instruction,
-pre-commit configuration, and GitHub Actions example. The [agent workflow](docs/agent-workflow.md)
+prek configuration, and GitHub Actions example. The [agent workflow](docs/agent-workflow.md)
 explains staged checks, partial staging and caching.
 
 ## Scope

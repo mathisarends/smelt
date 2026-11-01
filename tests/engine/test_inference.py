@@ -69,7 +69,7 @@ class TestInferConfig:
             _load_yaml(render_config(inferred)), root=tmp_path
         )
         outcome = run_check(
-            LoadedConfig(config, tmp_path / "smelt.yaml", warnings), CheckOptions()
+            LoadedConfig(config, tmp_path / "smelt.yml", warnings), CheckOptions()
         )
         assert "backend.features.auth.domain.model" in outcome.context.files.sources
         assert "browser.app" in outcome.context.files.sources

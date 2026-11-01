@@ -30,7 +30,7 @@ def _project(root: Path, files: dict[str, str]) -> Path:
     return write_project(
         root,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "src/app/__init__.py": "",
             "src/app/domain/model.py": "VALUE = 1\n",
             **files,
@@ -56,7 +56,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [arithmetic], coverage: strict}\narchitecture:\n  shared: [arithmetic]\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [arithmetic], coverage: strict}\narchitecture:\n  shared: [arithmetic]\n",
                 "arithmetic/__init__.py": "from arithmetic.operations import add\n",
                 "arithmetic/operations.py": "def add(left, right):\n    return left + right\n",
                 "tests/test_operations.py": "def test_add(): pass\n",
@@ -78,7 +78,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                 version: 1
                 project:
                   root_packages: [corelib, persistence]
@@ -126,9 +126,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace(
-                    "coverage: strict", "coverage: configured"
-                ),
+                "smelt.yml": CONFIG.replace("coverage: strict", "coverage: configured"),
                 "pyproject.toml": "[invalid",
             },
         )
@@ -146,7 +144,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app], source_roots: [src], coverage: strict}\narchitecture:\n  features: {root: app.features}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src], coverage: strict}\narchitecture:\n  features: {root: app.features}\n",
                 "src/app/__init__.py": "",
                 "src/app/features/one/model.py": "VALUE = 1\n",
                 "src/app/features/two/model.py": "VALUE = 2\n",
@@ -251,7 +249,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace(
+                "smelt.yml": CONFIG.replace(
                     "  coverage: strict",
                     '  coverage: strict\n  exclude: [{path: "libs/client/**", reason: "Generated SDK, validated by its generator"}]',
                 ),
@@ -279,7 +277,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace(
+                "smelt.yml": CONFIG.replace(
                     "  coverage: strict",
                     "  coverage: strict\n  exclude: ['src/client/**']",
                 ),
@@ -298,9 +296,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace(
-                    "coverage: strict", "coverage: configured"
-                ),
+                "smelt.yml": CONFIG.replace("coverage: strict", "coverage: configured"),
                 "src/client/api.py": "",
             },
         )
@@ -317,7 +313,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace("[app]", "[app, client]"),
+                "smelt.yml": CONFIG.replace("[app]", "[app, client]"),
                 "src/client/api.py": "VALUE = 1\n",
             },
         )
@@ -370,7 +366,7 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace("[app]", "[app, client]")
+                "smelt.yml": CONFIG.replace("[app]", "[app, client]")
                 + "  modules: {client: domain}\n",
                 "src/client/api.py": "VALUE = 1\n",
                 "tests/helpers.py": "VALUE = 1\n",
@@ -413,13 +409,13 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": config,
+                "smelt.yml": config,
                 "src/client/api.py": "# smelt: ignore-file[SMT306] -- legacy\nVALUE = 1\n",
             },
         )
         initial = check(root)
         Debt.from_violations(initial.unfiltered, lambda v: "").write(root / "debt.json")
-        (root / "smelt.yaml").write_text(config + "debt: debt.json\n", encoding="utf-8")
+        (root / "smelt.yml").write_text(config + "debt: debt.json\n", encoding="utf-8")
 
         outcome = check(root)
 
@@ -433,7 +429,7 @@ class TestStrictCoverage:
     ) -> None:
         root = _project(
             tmp_path,
-            {"smelt.yaml": CONFIG + f"rules: {{incomplete-coverage: {setting}}}\n"},
+            {"smelt.yml": CONFIG + f"rules: {{incomplete-coverage: {setting}}}\n"},
         )
 
         with pytest.raises(ConfigError, match="strict coverage must remain an error"):

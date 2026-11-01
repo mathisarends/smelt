@@ -22,23 +22,26 @@ def _with(**sections: object) -> dict[str, object]:
 
 
 class TestDiscovery:
-    def test_walks_up_from_nested_directory(self, tmp_path: Path) -> None:
-        (tmp_path / "smelt.yaml").write_text("version: 1\n")
+    @pytest.mark.parametrize("filename", ["smelt.yml", "smelt.yaml"])
+    def test_walks_up_from_nested_directory(
+        self, tmp_path: Path, filename: str
+    ) -> None:
+        (tmp_path / filename).write_text("version: 1\n")
         nested = tmp_path / "a" / "b"
         nested.mkdir(parents=True)
 
-        assert discover_config(nested) == (tmp_path / "smelt.yaml").resolve()
+        assert discover_config(nested) == (tmp_path / filename).resolve()
 
-    def test_accepts_yml_extension(self, tmp_path: Path) -> None:
-        (tmp_path / "smelt.yml").write_text("version: 1\n")
-
-        assert discover_config(tmp_path) == (tmp_path / "smelt.yml").resolve()
-
-    def test_prefers_yaml_over_yml(self, tmp_path: Path) -> None:
-        (tmp_path / "smelt.yml").write_text("version: 1\n")
+    def test_accepts_yaml_extension(self, tmp_path: Path) -> None:
         (tmp_path / "smelt.yaml").write_text("version: 1\n")
 
         assert discover_config(tmp_path) == (tmp_path / "smelt.yaml").resolve()
+
+    def test_prefers_yml_over_yaml(self, tmp_path: Path) -> None:
+        (tmp_path / "smelt.yml").write_text("version: 1\n")
+        (tmp_path / "smelt.yaml").write_text("version: 1\n")
+
+        assert discover_config(tmp_path) == (tmp_path / "smelt.yml").resolve()
 
     def test_returns_none_without_config(self, tmp_path: Path) -> None:
         assert discover_config(tmp_path) is None
@@ -71,7 +74,7 @@ class TestParsing:
     def test_duplicate_yaml_keys_are_config_errors(
         self, tmp_path: Path, repeated: str
     ) -> None:
-        path = tmp_path / "smelt.yaml"
+        path = tmp_path / "smelt.yml"
         path.write_text(
             "version: 1\nproject: {root_packages: [app]}\n" + repeated, encoding="utf-8"
         )
@@ -117,7 +120,7 @@ class TestParsing:
         )
 
     def test_loads_gateway_fixture(self) -> None:
-        loaded = load_config(FIXTURES / "gateway" / "smelt.yaml")
+        loaded = load_config(FIXTURES / "gateway" / "smelt.yml")
 
         domain = loaded.config.architecture.layers["domain"]
         assert domain.third_party.default == "deny"

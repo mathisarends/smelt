@@ -45,7 +45,7 @@ def repo(tmp_path: Path) -> Path:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/browser.py": "class Browser:\n    def emit(self): pass\n",
             "app/consumer.py": "from .browser import Browser\nBrowser().emit()\n",
@@ -65,7 +65,7 @@ def _check(
             "check",
             "--staged",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--format",
             "json",
             "--fail-on",
@@ -78,6 +78,32 @@ def _check(
     return code, json.loads(captured.out)
 
 
+@pytest.mark.parametrize("legacy_only", [False, True])
+def test_staged_discovery_matches_cached_and_uncached_config_preference(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    legacy_only: bool,
+) -> None:
+    (repo / "smelt.yaml").write_text(CONFIG, encoding="utf-8")
+    if legacy_only:
+        (repo / "smelt.yml").unlink()
+    else:
+        # Selecting the legacy file would fail before producing a check report.
+        (repo / "smelt.yaml").write_text("invalid: [", encoding="utf-8")
+    _git(repo, "add", ".")
+    monkeypatch.chdir(repo)
+
+    reports = []
+    for args in ([], [], ["--no-cache"]):
+        code = main(["check", "--staged", "--format", "json", *args])
+        captured = capsys.readouterr()
+        assert code in {0, 1}
+        assert not captured.err
+        reports.append(json.loads(captured.out))
+    assert reports[0] == reports[1] == reports[2]
+
+
 def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -85,7 +111,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
         repo,
         {
             "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
-            "smelt.yaml": "extends: policy/base.yml\n",
+            "smelt.yml": "extends: policy/base.yml\n",
         },
     )
     _git(repo, "add", ".")
@@ -126,7 +152,7 @@ def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
         repo,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
-            "smelt.yaml": "extends: base.yml\n",
+            "smelt.yml": "extends: base.yml\n",
         },
     )
     _git(repo, "add", ".")
@@ -137,7 +163,7 @@ def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
         [
             "check",
             "--config",
-            str(repo / "smelt.yaml"),
+            str(repo / "smelt.yml"),
             "--changed",
             "--format",
             "json",
@@ -159,7 +185,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     write_project(
         repo,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",
             "app/first.py": caller,
@@ -221,7 +247,7 @@ def test_staged_config_is_used_even_when_working_config_is_invalid(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    (repo / "smelt.yaml").write_text("invalid: [")
+    (repo / "smelt.yml").write_text("invalid: [")
     (repo / "app/browser.py").write_text("invalid python :")
     code, report = _check(repo, capsys)
     assert code == 0
@@ -266,14 +292,14 @@ def test_first_commit_and_removed_working_config(
     empty = write_project(
         repo / "new",
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/api.py": "def unused(): pass",
         },
     )
     _git(empty, "init", "-q")
     _git(empty, "add", ".")
-    (empty / "smelt.yaml").unlink()
+    (empty / "smelt.yml").unlink()
     monkeypatch.chdir(empty)
     code = main(["check", "--staged", "--format", "json", "--fail-on", "warning"])
     report = json.loads(capsys.readouterr().out)
@@ -289,7 +315,7 @@ def test_nested_config_and_sibling_source_roots(
     write_project(
         repo,
         {
-            "policy/architecture.yaml": CONFIG.replace(
+            "policy/architecture.yml": CONFIG.replace(
                 "root_packages: [app]", "root_packages: [app], source_roots: ['..']"
             ),
             "app/consumer.py": "",
@@ -301,7 +327,7 @@ def test_nested_config_and_sibling_source_roots(
             "check",
             "--staged",
             "--config",
-            str(repo / "policy/architecture.yaml"),
+            str(repo / "policy/architecture.yml"),
             "--format",
             "json",
             "--fail-on",
@@ -328,7 +354,7 @@ def test_staged_python_metadata_determines_version_aware_findings(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    (repo / "smelt.yaml").write_text(
+    (repo / "smelt.yml").write_text(
         CONFIG.replace(
             "rules: {internal-public-member: warning}",
             "future_annotations: when-needed",
@@ -338,7 +364,7 @@ def test_staged_python_metadata_determines_version_aware_findings(
     (repo / "app/browser.py").write_text(
         "from __future__ import annotations\nVALUE = 1\n"
     )
-    _git(repo, "add", "smelt.yaml", "pyproject.toml", "app/browser.py")
+    _git(repo, "add", "smelt.yml", "pyproject.toml", "app/browser.py")
     (repo / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.12"\n')
     code, report = _check(repo, capsys)
     assert code == 1
@@ -354,8 +380,8 @@ def test_staged_debt_with_arbitrary_filename_is_used(
     Debt.from_violations(
         outcome.report.violations, snippet_reader(outcome.context)
     ).write(repo / "accepted.baseline")
-    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
-    _git(repo, "add", "smelt.yaml", "accepted.baseline", "app")
+    (repo / "smelt.yml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
+    _git(repo, "add", "smelt.yml", "accepted.baseline", "app")
     (repo / "accepted.baseline").write_text("not JSON")
     code, report = _check(repo, capsys)
     assert code == 0
@@ -399,7 +425,7 @@ def test_exact_retry_bypasses_the_engine_and_its_imports(
             "check",
             "--staged",
             "--config",
-            str(repo / "smelt.yaml"),
+            str(repo / "smelt.yml"),
             "--format",
             "json",
             "--fail-on",
@@ -474,7 +500,7 @@ def test_staged_policy_blob_reuse_respects_no_cache(
     use_cache: bool,
 ) -> None:
     _check(repo, capsys)
-    policy_oid = capture_index(repo).blobs["smelt.yaml"]
+    policy_oid = capture_index(repo).blobs["smelt.yml"]
     (repo / "app/consumer.py").write_text("# Removed the last caller.\n")
     _git(repo, "add", "app/consumer.py")
     source_oid = capture_index(repo).blobs["app/consumer.py"]
@@ -502,11 +528,11 @@ def test_changed_staged_policy_cannot_reuse_previous_blob(
     (repo / "app/consumer.py").write_text("")
     _git(repo, "add", "app/consumer.py")
     assert _check(repo, capsys)[0] == 1
-    config = repo / "smelt.yaml"
+    config = repo / "smelt.yml"
     config.write_text(
         CONFIG.replace("internal-public-member: warning", "internal-public-member: off")
     )
-    _git(repo, "add", "smelt.yaml")
+    _git(repo, "add", "smelt.yml")
     config.write_text("invalid: [")
     actual = _check(repo, capsys)
     assert actual[0] == 0
@@ -545,8 +571,8 @@ def test_arbitrary_markdown_debt_file_is_an_observed_input(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     Debt([]).write(repo / "accepted.md")
-    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.md\n")
-    _git(repo, "add", "smelt.yaml", "accepted.md")
+    (repo / "smelt.yml").write_text(CONFIG + "\ndebt: accepted.md\n")
+    _git(repo, "add", "smelt.yml", "accepted.md")
     assert _check(repo, capsys)[0] == 0
     (repo / "accepted.md").write_text("broken JSON")
     _git(repo, "add", "accepted.md")
@@ -589,12 +615,12 @@ def test_retained_worker_matches_fresh_checks_after_edits_errors_and_head_change
         _, edited = invoke_client(repo, endpoint)
         assert edited["violations"][0]["path"] == "app/browser.py"
         assert edited == _check(repo, capsys, "--no-cache")[1]
-        (repo / "smelt.yaml").write_text("broken: [")
-        _git(repo, "add", "smelt.yaml")
+        (repo / "smelt.yml").write_text("broken: [")
+        _git(repo, "add", "smelt.yml")
         with pytest.raises(RuntimeError, match="worker check failed"):
             invoke_client(repo, endpoint)
-        (repo / "smelt.yaml").write_text(CONFIG)
-        _git(repo, "add", "smelt.yaml")
+        (repo / "smelt.yml").write_text(CONFIG)
+        _git(repo, "add", "smelt.yml")
         _git(repo, "commit", "-qm", "accept finding")
         _, committed = invoke_client(repo, endpoint)
         assert not committed["violations"]
@@ -607,14 +633,14 @@ def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working
     write_project(
         repo,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "app/domain/__init__.py": "",
             "app/domain/leak.py": "from app.application import service\n",
             "app/application/__init__.py": "",
             "app/application/service.py": "VALUE = 1\n",
         },
     )
-    _git(repo, "add", "smelt.yaml", "app")
+    _git(repo, "add", "smelt.yml", "app")
     (repo / "app/domain/leak.py").write_text("")
     (repo / "app/application/service.py").unlink()
     cached = _check(repo, capsys)
@@ -628,14 +654,14 @@ def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working
 def test_explicit_staged_config_can_be_deleted_from_the_working_tree(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = repo / "nested/smelt.yaml"
+    config = repo / "nested/smelt.yml"
     config.parent.mkdir()
     config.write_text(
         CONFIG.replace(
             "root_packages: [app]", "root_packages: [app], source_roots: ['..']"
         )
     )
-    _git(repo, "add", "nested/smelt.yaml")
+    _git(repo, "add", "nested/smelt.yml")
     config.unlink()
     config.parent.rmdir()
     cached = _check(repo, capsys, "--config", str(config))
@@ -660,7 +686,7 @@ def test_text_feedback_names_the_decision_and_shows_the_staged_source(
                 "check",
                 "--staged",
                 "--config",
-                str(repo / "smelt.yaml"),
+                str(repo / "smelt.yml"),
                 "--fail-on",
                 "warning",
                 "--no-color",
@@ -683,8 +709,8 @@ def test_debt_uses_the_captured_index_even_if_another_process_stages_again(
     Debt.from_violations(
         outcome.report.violations, snippet_reader(outcome.context)
     ).write(repo / "accepted.baseline")
-    (repo / "smelt.yaml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
-    _git(repo, "add", "smelt.yaml", "accepted.baseline", "app")
+    (repo / "smelt.yml").write_text(CONFIG + "\ndebt: accepted.baseline\n")
+    _git(repo, "add", "smelt.yml", "accepted.baseline", "app")
 
     def capture(root: Path) -> GitIndex:
         captured = capture_index(root)

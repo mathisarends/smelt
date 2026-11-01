@@ -29,7 +29,7 @@ def test_missing_modules_are_reported_per_matching_package(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/parts/one/__init__.py": "",
             "app/parts/one/api.py": "",
@@ -60,7 +60,7 @@ def test_required_entry_accepts_modules_and_packages(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/parts/one/__init__.py": "",
             f"app/parts/one/{api_path}": "",
             "app/parts/one/core/models.py": "",
@@ -74,7 +74,7 @@ def test_excluded_module_does_not_fulfill_contract(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "root_packages: [app]", "root_packages: [app]\n  exclude: ['**/api.py']"
             ),
             "app/parts/one/__init__.py": "",
@@ -94,7 +94,7 @@ def test_nonmatching_package_and_deeper_descendants_are_unaffected(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/parts/one/api.py": "",
             "app/parts/one/core/models.py": "",
             "app/parts/one/nested/task.py": "",
@@ -111,7 +111,7 @@ def test_public_entry_points_must_exist_without_duplicate_findings(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "required: [api, core.models]",
                 "required: [api]\n      public: [api, commands.**]",
             ),
@@ -129,7 +129,7 @@ def test_private_package_does_not_require_public_entry_point(tmp_path: Path) -> 
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace("required: [api, core.models]", "public: []"),
+            "smelt.yml": CONFIG.replace("required: [api, core.models]", "public: []"),
             "app/parts/one/__init__.py": "",
         },
     )
@@ -141,7 +141,7 @@ def test_package_match_typo_is_a_config_error(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/other/__init__.py": "",
         },
     )
@@ -154,7 +154,7 @@ def test_no_contract_keeps_existing_behavior(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
         },
     )

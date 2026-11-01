@@ -22,11 +22,11 @@ structure:
         internal-public-member: warning
 ```
 
-In the existing Smelt pre-commit repository entry, choose `id: smelt-staged`.
+In the existing Smelt prek repository entry, choose `id: smelt-staged`.
 This hook runs `smelt check --staged --fail-on warning`, without passing filenames,
 and always runs so deletions and configuration-only changes receive a check too.
 The existing `smelt` hook retains full-project behavior. A manual invocation of the
-staged hook, including `pre-commit run --all-files`, still checks the Git index.
+staged hook, including `prek run --all-files`, still checks the Git index.
 Use `smelt check` for the full working-tree inventory and CI.
 
 Installing this native build from a Git checkout, including the hook's Python

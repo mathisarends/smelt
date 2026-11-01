@@ -30,7 +30,7 @@ architecture:
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/domain/model.py": source,
@@ -282,7 +282,7 @@ class TestTransitive:
     ) -> None:
         root = _project(tmp_path, "deny", "from app import bridge\n", transitive=True)
         write_project(root, {"app/bridge.py": "import requests\n"})
-        config_path = root / "smelt.yaml"
+        config_path = root / "smelt.yml"
         config_path.write_text(
             config_path.read_text(encoding="utf-8").replace(
                 "transitive: true", f"transitive: true, type_checking: {type_checking}"

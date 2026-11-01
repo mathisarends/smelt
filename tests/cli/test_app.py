@@ -149,7 +149,7 @@ def clean_project(tmp_path: Path) -> Path:
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/application/__init__.py": "",
@@ -165,7 +165,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
                 "app/__init__.py": "",
                 "tests/test_smoke.py": "def test_smoke(): pass\n",
             },
@@ -174,7 +174,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--format",
             "concise",
             "--fail-on",
@@ -200,7 +200,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
                 "app/__init__.py": "",
             },
         )
@@ -208,7 +208,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--format",
             output_format,
             "--fail-on",
@@ -226,7 +226,7 @@ class TestCheckCommand:
             assert report["violations"] == []
             [diagnostic] = report["configuration_diagnostics"]
             assert diagnostic["key"] == "architecture.layers"
-            assert diagnostic["path"] == "smelt.yaml"
+            assert diagnostic["path"] == "smelt.yml"
             assert diagnostic["severity"] == "warning"
         elif output_format == "sarif":
             [run] = json.loads(out)["runs"]
@@ -238,7 +238,7 @@ class TestCheckCommand:
                 notification["locations"][0]["physicalLocation"]["artifactLocation"][
                     "uri"
                 ]
-                == "smelt.yaml"
+                == "smelt.yml"
             )
 
     def test_all_prefix_enables_cycle_check_and_explicit_off_wins(
@@ -247,20 +247,20 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
                 "app/__init__.py": "",
                 "app/one.py": "from app import two",
                 "app/two.py": "from app import one",
             },
         )
-        args = ("check", "--config", str(root / "smelt.yaml"), "--format", "json")
+        args = ("check", "--config", str(root / "smelt.yml"), "--format", "json")
         code, out, _ = _run(capsys, *args)
         assert code == 0
         assert json.loads(out)["violations"] == []
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 1
         assert "SMT104" in {item["code"] for item in json.loads(out)["violations"]}
-        with (root / "smelt.yaml").open("a") as handle:
+        with (root / "smelt.yml").open("a") as handle:
             handle.write("rules: {SMT104: off}\n")
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 0
@@ -272,7 +272,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
                 "app/__init__.py": "",
             },
         )
@@ -280,7 +280,7 @@ class TestCheckCommand:
         Debt([entry]).write(root / ".smelt/debt.json")
         assert check(root).resolved_debt == [entry]
         code, _, _ = _run(
-            capsys, "debt", "--config", str(root / "smelt.yaml"), "--prune"
+            capsys, "debt", "--config", str(root / "smelt.yml"), "--prune"
         )
         assert code == 0
         assert Debt.load(root / ".smelt/debt.json").entries == []
@@ -291,14 +291,14 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
                 "app/__init__.py": "",
                 "app/helpers.py": "def _hidden(): pass",
                 "tests/test_smoke.py": "def test_smoke(): pass",
             },
         )
         code, out, _ = _run(
-            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+            capsys, "check", "--config", str(root / "smelt.yml"), "--format", "json"
         )
         report = json.loads(out)
         assert code == 0
@@ -312,7 +312,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
                 "app/__init__.py": "",
             },
         )
@@ -324,7 +324,7 @@ class TestCheckCommand:
         assert outcome.resolved_debt == []
         assert outcome.report.violations == []
         args = ("--prune",) if prune else ()
-        code, _, _ = _run(capsys, "debt", "--config", str(root / "smelt.yaml"), *args)
+        code, _, _ = _run(capsys, "debt", "--config", str(root / "smelt.yml"), *args)
         assert code == 0
         assert Debt.load(root / ".smelt/debt.json").entries == [entry]
 
@@ -335,7 +335,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {}}",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {}}",
                 "app/__init__.py": "",
                 "app/events.py": source,
             },
@@ -345,7 +345,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT315",
             "--fix",
@@ -364,7 +364,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
                 "app/__init__.py": "",
                 "app/service.py": source,
             },
@@ -374,7 +374,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT314",
             "--fix",
@@ -391,7 +391,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  string-patch-target: error\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  string-patch-target: error\n",
                 "app/__init__.py": "",
                 "tests/test_service.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')",
             },
@@ -399,7 +399,7 @@ class TestCheckCommand:
         arguments = (
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT422",
         )
@@ -419,7 +419,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
+                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
                 "app/service.py": "def _helper(): return 7\n\ndef api(): return _helper()\n",
             },
         )
@@ -428,7 +428,7 @@ class TestCheckCommand:
         arguments = (
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT313",
             "--format",
@@ -457,7 +457,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                 version: 1
                 project: {root_packages: [app]}
                 structure:
@@ -472,7 +472,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT312",
             "--show-coverage",
@@ -493,7 +493,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                 version: 1
                 project: {root_packages: [app], python_version: "3.14"}
                 structure:
@@ -508,7 +508,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--show-coverage",
             "--format",
             "json",
@@ -525,7 +525,7 @@ class TestCheckCommand:
             "context",
             "app/source.py",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--format",
             "json",
         )
@@ -542,7 +542,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                 version: 1
                 project: {root_packages: [library]}
                 structure:
@@ -559,7 +559,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--select",
             "SMT307",
             "--show-coverage",
@@ -579,7 +579,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG,
+                "smelt.yml": LAYERED_CONFIG,
                 "app/__init__.py": "",
                 "app/domain/model.py": "VALUE = 1\n",
                 "client/api.py": "VALUE = 1\n",
@@ -590,7 +590,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(root / "smelt.yaml"),
+            str(root / "smelt.yml"),
             "--strict-coverage",
             "--show-coverage",
             "--format",
@@ -607,7 +607,7 @@ class TestCheckCommand:
             item["path"] == "client/api.py"
             for item in document["coverage"]["inventory"]
         )
-        assert "coverage" not in (root / "smelt.yaml").read_text(encoding="utf-8")
+        assert "coverage" not in (root / "smelt.yml").read_text(encoding="utf-8")
 
     @pytest.mark.parametrize("prune", [False, True])
     def test_debt_command_does_not_write_when_coverage_is_incomplete(
@@ -616,15 +616,15 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG.replace(
+                "smelt.yml": LAYERED_CONFIG.replace(
                     "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
                 ),
                 "app/__init__.py": "",
                 "client/api.py": "VALUE = 1\n",
             },
         )
-        before = (root / "smelt.yaml").read_bytes()
-        args = ["debt", "--config", str(root / "smelt.yaml")]
+        before = (root / "smelt.yml").read_bytes()
+        args = ["debt", "--config", str(root / "smelt.yml")]
         if prune:
             args.append("--prune")
 
@@ -633,7 +633,7 @@ class TestCheckCommand:
         assert code == 2
         assert "coverage cannot be accepted as debt" in err
         assert not (root / ".smelt").exists()
-        assert (root / "smelt.yaml").read_bytes() == before
+        assert (root / "smelt.yml").read_bytes() == before
 
     @pytest.mark.parametrize("output_format", ["json", "sarif", "github"])
     def test_nested_configuration_identifies_and_rebases_paths(
@@ -643,7 +643,7 @@ class TestCheckCommand:
             tmp_path,
             {
                 ".git": "",
-                "service/smelt.yaml": LAYERED_CONFIG,
+                "service/smelt.yml": LAYERED_CONFIG,
                 "service/app/__init__.py": "",
                 "service/app/domain/model.py": "from app.infra import db\n",
                 "service/app/infra/db.py": "",
@@ -654,7 +654,7 @@ class TestCheckCommand:
             capsys,
             "check",
             "--config",
-            str(tmp_path / "service/smelt.yaml"),
+            str(tmp_path / "service/smelt.yml"),
             "--format",
             output_format,
         )
@@ -668,7 +668,7 @@ class TestCheckCommand:
             assert document["project"]["repository_prefix"] == "service"
             assert (
                 document["project"]["config"]
-                == (tmp_path / "service/smelt.yaml").as_posix()
+                == (tmp_path / "service/smelt.yml").as_posix()
             )
             assert document["violations"][0]["path"] == "app/domain/model.py"
         elif output_format == "sarif":
@@ -858,15 +858,13 @@ class TestCheckCommand:
         clean_project: Path,
         args: tuple[str, ...],
     ) -> None:
-        code, _, err = _run(
-            capsys, *args, "--config", str(clean_project / "smelt.yaml")
-        )
+        code, _, err = _run(capsys, *args, "--config", str(clean_project / "smelt.yml"))
 
         assert (code, err) == (0, "")
 
     def test_exit_code_one_on_errors(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
-            capsys, "--config", str(GATEWAY / "smelt.yaml"), "check", "--no-color"
+            capsys, "--config", str(GATEWAY / "smelt.yml"), "check", "--no-color"
         )
 
         assert code == 1
@@ -890,7 +888,7 @@ class TestCheckCommand:
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
-            capsys, "--config", str(GATEWAY / "smelt.yaml"), "check", "--format", "json"
+            capsys, "--config", str(GATEWAY / "smelt.yml"), "check", "--format", "json"
         )
 
         document = json.loads(out)
@@ -904,7 +902,7 @@ class TestCheckCommand:
         _, out, _ = _run(
             capsys,
             "--config",
-            str(GATEWAY / "smelt.yaml"),
+            str(GATEWAY / "smelt.yml"),
             "check",
             "--format",
             "json",
@@ -938,7 +936,7 @@ class TestCheckCommand:
             "--format",
             "json",
             "src/gateway/shared/clock.py",
-            "smelt.yaml",
+            "smelt.yml",
         )
 
         paths = {v["path"] for v in json.loads(out)["violations"]}
@@ -948,23 +946,23 @@ class TestCheckCommand:
     def test_config_error_exits_with_two(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        (tmp_path / "smelt.yaml").write_text(
+        (tmp_path / "smelt.yml").write_text(
             "version: 1\nproject: {root_packages: [app]}\nbogus: 1\n"
         )
 
-        code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yaml"), "check")
+        code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yml"), "check")
 
         assert code == 2
         assert 'bogus: unknown key "bogus"' in err
 
-    @pytest.mark.parametrize("input_file", ["smelt.yaml", "debt.json", "app/model.py"])
+    @pytest.mark.parametrize("input_file", ["smelt.yml", "debt.json", "app/model.py"])
     def test_invalid_encoding_is_a_structured_input_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, input_file: str
     ) -> None:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
                 "app/__init__.py": "",
                 "app/model.py": "VALUE = 1\n",
                 "debt.json": '{"version":1,"violations":[]}',
@@ -973,7 +971,7 @@ class TestCheckCommand:
         (root / input_file).write_bytes(b"# invalid encoding \xff\n")
 
         code, out, err = _run(
-            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+            capsys, "check", "--config", str(root / "smelt.yml"), "--format", "json"
         )
 
         assert code == 2
@@ -983,14 +981,14 @@ class TestCheckCommand:
     def test_config_error_is_json_with_its_location(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        (tmp_path / "smelt.yaml").write_text(
+        (tmp_path / "smelt.yml").write_text(
             "version: 1\nproject: {root_packages: [app]}\nbogus: 1\n"
         )
 
         code, out, _ = _run(
             capsys,
             "--config",
-            str(tmp_path / "smelt.yaml"),
+            str(tmp_path / "smelt.yml"),
             "check",
             "--format",
             "json",
@@ -999,8 +997,8 @@ class TestCheckCommand:
         error = json.loads(out)["error"]
         assert code == 2
         assert error["kind"] == "config"
-        assert error["message"] == "invalid configuration in smelt.yaml"
-        assert error["config"]["file"] == "smelt.yaml"
+        assert error["message"] == "invalid configuration in smelt.yml"
+        assert error["config"]["file"] == "smelt.yml"
         assert {"location": "bogus", "message": 'unknown key "bogus"'} in error[
             "config"
         ]["issues"]
@@ -1016,24 +1014,24 @@ class TestCheckCommand:
         code, _, err = _run(capsys, "check")
 
         assert code == 2
-        assert "no smelt.yaml found" in err
+        assert "no smelt.yml found" in err
 
         code, out, _ = _run(capsys, "check", "--format", "json")
 
         error = json.loads(out)["error"]
         assert code == 2
         assert error["kind"] == "config"
-        assert "no smelt.yaml found" in error["message"]
+        assert "no smelt.yml found" in error["message"]
         assert error["input"] is None
 
     def test_missing_root_package_exits_with_two(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        (tmp_path / "smelt.yaml").write_text(
+        (tmp_path / "smelt.yml").write_text(
             "version: 1\nproject: {root_packages: [nothere]}\n"
         )
 
-        code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yaml"), "check")
+        code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yml"), "check")
 
         assert code == 2
         assert 'package "nothere" is in none of the source roots (.)' in err
@@ -1050,7 +1048,7 @@ class TestChangedHints:
             ["commit", "-qm", "i"],
         ):
             subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
-        config = clean_project / "smelt.yaml"
+        config = clean_project / "smelt.yml"
         config.write_text(
             config.read_text(encoding="utf-8") + "rules: {SMT305: hint}\n",
             encoding="utf-8",
@@ -1083,7 +1081,7 @@ class TestInfoCommands:
     ) -> None:
         root = tmp_path / "gateway"
         shutil.copytree(GATEWAY, root)
-        path = root / "smelt.yaml"
+        path = root / "smelt.yml"
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         data["architecture"]["cross_feature"]["allow"].append(
             {"from": "voice.application", "to": "billing.application"}
@@ -1168,7 +1166,7 @@ class TestInfoCommands:
         code, out, _ = _run(capsys, "config", "schema")
 
         assert code == 0
-        assert json.loads(out)["title"] == "smelt.yaml"
+        assert json.loads(out)["title"] == "smelt.yml"
 
     def test_config_show_fills_defaults(
         self, capsys: pytest.CaptureFixture[str]
@@ -1176,7 +1174,7 @@ class TestInfoCommands:
         code, out, _ = _run(
             capsys,
             "--config",
-            str(GATEWAY / "smelt.yaml"),
+            str(GATEWAY / "smelt.yml"),
             "config",
             "show",
             "--format",
@@ -1244,7 +1242,7 @@ class TestDiscoveryCommands:
 
     def test_context_for_feature(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, out, _ = _run(
-            capsys, "--config", str(GATEWAY / "smelt.yaml"), "context", "voice"
+            capsys, "--config", str(GATEWAY / "smelt.yml"), "context", "voice"
         )
 
         assert code == 0
@@ -1262,7 +1260,7 @@ class TestDiscoveryCommands:
 
     def test_context_unknown_target(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, _, err = _run(
-            capsys, "--config", str(GATEWAY / "smelt.yaml"), "context", "voic"
+            capsys, "--config", str(GATEWAY / "smelt.yml"), "context", "voic"
         )
 
         assert code == 2
@@ -1289,7 +1287,7 @@ class TestInitCommand:
 
         assert code == 2
         assert "was not generated by Smelt" in err
-        assert not (tmp_path / "smelt.yaml").exists()
+        assert not (tmp_path / "smelt.yml").exists()
         assert (
             json.loads((tmp_path / ".smelt.schema.json").read_text())["title"]
             == "my custom schema"
@@ -1313,7 +1311,7 @@ class TestInitCommand:
         assert code == 0
         assert err == ""
         assert "editor completion" in out
-        written = (tmp_path / "smelt.yaml").read_text(encoding="utf-8")
+        written = (tmp_path / "smelt.yml").read_text(encoding="utf-8")
         assert "preset:" not in written
         assert "internal-public-member: warning" in written
         assert "architecture:" not in written
@@ -1367,7 +1365,7 @@ class TestInitCommand:
 
         assert code == 0
         assert err == ""
-        config = load_config(tmp_path / "smelt.yaml").config
+        config = load_config(tmp_path / "smelt.yml").config
         assert config.project.root_packages == ["app", "client"]
         assert set(config.architecture.layers) == {"domain", "infrastructure"}
         assert config.tests.layout == "none"
@@ -1396,7 +1394,7 @@ class TestInitCommand:
         code, out, _ = _run(capsys, "init")
 
         assert code == 0
-        assert (tmp_path / "smelt.yaml").is_file()
+        assert (tmp_path / "smelt.yml").is_file()
         assert "  layers: domain (domain), infrastructure (infra)\n" in out
         assert "The inferred config yields 1 error and 0 warnings." in out
 
@@ -1444,7 +1442,7 @@ class TestInitCommand:
         code, _, err = _run(capsys, "init")
 
         assert code == 2
-        assert "smelt.yaml already exists (use --force to overwrite)" in err
+        assert "smelt.yml already exists (use --force to overwrite)" in err
 
     @pytest.mark.parametrize("before", [True, False])
     def test_custom_config_is_the_only_file_written(
@@ -1454,19 +1452,19 @@ class TestInitCommand:
         monkeypatch: pytest.MonkeyPatch,
         before: bool,
     ) -> None:
-        reviewed = (clean_project / "smelt.yaml").read_text(encoding="utf-8")
+        reviewed = (clean_project / "smelt.yml").read_text(encoding="utf-8")
         monkeypatch.chdir(clean_project)
-        args = ["init", "--config", "custom.yaml"]
+        args = ["init", "--config", "custom.yml"]
         if before:
-            args = ["--config", "custom.yaml", "init"]
+            args = ["--config", "custom.yml", "init"]
 
         code, out, err = _run(capsys, *args)
 
         assert (code, err) == (0, "")
-        assert out.startswith("Wrote custom.yaml\n")
-        assert "pass --config custom.yaml to every command" in out
-        assert load_config(clean_project / "custom.yaml").config.project.root_packages
-        assert (clean_project / "smelt.yaml").read_text(encoding="utf-8") == reviewed
+        assert out.startswith("Wrote custom.yml\n")
+        assert "pass --config custom.yml to every command" in out
+        assert load_config(clean_project / "custom.yml").config.project.root_packages
+        assert (clean_project / "smelt.yml").read_text(encoding="utf-8") == reviewed
 
     def test_existing_custom_config_needs_force_and_leaves_the_default_alone(
         self,
@@ -1474,20 +1472,20 @@ class TestInitCommand:
         clean_project: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        reviewed = (clean_project / "smelt.yaml").read_text(encoding="utf-8")
-        (clean_project / "custom.yaml").write_text("# mine\n", encoding="utf-8")
+        reviewed = (clean_project / "smelt.yml").read_text(encoding="utf-8")
+        (clean_project / "custom.yml").write_text("# mine\n", encoding="utf-8")
         monkeypatch.chdir(clean_project)
 
-        refused, _, err = _run(capsys, "init", "--config", "custom.yaml")
-        forced, _, _ = _run(capsys, "init", "--force", "--config", "custom.yaml")
+        refused, _, err = _run(capsys, "init", "--config", "custom.yml")
+        forced, _, _ = _run(capsys, "init", "--force", "--config", "custom.yml")
 
         assert refused == 2
-        assert "custom.yaml already exists (use --force to overwrite)" in err
+        assert "custom.yml already exists (use --force to overwrite)" in err
         assert forced == 0
-        assert "# mine" not in (clean_project / "custom.yaml").read_text(
+        assert "# mine" not in (clean_project / "custom.yml").read_text(
             encoding="utf-8"
         )
-        assert (clean_project / "smelt.yaml").read_text(encoding="utf-8") == reviewed
+        assert (clean_project / "smelt.yml").read_text(encoding="utf-8") == reviewed
 
     def test_custom_config_in_a_subdirectory_infers_that_project(
         self,
@@ -1498,29 +1496,34 @@ class TestInitCommand:
         write_project(tmp_path, {"service/shop/__init__.py": "", "other/x.py": ""})
         monkeypatch.chdir(tmp_path)
 
-        code, out, _ = _run(capsys, "init", "--config", "service/smelt.yaml")
+        code, out, _ = _run(capsys, "init", "--config", "service/smelt.yml")
 
         assert code == 0
-        assert out.startswith("Wrote service/smelt.yaml\n")
+        assert out.startswith("Wrote service/smelt.yml\n")
         assert "every command" not in out
-        loaded = load_config(tmp_path / "service" / "smelt.yaml")
+        loaded = load_config(tmp_path / "service" / "smelt.yml")
         assert loaded.config.project.root_packages == ["shop"]
-        assert not (tmp_path / "smelt.yaml").exists()
+        assert not (tmp_path / "smelt.yml").exists()
 
-    def test_force_overwrites_an_existing_smelt_yml_in_place(
+    @pytest.mark.parametrize("filename", ["smelt.yml", "smelt.yaml"])
+    def test_force_overwrites_an_existing_config_in_place(
         self,
         capsys: pytest.CaptureFixture[str],
         clean_project: Path,
         monkeypatch: pytest.MonkeyPatch,
+        filename: str,
     ) -> None:
-        (clean_project / "smelt.yaml").rename(clean_project / "smelt.yml")
+        if filename != "smelt.yml":
+            (clean_project / "smelt.yml").rename(clean_project / filename)
         monkeypatch.chdir(clean_project)
 
         code, out, _ = _run(capsys, "init", "--force")
 
         assert code == 0
-        assert out.startswith("Wrote smelt.yml\n")
-        assert not (clean_project / "smelt.yaml").exists()
+        assert out.startswith(f"Wrote {filename}\n")
+        assert (clean_project / filename).is_file()
+        other = "smelt.yaml" if filename == "smelt.yml" else "smelt.yml"
+        assert not (clean_project / other).exists()
 
 
 class TestDebtCommand:
@@ -1533,7 +1536,7 @@ class TestDebtCommand:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": "def helper(): pass\n",
                 "app/legacy/__init__.py": "",
@@ -1544,7 +1547,7 @@ class TestDebtCommand:
         code, _, err = _run(capsys, "debt")
         assert code == 0
         assert not err
-        config = tmp_path / "smelt.yaml"
+        config = tmp_path / "smelt.yml"
         with config.open("a", encoding="utf-8") as target:
             target.write(
                 "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {internal-public-member: off}\n"
@@ -1563,7 +1566,7 @@ class TestDebtCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         files = _violating_project()
-        files["smelt.yaml"] += "debt: debt.json\n"
+        files["smelt.yml"] += "debt: debt.json\n"
         root = write_project(tmp_path, files)
         [known] = check(root).unfiltered
         source = files["app/domain/model.py"]
@@ -1599,7 +1602,7 @@ class TestDebtCommand:
         monkeypatch: pytest.MonkeyPatch,
         content: str,
     ) -> None:
-        config = clean_project / "smelt.yaml"
+        config = clean_project / "smelt.yml"
         config.write_text(
             config.read_text(encoding="utf-8") + "debt: debt.json\n", encoding="utf-8"
         )
@@ -1632,7 +1635,7 @@ class TestDebtCommand:
         assert (code, err) == (0, "")
         assert out == (
             "Wrote .smelt/debt.json (1 violation)\n"
-            "Added `debt: .smelt/debt.json` to smelt.yaml\n"
+            "Added `debt: .smelt/debt.json` to smelt.yml\n"
         )
         assert _run(capsys, "check")[0] == 0
 
@@ -1643,13 +1646,13 @@ class TestDebtCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         files = _violating_project()
-        files["smelt.yaml"] += "# debt: .smelt/debt.json\n"
+        files["smelt.yml"] += "# debt: .smelt/debt.json\n"
         root = write_project(tmp_path, files)
         monkeypatch.chdir(root)
 
         _run(capsys, "debt")
 
-        config = (root / "smelt.yaml").read_text(encoding="utf-8")
+        config = (root / "smelt.yml").read_text(encoding="utf-8")
         assert config.endswith("\ndebt: .smelt/debt.json\n")
         assert "# debt" not in config
 
@@ -1660,7 +1663,7 @@ class TestDebtCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         files = _violating_project()
-        files["smelt.yaml"] += "debt: debt.json\n"
+        files["smelt.yml"] += "debt: debt.json\n"
         root = write_project(tmp_path, files)
         monkeypatch.chdir(root)
         _run(capsys, "debt")
@@ -1677,7 +1680,7 @@ class TestDebtCommand:
 
 def _violating_project() -> dict[str, str]:
     return {
-        "smelt.yaml": LAYERED_CONFIG,
+        "smelt.yml": LAYERED_CONFIG,
         "app/__init__.py": "",
         "app/domain/__init__.py": "",
         "app/domain/model.py": "from app.application import service\n",
@@ -1704,7 +1707,7 @@ def test_optional_default_cli_requires_both_fix_flags(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/service.py": OPTIONAL_DEFAULT_SOURCE,
         },
@@ -1712,7 +1715,7 @@ def test_optional_default_cli_requires_both_fix_flags(
     arguments = [
         "check",
         "--config",
-        str(root / "smelt.yaml"),
+        str(root / "smelt.yml"),
         "--select",
         "SMT321",
         "--fail-on",
@@ -1756,7 +1759,7 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n",
             "app/__init__.py": "",
             "app/service.py": "def _default():\n    return 7\ndef create(options: int | None = None):\n    return options or _default()\n",
         },
@@ -1766,7 +1769,7 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
             [
                 "check",
                 "--config",
-                str(root / "smelt.yaml"),
+                str(root / "smelt.yml"),
                 "--select",
                 "SMT313,SMT321",
                 "--fail-on",

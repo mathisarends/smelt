@@ -332,7 +332,7 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
 
 def _rule_brief(ctx: AnalysisContext, module: str | None) -> dict[str, str]:
     rules = build_rule_set()
-    policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yaml"))
+    policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yml"))
     return {
         rule.name: severity.value
         if (severity := policy.severity(rule, ctx, module))

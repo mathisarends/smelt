@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-CONFIG_FILENAME = "smelt.yaml"
-CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yml")
+CONFIG_FILENAME = "smelt.yml"
+CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yaml")
 
 _REMOVED_SWITCHES = {
     "member_visibility": "internal-public-member",
@@ -102,7 +102,7 @@ class LoadedConfig:
 
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
-    """Walk up from ``start`` looking for ``smelt.yaml`` or ``smelt.yml``."""
+    """Walk up from ``start`` looking for ``smelt.yml`` or ``smelt.yaml``."""
     store = store or SourceStore()
     current = store.resolve(start)
     for directory in (current, *current.parents):

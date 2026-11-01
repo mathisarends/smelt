@@ -19,7 +19,7 @@ def _project(
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\n{section}{policy}",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{section}{policy}",
             "app/__init__.py": "",
             path: source,
         },

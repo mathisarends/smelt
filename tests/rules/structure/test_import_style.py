@@ -33,7 +33,7 @@ def _project(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/pkg/__init__.py": "",
             "app/pkg/models.py": "Record = object()\n",
@@ -146,7 +146,7 @@ def test_source_root_layout_does_not_affect_relative_depth(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "[app, library]", "[app], source_roots: [source]"
             ),
             "source/app/pkg/service.py": "from .models import Record\nfrom ..domain import Entity",

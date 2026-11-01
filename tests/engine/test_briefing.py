@@ -26,7 +26,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Service}}\narchitecture: {imports: {cycles: [modules], type_checking_cycles: ignore}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Service}}\narchitecture: {imports: {cycles: [modules], type_checking_cycles: ignore}}\n",
             "app/__init__.py": "from .api import Service\n",
             "app/api.py": "class Service: pass\n",
         },
@@ -56,7 +56,7 @@ def test_member_policy_is_available_before_writing_a_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
             "app/__init__.py": "",
         },
     )
@@ -75,7 +75,7 @@ def test_type_dispatch_policy_is_visible_before_writing_a_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
             "app/__init__.py": "",
         },
     )
@@ -94,7 +94,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
             "app/__init__.py": "",
         },
     )
@@ -124,7 +124,7 @@ def test_test_quality_policy_is_available_for_planned_placement(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
             "app/__init__.py": "",
         },
     )
@@ -143,7 +143,7 @@ def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {max_patches_per_test: 0}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ntests: {max_patches_per_test: 0}",
             "app/__init__.py": "",
         },
     )
@@ -160,7 +160,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        public-definitions-first: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        public-definitions-first: error\n",
             "app/__init__.py": "",
         },
     )
@@ -191,7 +191,7 @@ def test_private_module_convention_is_available_before_writing_a_file(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": """
+            "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
             structure:
@@ -218,7 +218,7 @@ def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> Non
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": """
+            "smelt.yml": """
             version: 1
             project: {root_packages: [library]}
             architecture: {shared: [library]}
@@ -260,7 +260,7 @@ def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> Non
 
 @pytest.fixture(scope="module")
 def outcome() -> CheckOutcome:
-    return run_check(load_config(GATEWAY / "smelt.yaml"), CheckOptions())
+    return run_check(load_config(GATEWAY / "smelt.yml"), CheckOptions())
 
 
 class TestResolveTarget:
@@ -270,7 +270,7 @@ class TestResolveTarget:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
                 "src/app/__init__.py": "",
                 "src/app/domain/model.py": "",
                 "src/client/api.py": "VALUE = 1\n",
@@ -425,7 +425,7 @@ class TestModuleBriefing:
 
 
 MIRRORED = {
-    "smelt.yaml": """
+    "smelt.yml": """
         version: 1
         project: {root_packages: [app]}
         architecture:
@@ -525,7 +525,7 @@ class TestMirroredProject:
             **MIRRORED,
             "app/platform/di.py": "from app.features.voice.domain import call\n",
         }
-        files["smelt.yaml"] = files["smelt.yaml"].replace(
+        files["smelt.yml"] = files["smelt.yml"].replace(
             "wiring: [app.features.*.infra.di]",
             "wiring: [app.features.*.infra.di, app.platform.di]",
         )
@@ -545,7 +545,7 @@ class TestMirroredProject:
         self, tmp_path: Path
     ) -> None:
         files = {**MIRRORED, "app/main.py": ""}
-        files["smelt.yaml"] = files["smelt.yaml"].replace(
+        files["smelt.yml"] = files["smelt.yml"].replace(
             "wiring:", "composition_root: [app.main]\n          wiring:"
         )
         outcome = check(write_project(tmp_path, files))

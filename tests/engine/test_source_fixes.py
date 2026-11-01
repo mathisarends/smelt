@@ -11,7 +11,7 @@ def test_edit_between_preparation_and_write_is_preserved(tmp_path: Path) -> None
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/service.py": "value = 1\n",
         },
     )

@@ -36,8 +36,8 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
         tmp_path,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: off}\n",
-            "first/smelt.yaml": "extends: ../base.yml\n",
-            "second/smelt.yaml": "extends: ../base.yml\n",
+            "first/smelt.yml": "extends: ../base.yml\n",
+            "second/smelt.yml": "extends: ../base.yml\n",
             "first/app/__init__.py": "",
             "second/app/__init__.py": "",
             "first/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
@@ -63,7 +63,7 @@ def test_cache_creates_an_ignore_file_and_preserves_existing_content(
 ) -> None:
     write_project(
         tmp_path,
-        {"smelt.yaml": CONFIG, "app/__init__.py": "", "app/a.py": "VALUE = 1\n"},
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "app/a.py": "VALUE = 1\n"},
     )
     check(tmp_path)
     ignore = tmp_path / ".smelt_cache/.gitignore"
@@ -77,7 +77,7 @@ def test_facade_exports_invalidate_public_member_decisions(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-attribute: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-attribute: warning}\n",
             "app/__init__.py": "",
             "app/models.py": "class Tab:\n    def __init__(self): self.loading = False\n    def reload(self): pass\n",
             "tests/test_tab.py": "from app.models import Tab\ndef test_tab(): assert Tab().loading is False\n",
@@ -105,7 +105,7 @@ def test_content_changes_invalidate_even_with_identical_size_and_mtime(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "class Browser:\n    def emit(self): pass",
             "app/caller.py": "def _run(x): x.emit()",
@@ -130,7 +130,7 @@ def test_warm_check_reuses_rule_execution(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/api.py": "def public(): pass",
         },
@@ -148,7 +148,7 @@ def test_corrupt_cache_falls_back_to_full_analysis(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/api.py": "def public(): pass",
         },
@@ -165,7 +165,7 @@ def test_busy_cache_writer_does_not_change_the_check(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/api.py": "def public(): pass",
         },
@@ -187,7 +187,7 @@ def test_explicit_selection_cannot_reuse_a_package_only_result(tmp_path: Path) -
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace("match: app,", "match: app.api,"),
+            "smelt.yml": CONFIG.replace("match: app,", "match: app.api,"),
             "app/__init__.py": "",
             "app/api/__init__.py": "",
             "app/other.py": "def helper(): pass",
@@ -215,17 +215,17 @@ def test_policy_changes_and_deletions_invalidate_cached_findings(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/api.py": "def public(): pass",
         },
     )
     assert check(tmp_path).report.violations
-    (tmp_path / "smelt.yaml").write_text(
+    (tmp_path / "smelt.yml").write_text(
         CONFIG.replace("internal-public-member: warning", "internal-public-member: off")
     )
     assert not check(tmp_path).report.violations
-    (tmp_path / "smelt.yaml").write_text(CONFIG)
+    (tmp_path / "smelt.yml").write_text(CONFIG)
     (tmp_path / "app/api.py").unlink()
     assert not check(tmp_path).report.violations
 
@@ -234,7 +234,7 @@ def test_new_uncovered_source_cannot_hide_in_a_warm_cache(tmp_path: Path) -> Non
     write_project(
         tmp_path,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
         },
@@ -253,13 +253,13 @@ def test_cached_member_facts_only_parse_the_changed_file(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "class Browser:\n    def emit(self): pass",
             "app/caller.py": "def run(x): x.emit()",
         },
     )
-    config = load_config(tmp_path / "smelt.yaml").config
+    config = load_config(tmp_path / "smelt.yml").config
     cache = FactCache(tmp_path / ".smelt_cache")
     _ = AnalysisContext(tmp_path, config, cache=cache).member_usage.members
     cache.close()
@@ -288,7 +288,7 @@ def test_incremental_members_only_rebuild_changed_contributions(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "class Browser:\n    def emit(self): pass",
             "app/other.py": "class Other:\n    def unrelated(self): pass",
@@ -319,7 +319,7 @@ def test_incremental_members_track_reexports_inheritance_and_missing_namespaces(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "__all__ = []\ndef emit(): pass\nclass Base:\n    def run(self): pass",
             "app/facade.py": "from .service import emit, Base",
@@ -352,7 +352,7 @@ def test_incremental_members_keep_duplicate_same_line_uses(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "class Browser:\n    def emit(self): pass\n    def _run(self): self.emit(); self.emit()",
             "app/caller.py": "def _run(x): x.emit()",

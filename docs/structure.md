@@ -394,7 +394,7 @@ structure:
 The defaults are shown above. Each list must contain its categories exactly once;
 module docstrings, future imports and imports form the fixed prefix, and the
 main guard belongs last. Use package `rules: {public-definitions-first: off}` to exempt a package.
-The closest explicit rule setting wins; ordering options alone do not activate the check. This extends `smelt.yaml` package contracts rather than adding
+The closest explicit rule setting wins; ordering options alone do not activate the check. This extends `smelt.yml` package contracts rather than adding
 a second `[tool.smelt.ordering]` configuration source.
 
 The analyzer partitions module and directly nested class bodies into sections.

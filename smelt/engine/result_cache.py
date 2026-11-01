@@ -74,7 +74,7 @@ class ResultCache:
                 config = next(
                     (
                         directory / name
-                        for name in ("smelt.yaml", "smelt.yml")
+                        for name in ("smelt.yml", "smelt.yaml")
                         if (directory / name).relative_to(repository).as_posix()
                         in index.blobs
                     ),

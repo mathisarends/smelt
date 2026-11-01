@@ -25,7 +25,7 @@ class TestForbiddenPackageName:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG,
+                "smelt.yml": CONFIG,
                 "app/__init__.py": "",
                 "app/utils/__init__.py": "",
                 "app/utils/text.py": "",
@@ -47,7 +47,7 @@ class TestForbiddenPackageName:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/utils.py": "",
             },
@@ -72,7 +72,7 @@ MODULE_OPTIONS = CheckOptions(select=("SMT312",))
 def _module_project(
     root: Path, files: dict[str, str], config: str = MODULE_CONFIG
 ) -> Path:
-    return write_project(root, {"smelt.yaml": config, "app/__init__.py": "", **files})
+    return write_project(root, {"smelt.yml": config, "app/__init__.py": "", **files})
 
 
 class TestNoPrivateModules:
@@ -187,7 +187,7 @@ class TestNoPrivateModules:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": MODULE_CONFIG.replace("[app]", "[_app]").replace(
+                "smelt.yml": MODULE_CONFIG.replace("[app]", "[_app]").replace(
                     "match: app", "match: _app"
                 ),
                 "_app/__init__.py": "",
@@ -201,7 +201,7 @@ class TestNoPrivateModules:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": MODULE_CONFIG.replace(
+                "smelt.yml": MODULE_CONFIG.replace(
                     "root_packages: [app]",
                     "root_packages: [app]\n  source_roots: [left, right]",
                 ),
@@ -221,7 +221,7 @@ class TestNoPrivateModules:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": MODULE_CONFIG.replace(
+                "smelt.yml": MODULE_CONFIG.replace(
                     "root_packages: [app]",
                     "root_packages: [app]\n  source_roots: [_source]",
                 ),

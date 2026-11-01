@@ -169,7 +169,7 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    (tmp_path / "smelt.yaml").write_text(
+    (tmp_path / "smelt.yml").write_text(
         "version: 1\nproject: {root_packages: [app]}\n"
         "structure:\n  contracts:\n    api:\n      match: app\n"
         "      rules: {internal-public-member: warning}\n"

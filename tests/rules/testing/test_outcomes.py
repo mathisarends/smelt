@@ -44,7 +44,7 @@ def test_missing_outcome_explains_existing_helper_limits(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "tests/test_run.py": source,
         },
@@ -61,7 +61,7 @@ def test_configured_imported_assertion_helper_remains_an_explicit_contract(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {assertion_helpers: [tests.support.verify]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ntests: {assertion_helpers: [tests.support.verify]}\n",
             "app/__init__.py": "",
             "tests/test_run.py": "from tests.support import verify\nasync def test_run():\n    await verify()\n",
         },
@@ -140,7 +140,7 @@ def test_checked_inline_python_assertions_are_static_evidence(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
             "app/__init__.py": "",
             "tests/test_service.py": "import subprocess\nimport sys\ndef test_run():\n    "
             + body
@@ -185,7 +185,7 @@ def test_outcome_evidence(tmp_path: Path, body: str, flagged: bool) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_service.py": "import pytest\ndef test_run():\n    "
             + body
@@ -203,7 +203,7 @@ def test_assertion_helper_is_configurable_and_alias_aware(tmp_path: Path) -> Non
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  assertion_helpers:\n  - tests.assertions.assert_user\nrules:\n  test-without-outcome-check: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  assertion_helpers:\n  - tests.assertions.assert_user\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_service.py": "from tests.assertions import assert_user as verify\ndef test_run(): verify(user)",
         },
@@ -215,7 +215,7 @@ def test_event_observations_share_deadline_recognition(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n  unbounded-test-wait: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n  unbounded-test-wait: warning\n",
             "app/__init__.py": "",
             "tests/test_events.py": """
                 import asyncio
@@ -247,7 +247,7 @@ def test_default_configuration_keeps_quality_rules_opt_in(tmp_path: Path) -> Non
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
             "tests/test_service.py": "from app import _secret\nfrom unittest.mock import Mock, patch\ndef test_run():\n    patch('app.repo')\n    Mock()\n",
         },
@@ -266,7 +266,7 @@ def test_vacuity_review_is_separate_from_missing_outcomes_and_honors_exclusion(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  quality_exclude:\n  - tests/excluded/**\nrules:\n  test-without-outcome-check: warning\n  test-only-checks-possibly-empty-data: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\ntests:\n  quality_exclude:\n  - tests/excluded/**\nrules:\n  test-without-outcome-check: warning\n  test-only-checks-possibly-empty-data: warning\n",
             "app/__init__.py": "",
             "tests/test_codegen.py": "def test_codegen():\n    for name, content in generate().items():\n        assert committed[name] == content",
             "tests/excluded/test_codegen.py": "def test_codegen():\n    assert all(generate())",
@@ -285,7 +285,7 @@ def test_typed_conftest_mock_fixture_can_express_an_adapter_contract(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/conftest.py": "import pytest\nfrom unittest.mock import AsyncMock\n@pytest.fixture\ndef transport() -> AsyncMock: return AsyncMock()",
             "tests/test_adapter.py": "async def test_adapter(transport):\n    await navigate(transport)\n    transport.assert_awaited_once_with('Page.navigate', url='https://example.test')",
@@ -311,7 +311,7 @@ def test_codegen_review_is_backed_by_an_executed_empty_output_probe(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-only-checks-possibly-empty-data: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-only-checks-possibly-empty-data: warning\n",
             "app/__init__.py": "",
             "app/generator.py": "def generate():\n    return "
             + ("{}" if empty_output else "{'client.py': 'client'}"),

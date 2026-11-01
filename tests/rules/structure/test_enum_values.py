@@ -31,7 +31,7 @@ async def dispatch_wheel(cdp, point, *, delta_x: float, delta_y: float) -> None:
 def _project(tmp_path: Path, config: str = CONFIG) -> Path:
     return write_project(
         tmp_path,
-        {"smelt.yaml": config, "app/__init__.py": "", "app/mouse.py": SOURCE},
+        {"smelt.yml": config, "app/__init__.py": "", "app/mouse.py": SOURCE},
     )
 
 

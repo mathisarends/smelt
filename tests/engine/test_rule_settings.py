@@ -19,7 +19,7 @@ def _project(tmp_path: Path, policy: str) -> Path:
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
             "app/__init__.py": "",
             "app/api.py": "def helper(): return 1\n",
             "app/exported.py": "__all__ = ['supported']\ndef supported(): return 1\n",
@@ -70,7 +70,7 @@ structure:
         ("app/legacy/api.py", Severity.WARNING),
         ("app/legacy/new/api.py", Severity.ERROR),
     ]
-    with (root / "smelt.yaml").open("a", encoding="utf-8") as target:
+    with (root / "smelt.yml").open("a", encoding="utf-8") as target:
         target.write(
             "    disabled:\n      match: app.legacy.new\n      rules: {internal-public-member: off}\n"
         )
@@ -147,7 +147,7 @@ def test_scoped_off_does_not_report_old_debt_as_fixed(tmp_path: Path) -> None:
     Debt.from_violations(
         original.report.violations, snippet_reader(original.context)
     ).write(root / "debt.json")
-    with (root / "smelt.yaml").open("a", encoding="utf-8") as target:
+    with (root / "smelt.yml").open("a", encoding="utf-8") as target:
         target.write(
             "debt: debt.json\nstructure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {internal-public-member: off}\n"
         )

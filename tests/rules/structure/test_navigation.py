@@ -14,7 +14,7 @@ CONFIG = BASE_CONFIG + "rules: {deep-object-navigation: hint}\n"
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
     return write_project(
         tmp_path,
-        {"smelt.yaml": config, "app/__init__.py": "", "app/control.py": source},
+        {"smelt.yml": config, "app/__init__.py": "", "app/control.py": source},
     )
 
 
@@ -196,7 +196,7 @@ def test_inline_suppression_and_rule_off_are_respected(tmp_path: Path) -> None:
     outcome = check(root)
     assert outcome.report.violations == []
     assert outcome.report.suppressed == 1
-    write_project(root, {"smelt.yaml": CONFIG.replace(": hint", ": 'off'")})
+    write_project(root, {"smelt.yml": CONFIG.replace(": hint", ": 'off'")})
     assert violations(root, OPTIONS) == []
 
 
@@ -241,5 +241,5 @@ def test_cached_and_uncached_results_agree_after_source_and_policy_changes(
     cached = violations(root)
     assert len(cached) == 1
     assert cached == violations(root, CheckOptions(use_cache=False))
-    write_project(root, {"smelt.yaml": CONFIG.replace(": hint", ": 'off'")})
+    write_project(root, {"smelt.yml": CONFIG.replace(": hint", ": 'off'")})
     assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []

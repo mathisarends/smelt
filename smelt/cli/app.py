@@ -51,7 +51,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Static guardrails for Python architecture.",
     )
     parser.add_argument("--version", action="version", version=f"smelt {__version__}")
-    parser.add_argument("--config", metavar="PATH", help="path to smelt.yaml")
+    parser.add_argument("--config", metavar="PATH", help="path to smelt.yml")
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     _add_check(sub)
     _add_discovery(sub)
@@ -68,7 +68,7 @@ def _allow_local_config(parser: argparse.ArgumentParser) -> None:
             "--config",
             metavar="PATH",
             default=argparse.SUPPRESS,
-            help="path to smelt.yaml",
+            help="path to smelt.yml",
         )
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
@@ -77,7 +77,7 @@ def _allow_local_config(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_check(sub: Subparsers) -> None:
-    check = sub.add_parser("check", help="check the project against smelt.yaml")
+    check = sub.add_parser("check", help="check the project against smelt.yml")
     check.add_argument(
         "paths", nargs="*", metavar="PATHS", help="only report these files"
     )
@@ -173,12 +173,12 @@ def _add_discovery(sub: Subparsers) -> None:
 
 
 def _add_maintenance(sub: Subparsers) -> None:
-    init = sub.add_parser("init", help="write a starter smelt.yaml")
+    init = sub.add_parser("init", help="write a starter smelt.yml")
     init.add_argument(
         "--config",
         metavar="PATH",
         default=argparse.SUPPRESS,
-        help="write the config here (default: smelt.yaml); its directory is the project root",
+        help="write the config here (default: smelt.yml); its directory is the project root",
     )
     init.add_argument(
         "--force", action="store_true", help="overwrite the target if it exists"

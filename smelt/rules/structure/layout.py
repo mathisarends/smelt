@@ -141,7 +141,7 @@ class UnclassifiedModule(BaseRule):
             "Root packages with no classified module at all (libraries) are skipped."
         ),
         bad="gateway/\n  platform/db.py    # neither shared, a layer nor a feature",
-        good="# smelt.yaml\narchitecture:\n  modules:\n    gateway.platform: infrastructure",
+        good="# smelt.yml\narchitecture:\n  modules:\n    gateway.platform: infrastructure",
         fix=(
             "Give the package a layer under architecture.modules, list it in "
             "architecture.shared or composition_root, or move it into a feature."

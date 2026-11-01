@@ -38,7 +38,7 @@ OPTIONS = CheckOptions(select=("SMT313",))
 def test_fix_refusal_identifies_the_trigger_without_changing_source(
     tmp_path: Path, source: str, line: int, expression: str
 ) -> None:
-    write_project(tmp_path, {"smelt.yaml": CONFIG, "app/module.py": source})
+    write_project(tmp_path, {"smelt.yml": CONFIG, "app/module.py": source})
     [finding] = violations(tmp_path, OPTIONS)
     assert finding.expected is not None
     assert finding.expected["fixable"] is False
@@ -68,7 +68,7 @@ def test_declared_version_and_future_control_annotation_dependencies(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/module.py": ("from __future__ import annotations\n" if future else "")
             + "_T = int\ndef api(value: _T): pass\n",
         },
@@ -86,7 +86,7 @@ def test_check_exposes_execution_barriers_and_expected_order(tmp_path: Path) -> 
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/module.py": "import sys\ndef _helper(): pass\ndef api(): pass\nregister()\n",
         },
     )
@@ -111,7 +111,7 @@ def test_inner_disabled_policy_overrides_parent_ordering(tmp_path: Path) -> None
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/legacy/__init__.py": "def _helper(): pass\ndef api(): pass\n",
             "app/module.py": "def _helper(): pass\ndef api(): pass\n",
         },
@@ -124,7 +124,7 @@ def test_ordering_is_opt_in(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/module.py": "def _helper(): pass\ndef api(): pass\n",
         },
     )
@@ -143,7 +143,7 @@ def test_builtin_union_annotations_allow_public_first(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "project:\n", f'project:\n  python_version: "{minimum}"\n'
             ),
             "app/module.py": f"def _helper(value: {annotation}): return value\ndef api(value): return _helper(value)\n",
@@ -168,7 +168,7 @@ def test_builtin_unions_remain_unknown_without_a_supported_declared_target(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/module.py": "def _helper(value: str | bytes): pass\ndef api(): pass\n",
         },
     )
@@ -201,7 +201,7 @@ def test_unknown_union_operands_shadowing_and_defaults_stay_pinned(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "project:\n", 'project:\n  python_version: "3.12"\n'
             ),
             "app/module.py": source,
@@ -219,7 +219,7 @@ def test_builtin_import_aliases_and_method_return_unions_are_supported(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "project:\n", 'project:\n  python_version: "3.12"\n'
             ),
             "app/module.py": "from builtins import str as Text\nclass Service:\n    def _helper(self) -> Text | bytes: pass\n    def api(self): pass\n",
@@ -234,7 +234,7 @@ def test_public_first_retains_a_needed_future_import(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "project:\n", 'project:\n  python_version: "3.12"\n'
             ).replace(
                 "      ordering: {}",

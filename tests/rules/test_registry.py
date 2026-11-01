@@ -111,7 +111,7 @@ def test_lazy_selection_preserves_catalog_metadata() -> None:
 def test_member_check_does_not_import_inactive_test_rules(tmp_path: Path) -> None:
     (tmp_path / "app").mkdir()
     (tmp_path / "app/__init__.py").write_text("def helper(): pass\n")
-    (tmp_path / "smelt.yaml").write_text(
+    (tmp_path / "smelt.yml").write_text(
         "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n"
     )
     script = """

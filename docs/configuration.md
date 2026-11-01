@@ -1,5 +1,9 @@
 # Explicit rules and editor support
 
+Use `smelt.yml` for project configuration; `smelt init` creates it by default.
+Existing `smelt.yaml` files remain supported. When both filenames exist in the
+same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
+
 Configure a fixed check once, by the problem it identifies. Its value enables it
 and sets its severity. There is no runtime preset or separate `review_*` switch.
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
