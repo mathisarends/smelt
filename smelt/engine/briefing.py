@@ -71,6 +71,8 @@ class Briefing:
     transitive: bool = False
     type_checking: str = "include"
     cycles: tuple[str, ...] = ()
+    type_checking_cycles: str = "include"
+    canonical_exports: dict[str, str] = field(default_factory=dict)
     # cross_feature as fields: default and allow entries, None feature = every feature
     cross_feature_policy: dict[str, Any] | None = None
     policy_hash: str = ""
@@ -104,6 +106,7 @@ class Briefing:
             "boundary_policy": self.boundary_policy,
             "coverage": self.coverage,
             "contracts": self.contracts,
+            "canonical_exports": self.canonical_exports,
             "import_style": self.import_style,
             "header_policy": self.header_policy,
             "naming_policy": self.naming_policy,
@@ -117,6 +120,7 @@ class Briefing:
                 "transitive": self.transitive,
                 "type_checking": self.type_checking,
                 "cycles": list(self.cycles),
+                "type_checking_cycles": self.type_checking_cycles,
             },
             "features": list(self.features),
             "layers": [layer.to_json() for layer in self.layers],
@@ -244,6 +248,8 @@ def build_briefing(
         transitive=arch.imports.transitive,
         type_checking=arch.imports.type_checking,
         cycles=tuple(arch.imports.cycles),
+        type_checking_cycles=arch.imports.type_checking_cycles,
+        canonical_exports=dict(ctx.config.structure.canonical_exports),
         cross_feature_policy={
             "default": arch.cross_feature.default,
             "allow": arch.cross_feature.entries(),
@@ -302,6 +308,8 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
         else "Imports: direct only (indirect chains require architecture.imports.transitive: true)"
     )
     lines.extend(_contract_lines(briefing))
+    if briefing.type_checking_cycles != "include":
+        lines.append(f"Type-checking cycle edges: {briefing.type_checking_cycles}")
     lines.append("")
     if briefing.module_kind is ModuleKind.UNCLASSIFIED:
         lines.extend((*_wrap_tests(briefing.tests), "", _violation_line(briefing)))
@@ -472,6 +480,10 @@ def _contract_lines(briefing: Briefing) -> list[str]:
         for name, severity in briefing.rules.items()
         if severity != "off"
     ]
+    lines.extend(
+        f"Canonical export: {symbol} -> {export}"
+        for symbol, export in sorted(briefing.canonical_exports.items())
+    )
     if briefing.type_dispatch_policy:
         policy = briefing.type_dispatch_policy
         lines.append(

@@ -346,6 +346,7 @@ async def test_run():
     [wait] = unbounded_waits(test, [])
     assert wait.node.lineno == 4
     assert wait.helper_call_line == 7
+    assert wait.helper_call_lines == (7, 8)
 
 
 def test_recursive_helpers_do_not_expand_transitively() -> None:

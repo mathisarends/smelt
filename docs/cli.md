@@ -80,6 +80,20 @@ them in run properties as `usageScopes`. Text omits empty detail fields.
 Projects without architecture configuration have no policy-completeness banner
 unless strict coverage is requested. Coverage checks and exit codes still apply.
 
+Shared SMT426 helper findings add `shared_helper` groups with the helper identity,
+the exact operation location, one repair and every affected test/call line. Text
+and concise output show the repair once. JSON retains the individual findings;
+totals, exit behavior, debt identities and suppression scope do not change.
+Only visible, compatible findings form a group. Distinct operations in one helper
+remain separate, including operations on the same physical line.
+
+SMT424 includes `helper_review` call locations and known inference-limit reasons.
+An imported body being unassessed does not mean it lacks assertions. Existing
+`tests.assertion_helpers` can express a trusted assertion-helper contract; no
+additional helper bodies are inferred. SMT104 includes `graph_kind` and
+`witness_edges` with each selected import's phase. These are additive schema-2
+fields; existing finding identities and default rule activation are preserved.
+
 Valid configurations can also produce warnings, such as cyclic `may_depend_on`
 policies. Reports retain these separately from rule violations in JSON
 `configuration_diagnostics` (config path, key, severity and message) and SARIF

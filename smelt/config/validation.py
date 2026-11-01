@@ -31,6 +31,12 @@ class _Validator:
 
     def _contracts(self) -> None:
         roots = self.config.project.root_packages
+        for symbol, export in self.config.structure.canonical_exports.items():
+            if any(name.split(".")[0] not in roots for name in (symbol, export)):
+                self._error(
+                    f"structure.canonical_exports.{symbol}",
+                    "definition and public export must be inside project.root_packages",
+                )
         for name, contract in self.config.structure.contracts.items():
             first = contract.match.split(".")[0]
             if first != "*" and first not in roots:

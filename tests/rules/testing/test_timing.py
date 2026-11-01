@@ -31,7 +31,12 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
     [finding] = violations(tmp_path)
     assert (finding.code, finding.line) == ("SMT426", 3)
     assert finding.expected is not None
-    assert finding.expected["helper"] == {"name": "verify", "call_line": 6}
+    assert finding.expected["helper"] == {
+        "name": "verify",
+        "call_line": 6,
+        "definition_line": 2,
+        "call_lines": [6],
+    }
     path = tmp_path / "tests/test_compiler.py"
     path.write_text(path.read_text().replace("check=False", "check=False, timeout=10"))
     cached = check(tmp_path).report

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,6 +31,27 @@ architecture:
       - {from: billing.application, to: users.domain}
   imports: {transitive: true, cycles: [features]}
 """
+
+
+def test_unused_additive_options_preserve_released_policy_hashes(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+        },
+    )
+    config = load_config(tmp_path / "smelt.yaml").config
+    legacy = config.model_dump(mode="json")
+    legacy["structure"].pop("canonical_exports")
+    legacy["architecture"]["imports"].pop("type_checking_cycles")
+    expected = (
+        "sha256:"
+        + hashlib.sha256(json.dumps(legacy, sort_keys=True).encode()).hexdigest()[:16]
+    )
+    assert policy_hash(config) == expected
 
 
 def _project(root: Path) -> Path:
@@ -143,6 +166,7 @@ class TestEffectiveCoverage:
             "type_checking": "include",
             "transitive": True,
             "cycles": ["features"],
+            "type_checking_cycles": "include",
         }
         assert coverage["cross_feature"]["allow"] == [
             {

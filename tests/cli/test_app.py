@@ -1068,6 +1068,7 @@ class TestInfoCommands:
             "type_checking": "include",
             "transitive": False,
             "cycles": ["features", "layers", "siblings"],
+            "type_checking_cycles": "include",
         }
 
 

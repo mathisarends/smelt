@@ -25,6 +25,168 @@ OPTIONS = CheckOptions(select=("SMT109",))
 CLIENT = "from app.browser.base import Browser, BrowserEvents\n"
 
 
+def test_canonical_export_uses_static_identity_and_leaves_unowned_symbols_visible(
+    tmp_path: Path,
+) -> None:
+    config = CONFIG.replace(
+        "structure:\n",
+        "structure:\n  canonical_exports: {app.browser.bridge.Events: app.Events}\n",
+    )
+    root = _project(tmp_path, config=config)
+    write_project(
+        root,
+        {
+            "app/__init__.py": "from .browser.bridge import Events\n__all__ = ['Events']\n",
+            "app/browser/bridge.py": "from .base import BrowserEvents as Events\n",
+        },
+    )
+    assert violations(root, OPTIONS) == []
+    write_project(
+        root,
+        {
+            "app/browser/base.py": "class Browser: pass\nclass BrowserEvents: pass\nclass Shared: pass\n",
+            "app/first.py": CLIENT + "from app.browser.base import Shared\n",
+            "app/second.py": CLIENT + "from app.browser.base import Shared\n",
+            "app/third.py": CLIENT + "from app.browser.base import Shared\n",
+        },
+    )
+    [finding] = violations(root, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["name"] == "Shared"
+
+
+@pytest.mark.parametrize(
+    ("symbol", "export", "root_source"),
+    [
+        (
+            "app.browser.base.Missing",
+            "app.Events",
+            "from .browser.base import BrowserEvents as Events\n",
+        ),
+        ("app.browser.base.BrowserEvents", "app.Missing", ""),
+        (
+            "app.browser.base.BrowserEvents",
+            "app.Events",
+            "from .browser.base import Browser as Events\n",
+        ),
+        (
+            "app.browser.base.BrowserEvents",
+            "app.Events",
+            "from .browser.base import BrowserEvents as Events\n__all__ = []\n",
+        ),
+        (
+            "app.browser.base.BrowserEvents",
+            "app.Events",
+            "def __getattr__(name): return object()\n",
+        ),
+    ],
+)
+def test_invalid_canonical_exports_are_actionable_config_errors(
+    tmp_path: Path, symbol: str, export: str, root_source: str
+) -> None:
+    root = _project(
+        tmp_path,
+        config=CONFIG.replace(
+            "structure:\n", f"structure:\n  canonical_exports: {{{symbol}: {export}}}\n"
+        ),
+    )
+    write_project(root, {"app/__init__.py": root_source})
+    with pytest.raises(ConfigError, match="canonical_exports"):
+        violations(root, OPTIONS)
+
+
+def test_conflicting_ownership_through_alias_keys_is_rejected(tmp_path: Path) -> None:
+    root = _project(
+        tmp_path,
+        config=CONFIG.replace(
+            "structure:\n",
+            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events, app.browser.bridge.Events: app.browser.Events}\n",
+        ),
+    )
+    write_project(
+        root,
+        {
+            "app/__init__.py": "from .browser.base import BrowserEvents as Events\n",
+            "app/browser/__init__.py": "from .base import BrowserEvents as Events\n",
+            "app/browser/bridge.py": "from .base import BrowserEvents as Events\n",
+        },
+    )
+    with pytest.raises(ConfigError, match="conflicting canonical"):
+        violations(root, OPTIONS)
+
+
+def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_rule(
+    tmp_path: Path,
+) -> None:
+    root = _project(
+        tmp_path,
+        config=CONFIG.replace(
+            "structure:\n",
+            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+        ),
+    )
+    write_project(
+        root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
+    )
+    assert violations(root, OPTIONS) == []
+    write_project(root, {"app/__init__.py": ""})
+    with pytest.raises(ConfigError, match="verified public export"):
+        violations(root, CheckOptions(select=("SMT901",)))
+
+
+def test_canonical_ownership_does_not_relax_package_public_boundaries(
+    tmp_path: Path,
+) -> None:
+    config = CONFIG.replace(
+        "structure:\n",
+        "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+    ).replace("export_at: 3", "export_at: 3, public: ['.']")
+    root = _project(tmp_path, config=config)
+    write_project(
+        root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
+    )
+    found = violations(root, CheckOptions(select=("SMT107", "SMT109")))
+    assert found
+    assert {finding.code for finding in found} == {"SMT107"}
+
+
+def test_facade_importer_context_distinguishes_workspace_roots(tmp_path: Path) -> None:
+    root = _project(tmp_path, config=CONFIG.replace("[app]", "[app, other]"))
+    write_project(root, {"other/__init__.py": "", "other/client.py": CLIENT})
+    [finding] = violations(root, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["same_root_importers"] == [
+        "app.first",
+        "app.second",
+        "app.third",
+    ]
+    assert finding.expected["other_root_importers"] == ["other.client"]
+
+
+def test_canonical_ownership_does_not_disable_concrete_cycle_checks(
+    tmp_path: Path,
+) -> None:
+    config = (
+        CONFIG.replace(
+            "structure:\n",
+            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+        )
+        + "architecture: {imports: {cycles: [modules]}}\n"
+    )
+    root = _project(tmp_path, config=config)
+    write_project(
+        root,
+        {
+            "app/__init__.py": "from .browser.base import BrowserEvents as Events\n",
+            "app/browser/base.py": "from app import Events\nclass Browser: pass\nclass BrowserEvents: pass\n",
+        },
+    )
+    assert {
+        finding.code
+        for finding in violations(root, CheckOptions(select=("SMT104", "SMT109")))
+    } == {"SMT104"}
+
+
 def _project(
     tmp_path: Path,
     *,

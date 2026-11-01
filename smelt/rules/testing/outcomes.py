@@ -4,7 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.test_outcomes import vacuous_outcomes
+from smelt.analysis.test_outcomes import helper_outcome_review, vacuous_outcomes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import BaseRule, RuleDoc
 
@@ -28,7 +28,7 @@ class TestWithoutOutcomeCheck(BaseRule):
         ),
         bad="def test_deactivate():\n    deactivate_user(1)",
         good="def test_deactivate():\n    user = deactivate_user(1)\n    assert user.status == 'inactive'",
-        fix="Assert a concrete result or observable state, check the expected exception/warning, or configure a known assertion helper. Use a reasoned exception for deliberate smoke/interaction tests. Do not add a meaningless assertion to silence the finding.",
+        fix="Assert a concrete result or observable state, check the expected exception/warning, or configure a known assertion helper. Use a reasoned exception for deliberate smoke/interaction tests. Do not add a meaningless assertion to silence the finding. helper_review gives call locations and known reasons for missing evidence: imported bodies, unexecuted local coroutines, possible swallowing, or no recognized evidence within one hop. These explain an inference boundary, not proof that a helper contains no assertions.",
         config=(
             "rules",
             "tests.assertion_helpers",
@@ -60,8 +60,16 @@ class TestWithoutOutcomeCheck(BaseRule):
                                 for call in children
                             ],
                             "assertion_helpers": ctx.config.tests.assertion_helpers,
+                            "helper_review": helper_outcome_review(
+                                test, ctx.config.tests.assertion_helpers
+                            ),
+                            "analysis_limits": {
+                                "helper_hops": 1,
+                                "same_file_only": True,
+                                "imported_bodies": "not analyzed",
+                            },
                         },
-                        hint="Check an observable result, state, expected exception/warning, or a configured assertion helper."
+                        hint="Check an observable result, state, expected exception/warning, or a configured assertion helper. Only one directly executed, eligible same-file helper is followed; imported bodies and further helper calls are not analyzed. helper_review explains missing evidence where known."
                         + (
                             " Child assertions were not inferred: only checked sys.executable -c calls with statically known script text and direct assertions are recognized. Assert the parent-visible outcome for dynamic scripts or files."
                             if children

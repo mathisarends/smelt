@@ -273,7 +273,7 @@ class CrossFeatureConfig(_Model):
         return found
 
 
-type CycleScope = Literal["features", "layers", "siblings"]
+type CycleScope = Literal["features", "layers", "siblings", "modules"]
 
 
 def _all_cycle_scopes() -> list[CycleScope]:
@@ -293,6 +293,10 @@ class ImportsConfig(_Model):
     )
     cycles: list[CycleScope] = Field(
         default_factory=_all_cycle_scopes, description="Where SMT104 looks for cycles."
+    )
+    type_checking_cycles: Literal["include", "ignore"] = Field(
+        default="include",
+        description="include follows the global type_checking setting; ignore excludes TYPE_CHECKING edges from cycle graphs only, retaining their configured treatment in other boundary checks. The modules scope checks concrete modules; existing scopes aggregate architecture nodes.",
     )
 
 
@@ -571,6 +575,19 @@ class StructureConfig(_Model):
         default_factory=dict,
         description="Named package contracts: required modules and optional public entry points.",
     )
+    canonical_exports: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional API ownership: qualified definition/static alias -> canonical qualified public export. Both must resolve to the same analyzed symbol. Does not relax dependency or package-public boundaries.",
+    )
+
+    @field_validator("canonical_exports")
+    @classmethod
+    def _canonical_names(cls, values: dict[str, str]) -> dict[str, str]:
+        names = [*values, *values.values()]
+        _check_dotted(names)
+        if any("." not in name for name in names):
+            raise ValueError("canonical exports require qualified module.symbol names")
+        return values
 
     @field_validator("contracts")
     @classmethod

@@ -79,10 +79,7 @@ def _render(
         for diagnostic in report.configuration_diagnostics
     ]
     if not statistics:
-        blocks.extend(
-            _render_violation(v, read_line, style)
-            for v in _group_ordering(_group_unclassified(shown))
-        )
+        blocks.extend(_finding_blocks(shown, read_line, style))
     lines = [("\n" if style.concise else "\n\n").join(blocks)] if blocks else []
     if blocks:
         lines.append("")
@@ -127,6 +124,43 @@ def _render(
         )
     lines.append(_summary(report, style, show_hints=show_hints))
     return "\n".join(lines) + "\n"
+
+
+def _finding_blocks(
+    shown: list[Violation], read_line: LineReader, style: _Style
+) -> list[str]:
+    groups = {
+        (finding, group["location"]["column"]): group
+        for group in group_findings(shown)
+        if group["kind"] == "shared_helper"
+        for finding in group["violations"]
+    }
+    rendered: set[str] = set()
+    blocks: list[str] = []
+    for violation in _group_ordering(_group_unclassified(shown)):
+        group = groups.get(
+            (
+                violation.finding_id,
+                (violation.expected or {}).get("operation_location", {}).get("column"),
+            )
+        )
+        if group is None:
+            blocks.append(_render_violation(violation, read_line, style))
+        elif group["key"] not in rendered:
+            rendered.add(group["key"])
+            common = replace(
+                violation,
+                expected=None,
+                message=f"{group['helper']['name']} has no recognized deadline for {group['operation']} ({group['count']} affected tests)",
+            )
+            lines = [_render_violation(common, read_line, style)]
+            lines.extend(
+                f"  Affected: {violation.path}:{line} {test['test']} [{test['violation']}]"
+                for test in group["affected_tests"]
+                for line in test["call_lines"]
+            )
+            blocks.append("\n".join(lines))
+    return blocks
 
 
 def _group_ordering(violations: list[Violation]) -> list[Violation]:

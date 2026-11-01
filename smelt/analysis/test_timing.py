@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from smelt.analysis.test_deadlines import async_deadline, has_timeout
@@ -38,6 +38,8 @@ class TestWait:
     provenance: str
     helper: str | None = None
     helper_call_line: int | None = None
+    helper_line: int | None = None
+    helper_call_lines: tuple[int, ...] = ()
 
 
 def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
@@ -75,7 +77,7 @@ def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
         deadline = async_deadline(call.node, calls, parents, helpers)
         if deadline.awaited and not deadline.bounded:
             unbounded.append(call)
-    reported = {wait.node for wait in unbounded}
+    positions = {wait.node: index for index, wait in enumerate(unbounded)}
     for helper in test.helpers:
         outer_deadline = async_deadline(helper.node, calls, parents, helpers)
         for wait in unbounded_waits(helper.function, helpers):
@@ -83,9 +85,18 @@ def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
             # but cannot interrupt a synchronous subprocess inside that helper.
             if wait.qualified not in _PROCESS_WAITS and outer_deadline.bounded:
                 continue
-            if wait.node in reported:
+            if wait.node in positions:
+                index = positions[wait.node]
+                previous = unbounded[index]
+                if previous.helper is not None:
+                    unbounded[index] = replace(
+                        previous,
+                        helper_call_lines=tuple(
+                            sorted({*previous.helper_call_lines, helper.node.lineno})
+                        ),
+                    )
                 continue
-            reported.add(wait.node)
+            positions[wait.node] = len(unbounded)
             unbounded.append(
                 TestWait(
                     wait.node,
@@ -93,6 +104,8 @@ def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
                     wait.provenance,
                     helper.function.name,
                     helper.node.lineno,
+                    helper.function.node.lineno,
+                    (helper.node.lineno,),
                 )
             )
     return unbounded

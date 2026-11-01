@@ -15,6 +15,7 @@ from smelt.analysis.definition_blocks import (
     builtin_type_aliases,
     is_main_guard,
 )
+from smelt.analysis.function_usage import definition_bindings
 from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
@@ -302,19 +303,23 @@ def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
 
 
 def _reflective(tree: ast.Module) -> _FixBlocker | None:
+    unrelated = _local_function_namespaces(tree)
     found = [
         node
         for node in ast.walk(tree)
-        if isinstance(node, ast.Global | ast.Nonlocal)
-        or (
-            isinstance(node, ast.Name)
-            and node.id
-            in {"globals", "locals", "vars", "eval", "exec", "__annotations__"}
-        )
-        or (
-            isinstance(node, ast.Attribute)
-            and node.attr
-            in {"__dict__", "__annotations__", "__code__", "settrace", "setprofile"}
+        if node not in unrelated
+        and (
+            isinstance(node, ast.Global)
+            or (
+                isinstance(node, ast.Name)
+                and node.id
+                in {"globals", "locals", "vars", "eval", "exec", "__annotations__"}
+            )
+            or (
+                isinstance(node, ast.Attribute)
+                and node.attr
+                in {"__dict__", "__annotations__", "__code__", "settrace", "setprofile"}
+            )
         )
     ]
     return (
@@ -325,6 +330,92 @@ def _reflective(tree: ast.Module) -> _FixBlocker | None:
         if found
         else None
     )
+
+
+def _local_function_namespaces(tree: ast.Module) -> set[ast.AST]:
+    """A nested function's attribute dictionary is not the ordered namespace."""
+    safe: set[ast.AST] = set()
+    shadowed_vars = any(
+        (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Store | ast.Del)
+            and node.id == "vars"
+        )
+        or (isinstance(node, ast.arg) and node.arg == "vars")
+        or (
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            and node.name == "vars"
+        )
+        or (
+            isinstance(node, ast.Import | ast.ImportFrom)
+            and any(
+                (alias.asname or alias.name.split(".")[0]) == "vars"
+                or alias.name == "*"
+                for alias in node.names
+            )
+        )
+        for node in ast.walk(tree)
+    )
+    for function in ast.walk(tree):
+        if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        bindings = definition_bindings(ast.Module(body=function.body, type_ignores=[]))
+        unavailable = {
+            node.arg for node in ast.walk(function.args) if isinstance(node, ast.arg)
+        }
+        unavailable.update(
+            name
+            for node in ast.walk(function)
+            if isinstance(node, ast.Global | ast.Nonlocal)
+            for name in node.names
+        )
+        unavailable.update(
+            alias.asname or alias.name.split(".")[0]
+            for node in ast.walk(function)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+            for alias in node.names
+        )
+        local = {
+            node.name
+            for node in function.body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and not node.decorator_list
+            and bindings.get(node.name) == [node]
+            and node.name not in unavailable
+        }
+        for node in _deferred_body_nodes(function.body):
+            if (
+                isinstance(node, ast.Attribute)
+                and node.attr == "__dict__"
+                and isinstance(node.value, ast.Name)
+                and node.value.id in local
+            ):
+                safe.add(node)
+            elif (
+                not shadowed_vars
+                and isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "vars"
+                and len(node.args) == 1
+                and not node.keywords
+                and isinstance(node.args[0], ast.Name)
+                and node.args[0].id in local
+            ):
+                safe.add(node.func)
+    return safe
+
+
+def _deferred_body_nodes(body: list[ast.stmt]) -> list[ast.AST]:
+    nodes: list[ast.AST] = []
+    pending: list[ast.AST] = list(body)
+    while pending:
+        node = pending.pop()
+        nodes.append(node)
+        if not isinstance(
+            node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda
+        ):
+            pending.extend(ast.iter_child_nodes(node))
+    return nodes
 
 
 def _body(
@@ -413,7 +504,7 @@ def _mutates_builtins(tree: ast.Module) -> bool:
         if alias.name == "builtins"
     }
     return any(
-        isinstance(node, ast.Global | ast.Nonlocal)
+        isinstance(node, ast.Global)
         or (
             isinstance(node, ast.Attribute)
             and isinstance(node.ctx, ast.Store | ast.Del)

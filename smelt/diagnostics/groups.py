@@ -7,6 +7,7 @@ A group only points at findings; every finding stays in ``violations``.
 
 from __future__ import annotations
 
+import json
 import posixpath
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
@@ -29,6 +30,7 @@ def group_findings(violations: list[Violation]) -> list[dict[str, Any]]:
         *_groups("cycle", violations, _cycle, minimum=1),
         *_groups("test_move", violations, _test_move, minimum=2),
         *_groups("ordering", violations, _ordering, minimum=2),
+        *_groups("shared_helper", violations, _shared_helper, minimum=2),
     ]
     return sorted(groups, key=lambda g: (-g["count"], g["kind"], g["key"]))
 
@@ -90,6 +92,34 @@ def _group(kind: str, key: str, found: list[Violation]) -> dict[str, Any]:
         group["type_checking_only"] = bool(
             first.expected and first.expected.get("type_checking_only")
         )
+    if kind == "shared_helper":
+        expected = found[0].expected or {}
+        group.update(
+            operation=expected["operation"],
+            location={"path": found[0].path, **expected["operation_location"]},
+            helper={
+                "name": expected["helper"]["name"],
+                "definition_line": expected["helper"]["definition_line"],
+            },
+            repair=found[0].hint,
+            affected_tests=sorted(
+                [
+                    {
+                        "test": (v.expected or {})["test"],
+                        "call_line": (v.expected or {})["helper"]["call_line"],
+                        "call_lines": (v.expected or {})["helper"]["call_lines"],
+                        "violation": v.finding_id,
+                    }
+                    for v in found
+                ],
+                key=lambda test: (
+                    test["call_line"] or 0,
+                    test["test"],
+                    test["violation"],
+                ),
+            ),
+        )
+        group["violations"] = sorted(group["violations"])
     return group
 
 
@@ -131,3 +161,32 @@ def _ordering(violation: Violation) -> str | None:
     ):
         return f"{violation.path}: {violation.message}"
     return None
+
+
+def _shared_helper(violation: Violation) -> str | None:
+    expected = violation.expected or {}
+    helper = expected.get("helper")
+    location = expected.get("operation_location")
+    if (
+        violation.code != "SMT426"
+        or expected.get("kind") != "unbounded-wait"
+        or not isinstance(helper, dict)
+        or not isinstance(location, dict)
+    ):
+        return None
+    return json.dumps(
+        [
+            violation.path,
+            location,
+            helper.get("name"),
+            helper.get("definition_line"),
+            expected.get("operation"),
+            expected.get("kind"),
+            expected.get("provenance"),
+            violation.severity.value,
+            violation.hint,
+        ],
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )

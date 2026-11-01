@@ -1,7 +1,158 @@
 from __future__ import annotations
 
+import json
+from dataclasses import replace
+from typing import TYPE_CHECKING
+
+import pytest
+
+from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.groups import group_findings
+from smelt.diagnostics.render.machine import render_json
+from smelt.diagnostics.render.text import render_concise, render_text
 from smelt.diagnostics.violation import ImportLink, Severity, Violation
+from smelt.engine.check import CheckOptions
+from tests.helpers import check, write_project
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+SHARED_WAIT = """import subprocess
+def run_import():
+    return subprocess.run(['python'], check=False)
+def test_first():
+    run_import()
+def test_second():
+    run_import()
+"""
+
+
+@pytest.mark.parametrize("renderer", [render_concise, render_text])
+def test_shared_helper_has_one_repair_and_preserves_each_finding(
+    tmp_path: Path, renderer: object
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "tests/test_imports.py": SHARED_WAIT,
+        },
+    )
+    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    document = json.loads(render_json(report))
+    [group] = document["groups"]
+    assert len(document["violations"]) == group["count"] == 2
+    assert group["kind"] == "shared_helper"
+    assert group["location"] == {
+        "path": "tests/test_imports.py",
+        "line": 3,
+        "column": 12,
+    }
+    assert group["helper"] == {"name": "run_import", "definition_line": 2}
+    assert [test["call_line"] for test in group["affected_tests"]] == [5, 7]
+    assert sorted(group["violations"]) == sorted(
+        finding.finding_id for finding in report.violations
+    )
+    assert group_findings(list(reversed(report.violations))) == document["groups"]
+    text = (
+        render_concise(report)
+        if renderer is render_concise
+        else render_text(report, lambda _path, _line: "")
+    )
+    assert text.count("Bound this operation") == 1
+    assert "test_first" in text
+    assert "test_second" in text
+    assert report.summary_json()["warnings"] == 2
+
+
+def test_shared_helper_groups_separate_operations_and_respect_suppression(
+    tmp_path: Path,
+) -> None:
+    source = SHARED_WAIT.replace(
+        "return subprocess.run(['python'], check=False)",
+        "subprocess.run(['python'], check=False); subprocess.run(['other'], check=False)",
+    )
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "tests/test_imports.py": source,
+        },
+    )
+    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    groups = group_findings(report.violations)
+    assert len(groups) == 2
+    assert groups[0]["location"]["column"] != groups[1]["location"]["column"]
+    assert render_concise(report).count("Bound this operation") == 2
+    write_project(
+        tmp_path,
+        {
+            "tests/test_imports.py": SHARED_WAIT.replace(
+                "check=False)",
+                "check=False)  # smelt: ignore[SMT426] -- parent enforces a deadline",
+            )
+        },
+    )
+    suppressed = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    assert suppressed.suppressed == 2
+    assert group_findings(suppressed.violations) == []
+
+
+def test_grouping_never_reintroduces_a_hidden_hint_or_filtered_finding(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "tests/test_imports.py": SHARED_WAIT,
+        },
+    )
+    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    first, second = report.violations
+    report.violations = [first, replace(second, severity=Severity.HINT)]
+    assert group_findings(report.violations) == []
+    assert "test_second" not in render_concise(report)
+    report.violations = [first]
+    assert group_findings(report.violations) == []
+
+
+def test_group_metadata_preserves_existing_finding_and_debt_identities(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "tests/test_imports.py": SHARED_WAIT,
+        },
+    )
+    current = check(tmp_path, CheckOptions(select=("SMT426",))).report.violations
+    previous = []
+    for finding in current:
+        expected = dict(finding.expected or {})
+        expected.pop("operation_location")
+        expected["helper"] = {
+            key: value
+            for key, value in expected["helper"].items()
+            if key not in {"definition_line", "call_lines"}
+        }
+        previous.append(replace(finding, expected=expected))
+    assert [finding.finding_id for finding in previous] == [
+        finding.finding_id for finding in current
+    ]
+    assert (
+        Debt.from_violations(
+            previous, lambda _finding: "subprocess.run(['python'], check=False)"
+        ).entries
+        == Debt.from_violations(
+            current, lambda _finding: "subprocess.run(['python'], check=False)"
+        ).entries
+    )
 
 
 def _import(

@@ -14,6 +14,62 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
+    ("source", "reason"),
+    [
+        (
+            "from tests.support import verify\nasync def test_run():\n    await verify()\n",
+            "imported-body-not-analyzed",
+        ),
+        (
+            "def verify(): pass\ndef test_run():\n    verify()\n",
+            "no-recognized-evidence-within-one-hop",
+        ),
+        (
+            "async def verify():\n    assert result\ndef test_run():\n    verify()\n",
+            "local-coroutine-not-recognized-as-executed",
+        ),
+        (
+            "def verify():\n    try:\n        assert result\n    except Exception: pass\ndef test_run():\n    verify()\n",
+            "helper-context-may-swallow-evidence",
+        ),
+        (
+            "def verify(): assert result\ndef test_run():\n    try:\n        verify()\n    except Exception: pass\n",
+            "caller-context-may-swallow-evidence",
+        ),
+    ],
+)
+def test_missing_outcome_explains_existing_helper_limits(
+    tmp_path: Path, source: str, reason: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "tests/test_run.py": source,
+        },
+    )
+    [finding] = violations(tmp_path, CheckOptions(select=("SMT424",)))
+    assert finding.expected is not None
+    assert finding.expected["helper_review"][0]["reason"] == reason
+    assert finding.expected["analysis_limits"]["helper_hops"] == 1
+
+
+def test_configured_imported_assertion_helper_remains_an_explicit_contract(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\ntests: {assertion_helpers: [tests.support.verify]}\n",
+            "app/__init__.py": "",
+            "tests/test_run.py": "from tests.support import verify\nasync def test_run():\n    await verify()\n",
+        },
+    )
+    assert violations(tmp_path, CheckOptions(select=("SMT424",))) == []
+
+
+@pytest.mark.parametrize(
     ("body", "flagged"),
     [
         (
