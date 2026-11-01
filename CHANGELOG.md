@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- New opt-in [SMT321](docs/rules/SMT321.md) `implicit-optional-default`
+  reviews `parameter or fallback` for explicitly optional parameters with a
+  `None` default. Enable with `rules: {implicit-optional-default: warning}` or
+  `--select SMT321`. Use `--fix --unsafe-fixes` to replace it with an explicit
+  `is not None` conditional after reviewing intentional falsy defaults. Plain
+  `--fix` preserves existing truthiness behavior.
+
 ## [0.3.0] - 2026-11-01
 
 ### Upgrade first

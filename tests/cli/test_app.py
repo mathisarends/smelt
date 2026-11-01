@@ -1566,3 +1566,100 @@ def _violating_project() -> dict[str, str]:
 
 def _python(code: str) -> str:
     return f'"{sys.executable}" -c "{code}"'
+
+
+OPTIONAL_DEFAULT_SOURCE = (
+    "def create(options: int | None = None):\n    return options or 7\n"
+)
+
+
+@pytest.mark.parametrize(
+    "flags", [(), ("--unsafe-fixes",), ("--fix",), ("--fix", "--unsafe-fixes")]
+)
+def test_optional_default_cli_requires_both_fix_flags(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], flags: tuple[str, ...]
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "app/service.py": OPTIONAL_DEFAULT_SOURCE,
+        },
+    )
+    arguments = [
+        "check",
+        "--config",
+        str(root / "smelt.yaml"),
+        "--select",
+        "SMT321",
+        "--fail-on",
+        "warning",
+        "--format",
+        "json",
+    ]
+    code = main([*arguments, *flags])
+    output = capsys.readouterr()
+    assert output.err == ""
+    report = json.loads(output.out)
+    if flags == ("--fix", "--unsafe-fixes"):
+        assert code == 0
+        assert report["fixes"]["none_defaults"] == {
+            "files": ["app/service.py"],
+            "expressions": 1,
+            "skipped": [],
+        }
+        assert (
+            "options if options is not None else"
+            in (root / "app/service.py").read_text()
+        )
+        assert main([*arguments, *flags]) == 0
+        assert (
+            json.loads(capsys.readouterr().out)["fixes"]["none_defaults"]["files"] == []
+        )
+    else:
+        assert code == 1
+        assert report["violations"][0]["code"] == "SMT321"
+        assert (root / "app/service.py").read_text() == OPTIONAL_DEFAULT_SOURCE
+        if "--fix" in flags:
+            assert (
+                "--unsafe-fixes"
+                in report["fixes"]["none_defaults"]["skipped"][0]["reason"]
+            )
+
+
+def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n",
+            "app/__init__.py": "",
+            "app/service.py": "def _default():\n    return 7\ndef create(options: int | None = None):\n    return options or _default()\n",
+        },
+    )
+    assert (
+        main(
+            [
+                "check",
+                "--config",
+                str(root / "smelt.yaml"),
+                "--select",
+                "SMT313,SMT321",
+                "--fail-on",
+                "warning",
+                "--fix",
+                "--unsafe-fixes",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+    report = json.loads(capsys.readouterr().out)
+    assert report["fixes"]["ordering"]["files"] == ["app/service.py"]
+    assert report["fixes"]["none_defaults"]["files"] == ["app/service.py"]
+    rewritten = (root / "app/service.py").read_text()
+    assert rewritten.startswith("def create")
+    assert "options if options is not None else" in rewritten

@@ -233,4 +233,4 @@ def test_failed_replacement_leaves_original_and_cleans_temporary_file(
     assert fixed.files == []
     assert "locked" in fixed.skipped[0]["reason"]
     assert (root / "app/service.py").read_text() == SOURCE
-    assert list((root / "app").glob(".smelt-order-*.tmp")) == []
+    assert list((root / "app").glob(".smelt-fix-*.tmp")) == []

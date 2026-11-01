@@ -408,6 +408,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.none_defaults:ImplicitOptionalDefault",
+    "code": "SMT321",
+    "name": "implicit-optional-default",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

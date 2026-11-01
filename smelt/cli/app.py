@@ -133,7 +133,12 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "--fix",
         action="store_true",
-        help="apply permitted safe public-definitions-first fixes, then check again",
+        help="apply permitted source fixes, then check again (unsafe fixes need --unsafe-fixes)",
+    )
+    check.add_argument(
+        "--unsafe-fixes",
+        action="store_true",
+        help="with --fix, also apply behavior-changing optional-default fixes",
     )
     check.add_argument(
         "--strict-coverage",
