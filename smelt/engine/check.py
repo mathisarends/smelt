@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
     from smelt.config.loader import LoadedConfig
     from smelt.config.source import SourceStore
-    from smelt.rules.base import Rule, RuleSet
+    from smelt.rules.base import RuleContract, RuleSet
 
 _META = frozenset({"SMT901", "SMT902", "SMT903"})
 _COVERAGE = "SMT306"
@@ -84,13 +84,13 @@ class CheckOutcome:
     report: Report
     context: AnalysisContext
     rules: RuleSet
-    active: list[tuple[Rule, Severity]]
+    active: list[tuple[RuleContract, Severity]]
     # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
     resolved_debt: list[DebtEntry] = field(default_factory=list)
 
 
-def rule_meta(rule: Rule) -> RuleMeta:
+def rule_meta(rule: RuleContract) -> RuleMeta:
     default = bool(getattr(rule, "enabled_by_default", False))
     activation = getattr(rule, "activation", None)
     return RuleMeta(
@@ -176,7 +176,7 @@ def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
 
 def _resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
-) -> list[tuple[Rule, Severity]]:
+) -> list[tuple[RuleContract, Severity]]:
     policy = RuleSettings(rules, loaded)
     settings = policy.global_rules
     known = {rule.code for rule in rules.rules}
@@ -198,7 +198,7 @@ def _resolve_active_rules(
         normalized[key] = tuple(selectors)
     options = replace(options, select=normalized["select"], ignore=normalized["ignore"])
 
-    active: list[tuple[Rule, Severity]] = []
+    active: list[tuple[RuleContract, Severity]] = []
     for rule in rules.rules:
         setting = settings.get(rule.code)
         if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
@@ -423,7 +423,7 @@ def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
     if not declarations:
         return
     _, issues = FacadeUsage(
-        ctx.syntax, ctx.imports, count_tests=False
+        ctx.syntax, ctx.imports, files=ctx.files, count_tests=False
     ).canonical_exports(declarations)
     if issues:
         raise ConfigError(
@@ -509,7 +509,7 @@ def _collect(
     ctx: AnalysisContext,
     rules: RuleSet,
     loaded: LoadedConfig,
-    active: list[tuple[Rule, Severity]],
+    active: list[tuple[RuleContract, Severity]],
     options: CheckOptions,
 ) -> tuple[list[Violation], int]:
     """Every violation after ignores and suppressions, and the suppressed count."""

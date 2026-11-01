@@ -7,13 +7,13 @@ from smelt.analysis.annotations import has_postponement_evidence
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class ForbiddenModuleDocstring(BaseRule):
+class ForbiddenModuleDocstring(Rule):
     file_local = True
     activation = POLICIES["SMT309"]
     code = "SMT309"
@@ -51,7 +51,7 @@ class ForbiddenModuleDocstring(BaseRule):
                 )
 
 
-class ForbiddenFutureAnnotations(BaseRule):
+class ForbiddenFutureAnnotations(Rule):
     file_local = True
     activation = POLICIES["SMT310"]
     code = "SMT310"
@@ -72,7 +72,7 @@ class ForbiddenFutureAnnotations(BaseRule):
         yield from _future_findings(self, ctx, forbid=True)
 
 
-class UnnecessaryFutureAnnotations(BaseRule):
+class UnnecessaryFutureAnnotations(Rule):
     file_local = True
     activation = POLICIES["SMT311"]
     code = "SMT311"
@@ -94,7 +94,7 @@ class UnnecessaryFutureAnnotations(BaseRule):
 
 
 def _future_findings(
-    rule: BaseRule, ctx: AnalysisContext, *, forbid: bool
+    rule: Rule, ctx: AnalysisContext, *, forbid: bool
 ) -> Iterator[Violation]:
     for source in ctx.files.sources.values():
         contract = ctx.contracts.policy_for(source.module, "future_annotations")

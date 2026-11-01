@@ -7,7 +7,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import resolve_relative, type_checking_lines
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from smelt.config.models import ImportStyleConfig
 
 
-class ImportStyle(BaseRule):
+class ImportStyle(Rule):
     activation = POLICIES["SMT308"]
     code = "SMT308"
     name = "import-style"

@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.module_symbols import internal_module_symbols
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.member_names import private_name
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class InternalPublicModuleSymbol(BaseRule):
+class InternalPublicModuleSymbol(Rule):
     code = "SMT320"
     name = "internal-public-module-symbol"
     category = Category.STRUCTURE

@@ -8,13 +8,13 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class ForbiddenTestMock(BaseRule):
+class ForbiddenTestMock(Rule):
     test_local = True
     scope = "test"
     activation = POLICIES["SMT421"]
@@ -53,7 +53,7 @@ class ForbiddenTestMock(BaseRule):
                     )
 
 
-class StringPatchTarget(BaseRule):
+class StringPatchTarget(Rule):
     test_local = True
     scope = "test"
     code = "SMT422"
@@ -87,7 +87,7 @@ class StringPatchTarget(BaseRule):
                     )
 
 
-class ExcessiveTestPatches(BaseRule):
+class ExcessiveTestPatches(Rule):
     test_local = True
     scope = "test"
     activation = POLICIES["SMT423"]

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.analysis.files import FileIndex
+    from smelt.config.source import SourceStore
 
 _DEFERRED_ANNOTATIONS = (3, 14)
 
@@ -42,8 +43,9 @@ class PythonTarget:
 
 
 class PythonTargetIndex:
-    def __init__(self, files: FileIndex) -> None:
+    def __init__(self, files: FileIndex, store: SourceStore) -> None:
         self.files = files
+        self._store = store
         self._cache: dict[Path, PythonTarget] = {}
 
     def for_path(self, path: Path | None = None) -> PythonTarget:
@@ -83,7 +85,7 @@ class PythonTargetIndex:
             if current in self._cache:
                 target = self._cache[current]
                 break
-            if self.files.store.is_file(metadata):
+            if self._store.is_file(metadata):
                 target = self._read(metadata)
                 if target is not None:
                     break
@@ -110,7 +112,7 @@ class PythonTargetIndex:
     def _read(self, path: Path) -> PythonTarget | None:
         source = self.files.relative(path)
         try:
-            data = tomllib.loads(self.files.store.read_text(path))
+            data = tomllib.loads(self._store.read_text(path))
         except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
             return PythonTarget(
                 None, source, uncertainty=f"cannot read Python metadata: {exc}"

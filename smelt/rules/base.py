@@ -30,7 +30,9 @@ class RuleDoc:
 
 
 @runtime_checkable
-class Rule(Protocol):
+class RuleContract(Protocol):
+    """Metadata and checking interface, including lazy rule implementations."""
+
     code: str
     name: str
     category: Category
@@ -42,8 +44,8 @@ class Rule(Protocol):
     def explain(self) -> RuleDoc: ...
 
 
-class BaseRule:
-    """Convenience base: fills in rule metadata on every violation."""
+class Rule:
+    """A diagnostic rule with shared metadata and violation construction."""
 
     code: str
     name: str
@@ -107,7 +109,7 @@ class BaseRule:
 
 @dataclass
 class RuleSet:
-    rules: list[Rule] = field(default_factory=list)
+    rules: list[RuleContract] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         codes: set[str] = set()
@@ -120,10 +122,10 @@ class RuleSet:
             codes.add(rule.code)
             names.add(rule.name)
 
-    def by_code(self, code: str) -> Rule | None:
+    def by_code(self, code: str) -> RuleContract | None:
         return next((r for r in self.rules if r.code == code), None)
 
-    def lookup(self, code_or_name: str) -> Rule | None:
+    def lookup(self, code_or_name: str) -> RuleContract | None:
         wanted = code_or_name.strip()
         return next(
             (r for r in self.rules if wanted.upper() == r.code or wanted == r.name),

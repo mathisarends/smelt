@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
     import_violation,
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from smelt.model import ModuleInfo
 
 
-class LayerBoundary(BaseRule):
+class LayerBoundary(Rule):
     activation = POLICIES["SMT101"]
     code = "SMT101"
     name = "layer-boundary"

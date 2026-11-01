@@ -13,7 +13,7 @@ from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import display_module_path
 
 if TYPE_CHECKING:
@@ -287,7 +287,7 @@ def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
     return f"{test_root}/{relative}"
 
 
-class MisplacedTestFile(BaseRule):
+class MisplacedTestFile(Rule):
     scope = "test"
     activation = POLICIES["SMT401"]
     code = "SMT401"

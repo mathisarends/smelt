@@ -8,7 +8,7 @@ from smelt.analysis.exports import resolve_dotted
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, join, skip_import
 
 if TYPE_CHECKING:
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from smelt.analysis.imports import ImportDetail
 
 
-class PrivateModuleImport(BaseRule):
+class PrivateModuleImport(Rule):
     activation = POLICIES["SMT107"]
     code = "SMT107"
     name = "private-module-import"

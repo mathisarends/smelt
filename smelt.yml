@@ -69,6 +69,8 @@ tests:
   layout: mirror
 
 rules:
+  no-base-class-prefix: error
+  deep-object-navigation: warning
   import-cycle: error
   prefer-match-type-dispatch: error
   public-definitions-first: error

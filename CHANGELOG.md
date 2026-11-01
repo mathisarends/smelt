@@ -13,6 +13,22 @@ current configuration and complete rule contracts, see the [README](README.md),
   `.pre-commit-hooks.yaml` manifest retains its required filename. Integration
   instructions consistently use prek.
 
+- Optional [SMT323](docs/rules/SMT323.md), enabled with
+  `rules: {no-base-class-prefix: error}`, rejects class definitions such as
+  `BaseRepository` and `_BaseRepository` in favor of responsibility-based names.
+  Imports, third-party inheritance, `Baseline` and `Base64` remain valid. Package
+  rule overrides can disable the convention; checks never rename symbols.
+  Smelt enables the convention for its own sources; the default set is unchanged.
+- Smelt also enables the opt-in `deep-object-navigation` Law of Demeter review
+  for its own sources. Facade analysis receives its file inventory directly,
+  and filesystem/Python-target analysis receives its source store explicitly.
+  SMT322 recognizes statically evidenced module/data namespaces and known value
+  APIs, preserving unknown collaborator findings. Changes to imported record
+  definitions are considered on every check; no code is executed or rewritten.
+- Rule implementations now inherit `smelt.rules.base.Rule` instead of `BaseRule`.
+  The former structural `Rule` protocol is named `RuleContract`; lazy rule
+  implementations retain the same interface. Update custom rule imports and
+  type annotations accordingly.
 - Independent workspaces can share a local policy fragment with `extends` and
   explicit child overrides. Mappings merge; lists replace, including `[]`.
   Project paths remain relative to the selected workspace. `config show --sources`

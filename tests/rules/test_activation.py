@@ -12,7 +12,7 @@ from smelt.engine.check import (
     rule_meta,
 )
 from smelt.rules.activation import PolicyActivation
-from smelt.rules.base import BaseRule
+from smelt.rules.base import Rule
 from smelt.rules.registry import build_rule_set
 
 BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903"}
@@ -33,8 +33,8 @@ def _active(extra: dict[str, object], options: CheckOptions | None = None) -> se
 
 def test_minimal_configuration_runs_only_the_small_baseline() -> None:
     assert _active({}) == BASELINE
-    assert not BaseRule.enabled_by_default
-    assert BaseRule.activation is None
+    assert not Rule.enabled_by_default
+    assert Rule.activation is None
 
 
 @pytest.mark.parametrize(

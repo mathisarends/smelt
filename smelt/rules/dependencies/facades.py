@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.facade_usage import FacadeUsage
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 _IMPORTER_PREVIEW = 4
 
 
-class FacadeExportGap(BaseRule):
+class FacadeExportGap(Rule):
     activation = POLICIES["SMT109"]
     code = "SMT109"
     name = "facade-export-gap"
@@ -65,6 +65,7 @@ class FacadeExportGap(BaseRule):
         usage = FacadeUsage(
             ctx.syntax,
             ctx.imports,
+            files=ctx.files,
             count_tests=any(c.spec.count_tests for c in contracts),
         )
         ownership, _ = usage.canonical_exports(ctx.config.structure.canonical_exports)

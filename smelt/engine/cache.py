@@ -13,7 +13,7 @@ from smelt.diagnostics.violation import Violation  # noqa: TC001 - runtime cache
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
     from smelt.diagnostics.violation import Severity
-    from smelt.rules.base import Rule
+    from smelt.rules.base import RuleContract
 
 
 @dataclass
@@ -31,7 +31,7 @@ ANALYSIS = TypeAdapter(CachedAnalysis)
 
 def analysis_inputs(
     ctx: AnalysisContext,
-    active: list[tuple[Rule, Severity]],
+    active: list[tuple[RuleContract, Severity]],
     selection: tuple[str, ...],
 ) -> object:
     """Inventory and contents, including facts that can affect unchanged modules."""

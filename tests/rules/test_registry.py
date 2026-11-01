@@ -14,7 +14,7 @@ import smelt.rules
 from smelt.analysis.context import Index
 from smelt.config.models import SmeltConfig
 from smelt.diagnostics.violation import Category, Severity
-from smelt.rules.base import BaseRule, RuleSet
+from smelt.rules.base import Rule, RuleContract, RuleSet
 from smelt.rules.registry import build_rule_set
 
 
@@ -27,8 +27,8 @@ class TestBuiltins:
                 if (
                     cls.__module__ == info.name
                     and not name.startswith("_")
-                    and cls is not BaseRule
-                    and issubclass(cls, BaseRule)
+                    and cls is not Rule
+                    and issubclass(cls, Rule)
                 ):
                     implementations.add(cls)
 
@@ -39,7 +39,7 @@ class TestBuiltins:
         )
 
     @pytest.mark.parametrize("rule", build_rule_set().rules, ids=lambda rule: rule.code)
-    def test_catalog_contract(self, rule: BaseRule) -> None:
+    def test_catalog_contract(self, rule: Rule) -> None:
         family = {
             Category.DEPENDENCIES: "1",
             Category.STRUCTURE: "3",
@@ -90,8 +90,10 @@ def test_lazy_selection_preserves_catalog_metadata() -> None:
     assert {rule.code for rule in lazy.rules} == {rule.code for rule in eager.rules}
     assert lazy.rules
     for rule in lazy.rules:
+        assert isinstance(rule, RuleContract)
         original = eager.by_code(rule.code)
-        assert original is not None
+        assert isinstance(original, Rule)
+        assert isinstance(original, RuleContract)
         for attribute in (
             "name",
             "category",

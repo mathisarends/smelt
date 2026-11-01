@@ -432,6 +432,21 @@
       "syntax"
     ],
     "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.naming:NoBaseClassPrefix",
+    "code": "SMT323",
+    "name": "no-base-class-prefix",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
     "file_local": true,
     "test_local": false,
     "member_local": false,

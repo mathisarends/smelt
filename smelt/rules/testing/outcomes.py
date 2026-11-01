@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.test_outcomes import helper_outcome_review, vacuous_outcomes
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class TestWithoutOutcomeCheck(BaseRule):
+class TestWithoutOutcomeCheck(Rule):
     test_local = True
     scope = "test"
     code = "SMT424"
@@ -78,7 +78,7 @@ class TestWithoutOutcomeCheck(BaseRule):
                     )
 
 
-class TestOnlyChecksPossiblyEmptyData(BaseRule):
+class TestOnlyChecksPossiblyEmptyData(Rule):
     test_local = True
     scope = "test"
     code = "SMT425"

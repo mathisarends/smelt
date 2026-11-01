@@ -40,21 +40,23 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
+    from smelt.config.source import SourceStore
 
 
 class _SourceFileSystem(FileSystem):
-    def __init__(self, files: FileIndex) -> None:
+    def __init__(self, files: FileIndex, store: SourceStore) -> None:
         self.files = files
+        self._store = store
         self._basic: BasicFileSystem | None = None
 
     def read(self, file_name: str) -> str:
-        return self.files.store.read_text(Path(file_name), encoding="utf-8-sig")
+        return self._store.read_text(Path(file_name), encoding="utf-8-sig")
 
     def exists(self, file_name: str) -> bool:
-        return self.files.store.is_file(Path(file_name))
+        return self._store.is_file(Path(file_name))
 
     def get_mtime(self, file_name: str) -> float:
-        identity = self.files.store.identity(Path(file_name))
+        identity = self._store.identity(Path(file_name))
         if identity is not None:
             return float(int(identity[-12:], 16))
         return super().get_mtime(file_name)
@@ -62,7 +64,7 @@ class _SourceFileSystem(FileSystem):
     def convert_to_basic(self) -> BasicFileSystem:
         if self._basic is not None:
             return self._basic
-        inventory = self.files.store.inventory()
+        inventory = self._store.inventory()
         if inventory is None:
             return super().convert_to_basic()
         # Native Grimp accepts its in-memory filesystem. Include unselected
@@ -195,7 +197,7 @@ class ImportIndex:
         grimp_settings.configure(
             PACKAGE_FINDER=_SourceRootPackageFinder(files),
             MODULE_FINDER=_IndexedModuleFinder(files),
-            FILE_SYSTEM=_SourceFileSystem(files),
+            FILE_SYSTEM=_SourceFileSystem(files, files.store),
             CACHE_CLASS=import_cache_type(files, asts, cache, inventory),
         )
         try:

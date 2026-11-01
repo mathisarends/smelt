@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.member_names import private_name
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class TestOnlyPublicAttribute(BaseRule):
+class TestOnlyPublicAttribute(Rule):
     code = "SMT430"
     name = "test-only-public-attribute"
     category = Category.TESTS

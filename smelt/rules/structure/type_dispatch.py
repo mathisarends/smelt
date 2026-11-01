@@ -7,13 +7,13 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.type_dispatch import type_dispatches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class PreferMatchTypeDispatch(BaseRule):
+class PreferMatchTypeDispatch(Rule):
     file_local = True
     activation = POLICIES["SMT315"]
     code = "SMT315"

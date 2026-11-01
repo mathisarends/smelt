@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import ast
 from itertools import chain
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import BaseRule, RuleDoc
+from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import last_segment
 from smelt.rules.structure.layout import package_location
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class ForbiddenPackageName(BaseRule):
+class ForbiddenPackageName(Rule):
     activation = POLICIES["SMT302"]
     code = "SMT302"
     name = "forbidden-package-name"
@@ -66,7 +67,7 @@ class ForbiddenPackageName(BaseRule):
             )
 
 
-class NoPrivateModules(BaseRule):
+class NoPrivateModules(Rule):
     activation = POLICIES["SMT312"]
     code = "SMT312"
     name = "no-private-modules"
@@ -130,3 +131,73 @@ class NoPrivateModules(BaseRule):
                 },
                 hint=f"Rename the {kind} after its responsibility without a leading underscore; update imports and facade exports. Private helpers inside a normal module may keep their underscore prefix.",
             )
+
+
+class NoBaseClassPrefix(Rule):
+    file_local = True
+    code = "SMT323"
+    name = "no-base-class-prefix"
+    category = Category.STRUCTURE
+    default_severity = Severity.ERROR
+    requires = frozenset({Index.SYNTAX})
+    doc = RuleDoc(
+        summary="A class definition uses the Base prefix forbidden by the selected naming convention.",
+        rationale=(
+            "BaseService names a position in an inheritance hierarchy rather than "
+            "the abstraction's responsibility. A responsibility-based name such as "
+            "Service keeps that implementation choice out of the name. The prefix "
+            "does not itself create additional dependency coupling, and inheritance "
+            "can be intentional, so this is an opt-in naming convention rather than "
+            "a correctness check or an inheritance ban. It checks all class "
+            "definitions in matching production modules, including private, nested "
+            "and local classes, without inferring whether they have subclasses. "
+            "After leading underscores, Base must be the whole name or be followed "
+            "by an uppercase letter or underscore. Baseline, Baseball and Base64 "
+            "remain valid. Imports, aliases, function names and test files are "
+            "outside scope; inheriting from an imported BaseModel is allowed."
+        ),
+        bad="class BaseRepository:\n    ...\n\nclass SqlRepository(BaseRepository):\n    ...",
+        good="class Repository:\n    ...\n\nclass SqlRepository(Repository):\n    ...",
+        fix=(
+            "Choose a name describing the class's responsibility or contract, "
+            "then update references and deliberate exports. Preserve inheritance "
+            "where it serves the design. A more specific package rule can "
+            "disable the convention for compatibility. No symbols are "
+            "renamed automatically. Enable with rules: "
+            "{no-base-class-prefix: error}, globally or in a package contract, "
+            "or --select SMT323."
+        ),
+        config=("rules", "structure.contracts"),
+    )
+
+    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        for name, source in sorted(ctx.files.sources.items()):
+            info = ctx.model.info(name)
+            for node in ast.walk(ctx.asts.parse(source.path)):
+                if not isinstance(node, ast.ClassDef) or not _has_base_prefix(
+                    node.name
+                ):
+                    continue
+                yield self.violation(
+                    f'class "{node.name}" uses the forbidden Base prefix',
+                    path=source.path,
+                    line=node.lineno,
+                    column=node.col_offset + 1,
+                    source_module=name,
+                    feature=info.feature if info else None,
+                    layer=info.layer if info else None,
+                    expected={
+                        "forbidden_prefix": "Base",
+                        "class": node.name,
+                        "automatic_rename": False,
+                    },
+                    hint="Name the class after its responsibility or contract instead of its inheritance role; update references and exports.",
+                )
+
+
+def _has_base_prefix(name: str) -> bool:
+    name = name.lstrip("_")
+    suffix = name.removeprefix("Base")
+    return name.startswith("Base") and (
+        not suffix or suffix[0].isupper() or suffix[0] == "_"
+    )
