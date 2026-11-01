@@ -49,7 +49,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     write_project(
         root,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             ".gitignore": ".smelt_cache/\n",
             "app/__init__.py": "",
             "app/browser.py": "class Browser:\n    def emit(self): pass\n",
@@ -161,14 +161,14 @@ def test_native_worker_recovers_after_invalid_staged_config(
 ) -> None:
     _invoke([str(native)], project)
     pid = _pid(project)
-    config = project / "smelt.yaml"
+    config = project / "smelt.yml"
     config.write_text("invalid: [")
-    _git(project, "add", "smelt.yaml")
+    _git(project, "add", "smelt.yml")
     actual = _invoke([str(native)], project)
     assert actual == _fresh(project)
     assert actual[0] == 2
     config.write_text(CONFIG)
-    _git(project, "add", "smelt.yaml")
+    _git(project, "add", "smelt.yml")
     assert _invoke([str(native)], project) == _fresh(project)
     assert _pid(project) == pid
 
@@ -179,11 +179,11 @@ def test_native_worker_reloads_inherited_index_policy(
     write_project(
         project,
         {
-            "smelt.yaml": "extends: policy/base.yml\n",
+            "smelt.yml": "extends: policy/base.yml\n",
             "policy/base.yml": CONFIG,
         },
     )
-    _git(project, "add", "smelt.yaml", "policy/base.yml")
+    _git(project, "add", "smelt.yml", "policy/base.yml")
     _git(project, "commit", "-qm", "share policy")
     (project / "app/caller.py").write_text("", encoding="utf-8")
     _git(project, "add", "app/caller.py")

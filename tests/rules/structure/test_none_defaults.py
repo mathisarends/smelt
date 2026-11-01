@@ -13,7 +13,7 @@ def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/service.py": source,
         },
@@ -161,7 +161,7 @@ def test_rule_is_opt_in_and_can_be_disabled_for_a_package(tmp_path: Path) -> Non
     write_project(
         root,
         {
-            "smelt.yaml": CONFIG
+            "smelt.yml": CONFIG
             + "rules: {implicit-optional-default: warning}\nstructure:\n  contracts:\n    exception:\n      match: app\n      rules: {implicit-optional-default: off}\n"
         },
     )

@@ -20,7 +20,7 @@ class TestAnalysisContext:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG.replace(
+                "smelt.yml": LAYERED_CONFIG.replace(
                     "root_packages: [app]",
                     "root_packages: [app]\n  source_roots: [one/src, two/src]",
                 ),
@@ -28,7 +28,7 @@ class TestAnalysisContext:
                 "two/src/app/infra/db.py": "class Db: pass\n",
             },
         )
-        ctx = AnalysisContext(root, load_config(root / "smelt.yaml").config)
+        ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         assert set(ctx.files.sources) == {"app.domain.service", "app.infra.db"}
         assert ctx.imports.graph.direct_import_exists(
@@ -41,7 +41,7 @@ class TestAnalysisContext:
         self, tmp_path: Path, regular: bool
     ) -> None:
         files = {
-            "smelt.yaml": LAYERED_CONFIG.replace(
+            "smelt.yml": LAYERED_CONFIG.replace(
                 "root_packages: [app]",
                 "root_packages: [app]\n  source_roots: [one/src, two/src]",
             ),
@@ -51,7 +51,7 @@ class TestAnalysisContext:
         if regular:
             files.update({"one/src/app/__init__.py": "", "two/src/app/__init__.py": ""})
         root = write_project(tmp_path, files)
-        ctx = AnalysisContext(root, load_config(root / "smelt.yaml").config)
+        ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         with pytest.raises(AnalysisError, match="ambiguous") as caught:
             _ = ctx.files
@@ -65,7 +65,7 @@ class TestAnalysisContext:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG.replace(
+                "smelt.yml": LAYERED_CONFIG.replace(
                     "root_packages: [app]",
                     "root_packages: [app]\n  source_roots: [., app/src]",
                 ),
@@ -74,7 +74,7 @@ class TestAnalysisContext:
                 "app/src/app/domain/model.py": "",
             },
         )
-        ctx = AnalysisContext(root, load_config(root / "smelt.yaml").config)
+        ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         assert set(ctx.files.sources) == {"app", "app.domain.model"}
         assert set(ctx.imports.modules()) == set(ctx.files.sources)
@@ -85,7 +85,7 @@ class TestAnalysisContext:
         project = write_project(
             tmp_path / "project",
             {
-                "smelt.yaml": LAYERED_CONFIG,
+                "smelt.yml": LAYERED_CONFIG,
                 "app/__init__.py": "",
                 "app/domain/__init__.py": "",
                 "app/application/__init__.py": "",
@@ -93,7 +93,7 @@ class TestAnalysisContext:
             },
         )
         (tmp_path / "elsewhere").mkdir()
-        config = load_config(project / "smelt.yaml").config
+        config = load_config(project / "smelt.yml").config
 
         ctx = AnalysisContext(tmp_path / "elsewhere" / ".." / "project", config)
 

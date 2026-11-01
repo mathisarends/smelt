@@ -27,7 +27,7 @@ def _mirror(tmp_path: Path, tests: dict[str, str], options: str = "") -> Path:
         "version: 1\nproject:\n  root_packages: [app]\n"
         f"tests:\n  layout: mirror\n{options}"
     )
-    return write_project(tmp_path, {"smelt.yaml": config, **MIRROR_SOURCES, **tests})
+    return write_project(tmp_path, {"smelt.yml": config, **MIRROR_SOURCES, **tests})
 
 
 class TestMirrorLayout:
@@ -40,7 +40,7 @@ class TestMirrorLayout:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app]\n"
                     f"  test_roots: {json.dumps(test_roots)}\n"
                     "tests: {layout: mirror}\n"
@@ -72,7 +72,7 @@ class TestMirrorLayout:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app, agent]\n"
                     f"  source_roots: {json.dumps(sources)}\n  test_roots: {json.dumps(tests)}\n"
                     "tests: {layout: mirror}\n"
@@ -300,7 +300,7 @@ class TestWorkspace:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": WORKSPACE_CONFIG,
+                "smelt.yml": WORKSPACE_CONFIG,
                 **WORKSPACE_SOURCES,
                 "backend/tests/users/test_repository.py": "",
                 "libs/agent/tests/tools/test_executor.py": "",
@@ -313,7 +313,7 @@ class TestWorkspace:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": WORKSPACE_CONFIG,
+                "smelt.yml": WORKSPACE_CONFIG,
                 **WORKSPACE_SOURCES,
                 "libs/agent/tests/tools/test_ghost.py": "",
                 "backend/tests/tools/test_executor.py": "",

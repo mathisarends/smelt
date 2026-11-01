@@ -11,9 +11,9 @@ See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 
 ```bash
-smelt init                           # draft smelt.yaml from the code (also uv workspaces)
+smelt init                           # draft smelt.yml from the code (also uv workspaces)
 smelt init --maintainability         # write individually named source/test review checks
-smelt init --config other.yaml       # write a config and editor schema in that directory
+smelt init --config other.yml       # write a config and editor schema in that directory
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
 smelt check --staged --fail-on warning  # review the actual commit, including new warnings
@@ -30,7 +30,7 @@ smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
 smelt config show                    # the resolved config
 smelt config show --sources --format json  # policy inputs and explicit value origins
-smelt config schema                  # the JSON schema of smelt.yaml
+smelt config schema                  # the JSON schema of smelt.yml
 ```
 
 Normal checks are read-only. `--fix` applies permitted safe ordering fixes.

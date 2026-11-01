@@ -29,7 +29,7 @@ def _project(
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/observation/__init__.py": exports,
             "app/observation/observe.py": "class Observe: pass\n",

@@ -34,7 +34,7 @@ def test_shared_helper_has_one_repair_and_preserves_each_finding(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "tests/test_imports.py": SHARED_WAIT,
         },
@@ -76,7 +76,7 @@ def test_shared_helper_groups_separate_operations_and_respect_suppression(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "tests/test_imports.py": source,
         },
@@ -106,7 +106,7 @@ def test_grouping_never_reintroduces_a_hidden_hint_or_filtered_finding(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "tests/test_imports.py": SHARED_WAIT,
         },
@@ -126,7 +126,7 @@ def test_group_metadata_preserves_existing_finding_and_debt_identities(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "tests/test_imports.py": SHARED_WAIT,
         },

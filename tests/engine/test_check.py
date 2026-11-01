@@ -39,7 +39,7 @@ def _layered(tmp_path: Path, service: str, config: str = LAYERED_CONFIG) -> Path
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/application/__init__.py": "",
@@ -176,7 +176,7 @@ class TestSuppressions:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": (
+                "smelt.yml": (
                     "version: 1\nproject: {root_packages: [app]}\n"
                     "rules: {private-test-access: error, unused-suppression: error}\n"
                 ),
@@ -198,7 +198,7 @@ class TestSuppressions:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": source,
             },
@@ -226,7 +226,7 @@ class TestSuppressions:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, bundled-instance-assignment: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, bundled-instance-assignment: warning}\n",
                 "app/__init__.py": "",
                 "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[SMT316, SMT314] -- deliberate API\n        self.first = self.second = 0\n",
             },

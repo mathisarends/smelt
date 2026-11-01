@@ -35,7 +35,7 @@ def _project(
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/worker.py": source,
             "tests/test_worker.py": test,
@@ -364,7 +364,7 @@ def test_custom_roots_and_private_state_observed_through_public_behavior(
     root = write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "root_packages: [app]",
                 "root_packages: [app], source_roots: [src], test_roots: [spec]",
             ),

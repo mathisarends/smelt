@@ -19,7 +19,7 @@ OPTIONS = CheckOptions(select=("SMT321",))
 def _project(tmp_path: Path, source: str = SOURCE) -> Path:
     return write_project(
         tmp_path,
-        {"smelt.yaml": CONFIG, "app/__init__.py": "", "app/service.py": source},
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "app/service.py": source},
     )
 
 
@@ -155,7 +155,7 @@ def test_accepted_debt_is_only_fixed_when_explicitly_bypassed(tmp_path: Path) ->
     Debt.from_violations(
         initial.report.violations, snippet_reader(initial.context)
     ).write(root / "debt.json")
-    write_project(root, {"smelt.yaml": CONFIG + "debt: debt.json\n"})
+    write_project(root, {"smelt.yml": CONFIG + "debt: debt.json\n"})
     assert apply_none_default_fixes(check(root, OPTIONS), unsafe=True).files == []
     assert (root / "app/service.py").read_text() == SOURCE
     fixed = apply_none_default_fixes(

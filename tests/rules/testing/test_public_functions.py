@@ -21,7 +21,7 @@ def test_excluded_script_callers_are_explicitly_unassessed(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/service.py": "def helper(): return 1\n",
             "tests/test_service.py": "from app.service import helper\ndef test_run(): assert helper() == 1\n",
@@ -49,7 +49,7 @@ def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": """
                 async def drag_gesture(tab):
@@ -108,7 +108,7 @@ def test_direct_and_module_aliased_test_access(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "tests/test_mouse.py": test_source,
@@ -141,7 +141,7 @@ def test_production_consumers_exports_and_escaped_modules_preserve_visibility(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "app/consumer.py": production_source,
@@ -165,7 +165,7 @@ def test_using_public_caller_does_not_make_its_helper_public(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass\ndef drag(): helper()",
             "app/consumer.py": production_source,
@@ -198,7 +198,7 @@ def test_explicit_apis_and_uncertain_definitions_are_excluded(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": source,
             "tests/test_mouse.py": "from app.mouse import helper",
@@ -213,7 +213,7 @@ def test_exports_of_other_functions_do_not_hide_internal_helpers(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "__all__ = ['drag']\ndef helper(): pass\ndef drag(): helper()",
             "tests/test_mouse.py": "from app.mouse import helper",
@@ -228,7 +228,7 @@ def test_private_and_dunder_functions_are_excluded(tmp_path: Path, name: str) ->
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": f"def {name}(): pass",
             "tests/test_mouse.py": f"from app.mouse import {name}",
@@ -252,7 +252,7 @@ def test_local_fakes_shadowed_receivers_and_untested_functions_are_excluded(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "tests/test_mouse.py": test_source,
@@ -265,7 +265,7 @@ def test_facade_reexports_remain_public(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "from .api import gesture as gesture",
             "app/api.py": "from .mouse import helper as gesture",
             "app/mouse.py": "def helper(): pass",
@@ -281,7 +281,7 @@ def test_renaming_helper_and_testing_public_behavior_resolves_the_finding(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "__all__ = ['drag']\ndef helper(): return 'moved'\ndef drag(): return helper()",
             "tests/test_mouse.py": "from app.mouse import helper\ndef test_drag(): assert helper() == 'moved'",
@@ -307,7 +307,7 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\n  exclude:\n  - app/generated/**\nrules:\n  test-only-public-function: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\n  exclude:\n  - app/generated/**\nrules:\n  test-only-public-function: warning\n",
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "app/generated/consumer.py": "from app.mouse import helper",
@@ -346,7 +346,7 @@ def test_rule_selection_and_test_evidence_exclusions(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject: {{root_packages: [app]}}\n{policy}",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{policy}",
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "tests/test_mouse.py": "from app.mouse import helper",
@@ -361,7 +361,7 @@ def test_custom_roots_and_deterministic_evidence(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\n  source_roots:\n  - src\n  test_roots:\n  - spec\nrules:\n  test-only-public-function: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\n  source_roots:\n  - src\n  test_roots:\n  - spec\nrules:\n  test-only-public-function: warning\n",
             "src/app/__init__.py": "",
             "src/app/mouse.py": "def helper(): pass",
             "spec/test_b.py": "from app.mouse import helper",
@@ -384,7 +384,7 @@ def test_shared_private_name_suggestion_avoids_an_existing_function(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/mouse.py": "def _helper(): pass\ndef helper(): pass",
             "tests/test_mouse.py": "from app.mouse import helper",

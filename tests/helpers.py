@@ -22,7 +22,7 @@ def write_project(root: Path, files: dict[str, str]) -> Path:
 
 
 def check(root: Path, options: CheckOptions | None = None) -> CheckOutcome:
-    loaded = load_config(root / "smelt.yaml")
+    loaded = load_config(root / "smelt.yml")
     return run_check(loaded, options or CheckOptions())
 
 

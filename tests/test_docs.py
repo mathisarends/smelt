@@ -83,7 +83,7 @@ class TestSchema:
 
         assert schema["$id"] == SCHEMA_ID
         assert SCHEMA_ID.endswith(f"/{SCHEMA_FILE}")
-        assert schema["title"] == "smelt.yaml"
+        assert schema["title"] == "smelt.yml"
 
     def test_third_party_accepts_the_short_form(self) -> None:
         schema = json.loads((ROOT / SCHEMA_FILE).read_text(encoding="utf-8"))

@@ -24,7 +24,7 @@ architecture:
 
 def _project(tmp_path: Path, files: dict[str, str]) -> Path:
     base = {
-        "smelt.yaml": CONFIG,
+        "smelt.yml": CONFIG,
         "app/__init__.py": "",
         "app/application/__init__.py": "",
         "app/bootstrap.py": "import dishka\nfrom app.application import service\n",
@@ -39,7 +39,7 @@ class TestCompositionRootLeak:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
                 "app/application/service.py": "from app import bridge\n",
                 "app/bridge.py": "from app import bootstrap\n",
                 "app/bootstrap.py": "container = object()\n",
@@ -61,7 +61,7 @@ class TestCompositionRootLeak:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
                 "app/__init__.py": "from app.bootstrap import container\n",
                 "app/bootstrap.py": "container = object()\n",
                 "app/application/service.py": "from app import container\n",
@@ -92,7 +92,7 @@ class TestCompositionRootLeak:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                     version: 1
                     project: {root_packages: [app]}
                     architecture:
@@ -141,7 +141,7 @@ class TestCompositionRootLeak:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": """
+                "smelt.yml": """
                     version: 1
                     project: {root_packages: [app]}
                     architecture:
@@ -175,7 +175,7 @@ class TestCompositionRootLeak:
         root = _project(
             tmp_path,
             {
-                "smelt.yaml": CONFIG.replace(
+                "smelt.yml": CONFIG.replace(
                     "  composition_root: [app.bootstrap]",
                     "  composition_root: [app.bootstrap]\n"
                     "  wiring: [app.providers.database]",

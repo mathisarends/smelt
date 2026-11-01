@@ -19,7 +19,7 @@ def _project(root: Path, source: str = SOURCE, *, config: str = CONFIG) -> Path:
     return write_project(
         root,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/models.py": source,
         },

@@ -46,7 +46,7 @@ def staged_project(
     path = requested if requested is not None else discover_config(cwd, store=store)
     if path is None or not store.is_file(path) or not path.is_relative_to(repository):
         raise ConfigError(
-            [ConfigIssue("", "no smelt.yaml found in the staged Git index")]
+            [ConfigIssue("", "no smelt.yml found in the staged Git index")]
         )
     # Policy is read before run_check creates the analysis cache. Reuse verified
     # immutable blobs here too, instead of starting cat-file for the same config

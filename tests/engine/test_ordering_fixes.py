@@ -18,7 +18,7 @@ OPTIONS = CheckOptions(select=("SMT313",))
 def _project(tmp_path: Path, *, source: str = SOURCE, config: str = CONFIG) -> Path:
     return write_project(
         tmp_path,
-        {"smelt.yaml": config, "app/__init__.py": "", "app/service.py": source},
+        {"smelt.yml": config, "app/__init__.py": "", "app/service.py": source},
     )
 
 
@@ -132,7 +132,7 @@ def test_accepted_debt_is_not_fixed_without_explicit_no_debt(tmp_path: Path) -> 
         initial.report.violations, snippet_reader(initial.context)
     )
     baseline.write(root / "debt.json")
-    write_project(root, {"smelt.yaml": CONFIG + "\ndebt: debt.json\n"})
+    write_project(root, {"smelt.yml": CONFIG + "\ndebt: debt.json\n"})
 
     assert apply_ordering_fixes(check(root, OPTIONS)).files == []
     assert apply_ordering_fixes(
@@ -188,7 +188,7 @@ def test_external_source_root_is_checked_but_never_rewritten(tmp_path: Path) -> 
         "  root_packages:\n  - app\n  source_roots: [../library/src]\n",
     )
     write_project(
-        tmp_path, {"policy/smelt.yaml": config, "library/src/app/service.py": SOURCE}
+        tmp_path, {"policy/smelt.yml": config, "library/src/app/service.py": SOURCE}
     )
 
     fixed = apply_ordering_fixes(check(tmp_path / "policy", OPTIONS))

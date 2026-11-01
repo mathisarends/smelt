@@ -23,7 +23,7 @@ SOURCE = "if isinstance(event, Started): start(event)\nelif isinstance(event, Pr
 
 def _project(tmp_path: Path, config: str = CONFIG) -> Path:
     return write_project(
-        tmp_path, {"smelt.yaml": config, "app/__init__.py": "", "app/events.py": SOURCE}
+        tmp_path, {"smelt.yml": config, "app/__init__.py": "", "app/events.py": SOURCE}
     )
 
 

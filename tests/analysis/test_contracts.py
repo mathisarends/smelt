@@ -20,7 +20,7 @@ def test_contracts_follow_arbitrary_packages_and_namespace_portions(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"""
+            "smelt.yml": f"""
             version: 1
             project:
               root_packages: [acme]
@@ -36,7 +36,7 @@ def test_contracts_follow_arbitrary_packages_and_namespace_portions(
             f"{roots[1]}/acme/records.py": "",
         },
     )
-    ctx = AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yaml").config)
+    ctx = AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yml").config)
 
     described = ctx.contracts.describe("acme.records")
 
@@ -59,7 +59,7 @@ def test_overlapping_contracts_remain_visible_in_context(tmp_path: Path) -> None
     write_project(
         tmp_path,
         {
-            "smelt.yaml": """
+            "smelt.yml": """
             version: 1
             project: {root_packages: [lib]}
             structure:
@@ -71,7 +71,7 @@ def test_overlapping_contracts_remain_visible_in_context(tmp_path: Path) -> None
             "lib/api/impl.py": "",
         },
     )
-    ctx = AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yaml").config)
+    ctx = AnalysisContext(tmp_path, load_config(tmp_path / "smelt.yml").config)
 
     assert {entry["name"] for entry in ctx.contracts.describe("lib.api.impl")} == {
         "nested",

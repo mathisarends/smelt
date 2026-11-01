@@ -77,7 +77,7 @@ def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
         return load_config(path)
     found = discover_config(cwd)
     if found is None:
-        msg = "no smelt.yaml found in this directory or its parents (run `smelt init`)"
+        msg = "no smelt.yml found in this directory or its parents (run `smelt init`)"
         raise CliError(msg, kind="config")
     return load_config(found)
 

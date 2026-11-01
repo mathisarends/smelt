@@ -27,7 +27,7 @@ architecture:
 
 def _features(tmp_path: Path, files: dict[str, str]) -> Path:
     base = {
-        "smelt.yaml": FEATURE_CONFIG,
+        "smelt.yml": FEATURE_CONFIG,
         "gw/__init__.py": "",
         "gw/bootstrap.py": "",
         "gw/shared/__init__.py": "",
@@ -55,7 +55,7 @@ class TestUnknownLayer:
         root = _features(
             tmp_path,
             {
-                "smelt.yaml": FEATURE_CONFIG
+                "smelt.yml": FEATURE_CONFIG
                 + f"  wiring: [gw.features.voice.{module}]\n",
                 f"gw/features/voice/{wiring_path}": "",
                 "gw/features/voice/stray.py": "",
@@ -115,7 +115,7 @@ class TestUnknownLayer:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG,
+                "smelt.yml": LAYERED_CONFIG,
                 "app/__init__.py": "",
                 "app/domain/__init__.py": "",
                 "app/cli/__init__.py": "",
@@ -160,7 +160,7 @@ class TestUnknownLayer:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG,
+                "smelt.yml": LAYERED_CONFIG,
                 "app/__init__.py": "",
                 "app/main.py": "",
                 "app/domain/__init__.py": "",
@@ -182,7 +182,7 @@ class TestUnclassifiedModule:
         root = _features(
             tmp_path,
             {
-                "smelt.yaml": FEATURE_CONFIG.replace("[gw]", "[gw, lib]"),
+                "smelt.yml": FEATURE_CONFIG.replace("[gw]", "[gw, lib]"),
                 "lib/__init__.py": "",
                 "lib/tools.py": "",
             },
@@ -194,7 +194,7 @@ class TestUnclassifiedModule:
         root = write_project(
             tmp_path,
             {
-                "smelt.yaml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/main.py": "",
             },

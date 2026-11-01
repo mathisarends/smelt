@@ -15,7 +15,7 @@ stays in `violations`, so a group is one decision, not one more defect.
 Accept what remains with a baseline:
 
 `smelt debt` records today's violations in `.smelt/debt.json` and sets `debt:` in
-`smelt.yaml`. `smelt check` then fails only on new violations, and SMT903 reports entries
+`smelt.yml`. `smelt check` then fails only on new violations, and SMT903 reports entries
 that were fixed and can leave the file (`smelt debt --prune`).
 Existing debt files remain readable. Run `smelt debt --prune` once before editing imports
 covered by an older baseline to upgrade their fingerprints; pruning accepts no new debt.

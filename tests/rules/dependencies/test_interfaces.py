@@ -28,7 +28,7 @@ def _project(tmp_path: Path, client: str, *, config: str = CONFIG) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/client.py": client,
             "app/orders/__init__.py": "",
@@ -142,7 +142,7 @@ def test_subtree_publicity_is_explicit(tmp_path: Path, public: str, count: int) 
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace("[api]", public),
+            "smelt.yml": CONFIG.replace("[api]", public),
             "app/orders/api/__init__.py": "",
             "app/orders/api/internal.py": "",
             "app/client.py": "from app.orders.api import internal\n",
@@ -225,7 +225,7 @@ def test_nested_contracts_are_additive(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/orders/api/__init__.py": "",
             "app/orders/api/private.py": "",
             "app/client.py": "import app.orders.api.private\n",
@@ -245,7 +245,7 @@ def test_one_package_pattern_enforces_interfaces_across_sibling_slices(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG.replace("match: app.orders", "match: app.parts.*"),
+            "smelt.yml": CONFIG.replace("match: app.orders", "match: app.parts.*"),
             "app/parts/one/api.py": "from app.parts.two import api\nfrom app.parts.two.private import Record\n",
             "app/parts/two/api.py": "from .private import Record as Record\n",
             "app/parts/two/private.py": "class Record: pass\n",

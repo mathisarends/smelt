@@ -20,7 +20,7 @@ def _project(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstructure:\n  contracts:\n    source:\n      match: app\n      {policy}\n",
+            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstructure:\n  contracts:\n    source:\n      match: app\n      {policy}\n",
             "app/module.py": source,
         },
     )
@@ -141,7 +141,7 @@ def test_other_future_features_are_unaffected(tmp_path: Path) -> None:
 
 def test_nested_allow_overrides_outer_policy(tmp_path: Path) -> None:
     _project(tmp_path, '"""Forbidden here."""', policy="module_docstrings: forbid")
-    config = tmp_path / "smelt.yaml"
+    config = tmp_path / "smelt.yml"
     config.write_text(
         config.read_text()
         + "    documented:\n      match: app.documented\n      module_docstrings: allow\n",

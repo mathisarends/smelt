@@ -17,7 +17,7 @@ def _project(
     tmp_path: Path, files: dict[str, str], config: str = LAYERED_CONFIG
 ) -> Path:
     base = {
-        "smelt.yaml": config,
+        "smelt.yml": config,
         "app/__init__.py": "",
         "app/domain/__init__.py": "",
         "app/domain/user.py": "class User: ...\n",

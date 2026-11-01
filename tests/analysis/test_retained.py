@@ -30,7 +30,7 @@ def test_retained_dependencies_skip_deserialization_and_refresh_all_inputs(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "__all__ = []\ndef emit(): pass\nclass Base:\n    def run(self): pass",
             "app/facade.py": "from .service import emit, Base",
@@ -75,7 +75,7 @@ def test_failed_update_discards_borrowed_state(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": CONFIG,
+            "smelt.yml": CONFIG,
             "app/__init__.py": "",
             "app/service.py": "class Api:\n    def emit(self): pass\n",
             "app/caller.py": "def _run(x): x.emit()\n",

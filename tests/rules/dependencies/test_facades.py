@@ -196,7 +196,7 @@ def _project(
     return write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/browser/__init__.py": exports,
             "app/browser/base.py": "class Browser: pass\nclass BrowserEvents: pass\n",
@@ -530,7 +530,7 @@ def test_source_test_packages_do_not_drive_exports_by_default(tmp_path: Path) ->
     write_project(
         root,
         {
-            "smelt.yaml": CONFIG.replace(
+            "smelt.yml": CONFIG.replace(
                 "test_roots: [tests]", "test_roots: [app/tests]"
             ).replace("export_at: 3", "export_at: 3, count_tests: true")
         },

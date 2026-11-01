@@ -17,7 +17,7 @@ CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contrac
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
     return write_project(
         tmp_path,
-        {"smelt.yaml": config, "app/__init__.py": "", "app/browser.py": source},
+        {"smelt.yml": config, "app/__init__.py": "", "app/browser.py": source},
     )
 
 

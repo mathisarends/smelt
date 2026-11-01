@@ -28,7 +28,7 @@ def _project(tmp_path: Path, caller: str, *, config: str = CONFIG) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": config,
+            "smelt.yml": config,
             "app/__init__.py": "",
             "app/caller.py": caller,
             "app/user/application/__init__.py": "",

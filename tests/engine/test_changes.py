@@ -27,7 +27,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",
@@ -78,7 +78,7 @@ def test_export_ignore_does_not_hide_existing_findings(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/infra/__init__.py": "",
@@ -108,7 +108,7 @@ def repo(tmp_path: Path) -> Path:
     write_project(
         tmp_path,
         {
-            "smelt.yaml": LAYERED_CONFIG,
+            "smelt.yml": LAYERED_CONFIG,
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/infra/__init__.py": "",
@@ -171,7 +171,7 @@ class TestChangedMode:
     def test_member_findings_keep_the_owning_class_in_their_identity(
         self, repo: Path, code: str, policy: str, decorator: str
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + f"\nstructure:\n  contracts:\n    members: {{match: app, {policy}}}\n",
@@ -193,7 +193,7 @@ class TestChangedMode:
     def test_removing_an_external_method_user_reports_the_unchanged_definition(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    members:\n      match: app\n      rules:\n        internal-public-member: warning\n",
@@ -237,7 +237,7 @@ class TestChangedMode:
         self, repo: Path, expected: tuple[str, int], policy: str, source: str, test: str
     ) -> None:
         code, line = expected
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text() + f"\nrules: {{{policy}: warning}}\n",
             encoding="utf-8",
@@ -283,7 +283,7 @@ class TestChangedMode:
     def test_extra_test_references_do_not_make_an_existing_visibility_finding_new(
         self, repo: Path, code: str, policy: str, source: str, test: str
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text() + f"\nrules: {{{policy}: warning}}\n",
             encoding="utf-8",
@@ -308,7 +308,7 @@ class TestChangedMode:
     def test_changed_attribute_exposure_reports_only_a_new_public_contract(
         self, repo: Path, existing_exposure: bool
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text() + "\nrules: {test-only-public-attribute: warning}\n",
             encoding="utf-8",
@@ -339,7 +339,7 @@ class TestChangedMode:
     def test_new_ordering_inversions_cannot_hide_in_an_existing_section(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
@@ -367,7 +367,7 @@ class TestChangedMode:
     def test_pruning_ordering_debt_does_not_accept_added_inversions(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
@@ -397,7 +397,7 @@ class TestChangedMode:
     def test_ordering_baseline_is_independent_of_whitespace_and_comments(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
@@ -421,7 +421,7 @@ class TestChangedMode:
     def test_new_private_module_names_are_reported_without_repeating_existing_ones(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    names: {match: app, private_modules: forbid}\n",
@@ -439,7 +439,7 @@ class TestChangedMode:
         ]
 
     def test_import_conventions_are_checked_for_new_changes(self, repo: Path) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    api: {match: app.domain, bundle_imports_at: 2}\n    style: {match: app, imports: {style: absolute}}\n",
@@ -466,7 +466,7 @@ class TestChangedMode:
         assert {v.code for v in found} == {"SMT108", "SMT308"}
 
     def test_deleting_a_required_entry_point_is_a_new_finding(self, repo: Path) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    core: {match: app.domain, required: [api]}\n",
@@ -486,7 +486,7 @@ class TestChangedMode:
     def test_new_private_import_is_reported_but_existing_one_is_not(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
             + "\nstructure:\n  contracts:\n    data: {match: app.infra, public: ['.']}\n",
@@ -507,7 +507,7 @@ class TestChangedMode:
     def test_existing_coverage_gaps_remain_visible_in_changed_mode(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yaml"
+        config = repo / "smelt.yml"
         config.write_text(
             config.read_text(encoding="utf-8").replace(
                 "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
@@ -532,7 +532,7 @@ class TestChangedMode:
         write_project(
             tmp_path,
             {
-                "smelt.yaml": LAYERED_CONFIG,
+                "smelt.yml": LAYERED_CONFIG,
                 "app/__init__.py": "",
                 "app/domain/model.py": "from app.infra import db\n",
                 "app/infra/db.py": "",
@@ -557,7 +557,7 @@ class TestChangedMode:
         write_project(
             repo,
             {
-                "smelt.yaml": LAYERED_CONFIG
+                "smelt.yml": LAYERED_CONFIG
                 + "    presentation: {path: presentation}\n  imports: {transitive: true}\n",
                 "app/__init__.py": "from app.infra.db import Db\n",
                 "app/infra/db.py": "class Db: pass\n",

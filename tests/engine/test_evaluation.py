@@ -62,7 +62,7 @@ def test_real_comparison_and_explicit_pytest_targets(
     project = write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  test-without-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_run.py": test_source,
         },
@@ -70,7 +70,7 @@ def test_real_comparison_and_explicit_pytest_targets(
     package = Path(__file__).resolve().parents[2]
     result = evaluate(
         EvaluationOptions(
-            config=project / "smelt.yaml",
+            config=project / "smelt.yml",
             baseline=package,
             candidate=package,
             reports=tmp_path / "reports",
@@ -94,7 +94,7 @@ def test_invalid_baseline_still_runs_candidate_and_never_executes_tests(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
             "broken/smelt/__init__.py": "",
             "broken/smelt/cli.py": "def main(args):\n    print('invalid json')\n    return 0",
@@ -103,7 +103,7 @@ def test_invalid_baseline_still_runs_candidate_and_never_executes_tests(
     )
     result = evaluate(
         EvaluationOptions(
-            config=tmp_path / "smelt.yaml",
+            config=tmp_path / "smelt.yml",
             baseline=tmp_path / "broken",
             candidate=Path(__file__).resolve().parents[2],
             reports=tmp_path / "reports",
@@ -123,13 +123,13 @@ def test_missing_baseline_cannot_fall_back_to_the_installed_candidate(
     write_project(
         tmp_path,
         {
-            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
         },
     )
     result = evaluate(
         EvaluationOptions(
-            config=tmp_path / "smelt.yaml",
+            config=tmp_path / "smelt.yml",
             baseline=tmp_path / "missing",
             candidate=Path(__file__).resolve().parents[2],
             reports=tmp_path / "reports",
@@ -149,7 +149,7 @@ def test_comparison_rejects_changes_to_an_inherited_policy(tmp_path: Path) -> No
         tmp_path,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {import-cycle: warning}\n",
-            "smelt.yaml": "extends: base.yml\n",
+            "smelt.yml": "extends: base.yml\n",
             "app/__init__.py": "",
             "baseline/smelt/__init__.py": "",
             "baseline/smelt/cli.py": """
@@ -165,7 +165,7 @@ def test_comparison_rejects_changes_to_an_inherited_policy(tmp_path: Path) -> No
 
     result = evaluate(
         EvaluationOptions(
-            config=tmp_path / "smelt.yaml",
+            config=tmp_path / "smelt.yml",
             baseline=tmp_path / "baseline",
             candidate=Path(__file__).resolve().parents[2],
             reports=tmp_path / "reports",
@@ -179,5 +179,5 @@ def test_comparison_rejects_changes_to_an_inherited_policy(tmp_path: Path) -> No
     assert result["pytest"] == {"executed": False}
     assert set(result["config_inputs"]) == {
         (tmp_path / "base.yml").resolve().as_posix(),
-        (tmp_path / "smelt.yaml").resolve().as_posix(),
+        (tmp_path / "smelt.yml").resolve().as_posix(),
     }

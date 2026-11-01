@@ -143,7 +143,7 @@ def _init_target(custom: str | None, cwd: Path) -> tuple[Path, str]:
     """The one file ``init`` writes: ``--config``, else the default config here.
 
     Only that file is checked and overwritten; a reviewed config elsewhere stays.
-    Without ``--config`` an existing ``smelt.yml`` is the target, not a second file.
+    Without ``--config`` an existing config is the target, not a second file.
     """
     if custom is not None:
         path = Path(custom)

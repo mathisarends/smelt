@@ -36,7 +36,7 @@ available locally. CI should still run the full check. Use tests and a type
 checker as appropriate for the change.
 
 
-## prek and pre-commit
+## prek hooks
 
 Both published hooks run on every commit so edits to shared local policy files
 are checked even when no Python or workspace config file changed. A base file
@@ -79,9 +79,10 @@ matching `v`-prefixed Git tag. See the [agent workflow](agent-workflow.md) for
 cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
 own `.gitignore`; cache files should not enter commits.
 
-Smelt also supports upstream [pre-commit](https://pre-commit.com/): use its
-default `.pre-commit-config.yaml` filename and `pre-commit` commands. The
-published `.pre-commit-hooks.yaml` manifest keeps that required filename.
+prek uses the [pre-commit hook format](https://pre-commit.com/#creating-new-hooks).
+The published `.pre-commit-hooks.yaml` manifest keeps the required filename;
+project configuration uses `.pre-commit-config.yml`. Existing upstream pre-commit
+integrations can continue using the same published hooks.
 
 
 ## GitHub Actions

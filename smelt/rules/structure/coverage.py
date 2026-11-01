@@ -28,11 +28,11 @@ class IncompleteCoverage(BaseRule):
             "project.root_packages. Pure package facades do not need their own layer."
         ),
         bad=(
-            "# smelt.yaml\nproject:\n  root_packages: [backend]\n  coverage: strict\n"
+            "# smelt.yml\nproject:\n  root_packages: [backend]\n  coverage: strict\n"
             "# A new workspace library exists but is not selected or classified."
         ),
         good=(
-            "# smelt.yaml\nproject:\n  root_packages: [backend, client]\n"
+            "# smelt.yml\nproject:\n  root_packages: [backend, client]\n"
             "  source_roots: [backend/src, libs/client/src]\n  coverage: strict\n"
             "architecture:\n  modules: {client: infrastructure}"
         ),
