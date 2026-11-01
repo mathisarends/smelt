@@ -22,6 +22,7 @@ smelt check --changed --base origin/main --format json
 smelt check --changed --format concise  # one line per finding with repair advice
 smelt check --strict-coverage         # fail on omitted or unclassified production code
 smelt check --show-coverage --format json  # include the per-file policy inventory
+smelt check --select SMT321 --fix --unsafe-fixes  # use None-only defaults after review
 smelt context user                   # what applies to a feature, module or path
 smelt explain SMT101                 # rationale, examples and config keys of a rule
 smelt rules                          # full catalog with activation and severity
@@ -30,6 +31,16 @@ smelt debt --prune                   # drop debt entries that were fixed
 smelt config show                    # the resolved config
 smelt config schema                  # the JSON schema of smelt.yaml
 ```
+
+Normal checks are read-only. `--fix` applies permitted safe ordering fixes.
+Opt-in [SMT321](rules/SMT321.md) reviews `parameter or fallback` for optional
+parameters with a `None` default. Its rewrite to an explicit `is not None`
+conditional also requires `--unsafe-fixes`: falsy values will be preserved and
+custom truthiness will no longer be called. Use this only after reviewing intent.
+Fixes respect selection, scope, suppressions and accepted debt, then check again.
+JSON reports include `fixes.ordering` and `fixes.none_defaults` with modified
+files, counts and skip reasons. `--unsafe-fixes` alone performs no writes;
+`--staged` cannot be combined with `--fix`.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 A config entry that points at nothing (a mistyped package, a missing test root) is a

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.config import LoadedConfig
+    from smelt.engine.check import CheckOutcome
     from smelt.engine.staged import StagedProject
 
 
@@ -68,6 +69,38 @@ def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
     return () if config in paths else paths
 
 
+def _fix_outcome(
+    args: argparse.Namespace,
+    console: Console,
+    loaded: LoadedConfig,
+    options: CheckOptions,
+    outcome: CheckOutcome,
+) -> CheckOutcome:
+    from smelt.engine import none_default_fixes  # noqa: PLC0415
+    from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
+
+    fixes = apply_ordering_fixes(outcome)
+    if fixes.files:
+        outcome = run_check(loaded, options)
+    defaults = none_default_fixes.apply_none_default_fixes(
+        outcome, unsafe=args.unsafe_fixes
+    )
+    if defaults.files:
+        outcome = run_check(loaded, options)
+    outcome.report.fixes = {
+        "ordering": fixes.to_json(),
+        "none_defaults": defaults.to_json(),
+    }
+    if args.format == "text":
+        console.print(
+            f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
+        )
+        console.print(
+            f"Optional-default fixes: {len(defaults.files)} file(s), {defaults.expressions} expression(s); {len(defaults.skipped)} skipped."
+        )
+    return outcome
+
+
 def _check_loaded(
     args: argparse.Namespace,
     console: Console,
@@ -99,16 +132,7 @@ def _check_loaded(
     )
     outcome = run_check(loaded, options)
     if args.fix:
-        from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
-
-        fixes = apply_ordering_fixes(outcome)
-        if fixes.files:
-            outcome = run_check(loaded, options)
-        outcome.report.fixes = {"ordering": fixes.to_json()}
-        if args.format == "text":
-            console.print(
-                f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
-            )
+        outcome = _fix_outcome(args, console, loaded, options, outcome)
     report = outcome.report
     if args.staged:
         report.project = project_metadata(origin)

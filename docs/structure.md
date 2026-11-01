@@ -301,7 +301,7 @@ analyzed explicit runtime import graph and reports a deterministic return path.
 implicit initializer execution and import order are outside this check. Existing
 cycles can also appear in the witness. Treat the result as a design review;
 frequency alone does not establish API ownership. No source or configuration is
-changed, and `--fix` still only supports SMT313 ordering fixes. Once exports are
+changed, and there is no automatic facade rewrite. Once exports are
 deliberately added, SMT319 can suggest the corresponding caller imports, and
 `public: ['.']` can enforce a chosen facade boundary through SMT107.
 
