@@ -23,17 +23,20 @@ The [rule catalog](docs/rules/README.md) lists each check, its activation and
 default severity. Most rules are opt-in; a declared architecture, package or
 test policy activates the corresponding checks. See [rule activation](docs/rule-selection.md).
 
-## What's new in 0.3.0
+## What's new in 0.4.0
 
-- Review missing package exports with opt-in **SMT109**, and internal constants
-  and type aliases with opt-in **SMT320**.
-- Use `--format concise` for short feedback. JSON reports now use **schema 2**;
-  integrations must resolve shared usage scopes and request full coverage explicitly.
-- Get more precise definition ordering, public-API preservation, multiline
-  suppressions and outcome/deadline checks through directly executed test helpers.
+- Share local policy across independent workspaces with `extends`, explicit
+  overrides and `config show --sources`.
+- Adopt optional reviews for implicit optional defaults (**SMT321**), deep object
+  navigation (**SMT322**) and `Base`-prefixed class names (**SMT323**).
+- Get clearer cycle witnesses, shared-helper findings and API ownership evidence;
+  unknown inline suppression identifiers now produce **SMT901**.
+- `smelt init` creates `smelt.yml`; existing `smelt.yaml` files still work.
+  Custom rules must migrate `BaseRule` to `Rule` and the old protocol to
+  `RuleContract`. JSON schema 2 and the default rule set stay unchanged.
 
 See the [upgrade guide](docs/upgrading.md) for required steps, copyable examples
-and changes in findings, or the [changelog](CHANGELOG.md#030---2026-11-01) for details.
+and changes in findings, or the [changelog](CHANGELOG.md#040---2026-11-01) for details.
 
 ## Quick start
 

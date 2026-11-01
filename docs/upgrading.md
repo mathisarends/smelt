@@ -1,13 +1,52 @@
 # Upgrading Smelt
 
-## Unreleased configuration filenames
+## 0.3.0 to 0.4.0
+
+0.4.0 retains report schema 2, YAML version 1, the default rule set and exit
+codes. SMT321, SMT322 and SMT323 are opt-in. Custom rule implementations need
+the import migration below. See the
+[changelog](../CHANGELOG.md#040---2026-11-01) for all release details.
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.4.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.4.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.4.0]` for isolated Python hooks,
+   `rev: v0.4.0` for source hooks and `uvx --from smelt-cli==0.4.0 smelt check`
+   in CI. Both published hooks now run on every commit, including policy-only
+   changes. Keep `always_run: true` for local hooks, then run `prek install`.
+
+2. Custom rule implementations must import and inherit `smelt.rules.base.Rule`
+   instead of `BaseRule`. Annotations referring to the former structural `Rule`
+   protocol must use `smelt.rules.base.RuleContract`. Stable SMT codes and
+   diagnostic identities are unchanged.
+
+3. Refresh the editor schema with `smelt config schema > .smelt.schema.json`.
+   Review the effective policy with `smelt config show --sources`, then run
+   `smelt check --show-hints --fail-on warning` before relying on staged checks
+   or replacing accepted debt. Resolve any new SMT901 reports by using known
+   SMT codes or prefixes in inline suppressions.
+
+4. Adopt new capabilities deliberately: [shared configuration](configuration.md#shared-local-policy)
+   uses `extends`; [SMT321](rules/SMT321.md), [SMT322](rules/SMT322.md) and
+   [SMT323](rules/SMT323.md) require rule selection. SMT321 rewrites require both
+   `--fix` and `--unsafe-fixes`; review intentional falsy defaults first. SMT322
+   and SMT323 never rename symbols or rewrite navigation.
+
+### Configuration filenames
 
 `smelt init` now creates `smelt.yml`. Existing `smelt.yaml` files continue to
 work, and `init --force` updates an existing file in place. If both filenames
 exist in one directory, `smelt.yml` takes precedence; use `--config` to select
 the other file explicitly. Cached and staged checks use the same preference.
 
-## Unreleased adoption-feedback improvements
+### Changes in findings and review evidence
 
 Report schema 2 and YAML version 1 are retained. Shared-helper grouping and
 cycle/helper context add metadata without replacing individual findings. The

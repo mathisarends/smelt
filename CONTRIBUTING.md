@@ -264,13 +264,13 @@ environment name must match the workflow exactly.
    run `uv lock` and `cargo check` to refresh both lockfiles, and merge the release
    preparation into `main` after CI passes. Each release needs a new PyPI version.
 2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
-   For example, after merging version `0.3.0`:
+   For example, after merging version `0.4.0`:
 
    ```bash
    git switch main
    git pull --ff-only
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.4.0
+   git push origin v0.4.0
    ```
 
 3. Follow the `Publish to PyPI` run in
@@ -288,7 +288,7 @@ environment name must match the workflow exactly.
 Maintainers and coding agents with permission to push release tags can use this
 procedure without local PyPI credentials. Ordinary branch pushes and pull requests
 do not publish. Manual workflow runs must select an existing `v`-prefixed tag
-(`gh workflow run release.yml --ref v0.3.0`); branch runs skip publishing.
+(`gh workflow run release.yml --ref v0.4.0`); branch runs skip publishing.
 
 If the upload fails because account configuration is missing, finish that setup
 and rerun the failed publishing job so it reuses the validated build artifacts.
