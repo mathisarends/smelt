@@ -202,6 +202,11 @@ def _add_config(sub: Subparsers) -> None:
     config_sub = config.add_subparsers(dest="config_command", metavar="ACTION")
     show = config_sub.add_parser("show", help="print the resolved config")
     show.add_argument("--format", choices=["yaml", "json"], default="yaml")
+    show.add_argument(
+        "--sources",
+        action="store_true",
+        help="include inherited input files and the origin of explicit settings",
+    )
     show.set_defaults(handler=commands.handler("config_show"))
     schema = config_sub.add_parser("schema", help="print the JSON schema")
     schema.set_defaults(handler=commands.handler("config_schema"))
@@ -289,7 +294,12 @@ def _error_json(exc: Exception) -> str:
     if isinstance(exc, ConfigError):
         header, *_ = str(exc).splitlines()
         issues = [
-            {"location": i.path or None, "message": i.message} for i in exc.issues
+            {
+                "location": i.path or None,
+                "message": i.message,
+                **({"file": i.source} if i.source else {}),
+            }
+            for i in exc.issues
         ]
         return render_error_json(
             "config", header, config={"file": exc.source, "issues": issues}

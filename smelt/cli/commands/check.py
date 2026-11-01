@@ -63,6 +63,12 @@ def _split_selectors(raw: str | None) -> tuple[str, ...]:
 
 
 def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
+    # Every inherited policy input can affect unchanged production files too.
+    from smelt.config.source import SourceStore  # noqa: PLC0415
+
+    store = loaded.source or SourceStore()
+    if any(store.resolve(cwd / path) in loaded.inputs for path in raw):
+        return ()
     paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
     # A changed config can break any file, so it widens the scope to the project.
     config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)

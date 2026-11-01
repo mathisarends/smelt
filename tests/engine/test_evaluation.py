@@ -142,3 +142,42 @@ def test_missing_baseline_cannot_fall_back_to_the_installed_candidate(
         json.loads((tmp_path / "reports/baseline.json").read_text())["status"]
         == "error"
     )
+
+
+def test_comparison_rejects_changes_to_an_inherited_policy(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {import-cycle: warning}\n",
+            "smelt.yaml": "extends: base.yml\n",
+            "app/__init__.py": "",
+            "baseline/smelt/__init__.py": "",
+            "baseline/smelt/cli.py": """
+            from pathlib import Path
+            def main(args):
+                base = Path('base.yml')
+                base.write_text(base.read_text().replace('warning', 'error'))
+                print('{"status": "passed", "violations": []}')
+                return 0
+        """,
+        },
+    )
+
+    result = evaluate(
+        EvaluationOptions(
+            config=tmp_path / "smelt.yaml",
+            baseline=tmp_path / "baseline",
+            candidate=Path(__file__).resolve().parents[2],
+            reports=tmp_path / "reports",
+            pytest_targets=("tests",),
+        )
+    )
+
+    assert result["status"] == "error"
+    assert result["policy_unchanged"] is False
+    assert result["comparison"] is None
+    assert result["pytest"] == {"executed": False}
+    assert set(result["config_inputs"]) == {
+        (tmp_path / "base.yml").resolve().as_posix(),
+        (tmp_path / "smelt.yaml").resolve().as_posix(),
+    }

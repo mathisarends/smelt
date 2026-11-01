@@ -17,6 +17,127 @@ from tests.helpers import FIXTURES, LAYERED_CONFIG, check, write_project
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_inherited_config_show_explains_sources_and_is_cwd_independent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "policy/base.yml": "version: 1\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {import-cycle: error, unbounded-test-wait: error}\n",
+            "runtime/smelt.yml": "extends: ../policy/base.yml\nrules: {import-cycle: warning}\n",
+            "runtime/src/app/__init__.py": "",
+            "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
+            "runtime/tests/generated/test_generated.py": "import subprocess\ndef test_generated():\n    subprocess.run(['tool'], check=True)\n",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+    code, output, error = _run(
+        capsys, "config", "show", "--config", "runtime/smelt.yml", "--format", "json"
+    )
+    assert code == 0
+    assert error == ""
+    config = json.loads(output)
+    assert config["project"]["root_packages"] == ["app"]
+    assert config["project"]["source_roots"] == ["src"]
+    assert config["debt"] == ".smelt/debt.json"
+    assert config["rules"] == {
+        "import-cycle": "warning",
+        "unbounded-test-wait": "error",
+    }
+    before = _run(capsys, "check", "--config", "runtime/smelt.yml", "--format", "json")
+    assert before[0] == 1
+    assert [v["path"] for v in json.loads(before[1])["violations"]] == [
+        "tests/test_wait.py"
+    ]
+
+    monkeypatch.chdir(tmp_path / "runtime")
+    assert _run(capsys, "config", "show", "--format", "json") == (code, output, error)
+    assert _run(capsys, "check", "--format", "json") == before
+    code, output, error = _run(
+        capsys, "config", "show", "--sources", "--format", "json"
+    )
+    explained = json.loads(output)
+    assert code == 0
+    assert error == ""
+    assert explained["config"] == config
+    assert explained["sources"] == [
+        (tmp_path / "policy/base.yml").resolve().as_posix(),
+        (tmp_path / "runtime/smelt.yml").resolve().as_posix(),
+    ]
+    assert explained["origins"]["rules.import-cycle"].endswith("runtime/smelt.yml")
+    assert explained["origins"]["debt"].endswith("policy/base.yml")
+
+
+def test_inherited_policy_errors_keep_file_origins_in_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {unknown-rule: error}\n",
+            "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\n",
+        },
+    )
+    code, output, _ = _run(
+        capsys,
+        "config",
+        "show",
+        "--config",
+        str(tmp_path / "smelt.yml"),
+        "--format",
+        "json",
+    )
+    assert code == 2
+    [issue] = json.loads(output)["error"]["config"]["issues"]
+    assert issue["location"] == "rules.unknown-rule"
+    assert issue["file"].endswith("base.yml")
+
+
+def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {import-cycle: error}\n",
+            "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\nrules: {SMT104: off}\n",
+        },
+    )
+    code, _, error = _run(
+        capsys, "config", "show", "--config", str(tmp_path / "smelt.yml")
+    )
+    assert code == 2
+    assert "SMT104 is already configured" in error
+
+
+def test_an_explicit_base_path_widens_the_check_to_its_workspace(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: error}\n",
+            "runtime/smelt.yml": "extends: ../base.yml\n",
+            "runtime/app/__init__.py": "",
+            "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
+        },
+    )
+    code, output, error = _run(
+        capsys,
+        "check",
+        str(tmp_path / "base.yml"),
+        "--config",
+        str(tmp_path / "runtime/smelt.yml"),
+        "--format",
+        "json",
+    )
+    report = json.loads(output)
+    assert code == 1
+    assert error == ""
+    assert [v["code"] for v in report["violations"]] == ["SMT426"]
+    assert report["scope"]["paths"] == []
+
+
 def _run(capsys: pytest.CaptureFixture[str], *args: str) -> tuple[int, str, str]:
     code = main(list(args))
     captured = capsys.readouterr()

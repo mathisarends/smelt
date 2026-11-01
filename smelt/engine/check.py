@@ -129,6 +129,11 @@ def run_check(
     )
     try:
         return _run_check(loaded, options, rules=rules, context=context, cache=cache)
+    except ConfigError as exc:
+        explained = loaded.explain_error(exc)
+        if explained is exc:
+            raise
+        raise explained from exc
     finally:
         if cache is not None:
             cache.close()
@@ -404,7 +409,9 @@ def _run_check(
         },
         project=project_metadata(loaded),
         configuration_diagnostics=[
-            ConfigurationDiagnostic(loaded.path.name, issue.path, issue.message)
+            ConfigurationDiagnostic(
+                issue.source or loaded.path.name, issue.path, issue.message
+            )
             for issue in loaded.warnings
         ],
     )

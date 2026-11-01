@@ -47,6 +47,75 @@ These conventions do not assign architecture roles: `--strict-coverage` separate
 requires every discovered production source to have an architecture policy or a
 reasoned exclusion.
 
+## Shared local policy
+
+Independent workspaces can share explicit policy through one local `extends`
+file. Each workspace still has its own configuration and `--config` invocation:
+
+```yaml
+# smelt.base.yml (a policy fragment; no project selection is required here)
+version: 1
+rules:
+  import-cycle: error
+  unbounded-test-wait: warning
+suppressions:
+  require_reason: true
+```
+
+```yaml
+# runtime/smelt.yml
+extends: ../smelt.base.yml
+project:
+  source_roots: [src]
+  test_roots: [tests]
+  coverage: strict
+architecture:
+  features: {root: runtime_extension.features}
+rules:
+  unbounded-test-wait: error
+```
+
+Run `smelt check --config runtime/smelt.yml` from the repository root, or
+`smelt check` from `runtime/`; both select the same project and paths.
+
+- `extends` is one nonempty relative local file path, resolved from the file
+  containing it. A base may extend another base, up to 32 files. Missing files,
+  inheritance cycles, invalid YAML and duplicate YAML keys are configuration errors.
+  There is no remote loading, multiple inheritance or automatic cascading discovery.
+- Mappings merge recursively. Explicit child values win. Lists replace the entire
+  inherited list, including `[]`; allowances, exclusions and ignores never append
+  silently. An empty mapping leaves inherited keys in place. Scalars and `null`
+  replace inherited values; the result must satisfy the field's type.
+- Defaults, package discovery and cross-field validation run on the complete
+  effective configuration. A fragment need not declare `project` or `version`,
+  but the combined result must declare `version: 1` and `project`. The editor
+  schema permits fragments; Smelt checks required fields after composition.
+- **All project paths use the selected workspace's directory**, including inherited
+  source/test roots, project exclusions, test globs, `ignore.paths` and `debt`.
+  For example, inherited `source_roots: [src]` means `runtime/src` above, even if
+  written in the repository-level base. Only the `extends` reference itself uses
+  its declaring file as the anchor. Dotted module patterns are unchanged.
+- Override rules with the same key spelling as the base. Using both a rule name
+  and its SMT code in the effective map remains a duplicate-alias error.
+  Unknown rules, invalid severities and strict-coverage restrictions still fail.
+
+`smelt config show` prints the complete effective policy. Add `--sources` to wrap
+it with `config`, `sources` (base first, workspace last) and `origins` (explicit
+YAML key locations mapped to absolute declaring-file paths). This works with
+`--format json` or the default YAML; defaults and discovered package names have
+no explicit origin. Inherited validation errors include the declaring file.
+
+Every check reloads policy inputs before analysis reuse. Staged checks read every
+base from the captured Git index, never from unstaged working files; bases must
+therefore be staged and inside the repository. Editing a base invalidates dependent
+staged results, including when the workspace YAML itself is unchanged. `--changed`
+and `--staged` continue comparing old and new source under the same effective
+current/index policy. Run a full check to inventory findings after changing policy.
+An explicit check path naming any loaded base widens that workspace's check to
+the whole project. It does not automatically run other workspace configurations.
+The maintainer evaluation runner records every policy input's SHA256 in
+`config_inputs` and rejects a comparison if a base changes during evaluation.
+
 ## Options and package exceptions
 
 API ownership can be stated separately from export-frequency review:

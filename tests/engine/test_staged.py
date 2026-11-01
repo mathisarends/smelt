@@ -78,6 +78,80 @@ def _check(
     return code, json.loads(captured.out)
 
 
+def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        repo,
+        {
+            "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "smelt.yaml": "extends: policy/base.yml\n",
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "shared policy")
+    (repo / "app/consumer.py").write_text("", encoding="utf-8")
+    _git(repo, "add", "app/consumer.py")
+    cold = _check(repo, capsys)
+    assert cold[0] == 1
+    assert [v["code"] for v in cold[1]["violations"]] == ["SMT316"]
+
+    # The warm result must ignore unstaged (even malformed) parent edits.
+    (repo / "policy/base.yml").write_text("invalid: [", encoding="utf-8")
+    assert _check(repo, capsys) == cold
+    assert _check(repo, capsys, "--no-cache") == cold
+
+    # Only the inherited policy changes in the index. The child is untouched.
+    (repo / "policy/base.yml").write_text(
+        "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: off}\n",
+        encoding="utf-8",
+    )
+    _git(repo, "add", "policy/base.yml")
+    changed = _check(repo, capsys)
+    assert changed[0] == 0
+    assert changed[1]["violations"] == []
+    assert changed == _check(repo, capsys, "--no-cache")
+
+    # A missing staged parent cannot fall back to an existing working-tree file.
+    _git(repo, "rm", "--cached", "policy/base.yml")
+    code, error = _check(repo, capsys)
+    assert code == 2
+    assert error["error"]["config"]["issues"][0]["location"] == "extends"
+
+
+def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        repo,
+        {
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "smelt.yaml": "extends: base.yml\n",
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "shared policy")
+    (repo / "app/consumer.py").write_text("", encoding="utf-8")
+
+    code = main(
+        [
+            "check",
+            "--config",
+            str(repo / "smelt.yaml"),
+            "--changed",
+            "--format",
+            "json",
+            "--fail-on",
+            "warning",
+        ]
+    )
+    report = json.loads(capsys.readouterr().out)
+    assert code == 1
+    assert [(v["code"], v["path"]) for v in report["violations"]] == [
+        ("SMT316", "app/browser.py")
+    ]
+
+
 def test_staged_facade_gap_uses_index_callers_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

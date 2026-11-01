@@ -4,12 +4,13 @@ import re
 import types
 import typing
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from smelt.config.composition import ConfigComposition, compose_config
 from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_loc
 from smelt.config.models import SmeltConfig
@@ -85,11 +86,19 @@ class LoadedConfig:
     path: Path
     warnings: tuple[ConfigIssue, ...] = ()
     source: SourceStore | None = None
+    inputs: tuple[Path, ...] = ()
+    origins: dict[str, str] = field(default_factory=dict)
 
     @property
     def root(self) -> Path:
         """Project root: the directory containing the config file."""
         return self.path.parent
+
+    def explain_error(self, error: ConfigError) -> ConfigError:
+        """Attribute effective-policy errors to the file declaring each value."""
+        if len(self.inputs) <= 1:
+            return error
+        return _with_origins(error, ConfigComposition(origins=self.origins))
 
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
@@ -105,19 +114,29 @@ def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | 
 
 
 def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig:
-    source = path.name
+    view = store or SourceStore()
+    path = view.resolve(path)
+    composed = compose_config(path, view, _load_yaml)
     try:
-        raw = _load_yaml((store or SourceStore()).read_text(path))
-    except (OSError, UnicodeError) as exc:
-        raise ConfigError([ConfigIssue("", f"cannot read {path}: {exc}")]) from exc
-    except yaml.YAMLError as exc:
-        raise ConfigError([ConfigIssue("", f"invalid YAML: {exc}")], source) from exc
-    config, warnings = parse_config(raw, source=source, root=path.parent, store=store)
+        config, warnings = parse_config(
+            composed.raw, source=path.name, root=path.parent, store=store
+        )
+    except ConfigError as exc:
+        if len(composed.files) > 1:
+            raise _with_origins(exc, composed) from exc
+        raise
+    if len(composed.files) > 1:
+        warnings = tuple(
+            ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
+            for issue in warnings
+        )
     return LoadedConfig(
         config=config,
-        path=(store or SourceStore()).resolve(path),
+        path=path,
         warnings=warnings,
         source=store,
+        inputs=tuple(composed.files),
+        origins=composed.origins,
     )
 
 
@@ -144,6 +163,16 @@ def parse_config(
     if errors:
         raise ConfigError(errors, source)
     return config, tuple(warnings)
+
+
+def _with_origins(error: ConfigError, composed: ConfigComposition) -> ConfigError:
+    return ConfigError(
+        [
+            ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
+            for issue in error.issues
+        ],
+        error.source,
+    )
 
 
 def _with_root_packages(
