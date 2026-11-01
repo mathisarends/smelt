@@ -522,6 +522,10 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             lines.append(
                 f"  Bundling hint: from {contract['bundle_imports_at']} distinct modules per outside caller"
             )
+        if "export_at" in contract:
+            lines.append(
+                f"  Export hint: from {contract['export_at']} outside importers per name; count tests: {contract['count_tests']}"
+            )
         lines.extend(
             f"  {key}: {contract[key]}"
             for key in ("module_docstrings", "future_annotations", "private_modules")

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.config.errors import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import check, violations, write_project
@@ -157,3 +158,47 @@ def test_bundling_hints_are_disabled_without_explicit_threshold(tmp_path: Path) 
     )
 
     assert violations(tmp_path, OPTIONS) == []
+
+
+@pytest.mark.parametrize("exact_threshold", [2, 4])
+def test_exact_contract_overrides_wildcard_without_duplicate_findings(
+    tmp_path: Path, exact_threshold: int
+) -> None:
+    config = (
+        CONFIG.replace("match: app.user.application", "match: app.user.*")
+        + f"""
+    exact:
+      match: app.user.application
+      bundle_imports_at: {exact_threshold}
+"""
+    )
+    _project(
+        tmp_path,
+        "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom app.user.application.delete_user import DeleteUser\n",
+        config=config,
+    )
+    found = violations(tmp_path, OPTIONS)
+    assert len(found) == (1 if exact_threshold == 2 else 0)
+    if found:
+        assert found[0].expected is not None
+        assert found[0].expected["contract"] == "exact"
+        assert found[0].expected["bundle_imports_at"] == exact_threshold
+
+
+def test_identical_thresholds_are_deduplicated_and_equal_rank_conflicts_are_errors(
+    tmp_path: Path,
+) -> None:
+    config = (
+        CONFIG
+        + "\n    duplicate: {match: app.user.application, bundle_imports_at: 3}\n"
+    )
+    caller = "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom app.user.application.delete_user import DeleteUser\n"
+    _project(tmp_path, caller, config=config)
+    assert len(violations(tmp_path, OPTIONS)) == 1
+    _project(
+        tmp_path,
+        caller,
+        config=config.replace("bundle_imports_at: 3}", "bundle_imports_at: 4}"),
+    )
+    with pytest.raises(ConfigError, match="equally specific"):
+        violations(tmp_path, OPTIONS)

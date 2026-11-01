@@ -1024,7 +1024,7 @@ class TestInfoCommands:
         [
             ("SMT999", ""),
             ("SMT102x", ""),
-            ("SMT109", ""),
+            ("SMT119", ""),  # Ambiguous between SMT109 and SMT319.
             ("SMT401", None),
             ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
             ("SMT524", ' (did you mean "SMT424"?)'),

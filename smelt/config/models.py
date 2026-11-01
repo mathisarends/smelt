@@ -472,6 +472,15 @@ class PackageContract(_Model):
         ge=2,
         description="Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
     )
+    export_at: int | None = Field(
+        default=None,
+        ge=2,
+        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+    )
+    count_tests: bool = Field(
+        default=False,
+        description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
+    )
     module_docstrings: Literal["allow", "forbid"] | None = Field(
         default=None,
         description="Optional module-docstring policy (SMT309). Function and class documentation is unaffected. The closest explicit package policy wins.",
@@ -533,11 +542,14 @@ class PackageContract(_Model):
 
     @model_validator(mode="after")
     def _has_contract(self) -> Self:
+        if self.count_tests and self.export_at is None:
+            raise ValueError("count_tests requires export_at")
         if (
             not self.required
             and self.public is None
             and self.imports is None
             and self.bundle_imports_at is None
+            and self.export_at is None
             and self.module_docstrings is None
             and self.future_annotations is None
             and self.private_modules is None

@@ -77,6 +77,40 @@ def _check(
     return code, json.loads(captured.out)
 
 
+def test_staged_facade_gap_uses_index_callers_and_exports(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    caller = "from app.api.impl import Item\n"
+    write_project(
+        repo,
+        {
+            "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "app/api/__init__.py": "",
+            "app/api/impl.py": "class Item: pass\n",
+            "app/first.py": caller,
+            "app/second.py": "",
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "facade baseline")
+    write_project(repo, {"app/second.py": caller})
+    _git(repo, "add", "app/second.py")
+    # Unstaged exports and caller removals must not hide the index's gap.
+    write_project(
+        repo, {"app/api/__init__.py": "from .impl import Item\n", "app/second.py": ""}
+    )
+    code, report = _check(repo, capsys, "--select", "SMT109")
+    assert code == 0
+    [finding] = report["violations"]
+    assert finding["path"] == "app/api/impl.py"
+    assert finding["expected"]["count"] == 2
+    _, fresh = _check(repo, capsys, "--select", "SMT109", "--no-cache")
+    assert fresh["violations"] == report["violations"]
+    _git(repo, "add", "app/api/__init__.py")
+    _, exported = _check(repo, capsys, "--select", "SMT109")
+    assert exported["violations"] == []
+
+
 def test_staged_change_finds_unchanged_definition_and_matches_uncached(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
