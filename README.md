@@ -23,6 +23,18 @@ The [rule catalog](docs/rules/README.md) lists each check, its activation and
 default severity. Most rules are opt-in; a declared architecture, package or
 test policy activates the corresponding checks. See [rule activation](docs/rule-selection.md).
 
+## What's new in 0.3.0
+
+- Review missing package exports with opt-in **SMT109**, and internal constants
+  and type aliases with opt-in **SMT320**.
+- Use `--format concise` for short feedback. JSON reports now use **schema 2**;
+  integrations must resolve shared usage scopes and request full coverage explicitly.
+- Get more precise definition ordering, public-API preservation, multiline
+  suppressions and outcome/deadline checks through directly executed test helpers.
+
+See the [upgrade guide](docs/upgrading.md) for required steps, copyable examples
+and changes in findings, or the [changelog](CHANGELOG.md#030---2026-11-01) for details.
+
 ## Quick start
 
 Smelt requires Python 3.12 or newer. Install the `smelt-cli` package (the

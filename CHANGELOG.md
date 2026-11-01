@@ -7,6 +7,32 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
+### Upgrade first
+
+**JSON consumers need an update.** Check and error documents now use schema 2.
+Request `--show-coverage` for full coverage details and resolve
+`expected.usage_scope_index` through the report's `usage_scopes` array. This is
+a report-format change; YAML stays `version: 1`, and default rules, exit codes,
+SMT codes and debt identities stay unchanged. See the
+[upgrade checklist and compatible parser example](docs/upgrading.md).
+
+Update tool, dependency, hook and CI pins together to `0.3.0` (Git tag `v0.3.0`),
+then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
+[configuration migration](docs/configuration.md#breaking-change-migration).
+
+### New capabilities
+
+| Capability | Enable / use | Details |
+| --- | --- | --- |
+| Review widely imported names missing from a package facade | Set a contract's `export_at` threshold; opt-in, hint severity | [SMT109](docs/rules/SMT109.md) |
+| Review internal public constants and PEP 695 aliases | `rules: {internal-public-module-symbol: warning}`; opt-in | [SMT320](docs/rules/SMT320.md) |
+| Get one-line findings with repair advice | `smelt check --format concise` | [CLI and reports](docs/cli.md) |
+| Migrate existing installations and report consumers | Follow the release-specific checklist | [Upgrading](docs/upgrading.md) |
+
+### Ordering and module visibility
+
 - SMT313 now recognizes unions of unshadowed builtin types and `None` in eager
   function annotations for declared Python 3.10+ targets, so a helper annotated
   `str | bytes` no longer silently blocks public-first ordering on Python 3.12/3.13.
@@ -24,6 +50,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   order. Eager dependencies still take priority when the import is absent. `Self`
   requires a subclass-preserving return contract; no automatic replacement of a
   matching class-name annotation is suggested. See [definition ordering](docs/structure.md#definition-order-with-execution-dependencies).
+
+### Test evidence and package contracts
+
 - Opt-in SMT424/SMT425/SMT426 outcome and deadline reviews follow one direct call
   to an unambiguous, undecorated, non-generator helper in the same file, including local async
   helpers executed with `await` or `asyncio.run`. Assertions retain empty-loop
@@ -44,6 +73,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Overlapping SMT108/SMT109 thresholds now choose the most specific pattern per
   concrete package, removing duplicate hints and allowing exact overrides of
   wildcard contracts. Equally specific conflicting settings are config errors.
+
+### Reports, suppressions and fixes
+
 - **JSON report schema 2:** `check --format json` emits a small coverage summary
   by default; `--show-coverage` restores full policy details and the per-file
   inventory. Repeated visibility boundaries move to report-level `usage_scopes`,
@@ -69,6 +101,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   uses a pinned wheel installation and explains source-build requirements.
   SMT311/SMT318 explanations clarify decorated annotations and Literal-typed
   boundaries; SMT426's subprocess example explicitly sets `check=False`.
+- Release checks enforce matching Python/native/lockfile versions, dated release
+  notes and current installation pins. Publication also waits for installation
+  smoke tests of the exact Linux x86_64, Windows x86_64 and macOS aarch64 wheels.
 
 ## [0.2.0] - 2026-10-31
 
@@ -389,7 +424,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mathisarends/smelt/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mathisarends/smelt/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/mathisarends/smelt/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/mathisarends/smelt/compare/v0.1.4...v0.1.5

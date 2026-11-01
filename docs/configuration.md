@@ -145,6 +145,9 @@ matches, aliases and architecture semantics are still validated by Smelt.
 
 ## Breaking-change migration
 
+This section covers the 0.1.x to 0.2.0 configuration migration. For upgrading to
+0.3.0, including JSON reports and installation pins, see [Upgrading Smelt](upgrading.md).
+
 Removed switches are errors, not silent aliases. Move fixed-check activation to
 the rule map; use `off` instead of a former `false`/`allow` exception. Existing
 numeric codes keep their meanings. The configuration format remains `version: 1`.

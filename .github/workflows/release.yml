@@ -75,12 +75,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            smoke: true
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            smoke: true
           - os: macos-latest
             target: aarch64-apple-darwin
+            smoke: true
           - os: macos-latest
             target: x86_64-apple-darwin
     steps:
@@ -93,6 +96,13 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: '2_28'
           args: --release --locked --out dist --compatibility pypi
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.smoke
+        with:
+          python-version: "3.12"
+      - name: Install and smoke-test the release wheel outside the checkout
+        if: matrix.smoke
+        run: uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist
       - uses: actions/upload-artifact@v7
         with:
           name: python-distributions-${{ matrix.target }}
