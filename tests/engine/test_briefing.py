@@ -47,6 +47,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     [
         ("internal-public-member", "warning"),
         ("internal-static-helper", "hint"),
+        ("deep-object-navigation", "hint"),
     ],
 )
 def test_member_policy_is_available_before_writing_a_module(

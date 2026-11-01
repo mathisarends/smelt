@@ -161,6 +161,33 @@ class TestBaseSnapshot:
 
 
 class TestChangedMode:
+    def test_new_navigation_call_is_not_hidden_by_an_identical_existing_call(
+        self, repo: Path
+    ) -> None:
+        source = "class Controller:\n    def run(self):\n        self.browser.input.motor()\n"
+        config = repo / "smelt.yaml"
+        config.write_text(
+            config.read_text() + "\nrules: {deep-object-navigation: hint}\n",
+            encoding="utf-8",
+        )
+        write_project(repo, {"app/application/service.py": source})
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "existing navigation")
+        options = CheckOptions(changed=True, select=("SMT322",))
+        assert violations(repo, options) == []
+        write_project(
+            repo,
+            {
+                "app/application/service.py": source
+                + "        self.browser.input.motor()\n"
+            },
+        )
+
+        [finding] = violations(repo, options)
+
+        assert finding.code == "SMT322"
+        assert finding.line == 4
+
     @pytest.mark.parametrize(
         ("code", "policy", "decorator"),
         [

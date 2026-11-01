@@ -1211,6 +1211,21 @@
             "warning"
           ]
         },
+        "deep-object-navigation": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT322: Review a method call reached through multiple instance attributes.",
+          "description": "Review a method call reached through multiple instance attributes. An instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review. Repair: Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.",
+          "markdownDescription": "**SMT322 \u2014 deep-object-navigation**\n\nReview a method call reached through multiple instance attributes.\n\nAn instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review.\n\n**Problem**\n```python\nclass Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)\n```\n\n**Preferred**\n```python\nclass Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)\n```\n\nReview whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.\n\nRun `smelt explain deep-object-navigation` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1858,6 +1873,21 @@
             "warning"
           ]
         },
+        "^SMT322$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT322: Review a method call reached through multiple instance attributes.",
+          "description": "Review a method call reached through multiple instance attributes. An instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review. Repair: Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.",
+          "markdownDescription": "**SMT322 \u2014 deep-object-navigation**\n\nReview a method call reached through multiple instance attributes.\n\nAn instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review.\n\n**Problem**\n```python\nclass Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)\n```\n\n**Preferred**\n```python\nclass Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)\n```\n\nReview whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.\n\nRun `smelt explain deep-object-navigation` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2495,6 +2525,21 @@
             "warning"
           ]
         },
+        "deep-object-navigation": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT322: Review a method call reached through multiple instance attributes.",
+          "description": "Review a method call reached through multiple instance attributes. An instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review. Repair: Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.",
+          "markdownDescription": "**SMT322 \u2014 deep-object-navigation**\n\nReview a method call reached through multiple instance attributes.\n\nAn instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review.\n\n**Problem**\n```python\nclass Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)\n```\n\n**Preferred**\n```python\nclass Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)\n```\n\nReview whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.\n\nRun `smelt explain deep-object-navigation` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -2930,6 +2975,21 @@
           "markdownDescription": "**SMT321 \u2014 implicit-optional-default**\n\nAn optional parameter with a None default uses truthiness to choose a fallback.\n\nFor an explicitly optional parameter, None commonly means not supplied. Using parameter or fallback also replaces valid falsy values such as zero, empty strings, empty containers and objects with custom truthiness. This opt-in review recognizes two-operand or expressions whose first operand is a directly named, unrebound parameter with a literal None default and a syntactic optional annotation (including quoted unions and typing Optional/Union/Annotated). It skips nested scopes, boolean tests, and parameters rebound anywhere in their function. Intentional falsy defaults remain valid; suppress or disable the review there. This is bounded syntax analysis, not type or control-flow inference.\n\n**Problem**\n```python\ndef create(options: Options | None = None):\n    self.options = options or Options()\n```\n\n**Preferred**\n```python\ndef create(options: Options | None = None):\n    self.options = options if options is not None else Options()\n```\n\nReview whether only None should select the fallback. If so, use parameter if parameter is not None else fallback. smelt check --select SMT321 --fix --unsafe-fixes applies this behavior-changing rewrite only to visible findings. Plain --fix leaves it unchanged. The rewrite preserves fallback laziness and source outside each expression; inline comments or explicit line continuations within an expression require manual editing. Intentional truthiness fallback should remain unchanged.\n\nRun `smelt explain implicit-optional-default` for details.",
           "examples": [
             "warning"
+          ]
+        },
+        "^SMT322$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT322: Review a method call reached through multiple instance attributes.",
+          "description": "Review a method call reached through multiple instance attributes. An instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review. Repair: Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.",
+          "markdownDescription": "**SMT322 \u2014 deep-object-navigation**\n\nReview a method call reached through multiple instance attributes.\n\nAn instance method that reaches through several stored collaborators depends on their internal arrangement. This opt-in Law of Demeter review reports calls with at least two consecutive attribute accesses from the instance receiver before the first method call, such as self.browser.input.motor(). One finding covers a whole receiver call chain. Direct collaborator calls, pure data reads and fluent chains starting from a direct collaborator are excluded. This is a syntax heuristic, not proof of a design defect: properties, callable data and deliberate external APIs cannot be distinguished without runtime/type information. Decorated and implicit class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through parameters, aliases or subscripts are outside the review.\n\n**Problem**\n```python\nclass Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)\n```\n\n**Preferred**\n```python\nclass Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)\n```\n\nReview whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {deep-object-navigation: hint}, globally or in a package contract, or --select SMT322.\n\nRun `smelt explain deep-object-navigation` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {
