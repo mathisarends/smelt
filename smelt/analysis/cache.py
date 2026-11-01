@@ -21,6 +21,7 @@ _SHA1_LENGTH = 40
 
 class FactCache:
     def __init__(self, directory: Path) -> None:
+        self._root = directory
         self.directory = directory / "v1" / analyzer_identity()
         self.hits = 0
         self.misses = 0
@@ -101,6 +102,11 @@ class FactCache:
         if self._connection is None:
             try:
                 self.directory.mkdir(parents=True, exist_ok=True)
+                with (
+                    suppress(FileExistsError),
+                    (self._root / ".gitignore").open("x", encoding="utf-8") as ignore,
+                ):
+                    ignore.write("*\n")
                 self._connection = sqlite3.connect(
                     self.directory / "facts.sqlite3", timeout=0.02
                 )

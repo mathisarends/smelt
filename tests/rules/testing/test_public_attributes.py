@@ -100,12 +100,39 @@ def test_facade_and_conftest_fixture_provenance_are_resolved(tmp_path: Path) -> 
     write_project(
         root,
         {
-            "app/__init__.py": "from .worker import Worker as PublicWorker",
-            "tests/conftest.py": "import pytest\nfrom app import PublicWorker as W\n@pytest.fixture\ndef worker(): yield W()",
+            "app/aliases.py": "from .worker import Worker as PublicWorker",
+            "tests/conftest.py": "import pytest\nfrom app.aliases import PublicWorker as W\n@pytest.fixture\ndef worker(): yield W()",
         },
     )
     [finding] = violations(root)
     assert finding.target_module == "app.worker.Worker.pending"
+
+
+@pytest.mark.parametrize(
+    ("facade", "exported"),
+    [
+        ("from .worker import Worker", True),
+        (
+            "from .worker import Worker as PublicWorker\n__all__ = ['PublicWorker']",
+            True,
+        ),
+        ("from .worker import Worker\n__all__ = []", False),
+        ("from .worker import Worker as _Worker", False),
+    ],
+)
+def test_facade_exported_classes_keep_their_public_data_api(
+    tmp_path: Path, facade: str, exported: bool
+) -> None:
+    root = _project(tmp_path)
+    (root / "app/__init__.py").write_text(facade, encoding="utf-8")
+
+    assert (not violations(root)) is exported
+
+
+def test_explicitly_exported_class_keeps_its_data_api(tmp_path: Path) -> None:
+    root = _project(tmp_path, source="__all__ = ['Worker']\n" + SOURCE)
+
+    assert violations(root) == []
 
 
 @pytest.mark.parametrize(

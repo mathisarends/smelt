@@ -23,6 +23,7 @@ class InternalPublicMember(BaseRule):
         rationale=(
             "An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to SMT429. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe."
             " Excluded files, unselected packages and external consumers are unassessed; findings expose usage_scope so absence of observed callers is not mistaken for a whole-project proof."
+            " Classes explicitly exported through __all__ or public package-facade bindings preserve their public methods, including aliased re-export chains. Export evidence participates in incremental cache invalidation."
         ),
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
@@ -62,7 +63,7 @@ class InternalPublicMember(BaseRule):
                     "internal_references": list(member.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Review making {qualified} private as {suggested_name}; excluded files (including maintainer scripts), unselected packages and external consumers were not assessed. Check those callers before renaming. For a deliberate public API, append `# smelt: ignore[SMT316] -- <specific API reason>` to this definition.",
+                hint=f"Review making {qualified} private as {suggested_name}; preserve deliberate public APIs with exports or `# smelt: ignore[SMT316] -- <specific API reason>` on the definition.",
             )
 
 
@@ -112,5 +113,5 @@ class InternalStaticHelper(BaseRule):
                     "internal_references": list(member.internal_references),
                     "automatic_extraction": False,
                 },
-                hint=f"Review moving this helper to {name} at module scope, preserving defaults and annotations. Excluded files (including maintainer scripts), unselected packages and external consumers were not assessed; check those callers first.",
+                hint=f"Review moving this helper to {name} at module scope, preserving defaults, annotations and deliberate public APIs.",
             )

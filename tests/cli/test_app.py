@@ -38,8 +38,37 @@ def clean_project(tmp_path: Path) -> Path:
 
 
 class TestCheckCommand:
+    def test_concise_keeps_the_finding_location_and_exit_threshold(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yaml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+                "app/__init__.py": "",
+                "tests/test_smoke.py": "def test_smoke(): pass\n",
+            },
+        )
+        code, out, err = _run(
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--format",
+            "concise",
+            "--fail-on",
+            "warning",
+        )
+
+        assert code == 1
+        assert err == ""
+        assert "tests/test_smoke.py:1:1 SMT424" in out
+        assert "Expected" not in out
+
     @pytest.mark.parametrize("fail_on", ["error", "warning"])
-    @pytest.mark.parametrize("output_format", ["json", "sarif", "github", "text"])
+    @pytest.mark.parametrize(
+        "output_format", ["json", "sarif", "github", "text", "concise"]
+    )
     def test_configuration_warnings_are_structured_and_affect_the_threshold(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -257,7 +286,7 @@ class TestCheckCommand:
         assert code == 1
         report = json.loads(out)
         assert report["violations"][0]["code"] == "SMT422"
-        assert "forbid_string_patch_targets" not in report["coverage"]["tests"]
+        assert "tests" not in report["coverage"]
         assert "SMT422" in report["scope"]["rules"]
         code, out, _ = _run(capsys, *arguments, "--format", "sarif")
         assert code == 1
@@ -325,6 +354,7 @@ class TestCheckCommand:
             str(root / "smelt.yaml"),
             "--select",
             "SMT312",
+            "--show-coverage",
             "--format",
             "json",
         )
@@ -354,7 +384,13 @@ class TestCheckCommand:
         )
 
         code, out, err = _run(
-            capsys, "check", "--config", str(root / "smelt.yaml"), "--format", "json"
+            capsys,
+            "check",
+            "--config",
+            str(root / "smelt.yaml"),
+            "--show-coverage",
+            "--format",
+            "json",
         )
         document = json.loads(out)
 
@@ -405,6 +441,7 @@ class TestCheckCommand:
             str(root / "smelt.yaml"),
             "--select",
             "SMT307",
+            "--show-coverage",
             "--format",
             "json",
         )
@@ -632,7 +669,7 @@ class TestCheckCommand:
         document = json.loads(out)
         assert code == 2
         assert err == ""
-        assert document["schema_version"] == 1
+        assert document["schema_version"] == 2
         assert document["status"] == "error"
         assert document["error"]["kind"] == "usage"
         assert document["error"]["input"] == {"option": "--select", "value": "SMT999"}
@@ -737,7 +774,7 @@ class TestCheckCommand:
 
         document = json.loads(out)
         assert code == 1
-        assert document["schema_version"] == 1
+        assert document["schema_version"] == 2
         assert document["status"] == "failed"
         assert document["summary"]["errors"] == 7
         assert document["violations"][0]["code"] == "SMT104"

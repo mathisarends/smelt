@@ -21,6 +21,23 @@ def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
     )
 
 
+def test_exported_class_keeps_public_api_but_still_reviews_private_static_helpers(
+    tmp_path: Path,
+) -> None:
+    root = _project(
+        tmp_path,
+        "class Browser:\n    @staticmethod\n    def normalize(value): return value.strip()\n    @staticmethod\n    def _prepare(value): return value.strip()\n",
+    )
+    (root / "app/__init__.py").write_text(
+        "from .browser import Browser\n", encoding="utf-8"
+    )
+
+    [finding] = violations(root)
+    assert finding.code == "SMT317"
+    assert finding.expected is not None
+    assert finding.expected["method"] == "_prepare"
+
+
 def test_internal_async_public_method_including_callback_reference(
     tmp_path: Path,
 ) -> None:

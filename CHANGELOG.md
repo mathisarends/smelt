@@ -7,6 +7,31 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- **JSON report schema 2:** `check --format json` emits a small coverage summary
+  by default; `--show-coverage` restores full policy details and the per-file
+  inventory. Repeated visibility boundaries move to report-level `usage_scopes`,
+  referenced by each finding's `expected.usage_scope_index`. Scope, comparison,
+  warnings and exit thresholds remain available. See [report compatibility](docs/cli.md).
+- `check --format concise` prints one line per finding with repair advice.
+  Text omits empty details, prints visibility limits once, and groups related
+  late-import SMT313 findings with their affected lines. JSON keeps individual
+  findings plus an `ordering` group; debt fingerprints are retained.
+- Statement-opening/closing suppressions follow logical continuation lines,
+  including formatted calls and signatures. Interior import-name exceptions stay
+  local and never cover neighboring names or the next statement. See
+  [suppression scope](docs/adoption.md).
+- Visibility rules preserve public members of classes exported through static
+  package facades or `__all__`, including aliases and re-export chains; cache
+  invalidation tracks export changes. SMT429 distinguishes functions referenced
+  only by tests from helpers also used inside their module, without claiming
+  unassessed external consumers do not exist.
+- Cache directories ignore their own contents. Init reports the number of tests
+  matching a mirror pattern, and ordinary text checks omit the policy coverage
+  banner without architecture (strict coverage still applies). Hook documentation
+  uses a pinned wheel installation and explains source-build requirements.
+  SMT311/SMT318 explanations clarify decorated annotations and Literal-typed
+  boundaries; SMT426's subprocess example explicitly sets `check=False`.
+
 ## [0.2.0] - 2026-10-31
 
 - Visibility reviews (SMT316/SMT317/SMT429/SMT430) explicitly limit their claims to

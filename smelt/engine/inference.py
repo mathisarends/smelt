@@ -521,8 +521,11 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
     )
     if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:
         out.append(f'  mirror: "{inferred.mirror.pattern}"')
-    if inferred.tests_layout == "mirror":
-        out.append("  # Detected a mirrored layout; use layout: mirror to enforce it.")
+    if inferred.mirror is not None:
+        guess = inferred.mirror
+        out.append(
+            f"  # {guess.mirrored} of {guess.total} test files match this mirror pattern; review before enforcing it."
+        )
     if maintainability:
         out.extend(
             [

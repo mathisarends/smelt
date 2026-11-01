@@ -28,8 +28,18 @@ def group_findings(violations: list[Violation]) -> list[dict[str, Any]]:
         *_groups("edge", violations, _edge, minimum=2),
         *_groups("cycle", violations, _cycle, minimum=1),
         *_groups("test_move", violations, _test_move, minimum=2),
+        *_groups("ordering", violations, _ordering, minimum=2),
     ]
     return sorted(groups, key=lambda g: (-g["count"], g["kind"], g["key"]))
+
+
+def finding_usage_scopes(violations: list[Violation]) -> list[dict[str, Any]]:
+    scopes: list[dict[str, Any]] = []
+    for violation in violations:
+        scope = (violation.expected or {}).get("usage_scope")
+        if isinstance(scope, dict) and scope not in scopes:
+            scopes.append(scope)
+    return scopes
 
 
 _CYCLE = "SMT104"
@@ -107,3 +117,17 @@ def _test_move(violation: Violation) -> str | None:
     if not isinstance(target, str):
         return None
     return f"{posixpath.dirname(violation.path)}/ -> {posixpath.dirname(target)}/"
+
+
+def _ordering(violation: Violation) -> str | None:
+    if (
+        violation.code == "SMT313"
+        and (violation.expected or {}).get("scope") == "module"
+        and violation.message
+        in {
+            "imports appear after later definition groups",
+            "future-imports appear after later definition groups",
+        }
+    ):
+        return f"{violation.path}: {violation.message}"
+    return None

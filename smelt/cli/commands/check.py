@@ -14,7 +14,7 @@ from smelt.cli.support import (
     use_color,
 )
 from smelt.diagnostics.render.machine import render_github, render_json, render_sarif
-from smelt.diagnostics.render.text import render_text
+from smelt.diagnostics.render.text import render_concise, render_text
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check
 from smelt.engine.paths import project_metadata
@@ -126,11 +126,20 @@ def _check_loaded(
 
     match args.format:
         case "json":
-            console.print(render_json(report), end="")
+            console.print(render_json(report, show_coverage=args.show_coverage), end="")
         case "sarif":
             console.print(render_sarif(report, __version__), end="")
         case "github":
             console.print(render_github(report), end="")
+        case "concise":
+            console.print(
+                render_concise(
+                    report,
+                    show_hints=args.show_hints or options.changed,
+                    statistics=args.statistics,
+                ),
+                end="",
+            )
         case _:
             color = use_color(console.out, disabled=args.no_color)
             text = render_text(

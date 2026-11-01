@@ -119,9 +119,10 @@ catalog. Hover content includes the precise pattern, a bad/good example, repair
 advice and analysis limits. Completions show canonical problem names and allowed
 severities; unknown names, old switches and invalid values are flagged.
 
-The schema artifact has no effect on checking or activation. Commit it with the
-YAML to give contributors the same editing support. After updating Smelt, refresh
-it from the config directory:
+The schema artifact has no effect on checking or activation. You can commit it
+with the YAML for shared offline editing support, or ignore `.smelt.schema.json`
+and regenerate it locally to keep generated hover content out of the repository.
+After updating Smelt, refresh it from the config directory:
 
 ```bash
 smelt config schema > .smelt.schema.json

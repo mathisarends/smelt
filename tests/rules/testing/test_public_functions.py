@@ -34,8 +34,8 @@ def test_excluded_script_callers_are_explicitly_unassessed(tmp_path: Path) -> No
     assert scope["excluded_paths"] == ["scripts/**"]
     assert "among analyzed modules" in finding.message
     assert finding.hint is not None
-    assert "maintainer scripts" in finding.hint
-    assert "not assessed" in finding.hint
+    assert "maintainer scripts" in str(scope["unassessed_consumers"])
+    assert "preserve deliberate public APIs" in finding.hint
     assert (
         (tmp_path / "scripts/generate.py")
         .read_text(encoding="utf-8")
@@ -73,6 +73,8 @@ def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
     assert finding.expected == {
         "function": "drag_gesture",
         "suggested_name": "_drag_gesture",
+        "observed_usage": "internal-and-tests",
+        "internal_references": [5, 6],
         "test_references": [{"path": "tests/test_mouse.py", "line": 1}],
         "usage_scope": {
             "root_packages": ["app"],

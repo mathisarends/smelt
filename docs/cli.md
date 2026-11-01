@@ -18,6 +18,7 @@ smelt check --changed                # only what the working tree introduced sin
 smelt check --staged --fail-on warning  # review the actual commit, including new warnings
 smelt check --staged --no-cache       # recompute to verify the cached result
 smelt check --changed --base origin/main --format json
+smelt check --changed --format concise  # one line per finding with repair advice
 smelt check --strict-coverage         # fail on omitted or unclassified production code
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt context user                   # what applies to a feature, module or path
@@ -38,7 +39,10 @@ count and active rule codes. `--config PATH` works before or after a subcommand.
 A stored JSON report explains itself: `scope.mode` is `full`, `changed` or `staged`, and
 `comparison` names the requested `base`, the resolved `merge_base`, the
 `compared_revision` and `head`, so `passed` from `--changed` reads as "nothing new since
-that commit", not as a clean inventory. `coverage` lists the source and test roots,
+that commit", not as a clean inventory. JSON check reports use `schema_version: 2`.
+By default `coverage` contains only the mode, completeness, counts, policy hash,
+architecture presence, discovery errors and omitted workspace members. Use
+`--show-coverage` for the full policy and per-file inventory. These details include the source and test roots,
 workspace members that are not analyzed, module counts per classification, the
 composition-root and wiring exemptions, third-party policies per layer, the import
 settings (`type_checking`, `transitive`, `cycles`), cross-feature allowances as fields,
@@ -48,11 +52,21 @@ finding paths are project-relative; SARIF and GitHub annotation paths are rebase
 to the repository root, including when using a nested `--config`.
 `smelt context --format json` carries the same import settings, allowances and hash.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
-text parser: `{"schema_version": 1, "status": "error", "error": {...}}` with `kind`
+text parser: `{"schema_version": 2, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)
 and, for config errors, the `config` file with each issue's YAML `location`. That covers
 argument errors (`--fail-on bogus`, an unknown flag) whenever `--format json` is on the
 command line; an invalid `--format` value itself is reported as argparse text.
+
+Schema 2 moves repeated visibility-analysis boundaries from each finding's
+`expected.usage_scope` into the report's `usage_scopes` array; findings reference
+it with `expected.usage_scope_index`. Finding identities and debt fingerprints are
+unchanged by presentation grouping. Text groups related late-import SMT313
+findings with their affected lines; JSON retains every finding and adds an
+`ordering` group. Text and GitHub output show usage limits once; SARIF retains
+them in run properties as `usageScopes`. Text omits empty detail fields.
+Projects without architecture configuration have no policy-completeness banner
+unless strict coverage is requested. Coverage checks and exit codes still apply.
 
 Valid configurations can also produce warnings, such as cyclic `may_depend_on`
 policies. Reports retain these separately from rule violations in JSON

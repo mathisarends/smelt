@@ -17,7 +17,18 @@ if TYPE_CHECKING:
 _WIDTH = 88
 _TOP_EDGES = 5
 # Keys of "expected" that only machine readers need; the message says the same.
-_MACHINE_ONLY = frozenset({"cycle", "members", "cyclic_edges", "subject", "evidence"})
+_MACHINE_ONLY = frozenset(
+    {
+        "cycle",
+        "members",
+        "cyclic_edges",
+        "subject",
+        "evidence",
+        "usage_scope",
+        "fix_blocker",
+        "affected_lines",
+    }
+)
 _COLORS = {
     Severity.ERROR: "\x1b[31m",
     Severity.WARNING: "\x1b[33m",
@@ -33,7 +44,31 @@ def render_text(
     show_hints: bool = False,
     statistics: bool = False,
 ) -> str:
-    style = _Style(color)
+    return _render(
+        report, read_line, _Style(color), show_hints=show_hints, statistics=statistics
+    )
+
+
+def render_concise(
+    report: Report, *, show_hints: bool = False, statistics: bool = False
+) -> str:
+    return _render(
+        report,
+        lambda _path, _line: "",
+        _Style(False, concise=True),
+        show_hints=show_hints,
+        statistics=statistics,
+    )
+
+
+def _render(
+    report: Report,
+    read_line: LineReader,
+    style: _Style,
+    *,
+    show_hints: bool,
+    statistics: bool,
+) -> str:
     shown = [
         violation
         for violation in report.violations
@@ -45,9 +80,10 @@ def render_text(
     ]
     if not statistics:
         blocks.extend(
-            _render_violation(v, read_line, style) for v in _group_unclassified(shown)
+            _render_violation(v, read_line, style)
+            for v in _group_ordering(_group_unclassified(shown))
         )
-    lines = ["\n\n".join(blocks)] if blocks else []
+    lines = [("\n" if style.concise else "\n\n").join(blocks)] if blocks else []
     if blocks:
         lines.append("")
     edges = _repeated_edges(shown)
@@ -65,7 +101,19 @@ def render_text(
         )
     if report.comparison and report.comparison.get("mode") == "staged":
         lines.append("Scope: staged Git index; new findings since the compared commit.")
-    if report.coverage is not None and "complete" in report.coverage:
+    if any((v.expected or {}).get("usage_scope") for v in shown):
+        lines.append(
+            "Usage limits: excluded files (including maintainer scripts), unselected "
+            "packages and external/dynamic consumers were not assessed; review them before renaming."
+        )
+    if (
+        report.coverage is not None
+        and "complete" in report.coverage
+        and (
+            report.coverage.get("architecture_configured", True)
+            or report.coverage.get("mode") == "strict"
+        )
+    ):
         coverage = report.coverage
         counts = coverage.get("counts", {})
         state = "complete" if coverage["complete"] else "incomplete"
@@ -81,6 +129,35 @@ def render_text(
     return "\n".join(lines) + "\n"
 
 
+def _group_ordering(violations: list[Violation]) -> list[Violation]:
+    groups: dict[tuple[str | None, str], list[Violation]] = {}
+    for violation in violations:
+        if (
+            violation.code == "SMT313"
+            and (violation.expected or {}).get("scope") == "module"
+            and violation.message
+            in {
+                "imports appear after later definition groups",
+                "future-imports appear after later definition groups",
+            }
+        ):
+            groups.setdefault((violation.path, violation.message), []).append(violation)
+    result: list[Violation] = []
+    for violation in violations:
+        group = groups.get((violation.path, violation.message), [])
+        if violation.code != "SMT313" or len(group) <= 1:
+            result.append(violation)
+        elif violation is group[0]:
+            affected = ", ".join(str(v.line) for v in group)
+            result.append(
+                replace(
+                    violation,
+                    message=f"{violation.message} (lines {affected})",
+                )
+            )
+    return result
+
+
 _BOLD = "\x1b[1m"
 _DIM = "\x1b[2m"
 _GREEN = "\x1b[32m"
@@ -92,8 +169,9 @@ _STATISTICS_THRESHOLD = 10
 
 
 class _Style:
-    def __init__(self, color: bool) -> None:
+    def __init__(self, color: bool, *, concise: bool = False) -> None:
         self.color = color
+        self.concise = concise
 
     def __call__(self, text: str, *codes: str) -> str:
         if not self.color or not codes:
@@ -191,6 +269,13 @@ def _render_violation(
         location += f":{violation.line}"
         if violation.column:
             location += f":{violation.column}"
+    if style.concise:
+        if violation.line and not violation.column:
+            location += ":1"
+        hint = f" -> {' '.join(violation.hint.split())}" if violation.hint else ""
+        return (
+            f"{location} {violation.code} {' '.join(violation.message.split())}{hint}"
+        )
     severity = style(f"[{violation.severity.value}]", _COLORS[violation.severity])
     header = f"{style(location, _BOLD)}  {style(violation.code, _BOLD)} {violation.rule}  {severity}"
     out = [header, f"  {violation.message}"]
@@ -242,10 +327,14 @@ def _snippet(violation: Violation, read_line: LineReader, style: _Style) -> list
 def _expected(violation: Violation, expected: Mapping[str, Any]) -> list[str]:
     lines: list[str] = []
     for key, value in expected.items():
+        if (value is None or value in ([], (), {})) and key != "may_depend_on":
+            continue
         if key == "may_depend_on" and violation.layer:
             targets = ", ".join(value) if value else "(nothing)"
             lines.append(f"  Allowed: {violation.layer} → {targets}")
-        elif key in _MACHINE_ONLY:
+        elif key in _MACHINE_ONLY or (
+            key == "fix_reason" and violation.hint and str(value) in violation.hint
+        ):
             continue
         elif key == "candidates":
             lines.extend(_candidate_lines(value))

@@ -98,7 +98,9 @@ def _add_check(sub: Subparsers) -> None:
         help="compare --changed against the merge-base with REF",
     )
     check.add_argument(
-        "--format", choices=["text", "json", "sarif", "github"], default="text"
+        "--format",
+        choices=["text", "concise", "json", "sarif", "github"],
+        default="text",
     )
     check.add_argument("--fail-on", choices=["error", "warning"], default="error")
     check.add_argument(
@@ -141,7 +143,7 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "--show-coverage",
         action="store_true",
-        help="include the per-file coverage inventory in JSON or text output",
+        help="include full policy details and per-file inventory in JSON, or the inventory in text",
     )
     check.set_defaults(handler=commands.handler("check"))
 
