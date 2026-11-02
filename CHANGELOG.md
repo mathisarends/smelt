@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Debt baselines now write grouped JSON version 2: repeated rule/path/message
+  metadata appears once, while every accepted fingerprint and duplicate occurrence
+  remains available for matching. Version-1 files remain readable; `smelt debt
+  --prune` upgrades assessed entries without accepting new debt. Use `smelt debt
+  --show [PATHS]` for a compact, read-only baseline summary, or add `--format json`
+  for the grouped data. [SMT321](docs/rules/SMT321.md) now distinguishes enclosing
+  functions in debt and changed checks, so fixing one function cannot silently
+  accept an identical new violation in another. Old unscoped SMT321 debt requires
+  review and explicit re-recording. See [adoption](docs/adoption.md).
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
