@@ -294,3 +294,28 @@ def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> No
     assert cached.expected == fresh.expected
     assert cached.expected is not None
     assert cached.expected["cycle_check"] == "cycle"
+
+
+def test_export_proposals_remain_specific_to_each_caller(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
+        config=CONFIG.replace("at: 3", "at: 2"),
+    )
+    write_project(
+        tmp_path,
+        {
+            "app/second.py": "from app.user.application.get_user import GetUser\nfrom app.user.application.delete_user import DeleteUser\n"
+        },
+    )
+
+    found = violations(tmp_path, OPTIONS)
+
+    assert {
+        v.source_module: {item["name"] for item in v.expected["proposed_exports"]}
+        for v in found
+        if v.expected
+    } == {
+        "app.caller": {"GetUser", "UpdateUser"},
+        "app.second": {"GetUser", "DeleteUser"},
+    }

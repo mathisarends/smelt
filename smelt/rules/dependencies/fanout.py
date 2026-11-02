@@ -52,6 +52,7 @@ class PackageImportFanout(Rule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        usage: FacadeUsage | None = None
         for contract in ctx.contracts.facade_policies("bundle_imports_at"):
             threshold = contract.spec.bundle_imports_at
             if threshold is None:
@@ -72,7 +73,13 @@ class PackageImportFanout(Rule):
                 first = min(
                     targets.values(), key=lambda detail: (detail.line, detail.column)
                 )
-                evidence = _bundle_evidence(ctx, caller, contract.package, targets)
+                if usage is None:
+                    usage = FacadeUsage(
+                        ctx.syntax, ctx.imports, files=ctx.files, count_tests=False
+                    )
+                evidence = _bundle_evidence(
+                    ctx, usage, caller, contract.package, targets
+                )
                 blocked = evidence["cycle_check"] == "cycle"
                 yield import_violation(
                     self,
@@ -108,11 +115,11 @@ class _BundleEvidence(TypedDict):
 
 def _bundle_evidence(
     ctx: AnalysisContext,
+    usage: FacadeUsage,
     caller: str,
     package: str,
     targets: dict[str, ImportDetail],
 ) -> _BundleEvidence:
-    usage = FacadeUsage(ctx.syntax, ctx.imports, files=ctx.files, count_tests=False)
     exports = [
         {
             "definition": f"{gap.module}.{gap.name}",
