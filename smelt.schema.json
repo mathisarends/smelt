@@ -1272,6 +1272,21 @@
             "error"
           ]
         },
+        "caller-before-callee": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
+          "description": "A direct caller appears after same-visibility helpers it calls. A step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check. Repair: Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.",
+          "markdownDescription": "**SMT329 \u2014 caller-before-callee**\n\nA direct caller appears after same-visibility helpers it calls.\n\nA step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check.\n\n**Problem**\n```python\ndef parse():\n    return 1\n\ndef load():\n    return parse()\n```\n\n**Preferred**\n```python\ndef load():\n    return parse()\n\ndef parse():\n    return 1\n```\n\nReview placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.\n\nRun `smelt explain caller-before-callee` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1979,6 +1994,21 @@
             "error"
           ]
         },
+        "^SMT329$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
+          "description": "A direct caller appears after same-visibility helpers it calls. A step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check. Repair: Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.",
+          "markdownDescription": "**SMT329 \u2014 caller-before-callee**\n\nA direct caller appears after same-visibility helpers it calls.\n\nA step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check.\n\n**Problem**\n```python\ndef parse():\n    return 1\n\ndef load():\n    return parse()\n```\n\n**Preferred**\n```python\ndef load():\n    return parse()\n\ndef parse():\n    return 1\n```\n\nReview placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.\n\nRun `smelt explain caller-before-callee` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2676,6 +2706,21 @@
             "error"
           ]
         },
+        "caller-before-callee": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
+          "description": "A direct caller appears after same-visibility helpers it calls. A step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check. Repair: Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.",
+          "markdownDescription": "**SMT329 \u2014 caller-before-callee**\n\nA direct caller appears after same-visibility helpers it calls.\n\nA step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check.\n\n**Problem**\n```python\ndef parse():\n    return 1\n\ndef load():\n    return parse()\n```\n\n**Preferred**\n```python\ndef load():\n    return parse()\n\ndef parse():\n    return 1\n```\n\nReview placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.\n\nRun `smelt explain caller-before-callee` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3171,6 +3216,21 @@
           "markdownDescription": "**SMT325 \u2014 missing-module-docstring**\n\nA module lacks the non-empty docstring required by its package convention.\n\nA consistent module introduction helps readers understand each file's responsibility. With module_docstrings: require, every analyzed production module in the package needs a non-empty initial docstring, including empty files, __init__.py and __main__.py. Comments, later strings, bytes, f-strings and class/function docstrings do not satisfy the policy. Blank docstrings are reported too. Choose forbid for the opposite convention (SMT309); allow explicitly exempts a nested package. Omitted policy adds no requirement. Only analyzed source files are checked; separately discovered tests and excluded files are unaffected.\n\n**Problem**\n```python\nVALUE = 1\n```\n\n**Preferred**\n```python\n\"\"\"Constants for the calculation service.\"\"\"\nVALUE = 1\n```\n\nAdd a useful module docstring before imports and other statements. Mark an intentional file exception with # smelt: ignore-file[SMT325] -- reason. No documentation is generated automatically.\n\nRun `smelt explain missing-module-docstring` for details.",
           "examples": [
             "error"
+          ]
+        },
+        "^SMT329$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
+          "description": "A direct caller appears after same-visibility helpers it calls. A step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check. Repair: Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.",
+          "markdownDescription": "**SMT329 \u2014 caller-before-callee**\n\nA direct caller appears after same-visibility helpers it calls.\n\nA step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check.\n\n**Problem**\n```python\ndef parse():\n    return 1\n\ndef load():\n    return parse()\n```\n\n**Preferred**\n```python\ndef load():\n    return parse()\n\ndef parse():\n    return 1\n```\n\nReview placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.\n\nRun `smelt explain caller-before-callee` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {

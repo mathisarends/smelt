@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT329 (`rules: {caller-before-callee: hint}`) reviews step-down reading
+  order for direct same-visibility functions and ordinary methods. Recursive,
+  shadowed and definition-time-dependent pairs are retained; SMT313's public-first
+  categories take precedence. No definitions are moved automatically.
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
