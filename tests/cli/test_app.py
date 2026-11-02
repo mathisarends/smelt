@@ -1594,7 +1594,7 @@ class TestDebtCommand:
 
     @pytest.mark.parametrize(
         "content",
-        ['{"version":1,"violations":[{}]}', '{"version":2,"violations":[]}', "{broken"],
+        ['{"version":1,"violations":[{}]}', '{"version":3,"violations":[]}', "{broken"],
     )
     def test_malformed_debt_is_a_config_error(
         self,
@@ -1635,7 +1635,7 @@ class TestDebtCommand:
 
         assert (code, err) == (0, "")
         assert out == (
-            "Wrote .smelt/debt.json (1 violation)\n"
+            "Wrote .smelt/debt.json (1 violation, 1 matching entry)\n"
             "Added `debt: .smelt/debt.json` to smelt.yml\n"
         )
         assert _run(capsys, "check")[0] == 0
