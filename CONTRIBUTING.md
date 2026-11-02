@@ -175,6 +175,17 @@ metadata, and generated-file freshness. Duplicate codes or names also fail when 
 
 ## Regressions from real projects
 
+TODO comments must reference the issue or ticket that explains the unfinished
+work. Ruff TD003 checks this convention in local checks and CI. For example:
+
+```python
+# TODO: support the additional layout after the policy is specified.
+# https://github.com/mathisarends/smelt/issues/66
+```
+
+Use an actual issue for the work being deferred. This policy permits tracked
+TODOs; it does not ban them or add a duplicate Smelt diagnostic.
+
 Reduce the example to synthetic files using `tests.helpers.write_project`, or a
 small layout under `tests/fixtures/`. Keep the behavior that exposed the defect,
 including workspace roots or namespace portions when relevant. Tests must run

@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Contributor checks now require an issue/ticket reference for TODO comments
+  through Ruff TD003. Tracked TODOs remain allowed; Smelt's rule catalog is unchanged.
+
 - Document SMT317's activation and developer-facing extraction evidence with
   concrete query-helper regressions. Inherited-class exclusions and the existing
   advisory behavior are preserved; no duplicate static-method rule is added.

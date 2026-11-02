@@ -80,6 +80,7 @@ select = [
     "FURB",  # refurb
     "RUF",   # ruff-specific
     "S",     # flake8-bandit
+    "TD003", # TODO comments must reference an issue or ticket
 ]
 ignore = [
     "E501", # line length is handled by the formatter
