@@ -474,7 +474,7 @@ class PackageContract(_Model):
     bundle_imports_at: int | None = Field(
         default=None,
         ge=2,
-        description="Suggest a package facade when one outside source module imports this many distinct implementation modules of the package (SMT108, hint).",
+        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
     )
     export_at: int | None = Field(
         default=None,

@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT108 now reviews mixed package-facade and implementation imports with
+  `bundle_imports_at: 2`, includes missing export proposals and blocks bundling
+  advice when proposed caller/facade edges close a known runtime import cycle.
+
 - Optional [SMT324](docs/rules/SMT324.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow

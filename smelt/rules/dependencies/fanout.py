@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.facade_usage import FacadeUsage
+from smelt.analysis.graphs import shortest_cycle
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
@@ -22,20 +24,27 @@ class PackageImportFanout(Rule):
     name = "package-import-fanout"
     category = Category.DEPENDENCIES
     default_severity = Severity.HINT
-    requires = frozenset({Index.IMPORTS})
+    requires = frozenset({Index.IMPORTS, Index.SYNTAX})
     doc = RuleDoc(
-        summary="One caller imports many implementation modules of the same package.",
+        summary="One caller spreads a package API across several import paths.",
         rationale=(
             "Repeated imports of neighboring implementation modules can indicate a "
             "missing package API. This is an opt-in design hint, not proof of poor "
             "architecture. Count distinct target modules per source file and contracted "
-            "package, not statements, symbols, or imports across the whole repository."
+            "package, including its facade when mixed with implementation imports, "
+            "not statements, symbols, or imports across the whole repository. "
+            "Findings include missing static exports and a cycle witness for the "
+            "proposed caller/facade edges. Known cycles block bundling advice. "
+            "No-cycle-found covers only explicit runtime imports; dynamic imports "
+            "and implicit package initialization remain unproven."
         ),
         bad="# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser",
         good="# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser",
         fix=(
             "Consider exporting the caller's supported API from the package facade. "
-            "Check dependency direction and cycles before changing exports. If these "
+            "Use proposed_exports to review missing re-exports. A cycle_check of "
+            "cycle blocks bundling: keep the imports or resolve dependency direction "
+            "first. No automatic rewrite is performed. If these "
             "independent dependencies are intentional, retain them or adjust the "
             "advisory threshold. Declare public: ['.'] to enforce facade-only imports."
         ),
@@ -53,7 +62,6 @@ class PackageImportFanout(Rule):
                     detail.external
                     or skip_import(ctx, detail)
                     or is_within(detail.importer, contract.package)
-                    or detail.imported == contract.package
                     or not is_within(detail.imported, contract.package)
                 ):
                     continue
@@ -64,6 +72,8 @@ class PackageImportFanout(Rule):
                 first = min(
                     targets.values(), key=lambda detail: (detail.line, detail.column)
                 )
+                evidence = _bundle_evidence(ctx, caller, contract.package, targets)
+                blocked = evidence["cycle_check"] == "cycle"
                 yield import_violation(
                     self,
                     ctx,
@@ -75,7 +85,61 @@ class PackageImportFanout(Rule):
                         "bundle_imports_at": threshold,
                         "modules": sorted(targets),
                         "count": len(targets),
+                        **evidence,
                     },
-                    hint=f"Consider deliberate exports from {contract.package}, then combine the imports there. Preserve the dependency direction and check for cycles.",
+                    hint=(
+                        "Bundling is blocked by a known runtime import cycle: "
+                        + " -> ".join(evidence["cycle"])
+                        if blocked
+                        else f"Review deliberate exports from {contract.package}, then combine imports in the same scope and guard. No cycle was found in the explicit runtime graph; review initialization before changing exports."
+                    ),
                     edge=f"{caller} -> {contract.package} ({contract.name})",
                 )
+
+
+class _BundleEvidence(TypedDict):
+    cycle_check: str
+    cycle: list[str]
+    proposed_exports: list[dict[str, object]]
+    blocked_exports: list[dict[str, object]]
+    automatic_rewrite: bool
+    initialization_safety: str
+
+
+def _bundle_evidence(
+    ctx: AnalysisContext,
+    caller: str,
+    package: str,
+    targets: dict[str, ImportDetail],
+) -> _BundleEvidence:
+    usage = FacadeUsage(ctx.syntax, ctx.imports, files=ctx.files, count_tests=False)
+    exports = [
+        {
+            "definition": f"{gap.module}.{gap.name}",
+            "name": gap.name,
+            "suggested_import": f"from .{gap.module.removeprefix(package + '.')} import {gap.name}",
+            "needs_import": gap.needs_import,
+        }
+        for gap in usage.gaps(package, count_tests=False)
+        if caller in gap.source_importers
+    ]
+    adjacency = {
+        name: set(children)
+        for name, children in ctx.imports.first_party_edges(
+            include_type_checking=False
+        ).items()
+    }
+    adjacency.setdefault(caller, set()).add(package)
+    adjacency.setdefault(package, set()).update(set(targets) - {package})
+    nodes = set(adjacency) | {
+        child for children in adjacency.values() for child in children
+    }
+    cycle = shortest_cycle(package, adjacency, nodes) or []
+    return {
+        "cycle_check": "cycle" if cycle else "no-cycle-found",
+        "cycle": cycle,
+        "proposed_exports": [] if cycle else exports,
+        "blocked_exports": exports if cycle else [],
+        "automatic_rewrite": False,
+        "initialization_safety": "unproven",
+    }

@@ -202,3 +202,95 @@ def test_identical_thresholds_are_deduplicated_and_equal_rank_conflicts_are_erro
     )
     with pytest.raises(ConfigError, match="equally specific"):
         violations(tmp_path, OPTIONS)
+
+
+@pytest.mark.parametrize("cycle", [False, True])
+def test_mixed_facade_and_error_imports_propose_one_api_without_known_cycles(
+    tmp_path: Path, cycle: bool
+) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
+        config=CONFIG.replace("at: 3", "at: 2"),
+    )
+    write_project(
+        tmp_path,
+        {
+            "app/user/application/__init__.py": "from .get_user import GetUser\n",
+            "app/user/application/update_user.py": (
+                "from app.user.application import GetUser\nclass UpdateUser: pass\n"
+                if cycle
+                else "class UpdateUser: pass\n"
+            ),
+        },
+    )
+
+    [finding] = violations(tmp_path, OPTIONS)
+
+    assert finding.expected is not None
+    assert finding.expected["count"] == 2
+    assert finding.expected["cycle_check"] == ("cycle" if cycle else "no-cycle-found")
+    exports = finding.expected["blocked_exports" if cycle else "proposed_exports"]
+    assert exports[0]["definition"] == "app.user.application.update_user.UpdateUser"
+    assert exports[0]["suggested_import"] == "from .update_user import UpdateUser"
+    assert finding.expected["automatic_rewrite"] is False
+    if cycle:
+        assert finding.expected["proposed_exports"] == []
+        assert finding.expected["cycle"] == [
+            "app.user.application",
+            "app.user.application.update_user",
+            "app.user.application",
+        ]
+
+
+def test_new_caller_facade_edge_is_checked_for_cycles(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
+        config=CONFIG.replace("at: 3", "at: 2"),
+    )
+    write_project(tmp_path, {"app/user/application/__init__.py": "import app.caller\n"})
+
+    [finding] = violations(tmp_path, OPTIONS)
+
+    assert finding.expected is not None
+    assert finding.expected["cycle"] == [
+        "app.user.application",
+        "app.caller",
+        "app.user.application",
+    ]
+
+
+def test_other_api_packages_do_not_contribute_to_bundling(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application import GetUser\nfrom app.user.domain.validation import validate\n",
+        config=CONFIG.replace("at: 3", "at: 2"),
+    )
+    write_project(tmp_path, {"app/user/domain/validation.py": "def validate(): pass\n"})
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
+        config=CONFIG.replace("at: 3", "at: 2"),
+    )
+    [before] = violations(tmp_path, OPTIONS)
+    assert before.expected is not None
+    assert before.expected["cycle_check"] == "no-cycle-found"
+    write_project(
+        tmp_path,
+        {
+            "app/user/application/update_user.py": "from app.user.application import GetUser\nclass UpdateUser: pass\n"
+        },
+    )
+
+    [cached] = violations(tmp_path, OPTIONS)
+    [fresh] = violations(tmp_path, CheckOptions(select=("SMT108",), use_cache=False))
+
+    assert cached.expected == fresh.expected
+    assert cached.expected is not None
+    assert cached.expected["cycle_check"] == "cycle"
