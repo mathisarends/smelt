@@ -1256,6 +1256,21 @@
             "hint"
           ]
         },
+        "package-only-dunder-all": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT325: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT325 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1948,6 +1963,21 @@
             "hint"
           ]
         },
+        "^SMT325$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT325: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT325 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2630,6 +2660,21 @@
             "hint"
           ]
         },
+        "package-only-dunder-all": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT325: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT325 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3110,6 +3155,21 @@
           "markdownDescription": "**SMT324 \u2014 prefer-str-enum-discriminator**\n\nPrefer StrEnum members for single-string class discriminator fields.\n\nDiscriminated union variants often repeat protocol strings in Literal annotations, field defaults and dispatch code. A shared StrEnum gives those values one named definition while Literal[EventType.MEMBER] preserves each variant's narrow type. This opt-in syntax review recognizes directly annotated class fields named type, kind or tag whose typing.Literal contains exactly one raw string, with or without a default. It supports typing and typing_extensions import aliases, quoted annotations and Annotated/Required/NotRequired wrappers. Dataclasses, model classes and class-based TypedDict declarations use the same syntax. The field shape is a review candidate, not proof of union membership. Other field names, multiple-value Literals, enum-member Literals, ClassVar, type aliases, inherited fields and uncertain or shadowed typing bindings are excluded. Declared Python minima before 3.11 are excluded; unknown minima require version review.\n\n**Problem**\n```python\nfrom dataclasses import dataclass, field\nfrom typing import Literal\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal[\"checkpoint.extension\"] = field(default=\"checkpoint.extension\", kw_only=True)\n```\n\n**Preferred**\n```python\nfrom dataclasses import dataclass, field\nfrom enum import StrEnum\nfrom typing import Literal\n\nclass EventType(StrEnum):\n    CHECKPOINT_EXTENSION = \"checkpoint.extension\"\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal[EventType.CHECKPOINT_EXTENSION] = field(default=EventType.CHECKPOINT_EXTENSION, kw_only=True)\n```\n\nDefine or reuse a shared StrEnum for the union's wire values. Keep each variant annotated as Literal[EnumType.MEMBER], and use that same member in direct defaults, dataclasses.field(default=...) or model Field(default=...). Keep explicit string values such as checkpoint.extension; auto() may change the wire contract. Review consumers and serialization before changing defaults, since exact str checks and repr can distinguish enum members. StrEnum requires Python 3.11+. No automatic rewrite is performed; analyzed code is never executed. Suppress intentional external schema strings with a reason or disable this review for their package.\n\nRun `smelt explain prefer-str-enum-discriminator` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT325$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT325: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT325 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
           ]
         },
         "^SMT429$": {

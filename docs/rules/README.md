@@ -33,6 +33,7 @@
 | [SMT322](SMT322.md) | deep-object-navigation | structure | explicit | hint |
 | [SMT323](SMT323.md) | no-base-class-prefix | structure | explicit | error |
 | [SMT324](SMT324.md) | prefer-str-enum-discriminator | structure | explicit | hint |
+| [SMT325](SMT325.md) | package-only-dunder-all | structure | explicit | error |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

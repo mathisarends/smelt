@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT325 (`rules: {package-only-dunder-all: error}`) restricts module
+  `__all__` declarations to package `__init__.py` files. Package overrides and
+  reasoned suppressions retain deliberate compatibility exports; no automatic move.
+
 - Optional [SMT324](docs/rules/SMT324.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow
