@@ -9,7 +9,7 @@ from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import CONFIG_FILENAME, CONFIG_FILENAMES, load_config
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
-from smelt.engine.check import CheckOptions, run_check, snippet_reader
+from smelt.engine.check import CheckOptions, relative_scope, run_check, snippet_reader
 from smelt.engine.inference import infer_config, render_config
 from smelt.engine.rule_settings import RuleSettings
 from smelt.engine.schema import SCHEMA_COMMENT, config_json_schema
@@ -90,6 +90,25 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     configured = loaded.config.debt
     relative = configured or DEFAULT_DEBT
     path = loaded.root / relative
+    if args.show:
+        scopes = tuple(relative_scope(loaded.root, cwd, raw) for raw in args.paths)
+        existing = Debt.load(path, store=loaded.source)
+        selected = Debt(
+            [
+                entry
+                for entry in existing.entries
+                if not scopes
+                or any(
+                    scope in (".", entry.path)
+                    or (entry.path or "").startswith(scope.rstrip("/") + "/")
+                    for scope in scopes
+                )
+            ]
+        )
+        _show_debt(selected, relative, args.format or "text", console)
+        return EXIT_OK
+    if args.paths or args.format:
+        raise CliError("paths and --format require --show")
     outcome = run_check(loaded, CheckOptions(use_debt=False))
     if any(v.code == "SMT306" for v in outcome.unfiltered):
         raise CliError(
@@ -127,7 +146,8 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         updated = Debt.from_violations(current, snippet)
         Debt([*updated.entries, *dormant]).write(path)
         console.print(
-            f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)})"
+            f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)}, "
+            f"{len(updated.entries)} matching entr{'y' if len(updated.entries) == 1 else 'ies'})"
         )
     if dormant:
         console.print(
@@ -137,6 +157,28 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         _enable_debt(loaded.path, relative)
         console.print(f"Added `debt: {relative}` to {loaded.path.name}")
     return EXIT_OK
+
+
+def _show_debt(debt: Debt, path: str, output_format: str, console: Console) -> None:
+    data = debt.to_json()
+    if output_format == "json":
+        console.print(json.dumps(data, indent=2))
+        return
+    groups = data["violations"]
+    console.print(
+        f"Debt baseline: {path} ({len(groups)} group{'s' if len(groups) != 1 else ''}, "
+        f"{len(debt.entries)} matching entr{'y' if len(debt.entries) == 1 else 'ies'})"
+    )
+    for group in groups:
+        location = group["path"] or "<project>"
+        if group.get("scope"):
+            location += f"::{group['scope']}"
+        count = len(group["fingerprints"])
+        console.print(
+            f"{group['code']} {location} ({count} accepted entr{'y' if count == 1 else 'ies'})"
+        )
+        if group["message"]:
+            console.print(f"  {group['message']}")
 
 
 def _init_target(custom: str | None, cwd: Path) -> tuple[Path, str]:
