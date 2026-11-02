@@ -469,7 +469,7 @@
   },
   {
     "target": "smelt.rules.structure.exports:PackageOnlyDunderAll",
-    "code": "SMT325",
+    "code": "SMT330",
     "name": "package-only-dunder-all",
     "category": "structure",
     "default_severity": "error",

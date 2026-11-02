@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class PackageOnlyDunderAll(Rule):
     file_local = True
-    code = "SMT325"
+    code = "SMT330"
     name = "package-only-dunder-all"
     category = Category.STRUCTURE
     default_severity = Severity.ERROR
