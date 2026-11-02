@@ -122,33 +122,6 @@ _BINDINGS = TypeAdapter(dict[str, _Binding])
 _ASYNC_SPECS = TypeAdapter(dict[str, frozenset[str]])
 
 
-def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        try:
-            return _annotation(ast.parse(node.value, mode="eval").body, env)
-        except SyntaxError:
-            return None
-    if isinstance(node, ast.Name):
-        binding = env.get(node.id)
-        return binding.qualified if binding else None
-    if isinstance(node, ast.Attribute):
-        parent = _annotation(node.value, env)
-        return f"{parent}.{node.attr}" if parent else None
-    return None
-
-
-def _instance(qualified: str, provenance: str) -> _Binding:
-    return _Binding(
-        qualified,
-        "mock" if qualified in _MOCK_TYPES else "instance",
-        provenance,
-        async_callable=qualified
-        if qualified
-        in {root + name for root in _MOCK_ROOTS for name in ("AsyncMock", "async_stub")}
-        else None,
-    )
-
-
 def _fixture_binding(node: ast.AST, env: Mapping[str, _Binding]) -> _Binding | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         try:
@@ -182,6 +155,42 @@ def _fixture_binding(node: ast.AST, env: Mapping[str, _Binding]) -> _Binding | N
     return _instance(qualified, "fixture-return") if qualified else None
 
 
+def _annotation(node: ast.AST, env: Mapping[str, _Binding]) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        try:
+            return _annotation(ast.parse(node.value, mode="eval").body, env)
+        except SyntaxError:
+            return None
+    if isinstance(node, ast.Name):
+        binding = env.get(node.id)
+        return binding.qualified if binding else None
+    if isinstance(node, ast.Attribute):
+        parent = _annotation(node.value, env)
+        return f"{parent}.{node.attr}" if parent else None
+    return None
+
+
+def _patch_result(node: ast.Call, qualified: str) -> _Binding | None:
+    new_position = 2 if qualified.endswith(".object") else 1
+    if len(node.args) > new_position or any(
+        kw.arg in {"new", "new_callable"} or kw.arg is None for kw in node.keywords
+    ):
+        return None
+    return _instance("unittest.mock.MagicMock", "patch-result")
+
+
+def _instance(qualified: str, provenance: str) -> _Binding:
+    return _Binding(
+        qualified,
+        "mock" if qualified in _MOCK_TYPES else "instance",
+        provenance,
+        async_callable=qualified
+        if qualified
+        in {root + name for root in _MOCK_ROOTS for name in ("AsyncMock", "async_stub")}
+        else None,
+    )
+
+
 def _inferred_fixture(binding: _Binding) -> _Binding:
     return replace(
         binding,
@@ -190,6 +199,51 @@ def _inferred_fixture(binding: _Binding) -> _Binding:
         if binding.items is not None
         else None,
     )
+
+
+def _analyze_test_syntax(
+    tree: ast.Module,
+    path: str,
+    *,
+    constructors: frozenset[str] = frozenset(),
+    fixtures: Mapping[str, _Binding] | None = None,
+    async_specs: Mapping[str, frozenset[str]] | None = None,
+) -> TestModule:
+    module = TestModule(path)
+    specs = {
+        **(async_specs or {}),
+        **_class_async_methods(tree, path.removesuffix(".py").replace("/", ".")),
+    }
+    definitions = local_helpers(tree)
+    visitor = _Visitor(
+        module,
+        constructors,
+        {
+            **(fixtures or {}),
+            **_declared_fixtures(tree, path, constructors, fixtures or {}, specs),
+        },
+        specs,
+        definitions,
+    )
+    for node in tree.body:
+        if (
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and node.lineno in definitions
+        ):
+            visitor.env[node.name] = visitor._helper_binding(node)
+    visitor.visit(tree)
+    for test in module.tests:
+        parents = {
+            child: parent
+            for parent in ast.walk(test.node)
+            for child in ast.iter_child_nodes(parent)
+        }
+        calls = {call.node: call.qualified for call in test.calls}
+        for call in test.calls:
+            helper = module.helpers.get(call.helper_line or -1)
+            if helper and helper_executes(helper.node, call.node, calls, parents):
+                test.helpers.append(HelperCall(call.node, helper))
+    return module
 
 
 def _class_async_methods(tree: ast.Module, module: str) -> dict[str, frozenset[str]]:
@@ -415,15 +469,6 @@ class TestFunction:
             and outcome_propagates(helper.node, parents, calls)
         )
         return evidence
-
-
-def _patch_result(node: ast.Call, qualified: str) -> _Binding | None:
-    new_position = 2 if qualified.endswith(".object") else 1
-    if len(node.args) > new_position or any(
-        kw.arg in {"new", "new_callable"} or kw.arg is None for kw in node.keywords
-    ):
-        return None
-    return _instance("unittest.mock.MagicMock", "patch-result")
 
 
 @dataclass
@@ -1206,6 +1251,18 @@ class _Visitor(ast.NodeVisitor):
         return binding.text if binding else None
 
 
+def _fixture_facts(
+    asts: AstCache,
+    path: str,
+    constructors: frozenset[str],
+    inherited: dict[str, _Binding],
+    async_specs: dict[str, frozenset[str]],
+) -> dict[str, _Binding]:
+    return _declared_fixtures(
+        asts.parse(path), path, constructors, inherited, async_specs
+    )
+
+
 def _declared_fixtures(
     tree: ast.Module,
     path: str,
@@ -1217,63 +1274,6 @@ def _declared_fixtures(
     visitor = _Visitor(TestModule(path), constructors, inherited, async_specs)
     visitor.visit(tree)
     return visitor.defined_fixtures
-
-
-def _analyze_test_syntax(
-    tree: ast.Module,
-    path: str,
-    *,
-    constructors: frozenset[str] = frozenset(),
-    fixtures: Mapping[str, _Binding] | None = None,
-    async_specs: Mapping[str, frozenset[str]] | None = None,
-) -> TestModule:
-    module = TestModule(path)
-    specs = {
-        **(async_specs or {}),
-        **_class_async_methods(tree, path.removesuffix(".py").replace("/", ".")),
-    }
-    definitions = local_helpers(tree)
-    visitor = _Visitor(
-        module,
-        constructors,
-        {
-            **(fixtures or {}),
-            **_declared_fixtures(tree, path, constructors, fixtures or {}, specs),
-        },
-        specs,
-        definitions,
-    )
-    for node in tree.body:
-        if (
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            and node.lineno in definitions
-        ):
-            visitor.env[node.name] = visitor._helper_binding(node)
-    visitor.visit(tree)
-    for test in module.tests:
-        parents = {
-            child: parent
-            for parent in ast.walk(test.node)
-            for child in ast.iter_child_nodes(parent)
-        }
-        calls = {call.node: call.qualified for call in test.calls}
-        for call in test.calls:
-            helper = module.helpers.get(call.helper_line or -1)
-            if helper and helper_executes(helper.node, call.node, calls, parents):
-                test.helpers.append(HelperCall(call.node, helper))
-    return module
-
-
-def _fixture_facts(
-    asts: AstCache,
-    path: str,
-    constructors: frozenset[str],
-    inherited: dict[str, _Binding],
-    async_specs: dict[str, frozenset[str]],
-) -> dict[str, _Binding]:
-    return _declared_fixtures(
-        asts.parse(path), path, constructors, inherited, async_specs
-    )
 
 
 @dataclass
@@ -1456,9 +1456,6 @@ class TestSyntaxIndex:
             tuple(fixtures_by_path), load
         )
 
-    def inputs(self, path: str) -> object:
-        return self._inputs[path]
-
     def for_file(self, path: str) -> TestSyntaxIndex:
         view = copy(self)
         view.modules = {path: self.modules[path]}
@@ -1504,3 +1501,6 @@ class TestSyntaxIndex:
                 )
             )
             yield path, cached
+
+    def inputs(self, path: str) -> object:
+        return self._inputs[path]

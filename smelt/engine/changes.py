@@ -14,6 +14,28 @@ def lexical_path(path: Path) -> Path:
     return Path(os.path.abspath(path))  # noqa: PTH100 - captured Git paths must not follow unstaged symlinks
 
 
+def git_repository(cwd: Path, requested: Path | None = None) -> Path:
+    """Prefer the caller's repository, including staged directories deleted on disk."""
+    try:
+        repository = Path(
+            os.fsdecode(_git(cwd, "rev-parse", "--show-toplevel")).strip()
+        ).resolve()
+    except AnalysisError:
+        if requested is None:
+            raise
+    else:
+        if requested is None or requested.is_relative_to(repository):
+            return repository
+    if requested is None:
+        raise AnalysisError("changed/staged checks need a Git repository")
+    anchor = next(
+        (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
+    )
+    return Path(
+        os.fsdecode(_git(anchor, "rev-parse", "--show-toplevel")).strip()
+    ).resolve()
+
+
 def _git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
     if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
         native = native_git.tree_records(root, args[3])
@@ -49,28 +71,6 @@ def _head(root: Path) -> str | None:
     if result.returncode == 1:
         return None
     raise AnalysisError(result.stderr.decode("utf-8", errors="replace").strip())
-
-
-def git_repository(cwd: Path, requested: Path | None = None) -> Path:
-    """Prefer the caller's repository, including staged directories deleted on disk."""
-    try:
-        repository = Path(
-            os.fsdecode(_git(cwd, "rev-parse", "--show-toplevel")).strip()
-        ).resolve()
-    except AnalysisError:
-        if requested is None:
-            raise
-    else:
-        if requested is None or requested.is_relative_to(repository):
-            return repository
-    if requested is None:
-        raise AnalysisError("changed/staged checks need a Git repository")
-    anchor = next(
-        (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
-    )
-    return Path(
-        os.fsdecode(_git(anchor, "rev-parse", "--show-toplevel")).strip()
-    ).resolve()
 
 
 @dataclass(frozen=True)
@@ -215,22 +215,6 @@ def export_base(
     return project if project.is_dir() else None
 
 
-def _snapshot_path(dest: Path, path: Path) -> Path:
-    # Snapshots start empty and never create symlinks. Validate the relative
-    # components without a filesystem round trip for every repository file.
-    if path.drive or path.is_absolute() or ".." in path.parts:
-        raise AnalysisError(f"unsafe path in Git snapshot: {path}")
-    return dest / path
-
-
-def _copy_blobs(repository: Path, files: list[tuple[str, Path]]) -> None:
-    if not files:
-        return
-    contents = read_blobs(repository, list(dict.fromkeys(oid for oid, _ in files)))
-    for object_id, path in files:
-        path.write_bytes(contents[object_id])
-
-
 def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     if not identifiers:
         return {}
@@ -258,3 +242,19 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
             raise AnalysisError("incomplete staged Git blob")
         result[object_id] = data
     return result
+
+
+def _snapshot_path(dest: Path, path: Path) -> Path:
+    # Snapshots start empty and never create symlinks. Validate the relative
+    # components without a filesystem round trip for every repository file.
+    if path.drive or path.is_absolute() or ".." in path.parts:
+        raise AnalysisError(f"unsafe path in Git snapshot: {path}")
+    return dest / path
+
+
+def _copy_blobs(repository: Path, files: list[tuple[str, Path]]) -> None:
+    if not files:
+        return
+    contents = read_blobs(repository, list(dict.fromkeys(oid for oid, _ in files)))
+    for object_id, path in files:
+        path.write_bytes(contents[object_id])

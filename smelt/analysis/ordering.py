@@ -130,176 +130,30 @@ class _FixBlocker:
     node: ast.stmt | ast.expr | ast.type_param
 
 
-def _precedence(blocks: tuple[DefinitionBlock, ...]) -> list[set[int]]:
-    """Preserve group order, binding versions, and reads before later rebinding."""
-    before: list[set[int]] = [set() for _ in blocks]
-    last_group: dict[str, int] = {}
-    writers: dict[str, list[int]] = defaultdict(list)
-    for index, block in enumerate(blocks):
-        if block.category in last_group:
-            before[index].add(last_group[block.category])
-        last_group[block.category] = index
-        for name in block.binds:
-            if writers[name]:
-                before[index].add(writers[name][-1])
-            writers[name].append(index)
-    for index, block in enumerate(blocks):
-        for name in block.reads:
-            prior = [writer for writer in writers[name] if writer < index]
-            later = [writer for writer in writers[name] if writer > index]
-            if prior:
-                before[index].add(prior[-1])
-            if later:
-                before[later[0]].add(index)
-    return before
-
-
-def _canonical_order(
-    blocks: tuple[DefinitionBlock, ...], priorities: list[str]
-) -> tuple[int, ...]:
-    dependencies = _precedence(blocks)
-    ranks = {name: index for index, name in enumerate(priorities)}
-    followers: dict[int, list[int]] = defaultdict(list)
-    for index, required in enumerate(dependencies):
-        for prerequisite in required:
-            followers[prerequisite].append(index)
-    priority = [ranks.get(block.category, len(ranks)) for block in blocks]
-    for index in reversed(range(len(blocks))):
-        for follower in followers[index]:
-            priority[index] = min(priority[index], priority[follower])
-    ready = [
-        (priority[index], index)
-        for index in range(len(blocks))
-        if not dependencies[index]
-    ]
-    heapq.heapify(ready)
-    result: list[int] = []
-    while ready:
-        _, index = heapq.heappop(ready)
-        result.append(index)
-        for follower in followers[index]:
-            dependencies[follower].remove(index)
-            if not dependencies[follower]:
-                heapq.heappush(ready, (priority[follower], follower))
-    # All constraints preserve an existing ordering relation, so they form a DAG.
-    return tuple(result)
-
-
-def _section(
-    result: FileOrder,
-    owner: ScopeNode,
-    scope: str,
-    blocks: list[DefinitionBlock],
-    fix_blocker: _FixBlocker | None,
-) -> None:
-    if not blocks:
-        return
-    group = tuple(blocks)
-    priorities = (
-        result.config.class_order
-        if isinstance(owner, ast.ClassDef)
-        else result.config.module
+def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics are separate
+    tree: ast.Module,
+    config: OrderingConfig,
+    *,
+    source: SourceFile | None = None,
+    contract: str = "ordering",
+    deferred: bool = False,
+    builtin_unions: bool = False,
+) -> FileOrder:
+    result = FileOrder(
+        source.path if source else "module.py",
+        source.module if source else "module",
+        tree,
+        config,
+        contract,
+        deferred,
+        builtin_unions and not _mutates_builtins(tree),
     )
-    order = _canonical_order(group, list(priorities))
-    positions = {index: position for position, index in enumerate(order)}
-    edges = tuple(
-        f"{group[left].key} -> {group[right].key}"
-        for left in range(len(group))
-        for right in range(left + 1, len(group))
-        if positions[left] > positions[right]
-    )
-    factory = next((block for block in group if block.fix_reason), None)
-    blocker = fix_blocker or (
-        _FixBlocker(factory.fix_reason, factory.fix_node or factory.nodes[0])
-        if factory and factory.fix_reason
-        else None
-    )
-    reason = blocker.reason if blocker else None
-    if result.config.fix == "off":
-        reason = "ordering fixes are disabled for this package"
-        blocker = None
-    section = OrderSection(owner, scope, group, order, edges, reason, blocker)
-    result.sections.append(section)
-    if edges:
-        first_changed = next(
-            index for index, expected in enumerate(order) if index != expected
-        )
-        result.issues.append(
-            OrderIssue(
-                scope,
-                group[first_changed].line,
-                f"definitions in {scope} have {len(edges)} avoidable ordering inversion(s)",
-                edges,
-                section,
-            )
-        )
-
-
-def _property_boundaries(blocks: list[DefinitionBlock]) -> list[DefinitionBlock]:
-    families: dict[str, list[int]] = defaultdict(list)
-    for index, block in enumerate(blocks):
-        if any(
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            and any(
-                isinstance(decorator, ast.Attribute)
-                and decorator.attr in {"getter", "setter", "deleter"}
-                for decorator in node.decorator_list
-            )
-            for node in block.nodes
-        ):
-            families[block.label].append(index)
-    for name in families:
-        indices = [index for index, block in enumerate(blocks) if block.label == name]
-        if len(indices) > 1:
-            for index in indices:
-                blocks[index] = replace(
-                    blocks[index],
-                    barrier="noncontiguous property family is kept in place",
-                )
-    return blocks
-
-
-def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
-    seen: list[DefinitionBlock] = []
-    ranks: dict[str, int] = {
-        name: index for index, name in enumerate(result.config.module)
+    reflection = _reflective(tree)
+    aliases = builtin_type_aliases() | {
+        name: f"builtins.{name}" for name in ("property", "staticmethod", "classmethod")
     }
-    for index, block in enumerate(blocks):
-        if block.category in {"imports", "future-imports"}:
-            rank = ranks[block.category]
-            late = [
-                prior
-                for prior in seen
-                if prior.category in result.config.module
-                and ranks[prior.category] > rank
-            ]
-            if late:
-                edges = tuple(f"{prior.key} -> fixed:{block.key}" for prior in late)
-                result.issues.append(
-                    OrderIssue(
-                        "module",
-                        block.line,
-                        f"{block.category} appear after later definition groups",
-                        edges,
-                        reason="imports are execution barriers; review placement manually",
-                        fix_node=block.nodes[0],
-                    )
-                )
-        if is_main_guard(block.nodes[0]) and index + 1 < len(blocks):
-            edges = tuple(
-                f"main:{block.key} -> {later.key}" for later in blocks[index + 1 :]
-            )
-            result.issues.append(
-                OrderIssue(
-                    "module",
-                    block.line,
-                    "the main guard must be the final module statement",
-                    edges,
-                    reason="moving the main guard changes execution timing; review manually",
-                    fix_node=block.nodes[0],
-                )
-            )
-        seen.append(block)
+    _body(result, tree, "module", aliases, reflection)
+    return result
 
 
 def _reflective(tree: ast.Module) -> _FixBlocker | None:
@@ -469,30 +323,176 @@ def _body(
         _body(result, child, child_scope, child_aliases, child_blocker)
 
 
-def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics are separate
-    tree: ast.Module,
-    config: OrderingConfig,
-    *,
-    source: SourceFile | None = None,
-    contract: str = "ordering",
-    deferred: bool = False,
-    builtin_unions: bool = False,
-) -> FileOrder:
-    result = FileOrder(
-        source.path if source else "module.py",
-        source.module if source else "module",
-        tree,
-        config,
-        contract,
-        deferred,
-        builtin_unions and not _mutates_builtins(tree),
+def _section(
+    result: FileOrder,
+    owner: ScopeNode,
+    scope: str,
+    blocks: list[DefinitionBlock],
+    fix_blocker: _FixBlocker | None,
+) -> None:
+    if not blocks:
+        return
+    group = tuple(blocks)
+    priorities = (
+        result.config.class_order
+        if isinstance(owner, ast.ClassDef)
+        else result.config.module
     )
-    reflection = _reflective(tree)
-    aliases = builtin_type_aliases() | {
-        name: f"builtins.{name}" for name in ("property", "staticmethod", "classmethod")
+    order = _canonical_order(group, list(priorities))
+    positions = {index: position for position, index in enumerate(order)}
+    edges = tuple(
+        f"{group[left].key} -> {group[right].key}"
+        for left in range(len(group))
+        for right in range(left + 1, len(group))
+        if positions[left] > positions[right]
+    )
+    factory = next((block for block in group if block.fix_reason), None)
+    blocker = fix_blocker or (
+        _FixBlocker(factory.fix_reason, factory.fix_node or factory.nodes[0])
+        if factory and factory.fix_reason
+        else None
+    )
+    reason = blocker.reason if blocker else None
+    if result.config.fix == "off":
+        reason = "ordering fixes are disabled for this package"
+        blocker = None
+    section = OrderSection(owner, scope, group, order, edges, reason, blocker)
+    result.sections.append(section)
+    if edges:
+        first_changed = next(
+            index for index, expected in enumerate(order) if index != expected
+        )
+        result.issues.append(
+            OrderIssue(
+                scope,
+                group[first_changed].line,
+                f"definitions in {scope} have {len(edges)} avoidable ordering inversion(s)",
+                edges,
+                section,
+            )
+        )
+
+
+def _canonical_order(
+    blocks: tuple[DefinitionBlock, ...], priorities: list[str]
+) -> tuple[int, ...]:
+    dependencies = _precedence(blocks)
+    ranks = {name: index for index, name in enumerate(priorities)}
+    followers: dict[int, list[int]] = defaultdict(list)
+    for index, required in enumerate(dependencies):
+        for prerequisite in required:
+            followers[prerequisite].append(index)
+    priority = [ranks.get(block.category, len(ranks)) for block in blocks]
+    for index in reversed(range(len(blocks))):
+        for follower in followers[index]:
+            priority[index] = min(priority[index], priority[follower])
+    ready = [
+        (priority[index], index)
+        for index in range(len(blocks))
+        if not dependencies[index]
+    ]
+    heapq.heapify(ready)
+    result: list[int] = []
+    while ready:
+        _, index = heapq.heappop(ready)
+        result.append(index)
+        for follower in followers[index]:
+            dependencies[follower].remove(index)
+            if not dependencies[follower]:
+                heapq.heappush(ready, (priority[follower], follower))
+    # All constraints preserve an existing ordering relation, so they form a DAG.
+    return tuple(result)
+
+
+def _precedence(blocks: tuple[DefinitionBlock, ...]) -> list[set[int]]:
+    """Preserve group order, binding versions, and reads before later rebinding."""
+    before: list[set[int]] = [set() for _ in blocks]
+    last_group: dict[str, int] = {}
+    writers: dict[str, list[int]] = defaultdict(list)
+    for index, block in enumerate(blocks):
+        if block.category in last_group:
+            before[index].add(last_group[block.category])
+        last_group[block.category] = index
+        for name in block.binds:
+            if writers[name]:
+                before[index].add(writers[name][-1])
+            writers[name].append(index)
+    for index, block in enumerate(blocks):
+        for name in block.reads:
+            prior = [writer for writer in writers[name] if writer < index]
+            later = [writer for writer in writers[name] if writer > index]
+            if prior:
+                before[index].add(prior[-1])
+            if later:
+                before[later[0]].add(index)
+    return before
+
+
+def _property_boundaries(blocks: list[DefinitionBlock]) -> list[DefinitionBlock]:
+    families: dict[str, list[int]] = defaultdict(list)
+    for index, block in enumerate(blocks):
+        if any(
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and any(
+                isinstance(decorator, ast.Attribute)
+                and decorator.attr in {"getter", "setter", "deleter"}
+                for decorator in node.decorator_list
+            )
+            for node in block.nodes
+        ):
+            families[block.label].append(index)
+    for name in families:
+        indices = [index for index, block in enumerate(blocks) if block.label == name]
+        if len(indices) > 1:
+            for index in indices:
+                blocks[index] = replace(
+                    blocks[index],
+                    barrier="noncontiguous property family is kept in place",
+                )
+    return blocks
+
+
+def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
+    seen: list[DefinitionBlock] = []
+    ranks: dict[str, int] = {
+        name: index for index, name in enumerate(result.config.module)
     }
-    _body(result, tree, "module", aliases, reflection)
-    return result
+    for index, block in enumerate(blocks):
+        if block.category in {"imports", "future-imports"}:
+            rank = ranks[block.category]
+            late = [
+                prior
+                for prior in seen
+                if prior.category in result.config.module
+                and ranks[prior.category] > rank
+            ]
+            if late:
+                edges = tuple(f"{prior.key} -> fixed:{block.key}" for prior in late)
+                result.issues.append(
+                    OrderIssue(
+                        "module",
+                        block.line,
+                        f"{block.category} appear after later definition groups",
+                        edges,
+                        reason="imports are execution barriers; review placement manually",
+                        fix_node=block.nodes[0],
+                    )
+                )
+        if is_main_guard(block.nodes[0]) and index + 1 < len(blocks):
+            edges = tuple(
+                f"main:{block.key} -> {later.key}" for later in blocks[index + 1 :]
+            )
+            result.issues.append(
+                OrderIssue(
+                    "module",
+                    block.line,
+                    "the main guard must be the final module statement",
+                    edges,
+                    reason="moving the main guard changes execution timing; review manually",
+                    fix_node=block.nodes[0],
+                )
+            )
+        seen.append(block)
 
 
 def _mutates_builtins(tree: ast.Module) -> bool:

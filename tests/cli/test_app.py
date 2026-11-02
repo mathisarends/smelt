@@ -1147,7 +1147,8 @@ class TestInfoCommands:
             ("SMT401", None),
             ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
             ("SMT524", ""),  # Ambiguous between SMT324 and SMT424.
-            ("SMT527", ' (did you mean "SMT427"?)'),
+            ("SMT527", ""),  # Ambiguous between SMT327 and SMT427.
+            ("SMT199", ' (did you mean "SMT109"?)'),
             ("layer-boundry", ' (did you mean "layer-boundary"?)'),
         ],
     )
@@ -1594,7 +1595,7 @@ class TestDebtCommand:
 
     @pytest.mark.parametrize(
         "content",
-        ['{"version":1,"violations":[{}]}', '{"version":2,"violations":[]}', "{broken"],
+        ['{"version":1,"violations":[{}]}', '{"version":3,"violations":[]}', "{broken"],
     )
     def test_malformed_debt_is_a_config_error(
         self,
@@ -1635,7 +1636,7 @@ class TestDebtCommand:
 
         assert (code, err) == (0, "")
         assert out == (
-            "Wrote .smelt/debt.json (1 violation)\n"
+            "Wrote .smelt/debt.json (1 violation, 1 matching entry)\n"
             "Added `debt: .smelt/debt.json` to smelt.yml\n"
         )
         assert _run(capsys, "check")[0] == 0

@@ -91,70 +91,12 @@ class NavigationNamespaces:
             return NamespaceEvidence(root_type, None, None)
         return NamespaceEvidence(root_type, attributes, value.name if value else None)
 
-    def _qualified(self, module: str, node: ast.AST) -> str | None:
-        if isinstance(node, ast.Name):
-            namespace = self._syntax.namespace(module)
-            if namespace is None:
-                return None
-            if node.id in namespace.imported:
-                return namespace.imported[node.id]
-            if node.id in namespace.defined:
-                return f"{module}.{node.id}"
-            if f"builtins.{node.id}" in _VALUES | {"builtins.property"}:
-                return f"builtins.{node.id}"
-        if isinstance(node, ast.Attribute):
-            parent = self._qualified(module, node.value)
-            return f"{parent}.{node.attr}" if parent else None
-        return None
-
-    def _annotation(self, module: str, node: ast.AST) -> _Type | None:  # noqa: PLR0911 - bounded annotation syntax
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            try:
-                return self._annotation(module, ast.parse(node.value, mode="eval").body)
-            except SyntaxError:
-                return None
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            if isinstance(node.right, ast.Constant) and node.right.value is None:
-                return self._annotation(module, node.left)
-            if isinstance(node.left, ast.Constant) and node.left.value is None:
-                return self._annotation(module, node.right)
-            return None
-        if isinstance(node, ast.Subscript):
-            origin = self._qualified(module, node.value)
-            if origin in {"typing.Optional", "typing.Annotated"}:
-                argument = (
-                    node.slice.elts[0]
-                    if isinstance(node.slice, ast.Tuple)
-                    else node.slice
-                )
-                return self._annotation(module, argument)
-            return self._annotation(module, node.value)
-        name = self._qualified(module, node)
-        return _Type(_ALIASES.get(name, name)) if name else None
-
-    def _definition(self, name: str) -> tuple[str, ast.ClassDef] | None:
-        if name not in self._definitions:
-            self._definitions[name] = None
-            resolved = resolve_dotted(name, self._syntax.namespace)
-            if resolved is not None:
-                module, symbol = resolved
-                syntax = self._module(module)
-                if syntax is not None:
-                    node = next(
-                        (
-                            node
-                            for node in syntax.tree.body
-                            if isinstance(node, ast.ClassDef) and node.name == symbol
-                        ),
-                        None,
-                    )
-                    if node is not None:
-                        self._definitions[name] = module, node
-        return self._definitions[name]
-
-    def _module(self, module: str) -> ModuleSyntax | None:
-        source = self._files.sources.get(module)
-        return self._syntax.for_path(source.path) if source else None
+    def _namespace(self, value: _Type) -> bool:
+        return value.name in _VALUES | {
+            "types.ModuleType",
+            "types.SimpleNamespace",
+            "subprocess.Popen",
+        } or self._record(value.name)
 
     def _record(self, name: str) -> bool:
         if name == "pydantic.BaseModel":
@@ -179,13 +121,6 @@ class NavigationNamespaces:
                     if (base_type := self._annotation(module, base)) is not None
                 )
         return self._records[name]
-
-    def _namespace(self, value: _Type) -> bool:
-        return value.name in _VALUES | {
-            "types.ModuleType",
-            "types.SimpleNamespace",
-            "subprocess.Popen",
-        } or self._record(value.name)
 
     def _attribute(  # noqa: PLR0911 - namespace kinds have distinct static evidence
         self, value: _Type, attribute: str, *, depth: int = 0
@@ -222,6 +157,26 @@ class NavigationNamespaces:
                 if result is not None:
                     return result
         return None
+
+    def _definition(self, name: str) -> tuple[str, ast.ClassDef] | None:
+        if name not in self._definitions:
+            self._definitions[name] = None
+            resolved = resolve_dotted(name, self._syntax.namespace)
+            if resolved is not None:
+                module, symbol = resolved
+                syntax = self._module(module)
+                if syntax is not None:
+                    node = next(
+                        (
+                            node
+                            for node in syntax.tree.body
+                            if isinstance(node, ast.ClassDef) and node.name == symbol
+                        ),
+                        None,
+                    )
+                    if node is not None:
+                        self._definitions[name] = module, node
+        return self._definitions[name]
 
     def _instance_fields(  # noqa: PLR0912 - distinguish declarations, constructor writes and rebinding
         self, module: str, owner: ast.ClassDef
@@ -308,6 +263,31 @@ class NavigationNamespaces:
                         inferred[target.attr] = None
         return inferred | declared
 
+    def _annotation(self, module: str, node: ast.AST) -> _Type | None:  # noqa: PLR0911 - bounded annotation syntax
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            try:
+                return self._annotation(module, ast.parse(node.value, mode="eval").body)
+            except SyntaxError:
+                return None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            if isinstance(node.right, ast.Constant) and node.right.value is None:
+                return self._annotation(module, node.left)
+            if isinstance(node.left, ast.Constant) and node.left.value is None:
+                return self._annotation(module, node.right)
+            return None
+        if isinstance(node, ast.Subscript):
+            origin = self._qualified(module, node.value)
+            if origin in {"typing.Optional", "typing.Annotated"}:
+                argument = (
+                    node.slice.elts[0]
+                    if isinstance(node.slice, ast.Tuple)
+                    else node.slice
+                )
+                return self._annotation(module, argument)
+            return self._annotation(module, node.value)
+        name = self._qualified(module, node)
+        return _Type(_ALIASES.get(name, name)) if name else None
+
     def _expression(  # noqa: PLR0911 - only explicit constructor and module evidence is accepted
         self,
         module: str,
@@ -360,6 +340,26 @@ class NavigationNamespaces:
             if qualified:
                 return _Type(qualified)
         return None
+
+    def _qualified(self, module: str, node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            namespace = self._syntax.namespace(module)
+            if namespace is None:
+                return None
+            if node.id in namespace.imported:
+                return namespace.imported[node.id]
+            if node.id in namespace.defined:
+                return f"{module}.{node.id}"
+            if f"builtins.{node.id}" in _VALUES | {"builtins.property"}:
+                return f"builtins.{node.id}"
+        if isinstance(node, ast.Attribute):
+            parent = self._qualified(module, node.value)
+            return f"{parent}.{node.attr}" if parent else None
+        return None
+
+    def _module(self, module: str) -> ModuleSyntax | None:
+        source = self._files.sources.get(module)
+        return self._syntax.for_path(source.path) if source else None
 
 
 def _body_nodes(method: ast.FunctionDef | ast.AsyncFunctionDef) -> Iterator[ast.AST]:

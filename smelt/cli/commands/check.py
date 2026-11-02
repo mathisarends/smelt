@@ -56,57 +56,6 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return _check_loaded(args, console, cwd, loaded)
 
 
-def _split_selectors(raw: str | None) -> tuple[str, ...]:
-    if not raw:
-        return ()
-    return tuple(code.strip() for code in raw.split(",") if code.strip())
-
-
-def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
-    # Every inherited policy input can affect unchanged production files too.
-    from smelt.config.source import SourceStore  # noqa: PLC0415
-
-    store = loaded.source or SourceStore()
-    if any(store.resolve(cwd / path) in loaded.inputs for path in raw):
-        return ()
-    paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
-    # A changed config can break any file, so it widens the scope to the project.
-    config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)
-    return () if config in paths else paths
-
-
-def _fix_outcome(
-    args: argparse.Namespace,
-    console: Console,
-    loaded: LoadedConfig,
-    options: CheckOptions,
-    outcome: CheckOutcome,
-) -> CheckOutcome:
-    from smelt.engine import none_default_fixes  # noqa: PLC0415
-    from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
-
-    fixes = apply_ordering_fixes(outcome)
-    if fixes.files:
-        outcome = run_check(loaded, options)
-    defaults = none_default_fixes.apply_none_default_fixes(
-        outcome, unsafe=args.unsafe_fixes
-    )
-    if defaults.files:
-        outcome = run_check(loaded, options)
-    outcome.report.fixes = {
-        "ordering": fixes.to_json(),
-        "none_defaults": defaults.to_json(),
-    }
-    if args.format == "text":
-        console.print(
-            f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
-        )
-        console.print(
-            f"Optional-default fixes: {len(defaults.files)} file(s), {defaults.expressions} expression(s); {len(defaults.skipped)} skipped."
-        )
-    return outcome
-
-
 def _check_loaded(
     args: argparse.Namespace,
     console: Console,
@@ -188,3 +137,54 @@ def _check_loaded(
                         f"  {entry['status']}: {entry['path']} — {entry['reason']}"
                     )
     return EXIT_VIOLATIONS if report.failed else EXIT_OK
+
+
+def _split_selectors(raw: str | None) -> tuple[str, ...]:
+    if not raw:
+        return ()
+    return tuple(code.strip() for code in raw.split(",") if code.strip())
+
+
+def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
+    # Every inherited policy input can affect unchanged production files too.
+    from smelt.config.source import SourceStore  # noqa: PLC0415
+
+    store = loaded.source or SourceStore()
+    if any(store.resolve(cwd / path) in loaded.inputs for path in raw):
+        return ()
+    paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
+    # A changed config can break any file, so it widens the scope to the project.
+    config = relative_scope(loaded.root, cwd, str(loaded.path), store=loaded.source)
+    return () if config in paths else paths
+
+
+def _fix_outcome(
+    args: argparse.Namespace,
+    console: Console,
+    loaded: LoadedConfig,
+    options: CheckOptions,
+    outcome: CheckOutcome,
+) -> CheckOutcome:
+    from smelt.engine import none_default_fixes  # noqa: PLC0415
+    from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
+
+    fixes = apply_ordering_fixes(outcome)
+    if fixes.files:
+        outcome = run_check(loaded, options)
+    defaults = none_default_fixes.apply_none_default_fixes(
+        outcome, unsafe=args.unsafe_fixes
+    )
+    if defaults.files:
+        outcome = run_check(loaded, options)
+    outcome.report.fixes = {
+        "ordering": fixes.to_json(),
+        "none_defaults": defaults.to_json(),
+    }
+    if args.format == "text":
+        console.print(
+            f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
+        )
+        console.print(
+            f"Optional-default fixes: {len(defaults.files)} file(s), {defaults.expressions} expression(s); {len(defaults.skipped)} skipped."
+        )
+    return outcome

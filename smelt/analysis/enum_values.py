@@ -73,20 +73,6 @@ def _bound_names(node: ast.AST) -> tuple[str, ...]:
     return ()
 
 
-def _binding_counts(tree: ast.Module) -> Counter[str]:
-    bound = Counter(name for node in ast.walk(tree) for name in _bound_names(node))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute | ast.Subscript) and isinstance(
-            node.ctx, ast.Store | ast.Del
-        ):
-            root = node.value
-            while isinstance(root, ast.Attribute | ast.Subscript):
-                root = root.value
-            if isinstance(root, ast.Name):
-                bound[root.id] += 1
-    return bound
-
-
 def _namespace(module: ModuleSyntax) -> Namespace:
     # A binding shadowed even in another scope is unknown. This intentionally
     # trades some recognition for avoiding guesses about Python name resolution.
@@ -112,6 +98,20 @@ def _namespace(module: ModuleSyntax) -> Namespace:
                         imported[name] = f"{base}.{alias.name}"
     # Block fallback resolution to a submodule for uncertain/rebound names.
     return Namespace(module.module, imported, frozenset(bound.keys() - imported.keys()))
+
+
+def _binding_counts(tree: ast.Module) -> Counter[str]:
+    bound = Counter(name for node in ast.walk(tree) for name in _bound_names(node))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute | ast.Subscript) and isinstance(
+            node.ctx, ast.Store | ast.Del
+        ):
+            root = node.value
+            while isinstance(root, ast.Attribute | ast.Subscript):
+                root = root.value
+            if isinstance(root, ast.Name):
+                bound[root.id] += 1
+    return bound
 
 
 class _Enums:

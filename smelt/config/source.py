@@ -30,9 +30,6 @@ class SourceStore:
     def glob(self, path: Path, pattern: str) -> Iterator[Path]:
         yield from path.glob(pattern)
 
-    def read_bytes(self, path: Path) -> bytes:
-        return path.read_bytes()
-
     def read_text(self, path: Path, *, encoding: str = "utf-8") -> str:
         # Match Path.read_text's universal-newline behavior for Git blobs too.
         return (
@@ -41,6 +38,9 @@ class SourceStore:
             .replace("\r\n", "\n")
             .replace("\r", "\n")
         )
+
+    def read_bytes(self, path: Path) -> bytes:
+        return path.read_bytes()
 
     def identity(self, path: Path) -> str | None:
         return None

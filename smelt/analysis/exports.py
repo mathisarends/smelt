@@ -68,33 +68,6 @@ def namespace_of(tree: ast.Module, module: str, *, is_package: bool) -> Namespac
     return Namespace(module, imported, frozenset(defined), references)
 
 
-def resolve_export(
-    module: str, name: str, load: Loader
-) -> tuple[str, str | None] | None:
-    """The module defining ``module.name`` and its name there.
-
-    ``(submodule, None)`` when the name is a module itself; None for names outside
-    the loader's modules, star imports, and chains that cycle or run too long.
-    """
-    seen: set[tuple[str, str]] = set()
-    while len(seen) < MAX_HOPS and (module, name) not in seen:
-        seen.add((module, name))
-        namespace = load(module)
-        if namespace is None:
-            return None
-        if name in namespace.defined:
-            return module, name
-        target = namespace.imported.get(name) or f"{module}.{name}"
-        if load(target) is not None:
-            return target, None
-        if target == f"{module}.{name}":
-            return None
-        module, _, name = target.rpartition(".")
-        if not module:
-            return None
-    return None
-
-
 def resolve_dotted(qualified: str, load: Loader) -> tuple[str, str | None] | None:
     """Like :func:`resolve_export` for a dotted name such as ``app.billing.Invoice``.
 
@@ -120,6 +93,33 @@ def resolve_dotted(qualified: str, load: Loader) -> tuple[str, str | None] | Non
             break
         current = resolve_export(current[0], attribute, load)
     return current
+
+
+def resolve_export(
+    module: str, name: str, load: Loader
+) -> tuple[str, str | None] | None:
+    """The module defining ``module.name`` and its name there.
+
+    ``(submodule, None)`` when the name is a module itself; None for names outside
+    the loader's modules, star imports, and chains that cycle or run too long.
+    """
+    seen: set[tuple[str, str]] = set()
+    while len(seen) < MAX_HOPS and (module, name) not in seen:
+        seen.add((module, name))
+        namespace = load(module)
+        if namespace is None:
+            return None
+        if name in namespace.defined:
+            return module, name
+        target = namespace.imported.get(name) or f"{module}.{name}"
+        if load(target) is not None:
+            return target, None
+        if target == f"{module}.{name}":
+            return None
+        module, _, name = target.rpartition(".")
+        if not module:
+            return None
+    return None
 
 
 def _top_level(body: list[ast.stmt]) -> Iterator[ast.stmt]:

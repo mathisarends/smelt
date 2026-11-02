@@ -17,7 +17,6 @@ from typing import Any
 from smelt.config import ConfigError, load_config
 
 # scripts/evaluate.py is a consumer outside project.root_packages.
-__all__ = ["EvaluationOptions", "evaluate"]
 
 _LAUNCHER = """import sys
 from pathlib import Path
@@ -50,7 +49,11 @@ class EvaluationOptions:
     source_revision: str | None = None
 
 
-def evaluate(options: EvaluationOptions) -> dict[str, Any]:
+def evaluate(
+    options: EvaluationOptions,
+) -> dict[
+    str, Any
+]:  # smelt: ignore[SMT429] -- Public evaluation entry point called by excluded scripts/evaluate.py.
     """Never fix sources, alter policy, install packages, suppress findings or record debt."""
     if not math.isfinite(options.timeout) or options.timeout <= 0:
         raise ValueError("timeout must be finite and positive")
@@ -181,25 +184,6 @@ def _policy_inputs(config: Path) -> dict[str, str]:
     }
 
 
-def _identity(finding: dict[str, Any]) -> str:
-    expected = finding.get("expected") or {}
-    return json.dumps(
-        [
-            finding.get(key)
-            for key in (
-                "code",
-                "path",
-                "line",
-                "column",
-                "source_module",
-                "target_module",
-            )
-        ]
-        + [expected.get("test"), expected.get("operation")],
-        sort_keys=True,
-    )
-
-
 def _compare_reports(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     """Compare identical sources/policies; retain multiplicity and changed payloads."""
     remaining: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
@@ -224,6 +208,25 @@ def _compare_reports(before: dict[str, Any], after: dict[str, Any]) -> dict[str,
         "updated": updated,
         "interpretation": "Recognition changes under the same input; counts are not confirmed defects or test-effectiveness scores.",
     }
+
+
+def _identity(finding: dict[str, Any]) -> str:
+    expected = finding.get("expected") or {}
+    return json.dumps(
+        [
+            finding.get(key)
+            for key in (
+                "code",
+                "path",
+                "line",
+                "column",
+                "source_module",
+                "target_module",
+            )
+        ]
+        + [expected.get("test"), expected.get("operation")],
+        sort_keys=True,
+    )
 
 
 def _run_process(

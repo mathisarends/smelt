@@ -30,16 +30,6 @@ __all__ = [
 ]
 
 
-def handler(name: str) -> Callable[[argparse.Namespace, Console, Path], int]:
-    """Resolve command imports only when the parsed handler is called."""
-
-    def dispatch(args: argparse.Namespace, console: Console, cwd: Path) -> int:
-        target = __getattr__(name)
-        return int(target(args, console, cwd))
-
-    return dispatch
-
-
 def __getattr__(name: str) -> Any:
     if name not in _MODULES:
         raise AttributeError(name)
@@ -48,6 +38,16 @@ def __getattr__(name: str) -> Any:
     # Preserve the previously exported callable after either import path.
     globals()[name] = target
     return target
+
+
+def handler(name: str) -> Callable[[argparse.Namespace, Console, Path], int]:
+    """Resolve command imports only when the parsed handler is called."""
+
+    def dispatch(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+        target = __getattr__(name)
+        return int(target(args, console, cwd))
+
+    return dispatch
 
 
 _MODULES = {

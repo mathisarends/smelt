@@ -4,7 +4,6 @@ import concurrent.futures
 import contextlib
 import json
 import os
-import secrets
 import shutil
 import signal
 import socket
@@ -337,7 +336,7 @@ def _stalled_endpoint(
         listener.settimeout(5)
         metadata["port"] = listener.getsockname()[1]
         metadata["pid"] = os.getpid()
-        metadata["token"] = secrets.token_hex(32)
+        metadata["token"] = "stalled-worker-test-token"  # noqa: S105 - fixed token for an owned fake worker endpoint
         endpoint.write_text(json.dumps(metadata))
 
         def hang() -> None:

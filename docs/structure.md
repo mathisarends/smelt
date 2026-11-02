@@ -1,5 +1,41 @@
 # Package contracts and source conventions
 
+Prefer private module functions for class-internal static helpers by enabling:
+
+```yaml
+rules:
+  internal-static-helper: warning
+```
+
+`smelt check --select SMT317` reviews helpers such as `_build_match_clause` and
+`_created_at_sort` when they need no instance or class state. Findings include a
+collision-free `suggested_name`, the destination module, observed internal
+references and `automatic_extraction: false`. Move the helper deliberately and
+update its class-qualified callers. Decorated, inherited or subclassed classes
+and external static APIs are conservatively retained. A missing finding in those
+cases does not mean the rule is inactive; inspect its documented scope with
+`smelt explain SMT317`.
+
+To bundle a facade import with its implementation imports, set a package API
+threshold explicitly:
+
+```yaml
+structure:
+  contracts:
+    application-api:
+      match: backend.features.*.application
+      bundle_imports_at: 2
+```
+
+SMT108 reviews `from ...application import PasswordHasher` alongside
+`from ...application.errors import AccountAlreadyExistsError`. Its JSON finding
+includes `proposed_exports` for missing static re-exports, or `blocked_exports`
+and a `cycle` witness when the proposed facade edges close a known runtime cycle.
+After reviewing the exports, callers can import both names from `application`.
+Other APIs such as `auth.domain.validation` do not contribute to this threshold.
+No source is rewritten. `no-cycle-found` describes the explicit runtime import
+graph and does not prove package initialization or dynamic imports safe.
+
 Declare a repeated structure or public interface explicitly. Contracts apply to
 Python packages matched by a dotted pattern, independently of feature or layer
 names. A whole-segment `*` in `match` selects one package segment.

@@ -131,27 +131,6 @@ def _rebinds(node: ast.AST, receiver: str) -> bool:
     return False
 
 
-def _stored_attributes(call: ast.Call, receiver: str) -> tuple[str, ...]:
-    innermost = call
-    current: ast.expr = call
-    while isinstance(current, ast.Call | ast.Attribute):
-        if isinstance(current, ast.Call):
-            innermost = current
-            current = current.func
-        else:
-            current = current.value
-    if not isinstance(current, ast.Name) or current.id != receiver:
-        return ()
-    if not isinstance(innermost.func, ast.Attribute):
-        return ()
-    attributes: list[str] = []
-    current = innermost.func.value
-    while isinstance(current, ast.Attribute):
-        attributes.append(current.attr)
-        current = current.value
-    return tuple(reversed(attributes)) if len(attributes) >= 2 else ()  # noqa: PLR2004
-
-
 def _calls(
     node: ast.AST, receiver: str, *, in_receiver: bool = False
 ) -> Iterator[tuple[ast.Call, tuple[str, ...]]]:
@@ -181,3 +160,24 @@ def _calls(
     else:
         for child in ast.iter_child_nodes(node):
             yield from _calls(child, receiver)
+
+
+def _stored_attributes(call: ast.Call, receiver: str) -> tuple[str, ...]:
+    innermost = call
+    current: ast.expr = call
+    while isinstance(current, ast.Call | ast.Attribute):
+        if isinstance(current, ast.Call):
+            innermost = current
+            current = current.func
+        else:
+            current = current.value
+    if not isinstance(current, ast.Name) or current.id != receiver:
+        return ()
+    if not isinstance(innermost.func, ast.Attribute):
+        return ()
+    attributes: list[str] = []
+    current = innermost.func.value
+    while isinstance(current, ast.Attribute):
+        attributes.append(current.attr)
+        current = current.value
+    return tuple(reversed(attributes)) if len(attributes) >= 2 else ()  # noqa: PLR2004

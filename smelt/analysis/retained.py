@@ -26,16 +26,6 @@ class RetainedAnalysis:
         )
         self._bytes = 0
 
-    def take(self, key: StateKey) -> MemberIndexState | None:
-        # Transfer ownership before mutation: a failed update cannot poison the
-        # next request. Only completed states are put back into the session.
-        item = self._states.pop(key, None)
-        if item is None:
-            return None
-        state, size = item
-        self._bytes -= size
-        return state
-
     def put(self, key: StateKey, state: MemberIndexState, *, size: int) -> None:
         self.take(key)
         if size > self.max_bytes or self.max_entries < 1:
@@ -47,6 +37,16 @@ class RetainedAnalysis:
             self._bytes -= previous_size
         self._states[key] = state, size
         self._bytes += size
+
+    def take(self, key: StateKey) -> MemberIndexState | None:
+        # Transfer ownership before mutation: a failed update cannot poison the
+        # next request. Only completed states are put back into the session.
+        item = self._states.pop(key, None)
+        if item is None:
+            return None
+        state, size = item
+        self._bytes -= size
+        return state
 
 
 class _RequestState:

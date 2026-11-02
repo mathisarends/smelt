@@ -45,6 +45,28 @@ class _Parser(argparse.ArgumentParser):
         raise _ParseError(self, message)
 
 
+def main(argv: Sequence[str] | None = None) -> int:
+    configure_streams()
+    console = Console(sys.stdout, sys.stderr)
+    parser = _build_parser()
+    raw = list(sys.argv[1:] if argv is None else argv)
+    try:
+        args = parser.parse_args(raw)
+    except _ParseError as exc:
+        if _asks_for_json(raw):
+            console.print(_error_json(exc), end="")
+        else:
+            exc.parser.print_usage(console.err)
+            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
+        return EXIT_ERROR
+    handler: Handler | None = getattr(args, "handler", None)
+    if handler is None:
+        parser.print_help(sys.stderr)
+        return EXIT_ERROR
+    with check_scope(enabled=not getattr(args, "no_cache", False)):
+        return _run(args, console, handler)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="smelt",
@@ -191,8 +213,22 @@ def _add_maintenance(sub: Subparsers) -> None:
     init.set_defaults(handler=commands.handler("init"))
 
     debt = sub.add_parser("debt", help="record current violations as known debt")
-    debt.add_argument(
+    action = debt.add_mutually_exclusive_group()
+    action.add_argument(
         "--prune", action="store_true", help="only remove resolved entries"
+    )
+    action.add_argument(
+        "--show",
+        action="store_true",
+        help="inspect the stored baseline without changing it",
+    )
+    debt.add_argument(
+        "paths", nargs="*", metavar="PATHS", help="filter --show by file or directory"
+    )
+    debt.add_argument(
+        "--format",
+        choices=["text", "json"],
+        help="output format for --show (default: text)",
     )
     debt.set_defaults(handler=commands.handler("debt"))
 
@@ -210,28 +246,6 @@ def _add_config(sub: Subparsers) -> None:
     show.set_defaults(handler=commands.handler("config_show"))
     schema = config_sub.add_parser("schema", help="print the JSON schema")
     schema.set_defaults(handler=commands.handler("config_schema"))
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    configure_streams()
-    console = Console(sys.stdout, sys.stderr)
-    parser = _build_parser()
-    raw = list(sys.argv[1:] if argv is None else argv)
-    try:
-        args = parser.parse_args(raw)
-    except _ParseError as exc:
-        if _asks_for_json(raw):
-            console.print(_error_json(exc), end="")
-        else:
-            exc.parser.print_usage(console.err)
-            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
-        return EXIT_ERROR
-    handler: Handler | None = getattr(args, "handler", None)
-    if handler is None:
-        parser.print_help(sys.stderr)
-        return EXIT_ERROR
-    with check_scope(enabled=not getattr(args, "no_cache", False)):
-        return _run(args, console, handler)
 
 
 def _run(args: argparse.Namespace, console: Console, handler: Handler) -> int:
@@ -285,10 +299,6 @@ def _asks_for_json(argv: list[str]) -> bool:
     return "--format=json" in argv or ("--format", "json") in pairs
 
 
-def _message(exc: Exception) -> str:
-    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)
-
-
 def _error_json(exc: Exception) -> str:
     """Errors in the format the agent asked for, so it needs no text parser."""
     if isinstance(exc, ConfigError):
@@ -315,3 +325,7 @@ def _error_json(exc: Exception) -> str:
         else None
     )
     return render_error_json(kind, _message(exc), invalid_input=given)
+
+
+def _message(exc: Exception) -> str:
+    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)

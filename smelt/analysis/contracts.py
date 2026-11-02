@@ -77,32 +77,6 @@ class ContractIndex:
             chosen.append(first)
         return tuple(chosen)
 
-    def style_for(self, module: str) -> ResolvedContract | None:
-        return self.policy_for(module, "imports")
-
-    def policy_for(
-        self,
-        module: str,
-        policy: Literal[
-            "imports",
-            "module_docstrings",
-            "future_annotations",
-            "private_modules",
-            "ordering",
-            "type_dispatch",
-        ],
-    ) -> ResolvedContract | None:
-        return max(
-            (
-                contract
-                for contract in self.resolved
-                if getattr(contract.spec, policy) is not None
-                and is_within(module, contract.package)
-            ),
-            key=lambda contract: len(contract.package),
-            default=None,
-        )
-
     def header_brief(self, module: str | None) -> dict[str, Any]:
         policies: dict[str, Any] = {}
         if module is None:
@@ -139,6 +113,9 @@ class ContractIndex:
             **contract.spec.imports.model_dump(mode="json"),
         }
 
+    def style_for(self, module: str) -> ResolvedContract | None:
+        return self.policy_for(module, "imports")
+
     def ordering_brief(self, module: str | None) -> dict[str, Any] | None:
         contract = self.policy_for(module, "ordering") if module else None
         if contract is None or contract.spec.ordering is None:
@@ -158,6 +135,29 @@ class ContractIndex:
             "package": contract.package,
             **contract.spec.type_dispatch.model_dump(mode="json"),
         }
+
+    def policy_for(
+        self,
+        module: str,
+        policy: Literal[
+            "imports",
+            "module_docstrings",
+            "future_annotations",
+            "private_modules",
+            "ordering",
+            "type_dispatch",
+        ],
+    ) -> ResolvedContract | None:
+        return max(
+            (
+                contract
+                for contract in self.resolved
+                if getattr(contract.spec, policy) is not None
+                and is_within(module, contract.package)
+            ),
+            key=lambda contract: len(contract.package),
+            default=None,
+        )
 
     def missing(self, contract: ResolvedContract) -> list[str]:
         return [
