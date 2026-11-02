@@ -30,6 +30,42 @@ structure:
 """
 
 
+def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = "def upload(value: int | None = None):\n    return value or 7\n"
+    write_project(
+        repo,
+        {
+            "smelt.yml": CONFIG + "debt: debt.json\nrules: {SMT321: warning}\n",
+            "app/storage.py": original,
+        },
+    )
+    outcome = check(repo)
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        repo / "debt.json"
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "accept scoped optional default")
+    write_project(
+        repo,
+        {
+            "app/storage.py": "def upload(value: int | None = None):\n    return value if value is not None else 7\n"
+            "def download(value: int | None = None):\n    return value or 7\n"
+        },
+    )
+    _git(repo, "add", "app/storage.py")
+    # The working tree would report no new finding; only the staged blob has one.
+    write_project(repo, {"app/storage.py": original})
+    monkeypatch.chdir(repo)
+    for flags in ((), (), ("--no-cache",)):
+        status, data = _check(repo, capsys, "--select", "SMT321", *flags)
+        assert status == 1
+        [finding] = data["violations"]
+        assert finding["code"] == "SMT321"
+        assert finding["expected"]["scope"] == "download"
+
+
 def _git(root: Path, *args: str) -> None:
     subprocess.run(  # noqa: S603
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607

@@ -20,6 +20,62 @@ that were fixed and can leave the file (`smelt debt --prune`).
 Existing debt files remain readable. Run `smelt debt --prune` once before editing imports
 covered by an older baseline to upgrade their fingerprints; pruning accepts no new debt.
 New import fingerprints survive comments, aliases and formatting changes.
+
+### Grouped baselines and inspection
+
+New writes use debt JSON version 2. Rule, path, message and an optional definition
+scope appear once per group; `fingerprints` contains every accepted matching token.
+One aggregate finding can have several tokens: SMT109 tracks individual importers,
+SMT313 individual ordering inversions, and SMT104 individual cyclic edges. Repeated
+fingerprints retain their multiplicity. A group is not a blanket allowance for
+future imports or inversions, and replacing an accepted edge with a new one still
+reports the new edge. Report JSON remains schema 2; configuration remains version 1.
+
+```json
+{
+  "version": 2,
+  "violations": [
+    {
+      "code": "SMT109",
+      "path": "app/browser/base.py",
+      "message": "BrowserEvents is missing from the package API",
+      "scope": "app.browser.base.BrowserEvents",
+      "fingerprints": ["accepted-importer-a", "accepted-importer-b"]
+    }
+  ]
+}
+```
+
+The identifiers above are illustrative; Smelt writes stable hashed fingerprints.
+Version-1 files load with their original counts. `smelt debt --prune` writes the
+grouped format while preserving unassessed entries for inactive or hint-only rules.
+Older Smelt versions cannot read version 2; update local, hook and CI installations
+together before committing an upgraded baseline.
+
+Inspect stored debt without analyzing source or changing the baseline/configuration:
+
+```bash
+smelt debt --show                     # compact text, without hashes
+smelt debt --show app/browser         # filter by file or directory
+smelt debt --show app/browser --format json
+```
+
+Paths are relative to the invocation directory. Text lists one rule/path/scope
+and message per group, with its accepted-entry count. JSON exposes the complete
+grouped data and multiplicity. This is the stored baseline, including historical
+messages and unassessed rules; use `smelt check app/browser --format concise` for
+current findings. `--show` and `--prune` are mutually exclusive. Paths and `--format`
+are inspection options only, so recording/pruning always assesses the full project.
+
+SMT321 now includes the enclosing function's qualified name in its identity,
+distinguishing methods in different classes and nested functions while surviving
+line shifts. A fixed occurrence cannot pay for an identical new occurrence in
+another function. Old unscoped SMT321 fingerprints cannot establish which function
+was accepted, so those findings require review and explicit re-recording with
+`smelt debt`. `--prune` removes the old tokens without accepting the current findings.
+
+### Architecture edge identities
+
 Cycle debt records each cyclic architecture edge, so a new edge cannot hide behind
 an existing shortest-cycle witness. Indirect import findings identify the final
 forbidden target, rather than only the facade. Older cycle and indirect-import debt
