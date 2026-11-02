@@ -12,6 +12,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   seeded local generators; intentional randomness tests can retain reasoned
   suppressions. Production generators are unaffected; no automatic rewrite.
 
+- SMT108 now reviews mixed package-facade and implementation imports with
+  `bundle_imports_at: 2`, includes missing export proposals and blocks bundling
+  advice when proposed caller/facade edges close a known runtime import cycle.
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings

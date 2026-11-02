@@ -112,7 +112,8 @@
     "category": "dependencies",
     "default_severity": "hint",
     "requires": [
-      "imports"
+      "imports",
+      "syntax"
     ],
     "enabled_by_default": false,
     "file_local": false,
