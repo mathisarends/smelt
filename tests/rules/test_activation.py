@@ -88,6 +88,7 @@ def test_explicit_project_policy_activates_its_checks(
         ({"export_at": 3, "count_tests": True}, {"SMT109"}),
         ({"imports": {"style": "absolute"}}, {"SMT308"}),
         ({"module_docstrings": "forbid"}, {"SMT309"}),
+        ({"module_docstrings": "require"}, {"SMT325"}),
         ({"future_annotations": "forbid"}, {"SMT310"}),
         ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
         ({"private_modules": "forbid"}, {"SMT312"}),
