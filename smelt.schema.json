@@ -1272,6 +1272,21 @@
             "error"
           ]
         },
+        "secret-settings-field": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
+          "description": "A secret-named settings field accepts an unwrapped str or bytes value. Pydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics. Repair: Use SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.",
+          "markdownDescription": "**SMT327 \u2014 secret-settings-field**\n\nA secret-named settings field accepts an unwrapped str or bytes value.\n\nPydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics.\n\n**Problem**\n```python\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: str\n    database_password: str | None = None\n```\n\n**Preferred**\n```python\nfrom pydantic import SecretStr\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: SecretStr\n    database_password: SecretStr | None = None\n```\n\nUse SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.\n\nRun `smelt explain secret-settings-field` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1979,6 +1994,21 @@
             "error"
           ]
         },
+        "^SMT327$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
+          "description": "A secret-named settings field accepts an unwrapped str or bytes value. Pydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics. Repair: Use SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.",
+          "markdownDescription": "**SMT327 \u2014 secret-settings-field**\n\nA secret-named settings field accepts an unwrapped str or bytes value.\n\nPydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics.\n\n**Problem**\n```python\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: str\n    database_password: str | None = None\n```\n\n**Preferred**\n```python\nfrom pydantic import SecretStr\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: SecretStr\n    database_password: SecretStr | None = None\n```\n\nUse SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.\n\nRun `smelt explain secret-settings-field` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2676,6 +2706,21 @@
             "error"
           ]
         },
+        "secret-settings-field": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
+          "description": "A secret-named settings field accepts an unwrapped str or bytes value. Pydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics. Repair: Use SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.",
+          "markdownDescription": "**SMT327 \u2014 secret-settings-field**\n\nA secret-named settings field accepts an unwrapped str or bytes value.\n\nPydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics.\n\n**Problem**\n```python\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: str\n    database_password: str | None = None\n```\n\n**Preferred**\n```python\nfrom pydantic import SecretStr\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: SecretStr\n    database_password: SecretStr | None = None\n```\n\nUse SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.\n\nRun `smelt explain secret-settings-field` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3171,6 +3216,21 @@
           "markdownDescription": "**SMT325 \u2014 missing-module-docstring**\n\nA module lacks the non-empty docstring required by its package convention.\n\nA consistent module introduction helps readers understand each file's responsibility. With module_docstrings: require, every analyzed production module in the package needs a non-empty initial docstring, including empty files, __init__.py and __main__.py. Comments, later strings, bytes, f-strings and class/function docstrings do not satisfy the policy. Blank docstrings are reported too. Choose forbid for the opposite convention (SMT309); allow explicitly exempts a nested package. Omitted policy adds no requirement. Only analyzed source files are checked; separately discovered tests and excluded files are unaffected.\n\n**Problem**\n```python\nVALUE = 1\n```\n\n**Preferred**\n```python\n\"\"\"Constants for the calculation service.\"\"\"\nVALUE = 1\n```\n\nAdd a useful module docstring before imports and other statements. Mark an intentional file exception with # smelt: ignore-file[SMT325] -- reason. No documentation is generated automatically.\n\nRun `smelt explain missing-module-docstring` for details.",
           "examples": [
             "error"
+          ]
+        },
+        "^SMT327$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
+          "description": "A secret-named settings field accepts an unwrapped str or bytes value. Pydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics. Repair: Use SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.",
+          "markdownDescription": "**SMT327 \u2014 secret-settings-field**\n\nA secret-named settings field accepts an unwrapped str or bytes value.\n\nPydantic SecretStr and SecretBytes mask ordinary string/repr/JSON representations. This opt-in review recognizes top-level, undecorated BaseSettings classes and same-file subclasses through stable direct import aliases. Secret names are password, passwd, secret, api_key, private_key, access_token, refresh_token and token, including underscore-delimited suffixes. It reviews str/bytes inside quoted annotations, unions, Optional and Annotated. Correct Secret types, unknown/custom types, cross-file inheritance, dynamic aliases and shadowed bindings are outside this check. Public keys, token counts and nonsecret settings remain valid. Field names are review evidence, not proof of sensitivity or absence of leaks. Defaults and secret values are never included in diagnostics.\n\n**Problem**\n```python\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: str\n    database_password: str | None = None\n```\n\n**Preferred**\n```python\nfrom pydantic import SecretStr\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: SecretStr\n    database_password: SecretStr | None = None\n```\n\nUse SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {secret-settings-field: warning}; package overrides can restrict adoption.\n\nRun `smelt explain secret-settings-field` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {
