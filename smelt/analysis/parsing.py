@@ -7,17 +7,10 @@ import tomllib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from smelt.analysis.errors import AnalysisError
+from smelt.analysis.errors import (
+    AnalysisError as AnalysisError,  # noqa: PLC0414 - compatibility re-export
+)
 from smelt.config.source import SourceStore
-
-__all__ = [
-    "AnalysisError",
-    "AstCache",
-    "is_stdlib",
-    "python_note",
-    "resolve_relative",
-    "type_checking_lines",
-]
 
 if TYPE_CHECKING:
     from pathlib import Path

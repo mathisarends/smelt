@@ -93,6 +93,26 @@ def test_export_ignore_does_not_hide_existing_findings(
     assert not violations(tmp_path, CheckOptions(changed=True))
 
 
+def test_changed_optional_defaults_distinguish_a_replaced_function(repo: Path) -> None:
+    original = "def upload(value: int | None = None):\n    return value or 7\n"
+    write_project(repo, {"app/application/service.py": original})
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "existing optional default")
+    options = CheckOptions(changed=True, select=("SMT321",))
+    write_project(repo, {"app/application/service.py": "\n\n" + original})
+    assert violations(repo, options) == []
+    write_project(
+        repo,
+        {
+            "app/application/service.py": "def upload(value: int | None = None):\n    return value if value is not None else 7\n"
+            "def download(value: int | None = None):\n    return value or 7\n"
+        },
+    )
+    [finding] = violations(repo, options)
+    assert finding.expected is not None
+    assert finding.expected["scope"] == "download"
+
+
 def _git(root: Path, *args: str) -> None:
     subprocess.run(  # noqa: S603
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607

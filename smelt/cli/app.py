@@ -213,8 +213,22 @@ def _add_maintenance(sub: Subparsers) -> None:
     init.set_defaults(handler=commands.handler("init"))
 
     debt = sub.add_parser("debt", help="record current violations as known debt")
-    debt.add_argument(
+    action = debt.add_mutually_exclusive_group()
+    action.add_argument(
         "--prune", action="store_true", help="only remove resolved entries"
+    )
+    action.add_argument(
+        "--show",
+        action="store_true",
+        help="inspect the stored baseline without changing it",
+    )
+    debt.add_argument(
+        "paths", nargs="*", metavar="PATHS", help="filter --show by file or directory"
+    )
+    debt.add_argument(
+        "--format",
+        choices=["text", "json"],
+        help="output format for --show (default: text)",
     )
     debt.set_defaults(handler=commands.handler("debt"))
 

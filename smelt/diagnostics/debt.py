@@ -5,9 +5,9 @@ import json
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
 from smelt.config.source import SourceStore
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.violation import Violation
 
-DEBT_VERSION = 1
+DEBT_VERSION = 2
 
 
 class _DebtItem(BaseModel):
@@ -35,12 +35,33 @@ class _DebtDocument(BaseModel):
     violations: list[_DebtItem]
 
 
+class _DebtGroup(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    code: str
+    path: str | None = None
+    message: str = ""
+    scope: str | None = None
+    fingerprints: list[str] = Field(min_length=1)
+
+
+class _GroupedDebtDocument(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    version: Literal[2]
+    violations: list[_DebtGroup]
+
+
+_DOCUMENT = TypeAdapter(
+    Annotated[_DebtDocument | _GroupedDebtDocument, Field(discriminator="version")]
+)
+
+
 @dataclass(frozen=True, slots=True)
 class DebtEntry:
     fingerprint: str
     code: str
     path: str | None
     message: str
+    scope: str | None = None
 
 
 def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> str:
@@ -60,7 +81,15 @@ def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> 
             normalized,
         ]
     )
+    if violation.code == "SMT321" and not legacy and (scope := _scope(violation)):
+        payload += f"\x1f{scope}"
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
+
+
+def _scope(violation: Violation) -> str | None:
+    expected = violation.expected or {}
+    value = expected.get("definition") or expected.get("scope")
+    return value if isinstance(value, str) else None
 
 
 def _fingerprints(violation: Violation, snippet: str) -> list[str]:
@@ -108,7 +137,7 @@ class Debt:
         if not store.is_file(path):
             return cls([])
         try:
-            data = _DebtDocument.model_validate_json(store.read_text(path))
+            data = _DOCUMENT.validate_json(store.read_text(path))
         except (OSError, UnicodeError) as exc:
             raise ConfigError(
                 [ConfigIssue("", f"cannot read debt file: {exc}")], path.as_posix()
@@ -118,6 +147,14 @@ class Debt:
                 ConfigIssue(format_loc(e["loc"]), str(e["msg"])) for e in exc.errors()
             ]
             raise ConfigError(issues, path.as_posix()) from exc
+        if isinstance(data, _GroupedDebtDocument):
+            return cls(
+                [
+                    DebtEntry(key, item.code, item.path, item.message, item.scope)
+                    for item in data.violations
+                    for key in item.fingerprints
+                ]
+            )
         return cls(
             [
                 DebtEntry(
@@ -135,7 +172,7 @@ class Debt:
         cls, violations: Iterable[Violation], snippet: Callable[[Violation], str]
     ) -> Debt:
         entries = [
-            DebtEntry(key, v.code, v.path, v.message)
+            DebtEntry(key, v.code, v.path, v.message, _scope(v))
             for v in violations
             for key in _fingerprints(
                 v, "" if v.target_module or _semantic_edges(v) else snippet(v)
@@ -146,19 +183,42 @@ class Debt:
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
+        path.write_text(json.dumps(self.to_json(), indent=2) + "\n", encoding="utf-8")
+
+    def to_json(self) -> dict[str, Any]:
+        """Group repeated metadata, retaining every matching token and its count."""
+        groups: dict[tuple[str | None, str, str | None, str], dict[str, Any]] = {}
+        for entry in self.entries:
+            key = (entry.path, entry.code, entry.scope, entry.message)
+            if key not in groups:
+                groups[key] = {
+                    "code": entry.code,
+                    "path": entry.path,
+                    "message": entry.message,
+                    **({"scope": entry.scope} if entry.scope is not None else {}),
+                    "fingerprints": [],
+                }
+            groups[key]["fingerprints"].append(entry.fingerprint)
+        return {
             "version": DEBT_VERSION,
             "violations": [
                 {
-                    "fingerprint": e.fingerprint,
-                    "code": e.code,
-                    "path": e.path,
-                    "message": e.message,
+                    **groups[key],
+                    "fingerprints": sorted(groups[key]["fingerprints"]),
                 }
-                for e in self.entries
+                for key in sorted(
+                    groups,
+                    key=lambda key: (
+                        key[0] is not None,
+                        key[0] or "",
+                        key[1],
+                        key[2] is not None,
+                        key[2] or "",
+                        key[3],
+                    ),
+                )
             ],
         }
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     def match(
         self, violations: Iterable[Violation], snippet: Callable[[Violation], str]
@@ -179,7 +239,11 @@ class Debt:
                 if available[key] > 0:
                     available[key] -= 1
                     matched.add(key)
-            if not matched and not _semantic_edges(violation):
+            if (
+                not matched
+                and not _semantic_edges(violation)
+                and not (violation.code == "SMT321" and _scope(violation))
+            ):
                 # Existing version-1 debt files used the complete source line.
                 if violation.target_module:
                     text = snippet(violation)
