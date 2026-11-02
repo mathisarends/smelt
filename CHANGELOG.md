@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT324](docs/rules/SMT324.md), enabled with
+  `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
+  fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow
+  `Literal[EventType.MEMBER]` annotations and matching enum defaults. This syntax
+  review does not prove union membership or rewrite code; Python targets before
+  3.11 and general multi-value Literals remain unchanged.
+
 ## [0.4.0] - 2026-11-01
 
 Report schema 2, YAML version 1 and the default rule set remain unchanged.
