@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT326 (`rules: {no-base-class-suffix: error}`) reviews class definitions
+  such as `_MessageBase`. SMT323 retains its existing prefix semantics. Imports,
+  aliases and test classes remain outside scope; no automatic rename.
+
 - Optional [SMT324](docs/rules/SMT324.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow

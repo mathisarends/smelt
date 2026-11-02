@@ -1256,6 +1256,21 @@
             "hint"
           ]
         },
+        "no-base-class-suffix": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT326: A class definition ends in the Base suffix forbidden by the selected convention.",
+          "description": "A class definition ends in the Base suffix forbidden by the selected convention. MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid. Repair: Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
+          "markdownDescription": "**SMT326 \u2014 no-base-class-suffix**\n\nA class definition ends in the Base suffix forbidden by the selected convention.\n\nMessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.\n\n**Problem**\n```python\nclass _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...\n```\n\n**Preferred**\n```python\nclass Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...\n```\n\nName the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.\n\nRun `smelt explain no-base-class-suffix` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1948,6 +1963,21 @@
             "hint"
           ]
         },
+        "^SMT326$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT326: A class definition ends in the Base suffix forbidden by the selected convention.",
+          "description": "A class definition ends in the Base suffix forbidden by the selected convention. MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid. Repair: Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
+          "markdownDescription": "**SMT326 \u2014 no-base-class-suffix**\n\nA class definition ends in the Base suffix forbidden by the selected convention.\n\nMessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.\n\n**Problem**\n```python\nclass _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...\n```\n\n**Preferred**\n```python\nclass Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...\n```\n\nName the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.\n\nRun `smelt explain no-base-class-suffix` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2630,6 +2660,21 @@
             "hint"
           ]
         },
+        "no-base-class-suffix": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT326: A class definition ends in the Base suffix forbidden by the selected convention.",
+          "description": "A class definition ends in the Base suffix forbidden by the selected convention. MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid. Repair: Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
+          "markdownDescription": "**SMT326 \u2014 no-base-class-suffix**\n\nA class definition ends in the Base suffix forbidden by the selected convention.\n\nMessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.\n\n**Problem**\n```python\nclass _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...\n```\n\n**Preferred**\n```python\nclass Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...\n```\n\nName the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.\n\nRun `smelt explain no-base-class-suffix` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3110,6 +3155,21 @@
           "markdownDescription": "**SMT324 \u2014 prefer-str-enum-discriminator**\n\nPrefer StrEnum members for single-string class discriminator fields.\n\nDiscriminated union variants often repeat protocol strings in Literal annotations, field defaults and dispatch code. A shared StrEnum gives those values one named definition while Literal[EventType.MEMBER] preserves each variant's narrow type. This opt-in syntax review recognizes directly annotated class fields named type, kind or tag whose typing.Literal contains exactly one raw string, with or without a default. It supports typing and typing_extensions import aliases, quoted annotations and Annotated/Required/NotRequired wrappers. Dataclasses, model classes and class-based TypedDict declarations use the same syntax. The field shape is a review candidate, not proof of union membership. Other field names, multiple-value Literals, enum-member Literals, ClassVar, type aliases, inherited fields and uncertain or shadowed typing bindings are excluded. Declared Python minima before 3.11 are excluded; unknown minima require version review.\n\n**Problem**\n```python\nfrom dataclasses import dataclass, field\nfrom typing import Literal\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal[\"checkpoint.extension\"] = field(default=\"checkpoint.extension\", kw_only=True)\n```\n\n**Preferred**\n```python\nfrom dataclasses import dataclass, field\nfrom enum import StrEnum\nfrom typing import Literal\n\nclass EventType(StrEnum):\n    CHECKPOINT_EXTENSION = \"checkpoint.extension\"\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal[EventType.CHECKPOINT_EXTENSION] = field(default=EventType.CHECKPOINT_EXTENSION, kw_only=True)\n```\n\nDefine or reuse a shared StrEnum for the union's wire values. Keep each variant annotated as Literal[EnumType.MEMBER], and use that same member in direct defaults, dataclasses.field(default=...) or model Field(default=...). Keep explicit string values such as checkpoint.extension; auto() may change the wire contract. Review consumers and serialization before changing defaults, since exact str checks and repr can distinguish enum members. StrEnum requires Python 3.11+. No automatic rewrite is performed; analyzed code is never executed. Suppress intentional external schema strings with a reason or disable this review for their package.\n\nRun `smelt explain prefer-str-enum-discriminator` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT326$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT326: A class definition ends in the Base suffix forbidden by the selected convention.",
+          "description": "A class definition ends in the Base suffix forbidden by the selected convention. MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid. Repair: Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
+          "markdownDescription": "**SMT326 \u2014 no-base-class-suffix**\n\nA class definition ends in the Base suffix forbidden by the selected convention.\n\nMessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.\n\n**Problem**\n```python\nclass _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...\n```\n\n**Preferred**\n```python\nclass Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...\n```\n\nName the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.\n\nRun `smelt explain no-base-class-suffix` for details.",
+          "examples": [
+            "error"
           ]
         },
         "^SMT429$": {
