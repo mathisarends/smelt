@@ -181,25 +181,6 @@ def _policy_inputs(config: Path) -> dict[str, str]:
     }
 
 
-def _identity(finding: dict[str, Any]) -> str:
-    expected = finding.get("expected") or {}
-    return json.dumps(
-        [
-            finding.get(key)
-            for key in (
-                "code",
-                "path",
-                "line",
-                "column",
-                "source_module",
-                "target_module",
-            )
-        ]
-        + [expected.get("test"), expected.get("operation")],
-        sort_keys=True,
-    )
-
-
 def _compare_reports(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     """Compare identical sources/policies; retain multiplicity and changed payloads."""
     remaining: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
@@ -224,6 +205,25 @@ def _compare_reports(before: dict[str, Any], after: dict[str, Any]) -> dict[str,
         "updated": updated,
         "interpretation": "Recognition changes under the same input; counts are not confirmed defects or test-effectiveness scores.",
     }
+
+
+def _identity(finding: dict[str, Any]) -> str:
+    expected = finding.get("expected") or {}
+    return json.dumps(
+        [
+            finding.get(key)
+            for key in (
+                "code",
+                "path",
+                "line",
+                "column",
+                "source_module",
+                "target_module",
+            )
+        ]
+        + [expected.get("test"), expected.get("operation")],
+        sort_keys=True,
+    )
 
 
 def _run_process(

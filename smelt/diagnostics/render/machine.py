@@ -263,9 +263,9 @@ def _github_line(violation: Violation, prefix: str = "") -> str:
     return f"::{level} {','.join(properties)}::{_escape_data(message)}"
 
 
-def _escape_data(value: str) -> str:
-    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-
-
 def _escape_property(value: str) -> str:
     return _escape_data(value).replace(":", "%3A").replace(",", "%2C")
+
+
+def _escape_data(value: str) -> str:
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")

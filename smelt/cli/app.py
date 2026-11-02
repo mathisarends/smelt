@@ -45,6 +45,28 @@ class _Parser(argparse.ArgumentParser):
         raise _ParseError(self, message)
 
 
+def main(argv: Sequence[str] | None = None) -> int:
+    configure_streams()
+    console = Console(sys.stdout, sys.stderr)
+    parser = _build_parser()
+    raw = list(sys.argv[1:] if argv is None else argv)
+    try:
+        args = parser.parse_args(raw)
+    except _ParseError as exc:
+        if _asks_for_json(raw):
+            console.print(_error_json(exc), end="")
+        else:
+            exc.parser.print_usage(console.err)
+            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
+        return EXIT_ERROR
+    handler: Handler | None = getattr(args, "handler", None)
+    if handler is None:
+        parser.print_help(sys.stderr)
+        return EXIT_ERROR
+    with check_scope(enabled=not getattr(args, "no_cache", False)):
+        return _run(args, console, handler)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="smelt",
@@ -212,28 +234,6 @@ def _add_config(sub: Subparsers) -> None:
     schema.set_defaults(handler=commands.handler("config_schema"))
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    configure_streams()
-    console = Console(sys.stdout, sys.stderr)
-    parser = _build_parser()
-    raw = list(sys.argv[1:] if argv is None else argv)
-    try:
-        args = parser.parse_args(raw)
-    except _ParseError as exc:
-        if _asks_for_json(raw):
-            console.print(_error_json(exc), end="")
-        else:
-            exc.parser.print_usage(console.err)
-            console.err.write(f"{exc.parser.prog}: error: {exc}\n")
-        return EXIT_ERROR
-    handler: Handler | None = getattr(args, "handler", None)
-    if handler is None:
-        parser.print_help(sys.stderr)
-        return EXIT_ERROR
-    with check_scope(enabled=not getattr(args, "no_cache", False)):
-        return _run(args, console, handler)
-
-
 def _run(args: argparse.Namespace, console: Console, handler: Handler) -> int:
     try:
         cwd = Path.cwd()
@@ -285,10 +285,6 @@ def _asks_for_json(argv: list[str]) -> bool:
     return "--format=json" in argv or ("--format", "json") in pairs
 
 
-def _message(exc: Exception) -> str:
-    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)
-
-
 def _error_json(exc: Exception) -> str:
     """Errors in the format the agent asked for, so it needs no text parser."""
     if isinstance(exc, ConfigError):
@@ -315,3 +311,7 @@ def _error_json(exc: Exception) -> str:
         else None
     )
     return render_error_json(kind, _message(exc), invalid_input=given)
+
+
+def _message(exc: Exception) -> str:
+    return f"invalid JSON: {exc}" if isinstance(exc, json.JSONDecodeError) else str(exc)

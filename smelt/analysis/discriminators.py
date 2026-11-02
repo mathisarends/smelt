@@ -38,6 +38,31 @@ def string_discriminators(tree: ast.Module) -> Iterator[StringDiscriminator]:
                 yield StringDiscriminator(node, owner.name, node.target.id, value)
 
 
+def _typing_bindings(tree: ast.Module) -> dict[str, str]:
+    # As with enum value analysis, a shadowed import anywhere in the module is
+    # uncertain. Only stable, direct module imports establish typing identities.
+    bound = _binding_counts(tree)
+    if bound["*"]:
+        return {}
+    bindings: dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                local = alias.asname or alias.name
+                if alias.name in _TYPING_MODULES and bound[local] == 1:
+                    bindings[local] = alias.name
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module in _TYPING_MODULES
+        ):
+            for alias in node.names:
+                local = alias.asname or alias.name
+                if bound[local] == 1:
+                    bindings[local] = f"{node.module}.{alias.name}"
+    return bindings
+
+
 def _binding_counts(tree: ast.Module) -> Counter[str]:
     bound: Counter[str] = Counter()
     for node in ast.walk(tree):
@@ -76,42 +101,6 @@ def _binding_counts(tree: ast.Module) -> Counter[str]:
     return bound
 
 
-def _typing_bindings(tree: ast.Module) -> dict[str, str]:
-    # As with enum value analysis, a shadowed import anywhere in the module is
-    # uncertain. Only stable, direct module imports establish typing identities.
-    bound = _binding_counts(tree)
-    if bound["*"]:
-        return {}
-    bindings: dict[str, str] = {}
-    for node in tree.body:
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                local = alias.asname or alias.name
-                if alias.name in _TYPING_MODULES and bound[local] == 1:
-                    bindings[local] = alias.name
-        elif (
-            isinstance(node, ast.ImportFrom)
-            and node.level == 0
-            and node.module in _TYPING_MODULES
-        ):
-            for alias in node.names:
-                local = alias.asname or alias.name
-                if bound[local] == 1:
-                    bindings[local] = f"{node.module}.{alias.name}"
-    return bindings
-
-
-def _typing_name(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    if isinstance(node, ast.Name):
-        qualified = bindings.get(node.id, "")
-    elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-        qualified = f"{bindings.get(node.value.id, '')}.{node.attr}"
-    else:
-        return None
-    module, _, name = qualified.rpartition(".")
-    return name if module in _TYPING_MODULES else None
-
-
 def _literal_string(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         try:
@@ -133,3 +122,14 @@ def _literal_string(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
             return parts[0].value
         break
     return None
+
+
+def _typing_name(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
+    if isinstance(node, ast.Name):
+        qualified = bindings.get(node.id, "")
+    elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+        qualified = f"{bindings.get(node.value.id, '')}.{node.attr}"
+    else:
+        return None
+    module, _, name = qualified.rpartition(".")
+    return name if module in _TYPING_MODULES else None

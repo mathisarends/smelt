@@ -38,10 +38,6 @@ class FactCache:
             except sqlite3.Error:
                 self._disable()
 
-    def key(self, kind: str, inputs: object) -> str:
-        payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)
-        return hashlib.sha256(payload.encode()).hexdigest()
-
     def missing(self, keys: list[str]) -> set[str]:
         """Plan batched source reads; payloads still go through validated read()."""
         connection = self._connect()
@@ -96,39 +92,19 @@ class FactCache:
             except sqlite3.Error:
                 self._disable()
 
-    def _connect(self) -> sqlite3.Connection | None:
-        if self._disabled:
-            return None
-        if self._connection is None:
-            try:
-                self.directory.mkdir(parents=True, exist_ok=True)
-                with (
-                    suppress(FileExistsError),
-                    (self._root / ".gitignore").open("x", encoding="utf-8") as ignore,
-                ):
-                    ignore.write("*\n")
-                self._connection = sqlite3.connect(
-                    self.directory / "facts.sqlite3", timeout=0.02
-                )
-                self._connection.execute("PRAGMA journal_mode=WAL")
-                self._connection.execute("PRAGMA synchronous=NORMAL")
-                self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
-                )
-                self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
-                )
-                self._connection.commit()
-            except (OSError, sqlite3.Error):
-                self._disable()
-        return self._connection
+    def get[T](
+        self, kind: str, inputs: object, adapter: TypeAdapter[T], build: Callable[[], T]
+    ) -> T:
+        key = self.key(kind, inputs)
+        result = self.read(key, adapter)
+        if result is None:
+            result = build()
+            self.write(key, result, adapter)
+        return result
 
-    def _disable(self) -> None:
-        self._disabled = True
-        if self._connection is not None:
-            with suppress(sqlite3.Error):
-                self._connection.close()
-            self._connection = None
+    def key(self, kind: str, inputs: object) -> str:
+        payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)
+        return hashlib.sha256(payload.encode()).hexdigest()
 
     def read[T](self, key: str, adapter: TypeAdapter[T]) -> T | None:
         connection = self._connect()
@@ -163,12 +139,36 @@ class FactCache:
             # a disposable optimization change the check's result.
             self._disable()
 
-    def get[T](
-        self, kind: str, inputs: object, adapter: TypeAdapter[T], build: Callable[[], T]
-    ) -> T:
-        key = self.key(kind, inputs)
-        result = self.read(key, adapter)
-        if result is None:
-            result = build()
-            self.write(key, result, adapter)
-        return result
+    def _connect(self) -> sqlite3.Connection | None:
+        if self._disabled:
+            return None
+        if self._connection is None:
+            try:
+                self.directory.mkdir(parents=True, exist_ok=True)
+                with (
+                    suppress(FileExistsError),
+                    (self._root / ".gitignore").open("x", encoding="utf-8") as ignore,
+                ):
+                    ignore.write("*\n")
+                self._connection = sqlite3.connect(
+                    self.directory / "facts.sqlite3", timeout=0.02
+                )
+                self._connection.execute("PRAGMA journal_mode=WAL")
+                self._connection.execute("PRAGMA synchronous=NORMAL")
+                self._connection.execute(
+                    "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                )
+                self._connection.execute(
+                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                )
+                self._connection.commit()
+            except (OSError, sqlite3.Error):
+                self._disable()
+        return self._connection
+
+    def _disable(self) -> None:
+        self._disabled = True
+        if self._connection is not None:
+            with suppress(sqlite3.Error):
+                self._connection.close()
+            self._connection = None

@@ -19,18 +19,6 @@ if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
 
 
-def policy_hash(config: SmeltConfig) -> str:
-    """Equal for two reports checked under the same resolved config."""
-    policy = config.model_dump(mode="json")
-    # Neutral additive settings preserve policy hashes in released reports.
-    if not config.structure.canonical_exports:
-        policy["structure"].pop("canonical_exports", None)
-    if config.architecture.imports.type_checking_cycles == "include":
-        policy["architecture"]["imports"].pop("type_checking_cycles", None)
-    payload = json.dumps(policy, sort_keys=True)
-    return "sha256:" + hashlib.sha256(payload.encode()).hexdigest()[:16]
-
-
 def effective_coverage(
     ctx: AnalysisContext,
     *,
@@ -105,6 +93,18 @@ def effective_coverage(
             ],
         }
     return report
+
+
+def policy_hash(config: SmeltConfig) -> str:
+    """Equal for two reports checked under the same resolved config."""
+    policy = config.model_dump(mode="json")
+    # Neutral additive settings preserve policy hashes in released reports.
+    if not config.structure.canonical_exports:
+        policy["structure"].pop("canonical_exports", None)
+    if config.architecture.imports.type_checking_cycles == "include":
+        policy["architecture"]["imports"].pop("type_checking_cycles", None)
+    payload = json.dumps(policy, sort_keys=True)
+    return "sha256:" + hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
 def _classification(ctx: AnalysisContext) -> dict[str, int]:

@@ -10,34 +10,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 
-def has_timeout(
-    call: ast.Call, name: str = "timeout", position: int | None = None
-) -> bool:
-    value = next((kw.value for kw in call.keywords if kw.arg == name), None)
-    if value is None and position is not None and len(call.args) > position:
-        value = call.args[position]
-    return value is not None and not (
-        isinstance(value, ast.Constant) and value.value is None
-    )
-
-
-_CONTEXT_TIMEOUTS = {
-    "asyncio.timeout": "delay",
-    "asyncio.timeout_at": "when",
-    "anyio.fail_after": "delay",
-    "anyio.move_on_after": "delay",
-    "trio.fail_after": "seconds",
-    "trio.move_on_after": "seconds",
-}
-
-
-@dataclass(frozen=True)
-class AsyncDeadline:
-    awaited: bool
-    bounded: bool
-    raises_on_timeout: bool
-
-
 def async_deadline(
     node: ast.Call | ast.Await,
     calls: Mapping[ast.Call, str],
@@ -88,3 +60,31 @@ def async_deadline(
         child, parent = parent, parents.get(parent)
     # A move_on_after scope may leave successfully before the event is observed.
     return AsyncDeadline(awaited, bounded, raises and not may_move_on)
+
+
+def has_timeout(
+    call: ast.Call, name: str = "timeout", position: int | None = None
+) -> bool:
+    value = next((kw.value for kw in call.keywords if kw.arg == name), None)
+    if value is None and position is not None and len(call.args) > position:
+        value = call.args[position]
+    return value is not None and not (
+        isinstance(value, ast.Constant) and value.value is None
+    )
+
+
+_CONTEXT_TIMEOUTS = {
+    "asyncio.timeout": "delay",
+    "asyncio.timeout_at": "when",
+    "anyio.fail_after": "delay",
+    "anyio.move_on_after": "delay",
+    "trio.fail_after": "seconds",
+    "trio.move_on_after": "seconds",
+}
+
+
+@dataclass(frozen=True)
+class AsyncDeadline:
+    awaited: bool
+    bounded: bool
+    raises_on_timeout: bool

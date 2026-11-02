@@ -117,30 +117,6 @@ def _checker_names(tree: ast.Module) -> set[str]:
     return names
 
 
-def _type_names(node: ast.expr) -> tuple[str, ...] | None:
-    match node:
-        case ast.Name():
-            return (node.id,)
-        case ast.Attribute(value=value):
-            parent = _type_names(value)
-            return (
-                (f"{parent[0]}.{node.attr}",) if parent and len(parent) == 1 else None
-            )
-        case ast.Tuple(elts=elements) if elements:
-            names: list[str] = []
-            for element in elements:
-                part = _type_names(element)
-                if part is None:
-                    return None
-                names.extend(part)
-            return tuple(names)
-        case ast.BinOp(left=left, op=ast.BitOr(), right=right):
-            first, second = _type_names(left), _type_names(right)
-            return (*first, *second) if first and second else None
-        case _:
-            return None
-
-
 def _head(
     test: ast.expr, checkers: set[str]
 ) -> tuple[str, tuple[str, ...], str | None] | None:
@@ -172,6 +148,30 @@ def _head(
             guards[0] if len(guards) == 1 else ast.BoolOp(op=ast.And(), values=guards)
         )
     return subject, names, guard
+
+
+def _type_names(node: ast.expr) -> tuple[str, ...] | None:
+    match node:
+        case ast.Name():
+            return (node.id,)
+        case ast.Attribute(value=value):
+            parent = _type_names(value)
+            return (
+                (f"{parent[0]}.{node.attr}",) if parent and len(parent) == 1 else None
+            )
+        case ast.Tuple(elts=elements) if elements:
+            names: list[str] = []
+            for element in elements:
+                part = _type_names(element)
+                if part is None:
+                    return None
+                names.extend(part)
+            return tuple(names)
+        case ast.BinOp(left=left, op=ast.BitOr(), right=right):
+            first, second = _type_names(left), _type_names(right)
+            return (*first, *second) if first and second else None
+        case _:
+            return None
 
 
 def _elif(node: ast.If) -> ast.If | None:

@@ -32,41 +32,6 @@ class Capture(io.StringIO):
         return self._tty
 
 
-def _dispatch(
-    message: dict[str, Any],
-    root: str,
-    identity: str,
-    *,
-    state: RetainedAnalysis | None = None,
-) -> dict[str, Any]:
-    analyzer_identity.cache_clear()
-    if analyzer_identity() != identity:
-        return {"code": 2, "out": "", "err": "", "restart": True}
-    arguments = message.get("arguments")
-    if (
-        message.get("cwd") != root
-        or not isinstance(arguments, list)
-        or not arguments
-        or arguments[0] != "check"
-        or any(not isinstance(value, str) for value in arguments)
-        or any(
-            value.startswith("--fi") or value in {"--f", "--help", "-h"}
-            for value in arguments
-        )
-    ):
-        raise ValueError("worker accepts read-only checks for its original directory")
-    out = Capture(tty=message.get("tty") is True)
-    err = Capture(tty=False)
-    with (
-        retain(state),
-        contextlib.chdir(root),
-        contextlib.redirect_stdout(out),
-        contextlib.redirect_stderr(err),
-    ):
-        code = main(arguments)
-    return {"code": code, "out": out.getvalue(), "err": err.getvalue()}
-
-
 def _serve_internal(
     endpoint: Path, *, root: str | None = None, idle_seconds: float = 120
 ) -> None:
@@ -155,6 +120,41 @@ def _respond(
     if message.get("arguments") == ["shutdown"]:
         return {"code": 0, "out": "", "err": "", "restart": True}
     return _dispatch(message, root, identity, state=state)
+
+
+def _dispatch(
+    message: dict[str, Any],
+    root: str,
+    identity: str,
+    *,
+    state: RetainedAnalysis | None = None,
+) -> dict[str, Any]:
+    analyzer_identity.cache_clear()
+    if analyzer_identity() != identity:
+        return {"code": 2, "out": "", "err": "", "restart": True}
+    arguments = message.get("arguments")
+    if (
+        message.get("cwd") != root
+        or not isinstance(arguments, list)
+        or not arguments
+        or arguments[0] != "check"
+        or any(not isinstance(value, str) for value in arguments)
+        or any(
+            value.startswith("--fi") or value in {"--f", "--help", "-h"}
+            for value in arguments
+        )
+    ):
+        raise ValueError("worker accepts read-only checks for its original directory")
+    out = Capture(tty=message.get("tty") is True)
+    err = Capture(tty=False)
+    with (
+        retain(state),
+        contextlib.chdir(root),
+        contextlib.redirect_stdout(out),
+        contextlib.redirect_stderr(err),
+    ):
+        code = main(arguments)
+    return {"code": code, "out": out.getvalue(), "err": err.getvalue()}
 
 
 if __name__ == "__main__":

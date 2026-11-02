@@ -31,6 +31,17 @@ def write_generated_files(root: Path) -> list[str]:
     return changed
 
 
+def _generated_files() -> dict[str, str]:
+    """Every generated file, keyed by its path relative to the repository root."""
+    rules = build_rule_set().rules
+    files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
+    files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
+    files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
+    for rule in rules:
+        files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
+    return files
+
+
 def _rule_page(rule: RuleContract) -> str:
     """The reference page for one rule, the same content `smelt explain` prints."""
     doc = rule.explain()
@@ -85,14 +96,3 @@ def _rule_index(rules: list[RuleContract]) -> str:
         )
     lines += ["", "`smelt rules` prints the same table in the terminal."]
     return "\n".join(lines) + "\n"
-
-
-def _generated_files() -> dict[str, str]:
-    """Every generated file, keyed by its path relative to the repository root."""
-    rules = build_rule_set().rules
-    files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
-    files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
-    files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
-    for rule in rules:
-        files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
-    return files
