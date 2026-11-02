@@ -122,6 +122,13 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT325": PolicyActivation(
+        "A package contract requires module docstrings.",
+        lambda config: any(
+            contract.module_docstrings == "require"
+            for contract in config.structure.contracts.values()
+        ),
+    ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
     ),
