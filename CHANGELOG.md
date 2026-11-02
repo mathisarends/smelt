@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
+Report schema 2, YAML version 1 and the default rule set remain unchanged.
+Debt writes now use grouped baseline version 2, which older Smelt versions cannot
+read. Existing version-1 baselines remain readable; unscoped SMT321 debt needs
+review and explicit re-recording. Update installation, hook and CI pins together
+to `0.5.0` (`v0.5.0`) before rewriting baselines, and refresh the editor schema.
+See the [upgrade checklist](docs/upgrading.md#040-to-050).
+
 - Contributor checks now require an issue/ticket reference for TODO comments
   through Ruff TD003. Tracked TODOs remain allowed; Smelt's rule catalog is unchanged.
 
@@ -561,7 +570,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mathisarends/smelt/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mathisarends/smelt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mathisarends/smelt/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mathisarends/smelt/compare/v0.1.6...v0.2.0

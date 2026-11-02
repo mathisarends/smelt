@@ -23,20 +23,22 @@ The [rule catalog](docs/rules/README.md) lists each check, its activation and
 default severity. Most rules are opt-in; a declared architecture, package or
 test policy activates the corresponding checks. See [rule activation](docs/rule-selection.md).
 
-## What's new in 0.4.0
+## What's new in 0.5.0
 
-- Share local policy across independent workspaces with `extends`, explicit
-  overrides and `config show --sources`.
-- Adopt optional reviews for implicit optional defaults (**SMT321**), deep object
-  navigation (**SMT322**) and `Base`-prefixed class names (**SMT323**).
-- Get clearer cycle witnesses, shared-helper findings and API ownership evidence;
-  unknown inline suppression identifiers now produce **SMT901**.
-- `smelt init` creates `smelt.yml`; existing `smelt.yaml` files still work.
-  Custom rules must migrate `BaseRule` to `Rule` and the old protocol to
-  `RuleContract`. JSON schema 2 and the default rule set stay unchanged.
+- Store accepted debt in compact grouped baselines and inspect it with
+  `smelt debt --show`. Older baselines remain readable; update all installations
+  before writing version 2 and review existing SMT321 debt.
+- Adopt eight new optional checks: StrEnum discriminators (**SMT324**), required
+  module docstrings (**SMT325**), `Base`-suffixed class names (**SMT326**), secret
+  settings types (**SMT327**), redundant Dishka providers (**SMT328**), step-down
+  definition order (**SMT329**), package-only `__all__` (**SMT330**) and
+  deterministic test data (**SMT431**).
+- Get package import bundling advice with missing export proposals and runtime
+  cycle checks (**SMT108**). JSON report schema 2, configuration version 1 and the
+  default rule set stay unchanged.
 
 See the [upgrade guide](docs/upgrading.md) for required steps, copyable examples
-and changes in findings, or the [changelog](CHANGELOG.md#040---2026-11-01) for details.
+and changes in findings, or the [changelog](CHANGELOG.md#050---2026-11-02) for details.
 
 ## Quick start
 
