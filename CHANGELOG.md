@@ -12,6 +12,13 @@ current configuration and complete rule contracts, see the [README](README.md),
   seeded local generators; intentional randomness tests can retain reasoned
   suppressions. Production generators are unaffected; no automatic rewrite.
 
+- Package contracts now support `module_docstrings: require`, activating
+  [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
+  production module, including empty package initializers. Empty/blank docstrings
+  do not satisfy the requirement. Choose `forbid` for the existing
+  [SMT309](docs/rules/SMT309.md) convention; use a reasoned file suppression or an
+  explicit nested `allow` policy for exceptions. Defaults remain unchanged.
+
 - Optional [SMT324](docs/rules/SMT324.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow

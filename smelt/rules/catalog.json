@@ -468,6 +468,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.headers:MissingModuleDocstring",
+    "code": "SMT325",
+    "name": "missing-module-docstring",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",
