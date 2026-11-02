@@ -23,7 +23,7 @@ class ImplicitOptionalDefault(Rule):
         rationale="For an explicitly optional parameter, None commonly means not supplied. Using parameter or fallback also replaces valid falsy values such as zero, empty strings, empty containers and objects with custom truthiness. This opt-in review recognizes two-operand or expressions whose first operand is a directly named, unrebound parameter with a literal None default and a syntactic optional annotation (including quoted unions and typing Optional/Union/Annotated). It skips nested scopes, boolean tests, and parameters rebound anywhere in their function. Intentional falsy defaults remain valid; suppress or disable the review there. This is bounded syntax analysis, not type or control-flow inference.",
         bad="def create(options: Options | None = None):\n    self.options = options or Options()",
         good="def create(options: Options | None = None):\n    self.options = options if options is not None else Options()",
-        fix="Review whether only None should select the fallback. If so, use parameter if parameter is not None else fallback. smelt check --select SMT321 --fix --unsafe-fixes applies this behavior-changing rewrite only to visible findings. Plain --fix leaves it unchanged. The rewrite preserves fallback laziness and source outside each expression; inline comments or explicit line continuations within an expression require manual editing. Intentional truthiness fallback should remain unchanged.",
+        fix="Review whether only None should select the fallback. If so, use parameter if parameter is not None else fallback. smelt check --select SMT321 --fix --unsafe-fixes applies this behavior-changing rewrite only to visible findings. Plain --fix leaves it unchanged. The rewrite preserves fallback laziness and source outside each expression; inline comments or explicit line continuations within an expression require manual editing. Intentional truthiness fallback should remain unchanged. Debt and changed comparisons distinguish enclosing functions, including class and nested-function names. Older debt without a function identity requires review and explicit re-recording; debt --prune does not accept it under a new function.",
         config=("rules", "structure.contracts"),
     )
 
@@ -42,6 +42,10 @@ class ImplicitOptionalDefault(Rule):
                     end_line=node.end_lineno,
                     end_column=(node.end_col_offset or 0) + 1,
                     source_module=source.module,
-                    expected={"parameter": candidate.parameter, "fix_safety": "unsafe"},
+                    expected={
+                        "parameter": candidate.parameter,
+                        "scope": candidate.scope,
+                        "fix_safety": "unsafe",
+                    },
                     hint="Use an explicit is not None conditional if only None should select the fallback; review intentional falsy defaults.",
                 )

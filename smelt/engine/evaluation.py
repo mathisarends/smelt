@@ -17,7 +17,6 @@ from typing import Any
 from smelt.config import ConfigError, load_config
 
 # scripts/evaluate.py is a consumer outside project.root_packages.
-__all__ = ["EvaluationOptions", "evaluate"]
 
 _LAUNCHER = """import sys
 from pathlib import Path
@@ -50,7 +49,11 @@ class EvaluationOptions:
     source_revision: str | None = None
 
 
-def evaluate(options: EvaluationOptions) -> dict[str, Any]:
+def evaluate(
+    options: EvaluationOptions,
+) -> dict[
+    str, Any
+]:  # smelt: ignore[SMT429] -- Public evaluation entry point called by excluded scripts/evaluate.py.
     """Never fix sources, alter policy, install packages, suppress findings or record debt."""
     if not math.isfinite(options.timeout) or options.timeout <= 0:
         raise ValueError("timeout must be finite and positive")
