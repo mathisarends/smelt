@@ -34,6 +34,7 @@
 | [SMT323](SMT323.md) | no-base-class-prefix | structure | explicit | error |
 | [SMT324](SMT324.md) | prefer-str-enum-discriminator | structure | explicit | hint |
 | [SMT325](SMT325.md) | missing-module-docstring | structure | policy | error |
+| [SMT328](SMT328.md) | redundant-dishka-provider | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

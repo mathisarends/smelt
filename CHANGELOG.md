@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT328 (`rules: {redundant-dishka-provider: hint}`) reviews Dishka
+  provider methods that only forward dependencies to a constructor. Findings
+  include a direct registration candidate with recognized decorator options.
+  Resource factories and additional logic remain valid; no automatic rewrite.
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings

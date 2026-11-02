@@ -1272,6 +1272,21 @@
             "error"
           ]
         },
+        "redundant-dishka-provider": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
+          "description": "A Dishka provider method only forwards typed dependencies to a constructor. Dishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee. Repair: Review registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.",
+          "markdownDescription": "**SMT328 \u2014 redundant-dishka-provider**\n\nA Dishka provider method only forwards typed dependencies to a constructor.\n\nDishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee.\n\n**Problem**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)\n```\n\n**Preferred**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    query = provide(SqlAdminUserQuery, provides=AdminUserQuery)\n```\n\nReview registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.\n\nRun `smelt explain redundant-dishka-provider` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1979,6 +1994,21 @@
             "error"
           ]
         },
+        "^SMT328$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
+          "description": "A Dishka provider method only forwards typed dependencies to a constructor. Dishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee. Repair: Review registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.",
+          "markdownDescription": "**SMT328 \u2014 redundant-dishka-provider**\n\nA Dishka provider method only forwards typed dependencies to a constructor.\n\nDishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee.\n\n**Problem**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)\n```\n\n**Preferred**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    query = provide(SqlAdminUserQuery, provides=AdminUserQuery)\n```\n\nReview registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.\n\nRun `smelt explain redundant-dishka-provider` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2676,6 +2706,21 @@
             "error"
           ]
         },
+        "redundant-dishka-provider": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
+          "description": "A Dishka provider method only forwards typed dependencies to a constructor. Dishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee. Repair: Review registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.",
+          "markdownDescription": "**SMT328 \u2014 redundant-dishka-provider**\n\nA Dishka provider method only forwards typed dependencies to a constructor.\n\nDishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee.\n\n**Problem**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)\n```\n\n**Preferred**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    query = provide(SqlAdminUserQuery, provides=AdminUserQuery)\n```\n\nReview registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.\n\nRun `smelt explain redundant-dishka-provider` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3171,6 +3216,21 @@
           "markdownDescription": "**SMT325 \u2014 missing-module-docstring**\n\nA module lacks the non-empty docstring required by its package convention.\n\nA consistent module introduction helps readers understand each file's responsibility. With module_docstrings: require, every analyzed production module in the package needs a non-empty initial docstring, including empty files, __init__.py and __main__.py. Comments, later strings, bytes, f-strings and class/function docstrings do not satisfy the policy. Blank docstrings are reported too. Choose forbid for the opposite convention (SMT309); allow explicitly exempts a nested package. Omitted policy adds no requirement. Only analyzed source files are checked; separately discovered tests and excluded files are unaffected.\n\n**Problem**\n```python\nVALUE = 1\n```\n\n**Preferred**\n```python\n\"\"\"Constants for the calculation service.\"\"\"\nVALUE = 1\n```\n\nAdd a useful module docstring before imports and other statements. Mark an intentional file exception with # smelt: ignore-file[SMT325] -- reason. No documentation is generated automatically.\n\nRun `smelt explain missing-module-docstring` for details.",
           "examples": [
             "error"
+          ]
+        },
+        "^SMT328$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
+          "description": "A Dishka provider method only forwards typed dependencies to a constructor. Dishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee. Repair: Review registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.",
+          "markdownDescription": "**SMT328 \u2014 redundant-dishka-provider**\n\nA Dishka provider method only forwards typed dependencies to a constructor.\n\nDishka can register constructors directly using provide(Implementation, provides=Interface). This opt-in review recognizes direct, undecorated Provider subclasses and synchronous @provide methods containing only one return of a class-shaped constructor call. Every typed dependency must be forwarded once, with matching keyword names or unchanged positional order. Stable direct Dishka import aliases are supported. Defaults, variadic signatures, extra decorators, mixins, async/generator/resource factories, transformations and unknown decorator options are excluded. Constructor annotations and dependency markers are not proven equivalent; the finding is a review candidate and never a graph validation or resource-ownership guarantee.\n\n**Problem**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)\n```\n\n**Preferred**\n```python\nfrom dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    query = provide(SqlAdminUserQuery, provides=AdminUserQuery)\n```\n\nReview registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {redundant-dishka-provider: hint}.\n\nRun `smelt explain redundant-dishka-provider` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {

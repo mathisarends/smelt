@@ -52,6 +52,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.navigation:DeepObjectNavigation",
     "smelt.rules.structure.naming:NoBaseClassPrefix",
     "smelt.rules.structure.discriminators:PreferStrEnumDiscriminator",
+    "smelt.rules.structure.providers:RedundantDishkaProvider",
     "smelt.rules.structure.headers:MissingModuleDocstring",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
