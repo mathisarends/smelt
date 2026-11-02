@@ -1147,7 +1147,8 @@ class TestInfoCommands:
             ("SMT401", None),
             ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
             ("SMT524", ""),  # Ambiguous between SMT324 and SMT424.
-            ("SMT527", ' (did you mean "SMT427"?)'),
+            ("SMT527", ""),  # Ambiguous between SMT327 and SMT427.
+            ("SMT199", ' (did you mean "SMT109"?)'),
             ("layer-boundry", ' (did you mean "layer-boundary"?)'),
         ],
     )

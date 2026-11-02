@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT327 (`rules: {secret-settings-field: warning}`) reviews secret-named
+  Pydantic settings fields accepting plain `str`/`bytes`, including optional and
+  annotated types. Correct secret types and nonsecret names remain valid.
+  Findings omit default values; no annotations or consumers are rewritten.
+
 - Optional SMT326 (`rules: {no-base-class-suffix: error}`) reviews class definitions
   such as `_MessageBase`. SMT323 retains its existing prefix semantics. Imports,
   aliases and test classes remain outside scope; no automatic rename.

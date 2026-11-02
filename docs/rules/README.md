@@ -35,6 +35,7 @@
 | [SMT324](SMT324.md) | prefer-str-enum-discriminator | structure | explicit | hint |
 | [SMT325](SMT325.md) | missing-module-docstring | structure | policy | error |
 | [SMT326](SMT326.md) | no-base-class-suffix | structure | explicit | error |
+| [SMT327](SMT327.md) | secret-settings-field | structure | explicit | warning |
 | [SMT330](SMT330.md) | package-only-dunder-all | structure | explicit | error |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
