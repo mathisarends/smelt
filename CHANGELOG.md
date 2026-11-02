@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT326 (`rules: {no-base-class-suffix: error}`) reviews class definitions
+  such as `_MessageBase`. SMT323 retains its existing prefix semantics. Imports,
+  aliases and test classes remain outside scope; no automatic rename.
+
 - Optional SMT330 (`rules: {package-only-dunder-all: error}`) restricts module
   `__all__` declarations to package `__init__.py` files. Package overrides and
   reasoned suppressions retain deliberate compatibility exports; no automatic move.
