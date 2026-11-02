@@ -310,6 +310,42 @@ def test_private_static_helper_can_be_unused_or_called_by_class_name(
     assert finding.expected["internal_references"] == [4]
 
 
+@pytest.mark.parametrize("base", ["", "(Repository)"])
+def test_issue_69_query_helpers_follow_the_existing_static_helper_contract(
+    tmp_path: Path, base: str
+) -> None:
+    source = f"""from typing import Any
+from sqlalchemy import Text, cast, literal, or_
+
+class Query{base}:
+    @staticmethod
+    def _build_match_clause(column: Any, q: str):
+        column_as_text = cast(column, Text)
+        query_as_text = cast(literal(q), Text)
+        return or_(column.ilike(f"%{{q}}%"), column_as_text.op("%")(query_as_text))
+
+    @staticmethod
+    def _created_at_sort(column: Any, sort: SortDirection):
+        if sort == SortDirection.ASC:
+            return column.asc()
+        return column.desc()
+"""
+    root = _project(tmp_path, source, "version: 1\nproject: {root_packages: [app]}\n")
+
+    found = violations(root, CheckOptions(select=("SMT317",)))
+
+    assert [finding.code for finding in found] == ([] if base else ["SMT317", "SMT317"])
+    if not base:
+        assert [
+            finding.expected["method"] for finding in found if finding.expected
+        ] == ["_build_match_clause", "_created_at_sort"]
+        assert all(
+            finding.expected and finding.expected["automatic_extraction"] is False
+            for finding in found
+        )
+    assert (root / "app/browser.py").read_text() == source
+
+
 @pytest.mark.parametrize(
     "source",
     [

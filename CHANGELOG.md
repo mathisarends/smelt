@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Document SMT317's activation and developer-facing extraction evidence with
+  concrete query-helper regressions. Inherited-class exclusions and the existing
+  advisory behavior are preserved; no duplicate static-method rule is added.
+
 - Optional SMT329 (`rules: {caller-before-callee: hint}`) reviews step-down reading
   order for direct same-visibility functions and ordinary methods. Recursive,
   shadowed and definition-time-dependent pairs are retained; SMT313's public-first
