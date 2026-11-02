@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Document SMT317's activation and developer-facing extraction evidence with
+  concrete query-helper regressions. Inherited-class exclusions and the existing
+  advisory behavior are preserved; no duplicate static-method rule is added.
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
