@@ -51,6 +51,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.none_defaults:ImplicitOptionalDefault",
     "smelt.rules.structure.navigation:DeepObjectNavigation",
     "smelt.rules.structure.naming:NoBaseClassPrefix",
+    "smelt.rules.structure.discriminators:PreferStrEnumDiscriminator",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
