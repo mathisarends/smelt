@@ -342,10 +342,30 @@ structure:
       future_annotations: when-needed
 ```
 
-`module_docstrings: forbid` enables SMT309 for the initial module docstring,
-including package initializers. Class/function documentation and ordinary string
-values are unaffected. Use `allow` for an exception in a more specific package;
-omitting the field adds no policy.
+Choose one canonical `module_docstrings` convention for a package:
+
+- `require` enables SMT325: every analyzed production module needs a non-empty
+  initial docstring, including empty files, `__init__.py` and `__main__.py`.
+  Empty/whitespace-only strings, comments, later strings and class/function
+  documentation do not satisfy the requirement.
+- `forbid` enables SMT309: no initial module docstring, even an empty one.
+  Class/function documentation and ordinary string values are unaffected.
+- `allow` explicitly permits either style in a more specific package. Omitting
+  the field inherits the closest explicit package policy, or adds no policy
+  when none exists. Only analyzed source files are checked; separately discovered
+  tests and excluded files are unaffected.
+
+The single policy field keeps `require` and `forbid` mutually exclusive for each
+module; a more specific package can deliberately choose the opposite convention.
+For an individual file exception, mark the file with a reason:
+
+```python
+# smelt: ignore-file[SMT325] -- Empty compatibility facade; documented in the public API.
+```
+
+Use `SMT309` instead when retaining a docstring under `forbid`. Normal suppression
+checks require reasons and flag unused exceptions. Smelt never adds or removes
+documentation automatically.
 
 `future_annotations` supports three modes:
 

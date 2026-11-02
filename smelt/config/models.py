@@ -485,9 +485,9 @@ class PackageContract(_Model):
         default=False,
         description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
     )
-    module_docstrings: Literal["allow", "forbid"] | None = Field(
+    module_docstrings: Literal["allow", "forbid", "require"] | None = Field(
         default=None,
-        description="Optional module-docstring policy (SMT309). Function and class documentation is unaffected. The closest explicit package policy wins.",
+        description="Module-docstring convention: require a non-empty initial docstring (SMT325), forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected. The closest explicit package policy wins.",
     )
     future_annotations: Literal["allow", "forbid", "when-needed"] | None = Field(
         default=None,
