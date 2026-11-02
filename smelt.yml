@@ -70,6 +70,7 @@ tests:
   layout: mirror
 
 rules:
+  package-only-dunder-all: error
   nondeterministic-test-data: error
   prefer-package-import: warning
   no-base-class-prefix: error

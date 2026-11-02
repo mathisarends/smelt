@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT330 (`rules: {package-only-dunder-all: error}`) restricts module
+  `__all__` declarations to package `__init__.py` files. Package overrides and
+  reasoned suppressions retain deliberate compatibility exports; no automatic move.
+
 - Optional SMT431 (`rules: {nondeterministic-test-data: warning}`) reviews known
   random/UUID data generators in tests and fixtures. Prefer fixed test inputs or
   seeded local generators; intentional randomness tests can retain reasoned

@@ -1272,6 +1272,21 @@
             "error"
           ]
         },
+        "package-only-dunder-all": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT330 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -1994,6 +2009,21 @@
             "error"
           ]
         },
+        "^SMT330$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT330 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -2706,6 +2736,21 @@
             "error"
           ]
         },
+        "package-only-dunder-all": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT330 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3199,6 +3244,21 @@
           "title": "SMT325: A module lacks the non-empty docstring required by its package convention.",
           "description": "A module lacks the non-empty docstring required by its package convention. A consistent module introduction helps readers understand each file's responsibility. With module_docstrings: require, every analyzed production module in the package needs a non-empty initial docstring, including empty files, __init__.py and __main__.py. Comments, later strings, bytes, f-strings and class/function docstrings do not satisfy the policy. Blank docstrings are reported too. Choose forbid for the opposite convention (SMT309); allow explicitly exempts a nested package. Omitted policy adds no requirement. Only analyzed source files are checked; separately discovered tests and excluded files are unaffected. Repair: Add a useful module docstring before imports and other statements. Mark an intentional file exception with # smelt: ignore-file[SMT325] -- reason. No documentation is generated automatically.",
           "markdownDescription": "**SMT325 \u2014 missing-module-docstring**\n\nA module lacks the non-empty docstring required by its package convention.\n\nA consistent module introduction helps readers understand each file's responsibility. With module_docstrings: require, every analyzed production module in the package needs a non-empty initial docstring, including empty files, __init__.py and __main__.py. Comments, later strings, bytes, f-strings and class/function docstrings do not satisfy the policy. Blank docstrings are reported too. Choose forbid for the opposite convention (SMT309); allow explicitly exempts a nested package. Omitted policy adds no requirement. Only analyzed source files are checked; separately discovered tests and excluded files are unaffected.\n\n**Problem**\n```python\nVALUE = 1\n```\n\n**Preferred**\n```python\n\"\"\"Constants for the calculation service.\"\"\"\nVALUE = 1\n```\n\nAdd a useful module docstring before imports and other statements. Mark an intentional file exception with # smelt: ignore-file[SMT325] -- reason. No documentation is generated automatically.\n\nRun `smelt explain missing-module-docstring` for details.",
+          "examples": [
+            "error"
+          ]
+        },
+        "^SMT330$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
+          "description": "An ordinary module declares __all__ outside a package initializer. This opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports. Repair: Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.",
+          "markdownDescription": "**SMT330 \u2014 package-only-dunder-all**\n\nAn ordinary module declares __all__ outside a package initializer.\n\nThis opt-in convention puts deliberate export lists in __init__.py so a package has one visible public facade. It reports module-scope __all__ bindings, including guarded, annotated, augmented and imported bindings. Function/class-local names and test files are outside scope. Package initializers may declare __all__; SMT313 independently checks definition order. This is an API convention, not a claim that Python forbids ordinary module exports.\n\n**Problem**\n```python\n\n# app/events.py\ndef open_events(): ...\n__all__ = [\"open_events\"]\n```\n\n**Preferred**\n```python\n\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = [\"open_events\"]\n```\n\nReview the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {package-only-dunder-all: error}; closest package overrides can retain compatibility modules.\n\nRun `smelt explain package-only-dunder-all` for details.",
           "examples": [
             "error"
           ]
