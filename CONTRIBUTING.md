@@ -270,7 +270,7 @@ environment name must match the workflow exactly.
 ### Release procedure
 
 1. Review changes since the last tag. Update the [upgrade guide](docs/upgrading.md),
-   README feature summary and pinned hook/CI examples in
+   README examples and pinned hook/CI examples in
    [integrations](docs/integrations.md), including any report-format migration.
    Move `Unreleased` entries to a dated version section and update the changelog's
    comparison links. Bump matching versions in `pyproject.toml` and `Cargo.toml`,
