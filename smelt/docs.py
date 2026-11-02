@@ -13,13 +13,16 @@ if TYPE_CHECKING:
     from smelt.rules.base import RuleContract
 
 # Maintainer scripts outside the analyzed package use this generator entry point.
-__all__ = ["write_generated_files"]
 
 SCHEMA_FILE = "smelt.schema.json"
 DOCS_DIR = "docs/rules"
 
 
-def write_generated_files(root: Path) -> list[str]:
+def write_generated_files(
+    root: Path,
+) -> list[
+    str
+]:  # smelt: ignore[SMT429] -- Public maintainer entry point called by excluded scripts/generate.py.
     """Write the schema and the rule pages, and report what changed."""
     changed = []
     for name, content in _generated_files().items():
@@ -29,6 +32,17 @@ def write_generated_files(root: Path) -> list[str]:
             path.write_text(content, encoding="utf-8", newline="\n")
             changed.append(name)
     return changed
+
+
+def _generated_files() -> dict[str, str]:
+    """Every generated file, keyed by its path relative to the repository root."""
+    rules = build_rule_set().rules
+    files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
+    files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
+    files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
+    for rule in rules:
+        files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
+    return files
 
 
 def _rule_page(rule: RuleContract) -> str:
@@ -85,14 +99,3 @@ def _rule_index(rules: list[RuleContract]) -> str:
         )
     lines += ["", "`smelt rules` prints the same table in the terminal."]
     return "\n".join(lines) + "\n"
-
-
-def _generated_files() -> dict[str, str]:
-    """Every generated file, keyed by its path relative to the repository root."""
-    rules = build_rule_set().rules
-    files = {SCHEMA_FILE: json.dumps(config_json_schema(), indent=2) + "\n"}
-    files["smelt/rules/catalog.json"] = json.dumps(catalog_metadata(), indent=2) + "\n"
-    files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
-    for rule in rules:
-        files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
-    return files

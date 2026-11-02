@@ -48,11 +48,6 @@ _CYCLE = "SMT104"
 _TEST_LOCATION = "SMT401"
 
 
-def _is_transitive(violation: Violation) -> bool:
-    """An import finding reached through other modules, not the import itself."""
-    return violation.code != _CYCLE and len(violation.import_chain) > 1
-
-
 def _groups(
     kind: str,
     violations: list[Violation],
@@ -128,6 +123,11 @@ def _facade(violation: Violation) -> str | None:
     if not _is_transitive(violation):
         return None
     return violation.import_chain[0].imported
+
+
+def _is_transitive(violation: Violation) -> bool:
+    """An import finding reached through other modules, not the import itself."""
+    return violation.code != _CYCLE and len(violation.import_chain) > 1
 
 
 def _edge(violation: Violation) -> str | None:

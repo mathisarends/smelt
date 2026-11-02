@@ -16,11 +16,17 @@ _SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 class NoneDefault:
     node: ast.BoolOp
     parameter: str
+    scope: str
 
 
 def none_defaults(
     tree: ast.Module, bindings: Mapping[str, str]
 ) -> Iterator[NoneDefault]:
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
     for function in ast.walk(tree):
         if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
@@ -57,15 +63,21 @@ def none_defaults(
                     case ast.BoolOp(op=ast.Or(), values=[ast.Name(id=name), _]) if (
                         name in optional
                     ):
-                        yield NoneDefault(node, name)
+                        yield NoneDefault(
+                            node, name, _function_scope(function, parents)
+                        )
 
 
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str:
-    if isinstance(node, ast.Name):
-        return bindings.get(node.id, node.id)
-    if isinstance(node, ast.Attribute):
-        return f"{_qualified(node.value, bindings)}.{node.attr}"
-    return ""
+def _function_scope(
+    function: ast.FunctionDef | ast.AsyncFunctionDef, parents: Mapping[ast.AST, ast.AST]
+) -> str:
+    names = [function.name]
+    node = parents.get(function)
+    while node is not None:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            names.append(node.name)
+        node = parents.get(node)
+    return ".".join(reversed(names))
 
 
 def _optional(node: ast.expr, bindings: Mapping[str, str]) -> bool:
@@ -90,6 +102,14 @@ def _optional(node: ast.expr, bindings: Mapping[str, str]) -> bool:
         name in {"typing.Union", "typing_extensions.Union"}
         and any(isinstance(part, ast.Constant) and part.value is None for part in parts)
     )
+
+
+def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str:
+    if isinstance(node, ast.Name):
+        return bindings.get(node.id, node.id)
+    if isinstance(node, ast.Attribute):
+        return f"{_qualified(node.value, bindings)}.{node.attr}"
+    return ""
 
 
 def _scope_nodes(node: ast.AST) -> Iterator[ast.AST]:

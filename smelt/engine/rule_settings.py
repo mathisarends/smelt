@@ -73,21 +73,33 @@ class RuleSettings:
         if issues:
             raise ConfigError(issues, self.source)
 
-    def globally_enabled(self, rule: RuleContract, *, selected: bool = False) -> bool:
-        setting = self.global_rules.get(rule.code)
-        if setting is not None:
-            return setting != "off"
-        activation = getattr(rule, "activation", None)
-        return bool(
-            selected
-            or getattr(rule, "enabled_by_default", False)
-            or (activation is not None and activation.matches(self.config))
-        )
-
     def has_package_activation(self, code: str) -> bool:
         return any(
             settings.get(code, "off") != "off" for settings in self.packages.values()
         )
+
+    def severity_for_path(
+        self,
+        rule: RuleContract,
+        ctx: AnalysisContext,
+        path: str | None,
+        *,
+        selected: bool = False,
+    ) -> Severity | None:
+        source = ctx.files.source_for_path(path) if path else None
+        module = source.module if source else None
+        if module is None and path:
+            absolute = ctx.files.resolve_path(ctx.root / path)
+            for source_root in self.config.project.source_roots:
+                base = ctx.files.resolve_path(ctx.root / source_root)
+                if absolute.is_relative_to(base):
+                    parts = list(absolute.relative_to(base).with_suffix("").parts)
+                    if parts and parts[0] in self.config.project.root_packages:
+                        if parts[-1] == "__init__":
+                            parts.pop()
+                        module = ".".join(parts)
+                        break
+        return self.severity(rule, ctx, module, selected=selected)
 
     def severity(
         self,
@@ -118,28 +130,16 @@ class RuleSettings:
                 value = self.packages[contract.name].get(rule.code, value)
         return None if value == "off" else Severity(value)
 
-    def severity_for_path(
-        self,
-        rule: RuleContract,
-        ctx: AnalysisContext,
-        path: str | None,
-        *,
-        selected: bool = False,
-    ) -> Severity | None:
-        source = ctx.files.source_for_path(path) if path else None
-        module = source.module if source else None
-        if module is None and path:
-            absolute = ctx.files.resolve_path(ctx.root / path)
-            for source_root in self.config.project.source_roots:
-                base = ctx.files.resolve_path(ctx.root / source_root)
-                if absolute.is_relative_to(base):
-                    parts = list(absolute.relative_to(base).with_suffix("").parts)
-                    if parts and parts[0] in self.config.project.root_packages:
-                        if parts[-1] == "__init__":
-                            parts.pop()
-                        module = ".".join(parts)
-                        break
-        return self.severity(rule, ctx, module, selected=selected)
+    def globally_enabled(self, rule: RuleContract, *, selected: bool = False) -> bool:
+        setting = self.global_rules.get(rule.code)
+        if setting is not None:
+            return setting != "off"
+        activation = getattr(rule, "activation", None)
+        return bool(
+            selected
+            or getattr(rule, "enabled_by_default", False)
+            or (activation is not None and activation.matches(self.config))
+        )
 
     def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
         result: dict[str, str] = {}

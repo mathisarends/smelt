@@ -1,12 +1,103 @@
+import json
 from pathlib import Path
 
 import pytest
 
-from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
+from smelt.engine.check import CheckOptions, snippet_reader
+from tests.helpers import check, violations, write_project
 
 CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("SMT321",))
+
+
+@pytest.mark.parametrize("use_cache", [False, True])
+def test_optional_debt_does_not_hide_a_new_function_after_an_old_one_is_fixed(
+    tmp_path: Path, use_cache: bool
+) -> None:
+    before = (
+        "def upload(content_type: str | None = None):\n    return content_type or 'default'\n"
+        "def download(content_type: str | None = None):\n    return content_type or 'default'\n"
+    )
+    root = _project(tmp_path, before, CONFIG + "debt: debt.json\n")
+    options = CheckOptions(select=("SMT321",), use_cache=use_cache)
+    original = check(root, options)
+    debt = Debt.from_violations(original.unfiltered, snippet_reader(original.context))
+    debt.write(root / "debt.json")
+    assert len({entry.fingerprint for entry in debt.entries}) == 2
+    assert check(root, options).report.violations == []
+    write_project(root, {"app/service.py": "\n\n" + before})
+    assert check(root, options).report.violations == []
+    write_project(
+        root,
+        {
+            "app/service.py": "def upload(content_type: str | None = None):\n    return content_type or 'default'\n"
+            "def download(content_type: str | None = None):\n    return content_type if content_type is not None else 'default'\n"
+            "def new_operation(content_type: str | None = None):\n    return content_type or 'default'\n"
+        },
+    )
+    changed = check(root, options)
+    assert len(changed.report.violations) == 1
+    assert changed.report.violations[0].expected is not None
+    assert changed.report.violations[0].expected["scope"] == "new_operation"
+    assert changed.report.in_debt == 1
+    assert len(changed.resolved_debt) == 1
+    assert changed.resolved_debt[0].scope == "download"
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_unscoped_optional_debt_requires_review_instead_of_hiding_a_function(
+    tmp_path: Path, version: int
+) -> None:
+    source = "def create(value: int | None = None):\n    return value or 7\n"
+    root = _project(tmp_path, source, CONFIG + "debt: debt.json\n")
+    [finding] = violations(root, OPTIONS)
+    old_key = fingerprint(finding, "    return value or 7", legacy=True)
+    path = root / "debt.json"
+    if version == 1:
+        path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "violations": [
+                        {
+                            "fingerprint": old_key,
+                            "code": finding.code,
+                            "path": finding.path,
+                            "message": finding.message,
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+    else:
+        Debt([DebtEntry(old_key, finding.code, finding.path, finding.message)]).write(
+            path
+        )
+    current = check(root, OPTIONS)
+    assert [item.code for item in current.report.violations] == ["SMT321"]
+    assert current.report.in_debt == 0
+    assert len(current.resolved_debt) == 1
+
+
+def test_optional_scopes_distinguish_same_named_methods_and_nested_functions(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "class First:\n    def create(self, value: int | None = None):\n        return value or 7\n"
+        "class Second:\n    async def create(self, value: int | None = None):\n        return value or 7\n"
+        "def outer():\n    def create(value: int | None = None):\n        return value or 7\n"
+    )
+    root = _project(tmp_path, source)
+    outcome = check(root, OPTIONS)
+    assert {item.expected["scope"] for item in outcome.unfiltered if item.expected} == {
+        "First.create",
+        "Second.create",
+        "outer.create",
+    }
+    debt = Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context))
+    assert len({entry.fingerprint for entry in debt.entries}) == 3
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -52,7 +143,11 @@ def test_optional_annotations_report_the_defaulting_expression(
         4,
         12,
     )
-    assert finding.expected == {"parameter": "options", "fix_safety": "unsafe"}
+    assert finding.expected == {
+        "parameter": "options",
+        "scope": "create",
+        "fix_safety": "unsafe",
+    }
 
 
 @pytest.mark.parametrize(
@@ -148,7 +243,14 @@ def test_constructor_assignment_from_the_reported_example(tmp_path: Path) -> Non
         "class FileSystem:\n    def __init__(self, options: FileSystemOptions | None = None, *, download_directory: str | None = None):\n        self._options = options or FileSystemOptions()\n",
     )
     assert [(v.line, v.expected) for v in violations(root, OPTIONS)] == [
-        (3, {"parameter": "options", "fix_safety": "unsafe"}),
+        (
+            3,
+            {
+                "parameter": "options",
+                "scope": "FileSystem.__init__",
+                "fix_safety": "unsafe",
+            },
+        ),
     ]
 
 

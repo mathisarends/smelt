@@ -174,100 +174,6 @@ def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
     return RuleSettings(rules, loaded).global_rules
 
 
-def _resolve_active_rules(
-    rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
-) -> list[tuple[RuleContract, Severity]]:
-    policy = RuleSettings(rules, loaded)
-    settings = policy.global_rules
-    known = {rule.code for rule in rules.rules}
-    names = {rule.name: rule.code for rule in rules.rules}
-    normalized: dict[str, tuple[str, ...]] = {}
-    for key in ("select", "ignore"):
-        selectors: list[str] = []
-        for prefix in getattr(options, key):
-            selector = names.get(prefix.strip().lower(), prefix.strip().upper())
-            if selector != "ALL" and not any(
-                code.startswith(selector) for code in known
-            ):
-                msg = (
-                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
-                    "`smelt rules` lists valid codes"
-                )
-                raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
-            selectors.append(selector)
-        normalized[key] = tuple(selectors)
-    options = replace(options, select=normalized["select"], ignore=normalized["ignore"])
-
-    active: list[tuple[RuleContract, Severity]] = []
-    for rule in rules.rules:
-        setting = settings.get(rule.code)
-        if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
-            _validate_strict_coverage(loaded, options, setting)
-            active.append((rule, Severity.ERROR))
-            continue
-        explicitly_selected = bool(options.select) and _matches_prefix(
-            rule.code, options.select
-        )
-        package_enabled = policy.has_package_activation(rule.code)
-        if setting == "off" and not package_enabled:
-            continue
-        if setting is not None and setting != "off":
-            severity = Severity(setting)
-        elif (
-            policy.globally_enabled(rule, selected=explicitly_selected)
-            or package_enabled
-        ):
-            severity = rule.default_severity
-        else:
-            continue
-        if options.select and not _matches_prefix(rule.code, options.select):
-            continue
-        if options.ignore and _matches_prefix(rule.code, options.ignore):
-            continue
-        active.append((rule, severity))
-    return active
-
-
-def _validate_strict_coverage(
-    loaded: LoadedConfig, options: CheckOptions, setting: str | None
-) -> None:
-    if setting is not None and setting != "error":
-        raise ConfigError(
-            [
-                ConfigIssue(
-                    f"rules.{_COVERAGE}",
-                    "strict coverage must remain an error; use reasoned project.exclude entries instead",
-                )
-            ],
-            loaded.path.name,
-        )
-    if _matches_prefix(_COVERAGE, options.ignore):
-        raise InvalidOptionError(
-            "--ignore cannot disable strict coverage; use reasoned project.exclude entries instead",
-            option="--ignore",
-            value=",".join(options.ignore),
-        )
-
-
-def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
-    return any(
-        prefix.strip().upper() == "ALL" or code.startswith(prefix.strip().upper())
-        for prefix in prefixes
-        if prefix
-    )
-
-
-def _prefix_suggestion(raw: str, known: set[str]) -> str:
-    wanted = raw.strip().upper()
-    candidates = {code[: len(wanted)] for code in known if len(code) >= len(wanted)}
-    close = [
-        code
-        for code in candidates
-        if sum(a != b for a, b in zip(code, wanted, strict=True)) == 1
-    ]
-    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
-
-
 def _run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
@@ -546,6 +452,100 @@ def _collect(
         )
     )
     return violations, suppressed
+
+
+def _resolve_active_rules(
+    rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
+) -> list[tuple[RuleContract, Severity]]:
+    policy = RuleSettings(rules, loaded)
+    settings = policy.global_rules
+    known = {rule.code for rule in rules.rules}
+    names = {rule.name: rule.code for rule in rules.rules}
+    normalized: dict[str, tuple[str, ...]] = {}
+    for key in ("select", "ignore"):
+        selectors: list[str] = []
+        for prefix in getattr(options, key):
+            selector = names.get(prefix.strip().lower(), prefix.strip().upper())
+            if selector != "ALL" and not any(
+                code.startswith(selector) for code in known
+            ):
+                msg = (
+                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
+                    "`smelt rules` lists valid codes"
+                )
+                raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
+            selectors.append(selector)
+        normalized[key] = tuple(selectors)
+    options = replace(options, select=normalized["select"], ignore=normalized["ignore"])
+
+    active: list[tuple[RuleContract, Severity]] = []
+    for rule in rules.rules:
+        setting = settings.get(rule.code)
+        if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
+            _validate_strict_coverage(loaded, options, setting)
+            active.append((rule, Severity.ERROR))
+            continue
+        explicitly_selected = bool(options.select) and _matches_prefix(
+            rule.code, options.select
+        )
+        package_enabled = policy.has_package_activation(rule.code)
+        if setting == "off" and not package_enabled:
+            continue
+        if setting is not None and setting != "off":
+            severity = Severity(setting)
+        elif (
+            policy.globally_enabled(rule, selected=explicitly_selected)
+            or package_enabled
+        ):
+            severity = rule.default_severity
+        else:
+            continue
+        if options.select and not _matches_prefix(rule.code, options.select):
+            continue
+        if options.ignore and _matches_prefix(rule.code, options.ignore):
+            continue
+        active.append((rule, severity))
+    return active
+
+
+def _validate_strict_coverage(
+    loaded: LoadedConfig, options: CheckOptions, setting: str | None
+) -> None:
+    if setting is not None and setting != "error":
+        raise ConfigError(
+            [
+                ConfigIssue(
+                    f"rules.{_COVERAGE}",
+                    "strict coverage must remain an error; use reasoned project.exclude entries instead",
+                )
+            ],
+            loaded.path.name,
+        )
+    if _matches_prefix(_COVERAGE, options.ignore):
+        raise InvalidOptionError(
+            "--ignore cannot disable strict coverage; use reasoned project.exclude entries instead",
+            option="--ignore",
+            value=",".join(options.ignore),
+        )
+
+
+def _matches_prefix(code: str, prefixes: tuple[str, ...]) -> bool:
+    return any(
+        prefix.strip().upper() == "ALL" or code.startswith(prefix.strip().upper())
+        for prefix in prefixes
+        if prefix
+    )
+
+
+def _prefix_suggestion(raw: str, known: set[str]) -> str:
+    wanted = raw.strip().upper()
+    candidates = {code[: len(wanted)] for code in known if len(code) >= len(wanted)}
+    close = [
+        code
+        for code in candidates
+        if sum(a != b for a, b in zip(code, wanted, strict=True)) == 1
+    ]
+    return f' (did you mean "{close[0]}"?)' if len(close) == 1 else ""
 
 
 def _apply_ignores(

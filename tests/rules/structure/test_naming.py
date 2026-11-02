@@ -271,6 +271,78 @@ structure:
 CLASS_OPTIONS = CheckOptions(select=("SMT323",))
 
 
+@pytest.mark.parametrize(
+    "name", ["MessageBase", "_MessageBase", "__MessageBase", "RepositoryBase"]
+)
+def test_base_suffix_definitions_are_reported_without_renaming(
+    tmp_path: Path, name: str
+) -> None:
+    source = f"class {name}: pass\n"
+    root = _module_project(tmp_path, {"app/service.py": source}, CLASS_CONFIG)
+    [finding] = violations(root, CheckOptions(select=("SMT326",)))
+    assert codes_at([finding]) == [("SMT326", "app/service.py", 1)]
+    assert finding.expected == {
+        "forbidden_suffix": "Base",
+        "class": name,
+        "automatic_rename": False,
+    }
+    assert (root / "app/service.py").read_text() == source
+
+
+def test_suffix_convention_is_opt_in_and_preserves_imports_and_nearby_names(
+    tmp_path: Path,
+) -> None:
+    root = _module_project(
+        tmp_path,
+        {
+            "app/service.py": "from external import MessageBase\nclass Message(MessageBase): pass\nclass Database: pass\nclass Base64: pass\n"
+        },
+        CLASS_CONFIG,
+    )
+    assert violations(root, CheckOptions(select=("SMT326",))) == []
+    write_project(root, {"app/service.py": "class MessageBase: pass\n"})
+    assert violations(root) == []
+    write_project(
+        root, {"smelt.yml": CLASS_CONFIG + "\nrules: {no-base-class-suffix: error}\n"}
+    )
+    assert [v.code for v in violations(root)] == ["SMT326"]
+
+
+def test_suffix_package_override_and_suppression(tmp_path: Path) -> None:
+    config = CLASS_CONFIG.replace(
+        "no-base-class-prefix: error", "no-base-class-suffix: off"
+    )
+    root = _module_project(
+        tmp_path, {"app/service.py": "class MessageBase: pass\n"}, config
+    )
+    assert violations(root, CheckOptions(select=("SMT326",))) == []
+    write_project(
+        root,
+        {
+            "smelt.yml": CLASS_CONFIG,
+            "app/service.py": "class MessageBase:  # smelt: ignore[SMT326] -- Published plugin abstraction name.\n    pass\n",
+        },
+    )
+    assert violations(root, CheckOptions(select=("SMT326",))) == []
+
+
+def test_suffix_checks_nested_and_local_definitions_but_not_tests(
+    tmp_path: Path,
+) -> None:
+    root = _module_project(
+        tmp_path,
+        {
+            "app/service.py": "class Container:\n    class MessageBase: pass\ndef create():\n    class LocalBase: pass\n",
+            "tests/test_service.py": "class TestBase: pass\n",
+        },
+        CLASS_CONFIG,
+    )
+    assert codes_at(violations(root, CheckOptions(select=("SMT326",)))) == [
+        ("SMT326", "app/service.py", 2),
+        ("SMT326", "app/service.py", 4),
+    ]
+
+
 class TestNoBaseClassPrefix:
     @pytest.mark.parametrize(
         "name",

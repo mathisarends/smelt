@@ -64,11 +64,19 @@ structure:
       match: smelt.model
       required: [architecture]
       public: ['.']
+      bundle_imports_at: 2
 
 tests:
   layout: mirror
 
 rules:
+  caller-before-callee: warning
+  redundant-dishka-provider: warning
+  secret-settings-field: warning
+  no-base-class-suffix: error
+  package-only-dunder-all: error
+  nondeterministic-test-data: error
+  prefer-package-import: warning
   no-base-class-prefix: error
   deep-object-navigation: warning
   import-cycle: error

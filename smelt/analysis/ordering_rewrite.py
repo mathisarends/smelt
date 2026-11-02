@@ -81,6 +81,34 @@ def rewrite_order(source: str, result: FileOrder, sections: list[OrderSection]) 
     return rewritten
 
 
+def _moves(source: str, sections: list[OrderSection]) -> list[Move]:
+    lines = source.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    scopes: dict[int, dict[int, Span]] = {}
+    moves: list[Move] = []
+    for section in sections:
+        owner = section.owner
+        if id(owner) not in scopes:
+            cursor = _header_lines(source, owner)
+            spans: dict[int, Span] = {}
+            for node in owner.body:
+                end = _statement_end(node, lines)
+                spans[id(node)] = Span(offsets[cursor], offsets[end])
+                cursor = end
+            scopes[id(owner)] = spans
+        spans = scopes[id(owner)]
+        parts = tuple(
+            Span(spans[id(block.nodes[0])].start, spans[id(block.nodes[-1])].end)
+            for block in section.blocks
+        )
+        if any(part.start >= part.end for part in parts):
+            raise AnalysisError("overlapping source lines cannot be fixed safely")
+        moves.append(Move(section, parts))
+    return moves
+
+
 def _header_lines(source: str, owner: ScopeNode) -> int:
     if isinstance(owner, ast.Module):
         first = statement_line(owner.body[0]) if owner.body else 1
@@ -121,34 +149,6 @@ def _statement_end(node: ast.stmt, lines: list[str]) -> int:
         else:
             break
     return end
-
-
-def _moves(source: str, sections: list[OrderSection]) -> list[Move]:
-    lines = source.splitlines(keepends=True)
-    offsets = [0]
-    for line in lines:
-        offsets.append(offsets[-1] + len(line))
-    scopes: dict[int, dict[int, Span]] = {}
-    moves: list[Move] = []
-    for section in sections:
-        owner = section.owner
-        if id(owner) not in scopes:
-            cursor = _header_lines(source, owner)
-            spans: dict[int, Span] = {}
-            for node in owner.body:
-                end = _statement_end(node, lines)
-                spans[id(node)] = Span(offsets[cursor], offsets[end])
-                cursor = end
-            scopes[id(owner)] = spans
-        spans = scopes[id(owner)]
-        parts = tuple(
-            Span(spans[id(block.nodes[0])].start, spans[id(block.nodes[-1])].end)
-            for block in section.blocks
-        )
-        if any(part.start >= part.end for part in parts):
-            raise AnalysisError("overlapping source lines cannot be fixed safely")
-        moves.append(Move(section, parts))
-    return moves
 
 
 def _render(source: str, span: Span, moves: list[Move], newline: str) -> str:

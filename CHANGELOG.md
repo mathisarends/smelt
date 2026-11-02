@@ -11,6 +11,48 @@ current configuration and complete rule contracts, see the [README](README.md),
   concrete query-helper regressions. Inherited-class exclusions and the existing
   advisory behavior are preserved; no duplicate static-method rule is added.
 
+- Optional SMT329 (`rules: {caller-before-callee: hint}`) reviews step-down reading
+  order for direct same-visibility functions and ordinary methods. Recursive,
+  shadowed and definition-time-dependent pairs are retained; SMT313's public-first
+  categories take precedence. No definitions are moved automatically.
+
+- Optional SMT328 (`rules: {redundant-dishka-provider: hint}`) reviews Dishka
+  provider methods that only forward dependencies to a constructor. Findings
+  include a direct registration candidate with recognized decorator options.
+  Resource factories and additional logic remain valid; no automatic rewrite.
+
+- Optional SMT327 (`rules: {secret-settings-field: warning}`) reviews secret-named
+  Pydantic settings fields accepting plain `str`/`bytes`, including optional and
+  annotated types. Correct secret types and nonsecret names remain valid.
+  Findings omit default values; no annotations or consumers are rewritten.
+
+- Optional SMT326 (`rules: {no-base-class-suffix: error}`) reviews class definitions
+  such as `_MessageBase`. SMT323 retains its existing prefix semantics. Imports,
+  aliases and test classes remain outside scope; no automatic rename.
+
+- Optional SMT330 (`rules: {package-only-dunder-all: error}`) restricts module
+  `__all__` declarations to package `__init__.py` files. Package overrides and
+  reasoned suppressions retain deliberate compatibility exports; no automatic move.
+
+- Optional SMT431 (`rules: {nondeterministic-test-data: warning}`) reviews known
+  random/UUID data generators in tests and fixtures. Prefer fixed test inputs or
+  seeded local generators; intentional randomness tests can retain reasoned
+  suppressions. Production generators are unaffected; no automatic rewrite.
+
+- SMT108 now reviews mixed package-facade and implementation imports with
+  `bundle_imports_at: 2`, includes missing export proposals and blocks bundling
+  advice when proposed caller/facade edges close a known runtime import cycle.
+
+- Debt baselines now write grouped JSON version 2: repeated rule/path/message
+  metadata appears once, while every accepted fingerprint and duplicate occurrence
+  remains available for matching. Version-1 files remain readable; `smelt debt
+  --prune` upgrades assessed entries without accepting new debt. Use `smelt debt
+  --show [PATHS]` for a compact, read-only baseline summary, or add `--format json`
+  for the grouped data. [SMT321](docs/rules/SMT321.md) now distinguishes enclosing
+  functions in debt and changed checks, so fixing one function cannot silently
+  accept an identical new violation in another. Old unscoped SMT321 debt requires
+  review and explicit re-recording. See [adoption](docs/adoption.md).
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
