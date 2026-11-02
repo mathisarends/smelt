@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Contributor checks now require an issue/ticket reference for TODO comments
+  through Ruff TD003. Tracked TODOs remain allowed; Smelt's rule catalog is unchanged.
+
 - Package contracts now support `module_docstrings: require`, activating
   [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
