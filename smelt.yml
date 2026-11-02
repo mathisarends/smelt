@@ -64,11 +64,13 @@ structure:
       match: smelt.model
       required: [architecture]
       public: ['.']
+      bundle_imports_at: 2
 
 tests:
   layout: mirror
 
 rules:
+  prefer-package-import: warning
   no-base-class-prefix: error
   deep-object-navigation: warning
   import-cycle: error
