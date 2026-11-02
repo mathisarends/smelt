@@ -69,6 +69,7 @@ tests:
   layout: mirror
 
 rules:
+  redundant-dishka-provider: warning
   no-base-class-prefix: error
   deep-object-navigation: warning
   import-cycle: error
