@@ -1,8 +1,39 @@
 # Upgrading Smelt
 
-## Unreleased: grouped debt baselines
+## 0.4.0 to 0.5.0
 
-Update local, hook and CI installations together before rewriting a baseline.
+0.5.0 retains report schema 2, YAML version 1, the default rule set and exit
+codes. The eight new checks are opt-in. Debt baseline writes change format, and
+SMT321 debt identities need review. See the
+[changelog](../CHANGELOG.md#050---2026-11-02) for all release details.
+
+### Upgrade checklist
+
+1. Update local, hook and CI installations together before rewriting a baseline:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.5.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.5.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.5.0]` for isolated Python hooks,
+   `rev: v0.5.0` for source hooks and `uvx --from smelt-cli==0.5.0 smelt check`
+   in CI. Run `prek install` after updating hooks.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`.
+   Run `smelt check --show-hints --fail-on warning` and inspect stored debt with
+   `smelt debt --show` before pruning or re-recording it. Review unscoped SMT321
+   debt explicitly; pruning does not accept current findings.
+
+3. Adopt new rules deliberately through `rules` or `--select`: [SMT324](rules/SMT324.md),
+   [SMT326](rules/SMT326.md), [SMT327](rules/SMT327.md), [SMT328](rules/SMT328.md),
+   [SMT329](rules/SMT329.md), [SMT330](rules/SMT330.md) and [SMT431](rules/SMT431.md).
+   Activate [SMT325](rules/SMT325.md) with a package contract's
+   `module_docstrings: require`. These new checks do not rewrite code.
+
+### Grouped debt baselines
+
 New `smelt debt` and `smelt debt --prune` writes use grouped JSON version 2;
 version-1 files remain readable, but older Smelt versions cannot read version 2.
 Pruning upgrades assessed debt without accepting new findings and retains debt
@@ -14,6 +45,13 @@ them without accepting current findings. This prevents an old violation in one
 function from hiding a newly introduced violation in another. Use `smelt debt
 --show [PATHS]` to inspect stored debt without rewriting it. See
 [adoption](adoption.md#grouped-baselines-and-inspection).
+
+### Changes in findings
+
+With `bundle_imports_at: 2`, [SMT108](rules/SMT108.md) now reviews mixed package
+facade and implementation imports and includes missing export proposals. Bundling
+advice is withheld when the proposed caller/facade edges close a known runtime
+import cycle. Existing enabled policies can therefore produce different findings.
 
 ## 0.3.0 to 0.4.0
 
