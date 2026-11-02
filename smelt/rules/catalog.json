@@ -112,7 +112,8 @@
     "category": "dependencies",
     "default_severity": "hint",
     "requires": [
-      "imports"
+      "imports",
+      "syntax"
     ],
     "enabled_by_default": false,
     "file_local": false,
@@ -483,11 +484,41 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.naming:NoBaseClassSuffix",
+    "code": "SMT326",
+    "name": "no-base-class-suffix",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.settings:SecretSettingsField",
     "code": "SMT327",
     "name": "secret-settings-field",
     "category": "structure",
     "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.exports:PackageOnlyDunderAll",
+    "code": "SMT330",
+    "name": "package-only-dunder-all",
+    "category": "structure",
+    "default_severity": "error",
     "requires": [
       "syntax"
     ],
@@ -679,6 +710,21 @@
     "test_local": false,
     "member_local": false,
     "scope": "source"
+  },
+  {
+    "target": "smelt.rules.testing.randomness:NondeterministicTestData",
+    "code": "SMT431",
+    "name": "nondeterministic-test-data",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
   },
   {
     "target": "smelt.rules.meta:UnusedSuppression",

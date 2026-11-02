@@ -1,5 +1,20 @@
 # Upgrading Smelt
 
+## Unreleased: grouped debt baselines
+
+Update local, hook and CI installations together before rewriting a baseline.
+New `smelt debt` and `smelt debt --prune` writes use grouped JSON version 2;
+version-1 files remain readable, but older Smelt versions cannot read version 2.
+Pruning upgrades assessed debt without accepting new findings and retains debt
+for inactive rules. Report JSON schema 2 and configuration version 1 stay unchanged.
+
+SMT321 fingerprints now distinguish enclosing functions. Existing fingerprints
+without that identity require review and explicit re-recording; `--prune` removes
+them without accepting current findings. This prevents an old violation in one
+function from hiding a newly introduced violation in another. Use `smelt debt
+--show [PATHS]` to inspect stored debt without rewriting it. See
+[adoption](adoption.md#grouped-baselines-and-inspection).
+
 ## 0.3.0 to 0.4.0
 
 0.4.0 retains report schema 2, YAML version 1, the default rule set and exit

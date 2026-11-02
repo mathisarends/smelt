@@ -62,7 +62,9 @@ new findings against HEAD. Do not record debt or disable rules to adopt a change
 Prefer private helpers and test public behavior. A direct unit test of a parser,
 rewriter or cache invalidation boundary can use a local `SMT420` exception with a
 specific reason; in multiline imports put it on the imported name. Entry points
-used by excluded maintainer scripts have deliberate `__all__` exports.
+used by excluded maintainer scripts retain a specific visibility suppression
+naming the actual consumer. Keep `__all__` declarations in package `__init__.py`
+files; do not add module export lists merely to silence visibility reviews.
 
 The checker selects rules through generated `smelt/rules/catalog.json` metadata
 and imports implementations only when needed. Register implementation paths in

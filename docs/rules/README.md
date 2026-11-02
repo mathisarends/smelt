@@ -34,7 +34,9 @@
 | [SMT323](SMT323.md) | no-base-class-prefix | structure | explicit | error |
 | [SMT324](SMT324.md) | prefer-str-enum-discriminator | structure | explicit | hint |
 | [SMT325](SMT325.md) | missing-module-docstring | structure | policy | error |
+| [SMT326](SMT326.md) | no-base-class-suffix | structure | explicit | error |
 | [SMT327](SMT327.md) | secret-settings-field | structure | explicit | warning |
+| [SMT330](SMT330.md) | package-only-dunder-all | structure | explicit | error |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |
@@ -47,6 +49,7 @@
 | [SMT428](SMT428.md) | async-mock-without-await-check | tests | explicit | warning |
 | [SMT429](SMT429.md) | test-only-public-function | tests | explicit | warning |
 | [SMT430](SMT430.md) | test-only-public-attribute | tests | explicit | warning |
+| [SMT431](SMT431.md) | nondeterministic-test-data | tests | explicit | warning |
 | [SMT901](SMT901.md) | unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |

@@ -195,6 +195,46 @@ class NoBaseClassPrefix(Rule):
                 )
 
 
+class NoBaseClassSuffix(Rule):
+    file_local = True
+    code = "SMT326"
+    name = "no-base-class-suffix"
+    category = Category.STRUCTURE
+    default_severity = Severity.ERROR
+    requires = frozenset({Index.SYNTAX})
+    doc = RuleDoc(
+        summary="A class definition ends in the Base suffix forbidden by the selected convention.",
+        rationale="MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.",
+        bad="class _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...",
+        good="class Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...",
+        fix="Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
+        config=("rules", "structure.contracts"),
+    )
+
+    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        for source in ctx.files.sources.values():
+            for node in ast.walk(ctx.asts.parse(source.path)):
+                if (
+                    not isinstance(node, ast.ClassDef)
+                    or not node.name.endswith("Base")
+                    or not node.name[:-4].strip("_")
+                ):
+                    continue
+                yield self.violation(
+                    f'class "{node.name}" uses the forbidden Base suffix',
+                    path=source.path,
+                    line=node.lineno,
+                    column=node.col_offset + 1,
+                    source_module=source.module,
+                    expected={
+                        "forbidden_suffix": "Base",
+                        "class": node.name,
+                        "automatic_rename": False,
+                    },
+                    hint="Name the class after its responsibility or contract instead of its inheritance role; update references and exports.",
+                )
+
+
 def _has_base_prefix(name: str) -> bool:
     name = name.lstrip("_")
     suffix = name.removeprefix("Base")
