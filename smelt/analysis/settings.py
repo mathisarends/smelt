@@ -137,14 +137,6 @@ def _imports(tree: ast.Module, bound: Counter[str]) -> dict[str, str]:
     return result
 
 
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    if isinstance(node, ast.Name):
-        return bindings.get(node.id)
-    if isinstance(node, ast.Attribute) and (parent := _qualified(node.value, bindings)):
-        return f"{parent}.{node.attr}"
-    return None
-
-
 def _plain_types(
     node: ast.expr, bindings: Mapping[str, str], bound: Counter[str]
 ) -> set[str]:
@@ -174,3 +166,11 @@ def _plain_types(
             parts = parts[:1]
         return set().union(*(_plain_types(part, bindings, bound) for part in parts))
     return set()
+
+
+def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
+    if isinstance(node, ast.Name):
+        return bindings.get(node.id)
+    if isinstance(node, ast.Attribute) and (parent := _qualified(node.value, bindings)):
+        return f"{parent}.{node.attr}"
+    return None

@@ -45,14 +45,6 @@ class _Validator:
                     f'"{contract.match}" is not inside project.root_packages ({", ".join(roots)})',
                 )
 
-    def _error(self, path: str, message: str) -> None:
-        self.errors.append(ConfigIssue(path, message))
-
-    def _check_layer(self, path: str, name: str) -> None:
-        layers = self.config.architecture.layers
-        if name not in layers:
-            self._error(path, f'unknown layer "{name}"{did_you_mean(name, layers)}')
-
     def _layers(self) -> None:
         seen_paths: dict[str, str] = {}
         for name, layer in self.config.architecture.layers.items():
@@ -118,6 +110,11 @@ class _Validator:
                 )
         self._overlapping_sets()
 
+    def _check_layer(self, path: str, name: str) -> None:
+        layers = self.config.architecture.layers
+        if name not in layers:
+            self._error(path, f'unknown layer "{name}"{did_you_mean(name, layers)}')
+
     def _overlapping_sets(self) -> None:
         arch = self.config.architecture
         features_root = arch.features.root if arch.features else None
@@ -151,6 +148,9 @@ class _Validator:
                         f"architecture.shared[{index}]",
                         f'"{module}" overlaps composition_root "{other}"',
                     )
+
+    def _error(self, path: str, message: str) -> None:
+        self.errors.append(ConfigIssue(path, message))
 
 
 def _within(module: str, package: str) -> bool:

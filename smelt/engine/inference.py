@@ -443,18 +443,6 @@ def _all_modules(packages: list[Path]) -> set[str]:
     return found
 
 
-def _module_file(packages: list[Path], module: str) -> Path | None:
-    first, *rest = module.split(".")
-    for package in packages:
-        if package.name == first:
-            candidate = package.joinpath(*rest)
-            if candidate.with_suffix(".py").is_file():
-                return candidate.with_suffix(".py")
-            if (candidate / "__init__.py").is_file():
-                return candidate / "__init__.py"
-    return None
-
-
 def _reaches(
     packages: list[Path],
     name: str,
@@ -475,6 +463,56 @@ def _reaches(
         for imported in sorted(_module_imports(packages, name))
         if _within_any(imported, [name])
     )
+
+
+def _reference(packages: list[Path], root: str, module: str) -> str | None:
+    """How ``root`` refers to ``module``: an import or a ``"module:attr"`` string."""
+    if module in _module_imports(packages, root):
+        return "imports"
+    for target in _server_targets(packages, root):
+        if target.split(":")[0] == module:
+            return f'serves "{target}" from'
+    return None
+
+
+def _server_targets(packages: list[Path], module: str) -> list[str]:
+    """``"backend.app:app"`` strings naming a first-party module, as uvicorn takes them."""
+    path = _module_file(packages, module)
+    if path is None:
+        return []
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError:
+        return []
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and (match := _SERVER_TARGET.fullmatch(node.value))
+        and _module_file(packages, match.group(1)) is not None
+    ]
+
+
+def _module_imports(packages: list[Path], module: str) -> set[str]:
+    """Absolute names ``module`` imports; relative ones resolved from its package."""
+    path = _module_file(packages, module)
+    if path is None:
+        return set()
+    parent = module if path.name == "__init__.py" else module.rsplit(".", 1)[0]
+    return _imports(path, parent)
+
+
+def _module_file(packages: list[Path], module: str) -> Path | None:
+    first, *rest = module.split(".")
+    for package in packages:
+        if package.name == first:
+            candidate = package.joinpath(*rest)
+            if candidate.with_suffix(".py").is_file():
+                return candidate.with_suffix(".py")
+            if (candidate / "__init__.py").is_file():
+                return candidate / "__init__.py"
+    return None
 
 
 type _Node = tuple[str, str | None]
@@ -581,35 +619,6 @@ def _namespace(path: Path, module: str) -> Namespace | None:
     return namespace_of(tree, module, is_package=path.name == "__init__.py")
 
 
-def _reference(packages: list[Path], root: str, module: str) -> str | None:
-    """How ``root`` refers to ``module``: an import or a ``"module:attr"`` string."""
-    if module in _module_imports(packages, root):
-        return "imports"
-    for target in _server_targets(packages, root):
-        if target.split(":")[0] == module:
-            return f'serves "{target}" from'
-    return None
-
-
-def _server_targets(packages: list[Path], module: str) -> list[str]:
-    """``"backend.app:app"`` strings naming a first-party module, as uvicorn takes them."""
-    path = _module_file(packages, module)
-    if path is None:
-        return []
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-    except SyntaxError:
-        return []
-    return [
-        node.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Constant)
-        and isinstance(node.value, str)
-        and (match := _SERVER_TARGET.fullmatch(node.value))
-        and _module_file(packages, match.group(1)) is not None
-    ]
-
-
 def _trace(load: Loader, root: str) -> dict[_Node, _Node | None]:
     """Every symbol ``root`` uses, and those their definitions use, by first referrer.
 
@@ -666,15 +675,6 @@ def _chain(parents: dict[_Node, _Node | None], node: _Node) -> list[str]:
         labels.append(f"{module}.{name}" if name else module)
         current = parents.get(current)
     return list(reversed(labels))
-
-
-def _module_imports(packages: list[Path], module: str) -> set[str]:
-    """Absolute names ``module`` imports; relative ones resolved from its package."""
-    path = _module_file(packages, module)
-    if path is None:
-        return set()
-    parent = module if path.name == "__init__.py" else module.rsplit(".", 1)[0]
-    return _imports(path, parent)
 
 
 def _imports(path: Path | None, package: str) -> set[str]:

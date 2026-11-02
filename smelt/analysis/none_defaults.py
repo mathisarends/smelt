@@ -80,14 +80,6 @@ def _function_scope(
     return ".".join(reversed(names))
 
 
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str:
-    if isinstance(node, ast.Name):
-        return bindings.get(node.id, node.id)
-    if isinstance(node, ast.Attribute):
-        return f"{_qualified(node.value, bindings)}.{node.attr}"
-    return ""
-
-
 def _optional(node: ast.expr, bindings: Mapping[str, str]) -> bool:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         try:
@@ -110,6 +102,14 @@ def _optional(node: ast.expr, bindings: Mapping[str, str]) -> bool:
         name in {"typing.Union", "typing_extensions.Union"}
         and any(isinstance(part, ast.Constant) and part.value is None for part in parts)
     )
+
+
+def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str:
+    if isinstance(node, ast.Name):
+        return bindings.get(node.id, node.id)
+    if isinstance(node, ast.Attribute):
+        return f"{_qualified(node.value, bindings)}.{node.attr}"
+    return ""
 
 
 def _scope_nodes(node: ast.AST) -> Iterator[ast.AST]:

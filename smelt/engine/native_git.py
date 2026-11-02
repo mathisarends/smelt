@@ -67,55 +67,6 @@ class GitService:
         return response
 
 
-def close() -> None:
-    global _service  # noqa: PLW0603 - one owned service per Python process
-    if _service is not None:
-        with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-            _service.close()
-        _service = None
-
-
-_service: GitService | None = None
-_failed = False
-
-
-atexit.register(close)
-
-
-@contextlib.contextmanager
-def check_scope(*, enabled: bool) -> Iterator[None]:
-    active = _ENABLED.set(enabled)
-    captured = _CAPTURED.set(None)
-    try:
-        yield
-    finally:
-        _CAPTURED.reset(captured)
-        _ENABLED.reset(active)
-
-
-def request(operation: str, root: Path, **values: object) -> dict[str, Any] | None:
-    global _service, _failed  # noqa: PLW0603 - serialized helper ownership
-    executable = _executable()
-    if not executable:
-        return None
-    try:
-        if _service is None:
-            _service = GitService(executable)
-        response = _service.request(
-            {
-                "operation": operation,
-                "root": str(root),
-                "index_file": os.environ.get("GIT_INDEX_FILE"),
-                **values,
-            }
-        )
-        return None if "fallback" in response else response
-    except (OSError, ValueError, TimeoutError, subprocess.SubprocessError):
-        _failed = True
-        close()
-        return None
-
-
 def capture(root: Path) -> tuple[Path, str | None] | None:
     response = request("capture", root)
     if response is None:
@@ -173,6 +124,55 @@ def tree_records(repository: Path, revision: str) -> bytes | None:
         )
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def request(operation: str, root: Path, **values: object) -> dict[str, Any] | None:
+    global _service, _failed  # noqa: PLW0603 - serialized helper ownership
+    executable = _executable()
+    if not executable:
+        return None
+    try:
+        if _service is None:
+            _service = GitService(executable)
+        response = _service.request(
+            {
+                "operation": operation,
+                "root": str(root),
+                "index_file": os.environ.get("GIT_INDEX_FILE"),
+                **values,
+            }
+        )
+        return None if "fallback" in response else response
+    except (OSError, ValueError, TimeoutError, subprocess.SubprocessError):
+        _failed = True
+        close()
+        return None
+
+
+def close() -> None:
+    global _service  # noqa: PLW0603 - one owned service per Python process
+    if _service is not None:
+        with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+            _service.close()
+        _service = None
+
+
+_service: GitService | None = None
+_failed = False
+
+
+atexit.register(close)
+
+
+@contextlib.contextmanager
+def check_scope(*, enabled: bool) -> Iterator[None]:
+    active = _ENABLED.set(enabled)
+    captured = _CAPTURED.set(None)
+    try:
+        yield
+    finally:
+        _CAPTURED.reset(captured)
+        _ENABLED.reset(active)
 
 
 def _executable() -> str | None:

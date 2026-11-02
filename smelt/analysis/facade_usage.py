@@ -164,42 +164,6 @@ class FacadeUsage:
                 existing != definition,
             )
 
-    def _for_module(self, module: str) -> _Bindings:
-        if module not in self._bindings:
-            source = self._files.sources.get(module)
-            syntax = self._syntax.for_path(source.path) if source else None
-            self._bindings[module] = (
-                _static_bindings(syntax) if syntax else _Bindings(opaque=True)
-            )
-        return self._bindings[module]
-
-    def _resolve(self, module: str, name: str) -> _Definition | None:
-        key = module, name
-        if key not in self._resolved:
-            self._resolved[key] = self._follow(module, name)
-        return self._resolved[key]
-
-    def _follow(self, module: str, name: str) -> _Definition | None:
-        seen: set[tuple[str, str]] = set()
-        while len(seen) < MAX_HOPS and (module, name) not in seen:
-            seen.add((module, name))
-            bindings = self._for_module(module)
-            if bindings.opaque:
-                return None
-            binding = bindings.known.get(name)
-            if isinstance(binding, str):
-                if binding in self._files.sources or binding in self._files.packages:
-                    return None  # a module, rather than a symbol
-                module, _, name = binding.rpartition(".")
-            elif binding is not None:
-                source = self._files.sources[module]
-                return _Definition(
-                    module, name, source.path, binding.lineno, binding.col_offset + 1
-                )
-            else:
-                return None
-        return None
-
     def _collect_uses(self, *, count_tests: bool) -> Iterator[_Use]:
         files = self._files
         test_roots = tuple(
@@ -257,6 +221,42 @@ class FacadeUsage:
                 if definition is not None:
                     result[definition].add(f"{source.module}.{name}")
         return result
+
+    def _resolve(self, module: str, name: str) -> _Definition | None:
+        key = module, name
+        if key not in self._resolved:
+            self._resolved[key] = self._follow(module, name)
+        return self._resolved[key]
+
+    def _follow(self, module: str, name: str) -> _Definition | None:
+        seen: set[tuple[str, str]] = set()
+        while len(seen) < MAX_HOPS and (module, name) not in seen:
+            seen.add((module, name))
+            bindings = self._for_module(module)
+            if bindings.opaque:
+                return None
+            binding = bindings.known.get(name)
+            if isinstance(binding, str):
+                if binding in self._files.sources or binding in self._files.packages:
+                    return None  # a module, rather than a symbol
+                module, _, name = binding.rpartition(".")
+            elif binding is not None:
+                source = self._files.sources[module]
+                return _Definition(
+                    module, name, source.path, binding.lineno, binding.col_offset + 1
+                )
+            else:
+                return None
+        return None
+
+    def _for_module(self, module: str) -> _Bindings:
+        if module not in self._bindings:
+            source = self._files.sources.get(module)
+            syntax = self._syntax.for_path(source.path) if source else None
+            self._bindings[module] = (
+                _static_bindings(syntax) if syntax else _Bindings(opaque=True)
+            )
+        return self._bindings[module]
 
     def _cycle(self, package: str, module: str) -> tuple[str, ...]:
         previous: dict[str, str | None] = {module: None}

@@ -529,6 +529,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.call_order:CallerBeforeCallee",
+    "code": "SMT329",
+    "name": "caller-before-callee",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.exports:PackageOnlyDunderAll",
     "code": "SMT330",
     "name": "package-only-dunder-all",

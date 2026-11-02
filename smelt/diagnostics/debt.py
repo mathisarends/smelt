@@ -92,23 +92,6 @@ def _scope(violation: Violation) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _edge_field(violation: Violation) -> str | None:
-    return {
-        "SMT104": "cyclic_edges",
-        "SMT109": "export_edges",
-        "SMT313": "ordering_edges",
-        "SMT315": "dispatch_edges",
-        "SMT423": "patch_edges",
-    }.get(violation.code)
-
-
-def _semantic_edges(violation: Violation) -> list[str]:
-    field = _edge_field(violation)
-    if field is None or not violation.expected:
-        return []
-    return list(violation.expected.get(field, []))
-
-
 def _fingerprints(violation: Violation, snippet: str) -> list[str]:
     edges = _semantic_edges(violation)
     if edges:
@@ -125,6 +108,23 @@ def _fingerprints(violation: Violation, snippet: str) -> list[str]:
             for edge in edges
         ]
     return [fingerprint(violation, snippet)]
+
+
+def _semantic_edges(violation: Violation) -> list[str]:
+    field = _edge_field(violation)
+    if field is None or not violation.expected:
+        return []
+    return list(violation.expected.get(field, []))
+
+
+def _edge_field(violation: Violation) -> str | None:
+    return {
+        "SMT104": "cyclic_edges",
+        "SMT109": "export_edges",
+        "SMT313": "ordering_edges",
+        "SMT315": "dispatch_edges",
+        "SMT423": "patch_edges",
+    }.get(violation.code)
 
 
 @dataclass

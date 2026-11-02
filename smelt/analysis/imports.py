@@ -233,6 +233,20 @@ class ImportIndex:
             )
         return cls(graph, files, asts, cache=cache, inventory=inventory)
 
+    def first_party_edges(
+        self, *, include_type_checking: bool = True
+    ) -> dict[str, set[str]]:
+        adjacency: dict[str, set[str]] = defaultdict(set)
+        for detail in self.all_imports():
+            if detail.external or (detail.type_checking and not include_type_checking):
+                continue
+            adjacency[detail.importer].add(detail.imported)
+        return adjacency
+
+    def all_imports(self) -> Iterator[ImportDetail]:
+        for module in self.modules():
+            yield from self.imports_of(module)
+
     def modules(self) -> list[str]:
         return sorted(m for m in self.first_party if m in self.files.sources)
 
@@ -258,20 +272,6 @@ class ImportIndex:
             )
             self._outgoing[module] = cached
         return cached
-
-    def all_imports(self) -> Iterator[ImportDetail]:
-        for module in self.modules():
-            yield from self.imports_of(module)
-
-    def first_party_edges(
-        self, *, include_type_checking: bool = True
-    ) -> dict[str, set[str]]:
-        adjacency: dict[str, set[str]] = defaultdict(set)
-        for detail in self.all_imports():
-            if detail.external or (detail.type_checking and not include_type_checking):
-                continue
-            adjacency[detail.importer].add(detail.imported)
-        return adjacency
 
     def shortest_chains_from(
         self, module: str, *, include_type_checking: bool = True

@@ -23,25 +23,6 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax
 
 
-def _first_party_module(ctx: AnalysisContext, qualname: str) -> str | None:
-    """The longest source module that prefixes ``qualname``."""
-    parts = qualname.split(".")
-    for end in range(len(parts), 0, -1):
-        candidate = ".".join(parts[:end])
-        if candidate in ctx.files.sources:
-            return candidate
-    return None
-
-
-@dataclass(frozen=True, slots=True)
-class _Import:
-    """A first-party name a test imports and the module that defines it."""
-
-    name: str  # ``ChannelCommands``, or the module for ``import``/``from . import x``
-    module: str
-    via: str | None = None  # the package facade that re-exports it
-
-
 def _resolved_imports(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[_Import]:
     """First-party imports, followed through package facades to their modules.
 
@@ -63,6 +44,25 @@ def _resolved_imports(ctx: AnalysisContext, syntax: ModuleSyntax) -> list[_Impor
         if item not in found:
             found.append(item)
     return found
+
+
+def _first_party_module(ctx: AnalysisContext, qualname: str) -> str | None:
+    """The longest source module that prefixes ``qualname``."""
+    parts = qualname.split(".")
+    for end in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:end])
+        if candidate in ctx.files.sources:
+            return candidate
+    return None
+
+
+@dataclass(frozen=True, slots=True)
+class _Import:
+    """A first-party name a test imports and the module that defines it."""
+
+    name: str  # ``ChannelCommands``, or the module for ``import``/``from . import x``
+    module: str
+    via: str | None = None  # the package facade that re-exports it
 
 
 def _modules(imports: list[_Import]) -> list[str]:
@@ -120,27 +120,6 @@ def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
     return _Mirror(path.split("/") if path else [], match.group("module"), root)
 
 
-def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
-    roots = _member_roots(ctx, test_root)
-    if mirror.root is None:
-        return roots
-    return [mirror.root] if mirror.root in roots else []
-
-
-def _member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
-    """The root packages a test root belongs to.
-
-    In a workspace, ``libs/agent/tests`` tests the package under ``libs/agent/src``:
-    the source roots sharing the longest leading path with the test root win.
-    """
-    roots = ctx.config.project.root_packages
-    shared = {root: _common_depth(ctx, root, test_root) for root in roots}
-    best = max(shared.values(), default=0)
-    if best == 0:
-        return roots
-    return [root for root in roots if shared[root] == best]
-
-
 def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
     package = ctx.files.packages.get(root)
     if package is None:
@@ -153,28 +132,6 @@ def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
             break
         depth += 1
     return depth
-
-
-def _subjects(subject: str, *, suffixes: bool) -> list[str]:
-    """The module names a test may cover: ``invoice_rounding`` -> also ``invoice``."""
-    if not suffixes:
-        return [subject]
-    parts = subject.split("_")
-    return ["_".join(parts[:end]) for end in range(len(parts), 0, -1)]
-
-
-def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bool:
-    files = ctx.files
-    for root in _roots(ctx, mirror, test_root):
-        package = ".".join([root, *mirror.directories])
-        package_name = mirror.directories[-1] if mirror.directories else root
-        for name in _subjects(mirror.module, suffixes=ctx.config.tests.mirror_suffixes):
-            source = files.sources.get(f"{package}.{name}")
-            if source is not None and not source.is_package:
-                return True
-            if name == package_name and package in files.packages:
-                return True
-    return False
 
 
 def _missing_module(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> str:
@@ -272,6 +229,90 @@ def _root_pattern_hint(ctx: AnalysisContext, mirror: _Mirror, test_root: str) ->
         f' The test path starts with the root package "{root}"; if all tests do, '
         f'set tests.mirror to "{{root}}/{pattern}".'
     )
+
+
+def _mirrors_source(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> bool:
+    files = ctx.files
+    for root in _roots(ctx, mirror, test_root):
+        package = ".".join([root, *mirror.directories])
+        package_name = mirror.directories[-1] if mirror.directories else root
+        for name in _subjects(mirror.module, suffixes=ctx.config.tests.mirror_suffixes):
+            source = files.sources.get(f"{package}.{name}")
+            if source is not None and not source.is_package:
+                return True
+            if name == package_name and package in files.packages:
+                return True
+    return False
+
+
+def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
+    roots = _member_roots(ctx, test_root)
+    if mirror.root is None:
+        return roots
+    return [mirror.root] if mirror.root in roots else []
+
+
+def _ranked(
+    ctx: AnalysisContext, test_root: str, missing: str, modules: list[str]
+) -> list[str]:
+    """Imported modules of the test's own member, nearest to its mirrored path first.
+
+    Within the mirrored package, names closer to the test's name come first; that
+    orders the evidence, it adds no module the test does not import.
+    """
+    roots = _member_roots(ctx, test_root)
+    package, name = missing.rsplit(".", 1)
+    return sorted(
+        (m for m in modules if m.split(".")[0] in roots),
+        key=lambda m: (
+            not is_within(m, package),
+            -difflib.SequenceMatcher(None, name, m.rsplit(".", 1)[-1]).ratio(),
+            m,
+        ),
+    )
+
+
+def _member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:
+    """The root packages a test root belongs to.
+
+    In a workspace, ``libs/agent/tests`` tests the package under ``libs/agent/src``:
+    the source roots sharing the longest leading path with the test root win.
+    """
+    roots = ctx.config.project.root_packages
+    shared = {root: _common_depth(ctx, root, test_root) for root in roots}
+    best = max(shared.values(), default=0)
+    if best == 0:
+        return roots
+    return [root for root in roots if shared[root] == best]
+
+
+def _subjects(subject: str, *, suffixes: bool) -> list[str]:
+    """The module names a test may cover: ``invoice_rounding`` -> also ``invoice``."""
+    if not suffixes:
+        return [subject]
+    parts = subject.split("_")
+    return ["_".join(parts[:end]) for end in range(len(parts), 0, -1)]
+
+
+def _candidates(
+    ctx: AnalysisContext, test_root: str, ranked: list[str], imports: list[_Import]
+) -> list[dict[str, object]]:
+    """The first ranked modules with what the test imports from them; none is a move."""
+    found: list[dict[str, object]] = []
+    for module in ranked[:_MAX_CANDIDATES]:
+        is_package = module in ctx.files.packages
+        target = f"{module}.{module.rsplit('.', 1)[-1]}" if is_package else module
+        found.append(
+            {
+                "module": module,
+                "kind": "package" if is_package else "module",
+                "source": ctx.files.module_to_path(module, package=is_package),
+                "test_path": _mirror_target(ctx, test_root, target),
+                "imports": sorted({i.name for i in imports if i.module == module}),
+                "via": sorted({i.via for i in imports if i.module == module and i.via}),
+            }
+        )
+    return found
 
 
 def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
@@ -485,47 +526,6 @@ _GENERIC_HINT = (
 )
 # Enough to choose from; the JSON says how many there are.
 _MAX_CANDIDATES = 5
-
-
-def _ranked(
-    ctx: AnalysisContext, test_root: str, missing: str, modules: list[str]
-) -> list[str]:
-    """Imported modules of the test's own member, nearest to its mirrored path first.
-
-    Within the mirrored package, names closer to the test's name come first; that
-    orders the evidence, it adds no module the test does not import.
-    """
-    roots = _member_roots(ctx, test_root)
-    package, name = missing.rsplit(".", 1)
-    return sorted(
-        (m for m in modules if m.split(".")[0] in roots),
-        key=lambda m: (
-            not is_within(m, package),
-            -difflib.SequenceMatcher(None, name, m.rsplit(".", 1)[-1]).ratio(),
-            m,
-        ),
-    )
-
-
-def _candidates(
-    ctx: AnalysisContext, test_root: str, ranked: list[str], imports: list[_Import]
-) -> list[dict[str, object]]:
-    """The first ranked modules with what the test imports from them; none is a move."""
-    found: list[dict[str, object]] = []
-    for module in ranked[:_MAX_CANDIDATES]:
-        is_package = module in ctx.files.packages
-        target = f"{module}.{module.rsplit('.', 1)[-1]}" if is_package else module
-        found.append(
-            {
-                "module": module,
-                "kind": "package" if is_package else "module",
-                "source": ctx.files.module_to_path(module, package=is_package),
-                "test_path": _mirror_target(ctx, test_root, target),
-                "imports": sorted({i.name for i in imports if i.module == module}),
-                "via": sorted({i.via for i in imports if i.module == module and i.via}),
-            }
-        )
-    return found
 
 
 def _listing(ctx: AnalysisContext, modules: list[str]) -> str:

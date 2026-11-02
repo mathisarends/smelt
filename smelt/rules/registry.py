@@ -52,6 +52,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.navigation:DeepObjectNavigation",
     "smelt.rules.structure.naming:NoBaseClassPrefix",
     "smelt.rules.structure.discriminators:PreferStrEnumDiscriminator",
+    "smelt.rules.structure.call_order:CallerBeforeCallee",
     "smelt.rules.structure.providers:RedundantDishkaProvider",
     "smelt.rules.structure.settings:SecretSettingsField",
     "smelt.rules.structure.naming:NoBaseClassSuffix",

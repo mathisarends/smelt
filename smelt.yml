@@ -70,6 +70,7 @@ tests:
   layout: mirror
 
 rules:
+  caller-before-callee: warning
   redundant-dishka-provider: warning
   secret-settings-field: warning
   no-base-class-suffix: error

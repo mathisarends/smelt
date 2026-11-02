@@ -415,10 +415,6 @@ def _wrap(label: str, text: str) -> str:
     )
 
 
-def _plural(count: int, word: str) -> str:
-    return f"{count} {word}" if count == 1 else f"{count} {word}s"
-
-
 def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     errors = report.count(Severity.ERROR)
     warnings = report.count(Severity.WARNING)
@@ -442,3 +438,7 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     mark = style("✗", _RED) if report.failed else style("!", _YELLOW)
     counts = [_plural(errors, "error"), _plural(warnings, "warning"), hint_text]
     return f"{mark} " + " · ".join([*counts, *tail])
+
+
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"

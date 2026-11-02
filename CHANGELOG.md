@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT329 (`rules: {caller-before-callee: hint}`) reviews step-down reading
+  order for direct same-visibility functions and ordinary methods. Recursive,
+  shadowed and definition-time-dependent pairs are retained; SMT313's public-first
+  categories take precedence. No definitions are moved automatically.
+
 - Optional SMT328 (`rules: {redundant-dishka-provider: hint}`) reviews Dishka
   provider methods that only forward dependencies to a constructor. Findings
   include a direct registration candidate with recognized decorator options.
