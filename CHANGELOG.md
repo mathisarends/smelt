@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT431 (`rules: {nondeterministic-test-data: warning}`) reviews known
+  random/UUID data generators in tests and fixtures. Prefer fixed test inputs or
+  seeded local generators; intentional randomness tests can retain reasoned
+  suppressions. Production generators are unaffected; no automatic rewrite.
+
 - Optional [SMT324](docs/rules/SMT324.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow

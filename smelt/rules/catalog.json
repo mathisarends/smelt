@@ -651,6 +651,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.testing.randomness:NondeterministicTestData",
+    "code": "SMT431",
+    "name": "nondeterministic-test-data",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": true,
+    "member_local": false,
+    "scope": "test"
+  },
+  {
     "target": "smelt.rules.meta:UnusedSuppression",
     "code": "SMT901",
     "name": "unused-suppression",
