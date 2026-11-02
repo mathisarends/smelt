@@ -69,6 +69,7 @@ tests:
   layout: mirror
 
 rules:
+  secret-settings-field: warning
   no-base-class-prefix: error
   deep-object-navigation: warning
   import-cycle: error
