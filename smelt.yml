@@ -70,6 +70,7 @@ tests:
   layout: mirror
 
 rules:
+  nondeterministic-test-data: error
   prefer-package-import: warning
   no-base-class-prefix: error
   deep-object-navigation: warning

@@ -65,6 +65,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.testing.awaits:AsyncMockWithoutAwaitCheck",
     "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
     "smelt.rules.testing.public_attributes:TestOnlyPublicAttribute",
+    "smelt.rules.testing.randomness:NondeterministicTestData",
     "smelt.rules.meta:UnusedSuppression",
     "smelt.rules.meta:SuppressionWithoutReason",
     "smelt.rules.meta:ResolvedDebt",

@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT431 (`rules: {nondeterministic-test-data: warning}`) reviews known
+  random/UUID data generators in tests and fixtures. Prefer fixed test inputs or
+  seeded local generators; intentional randomness tests can retain reasoned
+  suppressions. Production generators are unaffected; no automatic rewrite.
+
 - SMT108 now reviews mixed package-facade and implementation imports with
   `bundle_imports_at: 2`, includes missing export proposals and blocks bundling
   advice when proposed caller/facade edges close a known runtime import cycle.
