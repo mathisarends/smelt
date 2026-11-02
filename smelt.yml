@@ -70,6 +70,7 @@ tests:
   layout: mirror
 
 rules:
+  redundant-dishka-provider: warning
   secret-settings-field: warning
   no-base-class-suffix: error
   package-only-dunder-all: error

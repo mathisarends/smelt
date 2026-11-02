@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional SMT328 (`rules: {redundant-dishka-provider: hint}`) reviews Dishka
+  provider methods that only forward dependencies to a constructor. Findings
+  include a direct registration candidate with recognized decorator options.
+  Resource factories and additional logic remain valid; no automatic rewrite.
+
 - Optional SMT327 (`rules: {secret-settings-field: warning}`) reviews secret-named
   Pydantic settings fields accepting plain `str`/`bytes`, including optional and
   annotated types. Correct secret types and nonsecret names remain valid.
