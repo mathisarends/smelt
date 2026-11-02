@@ -4,13 +4,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.config import ConfigError
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311"))
+OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311", "SMT325"))
 
 
 def _project(
@@ -45,8 +46,179 @@ def test_class_function_and_ordinary_strings_are_preserved(tmp_path: Path) -> No
     assert violations(tmp_path, OPTIONS) == []
 
 
-def test_docstring_allow_policy(tmp_path: Path) -> None:
-    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: allow")
+@pytest.mark.parametrize("source", ['"""Introduction."""', "VALUE = 1"])
+def test_docstring_allow_policy(tmp_path: Path, source: str) -> None:
+    _project(tmp_path, source, policy="module_docstrings: allow")
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "",
+        "# Module introduction.\n",
+        '""""""',
+        '"""  \n\t """',
+        'b"Introduction"',
+        'f"Introduction"',
+        'VALUE = 1\n"""Too late."""',
+        'class Service:\n    """Class contract."""',
+        'def calculate():\n    """Function contract."""',
+    ],
+)
+def test_required_docstring_reports_missing_or_blank_introduction(
+    tmp_path: Path, source: str
+) -> None:
+    _project(tmp_path, source, policy="module_docstrings: require")
+    before = (tmp_path / "app/module.py").read_bytes()
+
+    [finding] = violations(tmp_path)
+
+    assert finding.code == "SMT325"
+    assert finding.rule == "missing-module-docstring"
+    assert finding.severity.value == "error"
+    assert (finding.path, finding.line, finding.column) == ("app/module.py", 1, 1)
+    assert finding.source_module == "app.module"
+    assert finding.expected == {"contract": "source", "module_docstrings": "require"}
+    assert (tmp_path / "app/module.py").read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '"""Module introduction."""',
+        "# comment\n'Introduction'",
+        '#!/usr/bin/env python\n# coding: utf-8\n"""Einführung."""\nfrom __future__ import annotations',
+        'r"""Multiline\nintroduction."""\nVALUE = 1',
+    ],
+)
+def test_required_docstring_accepts_initial_text(tmp_path: Path, source: str) -> None:
+    _project(tmp_path, source, policy="module_docstrings: require")
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+@pytest.mark.parametrize(
+    "path", ["app/__init__.py", "app/__main__.py", "app/nested/__init__.py"]
+)
+def test_required_docstring_includes_empty_initializers_and_entry_points(
+    tmp_path: Path, path: str
+) -> None:
+    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
+    write_project(tmp_path, {path: ""})
+
+    assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "SMT325")]
+
+
+@pytest.mark.parametrize(
+    ("mode", "source", "code"),
+    [("require", "VALUE = 1", "SMT325"), ("forbid", '"""Introduction."""', "SMT309")],
+)
+def test_docstring_file_exceptions_require_a_reason(
+    tmp_path: Path, mode: str, source: str, code: str
+) -> None:
+    _project(
+        tmp_path,
+        f"# smelt: ignore-file[{code}] -- Compatibility facade documented elsewhere.\n{source}",
+        policy=f"module_docstrings: {mode}",
+    )
+
+    outcome = check(tmp_path)
+
+    assert outcome.report.violations == []
+    assert outcome.report.suppressed == 1
+
+    write_project(
+        tmp_path,
+        {"app/module.py": f"# smelt: ignore-file[{code}]\n{source}"},
+    )
+
+    assert [v.code for v in violations(tmp_path)] == ["SMT902"]
+
+
+@pytest.mark.parametrize("outer", ["require", "forbid"])
+def test_nested_docstring_convention_overrides_outer_in_both_directions(
+    tmp_path: Path, outer: str
+) -> None:
+    inner = "forbid" if outer == "require" else "require"
+    _project(
+        tmp_path,
+        "VALUE = 1" if outer == "require" else '"""Introduction."""',
+        policy=f"module_docstrings: {outer}",
+    )
+    config = tmp_path / "smelt.yml"
+    config.write_text(
+        config.read_text()
+        + f"    nested:\n      match: app.nested\n      module_docstrings: {inner}\n",
+        encoding="utf-8",
+    )
+    write_project(
+        tmp_path,
+        {"app/nested/__init__.py": '"""Introduction."""' if inner == "forbid" else ""},
+    )
+
+    assert {v.path: v.code for v in violations(tmp_path, OPTIONS)} == {
+        "app/module.py": "SMT325" if outer == "require" else "SMT309",
+        "app/nested/__init__.py": "SMT309" if inner == "forbid" else "SMT325",
+    }
+
+
+def test_nested_allow_exempts_required_docstrings(tmp_path: Path) -> None:
+    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
+    config = tmp_path / "smelt.yml"
+    config.write_text(
+        config.read_text()
+        + "    nested:\n      match: app.nested\n      module_docstrings: allow\n",
+        encoding="utf-8",
+    )
+    write_project(tmp_path, {"app/nested/__init__.py": ""})
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+def test_required_docstrings_respect_source_inventory_and_exclusions(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
+    config = tmp_path / "smelt.yml"
+    config.write_text(
+        config.read_text().replace(
+            "root_packages: [app]",
+            "root_packages: [app]\n  exclude:\n    - path: app/generated.py\n      reason: Generated source.",
+        ),
+        encoding="utf-8",
+    )
+    write_project(
+        tmp_path,
+        {"app/generated.py": "VALUE = 1", "tests/test_module.py": "VALUE = 1"},
+    )
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+def test_conflicting_docstring_conventions_are_configuration_errors(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path, "VALUE = 1", policy="module_docstrings: require")
+    config = tmp_path / "smelt.yml"
+    config.write_text(
+        config.read_text()
+        + "    other:\n      match: app\n      module_docstrings: forbid\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="conflicting module docstring policies"):
+        check(tmp_path, OPTIONS)
+
+
+@pytest.mark.parametrize(
+    "setting", ["rules: {missing-module-docstring: off}\n", "rules: {SMT325: off}\n"]
+)
+def test_required_docstring_respects_explicit_off(tmp_path: Path, setting: str) -> None:
+    _project(tmp_path, "VALUE = 1", policy="module_docstrings: require")
+    config = tmp_path / "smelt.yml"
+    config.write_text(config.read_text() + setting, encoding="utf-8")
 
     assert violations(tmp_path, OPTIONS) == []
 
@@ -152,10 +324,13 @@ def test_nested_allow_overrides_outer_policy(tmp_path: Path) -> None:
     assert [v.path for v in violations(tmp_path, OPTIONS)] == ["app/module.py"]
 
 
-def test_absent_policy_preserves_existing_behavior(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "source", ["", '"""Introduction."""\nfrom __future__ import annotations']
+)
+def test_absent_policy_preserves_existing_behavior(tmp_path: Path, source: str) -> None:
     _project(
         tmp_path,
-        '"""Introduction."""\nfrom __future__ import annotations',
+        source,
         policy="required: [module]",
     )
 
