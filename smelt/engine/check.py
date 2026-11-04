@@ -240,7 +240,7 @@ def _run_check(
                 ),
             ),
             len(ctx.files.sources),
-            list(ctx.files.all_python_paths()),
+            list(ctx.files.all_check_paths()),
             dict(ctx.store.dependencies()),
         )
         if cache and key:
@@ -389,7 +389,7 @@ def _introduced(
         before_ctx = AnalysisContext(
             root, ctx.config, cache=ctx.cache, store=before_store
         )
-        before = collect(before_ctx) if before_ctx.files.sources else []
+        before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
         known = Debt.from_violations(before, snippet_reader(before_ctx))
         if cache and key:
             cache.write(key, known.entries, _BASELINE)
@@ -403,7 +403,7 @@ def _introduced(
         # A committed README (or a newly added workspace package) is an empty
         # historical inventory, not an analysis failure. Existing source still
         # goes through normal parsing so corrupt baselines do not pass silently.
-        before = collect(before_ctx) if before_ctx.files.sources else []
+        before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
         known = Debt.from_violations(before, snippet_reader(before_ctx))
         if cache and key:
             cache.write(key, known.entries, _BASELINE)
@@ -740,7 +740,7 @@ def _in_scope(violation: Violation, options: CheckOptions) -> bool:
 
 
 def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
-    known = list(ctx.files.all_python_paths())
+    known = list(ctx.files.all_check_paths())
     candidates = [*known, *(p.path for p in ctx.files.packages.values())]
     for path in paths:
         if not ctx.store.exists(ctx.root / path):
@@ -748,7 +748,7 @@ def _validate_scope(ctx: AnalysisContext, paths: tuple[str, ...]) -> None:
             raise InvalidOptionError(msg, option="paths", value=path)
         if not any(_under_any(p, (path,)) for p in known):
             msg = (
-                f'check path "{path}" contains no analyzed Python source or test files; '
+                f'check path "{path}" contains no analyzed Python source or test files or configured YAML files; '
                 "check project.root_packages, source_roots, test_roots and exclude"
             )
             raise InvalidOptionError(msg, option="paths", value=path)

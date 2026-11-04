@@ -58,6 +58,8 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.naming:NoBaseClassSuffix",
     "smelt.rules.structure.exports:PackageOnlyDunderAll",
     "smelt.rules.structure.headers:MissingModuleDocstring",
+    "smelt.rules.structure.file_naming:YamlFileExtension",
+    "smelt.rules.structure.file_naming:ComposeFileName",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

@@ -73,6 +73,7 @@ class Briefing:
     cycles: tuple[str, ...] = ()
     type_checking_cycles: str = "include"
     canonical_exports: dict[str, str] = field(default_factory=dict)
+    file_naming: dict[str, str] = field(default_factory=dict)
     # cross_feature as fields: default and allow entries, None feature = every feature
     cross_feature_policy: dict[str, Any] | None = None
     policy_hash: str = ""
@@ -107,6 +108,7 @@ class Briefing:
             "coverage": self.coverage,
             "contracts": self.contracts,
             "canonical_exports": self.canonical_exports,
+            "file_naming": self.file_naming,
             "import_style": self.import_style,
             "header_policy": self.header_policy,
             "naming_policy": self.naming_policy,
@@ -250,6 +252,7 @@ def build_briefing(
         cycles=tuple(arch.imports.cycles),
         type_checking_cycles=arch.imports.type_checking_cycles,
         canonical_exports=dict(ctx.config.structure.canonical_exports),
+        file_naming=ctx.config.structure.file_naming.model_dump(exclude_none=True),
         cross_feature_policy={
             "default": arch.cross_feature.default,
             "allow": arch.cross_feature.entries(),
@@ -480,6 +483,10 @@ def _contract_lines(briefing: Briefing) -> list[str]:
         for name, severity in briefing.rules.items()
         if severity != "off"
     ]
+    lines.extend(
+        f"File naming: {key}: {value}"
+        for key, value in sorted(briefing.file_naming.items())
+    )
     lines.extend(
         f"Canonical export: {symbol} -> {export}"
         for symbol, export in sorted(briefing.canonical_exports.items())

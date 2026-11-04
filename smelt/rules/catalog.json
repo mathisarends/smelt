@@ -559,6 +559,36 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.file_naming:YamlFileExtension",
+    "code": "SMT331",
+    "name": "yaml-file-extension",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  },
+  {
+    "target": "smelt.rules.structure.file_naming:ComposeFileName",
+    "code": "SMT332",
+    "name": "compose-file-name",
+    "category": "structure",
+    "default_severity": "error",
+    "requires": [
+      "files"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "project"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

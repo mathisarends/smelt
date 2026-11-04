@@ -39,6 +39,7 @@ def analysis_inputs(
         ctx.config.model_dump(mode="json"),
         [(rule.code, severity.value) for rule, severity in active],
         selection,
+        ctx.files.yaml_paths,
         [
             [
                 source.module,

@@ -18,6 +18,14 @@ class PolicyActivation:
 
 
 POLICIES = {
+    "SMT331": PolicyActivation(
+        "structure.file_naming.yaml_extension selects a canonical YAML extension.",
+        lambda config: config.structure.file_naming.yaml_extension is not None,
+    ),
+    "SMT332": PolicyActivation(
+        "structure.file_naming.compose_basename selects a canonical Compose basename.",
+        lambda config: config.structure.file_naming.compose_basename is not None,
+    ),
     "SMT101": PolicyActivation(
         "architecture.layers defines layer dependencies.",
         lambda config: bool(config.architecture.layers),

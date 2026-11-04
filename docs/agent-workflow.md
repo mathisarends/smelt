@@ -479,6 +479,57 @@ not part of this change. Timings on this Windows machine varied substantially
 between sessions, so these paired observations are not latency guarantees. The
 caller chooses `pre-commit` or `prek`; the hook entry requires no runner migration.
 
+### Canonical configuration filenames
+
+On 2026-11-04, the native 0.5.0 client with the candidate Python package installed
+editable was measured with both filename policies omitted versus enabled. Each
+repository had 250 Python modules with twelve methods each, layered/transitive
+import and member policies, 1,000 generated YAML files plus Compose/Smelt/hook
+configuration, and 1,000 unrelated text files. Seven samples per scenario on
+Windows 11 / CPython 3.14 / prek 0.5.9:
+
+| Scenario | CLI without / with policies (ms) | Complete hook without / with policies (ms) | Hook with policies p95 / max (ms) |
+| --- | ---: | ---: | ---: |
+| Unchanged retry | 68 / 57 | 262 / 268 | 363 |
+| YAML content edit | 69 / 62 | 240 / 257 | 337 |
+| YAML rename | 281 / 298 | 472 / 441 | 797 |
+| Python edit | 500 / 521 | 604 / 657 | 739 |
+
+These warm medians include process startup, Git capture and output. Complete hook
+timings include `prek run smelt --all-files --verbose`, file classification and a
+local `language: system` hook. CLI/hook and policy variants use independent
+repositories/caches and alternate order per repetition. Every sample matched a
+separate uncached analysis. YAML contents are not parsed for filename checks;
+renames invalidate the filename inventory. Rust extracts YAML candidates during
+the existing index capture, without re-opening the index. Python applies policy
+to that flat list; older native clients and disabled native Git use an independent
+flat-inventory fallback. Omitting both policies avoids filename analysis.
+
+The complete hook with both policies took 2.19 seconds on its first observation,
+including worker startup and cache creation. This single cold observation is
+excluded from warm samples. This run supports using the checks at commit time,
+but does not establish a sub-500-ms guarantee after edits: the enabled Python-edit
+median was 657 ms and maximum 739 ms. Installation, `uv run` and other hooks are
+excluded. This compares optional policies in the same candidate, not releases;
+synthetic Windows timings have substantial run-to-run variation.
+
+An additional same-snapshot comparison isolates the avoided directory traversal:
+31 alternating inventory evaluations over 1,003 YAML paths took median 65.35 ms
+for the initial virtual-directory walk, 0.73 ms using Rust candidates and 0.91 ms
+using the flat Python fallback. All three returned identical inventories. These
+inventory timings exclude index capture, store construction and rule evaluation;
+the end-to-end table includes their costs. Most of the gain comes from avoiding
+the second traversal, rather than from the language used to filter filenames.
+The raw data also retain the initial full-hook observation; those separate runs
+are not an interleaved old/new-binary comparison.
+
+See [raw samples, environment and source/binary hashes](benchmarks/file-naming-2026-11-04.json).
+To reproduce with an installed native client and prek:
+
+```bash
+python scripts/benchmark_file_naming.py --analyzer /path/to/smelt --runner /path/to/prek --yaml-files 1000 --repeats 7 --output result.json
+```
+
 ### Historical snapshot implementation
 
 Historical PR #35 sample on 2026-10-30: Windows, CPython 3.14, baseline `d4a77c9`, 250 modules

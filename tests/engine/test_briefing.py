@@ -20,6 +20,27 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(tmp_path)
+    briefing = build_briefing(
+        outcome.context, resolve_target(outcome.context, None), outcome.report
+    )
+    assert briefing.to_json()["file_naming"] == {
+        "yaml_extension": "yml",
+        "compose_basename": "compose",
+    }
+    rendered = render_briefing(briefing, outcome.context)
+    assert "File naming: yaml_extension: yml" in rendered
+    assert "File naming: compose_basename: compose" in rendered
+
+
 def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     tmp_path: Path,
 ) -> None:

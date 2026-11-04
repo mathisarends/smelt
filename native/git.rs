@@ -41,6 +41,7 @@ fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send +
                 Default::default(),
             )?;
             let mut records = Vec::new();
+            let mut yaml_paths = Vec::new();
             for entry in index.entries() {
                 if entry.mode == gix::index::entry::Mode::DIR {
                     return Err("sparse index requires Git expansion".into());
@@ -54,9 +55,20 @@ fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send +
                 )?;
                 records.extend_from_slice(entry.path(&index).as_ref());
                 records.push(0);
+                let path: &[u8] = entry.path(&index).as_ref();
+                if entry.stage_raw() == 0
+                    && entry.mode != gix::index::entry::Mode::COMMIT
+                    && (path.ends_with(b".yaml") || path.ends_with(b".yml"))
+                {
+                    // Derive candidates from this exact captured index. Never
+                    // re-open the index later while applying Python policy.
+                    yaml_paths.push(std::str::from_utf8(path)?.to_owned());
+                }
             }
             let head = repo.head()?.id().map(|id| id.to_string());
-            Ok(json!({"repository": root, "head": head, "records": STANDARD.encode(records)}))
+            Ok(
+                json!({"repository": root, "head": head, "records": STANDARD.encode(records), "yaml_paths": yaml_paths}),
+            )
         }
         "blobs" => {
             let mut blobs = serde_json::Map::new();

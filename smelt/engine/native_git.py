@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 _LIMIT = 64 * 1024 * 1024
 _ENABLED = ContextVar("native_git_enabled", default=False)
-_CAPTURED: ContextVar[tuple[Path, str | None, bytes] | None] = ContextVar(
-    "native_git_index", default=None
+_CAPTURED: ContextVar[tuple[Path, str | None, bytes, tuple[str, ...] | None] | None] = (
+    ContextVar("native_git_index", default=None)
 )
 
 
@@ -77,7 +77,14 @@ def capture(root: Path) -> tuple[Path, str | None] | None:
         if head is not None and not isinstance(head, str):
             return None
         records = base64.b64decode(response["records"], validate=True)
-        _CAPTURED.set((repository, os.environ.get("GIT_INDEX_FILE"), records))
+        _CAPTURED.set(
+            (
+                repository,
+                os.environ.get("GIT_INDEX_FILE"),
+                records,
+                _yaml_paths(response),
+            )
+        )
         return repository, head
     except (KeyError, TypeError, ValueError):
         return None
@@ -99,6 +106,18 @@ def index_records(repository: Path) -> bytes | None:
         )
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def yaml_inventory(repository: Path, records: bytes) -> tuple[str, ...] | None:
+    """Only reuse candidates belonging to the exact manifest being validated."""
+    captured = _CAPTURED.get()
+    if captured is None or captured[:3] != (
+        repository,
+        os.environ.get("GIT_INDEX_FILE"),
+        records,
+    ):
+        return None
+    return captured[3]
 
 
 def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes] | None:
@@ -188,3 +207,10 @@ def _executable() -> str | None:
     ):
         return None
     return os.environ.get("SMELT_NATIVE_CLIENT")
+
+
+def _yaml_paths(response: dict[str, Any]) -> tuple[str, ...] | None:
+    paths = response.get("yaml_paths")
+    if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        return None
+    return tuple(paths)

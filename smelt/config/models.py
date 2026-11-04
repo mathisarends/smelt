@@ -565,12 +565,26 @@ class PackageContract(_Model):
         return self
 
 
+class FileNamingConfig(_Model):
+    """Canonical spellings for project configuration filenames."""
+
+    yaml_extension: Literal["yaml", "yml"] | None = Field(
+        default=None,
+        description="Canonical YAML extension, without a dot (SMT331). Omitted means either spelling is allowed. Applies below the project root, including hidden configuration directories, subject to project.exclude.",
+    )
+    compose_basename: Literal["compose", "docker-compose"] | None = Field(
+        default=None,
+        description="Canonical Compose basename (SMT332), including dotted variants such as compose.override.yaml. The extension is controlled only by yaml_extension. Omitted means either basename is allowed.",
+    )
+
+
 class StructureConfig(_Model):
     """Naming rules for packages and modules."""
 
     forbidden_names: list[str] = Field(
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
+    file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
         description="Named package contracts: required modules and optional public entry points.",
