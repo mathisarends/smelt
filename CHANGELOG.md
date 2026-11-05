@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT333](docs/rules/SMT333.md), enabled with
+  `rules: {prefer-callable-instance: hint}`, reviews classes with one public
+  instance method for `__call__` and an operation-based class name. Findings keep
+  constructor and call-time signatures separate. Existing callable APIs,
+  inheritance and decorated/protocol classes remain valid; no automatic rename.
+
 - Declare canonical YAML extensions and Compose basenames once with
   `structure.file_naming: {yaml_extension: yaml, compose_basename: compose}`.
   [SMT331](docs/rules/SMT331.md) and [SMT332](docs/rules/SMT332.md) flag other
