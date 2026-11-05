@@ -98,6 +98,6 @@ comment on a function signature does not cover its body. Comments beside an
 individual name inside a multiline import stay local to that name's line, so
 neighboring private imports still receive review.
 
-Every rule has a page under [docs/rules](rules/). `smelt init` writes a local
+Every rule has a page under [docs/rules](https://github.com/mathisarends/smelt/blob/main/docs/rules). `smelt init` writes a local
 editor schema with completion, validation and bad/good hover examples derived
 from that same catalog. See [editor setup](configuration.md#editor-completion-hover-and-validation).

@@ -25,6 +25,8 @@ jobs:
           path: ~/.cache/prek
           key: ${{ runner.os }}-prek-${{ hashFiles('.pre-commit-config.yml', 'uv.lock') }}
       - run: uv sync --locked
+      - name: Check generated catalog, rule docs and skill references for drift
+        run: uv run --frozen python scripts/generate.py --check
       - run: uv run prek run --all-files --show-diff-on-failure
 
   test:

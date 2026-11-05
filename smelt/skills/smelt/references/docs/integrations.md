@@ -75,7 +75,7 @@ hook with `entry: uv run --locked smelt check --staged --fail-on warning`.
 To install from source, use `repo: https://github.com/mathisarends/smelt`,
 `rev: v0.5.0` and `id: smelt-staged` (or `id: smelt` for full checks). This source
 installation requires Rust 1.88+ and a platform linker. Use the release's
-matching `v`-prefixed Git tag. See the [agent workflow](agent-workflow.md) for
+matching `v`-prefixed Git tag. See the [agent workflow](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md) for
 cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
 own `.gitignore`; cache files should not enter commits.
 

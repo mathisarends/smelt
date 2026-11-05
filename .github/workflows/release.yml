@@ -51,6 +51,8 @@ jobs:
           if actual_tag != expected_tag:
               raise SystemExit(f"Expected tag {expected_tag!r}, got {actual_tag!r}")
           PY
+      - name: Check generated catalog, rule docs and skill references for drift
+        run: uv run --frozen python scripts/generate.py --check
       - run: uv run --frozen prek run --all-files --show-diff-on-failure
       - run: uv run --frozen pytest
       - run: uv run --frozen smelt check --strict-coverage --fail-on warning

@@ -28,7 +28,7 @@ Use reasoned `ignore.paths` entries for required external filenames.
 `smelt context` includes the declared filename policy; path-scoped, changed and
 staged checks apply to these files too.
 
-The [pre-commit benchmark](agent-workflow.md#canonical-configuration-filenames)
+The [pre-commit benchmark](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#canonical-configuration-filenames)
 records the additional cost with 1,000 YAML files, including complete hook timings.
 
 Prefer private module functions for class-internal static helpers by enabling:

@@ -63,6 +63,12 @@ def smoke(directory: Path) -> None:
                 run([str(binary), *arguments], root)
             run([str(binary), "skill", "install"], root)
             skill = root / ".agents/skills/smelt"
+            if any(
+                path.suffix != ".md"
+                for path in (skill / "references").rglob("*")
+                if path.is_file()
+            ):
+                raise AssertionError("skill includes non-documentation reference data")
             installed_version = (skill / "VERSION").read_text(encoding="utf-8").strip()
             if (
                 run([str(binary), "--version"], root).strip()

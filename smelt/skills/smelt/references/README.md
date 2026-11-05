@@ -10,7 +10,7 @@ same policy.
 Keep database imports out of application code. Keep package internals behind
 their public API. Catch truthiness fallbacks that discard valid values, or tests
 that wait without a timeout. Choose the checks that match your project from the
-[rule catalog](docs/rules/README.md), or [add a rule](CONTRIBUTING.md) for a
+[rule catalog](docs/rules/README.md), or [add a rule](https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md) for a
 recurring pattern.
 
 ## Get started
@@ -162,16 +162,16 @@ Python 3.14. Warm medians, including process startup:
 
 These are measured examples, not a latency guarantee. The first cache build took
 about 2.6–3.9 seconds in that run; installation and other hooks are excluded.
-See the [setup, raw samples and reproduction commands](docs/agent-workflow.md#native-git-retained-worker-state-and-bounded-failure-handling)
+See the [setup, raw samples and reproduction commands](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#native-git-retained-worker-state-and-bounded-failure-handling)
 for the exact policies and timings.
 
 ## Learn more
 
 - [Configuration](docs/configuration.md) and [rule catalog](docs/rules/README.md)
 - [Upgrading](docs/upgrading.md) and [changelog](CHANGELOG.md)
-- [Documentation index](docs/README.md) and [contributing](CONTRIBUTING.md)
+- [Documentation index](https://github.com/mathisarends/smelt/blob/main/docs/README.md) and [contributing](https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md)
 
 Smelt analyzes Python source statically. Use it alongside tests, a type checker
-and Ruff; advisory findings still need review. See [scope and limits](docs/vision.md).
+and Ruff; advisory findings still need review. See [scope and limits](https://github.com/mathisarends/smelt/blob/main/docs/vision.md).
 Run Smelt with a Python version that can parse your code. Release wheels include
 the native client; building from source requires Rust 1.88+ and a platform linker.

@@ -12,6 +12,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   with `smelt skill install`; refresh after upgrading with `--force`, which
   replaces local edits and obsolete references. Use `--destination` to choose
   another skill directory. See [agent skill installation](docs/cli.md#agent-skill).
+  Generated references are checked for drift in CI and release validation with
+  `python scripts/generate.py --check`. The bundle contains consumer guides and
+  rule pages; benchmark/evaluation data and maintainer documents stay in the repo.
 
 - Optional [SMT334](docs/rules/SMT334.md) reviews private literal constants such
   as `DownloadController._DOWNLOADABLE_EXTENSIONS` for placement at module scope.
@@ -323,7 +326,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   failures fall back to Git; `--no-cache` keeps independent reads. Workers also
   retain bounded member dependency state, validating current inputs before reuse
   and discarding borrowed state on failed updates. Worker requests are sent as
-  complete TCP frames. See the [paired CLI and complete-hook measurements](docs/agent-workflow.md).
+  complete TCP frames. See the [paired CLI and complete-hook measurements](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md).
 - Staged checks reuse verified policy blobs before parsing configuration, avoiding
   a redundant Git blob subprocess after source edits. Policy changes still use
   their captured object ID; `--no-cache` keeps independent reads. Paired Windows
@@ -347,13 +350,13 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   Normal cached staged retries capture repository/HEAD and index in two Git
   invocations. A separate benchmark measures a retained Python worker including
   fresh client startup and IPC; it preceded the native client above.
-  See [the performance measurements](docs/agent-workflow.md).
+  See [the performance measurements](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md).
 - Staged checks read captured Git blobs directly instead of writing temporary
   source trees. An unchanged retry can reuse its exact result before loading the
   analysis engine. Per-file import, member and test facts and selected findings
   are reused across edits, with dependency-aware invalidation for callers,
   re-exports and fixtures. `--no-cache` remains an independent check. See the
-  [paired CLI benchmarks and cache limits](docs/agent-workflow.md).
+  [paired CLI benchmarks and cache limits](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md).
 - `architecture.imports.transitive: true` now checks arbitrary import chains for
   layer, cross-feature, shared, composition-root and third-party policies, e.g.
   `domain → shared.utils → sqlalchemy`. Findings include a deterministic shortest
@@ -402,7 +405,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   and the historical baseline. `--no-cache` recomputes independently. Member-use
   analysis avoids repeated per-function tree walks; cache invalidation includes
   contents, inventory, policy, Python targets and analyzer implementation. See
-  [the commit workflow and benchmark](docs/agent-workflow.md). Changed/staged
+  [the commit workflow and benchmark](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md). Changed/staged
   snapshots reject symbolic links; staged fixes require editing and re-staging
   working files explicitly.
 - SMT316 feedback explains how to retain a deliberate public API with a reasoned

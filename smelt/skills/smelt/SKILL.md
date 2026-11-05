@@ -61,6 +61,10 @@ installed skill records the CLI version that installed it.
 
 The following files are copied/generated from the release's official documentation.
 Load only the guide and individual rule pages needed for the task.
+In the Smelt source checkout, edit rule metadata or original guides and run
+`uv run python scripts/generate.py`, then `uv run python scripts/generate.py --check`.
+Never hand-edit the generated rule pages or this skill's `references/`.
+Installed consumer copies refresh through `smelt skill install --force`.
 
 | Task | Reference |
 | --- | --- |
@@ -75,7 +79,6 @@ Load only the guide and individual rule pages needed for the task.
 | Adopt a baseline or reasoned exception | [Debt and suppression](references/docs/adoption.md) |
 | Set up hooks, agents or CI | [Integrations](references/docs/integrations.md) |
 | Upgrade or interpret changed behavior | [Upgrade guide](references/docs/upgrading.md), [changelog](references/CHANGELOG.md) |
-| Extend Smelt itself | [Contributing](references/CONTRIBUTING.md); verify against the source checkout |
 
 For first-time installation use `uv tool install smelt-cli`, then
 `smelt skill install` in the target project. Only run `smelt init` (or
