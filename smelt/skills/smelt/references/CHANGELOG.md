@@ -13,6 +13,12 @@ current configuration and complete rule contracts, see the [README](README.md),
   replaces local edits and obsolete references. Use `--destination` to choose
   another skill directory. See [agent skill installation](docs/cli.md#agent-skill).
 
+- Optional [SMT334](docs/rules/SMT334.md) reviews private literal constants such
+  as `DownloadController._DOWNLOADABLE_EXTENSIONS` for placement at module scope.
+  Enable `rules: {private-class-constant: error}` to block them. Inherited and
+  decorated classes retain their attribute contracts; moves and reference updates
+  remain manual. Implements [#82](https://github.com/mathisarends/smelt/issues/82).
+
 - Optional [SMT333](docs/rules/SMT333.md), enabled with
   `rules: {prefer-callable-instance: hint}`, reviews classes with one public
   instance method for `__call__` and an operation-based class name. Findings keep

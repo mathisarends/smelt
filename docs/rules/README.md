@@ -42,6 +42,7 @@
 | [SMT331](SMT331.md) | yaml-file-extension | structure | policy | error |
 | [SMT332](SMT332.md) | compose-file-name | structure | policy | error |
 | [SMT333](SMT333.md) | prefer-callable-instance | structure | explicit | hint |
+| [SMT334](SMT334.md) | private-class-constant | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |
