@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Ship the official `smelt` agent skill with every wheel and source distribution,
+  including the complete offline rule, configuration and CLI reference. Install
+  with `smelt skill install`; refresh after upgrading with `--force`, which
+  replaces local edits and obsolete references. Use `--destination` to choose
+  another skill directory. See [agent skill installation](docs/cli.md#agent-skill).
+
 - Optional [SMT333](docs/rules/SMT333.md), enabled with
   `rules: {prefer-callable-instance: hint}`, reviews classes with one public
   instance method for `__call__` and an operation-based class name. Findings keep

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.engine.check import rule_meta
@@ -8,8 +9,6 @@ from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set, catalog_metadata
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from smelt.rules.base import RuleContract
 
 # Maintainer scripts outside the analyzed package use this generator entry point.
@@ -25,11 +24,17 @@ def write_generated_files(
 ]:  # smelt: ignore[SMT429] -- Public maintainer entry point called by excluded scripts/generate.py.
     """Write the schema and the rule pages, and report what changed."""
     changed = []
-    for name, content in _generated_files().items():
+    generated = _generated_files()
+    for name, content in generated.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.is_file() or path.read_text(encoding="utf-8") != content:
             path.write_text(content, encoding="utf-8", newline="\n")
+            changed.append(name)
+    for path in (root / "smelt/skills/smelt/references").rglob("*"):
+        name = path.relative_to(root).as_posix()
+        if path.is_file() and name not in generated:
+            path.unlink()
             changed.append(name)
     return changed
 
@@ -42,6 +47,23 @@ def _generated_files() -> dict[str, str]:
     files[f"{DOCS_DIR}/README.md"] = _rule_index(rules)
     for rule in rules:
         files[f"{DOCS_DIR}/{rule.code}.md"] = _rule_page(rule)
+    # Ship the same manual offline; never maintain a second rule/CLI reference.
+    root = Path(__file__).resolve().parent.parent
+    manual = {
+        path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted((root / "docs").rglob("*"))
+        if path.suffix in {".md", ".json"} and not path.is_relative_to(root / DOCS_DIR)
+    }
+    for name in ("README.md", "CONTRIBUTING.md", "CHANGELOG.md"):
+        manual[name] = (root / name).read_text(encoding="utf-8")
+    manual.update(files)
+    files.update(
+        {
+            f"smelt/skills/smelt/references/{name}": content
+            for name, content in manual.items()
+            if name not in {"smelt/rules/catalog.json", SCHEMA_FILE}
+        }
+    )
     return files
 
 

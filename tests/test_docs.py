@@ -76,6 +76,19 @@ class TestGeneratedFiles:
 
         assert found == written
 
+    def test_regeneration_removes_obsolete_skill_references(
+        self, tmp_path: Path
+    ) -> None:
+        obsolete = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT000.md"
+        obsolete.parent.mkdir(parents=True)
+        obsolete.write_text("retired rule", encoding="utf-8")
+
+        changed = write_generated_files(tmp_path)
+
+        assert obsolete.relative_to(tmp_path).as_posix() in changed
+        assert not obsolete.exists()
+        assert (obsolete.parent / "SMT101.md").is_file()
+
 
 class TestSchema:
     def test_id_matches_the_published_path(self) -> None:

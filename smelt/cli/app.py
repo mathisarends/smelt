@@ -79,6 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_discovery(sub)
     _add_maintenance(sub)
     _add_config(sub)
+    _add_skill(sub)
     for command in sub.choices.values():
         _allow_local_config(command)
     return parser
@@ -246,6 +247,25 @@ def _add_config(sub: Subparsers) -> None:
     show.set_defaults(handler=commands.handler("config_show"))
     schema = config_sub.add_parser("schema", help="print the JSON schema")
     schema.set_defaults(handler=commands.handler("config_schema"))
+
+
+def _add_skill(sub: Subparsers) -> None:
+    skill = sub.add_parser("skill", help="install the official bundled Smelt skill")
+    actions = skill.add_subparsers(dest="skill_command", metavar="ACTION")
+    install = actions.add_parser("install", help="install or refresh the bundled skill")
+    install.add_argument(
+        "--destination",
+        type=Path,
+        default=Path(".agents/skills/smelt"),
+        metavar="PATH",
+        help="exact skill directory (default: .agents/skills/smelt)",
+    )
+    install.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing skill directory, including local edits and old references",
+    )
+    install.set_defaults(handler=commands.handler("skill_install"))
 
 
 def _run(args: argparse.Namespace, console: Console, handler: Handler) -> int:

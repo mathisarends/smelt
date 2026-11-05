@@ -72,6 +72,13 @@ and imports implementations only when needed. Register implementation paths in
 predicates live in `rules/activation.py`. Refresh the catalog together with the
 reference using `python scripts/generate.py`.
 
+The official consumer skill lives in `smelt/skills/smelt/SKILL.md`. The same
+generator bundles the user guides and all rule pages under its
+`references/`; edit the original docs and rule metadata, then regenerate. Wheels
+and source distributions ship this bundle. Distribution smoke tests install and
+replace it outside the checkout. Keep its entrypoint aligned with CLI behavior;
+`smelt skill install --force` refreshes installed copies after package upgrades.
+
 Checks read project inputs through `config.source.SourceStore`. Use the store on
 the analysis context or file index for reads, existence tests, discovery and path
 resolution; direct `Path` reads can accidentally inspect unstaged files during a

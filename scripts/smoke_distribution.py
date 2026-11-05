@@ -61,6 +61,22 @@ def smoke(directory: Path) -> None:
                 ["config", "schema"],
             ):
                 run([str(binary), *arguments], root)
+            run([str(binary), "skill", "install"], root)
+            skill = root / ".agents/skills/smelt"
+            installed_version = (skill / "VERSION").read_text(encoding="utf-8").strip()
+            if (
+                run([str(binary), "--version"], root).strip()
+                != f"smelt {installed_version}"
+            ):
+                raise AssertionError("skill version differs from installed CLI")
+            for rule in json.loads(catalog.read_text(encoding="utf-8")):
+                if not (skill / f"references/docs/rules/{rule['code']}.md").is_file():
+                    raise AssertionError(f"missing packaged skill rule {rule['code']}")
+            stale = skill / "obsolete.md"
+            stale.write_text("old skill content", encoding="utf-8")
+            run([str(binary), "skill", "install", "--force"], root)
+            if stale.exists() or not (skill / "SKILL.md").is_file():
+                raise AssertionError("skill replacement retained stale files")
             project = root / "project"
             package = project / "app/domain"
             package.mkdir(parents=True)

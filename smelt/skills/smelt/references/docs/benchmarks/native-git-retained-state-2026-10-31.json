@@ -1,0 +1,1478 @@
+{
+  "date": "2026-10-31",
+  "baseline_revision": "f7fd415f47847a2363a0c4d7360784aeb34a8ad4",
+  "candidate_runtime_revision": "81dbcfa4242860c87886433ec1b256b77e2014b9",
+  "final_runtime_revision": "03f31710b8ffe546ed6b6b1285270a7b48693db1",
+  "final_python_package_bytes_identical_to_measured": true,
+  "builds": {
+    "baseline": {
+      "wheel_sha256": "09fb58ccf8c042d05689413f928e15a881b95569b73710fdb268f14d04ab3524",
+      "source_files": 121,
+      "matches_main_after_line_ending_normalization": true,
+      "byte_identical_to_main": true,
+      "installed_package_bytes_match_wheel": true,
+      "installed_native_bytes_match_wheel": true,
+      "native_binary_sha256": "b495439dff7c9430b0378f3dee4a1149ce66203441706e013c1310f6fd1443ff",
+      "installed_environment": {
+        "package": "C:\\Users\\mathi\\.codex\\visualizations\\2026\\10\\30\\01a18dba-993f-7021-9aa0-8971484d9800\\smelt-breakthrough\\installed-native\\Lib\\site-packages\\smelt\\__init__.py",
+        "wheel_record_active": true,
+        "dependencies": {
+          "smelt-cli": "0.1.6",
+          "grimp": "3.17",
+          "pydantic": "2.14.1",
+          "pydantic-core": "2.50.1",
+          "packaging": "26.3",
+          "pyyaml": "6.0.3"
+        }
+      }
+    },
+    "candidate": {
+      "wheel_sha256": "00f7026f6b3c9f0c14d072f2c93ee77e4b9fb50131e29c71b71fe0b17aa5b997",
+      "source_files": 124,
+      "package_bytes_match_checkout": true,
+      "installed_package_bytes_match_wheel": true,
+      "installed_native_bytes_match_wheel": true,
+      "native_binary_sha256": "6c3163a87f72a6981cf4403ab6158d95b8355e8562dd35750ce53d97d8e64765",
+      "installed_environment": {
+        "package": "C:\\Users\\mathi\\.codex\\visualizations\\2026\\10\\30\\01a18dba-993f-7021-9aa0-8971484d9800\\smelt-native-git\\robust-env\\Lib\\site-packages\\smelt\\__init__.py",
+        "wheel_record_active": true,
+        "dependencies": {
+          "smelt-cli": "0.1.6",
+          "grimp": "3.17",
+          "pydantic": "2.14.1",
+          "pydantic-core": "2.50.1",
+          "packaging": "26.3",
+          "pyyaml": "6.0.3"
+        }
+      }
+    },
+    "final": {
+      "wheel_sha256": "a0c52cbca4e01c58ed16267cc945bacbb1a91112084edfc6b7cd0fa2526ab1cf",
+      "source_files": 124,
+      "package_bytes_match_checkout": true,
+      "installed_package_bytes_match_wheel": true,
+      "installed_native_bytes_match_wheel": true,
+      "native_binary_sha256": "969469803aeebfca87624829e34c28ec4bd95cd93e9ca28656476e24ea403b7d",
+      "installed_environment": {
+        "package": "C:\\Users\\mathi\\.codex\\visualizations\\2026\\10\\30\\01a18dba-993f-7021-9aa0-8971484d9800\\smelt-native-git\\final-env\\Lib\\site-packages\\smelt\\__init__.py",
+        "wheel_record_active": true,
+        "dependencies": {
+          "smelt-cli": "0.1.6",
+          "grimp": "3.17",
+          "pydantic": "2.14.1",
+          "pydantic-core": "2.50.1",
+          "packaging": "26.3",
+          "pyyaml": "6.0.3"
+        }
+      }
+    }
+  },
+  "compiler": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+  "target": "x86_64-pc-windows-gnu",
+  "profile": "release; thin LTO; one codegen unit; stripped",
+  "cli_members": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "members",
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "baseline_mode": "staged",
+    "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+    "seconds": {
+      "baseline_first_check": 2.6676670000015292,
+      "staged_uncached": 2.5929035000153817,
+      "staged_cold_cache": 2.6319681000022683,
+      "staged_warm_median": 0.06512439998914488,
+      "staged_warm_max": 0.08048730000155047,
+      "baseline_staged": 0.14989960001548752,
+      "staged_one_file_edit": 0.2609461999963969,
+      "baseline_staged_one_file_edit": 0.3836760999984108
+    },
+    "samples_seconds": {
+      "staged_warm": [
+        0.07035140000516549,
+        0.05269719997886568,
+        0.06512439998914488,
+        0.06832140000187792,
+        0.08048730000155047,
+        0.06257699997513555,
+        0.05397090001497418
+      ],
+      "baseline_staged": [
+        0.16584650002187118,
+        0.17024619999574497,
+        0.12467069999547675,
+        0.1441155000065919,
+        0.15244639999582432,
+        0.14989960001548752,
+        0.1472368000249844
+      ],
+      "staged_one_file_edit": [
+        0.3064174000173807,
+        0.22377180002513342,
+        0.2731605999870226,
+        0.2609461999963969,
+        0.2300653999845963,
+        0.4083567000052426,
+        0.20623799998429604
+      ],
+      "baseline_staged_one_file_edit": [
+        0.6161236999905668,
+        0.3611296999733895,
+        0.3836760999984108,
+        0.3832260000053793,
+        0.39859070000238717,
+        0.4990414999774657,
+        0.3331132999737747
+      ],
+      "staged_document_edit": [
+        0.08411830000113696,
+        0.038755099987611175,
+        0.049240599997574463,
+        0.040097399993101135,
+        0.06033229999593459,
+        0.07826989999739453,
+        0.057527099997969344
+      ],
+      "baseline_staged_document_edit": [
+        0.20458580000558868,
+        0.11076640000101179,
+        0.22442649997537956,
+        0.11245139999664389,
+        0.12504260000423528,
+        0.10393340000882745,
+        0.11933579997275956
+      ]
+    },
+    "distributions_seconds": {
+      "staged_warm": {
+        "median": 0.06512439998914488,
+        "p95": 0.08048730000155047,
+        "max": 0.08048730000155047
+      },
+      "baseline_staged": {
+        "median": 0.14989960001548752,
+        "p95": 0.17024619999574497,
+        "max": 0.17024619999574497
+      },
+      "staged_one_file_edit": {
+        "median": 0.2609461999963969,
+        "p95": 0.4083567000052426,
+        "max": 0.4083567000052426
+      },
+      "baseline_staged_one_file_edit": {
+        "median": 0.3836760999984108,
+        "p95": 0.6161236999905668,
+        "max": 0.6161236999905668
+      },
+      "staged_document_edit": {
+        "median": 0.057527099997969344,
+        "p95": 0.08411830000113696,
+        "max": 0.08411830000113696
+      },
+      "baseline_staged_document_edit": {
+        "median": 0.11933579997275956,
+        "p95": 0.22442649997537956,
+        "max": 0.22442649997537956
+      }
+    },
+    "introduced_findings": 1,
+    "reports_match": true
+  },
+  "cli_transitive": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "transitive",
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "baseline_mode": "staged",
+    "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+    "seconds": {
+      "baseline_first_check": 2.826309800002491,
+      "staged_uncached": 2.8641181999992114,
+      "staged_cold_cache": 3.909368299995549,
+      "staged_warm_median": 0.0486189000075683,
+      "staged_warm_max": 0.05869380000513047,
+      "baseline_staged": 0.13232929998775944,
+      "staged_one_file_edit": 0.3801532000070438,
+      "baseline_staged_one_file_edit": 0.5867570000118576
+    },
+    "samples_seconds": {
+      "staged_warm": [
+        0.05869380000513047,
+        0.04357849998632446,
+        0.047508299991022795,
+        0.04263430001446977,
+        0.050637299980735406,
+        0.049830000003566965,
+        0.0486189000075683
+      ],
+      "baseline_staged": [
+        0.13232929998775944,
+        0.13349050001124851,
+        0.10405069999978878,
+        0.14216499999747612,
+        0.10658970000804402,
+        0.11340989999007434,
+        0.15768110001226887
+      ],
+      "staged_one_file_edit": [
+        0.2810505999950692,
+        0.6199451000138652,
+        0.37924280000152066,
+        0.4512265000084881,
+        0.39005570000153966,
+        0.3801532000070438,
+        0.25256170000648126
+      ],
+      "baseline_staged_one_file_edit": [
+        0.43420739998691715,
+        0.9719210999901406,
+        0.6617362000106368,
+        0.8264262000157032,
+        0.514721899991855,
+        0.5867570000118576,
+        0.41058590001193807
+      ],
+      "staged_document_edit": [
+        0.049958899995544925,
+        0.06833720000577159,
+        0.056524100014939904,
+        0.05813479999778792,
+        0.05809849998331629,
+        0.046416600001975894,
+        0.8667454999813344
+      ],
+      "baseline_staged_document_edit": [
+        0.16540259998873807,
+        0.17604079999728128,
+        0.14808690000791103,
+        0.11898940001265146,
+        0.12449700001161546,
+        0.1420188999909442,
+        0.651710300007835
+      ]
+    },
+    "distributions_seconds": {
+      "staged_warm": {
+        "median": 0.0486189000075683,
+        "p95": 0.05869380000513047,
+        "max": 0.05869380000513047
+      },
+      "baseline_staged": {
+        "median": 0.13232929998775944,
+        "p95": 0.15768110001226887,
+        "max": 0.15768110001226887
+      },
+      "staged_one_file_edit": {
+        "median": 0.3801532000070438,
+        "p95": 0.6199451000138652,
+        "max": 0.6199451000138652
+      },
+      "baseline_staged_one_file_edit": {
+        "median": 0.5867570000118576,
+        "p95": 0.9719210999901406,
+        "max": 0.9719210999901406
+      },
+      "staged_document_edit": {
+        "median": 0.05809849998331629,
+        "p95": 0.8667454999813344,
+        "max": 0.8667454999813344
+      },
+      "baseline_staged_document_edit": {
+        "median": 0.14808690000791103,
+        "p95": 0.651710300007835,
+        "max": 0.651710300007835
+      }
+    },
+    "introduced_findings": 1,
+    "reports_match": true
+  },
+  "hook_prek_staged": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "members",
+    "runner": "prek 0.5.9 (48c8a3ec4 2026-10-30)",
+    "all_files": false,
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "execution_order": "Alternating order on separate repositories and caches.",
+    "first_hook_seconds": {
+      "baseline": 2.4758026000054087,
+      "candidate": 4.536080399993807
+    },
+    "samples_seconds": {
+      "baseline_retry": [
+        0.40301779998117127,
+        0.34603829999105074,
+        0.32206800000858493,
+        0.340703099995153,
+        0.2969211000017822,
+        0.37013359999400564,
+        0.3983777000103146
+      ],
+      "candidate_retry": [
+        0.2947058999852743,
+        0.22518960002344102,
+        0.20654469999135472,
+        0.24697730000480078,
+        0.2267658000055235,
+        0.22581070000887848,
+        0.3558939000067767
+      ],
+      "baseline_python_edit": [
+        0.6624105999944732,
+        0.602031899994472,
+        0.5289178999955766,
+        0.5287564000173006,
+        0.8212793999991845,
+        0.6973800999985542,
+        0.7767837000137661
+      ],
+      "candidate_python_edit": [
+        0.4376740999869071,
+        0.5101234999892768,
+        0.6190566000004765,
+        0.3821221999824047,
+        0.6124463999876752,
+        0.6892812000005506,
+        1.1983276999962982
+      ]
+    },
+    "distributions_seconds": {
+      "baseline_retry": {
+        "median": 0.34603829999105074,
+        "p95": 0.40301779998117127,
+        "max": 0.40301779998117127
+      },
+      "candidate_retry": {
+        "median": 0.2267658000055235,
+        "p95": 0.3558939000067767,
+        "max": 0.3558939000067767
+      },
+      "baseline_python_edit": {
+        "median": 0.6624105999944732,
+        "p95": 0.8212793999991845,
+        "max": 0.8212793999991845
+      },
+      "candidate_python_edit": {
+        "median": 0.6124463999876752,
+        "p95": 1.1983276999962982,
+        "max": 1.1983276999962982
+      }
+    },
+    "reports_match": true
+  },
+  "hook_precommit_staged": {
+    "modules": 250,
+    "methods_per_module": 12,
+    "repeats": 7,
+    "policy": "members",
+    "runner": "pre-commit 4.7.0",
+    "all_files": false,
+    "environment": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "execution_order": "Alternating order on separate repositories and caches.",
+    "first_hook_seconds": {
+      "baseline": 11.341410299995914,
+      "candidate": 4.4478878999943845
+    },
+    "samples_seconds": {
+      "baseline_retry": [
+        1.5648285999777727,
+        1.9776579000172205,
+        1.6328673000098206,
+        1.3038347999972757,
+        1.353203400009079,
+        1.1391880000010133,
+        1.216419100004714
+      ],
+      "candidate_retry": [
+        1.5574720999866258,
+        1.4948663999966811,
+        1.9445634000003338,
+        1.4620740999816917,
+        1.4101608000055421,
+        1.143531699985033,
+        1.1145738000050187
+      ],
+      "baseline_python_edit": [
+        1.3285430999821983,
+        1.4424769000033848,
+        1.5294893000100274,
+        1.5787559000018518,
+        3.6003997000225354,
+        2.5414607000129763,
+        1.975314100011019
+      ],
+      "candidate_python_edit": [
+        1.966810300014913,
+        1.346996999986004,
+        2.262443300016457,
+        1.493943900015438,
+        2.8664862999867182,
+        2.2633896000043023,
+        1.5459495999966748
+      ]
+    },
+    "distributions_seconds": {
+      "baseline_retry": {
+        "median": 1.353203400009079,
+        "p95": 1.9776579000172205,
+        "max": 1.9776579000172205
+      },
+      "candidate_retry": {
+        "median": 1.4620740999816917,
+        "p95": 1.9445634000003338,
+        "max": 1.9445634000003338
+      },
+      "baseline_python_edit": {
+        "median": 1.5787559000018518,
+        "p95": 3.6003997000225354,
+        "max": 3.6003997000225354
+      },
+      "candidate_python_edit": {
+        "median": 1.966810300014913,
+        "p95": 2.8664862999867182,
+        "max": 2.8664862999867182
+      }
+    },
+    "reports_match": true
+  },
+  "memory": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]",
+    "psutil": "7.2.2",
+    "modules_per_project": 250,
+    "methods_per_module": 12,
+    "steady_snapshots_after_each_worker": [
+      {
+        "workers": 1,
+        "processes": [
+          {
+            "pid": 27752,
+            "name": "python.exe",
+            "rss_bytes": 77828096,
+            "uss_bytes": 62230528
+          },
+          {
+            "pid": 12676,
+            "name": "smelt.exe",
+            "rss_bytes": 7073792,
+            "uss_bytes": 987136
+          },
+          {
+            "pid": 26548,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 37852,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          }
+        ],
+        "rss_bytes": 97091584,
+        "uss_bytes": 64684032
+      },
+      {
+        "workers": 2,
+        "processes": [
+          {
+            "pid": 27752,
+            "name": "python.exe",
+            "rss_bytes": 77828096,
+            "uss_bytes": 62230528
+          },
+          {
+            "pid": 12676,
+            "name": "smelt.exe",
+            "rss_bytes": 7073792,
+            "uss_bytes": 987136
+          },
+          {
+            "pid": 26548,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 37852,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 53548,
+            "name": "python.exe",
+            "rss_bytes": 75067392,
+            "uss_bytes": 59523072
+          },
+          {
+            "pid": 24392,
+            "name": "smelt.exe",
+            "rss_bytes": 7086080,
+            "uss_bytes": 995328
+          },
+          {
+            "pid": 34660,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 16376,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          }
+        ],
+        "rss_bytes": 191434752,
+        "uss_bytes": 126668800
+      },
+      {
+        "workers": 3,
+        "processes": [
+          {
+            "pid": 27752,
+            "name": "python.exe",
+            "rss_bytes": 77828096,
+            "uss_bytes": 62230528
+          },
+          {
+            "pid": 12676,
+            "name": "smelt.exe",
+            "rss_bytes": 7073792,
+            "uss_bytes": 987136
+          },
+          {
+            "pid": 26548,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 37852,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 53548,
+            "name": "python.exe",
+            "rss_bytes": 75067392,
+            "uss_bytes": 59523072
+          },
+          {
+            "pid": 24392,
+            "name": "smelt.exe",
+            "rss_bytes": 7086080,
+            "uss_bytes": 995328
+          },
+          {
+            "pid": 34660,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 16376,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 39588,
+            "name": "python.exe",
+            "rss_bytes": 75571200,
+            "uss_bytes": 60022784
+          },
+          {
+            "pid": 39420,
+            "name": "smelt.exe",
+            "rss_bytes": 7118848,
+            "uss_bytes": 1028096
+          },
+          {
+            "pid": 15344,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 18592,
+            "name": "python.exe",
+            "rss_bytes": 4321280,
+            "uss_bytes": 622592
+          }
+        ],
+        "rss_bytes": 286310400,
+        "uss_bytes": 189186048
+      },
+      {
+        "workers": 4,
+        "processes": [
+          {
+            "pid": 40232,
+            "name": "python.exe",
+            "rss_bytes": 75382784,
+            "uss_bytes": 59838464
+          },
+          {
+            "pid": 23608,
+            "name": "smelt.exe",
+            "rss_bytes": 7102464,
+            "uss_bytes": 1011712
+          },
+          {
+            "pid": 16072,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 54276,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 27752,
+            "name": "python.exe",
+            "rss_bytes": 77828096,
+            "uss_bytes": 62230528
+          },
+          {
+            "pid": 12676,
+            "name": "smelt.exe",
+            "rss_bytes": 7073792,
+            "uss_bytes": 987136
+          },
+          {
+            "pid": 26548,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 37852,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 53548,
+            "name": "python.exe",
+            "rss_bytes": 75067392,
+            "uss_bytes": 59523072
+          },
+          {
+            "pid": 24392,
+            "name": "smelt.exe",
+            "rss_bytes": 7086080,
+            "uss_bytes": 995328
+          },
+          {
+            "pid": 34660,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 16376,
+            "name": "python.exe",
+            "rss_bytes": 4325376,
+            "uss_bytes": 622592
+          },
+          {
+            "pid": 39588,
+            "name": "python.exe",
+            "rss_bytes": 75571200,
+            "uss_bytes": 60022784
+          },
+          {
+            "pid": 39420,
+            "name": "smelt.exe",
+            "rss_bytes": 7118848,
+            "uss_bytes": 1028096
+          },
+          {
+            "pid": 15344,
+            "name": "conhost.exe",
+            "rss_bytes": 7864320,
+            "uss_bytes": 843776
+          },
+          {
+            "pid": 18592,
+            "name": "python.exe",
+            "rss_bytes": 4321280,
+            "uss_bytes": 622592
+          }
+        ],
+        "rss_bytes": 380985344,
+        "uss_bytes": 251502592
+      }
+    ],
+    "observed_peak_including_fifth_foreground_check": {
+      "rss_bytes": 485064704,
+      "process_count": 21,
+      "workers": 4
+    },
+    "fifth_check_seconds": 4.776739499997348,
+    "fifth_check_used_foreground_without_new_worker": true,
+    "reports_match_independent_uncached_checks": true,
+    "limits": [
+      "RSS sums include shared pages more than once; USS is private memory.",
+      "Steady snapshots include Python workers, their native Git helpers, and Windows Python redirectors.",
+      "Peak RSS is sampled every 25 ms; it can miss shorter peaks and includes the fifth foreground process tree.",
+      "Memory depends on project size and rules. The worker count and retained-state budget are limits, not a whole-process byte quota."
+    ]
+  },
+  "final_path_control": {
+    "purpose": "Success-path control after the accepted-failure-only transport fix.",
+    "execution_order": "Alternating order on one staged repository with separate installed environments/workers.",
+    "samples_seconds": {
+      "measured_retry": [
+        0.06883030000608414,
+        0.05050969999865629,
+        0.05164890000014566,
+        0.045746599993435666,
+        0.04620250000152737,
+        0.05002890000469051,
+        0.04490769997937605,
+        0.06237800000235438,
+        0.0478339999972377,
+        0.04719809998641722,
+        0.05073190000257455,
+        0.05723589999251999,
+        0.07350060000317171,
+        0.06860640001832508,
+        0.07780880000791512,
+        0.07765099999960512,
+        0.0751649999874644,
+        0.07953809999162331,
+        0.07349479998811148,
+        0.14194010000210255
+      ],
+      "measured_edit": [
+        0.4007666999823414,
+        0.05886530000134371,
+        0.27294759999495,
+        0.060180600004969165,
+        0.30768160001025535,
+        0.07185320000280626,
+        0.7646761999931186
+      ],
+      "final_retry": [
+        0.054171299998415634,
+        0.05012850000639446,
+        0.05497749999631196,
+        0.0496452999941539,
+        0.04812960000708699,
+        0.043865000014193356,
+        0.04455379999126308,
+        0.05047640000702813,
+        0.047394300025189295,
+        0.04387950000818819,
+        0.043350899999495596,
+        0.0465832999907434,
+        0.05854669999098405,
+        0.05435439999564551,
+        0.06544730000314303,
+        0.06687629999942146,
+        0.05814879998797551,
+        0.05636269997921772,
+        0.09082770001259632,
+        0.07337319999351166
+      ],
+      "final_edit": [
+        0.06416619999799877,
+        0.8640147999976762,
+        0.06086679999134503,
+        0.25068920000921935,
+        0.051230000011855736,
+        0.3010364999936428,
+        0.16800559998955578
+      ]
+    },
+    "distributions_seconds": {
+      "measured_retry": {
+        "median": 0.05980694999743719,
+        "p95": 0.07953809999162331,
+        "max": 0.14194010000210255
+      },
+      "measured_edit": {
+        "median": 0.27294759999495,
+        "p95": 0.7646761999931186,
+        "max": 0.7646761999931186
+      },
+      "final_retry": {
+        "median": 0.05232385000272188,
+        "p95": 0.07337319999351166,
+        "max": 0.09082770001259632
+      },
+      "final_edit": {
+        "median": 0.16800559998955578,
+        "p95": 0.8640147999976762,
+        "max": 0.8640147999976762
+      }
+    },
+    "reports_match_independent_uncached_checks": true,
+    "limits": [
+      "Both builds share the same disk cache and can reuse each other's completed work. This is a successful-path parity check, not an independent edit-speedup benchmark."
+    ]
+  },
+  "limits": [
+    "Both baseline and candidate use installed native clients and retained Python workers with identical dependencies.",
+    "Windows 11 / CPython 3.14, synthetic 250 modules x 12 methods; timings vary with machine load and are not latency guarantees.",
+    "Seven final samples per scenario, alternating execution order; nearest-rank p95 equals maximum. All fifteen-sample earlier controls are retained separately.",
+    "CLI includes native startup, IPC, fresh Git capture, analysis and JSON output; worker/cache initialization is separate.",
+    "The normal staged prek and pre-commit hooks include runner startup and their single Smelt hook; installation and other hooks are excluded.",
+    "Each edited report matches an independent fresh-process --no-cache report. Hook comparisons use separate repositories/caches.",
+    "The candidate combines verified policy blob reuse, a persistent Rust Git reader and bounded retained member dependency state.",
+    "Default cached staged checks use the native reader without Git child processes; --base resolution, unsupported repositories, overrides other than GIT_INDEX_FILE, and --no-cache retain the independent Git path.",
+    "The helper starts once per Python process and drops repository handles after each operation. HEAD and the complete current index are recaptured on every check.",
+    "The worker retains at most two member dependency snapshots with an 8 MiB serialized-content budget. Inputs are compared on every use, and failed mutations relinquish the borrowed snapshot.",
+    "No universal or cold-CI speedup is claimed. Normal working-tree CI checks stay in the foreground; retained dependency state is worker-only.",
+    "Unaccepted worker requests fall back after 250 ms. Accepted responses have a five-second absolute budget; partial bytes cannot prolong it. Foreground checking time is additional.",
+    "Workers use a five-second self-exit watchdog and at most four OS-owned slots per cache directory. A saturated pool uses foreground checking; a crash releases its lock.",
+    "Full CLI/hook and memory measurements use 81dbcfa. The final 03f3171 change only prevents a repeated worker attempt after an accepted transport failure; the same Python package and successful path are checked in the separate final_path_control."
+  ],
+  "earlier_unbuffered_control": {
+    "build": {
+      "runtime_revision": "dd7603e9820a314743e93f220b157781ebd39963",
+      "wheel_sha256": "e0c0f709cbe1337e756ff3324ed3559a639083e7aaace02cb865562cebd11c56",
+      "package_bytes_match_revision": true,
+      "native_binary_sha256": "4e7b80642b823333579d32ce7352f27f88faa30d1c049bf0cc28250e55b231fa"
+    },
+    "cli_members": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 15,
+      "policy": "members",
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "baseline_mode": "staged",
+      "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+      "seconds": {
+        "baseline_first_check": 5.728610599995591,
+        "staged_uncached": 4.596470999997109,
+        "staged_cold_cache": 4.042442000005394,
+        "staged_warm_median": 0.04474750001099892,
+        "staged_warm_max": 0.05955499998526648,
+        "baseline_staged": 0.11617389999446459,
+        "staged_one_file_edit": 0.29559880000306293,
+        "baseline_staged_one_file_edit": 0.4546983000182081
+      },
+      "samples_seconds": {
+        "staged_warm": [
+          0.057906200003344566,
+          0.041232099989429116,
+          0.04190260000177659,
+          0.0365839000151027,
+          0.0427211000060197,
+          0.039412699989043176,
+          0.0585661000222899,
+          0.05431989999487996,
+          0.05570100000477396,
+          0.05955499998526648,
+          0.04474750001099892,
+          0.04318000000785105,
+          0.05558089999249205,
+          0.051015199976973236,
+          0.04088519999640994
+        ],
+        "baseline_staged": [
+          0.11617389999446459,
+          0.11341990000801161,
+          0.10937899997225031,
+          0.14544700001715682,
+          0.1082958999904804,
+          0.11559190001571551,
+          0.11668710000230931,
+          0.13213909999467432,
+          0.15525089998845942,
+          0.13567259997944348,
+          0.1266270999913104,
+          0.1157009000016842,
+          0.10705530000268482,
+          0.17640659998869523,
+          0.11112439999124035
+        ],
+        "staged_one_file_edit": [
+          0.23427430001902394,
+          0.3900242999952752,
+          0.30215839997981675,
+          0.4880356999929063,
+          0.4572178000234999,
+          0.29373170001781546,
+          0.21098930001608096,
+          0.23139380000066012,
+          0.2889623999944888,
+          0.3009897000156343,
+          0.2438458999968134,
+          0.4066093000001274,
+          0.4274276999931317,
+          0.29559880000306293,
+          0.23317530000349507
+        ],
+        "baseline_staged_one_file_edit": [
+          0.33532449998892844,
+          0.5248949000088032,
+          0.4546983000182081,
+          0.5138048999942839,
+          0.6208369999949355,
+          0.4511523999972269,
+          0.3967879000119865,
+          0.3646747999882791,
+          0.5132223000109661,
+          0.4528711000166368,
+          0.3646407999913208,
+          0.5257911999942735,
+          0.7228536999900825,
+          0.49012620002031326,
+          0.4073231999936979
+        ],
+        "staged_document_edit": [
+          0.08250200000475161,
+          0.06266550000873394,
+          0.06220049998955801,
+          0.03780479999841191,
+          0.05975329998182133,
+          0.03917990002082661,
+          0.040980299992952496,
+          0.051814000005833805,
+          0.03964930001529865,
+          0.039247099979547784,
+          0.04079339999589138,
+          0.04149689999758266,
+          0.04869609998422675,
+          0.05607589997816831,
+          0.07297939999261871
+        ],
+        "baseline_staged_document_edit": [
+          0.16743850000784732,
+          0.12448919998132624,
+          0.13214140001218766,
+          0.087129499996081,
+          0.12895209999987856,
+          0.12236619999748655,
+          0.09318269998766482,
+          0.10024279999197461,
+          0.09458629999426194,
+          0.09104589998605661,
+          0.09385590002057143,
+          0.09049470000900328,
+          0.1003218999831006,
+          0.11875630001304671,
+          0.14716180000687018
+        ]
+      },
+      "distributions_seconds": {
+        "staged_warm": {
+          "median": 0.04474750001099892,
+          "p95": 0.05955499998526648,
+          "max": 0.05955499998526648
+        },
+        "baseline_staged": {
+          "median": 0.11617389999446459,
+          "p95": 0.17640659998869523,
+          "max": 0.17640659998869523
+        },
+        "staged_one_file_edit": {
+          "median": 0.29559880000306293,
+          "p95": 0.4880356999929063,
+          "max": 0.4880356999929063
+        },
+        "baseline_staged_one_file_edit": {
+          "median": 0.4546983000182081,
+          "p95": 0.7228536999900825,
+          "max": 0.7228536999900825
+        },
+        "staged_document_edit": {
+          "median": 0.04869609998422675,
+          "p95": 0.08250200000475161,
+          "max": 0.08250200000475161
+        },
+        "baseline_staged_document_edit": {
+          "median": 0.1003218999831006,
+          "p95": 0.16743850000784732,
+          "max": 0.16743850000784732
+        }
+      },
+      "introduced_findings": 1,
+      "reports_match": true
+    },
+    "cli_transitive": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 15,
+      "policy": "transitive",
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "baseline_mode": "staged",
+      "execution_order": "Alternating baseline/candidate order within every sampled scenario.",
+      "seconds": {
+        "baseline_first_check": 1.8782120999821927,
+        "staged_uncached": 2.418398599984357,
+        "staged_cold_cache": 5.402489799977047,
+        "staged_warm_median": 0.05769339998369105,
+        "staged_warm_max": 0.09758639999199659,
+        "baseline_staged": 0.1508529999991879,
+        "staged_one_file_edit": 0.32766170002287254,
+        "baseline_staged_one_file_edit": 0.4782137000001967
+      },
+      "samples_seconds": {
+        "staged_warm": [
+          0.09758639999199659,
+          0.06510390000767075,
+          0.06425290001789108,
+          0.05769339998369105,
+          0.05000969997490756,
+          0.05567580001661554,
+          0.07250560002285056,
+          0.07243650002055801,
+          0.061183599987998605,
+          0.06450179999228567,
+          0.0524215999757871,
+          0.049566200003027916,
+          0.04988849998335354,
+          0.0459786000137683,
+          0.0471638000162784
+        ],
+        "baseline_staged": [
+          0.21247449997463264,
+          0.1508529999991879,
+          0.1881940000166651,
+          0.1405588999914471,
+          0.13531389998388477,
+          0.15404990001115948,
+          0.1445815000042785,
+          0.1986650000035297,
+          0.15580249999766238,
+          0.23913530001300387,
+          0.1379890000098385,
+          0.13892150000901893,
+          0.13005219999467954,
+          0.15722729999106377,
+          0.11625140000251122
+        ],
+        "staged_one_file_edit": [
+          0.3007723999908194,
+          0.25906720000784844,
+          0.26967410001088865,
+          0.32766170002287254,
+          0.3306305000151042,
+          0.23750509999808855,
+          0.23355820000870153,
+          0.30542469999636523,
+          0.25401289999717847,
+          0.4093838999979198,
+          0.5089887999929488,
+          0.5521014000114519,
+          1.3563943000044674,
+          0.7042728000087664,
+          0.4163571000099182
+        ],
+        "baseline_staged_one_file_edit": [
+          0.492104200005997,
+          0.3484787000052165,
+          0.5013816000137012,
+          0.5462853999924846,
+          0.4673478000040632,
+          0.3641667000192683,
+          0.3674635000061244,
+          0.39683579999837093,
+          0.42924219998531044,
+          0.3843785999924876,
+          0.5401340000098571,
+          0.5530395000241697,
+          0.7095764999976382,
+          0.7968063000007533,
+          0.4782137000001967
+        ],
+        "staged_document_edit": [
+          0.049277499987510964,
+          0.04351170000154525,
+          0.04734280001139268,
+          0.037027700018370524,
+          0.05742950001149438,
+          0.13310509998700581,
+          0.7115636999951676,
+          0.2545512999931816,
+          0.804219399986323,
+          0.1174516000028234,
+          0.06601159999263473,
+          0.048896499996772036,
+          0.0715351999970153,
+          0.09463089998462237,
+          0.0797080000047572
+        ],
+        "baseline_staged_document_edit": [
+          0.10226390001480468,
+          0.09501560000353493,
+          0.08826970000518486,
+          0.08972359998733737,
+          0.11046599998371676,
+          0.1939375999791082,
+          1.0052884000178892,
+          0.47383679999620654,
+          3.807690600020578,
+          0.16230159997940063,
+          0.11562430000049062,
+          0.13355619998765178,
+          0.11864169998443685,
+          0.1341348999994807,
+          0.1388116999878548
+        ]
+      },
+      "distributions_seconds": {
+        "staged_warm": {
+          "median": 0.05769339998369105,
+          "p95": 0.09758639999199659,
+          "max": 0.09758639999199659
+        },
+        "baseline_staged": {
+          "median": 0.1508529999991879,
+          "p95": 0.23913530001300387,
+          "max": 0.23913530001300387
+        },
+        "staged_one_file_edit": {
+          "median": 0.32766170002287254,
+          "p95": 1.3563943000044674,
+          "max": 1.3563943000044674
+        },
+        "baseline_staged_one_file_edit": {
+          "median": 0.4782137000001967,
+          "p95": 0.7968063000007533,
+          "max": 0.7968063000007533
+        },
+        "staged_document_edit": {
+          "median": 0.0715351999970153,
+          "p95": 0.804219399986323,
+          "max": 0.804219399986323
+        },
+        "baseline_staged_document_edit": {
+          "median": 0.13355619998765178,
+          "p95": 3.807690600020578,
+          "max": 3.807690600020578
+        }
+      },
+      "introduced_findings": 1,
+      "reports_match": true
+    },
+    "hook_prek_staged": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 15,
+      "policy": "members",
+      "runner": "prek 0.5.9 (48c8a3ec4 2026-10-30)",
+      "all_files": false,
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "execution_order": "Alternating order on separate repositories and caches.",
+      "first_hook_seconds": {
+        "baseline": 2.6174848999944516,
+        "candidate": 2.5657619000121485
+      },
+      "samples_seconds": {
+        "baseline_retry": [
+          0.3425502000027336,
+          0.37881490000290796,
+          0.35178100000484847,
+          0.30706580000696704,
+          0.29835120000643656,
+          0.6362901999964379,
+          0.4755132000136655,
+          0.49420389998704195,
+          0.40835929999593645,
+          0.40560090000508353,
+          0.43259140002192,
+          0.4357871999964118,
+          0.4057840000023134,
+          0.49661610001930967,
+          0.4139613999868743
+        ],
+        "candidate_retry": [
+          0.25241399998776615,
+          0.22882419999223202,
+          0.23683979999623261,
+          0.222306200012099,
+          0.3226182000071276,
+          0.3354747000266798,
+          0.5525369000097271,
+          0.37993680001818575,
+          0.5064275999902748,
+          0.3610053999873344,
+          0.25022130002616905,
+          0.24704809999093413,
+          0.32155259998398833,
+          0.27568390002124943,
+          0.3248754999949597
+        ],
+        "baseline_python_edit": [
+          1.0977868000045419,
+          1.599043399997754,
+          0.464118400006555,
+          0.5140797000203747,
+          0.45131709999986924,
+          0.40624590002698824,
+          0.4474675999954343,
+          1.3032099999836646,
+          0.8358742999844253,
+          0.6337003000080585,
+          0.7907818999956362,
+          0.6946346999902744,
+          0.6538562000205275,
+          0.8954023999976926,
+          0.8019089000008535
+        ],
+        "candidate_python_edit": [
+          1.08053390000714,
+          1.2510217000090051,
+          0.3093306999944616,
+          0.4253195999772288,
+          0.3004535000072792,
+          0.3259865999862086,
+          0.3522159000276588,
+          1.1489819000125863,
+          0.5390792000107467,
+          0.38389660001848824,
+          0.45038349999231286,
+          0.6517384000180755,
+          0.44144610001239926,
+          0.7133924999798182,
+          0.666697100008605
+        ]
+      },
+      "distributions_seconds": {
+        "baseline_retry": {
+          "median": 0.40835929999593645,
+          "p95": 0.6362901999964379,
+          "max": 0.6362901999964379
+        },
+        "candidate_retry": {
+          "median": 0.32155259998398833,
+          "p95": 0.5525369000097271,
+          "max": 0.5525369000097271
+        },
+        "baseline_python_edit": {
+          "median": 0.6946346999902744,
+          "p95": 1.599043399997754,
+          "max": 1.599043399997754
+        },
+        "candidate_python_edit": {
+          "median": 0.45038349999231286,
+          "p95": 1.2510217000090051,
+          "max": 1.2510217000090051
+        }
+      },
+      "reports_match": true
+    },
+    "hook_precommit_staged": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 15,
+      "policy": "members",
+      "runner": "pre-commit 4.7.0",
+      "all_files": false,
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "execution_order": "Alternating order on separate repositories and caches.",
+      "first_hook_seconds": {
+        "baseline": 6.039192700001877,
+        "candidate": 5.773048700008076
+      },
+      "samples_seconds": {
+        "baseline_retry": [
+          1.9498274000070523,
+          1.4337081000267062,
+          1.3343763000157196,
+          2.0865470000135247,
+          1.2956468999909703,
+          3.5670015000214335,
+          2.87539359999937,
+          2.983267600007821,
+          3.782523100002436,
+          3.1548085999966133,
+          3.1545535000041127,
+          3.8499048000085168,
+          4.1347690999973565,
+          1.7895684999821242,
+          1.446701100008795
+        ],
+        "candidate_retry": [
+          2.0302661000168882,
+          2.177238500007661,
+          2.153323199978331,
+          2.523930900002597,
+          2.7377552000107244,
+          2.97120719999657,
+          2.918295900017256,
+          1.8513380000076722,
+          3.5512449000088964,
+          2.2472953000105917,
+          2.6939010999922175,
+          2.4296218999952544,
+          3.1754251000238582,
+          2.0921668000228237,
+          1.5639612000086345
+        ],
+        "baseline_python_edit": [
+          3.052332799998112,
+          4.239518099988345,
+          1.8308759999927133,
+          7.8354011999908835,
+          6.410486699984176,
+          1.6430590000236407,
+          1.4117126000055578,
+          4.117051499983063,
+          3.7309056000085548,
+          3.022063699987484,
+          2.650182599987602,
+          5.089579499996034,
+          4.517796200001612,
+          4.898620499996468,
+          14.824560200009728
+        ],
+        "candidate_python_edit": [
+          1.3351248000108171,
+          5.200126300012926,
+          1.687244999979157,
+          5.019661600003019,
+          7.250233900005696,
+          1.5834334999963176,
+          3.0004788000078406,
+          2.2326784000033513,
+          3.0759485000162385,
+          3.208685899997363,
+          2.876896800007671,
+          4.415245900017908,
+          2.7740534000040498,
+          5.206292500020936,
+          8.619735900021624
+        ]
+      },
+      "distributions_seconds": {
+        "baseline_retry": {
+          "median": 2.87539359999937,
+          "p95": 4.1347690999973565,
+          "max": 4.1347690999973565
+        },
+        "candidate_retry": {
+          "median": 2.4296218999952544,
+          "p95": 3.5512449000088964,
+          "max": 3.5512449000088964
+        },
+        "baseline_python_edit": {
+          "median": 4.117051499983063,
+          "p95": 14.824560200009728,
+          "max": 14.824560200009728
+        },
+        "candidate_python_edit": {
+          "median": 3.0759485000162385,
+          "p95": 8.619735900021624,
+          "max": 8.619735900021624
+        }
+      },
+      "reports_match": true
+    }
+  },
+  "ipc_control": {
+    "streaming_build": {
+      "runtime_revision": "dd7603e9820a314743e93f220b157781ebd39963",
+      "wheel_sha256": "e0c0f709cbe1337e756ff3324ed3559a639083e7aaace02cb865562cebd11c56",
+      "package_bytes_match_revision": true,
+      "native_binary_sha256": "4e7b80642b823333579d32ce7352f27f88faa30d1c049bf0cc28250e55b231fa"
+    },
+    "buffered_build": {
+      "runtime_revision": "8bddb7a",
+      "wheel_sha256": "7f19d25b3ffb583822c706ca8dd980addeebb289370aebab413dd439fe4ba68d",
+      "package_bytes_identical_to_streaming_control": true,
+      "native_binary_sha256": "876bb2bcf4233c813a57069d4909166e6bae8431b8a444ee98742550ec2470b3"
+    },
+    "scenario": "Identical Python package and native Git/state code; only native TCP request framing differs.",
+    "repeats": 20,
+    "execution_order": "Alternating on the same staged repository, separate installed environments/workers.",
+    "samples_seconds": {
+      "streaming": [
+        0.08591789999627508,
+        0.07273499999428168,
+        0.07402220001677051,
+        0.07744580000871792,
+        0.07787350000580773,
+        0.06065129998023622,
+        0.06857100001070648,
+        0.06772699998691678,
+        0.05994180002016947,
+        0.06292590001248755,
+        0.054697300016414374,
+        0.052747200010344386,
+        0.045282899984158576,
+        0.057688700006110594,
+        0.05705120001221076,
+        0.07063719999860041,
+        0.06304520001867786,
+        0.09887389998766594,
+        0.08645909998449497,
+        0.11358140001539141
+      ],
+      "buffered": [
+        0.05839739998918958,
+        0.04889929998898879,
+        0.05790250000427477,
+        0.06459669998730533,
+        0.05067109997617081,
+        0.05466339999111369,
+        0.05036730002029799,
+        0.05106240001623519,
+        0.05018029999337159,
+        0.048954500001855195,
+        0.048664000001735985,
+        0.04954189999261871,
+        0.04811609999160282,
+        0.04430840001441538,
+        0.05062009999528527,
+        0.05336109999916516,
+        0.1350570000067819,
+        0.08059669999056496,
+        0.13741440000012517,
+        0.13174569999682717
+      ]
+    },
+    "distributions_seconds": {
+      "streaming": {
+        "median": 0.06814899999881163,
+        "p95": 0.09887389998766594,
+        "max": 0.11358140001539141
+      },
+      "buffered": {
+        "median": 0.050866749996203,
+        "p95": 0.1350570000067819,
+        "max": 0.13741440000012517
+      }
+    },
+    "reports_match": true
+  }
+}

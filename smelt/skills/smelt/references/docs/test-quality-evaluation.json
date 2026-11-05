@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-10-29",
+  "candidate": {
+    "version": "0.1.5.dev0",
+    "commit": "2ebed245b477ccd12614921d5dba6814b2dd0091",
+    "wheel_sha256": "755913f3c645dc077b42f5812109029e6244788906448bbae4fd0af64b3bc761",
+    "all_wheel_sources_match_checkout": true,
+    "baseline": "v0.1.4"
+  },
+  "validation": {
+    "platform": "Windows",
+    "smelt_pytest": [
+      {
+        "python": "3.13.8",
+        "passed": 1167,
+        "skipped": 2,
+        "environment": "isolated runtime + pytest dependencies from compatible cached wheels"
+      },
+      {
+        "python": "3.14.0",
+        "passed": 1167,
+        "skipped": 2,
+        "environment": "locked development environment"
+      }
+    ],
+    "skip_reasons": [
+      "Interpreter-specific parser case not applicable to the running grammar",
+      "Windows account lacks symlink creation privilege"
+    ],
+    "ruff": "passed",
+    "mypy": "passed",
+    "pre_commit_all_files": "passed",
+    "self_architecture": "passed",
+    "installed_wheel_python313": {
+      "version": "smelt 0.1.5.dev0",
+      "analysis_exit": 1,
+      "counts": {
+        "SMT424": 8,
+        "SMT421": 13,
+        "SMT420": 23
+      },
+      "agrees_with_python314": true,
+      "wheel_sha256": "755913f3c645dc077b42f5812109029e6244788906448bbae4fd0af64b3bc761"
+    }
+  },
+  "maximus": {
+    "source_revision": "a9d3650c6d0a31c0c585f18e0d131781c1db5263",
+    "scope": "Fixed audit-branch snapshot, source analysis plus the explicitly selected codegen suite; no live checkout edits",
+    "comparison": {
+      "workspace-adopted": {
+        "before": {
+          "SMT104": 1,
+          "SMT420": 2,
+          "SMT424": 10
+        },
+        "after": {
+          "SMT104": 1,
+          "SMT420": 12,
+          "SMT422": 13,
+          "SMT424": 7
+        },
+        "config_sha256": "4a594de7bef8d100442e95a5297a13f262df5792c8827ff109511a9f8caa2e4e",
+        "policy_unchanged": true
+      },
+      "workspace-tests": {
+        "before": {
+          "SMT420": 2,
+          "SMT421": 224,
+          "SMT424": 12
+        },
+        "after": {
+          "SMT420": 12,
+          "SMT421": 321,
+          "SMT422": 13,
+          "SMT423": 5,
+          "SMT424": 9
+        },
+        "config_sha256": "3b7a0ebdb2abd7cb94ceecf64803db92746c49b9bd55baa5a02925f99e41c971",
+        "policy_unchanged": true
+      },
+      "hermes-adopted": {
+        "before": {},
+        "after": {
+          "SMT422": 9
+        },
+        "config_sha256": "572fb2a0da5fec764a74b7d6adeb36d91e13c7330f7666daca8a383be15a9240",
+        "policy_unchanged": true
+      },
+      "hermes-tests": {
+        "before": {
+          "SMT421": 20
+        },
+        "after": {
+          "SMT421": 52,
+          "SMT422": 9,
+          "SMT423": 2
+        },
+        "config_sha256": "47abb19612bbc4ede6a8b02b00d2566e623908888ad545b3ffaba01f89548534",
+        "policy_unchanged": true
+      }
+    },
+    "codegen": {
+      "passed": 16,
+      "exit": 0,
+      "empty_generator_probe": [
+        {
+          "test": "test_generated_rpc_client_matches_the_openrpc_contract",
+          "test_revision": "191e93e4",
+          "exit": 0,
+          "assertion_failure": false
+        },
+        {
+          "test": "test_http_codegen_matches_committed_output",
+          "test_revision": "191e93e4",
+          "exit": 0,
+          "assertion_failure": false
+        },
+        {
+          "test": "test_generated_rpc_client_matches_the_openrpc_contract",
+          "test_revision": "a9d3650c6d0a31c0c585f18e0d131781c1db5263",
+          "exit": 1,
+          "assertion_failure": true
+        },
+        {
+          "test": "test_http_codegen_matches_committed_output",
+          "test_revision": "a9d3650c6d0a31c0c585f18e0d131781c1db5263",
+          "exit": 1,
+          "assertion_failure": true
+        }
+      ]
+    },
+    "review_candidates": {
+      "workspace": {
+        "counts": {
+          "SMT426": 76,
+          "SMT425": 4,
+          "SMT427": 10
+        },
+        "interpretation": "Advisory signals, not confirmed defects"
+      },
+      "hermes": {
+        "counts": {
+          "SMT426": 7
+        },
+        "interpretation": "Advisory signals, not confirmed defects"
+      }
+    }
+  },
+  "independent_codebase": {
+    "project": "Canon / fastapi-rpckit",
+    "source_revision": "fc9047b80a7d692ce550f2fafee94248925d010f",
+    "analysis": "static comparison only; pytest not executed",
+    "before": {
+      "SMT420": 15,
+      "SMT424": 8
+    },
+    "after": {
+      "SMT420": 23,
+      "SMT421": 13,
+      "SMT424": 8
+    },
+    "review": "Object attribute replacements and private testing-helper access are real syntax. Their use is often deliberate protocol/resource observation; neither a global mock ban nor public exposure of testing-helper internals is recommended. Six repeated public-method findings on one private class were removed by a portable regression."
+  },
+  "confirmed_improvements": [
+    "Three known mock interaction tests no longer receive missing-outcome warnings.",
+    "22 literal MonkeyPatch targets are recognized across the audited Maximus workspace and Hermes.",
+    "Five retained-controller private helper calls are recognized through a known fixture tuple without executing fixtures.",
+    "Fixed immutable/literal-range loops are preserved; mutable aliases and uncertain control flow remain conservative.",
+    "The original two codegen tests pass with empty generators; the corrected tests fail with AssertionError. Both shapes are covered by independent executable regression fixtures.",
+    "Configuration warnings survive every output format and participate in the warning failure threshold."
+  ],
+  "policy_decisions": {
+    "opt_in_review": [
+      "Vacuous-outcome review",
+      "Known deadlines and scheduler-clock replacement review",
+      "Independent literal-case-loop candidates"
+    ],
+    "not_recommended_as_universal_gates": [
+      "Global mock ban",
+      "A fixed two-patch quota",
+      "Positive-sleep prohibition",
+      "Removing useful documentation",
+      "Exposing production internals solely to satisfy a warning",
+      "Cosmetic assert-None checks for successful validation",
+      "Hand-reordering generated output"
+    ],
+    "deferred": [
+      "Importer/role-specific package API exceptions",
+      "Named/decorator-specific factory ordering",
+      "Optional nested-project manifest discovery"
+    ],
+    "deferred_reason": "Separate architecture policy capabilities require their own examples and scope decisions; they are not prerequisites for this test-evidence iteration."
+  },
+  "limits": [
+    "Static analysis does not prove effectiveness, general reachability or persistence correctness.",
+    "Unknown factories, conflicting fixture outputs, arbitrary field types and external plugin fixture overrides remain uncertain.",
+    "A local timeout is not independent when its scheduler clock is frozen.",
+    "No full Maximus native, Linux or PostgreSQL suite, nor the Python 3.12/other-OS CI matrix, was executed in this iteration.",
+    "Comparison completion permits analysis findings; it does not mean either project inventory is clean."
+  ],
+  "reproduce": "Use scripts/evaluate.py on a fixed source revision with two Smelt import roots and identical policy bytes. Candidate-only policies require a separate review run. See README evaluation workflow."
+}

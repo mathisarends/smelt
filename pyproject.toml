@@ -26,7 +26,10 @@ bindings = "bin"
 module-name = "smelt"
 python-source = "."
 python-packages = ["smelt"]
-include = [{ path = "smelt/rules/catalog.json", format = ["sdist", "wheel"] }]
+include = [
+    { path = "smelt/rules/catalog.json", format = ["sdist", "wheel"] },
+    { path = "smelt/skills/smelt/**/*", format = ["sdist", "wheel"] },
+]
 
 [tool.uv]
 cache-keys = [

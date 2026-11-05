@@ -1,0 +1,203 @@
+{
+  "date": "2026-10-30",
+  "baseline_revision": "aa1163091e9be6f41028b59d956f7cd423e4d8ff",
+  "candidate_branch": "codex/precommit-performance",
+  "builds": {
+    "candidate": {
+      "wheel_sha256": "18ab93d2e4baa5865d4dfef9abe12c60eff41f868801079026405073a56bbf38",
+      "python_source_files": 118
+    },
+    "baseline": {
+      "wheel_sha256": "f4424b53afabdde57b87ff3bff3afb60349a598a7a7a8a9d00bfa81642233d8d",
+      "python_source_files": 111
+    }
+  },
+  "method": {
+    "command": "python scripts/benchmark_checks.py --candidate CANDIDATE_IMPORT_ROOT --baseline BASELINE_IMPORT_ROOT --baseline-mode staged --modules 250 --methods 12 --repeats 7 --policy POLICY",
+    "installation": "Separate non-editable wheel installations with the same dependency environment.",
+    "includes": [
+      "Python startup",
+      "Git subprocesses",
+      "analysis or result-cache lookup",
+      "JSON output"
+    ],
+    "excludes": [
+      "hook runner startup",
+      "uv wrapper",
+      "environment installation"
+    ],
+    "edit_validation": "Each distinct staged edit matches an independent --staged --no-cache report. Baseline finding identities also match (repair hints excluded from identity).",
+    "p95": "Nearest rank; with seven samples this equals the maximum.",
+    "cache_build": "Reported separately as single observations; excluded from warm medians.",
+    "architecture_policy": "Simple layered direct-import graph plus member review; no transitive-policy performance claim.",
+    "limits": "Synthetic repository; session-to-session Windows timing varies. The edit scenarios do not meet a sub-500-ms target."
+  },
+  "policies": {
+    "members": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 7,
+      "policy": "members",
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "baseline_mode": "staged",
+      "seconds": {
+        "baseline_first_check": 4.708621400000993,
+        "baseline_staged": 0.7709275999804959,
+        "staged_uncached": 2.381024799979059,
+        "staged_cold_cache": 1.3634645999991335,
+        "staged_warm_median": 0.31341549998614937,
+        "staged_warm_max": 0.33378019998781383,
+        "staged_one_file_edit": 0.8396236000116915,
+        "baseline_staged_one_file_edit": 1.288868600007845
+      },
+      "samples_seconds": {
+        "baseline_staged": [
+          0.7733899999875575,
+          0.7709275999804959,
+          0.7854343000217341,
+          0.7678849000076298,
+          0.786350800015498,
+          0.7659980999887921,
+          0.7676279000006616
+        ],
+        "staged_warm": [
+          0.33378019998781383,
+          0.31341549998614937,
+          0.3136510999756865,
+          0.3116907999792602,
+          0.3112300999928266,
+          0.3144818999862764,
+          0.3104091999994125
+        ],
+        "staged_one_file_edit": [
+          0.8396236000116915,
+          1.0578691999835428,
+          0.9432582000154071,
+          0.7677097999840043,
+          0.7774302999896463,
+          0.8225137999979779,
+          0.9236256000003777
+        ],
+        "baseline_staged_one_file_edit": [
+          1.3008072999946307,
+          1.2376542999991216,
+          1.332869000005303,
+          1.2260930000047665,
+          1.2692110999778379,
+          1.288868600007845,
+          1.4659527000039816
+        ]
+      },
+      "distributions_seconds": {
+        "baseline_staged": {
+          "median": 0.7709275999804959,
+          "p95": 0.786350800015498,
+          "max": 0.786350800015498
+        },
+        "staged_warm": {
+          "median": 0.31341549998614937,
+          "p95": 0.33378019998781383,
+          "max": 0.33378019998781383
+        },
+        "staged_one_file_edit": {
+          "median": 0.8396236000116915,
+          "p95": 1.0578691999835428,
+          "max": 1.0578691999835428
+        },
+        "baseline_staged_one_file_edit": {
+          "median": 1.288868600007845,
+          "p95": 1.4659527000039816,
+          "max": 1.4659527000039816
+        }
+      },
+      "introduced_findings": 1,
+      "reports_match": true
+    },
+    "architecture": {
+      "modules": 250,
+      "methods_per_module": 12,
+      "repeats": 7,
+      "policy": "architecture",
+      "environment": {
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]"
+      },
+      "baseline_mode": "staged",
+      "seconds": {
+        "baseline_first_check": 4.980814600014128,
+        "baseline_staged": 0.7928288000111934,
+        "staged_uncached": 1.955317300016759,
+        "staged_cold_cache": 1.6997854000073858,
+        "staged_warm_median": 0.36154380001244135,
+        "staged_warm_max": 0.38834349997341633,
+        "staged_one_file_edit": 0.9216282999841496,
+        "baseline_staged_one_file_edit": 1.5642236999992747
+      },
+      "samples_seconds": {
+        "baseline_staged": [
+          0.7972002000024077,
+          0.7865019999735523,
+          0.8305795999767724,
+          0.7928288000111934,
+          0.7819703000131994,
+          0.7835978000075556,
+          0.8346444999915548
+        ],
+        "staged_warm": [
+          0.36785570002393797,
+          0.3599718000041321,
+          0.36154380001244135,
+          0.38834349997341633,
+          0.3584911999932956,
+          0.35621460000402294,
+          0.362415300012799
+        ],
+        "staged_one_file_edit": [
+          0.925447300018277,
+          1.293671199993696,
+          0.9133050999953412,
+          0.9216282999841496,
+          0.8311755000031553,
+          1.521673599985661,
+          0.8488075999775901
+        ],
+        "baseline_staged_one_file_edit": [
+          1.634019300021464,
+          2.6656778000178747,
+          1.5642236999992747,
+          1.533684300025925,
+          1.3518921999784652,
+          1.3901375000132248,
+          1.5665958999888971
+        ]
+      },
+      "distributions_seconds": {
+        "baseline_staged": {
+          "median": 0.7928288000111934,
+          "p95": 0.8346444999915548,
+          "max": 0.8346444999915548
+        },
+        "staged_warm": {
+          "median": 0.36154380001244135,
+          "p95": 0.38834349997341633,
+          "max": 0.38834349997341633
+        },
+        "staged_one_file_edit": {
+          "median": 0.9216282999841496,
+          "p95": 1.521673599985661,
+          "max": 1.521673599985661
+        },
+        "baseline_staged_one_file_edit": {
+          "median": 1.5642236999992747,
+          "p95": 2.6656778000178747,
+          "max": 2.6656778000178747
+        }
+      },
+      "introduced_findings": 1,
+      "reports_match": true
+    }
+  }
+}
