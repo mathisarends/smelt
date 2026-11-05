@@ -116,6 +116,20 @@ hook still checks the index; use `smelt check` to review the working tree.
 
 ## Give agents a short feedback loop
 
+Install the official Smelt skill in your project:
+
+```bash
+smelt skill install
+```
+
+Each `smelt-cli` release bundles the skill with its complete offline rule,
+configuration and command reference. It installs in `.agents/skills/smelt`;
+use `--destination <skill-directory>` for another location. After upgrading
+Smelt, run `smelt skill install --force` to replace the previous skill and remove
+obsolete references. Replacement includes local edits, so keep project-specific
+instructions in `AGENTS.md` or `CLAUDE.md`. Installation works before `smelt init`
+and leaves project policy unchanged. See [CLI and reports](docs/cli.md#agent-skill).
+
 Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md

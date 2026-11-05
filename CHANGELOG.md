@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Ship the official `smelt` agent skill with every wheel and source distribution,
+  including the complete offline rule, configuration and CLI reference. Install
+  with `smelt skill install`; refresh after upgrading with `--force`, which
+  replaces local edits and obsolete references. Use `--destination` to choose
+  another skill directory. See [agent skill installation](docs/cli.md#agent-skill).
+  Generated references are checked for drift in CI and release validation with
+  `python scripts/generate.py --check`. The bundle contains consumer guides and
+  rule pages; benchmark/evaluation data and maintainer documents stay in the repo.
+
 - Optional [SMT334](docs/rules/SMT334.md) reviews private literal constants such
   as `DownloadController._DOWNLOADABLE_EXTENSIONS` for placement at module scope.
   Enable `rules: {private-class-constant: error}` to block them. Inherited and

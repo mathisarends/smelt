@@ -33,6 +33,8 @@ smelt debt --show --format json      # inspect the grouped version-2 baseline
 smelt config show                    # the resolved config
 smelt config show --sources --format json  # policy inputs and explicit value origins
 smelt config schema                  # the JSON schema of smelt.yml
+smelt skill install                  # install the release's official skill in this project
+smelt skill install --force          # replace an older installed skill completely
 ```
 
 Normal checks are read-only. `--fix` applies permitted safe ordering fixes.
@@ -110,3 +112,35 @@ config and reports only violations that are new, wherever they show up. Old viol
 an edited file stay quiet, a new import cycle does not.
 Changing an import's comment, formatting or alias does not make its existing boundary
 violation new; an additional identical violating import still counts as new.
+
+## Agent skill
+
+Every wheel and source distribution includes the official `smelt` skill, its
+offline user guides and complete generated rule reference. No
+source checkout or documentation download is needed:
+
+```bash
+smelt skill install
+smelt skill install --destination .codex/skills/smelt
+smelt skill install --force
+smelt skill install --destination .codex/skills/smelt --force
+```
+
+`--destination` is the exact skill directory, relative to the current directory
+or absolute; the default is `.agents/skills/smelt`. Installation does not require
+`smelt.yml`. It creates missing parents and writes a `VERSION` file identifying
+the installing CLI release. This is a project-local install by default; choose
+your agent's user-level skill directory explicitly if you want a global install.
+
+An existing destination is an error unless `--force` is supplied. A forced update
+replaces the whole skill, including local edits and obsolete references, without
+changing sibling skills. It refuses linked destinations and existing paths that
+are not skill directories (a directory containing `SKILL.md`). The new bundle is
+copied before replacement, and a failed replacement restores the previous skill.
+Keep project-specific additions in the project's own instructions.
+
+After upgrading `smelt-cli`, rerun the installation command with `--force` and the
+same destination. Package upgrades do not silently rewrite installed skills.
+Successful installation exits `0`; destination and filesystem errors exit `2`.
+Use `smelt config schema` to print the complete editor schema from the installed
+release, or `smelt init` to write it alongside a new policy.

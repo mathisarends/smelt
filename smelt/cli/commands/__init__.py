@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from smelt.cli.commands.check import check
     from smelt.cli.commands.discover import context
     from smelt.cli.commands.info import config_schema, config_show, explain, rules
+    from smelt.cli.commands.skill import skill_install
     from smelt.cli.support import Console
 
 
@@ -27,6 +28,7 @@ __all__ = [
     "handler",
     "init",
     "rules",
+    "skill_install",
 ]
 
 
@@ -59,4 +61,5 @@ _MODULES = {
     "explain": "info",
     "init": "adopt",
     "rules": "info",
+    "skill_install": "skill",
 }

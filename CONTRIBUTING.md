@@ -72,6 +72,25 @@ and imports implementations only when needed. Register implementation paths in
 predicates live in `rules/activation.py`. Refresh the catalog together with the
 reference using `python scripts/generate.py`.
 
+The official consumer skill lives in `smelt/skills/smelt/SKILL.md`. The same
+generator bundles selected consumer guides and all rule pages under its
+`references/`. Benchmarks, evaluations, proposals and maintainer guides stay in
+the repository. Links to omitted material point to the repository documentation.
+Edit the original docs and rule metadata, then regenerate:
+
+```bash
+uv run python scripts/generate.py
+uv run python scripts/generate.py --check
+```
+
+The first command synchronizes both rule references and removes obsolete files.
+The second is read-only and fails on missing, changed or extra generated files.
+CI and release validation run this drift check explicitly; do not hand-edit the
+generated catalog, rule pages or skill references. Wheels and source
+distributions ship this bundle. Distribution smoke tests install and
+replace it outside the checkout. Keep its entrypoint aligned with CLI behavior;
+`smelt skill install --force` refreshes installed copies after package upgrades.
+
 Checks read project inputs through `config.source.SourceStore`. Use the store on
 the analysis context or file index for reads, existence tests, discovery and path
 resolution; direct `Path` reads can accidentally inspect unstaged files during a

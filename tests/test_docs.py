@@ -1,5 +1,8 @@
 import json
 import re
+import shutil
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -11,6 +14,7 @@ from smelt.docs import (
     DOCS_DIR,
     SCHEMA_FILE,
     _generated_files,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    check_generated_files,
     write_generated_files,
 )
 from smelt.engine.check import rule_meta
@@ -70,11 +74,111 @@ class TestGeneratedFiles:
 
         assert write_generated_files(tmp_path) == []
 
+    def test_drift_check_detects_edits_missing_and_extra_files_without_writing(
+        self, tmp_path: Path
+    ) -> None:
+        write_generated_files(tmp_path)
+        assert check_generated_files(tmp_path) == []
+        edited = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT101.md"
+        edited.write_text("incorrect rule advice", encoding="utf-8")
+        missing = tmp_path / "docs/rules/SMT101.md"
+        missing.unlink()
+        extra = tmp_path / "smelt/skills/smelt/references/evaluation.json"
+        extra.write_text("{}", encoding="utf-8")
+        retired = tmp_path / "docs/rules/SMT000.md"
+        retired.write_text("retired rule", encoding="utf-8")
+
+        assert check_generated_files(tmp_path) == sorted(
+            path.relative_to(tmp_path).as_posix()
+            for path in (edited, missing, extra, retired)
+        )
+        assert edited.read_text(encoding="utf-8") == "incorrect rule advice"
+        assert not missing.exists()
+        assert extra.exists()
+        assert retired.exists()
+
+        write_generated_files(tmp_path)
+        assert check_generated_files(tmp_path) == []
+        assert not extra.exists()
+        assert not retired.exists()
+
+    def test_skill_reference_inventory_is_current(self) -> None:
+        references = ROOT / "smelt/skills/smelt/references"
+        found = {
+            path.relative_to(ROOT).as_posix()
+            for path in references.rglob("*")
+            if path.is_file()
+        }
+        expected = {
+            name
+            for name in _generated_files()
+            if name.startswith("smelt/skills/smelt/references/")
+        }
+
+        assert found == expected
+        assert all(Path(name).suffix == ".md" for name in found)
+        assert not (references / "docs/agent-workflow.md").exists()
+        assert not (references / "docs/review.md").exists()
+
+    def test_generator_cli_checks_without_writing_and_can_repair_drift(
+        self, tmp_path: Path
+    ) -> None:
+        script = tmp_path / "scripts/generate.py"
+        script.parent.mkdir()
+        shutil.copyfile(ROOT / "scripts/generate.py", script)
+        write_generated_files(tmp_path)
+        command = [sys.executable, str(script)]
+        clean = subprocess.run(  # noqa: S603 - trusted local generator in an isolated fixture
+            [*command, "--check"], capture_output=True, check=False, timeout=30
+        )
+        assert clean.returncode == 0
+        page = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT101.md"
+        original = page.read_bytes()
+        page.write_text("stale advice", encoding="utf-8")
+
+        drift = subprocess.run(  # noqa: S603 - trusted local generator in an isolated fixture
+            [*command, "--check"], capture_output=True, check=False, timeout=30
+        )
+        assert drift.returncode == 1
+        assert b"references/docs/rules/SMT101.md" in drift.stdout
+        assert page.read_text(encoding="utf-8") == "stale advice"
+
+        subprocess.run(command, capture_output=True, check=True, timeout=30)  # noqa: S603 - trusted local generator
+        assert page.read_bytes() == original
+        assert check_generated_files(tmp_path) == []
+
+    def test_skill_links_to_omitted_maintainer_material_use_repository_urls(
+        self,
+    ) -> None:
+        readme = (ROOT / "smelt/skills/smelt/references/README.md").read_text(
+            encoding="utf-8"
+        )
+
+        assert "](CONTRIBUTING.md)" not in readme
+        assert "](docs/agent-workflow.md#" not in readme
+        assert (
+            "https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md" in readme
+        )
+        assert "](docs/configuration.md)" in readme
+
     def test_no_leftover_pages(self) -> None:
         written = {name for name in _generated_files() if name.startswith(DOCS_DIR)}
         found = {f"{DOCS_DIR}/{path.name}" for path in (ROOT / DOCS_DIR).glob("*.md")}
 
         assert found == written
+
+    def test_regeneration_removes_obsolete_skill_references(
+        self, tmp_path: Path
+    ) -> None:
+        obsolete = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT000.md"
+        obsolete.parent.mkdir(parents=True)
+        obsolete.write_text("retired rule", encoding="utf-8")
+
+        changed = write_generated_files(tmp_path)
+
+        assert obsolete.relative_to(tmp_path).as_posix() in changed
+        assert not obsolete.exists()
+        assert (obsolete.parent / "SMT101.md").is_file()
 
 
 class TestSchema:
