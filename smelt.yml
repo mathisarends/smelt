@@ -82,6 +82,7 @@ rules:
   import-cycle: error
   prefer-match-type-dispatch: error
   public-definitions-first: error
+  private-class-constant: error
   internal-public-member: warning
   internal-static-helper: warning
   unnecessary-future-annotations: warning
