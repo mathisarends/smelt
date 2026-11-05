@@ -55,6 +55,8 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"architecture": {"composition_root": ["app.main"]}}, {"SMT106"}),
         ({"architecture": {"wiring": ["app.di"]}}, {"SMT106"}),
         ({"structure": {"forbidden_names": ["utils"]}}, {"SMT302"}),
+        ({"structure": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
+        ({"structure": {"file_naming": {"compose_basename": "compose"}}}, {"SMT332"}),
         ({"project": {"root_packages": ["app"], "coverage": "strict"}}, {"SMT306"}),
         ({"tests": {"layout": "mirror"}}, {"SMT401"}),
         ({"rules": {"private-test-access": "error"}}, {"SMT420"}),

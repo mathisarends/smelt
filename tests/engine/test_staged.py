@@ -114,6 +114,40 @@ def _check(
     return code, json.loads(captured.out)
 
 
+def test_staged_filename_policy_uses_the_index_and_tracks_renames(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = (
+        "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
+    )
+    write_project(
+        repo,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
+            "deploy/compose.yml": "services: {}\n",
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "canonical filenames")
+    monkeypatch.chdir(repo)
+    (repo / "deploy/compose.yml").rename(repo / "deploy/docker-compose.yaml")
+    _git(repo, "add", "deploy")
+    # An unstaged rename and policy edit must not affect the captured inventory.
+    (repo / "deploy/docker-compose.yaml").rename(repo / "deploy/compose.yml")
+    write_project(repo, {"smelt.yml": CONFIG})
+    for flags in ((), (), ("--no-cache",)):
+        code, data = _check(repo, capsys, "--select", "SMT33", *flags)
+        assert code == 1
+        assert [(v["code"], v["path"]) for v in data["violations"]] == [
+            ("SMT331", "deploy/docker-compose.yaml"),
+            ("SMT332", "deploy/docker-compose.yaml"),
+        ]
+    _git(repo, "add", "deploy")
+    code, data = _check(repo, capsys, "--select", "SMT33")
+    assert code == 0
+    assert not data["violations"]
+
+
 @pytest.mark.parametrize("legacy_only", [False, True])
 def test_staged_discovery_matches_cached_and_uncached_config_preference(
     repo: Path,

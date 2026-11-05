@@ -20,11 +20,17 @@ if TYPE_CHECKING:
 
 class GitSourceStore(SourceStore):
     def __init__(
-        self, repository: Path, blobs: dict[str, str], *, cache: FactCache | None = None
+        self,
+        repository: Path,
+        blobs: dict[str, str],
+        *,
+        cache: FactCache | None = None,
+        yaml_paths: tuple[str, ...] | None = None,
     ) -> None:
         self.repository = repository
         self.blobs = blobs
         self.cache = cache
+        self._yaml_paths = yaml_paths
         self._contents: dict[str, bytes] = {}
         self._dependencies: dict[str, str] = {}
         self._children: dict[Path, set[Path]] = {repository: set()}
@@ -38,7 +44,7 @@ class GitSourceStore(SourceStore):
 
     @classmethod
     def from_index(cls, index: GitIndex) -> GitSourceStore:
-        return cls(index.repository, index.blobs)
+        return cls(index.repository, index.blobs, yaml_paths=index.yaml_paths)
 
     @classmethod
     def from_revision(
@@ -73,6 +79,18 @@ class GitSourceStore(SourceStore):
 
     def inventory(self) -> Iterable[Path]:
         return self._files
+
+    def yaml_inventory(self, root: Path) -> Iterable[str] | None:
+        prefix = self.resolve(root).relative_to(self.repository).as_posix()
+        prefix = "" if prefix == "." else prefix + "/"
+        paths = self._yaml_paths
+        if paths is None:
+            # Older native clients and the independent Git fallback use the
+            # same captured manifest, without rebuilding a directory traversal.
+            paths = tuple(
+                path for path in self.blobs if path.endswith((".yaml", ".yml"))
+            )
+        return (path[len(prefix) :] for path in paths if path.startswith(prefix))
 
     def is_dir(self, path: Path) -> bool:
         return path in self._children or self.resolve(path) in self._children

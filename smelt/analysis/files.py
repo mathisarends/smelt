@@ -17,6 +17,17 @@ if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
 
 _SKIP_DIRS = frozenset({"__pycache__", ".git", ".venv", "venv", "node_modules"})
+_YAML_SKIP_DIRS = _SKIP_DIRS | {
+    ".hg",
+    ".svn",
+    ".smelt_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".tox",
+    ".nox",
+    ".worktrees",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +250,50 @@ class FileIndex:
     def all_python_paths(self) -> Iterator[str]:
         yield from (source.path for source in self.sources.values())
         yield from self.tests
+
+    def all_check_paths(self) -> Iterator[str]:
+        yield from self.all_python_paths()
+        yield from self.yaml_paths
+
+    @cached_property
+    def yaml_paths(self) -> tuple[str, ...]:
+        """Filename-only inventory; never parse or read YAML contents."""
+        policy = self.config.structure.file_naming
+        if policy.yaml_extension is None and policy.compose_basename is None:
+            return ()
+        inventory = self.store.yaml_inventory(self.root)
+        if inventory is not None:
+            return tuple(
+                sorted(
+                    path
+                    for path in inventory
+                    if not self.is_excluded(path)
+                    and not (_YAML_SKIP_DIRS & set(path.split("/")[:-1]))
+                )
+            )
+        pending = [self.root]
+        visited: set[Path] = set()
+        found: set[str] = set()
+        while pending:
+            directory = pending.pop()
+            resolved = self.store.resolve(directory)
+            if resolved in visited or not resolved.is_relative_to(self.root):
+                continue
+            visited.add(resolved)
+            for entry in sorted(self.store.iterdir(directory)):
+                relative = entry.relative_to(self.root).as_posix()
+                if self.is_excluded(relative):
+                    continue
+                if self.store.is_dir(entry):
+                    if entry.name not in _YAML_SKIP_DIRS:
+                        pending.append(entry)
+                elif (
+                    entry.suffix in {".yaml", ".yml"}
+                    and self.store.is_file(entry)
+                    and self.store.resolve(entry).is_relative_to(self.root)
+                ):
+                    found.add(relative)
+        return tuple(sorted(found))
 
     def source_root_dir(self, module: str) -> str | None:
         parts = module.split(".")

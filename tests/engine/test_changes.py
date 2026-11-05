@@ -20,6 +20,32 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
+def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "app/__init__.py": "",
+            "deploy/docker-compose.yaml": "",
+        },
+    )
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "initial")
+    options = CheckOptions(changed=True, select=("SMT33",))
+    assert not violations(tmp_path, options)
+    write_project(tmp_path, {"deploy/docker-compose.prod.yaml": ""})
+    found = violations(tmp_path, options)
+    assert [(v.code, v.path) for v in found] == [
+        ("SMT331", "deploy/docker-compose.prod.yaml"),
+        ("SMT332", "deploy/docker-compose.prod.yaml"),
+    ]
+    (tmp_path / "deploy/docker-compose.prod.yaml").rename(
+        tmp_path / "deploy/compose.prod.yml"
+    )
+    assert not violations(tmp_path, options)
+
+
 def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     tmp_path: Path,
 ) -> None:

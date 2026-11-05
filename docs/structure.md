@@ -1,5 +1,36 @@
 # Package contracts and source conventions
 
+Choose canonical configuration filenames once per project:
+
+```yaml
+structure:
+  file_naming:
+    yaml_extension: yaml        # yaml or yml, without a dot
+    compose_basename: compose   # compose or docker-compose
+```
+
+[SMT331](rules/SMT331.md) reports other YAML extensions;
+[SMT332](rules/SMT332.md) reports other Compose basenames. The two policies are
+independent: omitting either allows both spellings for that part of the name.
+No separate `rules` entry is needed; use one to adjust severity or disable a check.
+
+Checks cover lowercase `.yaml` and `.yml` files below the directory containing
+the Smelt configuration, including that configuration, `.github/workflows` and
+deployment directories outside Python source roots. Tool/cache directories and
+`project.exclude` paths are skipped. Dotted Compose variants such as
+`docker-compose.override.yml` retain their variant; custom names such as
+`stack.yaml` are not classified as Compose files. File contents are not parsed.
+
+Findings give the expected path. Rename deliberately, resolve existing target
+files and update references in CI, scripts, `extends` and `docker compose -f`
+arguments. Smelt does not rename files or update references automatically.
+Use reasoned `ignore.paths` entries for required external filenames.
+`smelt context` includes the declared filename policy; path-scoped, changed and
+staged checks apply to these files too.
+
+The [pre-commit benchmark](agent-workflow.md#canonical-configuration-filenames)
+records the additional cost with 1,000 YAML files, including complete hook timings.
+
 Prefer private module functions for class-internal static helpers by enabling:
 
 ```yaml

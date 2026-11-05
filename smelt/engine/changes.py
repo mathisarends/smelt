@@ -2,7 +2,7 @@ import hashlib
 import io
 import os
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +141,7 @@ class GitIndex:
     repository: Path
     identity: str
     blobs: dict[str, str]
+    yaml_paths: tuple[str, ...] | None = field(default=None, compare=False, repr=False)
 
 
 def capture_index(repository: Path) -> GitIndex:
@@ -162,7 +163,12 @@ def capture_index(repository: Path) -> GitIndex:
             raise AnalysisError(f"--staged does not support symbolic links: {path}")
         if mode != b"160000":
             blobs[path.as_posix()] = object_id.decode("ascii")
-    return GitIndex(repository, hashlib.sha256(records).hexdigest(), blobs)
+    return GitIndex(
+        repository,
+        hashlib.sha256(records).hexdigest(),
+        blobs,
+        native_git.yaml_inventory(repository, records),
+    )
 
 
 def resolve_comparison(

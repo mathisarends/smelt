@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Declare canonical YAML extensions and Compose basenames once with
+  `structure.file_naming: {yaml_extension: yaml, compose_basename: compose}`.
+  [SMT331](docs/rules/SMT331.md) and [SMT332](docs/rules/SMT332.md) flag other
+  spellings throughout the project, including hidden configuration directories
+  and dotted Compose variants. Policies are optional, respect exclusions and
+  support staged checks; renames and reference updates remain manual.
+  Staged checks reuse YAML candidates from native Git-index capture, with an
+  independent flat-inventory fallback, instead of walking virtual directories.
+
 ## [0.5.0] - 2026-11-02
 
 Report schema 2, YAML version 1 and the default rule set remain unchanged.

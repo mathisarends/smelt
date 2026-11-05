@@ -10,9 +10,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.analysis.files import FileIndex
 from smelt.cli import main
+from smelt.config.models import SmeltConfig
 from smelt.engine import native_git
 from smelt.engine.changes import capture_index, capture_repository, read_blobs
+from smelt.engine.git_source import GitSourceStore
+from tests.helpers import write_project
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -99,6 +103,75 @@ def test_native_capture_uses_linked_worktree_head_and_index(
     assert captured[0] == worktree.resolve()
     assert native_git.index_records(worktree) == git(
         worktree, "ls-files", "--stage", "-z"
+    )
+
+
+def test_native_yaml_candidates_use_the_captured_index_and_python_policy(
+    tmp_path: Path, service: None
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "app/__init__.py": "",
+            ".github/workflows/ci.yml": "",
+            "deploy/compose.yml": "",
+            "vendor/config.yaml": "",
+            ".venv/config.yaml": "",
+            "config.yaml.bak": "",
+            "workspace/compose.yml": "",
+            "workspace-other/compose.yml": "",
+        },
+    )
+    git(tmp_path, "init", "-q", "-b", "main")
+    git(tmp_path, "add", ".")
+    assert native_git.capture(tmp_path) is not None
+    index = capture_index(tmp_path)
+    assert index.yaml_paths is not None
+    assert set(index.yaml_paths) == {
+        ".github/workflows/ci.yml",
+        "deploy/compose.yml",
+        "vendor/config.yaml",
+        ".venv/config.yaml",
+        "workspace/compose.yml",
+        "workspace-other/compose.yml",
+    }
+    # Neither an index mutation nor an unstaged rename can change this snapshot.
+    (tmp_path / "deploy/compose.yml").rename(tmp_path / "deploy/docker-compose.yaml")
+    git(tmp_path, "add", ".")
+    config = SmeltConfig.model_validate(
+        {
+            "version": 1,
+            "project": {"root_packages": ["app"], "exclude": ["vendor/**"]},
+            "structure": {"file_naming": {"yaml_extension": "yml"}},
+        }
+    )
+    native = FileIndex.discover(
+        tmp_path, config, store=GitSourceStore.from_index(index)
+    )
+    fallback = FileIndex.discover(
+        tmp_path, config, store=GitSourceStore(index.repository, index.blobs)
+    )
+    assert (
+        native.yaml_paths
+        == fallback.yaml_paths
+        == (
+            ".github/workflows/ci.yml",
+            "deploy/compose.yml",
+            "workspace-other/compose.yml",
+            "workspace/compose.yml",
+        )
+    )
+    assert FileIndex(tmp_path / "workspace", config, store=native.store).yaml_paths == (
+        "compose.yml",
+    )
+    with native_git.check_scope(enabled=False):
+        fresh = capture_index(tmp_path)
+    assert fresh.yaml_paths is None
+    assert (
+        "deploy/docker-compose.yaml"
+        in FileIndex.discover(
+            tmp_path, config, store=GitSourceStore.from_index(fresh)
+        ).yaml_paths
     )
 
 
