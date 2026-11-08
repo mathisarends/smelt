@@ -1,0 +1,76 @@
+{
+  "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "dense": true,
+  "measurement": "Measure SMT338's in-process check overhead with and without the rule.\n\nIncludes configuration, discovery, content hashing, the production fact cache and\nrule decisions. Excludes CLI startup/IPC, Git capture and report serialization.\nEvery edited cached report is compared with independent uncached checking.\n",
+  "results": [
+    {
+      "files": 1000,
+      "literal_files": 1000,
+      "findings": 1000,
+      "uncached_enabled_ms": 4848.542399937287,
+      "first_cached_enabled_ms": 2972.8853000560775,
+      "warm": {
+        "disabled": {
+          "median_ms": 409.0969000244513,
+          "samples_ms": [
+            449.2214999627322,
+            486.9787999195978,
+            478.16399997100234,
+            409.0969000244513,
+            591.6880000149831,
+            320.2854000264779,
+            376.7566999886185,
+            345.1989999739453,
+            324.7659000335261
+          ]
+        },
+        "enabled": {
+          "median_ms": 445.6626999890432,
+          "samples_ms": [
+            475.9204000001773,
+            545.9629000397399,
+            445.6626999890432,
+            404.9280999461189,
+            562.2516000876203,
+            386.7145999101922,
+            423.57759992592037,
+            295.7836000714451,
+            455.96199994906783
+          ]
+        }
+      },
+      "edit": {
+        "disabled": {
+          "median_ms": 535.1142999716103,
+          "samples_ms": [
+            578.9608000777662,
+            557.3857000563294,
+            535.1142999716103,
+            506.41930010169744,
+            575.8424999658018,
+            385.62880002427846,
+            463.14130001701415,
+            422.80300008133054,
+            566.8210999574512
+          ]
+        },
+        "enabled": {
+          "median_ms": 634.2399000423029,
+          "samples_ms": [
+            605.254799942486,
+            807.3317999951541,
+            634.2399000423029,
+            589.2903000349179,
+            731.8115000380203,
+            726.0369999567047,
+            496.651399997063,
+            442.1704000560567,
+            781.6789000062272
+          ]
+        }
+      },
+      "reports_match": true
+    }
+  ]
+}
