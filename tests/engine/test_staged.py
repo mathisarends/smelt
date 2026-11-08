@@ -114,6 +114,34 @@ def _check(
     return code, json.loads(captured.out)
 
 
+def test_staged_redundant_module_name_uses_index_paths(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = """version: 1
+project: {root_packages: [app]}
+rules: {redundant-module-name: warning}
+"""
+    write_project(repo, {"smelt.yml": config, "app/cars/application/exporter.py": ""})
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "concise module name")
+    original = repo / "app/cars/application/exporter.py"
+    redundant = original.with_name("car_exporter.py")
+    original.rename(redundant)
+    _git(repo, "add", "app/cars")
+    # Only the index contains the redundant filename and enabled rule.
+    redundant.rename(original)
+    write_project(repo, {"smelt.yml": CONFIG})
+    monkeypatch.chdir(repo)
+
+    for flags in ((), (), ("--no-cache",)):
+        code, data = _check(repo, capsys, "--select", "SMT336", *flags)
+        assert code == 1
+        [finding] = data["violations"]
+        assert finding["code"] == "SMT336"
+        assert finding["path"] == "app/cars/application/car_exporter.py"
+        assert finding["expected"]["suggested_name"] == "exporter.py"
+
+
 def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1468,6 +1468,21 @@
             "warning"
           ]
         },
+        "redundant-module-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
+          "description": "A module filename repeats context already supplied by an ancestor package. cars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning. Repair: Review the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.",
+          "markdownDescription": "**SMT336 \u2014 redundant-module-name**\n\nA module filename repeats context already supplied by an ancestor package.\n\ncars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning.\n\n**Problem**\n```text\nbackend/features/cars/application/car_exporter.py\n```\n\n**Preferred**\n```text\nbackend/features/cars/application/exporter.py\n```\n\nReview the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.\n\nRun `smelt explain redundant-module-name` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2354,6 +2369,21 @@
             "warning"
           ]
         },
+        "^SMT336$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
+          "description": "A module filename repeats context already supplied by an ancestor package. cars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning. Repair: Review the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.",
+          "markdownDescription": "**SMT336 \u2014 redundant-module-name**\n\nA module filename repeats context already supplied by an ancestor package.\n\ncars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning.\n\n**Problem**\n```text\nbackend/features/cars/application/car_exporter.py\n```\n\n**Preferred**\n```text\nbackend/features/cars/application/exporter.py\n```\n\nReview the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.\n\nRun `smelt explain redundant-module-name` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3186,6 +3216,21 @@
             "warning"
           ]
         },
+        "redundant-module-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
+          "description": "A module filename repeats context already supplied by an ancestor package. cars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning. Repair: Review the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.",
+          "markdownDescription": "**SMT336 \u2014 redundant-module-name**\n\nA module filename repeats context already supplied by an ancestor package.\n\ncars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning.\n\n**Problem**\n```text\nbackend/features/cars/application/car_exporter.py\n```\n\n**Preferred**\n```text\nbackend/features/cars/application/exporter.py\n```\n\nReview the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.\n\nRun `smelt explain redundant-module-name` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3815,6 +3860,21 @@
           "markdownDescription": "**SMT335 \u2014 internal-public-attribute**\n\nA public instance or class data attribute has no observed access outside its class.\n\nImplementation state should not advertise a public interface solely because it lacks a leading underscore. This opt-in review covers direct instance assignments in ordinary methods and simple class data declarations on unambiguous top-level classes, including unused attributes. Any same-named access outside the owning class conservatively preserves visibility, including unresolved receivers, writes, deletions and literal reflection. Test accesses count even when test-quality rules exclude the file; test-only reads remain the responsibility of SMT430, so these rules do not overlap. Private names, methods/properties, possible descriptors, decorated/inherited/subclassed classes, slots and custom attribute hooks are excluded. This also preserves dataclass, attrs, Pydantic, NamedTuple and TypedDict data contracts. Classes explicitly exported through __all__ or public package-facade bindings retain their public attributes, including aliased re-export chains. Inheritance is excluded as a whole rather than attempting to prove which fields a framework or base class owns. Excluded files (including maintainer scripts), unselected packages, external consumers and arbitrary dynamic access are unassessed, not proven absent; usage_scope records the configured analysis boundary. This review does not prove that renaming is safe.\n\n**Problem**\n```python\nclass Readiness:\n    def __init__(self, initial):\n        self.initial = initial\n    def select(self):\n        return self.initial\n```\n\n**Preferred**\n```python\nclass Readiness:\n    def __init__(self, initial):\n        self._initial = initial\n    def select(self):\n        return self._initial\n```\n\nReview whether the attribute belongs to the supported API. For internal state, add a leading underscore and update internal reads and writes, checking name collisions and dynamic consumers. Preserve deliberate public contracts with `# smelt: ignore[SMT335] -- <specific API reason>` on the reported assignment or declaration, or a package rule override. Suggested names avoid observed collisions; no automatic rename is performed. Enable rules: {internal-public-attribute: warning} or select --select SMT335.\n\nRun `smelt explain internal-public-attribute` for details.",
           "examples": [
             "warning"
+          ]
+        },
+        "^SMT336$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
+          "description": "A module filename repeats context already supplied by an ancestor package. cars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning. Repair: Review the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.",
+          "markdownDescription": "**SMT336 \u2014 redundant-module-name**\n\nA module filename repeats context already supplied by an ancestor package.\n\ncars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning.\n\n**Problem**\n```text\nbackend/features/cars/application/car_exporter.py\n```\n\n**Preferred**\n```text\nbackend/features/cars/application/exporter.py\n```\n\nReview the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.\n\nRun `smelt explain redundant-module-name` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import keyword
 from itertools import chain
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,8 @@ from smelt.rules.structure.layout import package_location
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+_MIN_PLURAL_LENGTH = 4
 
 
 class ForbiddenPackageName(Rule):
@@ -233,6 +236,110 @@ class NoBaseClassSuffix(Rule):
                     },
                     hint="Name the class after its responsibility or contract instead of its inheritance role; update references and exports.",
                 )
+
+
+class RedundantModuleName(Rule):
+    code = "SMT336"
+    name = "redundant-module-name"
+    category = Category.STRUCTURE
+    default_severity = Severity.HINT
+    requires = frozenset({Index.FILES})
+    doc = RuleDoc(
+        summary="A module filename repeats context already supplied by an ancestor package.",
+        rationale=(
+            "cars.application.car_exporter repeats the cars context; "
+            "cars.application.exporter keeps the responsibility visible without "
+            "restating the path. This opt-in review checks a whole ancestor "
+            "package name at either underscore-delimited end of a module name, "
+            "including across intervening layer packages. It also recognizes a "
+            "single regular trailing s (cars/car, purchase_orders/purchase_order). "
+            "It does not infer irregular plurals or strip ss, us, is, ies, ses, "
+            "xes, zes, ches or shes endings. Leading underscores are preserved. "
+            "Substrings, names with no remaining responsibility, package names, "
+            "dunder modules and separately discovered tests are outside scope. "
+            "Source-root directory names are not package context. Findings are "
+            "advisory because repetition may serve a published API or domain meaning."
+        ),
+        bad="backend/features/cars/application/car_exporter.py",
+        good="backend/features/cars/application/exporter.py",
+        fix=(
+            "Review the shorter filename and update imports and facade exports "
+            "when renaming. An occupied module/package name is not suggested. "
+            "No files are renamed automatically. Enable with rules: "
+            "{redundant-module-name: hint}, globally or in a package contract, "
+            "or --select SMT336. Use a package off override or a reasoned "
+            "file suppression for intentional public names."
+        ),
+        config=("rules", "structure.contracts"),
+        example_language="text",
+    )
+
+    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        files = ctx.files
+        for module, source in sorted(files.sources.items()):
+            if source.is_package:
+                continue
+            match = _redundant_module_context(module)
+            if match is None:
+                continue
+            ancestor, repeated, shorter = match
+            parent = module.rsplit(".", 1)[0]
+            target = f"{parent}.{shorter}"
+            suggested = (
+                None
+                if target in files.sources or target in files.packages
+                else f"{shorter}.py"
+            )
+            info = ctx.model.info(module)
+            yield self.violation(
+                f'module name "{last_segment(module)}" repeats "{repeated}" from package "{ancestor}"',
+                path=source.path,
+                source_module=module,
+                feature=info.feature if info else None,
+                layer=info.layer if info else None,
+                expected={
+                    "ancestor": ancestor,
+                    "repeated_name": repeated,
+                    "suggested_name": suggested,
+                    "automatic_rename": False,
+                },
+                hint=(
+                    f'Review renaming this file to "{suggested}"; update imports and facade exports.'
+                    if suggested
+                    else "Choose a responsibility-based filename; the shorter name is already occupied by a module or package. Update imports and facade exports."
+                ),
+            )
+
+
+def _redundant_module_context(module: str) -> tuple[str, str, str] | None:
+    parts = module.split(".")
+    name = parts[-1]
+    if name.startswith("__") and name.endswith("__"):
+        return None
+    bare = name.lstrip("_")
+    private_prefix = name[: len(name) - len(bare)]
+    for end in range(len(parts) - 1, 0, -1):
+        context = parts[end - 1].lstrip("_")
+        if not context:
+            continue
+        variants = [context]
+        if (
+            len(context) >= _MIN_PLURAL_LENGTH
+            and context.endswith("s")
+            and not context.endswith(
+                ("ss", "us", "is", "ies", "ses", "xes", "zes", "ches", "shes")
+            )
+        ):
+            variants.append(context[:-1])
+        for repeated in variants:
+            shorter = None
+            if bare.startswith(f"{repeated}_"):
+                shorter = bare[len(repeated) + 1 :]
+            elif bare.endswith(f"_{repeated}"):
+                shorter = bare[: -len(repeated) - 1]
+            if shorter and shorter.isidentifier() and not keyword.iskeyword(shorter):
+                return ".".join(parts[:end]), repeated, private_prefix + shorter
+    return None
 
 
 def _has_base_prefix(name: str) -> bool:

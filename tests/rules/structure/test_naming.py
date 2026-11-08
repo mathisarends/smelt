@@ -529,3 +529,184 @@ class TestNoBaseClassPrefix:
         (root / "app/service.py").write_text("class Service: pass\n", encoding="utf-8")
 
         assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+
+
+REDUNDANT_CONFIG = """version: 1
+project: {root_packages: [backend]}
+rules: {redundant-module-name: hint}
+"""
+REDUNDANT_PATH = "backend/features/cars/application/car_exporter.py"
+
+
+class TestRedundantModuleName:
+    def test_issue_94_example_and_valid_neighbor(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": REDUNDANT_CONFIG,
+                REDUNDANT_PATH: "",
+                "backend/features/cars/application/importer.py": "",
+            },
+        )
+
+        [finding] = violations(root)
+
+        assert codes_at([finding]) == [("SMT336", REDUNDANT_PATH, None)]
+        assert finding.source_module == "backend.features.cars.application.car_exporter"
+        assert finding.severity.value == "hint"
+        assert finding.expected == {
+            "ancestor": "backend.features.cars",
+            "repeated_name": "car",
+            "suggested_name": "exporter.py",
+            "automatic_rename": False,
+        }
+        assert (root / REDUNDANT_PATH).is_file()
+        assert not (root / REDUNDANT_PATH).with_name("exporter.py").exists()
+
+    @pytest.mark.parametrize(
+        ("package", "filename", "suggested"),
+        [
+            ("cars", "cars_exporter", "exporter.py"),
+            ("cars", "exporter_car", "exporter.py"),
+            ("cars", "exporter_cars", "exporter.py"),
+            ("cars", "_car_exporter", "_exporter.py"),
+            ("purchase_orders", "purchase_order_exporter", "exporter.py"),
+            ("purchase_orders", "purchase_orders_exporter", "exporter.py"),
+            ("status", "status_report", "report.py"),
+            ("_cars", "car_exporter", "exporter.py"),
+        ],
+    )
+    def test_whole_ancestor_names_at_either_end(
+        self, tmp_path: Path, package: str, filename: str, suggested: str
+    ) -> None:
+        path = f"backend/{package}/{filename}.py"
+        root = write_project(tmp_path, {"smelt.yml": REDUNDANT_CONFIG, path: ""})
+
+        [finding] = violations(root)
+
+        assert codes_at([finding]) == [("SMT336", path, None)]
+        assert finding.expected is not None
+        assert finding.expected["suggested_name"] == suggested
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "backend/cars/cartridge.py",
+            "backend/cars/cargo_exporter.py",
+            "backend/cars/electric_car_exporter.py",
+            "backend/cars/car.py",
+            "backend/cars/cars.py",
+            "backend/cars/car_class.py",
+            "backend/cars/car_123.py",
+            "backend/people/person_exporter.py",
+            "backend/status/statu_exporter.py",
+            "backend/analysis/analysi_exporter.py",
+            "backend/classes/classe_exporter.py",
+            "backend/categories/categorie_exporter.py",
+            "backend/cars/car_exporter/__init__.py",
+            "backend/main/__main__.py",
+            "tests/cars/test_car_exporter.py",
+        ],
+    )
+    def test_valid_neighbors_and_out_of_scope_names(
+        self, tmp_path: Path, path: str
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {"smelt.yml": REDUNDANT_CONFIG, "backend/__init__.py": "", path: ""},
+        )
+
+        assert violations(root) == []
+
+    @pytest.mark.parametrize("selector", ["SMT336", "redundant-module-name", "SMT33"])
+    def test_opt_in_selection_without_architecture_policy(
+        self, tmp_path: Path, selector: str
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": REDUNDANT_CONFIG.split("rules:", maxsplit=1)[0],
+                REDUNDANT_PATH: "",
+            },
+        )
+
+        assert violations(root) == []
+        assert codes_at(violations(root, CheckOptions(select=(selector,)))) == [
+            ("SMT336", REDUNDANT_PATH, None)
+        ]
+        assert (
+            violations(root, CheckOptions(select=(selector,), ignore=("SMT336",))) == []
+        )
+
+    def test_closest_package_override_and_file_suppression(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": REDUNDANT_CONFIG
+                + """structure:
+  contracts:
+    compatibility:
+      match: backend.features.cars
+      rules: {redundant-module-name: off}
+    modern:
+      match: backend.features.cars.application
+      rules: {redundant-module-name: warning}
+""",
+                REDUNDANT_PATH: "",
+                "backend/features/cars/car_legacy.py": "",
+                "backend/features/cars/application/car_api.py": "# smelt: ignore-file[SMT336] -- Published module path.\n",
+            },
+        )
+
+        [finding] = violations(root, CheckOptions(select=("SMT336",)))
+
+        assert finding.path == REDUNDANT_PATH
+        assert finding.severity.value == "warning"
+
+    def test_source_roots_and_excluded_files_are_not_context(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": """version: 1
+project:
+  root_packages: [backend]
+  source_roots: [cars]
+  exclude: [cars/backend/cars/car_generated.py]
+rules: {redundant-module-name: hint}
+""",
+                "cars/backend/car_exporter.py": "",
+                "cars/backend/cars/car_generated.py": "",
+            },
+        )
+
+        assert violations(root) == []
+
+    @pytest.mark.parametrize("occupied", ["exporter.py", "exporter/__init__.py"])
+    def test_collisions_and_renames_invalidate_cached_findings(
+        self, tmp_path: Path, occupied: str
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {"smelt.yml": REDUNDANT_CONFIG, REDUNDANT_PATH: ""},
+        )
+        [initial] = violations(root)
+        assert initial.expected is not None
+        assert initial.expected["suggested_name"] == "exporter.py"
+
+        sibling = str((root / REDUNDANT_PATH).parent.relative_to(root) / occupied)
+        write_project(root, {sibling: ""})
+
+        cached = violations(root)
+        assert cached == violations(root, CheckOptions(use_cache=False))
+        assert len(cached) == 1
+        assert cached[0].expected is not None
+        assert cached[0].expected["suggested_name"] is None
+
+        (root / sibling).unlink()
+        (root / REDUNDANT_PATH).rename((root / REDUNDANT_PATH).with_name("exporter.py"))
+
+        assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []

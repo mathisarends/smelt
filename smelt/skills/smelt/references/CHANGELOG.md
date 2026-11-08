@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT336](docs/rules/SMT336.md) reviews module filenames that repeat an
+  ancestor package, such as `cars/application/car_exporter.py`. Enable
+  `rules: {redundant-module-name: hint}`. Whole-name prefixes/suffixes and simple
+  trailing-s plurals are recognized; occupied shorter names are not suggested.
+  Renames and import updates remain manual. Implements
+  [#94](https://github.com/mathisarends/smelt/issues/94).
+
 - Enable the five public-API reviews together with
   `rules: {information-hiding: warning}` (SMT316/SMT320/SMT335/SMT429/SMT430).
   Tests alone do not justify public visibility. Individual entries override the
