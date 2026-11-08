@@ -210,6 +210,7 @@
       "additionalProperties": false,
       "properties": {
         "rule": {
+          "description": "Rule name, group, SMT code prefix or ALL to ignore within the specified scope.",
           "title": "Rule",
           "type": "string"
         },
@@ -835,7 +836,7 @@
     },
     "RuleSettings": {
       "type": "object",
-      "description": "Explicit checks by problem name or stable SMT code. Each value both enables the check and sets severity; off disables it.",
+      "description": "Explicit checks by problem name, rule group or stable SMT code. Each value both enables the check and sets severity; off disables it. Individual settings override a group in the same map, regardless of order.",
       "properties": {
         "layer-boundary": {
           "type": "string",
@@ -1703,6 +1704,20 @@
           "title": "SMT903: A debt entry that no longer matches any violation.",
           "description": "A debt entry that no longer matches any violation. Fixed violations should leave the debt file, otherwise they could silently come back. Repair: Run `smelt debt --prune`.",
           "markdownDescription": "**SMT903 \u2014 resolved-debt**\n\nA debt entry that no longer matches any violation.\n\nFixed violations should leave the debt file, otherwise they could silently come back.\n\n**Problem**\n```python\n{\"code\": \"SMT101\", \"path\": \"app/application/old.py\", ...}\n```\n\n**Preferred**\n```python\n(entry removed after the violation was fixed)\n```\n\nRun `smelt debt --prune`.\n\nRun `smelt explain resolved-debt` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "information-hiding": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
+          "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
           ]
@@ -3197,6 +3212,20 @@
           "title": "SMT430: A public attribute is read from tests but has no observed production access outside its class.",
           "description": "A public attribute is read from tests but has no observed production access outside its class. Exposing implementation state just for tests enlarges the apparent API and couples tests to internal representation. This opt-in review covers direct instance assignments in ordinary methods and simple class data declarations on unambiguous top-level classes. Reads by analyzed tests are resolved through known constructors, annotations, fixtures and class aliases/re-exports. Internal class accesses do not justify public visibility. Any same-named production attribute access outside the owning class, including unresolved receivers and literal reflection, conservatively preserves visibility. Private names, methods/properties, descriptors, decorated/inherited/subclassed classes, slots and custom attribute hooks are excluded. Test-quality exclusions apply to test evidence; test writes alone do not trigger a finding. External consumers and arbitrary dynamic access remain unknown, so renaming requires review. Excluded files (including maintainer scripts), unselected packages and external consumers are unassessed, not proven absent; usage_scope records the configured analysis boundary. Public attributes of classes explicitly exported through __all__ or public package-facade bindings are treated as supported API and retained, including aliased re-export chains. Repair: Review whether the attribute belongs to the supported API. For internal state, add a leading underscore, update class references and test observable public behavior. Keep deliberate external or framework contracts with a reasoned suppression. Suggested names avoid observed collisions; no automatic rename is performed.",
           "markdownDescription": "**SMT430 \u2014 test-only-public-attribute**\n\nA public attribute is read from tests but has no observed production access outside its class.\n\nExposing implementation state just for tests enlarges the apparent API and couples tests to internal representation. This opt-in review covers direct instance assignments in ordinary methods and simple class data declarations on unambiguous top-level classes. Reads by analyzed tests are resolved through known constructors, annotations, fixtures and class aliases/re-exports. Internal class accesses do not justify public visibility. Any same-named production attribute access outside the owning class, including unresolved receivers and literal reflection, conservatively preserves visibility. Private names, methods/properties, descriptors, decorated/inherited/subclassed classes, slots and custom attribute hooks are excluded. Test-quality exclusions apply to test evidence; test writes alone do not trigger a finding. External consumers and arbitrary dynamic access remain unknown, so renaming requires review. Excluded files (including maintainer scripts), unselected packages and external consumers are unassessed, not proven absent; usage_scope records the configured analysis boundary. Public attributes of classes explicitly exported through __all__ or public package-facade bindings are treated as supported API and retained, including aliased re-export chains.\n\n**Problem**\n```python\nclass Worker:\n    def __init__(self):\n        self.pending = []\n    def run(self):\n        self.pending.clear()\n# tests/test_worker.py\nfrom app.worker import Worker\ndef test_run():\n    worker = Worker()\n    worker.run()\n    assert worker.pending == []\n```\n\n**Preferred**\n```python\nclass Worker:\n    def __init__(self):\n        self._pending = []\n    def run(self):\n        self._pending.clear()\n        return 'done'\n# tests/test_worker.py\nfrom app.worker import Worker\ndef test_run():\n    assert Worker().run() == 'done'\n```\n\nReview whether the attribute belongs to the supported API. For internal state, add a leading underscore, update class references and test observable public behavior. Keep deliberate external or framework contracts with a reasoned suppression. Suggested names avoid observed collisions; no automatic rename is performed.\n\nRun `smelt explain test-only-public-attribute` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "information-hiding": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
+          "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
           ]

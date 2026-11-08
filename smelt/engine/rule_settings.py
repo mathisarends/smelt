@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.diagnostics.violation import Severity
+from smelt.rules.groups import RULE_GROUPS
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -32,10 +33,7 @@ class RuleSettings:
             for name, contract in loaded.config.structure.contracts.items()
         }
         for index, entry in enumerate(loaded.config.ignore):
-            selector = self.codes.get(entry.rule, entry.rule)
-            if selector != "ALL" and not any(
-                code.startswith(selector) for code in self.codes.values()
-            ):
+            if not rules.matching_codes(entry.rule):
                 raise ConfigError(
                     [
                         ConfigIssue(
@@ -145,19 +143,26 @@ class RuleSettings:
         result: dict[str, str] = {}
         issues: list[ConfigIssue] = []
         for key, value in raw.items():
+            if group := RULE_GROUPS.get(key):
+                result.update(dict.fromkeys(group.codes, value))
+        individual: set[str] = set()
+        for key, value in raw.items():
+            if key in RULE_GROUPS:
+                continue
             code = self.codes.get(key)
             if code is None:
                 issues.append(
                     ConfigIssue(
                         f"{location}.{key}",
-                        f'unknown rule "{key}"{did_you_mean(key, self.codes)}',
+                        f'unknown rule "{key}"{did_you_mean(key, [*self.codes, *RULE_GROUPS])}',
                     )
                 )
-            elif code in result:
+            elif code in individual:
                 issues.append(
                     ConfigIssue(f"{location}.{key}", f"{code} is already configured")
                 )
             else:
+                individual.add(code)
                 result[code] = value
         if issues:
             raise ConfigError(issues, self.source)

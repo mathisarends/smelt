@@ -61,4 +61,10 @@
 | [SMT902](SMT902.md) | suppression-without-reason | meta | default | error |
 | [SMT903](SMT903.md) | resolved-debt | meta | default | warning |
 
-`smelt rules` prints the same table in the terminal.
+## Rule groups
+
+Enable a coherent policy with one `rules` entry. Individual settings override the group within the same map; closest-package settings still win.
+
+- `information-hiding`: Keep implementation details private, including APIs exposed only for tests. Includes SMT316, SMT320, SMT335, SMT429, SMT430. Use `smelt explain information-hiding` for the scope and limits.
+
+`smelt rules` prints the same catalog in the terminal.

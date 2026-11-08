@@ -36,6 +36,7 @@ from smelt.engine.file_checks import rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_settings import RuleSettings
+from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
 
@@ -112,6 +113,9 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
             else "Enable by rule setting or --select.",
         },
         scope=getattr(rule, "scope", "source"),
+        groups=tuple(
+            group.name for group in RULE_GROUPS.values() if rule.code in group.codes
+        ),
     )
 
 
@@ -460,21 +464,18 @@ def _resolve_active_rules(
     policy = RuleSettings(rules, loaded)
     settings = policy.global_rules
     known = {rule.code for rule in rules.rules}
-    names = {rule.name: rule.code for rule in rules.rules}
     normalized: dict[str, tuple[str, ...]] = {}
     for key in ("select", "ignore"):
         selectors: list[str] = []
         for prefix in getattr(options, key):
-            selector = names.get(prefix.strip().lower(), prefix.strip().upper())
-            if selector != "ALL" and not any(
-                code.startswith(selector) for code in known
-            ):
+            matches = rules.matching_codes(prefix)
+            if not matches:
                 msg = (
                     f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
                     "`smelt rules` lists valid codes"
                 )
                 raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
-            selectors.append(selector)
+            selectors.extend(matches)
         normalized[key] = tuple(selectors)
     options = replace(options, select=normalized["select"], ignore=normalized["ignore"])
 
@@ -554,7 +555,9 @@ def _apply_ignores(
     entries = ctx.config.ignore
     if not entries:
         return violations
-    names = {rule.name: rule.code for rule in rules.rules}
+    selections = [
+        (entry, frozenset(rules.matching_codes(entry.rule))) for entry in entries
+    ]
     kept: list[Violation] = []
     for violation in violations:
         if violation.code == _COVERAGE:
@@ -562,10 +565,7 @@ def _apply_ignores(
             continue
         module = violation.source_module or _module_for_path(ctx, violation.path)
         ignored = any(
-            (
-                entry.rule == "ALL"
-                or violation.code.startswith(names.get(entry.rule, entry.rule))
-            )
+            violation.code in codes
             and (
                 (module and any(module_matches(p, module) for p in entry.modules))
                 or (
@@ -573,7 +573,7 @@ def _apply_ignores(
                     and any(path_matches(p, violation.path) for p in entry.paths)
                 )
             )
-            for entry in entries
+            for entry, codes in selections
         )
         if not ignored:
             kept.append(violation)

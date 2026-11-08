@@ -3,6 +3,7 @@
 from typing import Any
 
 from smelt.config.schema import config_json_schema as model_json_schema
+from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 
 SCHEMA_COMMENT = (
@@ -37,9 +38,19 @@ def config_json_schema() -> dict[str, Any]:
         if getattr(rule, "scope", "source") == "source":
             source_properties[rule.name] = definition
             source_codes[f"^{rule.code}$"] = definition
+    for group in RULE_GROUPS.values():
+        definition = {
+            "type": "string",
+            "enum": ["error", "warning", "hint", "off"],
+            "title": f"{group.name}: {group.summary}",
+            "description": f"{group.summary} {group.rationale} Members: {', '.join(group.codes)}.",
+            "examples": ["warning"],
+        }
+        properties[group.name] = definition
+        source_properties[group.name] = definition
     rule_settings = {
         "type": "object",
-        "description": "Explicit checks by problem name or stable SMT code. Each value both enables the check and sets severity; off disables it.",
+        "description": "Explicit checks by problem name, rule group or stable SMT code. Each value both enables the check and sets severity; off disables it. Individual settings override a group in the same map, regardless of order.",
         "properties": properties,
         "patternProperties": codes,
         "additionalProperties": False,

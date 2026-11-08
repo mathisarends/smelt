@@ -572,15 +572,13 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
                 "rules:",
                 "  public-definitions-first: error",
                 "  bundled-instance-assignment: error",
-                "  internal-public-member: warning",
+                "  information-hiding: warning",
                 "  internal-static-helper: hint",
                 "  test-without-outcome-check: warning",
                 "  test-only-checks-possibly-empty-data: warning",
                 "  unbounded-test-wait: warning",
                 "  independent-test-case-loop: hint",
                 "  async-mock-without-await-check: warning",
-                "  test-only-public-function: warning",
-                "  test-only-public-attribute: warning",
             ]
         )
     out.extend(

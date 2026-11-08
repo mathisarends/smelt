@@ -1315,7 +1315,7 @@ class TestInitCommand:
         assert "editor completion" in out
         written = (tmp_path / "smelt.yml").read_text(encoding="utf-8")
         assert "preset:" not in written
-        assert "internal-public-member: warning" in written
+        assert "information-hiding: warning" in written
         assert "architecture:" not in written
         schema_path = tmp_path / ".smelt.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))

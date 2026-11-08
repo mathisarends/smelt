@@ -30,11 +30,15 @@ installed skill records the CLI version that installed it.
 
 ## Policy and repair rules
 
-- Most checks are opt-in. Fixed patterns use `rules: {rule-name: severity}`;
-  architecture/package/test policies activate their associated rules. Use
+- Most checks are opt-in. Fixed patterns use `rules: {rule-name: severity}`.
+  `rules: {information-hiding: warning}` selects SMT316/SMT320/SMT335/SMT429/SMT430,
+  including public APIs used only by tests. Individual entries override a group
+  in the same map; closer package entries still win. Inspect the exact membership
+  with `smelt explain information-hiding`. Existing individual settings remain valid.
+  Architecture/package/test policies activate their associated rules. Use
   `smelt rules --format json` for the installed catalog and activation metadata.
   Do not assume a clean run means every rule or every source file was checked.
-- `--select` replaces normal selection; names, SMT prefixes and `ALL` are accepted.
+- `--select` replaces normal selection; names, groups, SMT prefixes and `ALL` are accepted.
   Explicit `off`, closest-package overrides and CLI ignores retain their semantics.
   Strict coverage cannot be bypassed with selection or lower severities. Choose
   policy for the project's intended boundaries; do not enable ALL as a default.

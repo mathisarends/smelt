@@ -48,6 +48,7 @@ architecture:
     infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
 
 rules:
+  information-hiding: warning
   implicit-optional-default: warning
   unbounded-test-wait: warning
 ```
@@ -80,6 +81,11 @@ The same configuration can describe [feature boundaries and third-party dependen
 [package APIs and source conventions](docs/structure.md), and
 [test conventions](docs/testing.md). Most checks require explicit selection or
 an applicable policy; see [rule activation](docs/rule-selection.md).
+
+Use `information-hiding` to review unnecessarily public functions, methods,
+constants, type aliases and attributes together, including APIs used only by
+tests. `smelt explain information-hiding` lists the five checks and their limits.
+Individual rule settings can override the group.
 
 ## Catch it at commit time
 

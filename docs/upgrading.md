@@ -1,5 +1,19 @@
 # Upgrading Smelt
 
+## Unreleased: information-hiding selection
+
+Existing rule configurations keep their behavior. To adopt the complete policy,
+replace the individual SMT316/SMT320/SMT335/SMT429/SMT430 entries with
+`information-hiding: warning`, retaining any desired individual exceptions beside
+it. If your previous selection omitted some members, adopting the group enables
+them too. Public APIs used only by tests are included. Codes, inline suppressions
+and debt fingerprints do not change; no baseline rewrite is required.
+
+`smelt init --maintainability` writes this group in new configurations, which adds
+SMT320 and SMT335 to its former review selection. Existing configurations are not
+rewritten. Catalog/report rule metadata gains an additive `groups` list.
+See [information-hiding scope and precedence](rule-selection.md#information-hiding).
+
 ## 0.4.0 to 0.5.0
 
 0.5.0 retains report schema 2, YAML version 1, the default rule set and exit
