@@ -80,6 +80,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv build
+      - name: Build the Linux release wheel through the same PyPI-backed path
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
+            quay.io/pypa/manylinux_2_28_x86_64:latest \
+            bash scripts/build_manylinux_wheel.sh
       - name: Install and smoke-test the built wheel outside the checkout
         run: |
           uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist
