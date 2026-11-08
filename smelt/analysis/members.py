@@ -578,6 +578,13 @@ class MemberUsageIndex:
                 result.append(candidate)
         return result
 
+    def internal_attributes(self) -> Iterator[AttributeMember]:
+        """Retain only fields without any same-named external access, tests included."""
+        for member in self.attributes:
+            total, production = self._attribute_counts.get(member.name, (0, 0))
+            if total == production:
+                yield member
+
     def test_only_attributes(
         self, tests: TestSyntaxIndex
     ) -> Iterator[tuple[AttributeMember, tuple[tuple[str, int], ...]]]:
