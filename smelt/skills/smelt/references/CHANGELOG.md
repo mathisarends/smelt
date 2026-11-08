@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT337](docs/rules/SMT337.md) flags `AsyncIterator[T]` return
+  annotations on `@asynccontextmanager` functions and recommends
+  `AsyncGenerator[T, None]`. Enable
+  `rules: {deprecated-async-contextmanager-return: warning}`. The decorator stays
+  supported; ordinary async iterators are unaffected. Import aliases and quoted
+  annotations are supported; rewrites remain manual.
+
 ## [0.6.0] - 2026-11-08
 
 Report schema 2, YAML version 1, grouped debt baseline version 2 and the default
