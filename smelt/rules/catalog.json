@@ -649,6 +649,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.context_managers:DeprecatedAsyncContextmanagerReturn",
+    "code": "SMT337",
+    "name": "deprecated-async-contextmanager-return",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

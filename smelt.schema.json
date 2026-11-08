@@ -1483,6 +1483,21 @@
             "hint"
           ]
         },
+        "deprecated-async-contextmanager-return": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
+          "description": "An @asynccontextmanager function annotates its return as AsyncIterator[T]. The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload. Repair: Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT337 \u2014 deprecated-async-contextmanager-return**\n\nAn @asynccontextmanager function annotates its return as AsyncIterator[T].\n\nThe contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.\n\n**Problem**\n```python\nfrom collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield\n```\n\n**Preferred**\n```python\nfrom collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield\n```\n\nReplace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain deprecated-async-contextmanager-return` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2384,6 +2399,21 @@
             "hint"
           ]
         },
+        "^SMT337$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
+          "description": "An @asynccontextmanager function annotates its return as AsyncIterator[T]. The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload. Repair: Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT337 \u2014 deprecated-async-contextmanager-return**\n\nAn @asynccontextmanager function annotates its return as AsyncIterator[T].\n\nThe contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.\n\n**Problem**\n```python\nfrom collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield\n```\n\n**Preferred**\n```python\nfrom collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield\n```\n\nReplace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain deprecated-async-contextmanager-return` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3231,6 +3261,21 @@
             "hint"
           ]
         },
+        "deprecated-async-contextmanager-return": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
+          "description": "An @asynccontextmanager function annotates its return as AsyncIterator[T]. The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload. Repair: Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT337 \u2014 deprecated-async-contextmanager-return**\n\nAn @asynccontextmanager function annotates its return as AsyncIterator[T].\n\nThe contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.\n\n**Problem**\n```python\nfrom collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield\n```\n\n**Preferred**\n```python\nfrom collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield\n```\n\nReplace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain deprecated-async-contextmanager-return` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3875,6 +3920,21 @@
           "markdownDescription": "**SMT336 \u2014 redundant-module-name**\n\nA module filename repeats context already supplied by an ancestor package.\n\ncars.application.car_exporter repeats the cars context; cars.application.exporter keeps the responsibility visible without restating the path. This opt-in review checks a whole ancestor package name at either underscore-delimited end of a module name, including across intervening layer packages. It also recognizes a single regular trailing s (cars/car, purchase_orders/purchase_order). It does not infer irregular plurals or strip ss, us, is, ies, ses, xes, zes, ches or shes endings. Leading underscores are preserved. Substrings, names with no remaining responsibility, package names, dunder modules and separately discovered tests are outside scope. Source-root directory names are not package context. Findings are advisory because repetition may serve a published API or domain meaning.\n\n**Problem**\n```text\nbackend/features/cars/application/car_exporter.py\n```\n\n**Preferred**\n```text\nbackend/features/cars/application/exporter.py\n```\n\nReview the shorter filename and update imports and facade exports when renaming. An occupied module/package name is not suggested. No files are renamed automatically. Enable with rules: {redundant-module-name: hint}, globally or in a package contract, or --select SMT336. Use a package off override or a reasoned file suppression for intentional public names.\n\nRun `smelt explain redundant-module-name` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT337$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
+          "description": "An @asynccontextmanager function annotates its return as AsyncIterator[T]. The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload. Repair: Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT337 \u2014 deprecated-async-contextmanager-return**\n\nAn @asynccontextmanager function annotates its return as AsyncIterator[T].\n\nThe contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.\n\n**Problem**\n```python\nfrom collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield\n```\n\n**Preferred**\n```python\nfrom collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield\n```\n\nReplace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain deprecated-async-contextmanager-return` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {
