@@ -62,6 +62,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.file_naming:ComposeFileName",
     "smelt.rules.structure.callables:PreferCallableInstance",
     "smelt.rules.structure.constants:PrivateClassConstant",
+    "smelt.rules.structure.attributes:InternalPublicAttribute",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

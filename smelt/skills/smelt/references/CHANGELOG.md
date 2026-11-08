@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT335](docs/rules/SMT335.md) reviews public instance and class data
+  attributes with no observed access outside their class. Enable
+  `rules: {internal-public-attribute: warning}`. Test access preserves visibility
+  without duplicating SMT430; exports and uncertain inheritance/framework
+  contracts remain protected. Renames stay manual. Implements
+  [#96](https://github.com/mathisarends/smelt/issues/96).
+
 - Ship the official `smelt` agent skill with every wheel and source distribution,
   including the complete offline rule, configuration and CLI reference. Install
   with `smelt skill install`; refresh after upgrading with `--force`, which
