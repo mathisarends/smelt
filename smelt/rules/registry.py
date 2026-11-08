@@ -65,6 +65,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.attributes:InternalPublicAttribute",
     "smelt.rules.structure.naming:RedundantModuleName",
     "smelt.rules.structure.context_managers:DeprecatedAsyncContextmanagerReturn",
+    "smelt.rules.structure.literal_types:DuplicateLiteralType",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

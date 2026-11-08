@@ -30,6 +30,37 @@ structure:
 """
 
 
+def test_staged_literal_groups_use_staged_sources_and_policy(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = "from typing import Literal\ndef click(x: Literal[1, 2]): pass\n"
+    write_project(
+        repo,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT338: warning}\n",
+            "app/first.py": source,
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "single literal contract")
+    write_project(repo, {"app/second.py": source})
+    _git(repo, "add", "app/second.py")
+    # Neither unstaged removal nor disabling the rule may change the index view.
+    write_project(repo, {"app/second.py": "", "smelt.yml": CONFIG})
+    monkeypatch.chdir(repo)
+    for flags in ((), (), ("--no-cache",)):
+        status, data = _check(repo, capsys, "--select", "SMT338", *flags)
+        assert status == 1
+        assert [v["path"] for v in data["violations"]] == [
+            "app/first.py",
+            "app/second.py",
+        ]
+    _git(repo, "add", "app/second.py")
+    status, data = _check(repo, capsys, "--select", "SMT338")
+    assert status == 0
+    assert not data["violations"]
+
+
 def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

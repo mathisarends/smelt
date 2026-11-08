@@ -20,6 +20,44 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
+def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
+    tmp_path: Path,
+) -> None:
+    source = "from typing import Literal\ndef first(x: Literal[1, 2]): pass\n"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "app/first.py": source,
+            "app/second.py": source.replace("def first", "def second"),
+        },
+    )
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "accept duplicate group")
+    options = CheckOptions(changed=True, select=("SMT338",))
+    assert not violations(tmp_path, options)
+    write_project(tmp_path, {"app/third.py": source.replace("def first", "def third")})
+    for use_cache in (True, True, False):
+        found = violations(
+            tmp_path,
+            CheckOptions(changed=True, select=("SMT338",), use_cache=use_cache),
+        )
+        assert [v.path for v in found] == ["app/third.py"]
+    (tmp_path / "app/first.py").write_text(
+        source + source.split("\n", maxsplit=1)[1].replace("def first", "def added"),
+        encoding="utf-8",
+    )
+    assert [v.path for v in violations(tmp_path, options)] == [
+        "app/first.py",
+        "app/third.py",
+    ]
+    (tmp_path / "app/third.py").unlink()
+    (tmp_path / "app/first.py").write_text(source, encoding="utf-8")
+    assert not violations(tmp_path, options)
+
+
 def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     write_project(
         tmp_path,

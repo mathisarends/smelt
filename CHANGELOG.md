@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT338](docs/rules/SMT338.md), enabled with
+  `rules: {duplicate-literal-type: hint}`, finds repeated multi-value `Literal`
+  types within and across source files in the same root package. Findings group
+  locations per file and value set, preserve `Annotated` metadata boundaries,
+  and suggest a shared plain type alias. Facts are cached by file content;
+  changes to existing groups remain visible in changed checks and debt baselines.
+  Same values may describe independent concepts; no automatic rewrite is made.
+
 - Optional [SMT337](docs/rules/SMT337.md) flags `AsyncIterator[T]` return
   annotations on `@asynccontextmanager` functions and recommends
   `AsyncGenerator[T, None]`. Enable

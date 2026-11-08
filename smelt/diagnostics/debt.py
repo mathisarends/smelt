@@ -123,6 +123,7 @@ def _edge_field(violation: Violation) -> str | None:
         "SMT109": "export_edges",
         "SMT313": "ordering_edges",
         "SMT315": "dispatch_edges",
+        "SMT338": "literal_edges",
         "SMT423": "patch_edges",
     }.get(violation.code)
 
