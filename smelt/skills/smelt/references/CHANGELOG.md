@@ -7,6 +7,17 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-08
+
+Report schema 2, YAML version 1, grouped debt baseline version 2 and the default
+rule set remain unchanged. The six new rules SMT331–SMT336 are opt-in; canonical
+filename checks activate through explicit file-naming policy. Existing individual
+rule selections remain valid. New `init --maintainability` configurations select
+`information-hiding`, adding SMT320 and SMT335 to the previous starter policy.
+Update installation, hook and CI pins together to `0.6.0` (`v0.6.0`), refresh the
+editor schema and review findings before changing debt. No baseline rewrite is
+required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-060).
+
 - Optional [SMT336](docs/rules/SMT336.md) reviews module filenames that repeat an
   ancestor package, such as `cars/application/car_exporter.py`. Enable
   `rules: {redundant-module-name: hint}`. Whole-name prefixes/suffixes and simple
@@ -624,7 +635,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/mathisarends/smelt/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mathisarends/smelt/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mathisarends/smelt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mathisarends/smelt/compare/v0.2.0...v0.3.0

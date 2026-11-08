@@ -1,6 +1,54 @@
 # Upgrading Smelt
 
-## Unreleased: information-hiding selection
+## 0.5.0 to 0.6.0
+
+0.6.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
+the default rule set and exit codes. No baseline rewrite is required. The six
+new rules are opt-in. See the [changelog](../CHANGELOG.md#060---2026-11-08).
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.6.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.6.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.6.0]` for isolated Python hooks,
+   `rev: v0.6.0` for source hooks and `uvx --from smelt-cli==0.6.0 smelt check`
+   in CI. Run `prek install` after updating hooks. Source installs require
+   Rust 1.88+ and a platform linker; wheels include the native client.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`.
+   Review `smelt config show --sources`, then run
+   `smelt check --show-hints --fail-on warning` and the project's hooks and tests
+   before relying on staged checks or updating accepted debt. Keep the reviewed
+   configuration; `init --maintainability` is a starter, not a migration command.
+
+3. Install the bundled agent skill with `smelt skill install`. To refresh an
+   existing copy after upgrading, use `smelt skill install --force`; this replaces
+   local edits and obsolete references. Preserve customizations first and use
+   `--destination` for a custom skill location. See [CLI](cli.md#agent-skill).
+
+4. Adopt the new reviews deliberately:
+
+   | Rule | Activation | Review |
+   | --- | --- | --- |
+   | [SMT331](rules/SMT331.md) | `structure.file_naming.yaml_extension: yaml` (or `yml`) | Canonical YAML extensions |
+   | [SMT332](rules/SMT332.md) | `structure.file_naming.compose_basename: compose` (or `docker-compose`) | Canonical Compose basenames |
+   | [SMT333](rules/SMT333.md) | `rules: {prefer-callable-instance: hint}` | Single public instance method |
+   | [SMT334](rules/SMT334.md) | `rules: {private-class-constant: warning}` | Private literal class constants |
+   | [SMT335](rules/SMT335.md) | `rules: {internal-public-attribute: warning}` | Public data without external use |
+   | [SMT336](rules/SMT336.md) | `rules: {redundant-module-name: hint}` | Module filenames repeating package context |
+
+   Filename, symbol and placement repairs remain manual. Review imports,
+   inheritance, framework contracts and consumers outside the analysis scope
+   before renaming or moving code. Hidden YAML files and dotted Compose variants
+   are included when file-naming policy is enabled; exclusions still apply.
+
+### Information-hiding selection
 
 Existing rule configurations keep their behavior. To adopt the complete policy,
 replace the individual SMT316/SMT320/SMT335/SMT429/SMT430 entries with

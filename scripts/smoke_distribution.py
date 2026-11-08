@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 
@@ -24,6 +25,46 @@ def run(command: list[str], root: Path) -> str:
     if completed.returncode:
         raise RuntimeError(f"{command[0]} failed:\n{completed.stderr}")
     return completed.stdout
+
+
+def check_version(binary: Path, python: Path, root: Path) -> None:
+    manifest = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    expected_version = tomllib.loads(manifest.read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
+    version = run([str(binary), "--version"], root).strip()
+    metadata_version = run(
+        [
+            str(python),
+            "-c",
+            "from importlib.metadata import version; print(version('smelt-cli'))",
+        ],
+        root,
+    ).strip()
+    if version != f"smelt {expected_version}" or metadata_version != expected_version:
+        raise AssertionError("distribution version differs from release manifest")
+
+
+def check_skill(binary: Path, catalog: Path, root: Path) -> None:
+    run([str(binary), "skill", "install"], root)
+    skill = root / ".agents/skills/smelt"
+    if any(
+        path.suffix != ".md"
+        for path in (skill / "references").rglob("*")
+        if path.is_file()
+    ):
+        raise AssertionError("skill includes non-documentation reference data")
+    installed_version = (skill / "VERSION").read_text(encoding="utf-8").strip()
+    if run([str(binary), "--version"], root).strip() != f"smelt {installed_version}":
+        raise AssertionError("skill version differs from installed CLI")
+    for rule in json.loads(catalog.read_text(encoding="utf-8")):
+        if not (skill / f"references/docs/rules/{rule['code']}.md").is_file():
+            raise AssertionError(f"missing packaged skill rule {rule['code']}")
+    stale = skill / "obsolete.md"
+    stale.write_text("old skill content", encoding="utf-8")
+    run([str(binary), "skill", "install", "--force"], root)
+    if stale.exists() or not (skill / "SKILL.md").is_file():
+        raise AssertionError("skill replacement retained stale files")
 
 
 def smoke(directory: Path) -> None:
@@ -51,6 +92,7 @@ def smoke(directory: Path) -> None:
                 raise AssertionError(
                     f"smoke test imported outside its wheel: {package}"
                 )
+            check_version(binary, python, root)
             catalog = package.parent / "rules/catalog.json"
             if not json.loads(catalog.read_text(encoding="utf-8")):
                 raise AssertionError("missing packaged rule catalog")
@@ -58,31 +100,12 @@ def smoke(directory: Path) -> None:
                 ["--version"],
                 ["rules"],
                 ["explain", "SMT101"],
+                ["explain", "SMT336", "--format", "json"],
+                ["explain", "information-hiding", "--format", "json"],
                 ["config", "schema"],
             ):
                 run([str(binary), *arguments], root)
-            run([str(binary), "skill", "install"], root)
-            skill = root / ".agents/skills/smelt"
-            if any(
-                path.suffix != ".md"
-                for path in (skill / "references").rglob("*")
-                if path.is_file()
-            ):
-                raise AssertionError("skill includes non-documentation reference data")
-            installed_version = (skill / "VERSION").read_text(encoding="utf-8").strip()
-            if (
-                run([str(binary), "--version"], root).strip()
-                != f"smelt {installed_version}"
-            ):
-                raise AssertionError("skill version differs from installed CLI")
-            for rule in json.loads(catalog.read_text(encoding="utf-8")):
-                if not (skill / f"references/docs/rules/{rule['code']}.md").is_file():
-                    raise AssertionError(f"missing packaged skill rule {rule['code']}")
-            stale = skill / "obsolete.md"
-            stale.write_text("old skill content", encoding="utf-8")
-            run([str(binary), "skill", "install", "--force"], root)
-            if stale.exists() or not (skill / "SKILL.md").is_file():
-                raise AssertionError("skill replacement retained stale files")
+            check_skill(binary, catalog, root)
             project = root / "project"
             package = project / "app/domain"
             package.mkdir(parents=True)
