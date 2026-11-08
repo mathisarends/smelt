@@ -86,6 +86,12 @@ jobs:
           docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
             quay.io/pypa/manylinux_2_28_x86_64:latest \
             bash scripts/build_manylinux_wheel.sh
+      - name: Cross-compile and audit the Linux ARM64 release wheel
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
+            ghcr.io/rust-cross/manylinux_2_28-cross:aarch64 \
+            bash scripts/build_manylinux_wheel.sh aarch64-unknown-linux-gnu dist/arm64
       - name: Install and smoke-test the built wheel outside the checkout
         run: |
           uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist

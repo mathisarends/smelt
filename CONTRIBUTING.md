@@ -317,10 +317,12 @@ environment name must match the workflow exactly.
    cross-compiled. A separate job downloads the validated release artifacts and publishes them
    with OIDC and the publishing action's default attestations enabled.
 
-The native Linux x86_64 wheel uses `scripts/build_manylinux_wheel.sh` in the
-PyPA manylinux 2.28 container. It installs pinned `maturin[patchelf]` from PyPI,
+Both Linux release wheels use `scripts/build_manylinux_wheel.sh` in the
+PyPA manylinux 2.28 container (x86_64) or the rust-cross manylinux 2.28 container
+(ARM64). The script installs pinned `maturin[patchelf]` from PyPI,
 avoiding the GitHub Release archive download used by maturin-action. The Linux
-package CI job runs the same script and smoke-tests its wheel before release.
+package CI job builds and audits both targets with the same script and
+smoke-tests the native x86_64 wheel before release.
 Keep the explicit manylinux compatibility audit and update the tool pin in the
 script when adopting a new build-tool version.
 
