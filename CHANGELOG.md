@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Enable the five public-API reviews together with
+  `rules: {information-hiding: warning}` (SMT316/SMT320/SMT335/SMT429/SMT430).
+  Tests alone do not justify public visibility. Individual entries override the
+  group in the same map regardless of order; closer package settings still win.
+  The group works with CLI selection/ignores and scoped ignores, and is exposed
+  in `explain`, catalog JSON and the editor schema. Existing names, codes,
+  suppressions and debt identities remain valid. `init --maintainability` now
+  writes this group, adding the module-symbol and attribute reviews to its
+  generated selection. See [scope and migration](docs/rule-selection.md#information-hiding).
+
 - Optional [SMT335](docs/rules/SMT335.md) reviews public instance and class data
   attributes with no observed access outside their class. Enable
   `rules: {internal-public-attribute: warning}`. Test access preserves visibility

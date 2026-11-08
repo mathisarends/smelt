@@ -129,12 +129,12 @@ def _add_check(sub: Subparsers) -> None:
     check.add_argument(
         "--select",
         metavar="CODES",
-        help="run rule names, code prefixes or ALL; architecture/style parameters are still required",
+        help="run rule names, groups, code prefixes or ALL; architecture/style parameters are still required",
     )
     check.add_argument(
         "--ignore",
         metavar="CODES",
-        help="skip rule names, code prefixes or ALL; strict coverage remains mandatory",
+        help="skip rule names, groups, code prefixes or ALL; strict coverage remains mandatory",
     )
     check.add_argument(
         "--show-hints",
@@ -177,8 +177,8 @@ def _add_check(sub: Subparsers) -> None:
 
 
 def _add_discovery(sub: Subparsers) -> None:
-    explain = sub.add_parser("explain", help="explain a rule")
-    explain.add_argument("rule", metavar="CODE|NAME")
+    explain = sub.add_parser("explain", help="explain a rule or rule group")
+    explain.add_argument("rule", metavar="CODE|NAME|GROUP")
     explain.add_argument("--format", choices=["text", "json"], default="text")
     explain.set_defaults(handler=commands.handler("explain"))
 

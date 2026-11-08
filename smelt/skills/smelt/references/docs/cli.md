@@ -10,9 +10,15 @@ by default. Import cycles and unclassified-module hints require explicit selecti
 See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 
+`smelt explain information-hiding` describes the shared visibility policy and
+lists its five members. Use `--select information-hiding` or
+`--ignore information-hiding` wherever rule selectors are accepted. Rule metadata
+in `rules --format json`, `explain` and reports adds a `groups` list; individual
+diagnostic codes and report schema version 2 remain unchanged.
+
 ```bash
 smelt init                           # draft smelt.yml from the code (also uv workspaces)
-smelt init --maintainability         # write individually named source/test review checks
+smelt init --maintainability         # write source/test reviews, including information-hiding
 smelt init --config other.yml       # write a config and editor schema in that directory
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD

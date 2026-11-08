@@ -4,8 +4,8 @@ Use `smelt.yml` for project configuration; `smelt init` creates it by default.
 Existing `smelt.yaml` files remain supported. When both filenames exist in the
 same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
 
-Configure a fixed check once, by the problem it identifies. Its value enables it
-and sets its severity. There is no runtime preset or separate `review_*` switch.
+Configure a fixed check or coherent rule group once, by name. Its value enables it
+and sets its severity. No separate `review_*` switch is needed.
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Stable SMT codes remain valid aliases and keep existing debt identities.
 
@@ -25,19 +25,21 @@ project:
 rules:
   public-definitions-first: error
   bundled-instance-assignment: error
-  internal-public-member: warning
+  information-hiding: warning
   internal-static-helper: hint
   test-without-outcome-check: warning
   test-only-checks-possibly-empty-data: warning
   unbounded-test-wait: warning
   independent-test-case-loop: hint
   async-mock-without-await-check: warning
-  test-only-public-function: warning
-  test-only-public-attribute: warning
 ```
 
 Generate this explicit starting selection with `smelt init --maintainability`.
-The flag chooses what `init` writes; later checks read the individual entries.
+The flag chooses what `init` writes; later checks read the configured entries.
+`information-hiding` covers SMT316/SMT320/SMT335/SMT429/SMT430, including public APIs
+used only by tests. Individual entries override a group in the same map regardless
+of key order; closest-package overrides still win. Existing individual selections
+remain supported. See [group scope and migration](rule-selection.md#information-hiding).
 Plain `init` retains its conservative architecture starter. Neither command
 overwrites an existing config without `--force`.
 
@@ -174,12 +176,12 @@ structure:
     supported-integrations:
       match: harnessed.integrations
       rules:
-        internal-public-member: off
+        information-hiding: off
         internal-static-helper: off
     strict-core:
       match: harnessed.core
       rules:
-        internal-public-member: error
+        information-hiding: error
 
 tests:
   assertion_helpers: [tests.assertions.assert_response]
@@ -192,7 +194,7 @@ tests:
 Dependencies and execution barriers still take precedence over category order.
 `fix: off` disables ordering writes; plain checks are always read-only.
 
-Package `rules` use the same names/codes and values as the project map. They apply
+Package `rules` use the same names, groups, codes and values as the project map. They apply
 to findings originating in production modules of the matching package, including
 test-only API findings located in production code. The closest enclosing package
 entry wins for each rule. It can change severity, disable a global check, or

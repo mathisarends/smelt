@@ -507,7 +507,7 @@ class PackageContract(_Model):
     )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
-        description="Rule severities for production findings in this package. Use the same problem names or SMT codes as top-level rules; the closest package override wins. Options alone do not enable public-definitions-first.",
+        description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable public-definitions-first.",
     )
 
     @field_validator("match")
@@ -701,7 +701,9 @@ class TestsConfig(_Model):
 
 
 class IgnoreEntry(_Model):
-    rule: str
+    rule: str = Field(
+        description="Rule name, group, SMT code prefix or ALL to ignore within the specified scope."
+    )
     modules: list[str] = Field(default_factory=list)
     paths: list[str] = Field(default_factory=list)
     reason: str
@@ -731,7 +733,7 @@ class SmeltConfig(_Model):
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
-        description="Explicit checks by problem name or stable SMT code. A severity enables the check; off disables it. No additional boolean switch is required for fixed-pattern rules.",
+        description="Explicit checks by problem name, rule group or stable SMT code. A severity enables the check; off disables it. Individual entries override a group in the same map, regardless of order. No additional boolean switch is required for fixed-pattern rules.",
     )
     ignore: list[IgnoreEntry] = Field(
         default_factory=list, description="Rules to skip for modules or paths."
