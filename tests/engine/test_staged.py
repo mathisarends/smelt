@@ -61,6 +61,28 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     assert not data["violations"]
 
 
+def test_staged_private_symbols_use_index_definitions_and_callers(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        repo,
+        {
+            "app/service.py": "def _helper(): pass\n",
+            "app/caller.py": "import app.service as s\ns._helper()\n",
+        },
+    )
+    _git(repo, "add", ".")
+    write_project(repo, {"app/service.py": "", "app/caller.py": ""})
+    monkeypatch.chdir(repo)
+    for flags in ((), (), ("--no-cache",)):
+        status, data = _check(repo, capsys, "--select", "SMT339", *flags)
+        assert status == 1
+        [finding] = data["violations"]
+        assert finding["code"] == "SMT339"
+        assert finding["path"] == "app/caller.py"
+        assert finding["expected"]["private_target"] == "app.service._helper"
+
+
 def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

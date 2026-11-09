@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT339](docs/rules/SMT339.md) reports production imports and
+  module-qualified reads of private symbols defined in analyzed project modules.
+  Enable `rules: {private-symbol-import: warning}`. Dunders, public aliases and
+  initializer re-exports under public aliases stay valid; tests remain with
+  SMT420. Respects the TYPE_CHECKING policy; renames stay manual. Implements
+  [#105](https://github.com/mathisarends/smelt/issues/105).
+
 - Optional [SMT338](docs/rules/SMT338.md), enabled with
   `rules: {duplicate-literal-type: hint}`, finds repeated multi-value `Literal`
   types within and across source files in the same root package. Findings group

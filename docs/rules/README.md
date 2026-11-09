@@ -47,6 +47,7 @@
 | [SMT336](SMT336.md) | redundant-module-name | structure | explicit | hint |
 | [SMT337](SMT337.md) | deprecated-async-contextmanager-return | structure | explicit | warning |
 | [SMT338](SMT338.md) | duplicate-literal-type | structure | explicit | hint |
+| [SMT339](SMT339.md) | private-symbol-import | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

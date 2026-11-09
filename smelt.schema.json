@@ -1513,6 +1513,21 @@
             "hint"
           ]
         },
+        "private-symbol-import": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT339: Production code imports or reads another project module's private symbol.",
+          "description": "Production code imports or reads another project module's private symbol. A leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed. Repair: Give a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.",
+          "markdownDescription": "**SMT339 \u2014 private-symbol-import**\n\nProduction code imports or reads another project module's private symbol.\n\nA leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed.\n\n**Problem**\n```python\n# app/client.py\nfrom .service import _normalize\n\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom .service import normalize\n\n```\n\nGive a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.\n\nRun `smelt explain private-symbol-import` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2444,6 +2459,21 @@
             "hint"
           ]
         },
+        "^SMT339$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT339: Production code imports or reads another project module's private symbol.",
+          "description": "Production code imports or reads another project module's private symbol. A leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed. Repair: Give a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.",
+          "markdownDescription": "**SMT339 \u2014 private-symbol-import**\n\nProduction code imports or reads another project module's private symbol.\n\nA leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed.\n\n**Problem**\n```python\n# app/client.py\nfrom .service import _normalize\n\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom .service import normalize\n\n```\n\nGive a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.\n\nRun `smelt explain private-symbol-import` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3321,6 +3351,21 @@
             "hint"
           ]
         },
+        "private-symbol-import": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT339: Production code imports or reads another project module's private symbol.",
+          "description": "Production code imports or reads another project module's private symbol. A leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed. Repair: Give a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.",
+          "markdownDescription": "**SMT339 \u2014 private-symbol-import**\n\nProduction code imports or reads another project module's private symbol.\n\nA leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed.\n\n**Problem**\n```python\n# app/client.py\nfrom .service import _normalize\n\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom .service import normalize\n\n```\n\nGive a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.\n\nRun `smelt explain private-symbol-import` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -3995,6 +4040,21 @@
           "markdownDescription": "**SMT338 \u2014 duplicate-literal-type**\n\nReview repeated multi-value Literal types for a shared type alias.\n\nRepeated Literal value sets can drift when a contract changes. This opt-in review groups identical raw value sets within each analyzed root package, including repetitions across modules. It reports one finding per participating file and value set, with related source locations. Direct typing/typing_extensions imports, import aliases, quoted annotations, nested explicit Literals, type aliases and Annotated's first argument are supported. Annotated metadata is never compared or treated as a type. Order and repeated members do not matter; values retain their Python types. Singleton Literals, enum members, named-alias expansion, uncertain imports, test files and separate root packages are excluded. Same-valued types can represent unrelated concepts, so this is a review hint rather than proof that they should share a name. Package rule overrides and suppressions govern findings at each participating file; other analyzed source files still contribute evidence.\n\n**Problem**\n```python\nfrom typing import Annotated, Literal\nfrom pydantic import Field\n\ntype ClickButton = Annotated[Literal[\"left\", \"right\"], Field(description=\"Mouse button\")]\n\ndef click_message(button: Literal[\"left\", \"right\"]) -> str:\n    return button\n```\n\n**Preferred**\n```python\nfrom typing import Annotated, Literal\nfrom pydantic import Field\n\ntype MouseButton = Literal[\"left\", \"right\"]\ntype ClickButton = Annotated[MouseButton, Field(description=\"Mouse button\")]\n\ndef click_message(button: MouseButton) -> str:\n    return button\n```\n\nDefine or reuse a shared plain type alias when the occurrences describe the same concept. Keep Field descriptions and constraints on the Annotated wrappers that need them. Choose an owning module that respects architecture boundaries and avoids import cycles. Review Python-version, runtime annotation and schema behavior before changing aliases; use TypeAlias syntax where the supported Python version requires it. Suppress intentional independent contracts with a reason. No automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain duplicate-literal-type` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT339$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT339: Production code imports or reads another project module's private symbol.",
+          "description": "Production code imports or reads another project module's private symbol. A leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed. Repair: Give a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.",
+          "markdownDescription": "**SMT339 \u2014 private-symbol-import**\n\nProduction code imports or reads another project module's private symbol.\n\nA leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed.\n\n**Problem**\n```python\n# app/client.py\nfrom .service import _normalize\n\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom .service import normalize\n\n```\n\nGive a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.\n\nRun `smelt explain private-symbol-import` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {
