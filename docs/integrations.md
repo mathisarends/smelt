@@ -19,7 +19,7 @@ Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md
 Before implementing, run `smelt context <feature-or-path>` to see what applies.
-After editing, run `smelt check --changed --format json` and fix new findings.
+After editing, run `smelt check --changed --format concise` and fix new findings.
 Use `smelt explain <code>` when unsure, then run focused tests. Stage the intended
 changes and run `smelt check --staged --fail-on warning` and `prek run --all-files`.
 If a hook changes files or fails, inspect its output,

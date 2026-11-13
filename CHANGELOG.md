@@ -7,6 +7,21 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Repair hints of SMT316, SMT320, SMT335, SMT429 and SMT430 no longer repeat the
+  member and its suggested name, which the message and the `suggested_name`
+  detail already carry; they name the target only when a collision changes it.
+  The hints are therefore shared across findings and listed once. Messages,
+  finding ids and debt identities are unchanged.
+
+- Text and concise output list repair advice repeated verbatim by several
+  findings of one rule once, under "Repairs shared by several findings", instead
+  of after every finding. Unique advice stays with its finding; JSON, SARIF and
+  GitHub output still carry the hint on each finding.
+
+- Text output labels finding details by name (`Suggested name: _hits`) instead
+  of prefixing every detail with `Expected`, and omits the constant
+  `automatic_rename` flag. JSON and SARIF are unchanged.
+
 - Optional [SMT340](docs/rules/SMT340.md) reports an awaited result passed
   directly as a call argument, such as `Result(text=await client.read())`, and
   suggests naming it in a local variable first (the keyword for keyword

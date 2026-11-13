@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.module_symbols import internal_module_symbols
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name
+from smelt.rules.member_names import private_name, rename_advice
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -46,5 +46,5 @@ class InternalPublicModuleSymbol(Rule):
                     "usage_scope": ctx.member_usage.usage_scope,
                     "automatic_rename": False,
                 },
-                hint=f"Review making {name} private as {suggested}; retain deliberate public APIs with exports or a reasoned suppression.",
+                hint=f"Unless public by design, {rename_advice(name, suggested)}; otherwise export it or suppress SMT320 with a reason.",
             )
