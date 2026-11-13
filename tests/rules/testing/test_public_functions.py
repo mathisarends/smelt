@@ -35,7 +35,7 @@ def test_excluded_script_callers_are_explicitly_unassessed(tmp_path: Path) -> No
     assert "among analyzed modules" in finding.message
     assert finding.hint is not None
     assert "maintainer scripts" in str(scope["unassessed_consumers"])
-    assert "preserve deliberate public APIs" in finding.hint
+    assert finding.hint.startswith("Unless public by design, remove it or add")
     assert (
         (tmp_path / "scripts/generate.py")
         .read_text(encoding="utf-8")
@@ -89,7 +89,7 @@ def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
         },
     }
     assert finding.hint is not None
-    assert "_drag_gesture" in finding.hint
+    assert "test its public caller" in finding.hint
 
 
 @pytest.mark.parametrize(

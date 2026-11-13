@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Repair hints of SMT316, SMT320, SMT335, SMT429 and SMT430 no longer repeat the
+  member and its suggested name, which the message and the `suggested_name`
+  detail already carry; they name the target only when a collision changes it.
+  The hints are therefore shared across findings and listed once. Messages,
+  finding ids and debt identities are unchanged.
+
 - Text and concise output list repair advice repeated verbatim by several
   findings of one rule once, under "Repairs shared by several findings", instead
   of after every finding. Unique advice stays with its finding; JSON, SARIF and
