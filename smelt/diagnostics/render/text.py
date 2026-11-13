@@ -79,11 +79,15 @@ def _render(
         f"warning: {diagnostic.path}: {diagnostic.key}: {diagnostic.message}"
         for diagnostic in report.configuration_diagnostics
     ]
+    shared: dict[tuple[str, str], int] = {}
     if not statistics:
-        blocks.extend(_finding_blocks(shown, read_line, style))
+        findings, shared = _finding_blocks(shown, read_line, style)
+        blocks.extend(findings)
     lines = [("\n" if style.concise else "\n\n").join(blocks)] if blocks else []
     if blocks:
         lines.append("")
+    if shared:
+        lines.extend([*_shared_repair_lines(shared, style), ""])
     edges = _repeated_edges(shown)
     if edges:
         lines.extend([*edges, ""])
@@ -129,24 +133,31 @@ def _render(
 
 def _finding_blocks(
     shown: list[Violation], read_line: LineReader, style: _Style
-) -> list[str]:
+) -> tuple[list[str], dict[tuple[str, str], int]]:
+    """Rendered findings and the repairs they share, which are listed once."""
     groups = {
         (finding, group["location"]["column"]): group
         for group in group_findings(shown)
         if group["kind"] == "shared_helper"
         for finding in group["violations"]
     }
+    displayed = [
+        (violation, groups.get(_helper_key(violation)))
+        for violation in _group_ordering(_group_unclassified(shown))
+    ]
+    shared = _shared_repairs([v for v, group in displayed if group is None])
     rendered: set[str] = set()
     blocks: list[str] = []
-    for violation in _group_ordering(_group_unclassified(shown)):
-        group = groups.get(
-            (
-                violation.finding_id,
-                (violation.expected or {}).get("operation_location", {}).get("column"),
-            )
-        )
+    for violation, group in displayed:
         if group is None:
-            blocks.append(_render_violation(violation, read_line, style))
+            blocks.append(
+                _render_violation(
+                    violation,
+                    read_line,
+                    style,
+                    show_hint=(violation.code, violation.hint or "") not in shared,
+                )
+            )
         elif group["key"] not in rendered:
             rendered.add(group["key"])
             common = replace(
@@ -161,7 +172,12 @@ def _finding_blocks(
                 for line in test["call_lines"]
             )
             blocks.append("\n".join(lines))
-    return blocks
+    return blocks, shared
+
+
+def _helper_key(violation: Violation) -> tuple[str, object]:
+    location = (violation.expected or {}).get("operation_location", {})
+    return violation.finding_id, location.get("column")
 
 
 def _group_ordering(violations: list[Violation]) -> list[Violation]:
@@ -296,18 +312,39 @@ def _statistics(violations: list[Violation], style: _Style) -> str:
     )
 
 
+def _shared_repairs(violations: list[Violation]) -> dict[tuple[str, str], int]:
+    """Repair advice repeated verbatim by several findings of one rule."""
+    counts = Counter((v.code, v.hint) for v in violations if v.hint)
+    return {key: count for key, count in counts.items() if count > 1}
+
+
+def _shared_repair_lines(
+    shared: Mapping[tuple[str, str], int], style: _Style
+) -> list[str]:
+    lines = ["Repairs shared by several findings (shown once):"]
+    for (code, hint), count in sorted(shared.items()):
+        label, text = f"{code} ({count}x): ", " ".join(hint.split())
+        lines.append(f"  {label}{text}" if style.concise else _wrap(label, text))
+    return lines
+
+
 def _render_violation(
-    violation: Violation, read_line: LineReader, style: _Style
+    violation: Violation,
+    read_line: LineReader,
+    style: _Style,
+    *,
+    show_hint: bool = True,
 ) -> str:
     location = violation.path or "<project>"
     if violation.line:
         location += f":{violation.line}"
         if violation.column:
             location += f":{violation.column}"
+    shown_hint = violation.hint if show_hint else None
     if style.concise:
         if violation.line and not violation.column:
             location += ":1"
-        hint = f" -> {' '.join(violation.hint.split())}" if violation.hint else ""
+        hint = f" -> {' '.join(shown_hint.split())}" if shown_hint else ""
         return (
             f"{location} {violation.code} {' '.join(violation.message.split())}{hint}"
         )
@@ -318,8 +355,8 @@ def _render_violation(
     out.extend(_chain(violation))
     if violation.expected:
         out.extend(_expected(violation, violation.expected))
-    if violation.hint:
-        out.append(_wrap("Hint: ", violation.hint))
+    if shown_hint:
+        out.append(_wrap("Hint: ", shown_hint))
     return "\n".join(out)
 
 

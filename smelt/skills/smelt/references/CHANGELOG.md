@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Text and concise output list repair advice repeated verbatim by several
+  findings of one rule once, under "Repairs shared by several findings", instead
+  of after every finding. Unique advice stays with its finding; JSON, SARIF and
+  GitHub output still carry the hint on each finding.
+
 - Text output labels finding details by name (`Suggested name: _hits`) instead
   of prefixing every detail with `Expected`, and omits the constant
   `automatic_rename` flag. JSON and SARIF are unchanged.

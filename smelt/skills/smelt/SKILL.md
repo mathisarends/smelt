@@ -21,9 +21,9 @@ installed skill records the CLI version that installed it.
    For inherited policy, inspect `smelt config show --sources --format json`.
    A planned path is valid for `context`; explicit `check` paths must already exist.
 3. After editing, run `smelt check --changed --fail-on warning --format concise`
-   (one line per finding with its repair).
-   Use `--format text` for evidence and import chains, `--format json` only when a
-   tool parses the report. Use `smelt explain <code-or-name>` and fix the underlying
+   (one line per finding; a repair shared by several findings is listed once
+   below them). Use `--format text` for evidence and import chains, `--format json`
+   only when a tool parses the report. Use `smelt explain <code-or-name>` and fix the underlying
    behavior or dependency. Run relevant tests and the project's other checks too.
 4. For branch review use `--changed --base origin/main` (or the actual base).
    For the commit use `smelt check --staged --fail-on warning`; this reads the Git
