@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Text output labels finding details by name (`Suggested name: _hits`) instead
+  of prefixing every detail with `Expected`, and omits the constant
+  `automatic_rename` flag. JSON and SARIF are unchanged.
+
 - Optional [SMT340](docs/rules/SMT340.md) reports an awaited result passed
   directly as a call argument, such as `Result(text=await client.read())`, and
   suggests naming it in a local variable first (the keyword for keyword

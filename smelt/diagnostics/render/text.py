@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 _WIDTH = 88
 _TOP_EDGES = 5
-# Keys of "expected" that only machine readers need; the message says the same.
+# Keys of "expected" that only machine readers need; the message or hint says the same.
 _MACHINE_ONLY = frozenset(
     {
         "cycle",
@@ -27,6 +27,7 @@ _MACHINE_ONLY = frozenset(
         "usage_scope",
         "fix_blocker",
         "affected_lines",
+        "automatic_rename",
     }
 )
 _COLORS = {
@@ -375,9 +376,8 @@ def _expected(violation: Violation, expected: Mapping[str, Any]) -> list[str]:
         elif key in ("path", "expected_path"):
             lines.append(f"  Expected: {value}")
         else:
-            lines.append(
-                _wrap(f"Expected {key.replace('_', ' ')}: ", _format_value(value))
-            )
+            label = key.replace("_", " ").capitalize()
+            lines.append(_wrap(f"{label}: ", _format_value(value)))
     return lines
 
 

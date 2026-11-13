@@ -128,12 +128,27 @@ class TestViolations:
         out = render_text(report, read_line)
 
         assert (
-            "  Expected source: app/auth/bootstrap.py\n"
+            "  Source: app/auth/bootstrap.py\n"
             "  Candidates:\n"
             "    app/auth/application/bootstrap.py (AdminBootstrap via "
             "app.auth.application) → tests/auth/application/test_bootstrap.py\n"
         ) in out
         assert "ambiguous" not in out
+
+    def test_details_are_labelled_by_name_without_constant_flags(
+        self, report: Report
+    ) -> None:
+        report.violations = [
+            replace(
+                report.violations[1],
+                expected={"suggested_name": "_hits", "automatic_rename": False},
+            )
+        ]
+
+        out = render_text(report, read_line)
+
+        assert "  Suggested name: _hits\n" in out
+        assert "Automatic rename" not in out
 
 
 class TestRepeatedEdges:
