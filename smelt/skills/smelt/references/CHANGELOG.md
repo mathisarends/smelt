@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT340](docs/rules/SMT340.md) reports an awaited result passed
+  directly as a call argument, such as `Result(text=await client.read())`, and
+  suggests naming it in a local variable first (the keyword for keyword
+  arguments). Enable `rules: {await-in-call-argument: hint}`. Awaits in
+  comprehensions, lambdas, conditional expressions, boolean operators and while
+  conditions are skipped; tests are not checked; no automatic rewrite. Implements
+  [#112](https://github.com/mathisarends/smelt/issues/112).
+
 - Optional [SMT339](docs/rules/SMT339.md) reports production imports and
   module-qualified reads of private symbols defined in analyzed project modules.
   Enable `rules: {private-symbol-import: warning}`. Dunders, public aliases and
