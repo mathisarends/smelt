@@ -1528,6 +1528,21 @@
             "warning"
           ]
         },
+        "await-in-call-argument": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT340: An awaited result is passed directly as a call argument.",
+          "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2474,6 +2489,21 @@
             "warning"
           ]
         },
+        "^SMT340$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT340: An awaited result is passed directly as a call argument.",
+          "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3366,6 +3396,21 @@
             "warning"
           ]
         },
+        "await-in-call-argument": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT340: An awaited result is passed directly as a call argument.",
+          "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4055,6 +4100,21 @@
           "markdownDescription": "**SMT339 \u2014 private-symbol-import**\n\nProduction code imports or reads another project module's private symbol.\n\nA leading underscore marks a symbol as private to its module, including when callers are sibling modules in the same package. This opt-in review checks relative and absolute from-imports and module-qualified reads through lexical import aliases. Only symbols statically resolved to definitions in analyzed production modules are included. Third-party and unknown names, private module names, dunders, instance/class members, reflection and same-module access are excluded. Public aliases remain public. A package initializer may re-export its own submodule's private symbol under a public alias. Tests remain covered by SMT420. TYPE_CHECKING follows architecture.imports.type_checking. Rebound, shadowed or wildcard import bindings are conservatively skipped for qualified reads; dynamic assignments and arbitrary alias propagation are not inferred. No analyzed code is executed.\n\n**Problem**\n```python\n# app/client.py\nfrom .service import _normalize\n\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom .service import normalize\n\n```\n\nGive a shared helper a module-public name, keeping it out of __all__ and the package facade when it is internal to the package, or move it into the module that uses it. Review callers before renaming; no automatic rewrite is performed. Enable rules: {private-symbol-import: warning}, raise its severity to error, or select SMT339. Keep intentional access with a reasoned SMT339 suppression on the imported name or read.\n\nRun `smelt explain private-symbol-import` for details.",
           "examples": [
             "warning"
+          ]
+        },
+        "^SMT340$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT340: An awaited result is passed directly as a call argument.",
+          "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {
