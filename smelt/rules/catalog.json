@@ -718,7 +718,7 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
+    "file_local": false,
     "test_local": false,
     "member_local": false,
     "scope": "source"

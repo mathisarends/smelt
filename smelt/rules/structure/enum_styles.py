@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -10,89 +11,153 @@ from smelt.rules.base import Rule, RuleDoc
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.files import SourceFile
+
+_AUTO = "auto"
+_LITERAL = "literal"
+
 
 class MixedStrEnumValues(Rule):
-    file_local = True
     code = "SMT341"
     name = "mixed-str-enum-values"
     category = Category.STRUCTURE
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
-        summary="A StrEnum mixes auto() members with explicit string values.",
+        summary="StrEnum values are declared with auto() in one place and as "
+        "explicit strings in another.",
         rationale=(
-            "A StrEnum should declare its values in one canonical form: either every "
-            "member uses auto(), which derives the lowercased member name, or every "
-            "member spells its string explicitly. Mixing both hides which values are "
-            "wire contracts and which are derived, and makes readers check each line. "
-            "This opt-in review reports classes in production code that inherit "
-            "directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) "
-            "and declare at least one auto() member and at least one string literal "
-            "member. Member aliases, private names and other assignments are ignored. "
-            "Tests are not checked."
+            "StrEnum values should follow one canonical form across a project: "
+            "either auto(), which derives the lowercased member name, or explicit "
+            "strings. Mixing both, inside one class or between classes, hides which "
+            "values are wire contracts and which are derived. This opt-in review "
+            "considers production classes inheriting directly from enum.StrEnum "
+            "(imported as StrEnum, an alias or enum.StrEnum). A class whose explicit "
+            "strings all equal the lowercased member names could use either form; "
+            "the form used by most such classes is the project style, auto() on a "
+            "tie. A class is reported when it mixes auto() and explicit strings, or "
+            "when it uses only the other form than the project style. Classes with "
+            "custom values such as 'mouseMoved' must spell their strings and never "
+            "decide or violate the project style, but auto() members inside them "
+            "are reported. Member aliases, private names and tests are ignored."
         ),
         bad=(
             "class SignalingMessageType(StrEnum):\n"
             "    DESCRIPTION = auto()\n"
-            '    CANDIDATE = "candidate"\n'
-            "    READY = auto()"
+            "    READY = auto()\n\n"
+            "class ConnectionState(StrEnum):\n"
+            '    OPEN = "open"\n'
+            '    CLOSED = "closed"'
         ),
         good=(
             "class SignalingMessageType(StrEnum):\n"
             "    DESCRIPTION = auto()\n"
-            "    CANDIDATE = auto()\n"
-            "    READY = auto()"
+            "    READY = auto()\n\n"
+            "class ConnectionState(StrEnum):\n"
+            "    OPEN = auto()\n"
+            "    CLOSED = auto()"
         ),
         fix=(
-            "When every explicit string equals the lowercased member name, replace "
-            "those strings with auto(). Otherwise the explicit values are deliberate, "
-            "so spell every auto() member as its lowercased name instead. The finding "
-            "names the suggested style. No automatic rewrite is performed. Enable "
-            "rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides "
-            "and reasoned inline suppressions are supported."
+            "Rewrite the reported class in the suggested style: replace explicit "
+            "strings equal to the lowercased member name with auto(), or spell every "
+            "auto() member as its lowercased name. Classes with custom values keep "
+            "explicit strings. The finding names the project style and how many "
+            "classes use each form. No automatic rewrite is performed. Enable "
+            "rules: {mixed-str-enum-values: hint}, or select SMT341. Package "
+            "overrides and reasoned inline suppressions are supported."
         ),
         config=("rules",),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            tree = ctx.asts.parse(source.path)
-            names = _EnumNames(tree)
-            for node in ast.walk(tree):
-                if not (isinstance(node, ast.ClassDef) and names.is_str_enum(node)):
-                    continue
-                automatic, literal = _members(node, names)
-                if not automatic or not literal:
-                    continue
-                derivable = all(
-                    value == member.lower() for member, value in literal.items()
-                )
-                style = "auto" if derivable else "literal"
-                hint = (
-                    "Every explicit value equals the lowercased member name; use "
-                    "auto() for " + ", ".join(literal) + "."
-                    if derivable
-                    else "Explicit values differ from the member names; spell "
-                    + ", ".join(
-                        f'{member} = "{member.lower()}"' for member in automatic
-                    )
-                    + " explicitly."
-                )
-                yield self.violation(
-                    f"StrEnum {node.name} mixes auto() and explicit string values",
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "enum": node.name,
-                        "auto_members": automatic,
-                        "literal_members": sorted(literal),
-                        "suggested_style": style,
-                        "automatic_rewrite": False,
-                    },
-                    hint=hint,
-                )
+        enums = [
+            enum
+            for source in ctx.files.sources.values()
+            for enum in _str_enums(source, ctx.asts.parse(source.path))
+        ]
+        derivable = [enum for enum in enums if enum.derivable]
+        counts = {
+            style: sum(enum.style == style for enum in derivable)
+            for style in (_AUTO, _LITERAL)
+        }
+        project = _LITERAL if counts[_LITERAL] > counts[_AUTO] else _AUTO
+        for enum in enums:
+            suggested = project if enum.derivable else _LITERAL
+            if enum.style == suggested:
+                continue
+            yield self.violation(
+                _message(enum, project),
+                path=enum.source.path,
+                line=enum.node.lineno,
+                column=enum.node.col_offset + 1,
+                source_module=enum.source.module,
+                expected={
+                    "enum": enum.node.name,
+                    "auto_members": enum.automatic,
+                    "literal_members": sorted(enum.literal),
+                    "suggested_style": suggested,
+                    "project_style": project,
+                    "auto_enums": counts[_AUTO],
+                    "literal_enums": counts[_LITERAL],
+                    "automatic_rewrite": False,
+                },
+                hint=_hint(enum, suggested),
+            )
+
+
+@dataclass(frozen=True)
+class _StrEnum:
+    source: SourceFile
+    node: ast.ClassDef
+    automatic: list[str]
+    literal: dict[str, str]
+
+    @property
+    def derivable(self) -> bool:
+        return all(value == name.lower() for name, value in self.literal.items())
+
+    @property
+    def style(self) -> str | None:
+        if self.automatic and self.literal:
+            return None
+        if self.automatic:
+            return _AUTO
+        return _LITERAL if self.literal else None
+
+
+def _str_enums(source: SourceFile, tree: ast.Module) -> Iterator[_StrEnum]:
+    names = _EnumNames(tree)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and names.is_str_enum(node):
+            automatic, literal = _members(node, names)
+            if automatic or literal:
+                yield _StrEnum(source, node, automatic, literal)
+
+
+def _message(enum: _StrEnum, project: str) -> str:
+    if enum.style is None:
+        return f"StrEnum {enum.node.name} mixes auto() and explicit string values"
+    if enum.style == _LITERAL:
+        return (
+            f"StrEnum {enum.node.name} spells values that auto() derives; "
+            "the project declares StrEnum values with auto()"
+        )
+    return (
+        f"StrEnum {enum.node.name} uses auto(); the project declares "
+        f"StrEnum values as explicit strings"
+        if project == _LITERAL
+        else f"StrEnum {enum.node.name} uses auto() next to custom string values"
+    )
+
+
+def _hint(enum: _StrEnum, suggested: str) -> str:
+    if suggested == _AUTO:
+        return "Use auto() for " + ", ".join(enum.literal) + "."
+    return (
+        "Spell "
+        + ", ".join(f'{member} = "{member.lower()}"' for member in enum.automatic)
+        + " explicitly."
+    )
 
 
 class _EnumNames:

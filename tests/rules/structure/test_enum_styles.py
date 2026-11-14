@@ -49,6 +49,9 @@ def test_mixed_enum_with_derivable_literals_suggests_auto(tmp_path: Path) -> Non
         "auto_members": ["DESCRIPTION", "READY"],
         "literal_members": ["CANDIDATE"],
         "suggested_style": "auto",
+        "project_style": "auto",
+        "auto_enums": 0,
+        "literal_enums": 0,
         "automatic_rewrite": False,
     }
     assert finding.hint is not None
@@ -69,6 +72,54 @@ def test_mixed_enum_with_custom_literals_suggests_explicit_strings(
     assert finding.expected["suggested_style"] == "literal"
     assert finding.hint is not None
     assert 'WHEEL = "wheel"' in finding.hint
+
+
+def _modules(tmp_path: Path, **modules: str) -> Path:
+    files = {"smelt.yml": CONFIG, "app/__init__.py": ""}
+    files.update({f"app/{name}.py": source for name, source in modules.items()})
+    return write_project(tmp_path, files)
+
+
+AUTO_ENUM = _enum("from enum import StrEnum, auto", "A = auto()", "B = auto()")
+LITERAL_ENUM = _enum("from enum import StrEnum", 'A = "a"', 'B = "b"')
+CUSTOM_ENUM = _enum("from enum import StrEnum", 'MOVED = "mouseMoved"')
+
+
+def test_explicit_enum_in_auto_project_is_reported_across_modules(
+    tmp_path: Path,
+) -> None:
+    root = _modules(tmp_path, first=AUTO_ENUM, second=AUTO_ENUM, third=LITERAL_ENUM)
+    [finding] = violations(root, OPTIONS)
+    assert finding.path == "app/third.py"
+    assert finding.expected is not None
+    assert (
+        finding.expected["suggested_style"],
+        finding.expected["auto_enums"],
+        finding.expected["literal_enums"],
+    ) == ("auto", 2, 1)
+    assert "auto() derives" in finding.message
+    assert finding.hint == "Use auto() for A, B."
+
+
+def test_auto_enum_in_explicit_project_is_reported(tmp_path: Path) -> None:
+    root = _modules(tmp_path, first=LITERAL_ENUM, second=LITERAL_ENUM, third=AUTO_ENUM)
+    [finding] = violations(root, OPTIONS)
+    assert finding.path == "app/third.py"
+    assert finding.expected is not None
+    assert finding.expected["project_style"] == "literal"
+    assert finding.hint == 'Spell A = "a", B = "b" explicitly.'
+
+
+def test_tie_prefers_auto(tmp_path: Path) -> None:
+    [finding] = violations(_modules(tmp_path, a=AUTO_ENUM, b=LITERAL_ENUM), OPTIONS)
+    assert finding.path == "app/b.py"
+
+
+def test_custom_value_enums_neither_decide_nor_violate_the_style(
+    tmp_path: Path,
+) -> None:
+    root = _modules(tmp_path, a=AUTO_ENUM, b=CUSTOM_ENUM, c=CUSTOM_ENUM)
+    assert violations(root, OPTIONS) == []
 
 
 @pytest.mark.parametrize(
@@ -128,3 +179,13 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     config = CONFIG + "rules: {mixed-str-enum-values: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", SOURCE, config=config))
     assert (finding.code, finding.severity) == ("SMT341", Severity.WARNING)
+
+
+def test_mixed_enum_follows_explicit_project_style(tmp_path: Path) -> None:
+    root = _modules(tmp_path, a=LITERAL_ENUM, b=LITERAL_ENUM, signaling=SOURCE)
+    [finding] = violations(root, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["suggested_style"] == "literal"
+    assert (
+        finding.hint == 'Spell DESCRIPTION = "description", READY = "ready" explicitly.'
+    )

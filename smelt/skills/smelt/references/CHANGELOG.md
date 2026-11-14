@@ -7,12 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- Optional [SMT341](docs/rules/SMT341.md) reports a `StrEnum` that mixes
-  `auto()` members with explicit string values and suggests one canonical form:
-  `auto()` when every explicit string equals the lowercased member name,
-  otherwise explicit strings for every member. Enable
-  `rules: {mixed-str-enum-values: hint}`. Tests are not checked; no automatic
-  rewrite. Implements [#116](https://github.com/mathisarends/smelt/issues/116).
+- Optional [SMT341](docs/rules/SMT341.md) keeps `StrEnum` values in one form
+  across the project: `auto()` or explicit strings. It reports a class that
+  mixes both, and a class using the other form than most classes whose strings
+  equal the lowercased member names (`auto()` on a tie). Classes with custom
+  values such as `"mouseMoved"` keep explicit strings and do not decide the
+  style. Enable `rules: {mixed-str-enum-values: hint}`. Tests are not checked;
+  no automatic rewrite. Implements
+  [#116](https://github.com/mathisarends/smelt/issues/116).
 
 - Repair hints of SMT316, SMT320, SMT335, SMT429 and SMT430 no longer repeat the
   member and its suggested name, which the message and the `suggested_name`
