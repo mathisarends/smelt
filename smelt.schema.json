@@ -1573,6 +1573,21 @@
             "hint"
           ]
         },
+        "redundant-name-alias": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT344: A module-level name only repeats another class or function name.",
+          "description": "A module-level name only repeats another class or function name. Two names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported. Repair: Use the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.",
+          "markdownDescription": "**SMT344 \u2014 redundant-name-alias**\n\nA module-level name only repeats another class or function name.\n\nTwo names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported.\n\n**Problem**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\nAutofillData = PasswordData\n```\n\n**Preferred**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\ntype AutofillData = PasswordData | CardData\n```\n\nUse the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.\n\nRun `smelt explain redundant-name-alias` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2564,6 +2579,21 @@
             "hint"
           ]
         },
+        "^SMT344$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT344: A module-level name only repeats another class or function name.",
+          "description": "A module-level name only repeats another class or function name. Two names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported. Repair: Use the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.",
+          "markdownDescription": "**SMT344 \u2014 redundant-name-alias**\n\nA module-level name only repeats another class or function name.\n\nTwo names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported.\n\n**Problem**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\nAutofillData = PasswordData\n```\n\n**Preferred**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\ntype AutofillData = PasswordData | CardData\n```\n\nUse the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.\n\nRun `smelt explain redundant-name-alias` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3501,6 +3531,21 @@
             "hint"
           ]
         },
+        "redundant-name-alias": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT344: A module-level name only repeats another class or function name.",
+          "description": "A module-level name only repeats another class or function name. Two names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported. Repair: Use the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.",
+          "markdownDescription": "**SMT344 \u2014 redundant-name-alias**\n\nA module-level name only repeats another class or function name.\n\nTwo names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported.\n\n**Problem**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\nAutofillData = PasswordData\n```\n\n**Preferred**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\ntype AutofillData = PasswordData | CardData\n```\n\nUse the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.\n\nRun `smelt explain redundant-name-alias` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4233,6 +4278,21 @@
           "title": "SMT342: A StrEnum derives a value with auto().",
           "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
           "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT344$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT344: A module-level name only repeats another class or function name.",
+          "description": "A module-level name only repeats another class or function name. Two names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported. Repair: Use the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.",
+          "markdownDescription": "**SMT344 \u2014 redundant-name-alias**\n\nA module-level name only repeats another class or function name.\n\nTwo names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported.\n\n**Problem**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\nAutofillData = PasswordData\n```\n\n**Preferred**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\ntype AutofillData = PasswordData | CardData\n```\n\nUse the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.\n\nRun `smelt explain redundant-name-alias` for details.",
           "examples": [
             "hint"
           ]

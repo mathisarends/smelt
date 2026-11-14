@@ -739,6 +739,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.aliases:RedundantNameAlias",
+    "code": "SMT344",
+    "name": "redundant-name-alias",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

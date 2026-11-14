@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional review [SMT344](docs/rules/SMT344.md) `redundant-name-alias` reports
+  a module-level name that only repeats another class or function name, such as
+  `AutofillData = PasswordData`, including `TypeAlias` and `type` statements.
+  Unions, subscripts, `Annotated`, constants, conditional fallbacks, typing
+  special forms and tests are not reported. Enable it with
+  `rules: {redundant-name-alias: hint}`; no automatic rewrite. Implements
+  [#120](https://github.com/mathisarends/smelt/issues/120).
+
 ## [0.7.0] - 2026-11-14
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default
