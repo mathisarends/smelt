@@ -7,6 +7,17 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-14
+
+Report schema 2, YAML version 1, grouped debt baseline version 2, the default
+rule set and exit codes remain unchanged. The six new rules SMT337–SMT342 are
+opt-in; SMT341 and SMT342 are alternative `StrEnum` conventions, so enable at
+most one. Text and concise output now label details by name and list shared
+repair advice once; JSON, SARIF and GitHub output are unchanged. Update
+installation, hook and CI pins together to `0.7.0` (`v0.7.0`), refresh the
+editor schema and the installed agent skill. No baseline rewrite is required.
+See the [upgrade checklist](docs/upgrading.md#060-to-070).
+
 - Optional style rules fix how `StrEnum` values are declared.
   [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
   convention: it reports explicit strings equal to the lowercased member name,
@@ -690,7 +701,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/mathisarends/smelt/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/mathisarends/smelt/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mathisarends/smelt/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mathisarends/smelt/compare/v0.3.0...v0.4.0
