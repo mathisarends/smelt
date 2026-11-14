@@ -44,6 +44,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   `smelt context` shows the limit. No automatic rewrite. Implements
   [#122](https://github.com/mathisarends/smelt/issues/122).
 
+- Optional review [SMT343](docs/rules/SMT343.md) `redundant-private-delegate`
+  reports a method whose whole body returns a call to a private method of the
+  same class that receives every parameter unchanged and is used nowhere else,
+  such as `def events(...): return self._events(...)`. Validation before the
+  call, shared or decorated helpers, dunder methods, classes with bases from
+  other modules and tests are not reported. Enable it with
+  `rules: {redundant-private-delegate: hint}`; no automatic rewrite. Implements
+  [#119](https://github.com/mathisarends/smelt/issues/119).
+
 ## [0.7.0] - 2026-11-14
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default
