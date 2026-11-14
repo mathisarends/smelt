@@ -67,7 +67,11 @@ def test_reports_type_alias_spellings(
     [
         ("from app.models import PasswordData", "Data = PasswordData", "PasswordData"),
         ("import pathlib", "Location = pathlib.Path", "pathlib.Path"),
-        ("import xml.etree.ElementTree", "Tree = xml.etree.ElementTree.Element", "xml.etree.ElementTree.Element"),
+        (
+            "import xml.etree.ElementTree",
+            "Tree = xml.etree.ElementTree.Element",
+            "xml.etree.ElementTree.Element",
+        ),
     ],
 )
 def test_reports_imported_class_names(
