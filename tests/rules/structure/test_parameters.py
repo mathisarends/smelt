@@ -167,4 +167,3 @@ def test_ignores_tests(tmp_path: Path) -> None:
         },
     )
     assert violations(root) == []
-

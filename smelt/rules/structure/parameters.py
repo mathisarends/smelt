@@ -39,8 +39,7 @@ class ExcessPositionalParameters(Rule):
             "parameter."
         ),
         bad=(
-            "def connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n"
-            "    ..."
+            "def connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ..."
         ),
         good=(
             "def connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n"
@@ -124,7 +123,11 @@ def _nested(node: ast.stmt) -> list[ast.stmt]:
         child
         for field in ("body", "orelse", "finalbody", "handlers", "cases")
         for item in getattr(node, field, ())
-        for child in (item.body if isinstance(item, ast.ExceptHandler | ast.match_case) else [item])
+        for child in (
+            item.body
+            if isinstance(item, ast.ExceptHandler | ast.match_case)
+            else [item]
+        )
         if isinstance(child, ast.stmt)
     ]
 
