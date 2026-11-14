@@ -15,6 +15,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   `rules: {redundant-name-alias: hint}`; no automatic rewrite. Implements
   [#120](https://github.com/mathisarends/smelt/issues/120).
 
+- New package policy `max_positional_parameters` limits how many parameters a
+  function or method may accept positionally; later parameters must be
+  keyword-only. [SMT345](docs/rules/SMT345.md) `excess-positional-parameters`
+  reports violations (warning). `self`/`cls`, `*args`/`**kwargs`, dunder,
+  `@overload` and `@override` definitions and tests are not counted. Enable it
+  with `structure.contracts.<name>: {match: app, max_positional_parameters: 2}`;
+  `smelt context` shows the limit. No automatic rewrite. Implements
+  [#122](https://github.com/mathisarends/smelt/issues/122).
+
 ## [0.7.0] - 2026-11-14
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

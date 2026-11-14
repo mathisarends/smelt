@@ -532,6 +532,20 @@
           "default": null,
           "description": "Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite."
         },
+        "max_positional_parameters": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
+          "title": "Max Positional Parameters"
+        },
         "rules": {
           "$ref": "#/$defs/SourceRuleSettings"
         }
@@ -1588,6 +1602,21 @@
             "hint"
           ]
         },
+        "excess-positional-parameters": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT345: A function accepts more positional parameters than its package allows.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.",
+          "markdownDescription": "**SMT345 \u2014 excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.\n\nRun `smelt explain excess-positional-parameters` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2594,6 +2623,21 @@
             "hint"
           ]
         },
+        "^SMT345$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT345: A function accepts more positional parameters than its package allows.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.",
+          "markdownDescription": "**SMT345 \u2014 excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.\n\nRun `smelt explain excess-positional-parameters` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3546,6 +3590,21 @@
             "hint"
           ]
         },
+        "excess-positional-parameters": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT345: A function accepts more positional parameters than its package allows.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.",
+          "markdownDescription": "**SMT345 \u2014 excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.\n\nRun `smelt explain excess-positional-parameters` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4295,6 +4354,21 @@
           "markdownDescription": "**SMT344 \u2014 redundant-name-alias**\n\nA module-level name only repeats another class or function name.\n\nTwo names for one class or function make readers and agents ask whether they differ, and grep finds only half of the uses. Such aliases are typically compatibility names left behind by a rename or placeholders for a union that never gained a second member. This opt-in review reports unconditional module-level X = Y, X: TypeAlias = Y and type X = Y statements whose right side is a bare name or dotted attribute that refers to a class or function defined in the same module, or to an imported CapWords name. Type expressions such as unions, subscripts and Annotated, values such as constants, conditional assignments (version or import fallbacks), class-level names, typing special forms such as Any and tests are not reported.\n\n**Problem**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\nAutofillData = PasswordData\n```\n\n**Preferred**\n```python\nclass PasswordData(BaseModel):\n    username: str\n\ntype AutofillData = PasswordData | CardData\n```\n\nUse the target name everywhere and remove the alias. Introduce a shared name once it describes a real type expression, such as a union with a second member. Keep a deliberate public compatibility name with a reasoned suppression. No automatic rewrite is performed. Enable rules: {redundant-name-alias: hint}, or select SMT344.\n\nRun `smelt explain redundant-name-alias` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT345$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT345: A function accepts more positional parameters than its package allows.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.",
+          "markdownDescription": "**SMT345 \u2014 excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. A package contract sets max_positional_parameters; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, max_positional_parameters: 2}.\n\nRun `smelt explain excess-positional-parameters` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {
