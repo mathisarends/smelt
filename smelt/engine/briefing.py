@@ -547,7 +547,12 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             )
         lines.extend(
             f"  {key}: {contract[key]}"
-            for key in ("module_docstrings", "future_annotations", "private_modules")
+            for key in (
+                "module_docstrings",
+                "future_annotations",
+                "private_modules",
+                "max_positional_parameters",
+            )
             if key in contract
         )
     if briefing.import_style:

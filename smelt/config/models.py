@@ -505,6 +505,11 @@ class PackageContract(_Model):
         default=None,
         description="Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite.",
     )
+    max_positional_parameters: int | None = Field(
+        default=None,
+        ge=0,
+        description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
+    )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
         description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable public-definitions-first.",
@@ -559,6 +564,7 @@ class PackageContract(_Model):
             and self.private_modules is None
             and self.ordering is None
             and self.type_dispatch is None
+            and self.max_positional_parameters is None
             and not self.rules
         ):
             raise ValueError("set at least one package contract policy")
