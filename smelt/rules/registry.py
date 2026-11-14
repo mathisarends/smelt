@@ -75,6 +75,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
     "smelt.rules.structure.tuples:AnonymousTupleType",
     "smelt.rules.structure.delegates:RedundantPrivateDelegate",
+    "smelt.rules.structure.interface_docstrings:MissingInterfaceDocstring",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
