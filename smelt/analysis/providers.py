@@ -51,13 +51,15 @@ def provider_forwardings(tree: ast.Module) -> Iterator[ProviderForwarding]:
                 for option in options
             ):
                 continue
-            candidate = _forwarding(owner.name, node, node.body[0].value, options)
+            candidate = _forwarding(
+                owner.name, node, node.body[0].value, options=options
+            )
             if candidate is not None:
                 yield candidate
 
 
 def _forwarding(
-    owner: str, node: ast.FunctionDef, call: ast.Call, options: list[ast.keyword]
+    owner: str, node: ast.FunctionDef, call: ast.Call, *, options: list[ast.keyword]
 ) -> ProviderForwarding | None:
     dependencies = _dependencies(node)
     if (

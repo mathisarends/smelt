@@ -44,7 +44,7 @@ def internal_module_symbols(
         for child in ast.walk(module.tree):
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
                 loads.setdefault(child.id, set()).add(child.lineno)
-        api = _api_names(module.tree, module.module, exports, usage)
+        api = _api_names(module.tree, module.module, exports, usage=usage)
         for target, kind in candidates:
             name = target.id
             if (
@@ -65,7 +65,7 @@ def internal_module_symbols(
 
 
 def _api_names(
-    tree: ast.Module, module: str, exports: frozenset[str], usage: MemberUsageIndex
+    tree: ast.Module, module: str, exports: frozenset[str], *, usage: MemberUsageIndex
 ) -> set[str]:
     api = set(exports)
     for node in tree.body:

@@ -231,6 +231,7 @@ class CrossFeatureConfig(_Model):
         source_feature: str,
         source_layer: str,
         target_feature: str,
+        *,
         target_layer: str,
     ) -> bool:
         if (source_layer, target_layer) in self.pairs():

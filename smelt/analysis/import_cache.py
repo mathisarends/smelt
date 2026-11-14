@@ -49,7 +49,7 @@ def resolution_identity(files: FileIndex) -> str:
 
 
 def import_cache_type(
-    files: FileIndex, asts: AstCache, cache: FactCache | None, inventory: str
+    files: FileIndex, asts: AstCache, cache: FactCache | None, *, inventory: str
 ) -> type[Cache]:
     misses: set[Module] = set()
 

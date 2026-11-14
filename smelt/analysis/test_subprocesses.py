@@ -18,6 +18,7 @@ def checked_python_assertions(
     call: ast.Call,
     qualified: str,
     resolve: Callable[[ast.AST], str | None],
+    *,
     text: Callable[[ast.expr], str | None],
 ) -> bool:
     if not _checked_options(call, qualified, text):

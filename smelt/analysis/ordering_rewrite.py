@@ -63,7 +63,9 @@ def rewrite_order(source: str, result: FileOrder, sections: list[OrderSection]) 
         raise AnalysisError("source changed since ordering analysis")
     _compile_source(source, result.path)
     newline = "\r\n" if "\r\n" in source else "\n"
-    rewritten = _render(source, Span(0, len(source)), _moves(source, sections), newline)
+    rewritten = _render(
+        source, Span(0, len(source)), _moves(source, sections), newline=newline
+    )
     if not source.endswith(("\n", "\r")) and rewritten.endswith(newline):
         rewritten = rewritten[: -len(newline)]
     try:
@@ -151,7 +153,7 @@ def _statement_end(node: ast.stmt, lines: list[str]) -> int:
     return end
 
 
-def _render(source: str, span: Span, moves: list[Move], newline: str) -> str:
+def _render(source: str, span: Span, moves: list[Move], *, newline: str) -> str:
     inside = [
         move
         for move in moves
@@ -181,7 +183,7 @@ def _render(source: str, span: Span, moves: list[Move], newline: str) -> str:
             and item.span.end <= move.span.end
         ]
         blocks = [
-            _render(source, move.parts[index], children, newline)
+            _render(source, move.parts[index], children, newline=newline)
             for index in move.section.order
         ]
         for index, block in enumerate(blocks):

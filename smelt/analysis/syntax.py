@@ -83,7 +83,7 @@ class SyntaxIndex:
                 self.files.content_id(source.path),
             ],
             _NAMESPACE,
-            build,
+            build=build,
         )
 
 

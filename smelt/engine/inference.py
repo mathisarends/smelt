@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.exports import Loader
 # layer -> directory names, most conventional first
-LAYER_ALIASES: dict[str, tuple[str, ...]] = {
+_LAYER_ALIASES: dict[str, tuple[str, ...]] = {
     "domain": ("domain", "entities"),
     "application": ("application", "use_cases", "usecases", "services"),
     "infrastructure": ("infrastructure", "infra", "adapters", "persistence"),
@@ -186,7 +186,7 @@ def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
                     inferred.features_root = dotted
                     inferred.features = [c.name for c in children]
                     return
-    layer_names = {alias for aliases in LAYER_ALIASES.values() for alias in aliases}
+    layer_names = {alias for aliases in _LAYER_ALIASES.values() for alias in aliases}
     for package in packages:
         layered = [
             child
@@ -217,7 +217,7 @@ def _infer_layers(inferred: InferredConfig, containers: list[Path]) -> None:
         child.name for container in containers for child in child_packages(container)
     )
     found: dict[str, str] = {}
-    for name, aliases in LAYER_ALIASES.items():
+    for name, aliases in _LAYER_ALIASES.items():
         count, _, alias = max(
             (counts[alias], -index, alias) for index, alias in enumerate(aliases)
         )
@@ -447,6 +447,7 @@ def _reaches(
     packages: list[Path],
     name: str,
     targets: list[str],
+    *,
     depth: int = 3,
     seen: set[str] | None = None,
 ) -> bool:
@@ -459,7 +460,7 @@ def _reaches(
         return False
     seen.add(name)
     return any(
-        _reaches(packages, imported, targets, depth - 1, seen)
+        _reaches(packages, imported, targets, depth=depth - 1, seen=seen)
         for imported in sorted(_module_imports(packages, name))
         if _within_any(imported, [name])
     )

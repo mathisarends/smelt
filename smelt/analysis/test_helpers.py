@@ -57,6 +57,7 @@ def helper_executes(
     helper: Function,
     call: ast.Call,
     calls: Mapping[ast.Call, str],
+    *,
     parents: Mapping[ast.AST, ast.AST],
 ) -> bool:
     if isinstance(helper, ast.FunctionDef):

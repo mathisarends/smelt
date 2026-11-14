@@ -50,7 +50,7 @@ def rewrite_none_defaults(source: str, candidates: list[NoneDefault]) -> str:
             )
         )
         keys.add((node.lineno, node.col_offset))
-    rewritten = _render(data, 0, len(data), edits).decode("utf-8")
+    rewritten = _render(data, 0, len(data), edits=edits).decode("utf-8")
     expected = _Expected(keys).visit(ast.parse(source))
     parsed = ast.parse(rewritten)
     if ast.dump(parsed) != ast.dump(expected):
@@ -61,7 +61,7 @@ def rewrite_none_defaults(source: str, candidates: list[NoneDefault]) -> str:
     return rewritten
 
 
-def _render(data: bytes, start: int, end: int, edits: list[_Edit]) -> bytes:
+def _render(data: bytes, start: int, end: int, *, edits: list[_Edit]) -> bytes:
     inside = [edit for edit in edits if start <= edit.start and edit.end <= end]
     roots = [
         edit
@@ -76,7 +76,7 @@ def _render(data: bytes, start: int, end: int, edits: list[_Edit]) -> bytes:
     for edit in sorted(roots, key=lambda item: item.start):
         pieces.append(data[cursor : edit.start])
         parameter = edit.parameter.encode("utf-8")
-        fallback = _render(data, edit.fallback_start, edit.fallback_end, edits)
+        fallback = _render(data, edit.fallback_start, edit.fallback_end, edits=edits)
         pieces.append(
             b"("
             + parameter

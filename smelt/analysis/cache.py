@@ -23,8 +23,8 @@ class FactCache:
     def __init__(self, directory: Path) -> None:
         self._root = directory
         self.directory = directory / "v1" / analyzer_identity()
-        self.hits = 0
-        self.misses = 0
+        self._hits = 0
+        self._misses = 0
         self._connection: sqlite3.Connection | None = None
         self._disabled = False
 
@@ -93,7 +93,12 @@ class FactCache:
                 self._disable()
 
     def get[T](
-        self, kind: str, inputs: object, adapter: TypeAdapter[T], build: Callable[[], T]
+        self,
+        kind: str,
+        inputs: object,
+        adapter: TypeAdapter[T],
+        *,
+        build: Callable[[], T],
     ) -> T:
         key = self.key(kind, inputs)
         result = self.read(key, adapter)
@@ -109,20 +114,20 @@ class FactCache:
     def read[T](self, key: str, adapter: TypeAdapter[T]) -> T | None:
         connection = self._connect()
         if connection is None:
-            self.misses += 1
+            self._misses += 1
             return None
         try:
             row = connection.execute(
                 "SELECT payload FROM facts WHERE key = ?", (key,)
             ).fetchone()
             if row is None:
-                self.misses += 1
+                self._misses += 1
                 return None
             result = adapter.validate_json(row[0])
         except (ValueError, ValidationError, sqlite3.Error):
-            self.misses += 1
+            self._misses += 1
             return None
-        self.hits += 1
+        self._hits += 1
         return result
 
     def write[T](self, key: str, value: T, adapter: TypeAdapter[T]) -> None:

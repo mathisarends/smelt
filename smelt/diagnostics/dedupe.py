@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from smelt.diagnostics.violation import Violation
 
 # winner -> codes it makes redundant when both report the same root cause
-SPECIFICITY: dict[str, frozenset[str]] = {
+_SPECIFICITY: dict[str, frozenset[str]] = {
     "SMT306": frozenset({"SMT301", "SMT305"}),
     # shared or central code importing a feature (also its layer or wiring module):
     # the feature import is the root cause
@@ -28,7 +28,7 @@ def deduplicate(violations: list[Violation]) -> list[Violation]:
         same_cause = codes_by_key[_key(violation)]
         redundant = any(
             violation.code in losers and winner in same_cause
-            for winner, losers in SPECIFICITY.items()
+            for winner, losers in _SPECIFICITY.items()
         )
         if not redundant:
             kept.append(violation)

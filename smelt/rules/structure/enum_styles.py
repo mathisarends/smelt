@@ -64,16 +64,16 @@ class StrEnumAutoValues(Rule):
                         enum,
                         f"StrEnum {enum.node.name} has custom values; spell its "
                         "auto() members explicitly",
-                        enum.automatic,
-                        _spell(enum.automatic),
+                        members=enum.automatic,
+                        hint=_spell(enum.automatic),
                     )
             elif enum.literal:
                 yield _violation(
                     self,
                     enum,
                     f"StrEnum {enum.node.name} spells values that auto() derives",
-                    sorted(enum.literal),
-                    "Use auto() for " + ", ".join(enum.literal) + ".",
+                    members=sorted(enum.literal),
+                    hint="Use auto() for " + ", ".join(enum.literal) + ".",
                 )
 
 
@@ -120,8 +120,8 @@ class StrEnumExplicitValues(Rule):
                     self,
                     enum,
                     f"StrEnum {enum.node.name} derives values with auto()",
-                    enum.automatic,
-                    _spell(enum.automatic),
+                    members=enum.automatic,
+                    hint=_spell(enum.automatic),
                 )
 
 
@@ -148,7 +148,7 @@ def _str_enums(ctx: AnalysisContext) -> Iterator[_StrEnum]:
 
 
 def _violation(
-    rule: Rule, enum: _StrEnum, message: str, members: list[str], hint: str
+    rule: Rule, enum: _StrEnum, message: str, *, members: list[str], hint: str
 ) -> Violation:
     return rule.violation(
         message,
@@ -178,8 +178,8 @@ class _EnumNames:
 
     def __init__(self, tree: ast.Module) -> None:
         self.modules: set[str] = set()
-        self.str_enum: set[str] = set()
-        self.auto: set[str] = set()
+        self._str_enum: set[str] = set()
+        self._auto: set[str] = set()
         for node in tree.body:
             if isinstance(node, ast.Import):
                 self.modules.update(
@@ -190,13 +190,13 @@ class _EnumNames:
             elif isinstance(node, ast.ImportFrom) and node.module == "enum":
                 for alias in node.names:
                     if alias.name == "StrEnum":
-                        self.str_enum.add(alias.asname or alias.name)
+                        self._str_enum.add(alias.asname or alias.name)
                     elif alias.name == "auto":
-                        self.auto.add(alias.asname or alias.name)
+                        self._auto.add(alias.asname or alias.name)
 
     def is_str_enum(self, node: ast.ClassDef) -> bool:
         return len(node.bases) == 1 and self._refers(
-            node.bases[0], self.str_enum, "StrEnum"
+            node.bases[0], self._str_enum, "StrEnum"
         )
 
     def is_auto(self, value: ast.expr | None) -> bool:
@@ -204,7 +204,7 @@ class _EnumNames:
             isinstance(value, ast.Call)
             and not value.args
             and not value.keywords
-            and self._refers(value.func, self.auto, "auto")
+            and self._refers(value.func, self._auto, "auto")
         )
 
     def _refers(self, node: ast.expr, names: set[str], attribute: str) -> bool:

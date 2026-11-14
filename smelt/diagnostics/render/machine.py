@@ -13,10 +13,6 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.report import Report
 
-JSON_SCHEMA_VERSION = 2
-SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
-TOOL_URI = "https://github.com/mathisarends/smelt"
-
 
 def render_json(report: Report, *, show_coverage: bool = False) -> str:
     coverage = dict(report.coverage) if report.coverage else None
@@ -43,7 +39,7 @@ def render_json(report: Report, *, show_coverage: bool = False) -> str:
             scope = expected.pop("usage_scope")
             expected["usage_scope_index"] = usage_scopes.index(scope)
     document = {
-        "schema_version": JSON_SCHEMA_VERSION,
+        "schema_version": _JSON_SCHEMA_VERSION,
         "status": report.status,
         "summary": report.summary_json(),
         "scope": {
@@ -79,7 +75,7 @@ def render_error_json(
 ) -> str:
     """The document ``--format json`` prints instead of a report when it exits with 2."""
     document = {
-        "schema_version": JSON_SCHEMA_VERSION,
+        "schema_version": _JSON_SCHEMA_VERSION,
         "status": "error",
         "error": {
             "kind": kind,
@@ -89,6 +85,11 @@ def render_error_json(
         },
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+
+
+_JSON_SCHEMA_VERSION = 2
+_SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
+_TOOL_URI = "https://github.com/mathisarends/smelt"
 
 
 _SARIF_LEVEL = {
@@ -114,7 +115,7 @@ def render_sarif(report: Report, version: str) -> str:
     prefix = (report.project or {}).get("repository_prefix", "")
     results = [_sarif_result(v, index, prefix) for v in report.violations]
     document = {
-        "$schema": SARIF_SCHEMA,
+        "$schema": _SARIF_SCHEMA,
         "version": "2.1.0",
         "runs": [
             {
@@ -122,7 +123,7 @@ def render_sarif(report: Report, version: str) -> str:
                     "driver": {
                         "name": "smelt",
                         "version": version,
-                        "informationUri": TOOL_URI,
+                        "informationUri": _TOOL_URI,
                         "rules": rules,
                     }
                 },

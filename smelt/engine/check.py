@@ -231,7 +231,9 @@ def _run_check(
     if options.paths:
         _validate_scope(ctx, options.paths)
     if analyzed is None:
-        violations, suppressed = _collect(ctx, rules, loaded, active, options)
+        violations, suppressed = _collect(
+            ctx, rules, loaded, active=active, options=options
+        )
         analyzed = CachedAnalysis(
             violations,
             suppressed,
@@ -286,7 +288,9 @@ def _run_check(
         violations, comparison = _introduced(
             ctx,
             violations,
-            lambda before: _collect(before, rules, loaded, active, options)[0],
+            lambda before: _collect(
+                before, rules, loaded, active=active, options=options
+            )[0],
             options=options,
             cache_key=[
                 config.model_dump(mode="json"),
@@ -400,7 +404,7 @@ def _introduced(
         introduced, _, _ = known.match(violations, snippet_reader(ctx))
         return introduced, comparison
     with tempfile.TemporaryDirectory(prefix="smelt-base-") as tmp:
-        base_root = export_base(root, repository, comparison, Path(tmp))
+        base_root = export_base(root, repository, comparison, dest=Path(tmp))
         if base_root is None:
             return violations, comparison
         before_ctx = AnalysisContext(base_root, ctx.config, cache=ctx.cache)
@@ -419,6 +423,7 @@ def _collect(
     ctx: AnalysisContext,
     rules: RuleSet,
     loaded: LoadedConfig,
+    *,
     active: list[tuple[RuleContract, Severity]],
     options: CheckOptions,
 ) -> tuple[list[Violation], int]:
@@ -452,7 +457,11 @@ def _collect(
     enabled_codes = {rule.code for rule, _ in enabled} - _META
     violations.extend(
         _suppression_violations(
-            ctx, suppressions, active_codes, (known_codes, enabled_codes), severity_of
+            ctx,
+            suppressions,
+            active_codes,
+            codes=(known_codes, enabled_codes),
+            severity_of=severity_of,
         )
     )
     return violations, suppressed
@@ -642,6 +651,7 @@ def _suppression_violations(
     ctx: AnalysisContext,
     suppressions: list[Suppression],
     active_codes: set[str],
+    *,
     codes: tuple[set[str], set[str]],
     severity_of: dict[str, Severity],
 ) -> list[Violation]:
@@ -682,7 +692,7 @@ def _suppression_violations(
                     hint="Inline suppressions require stable SMT codes or code prefixes; use `smelt rules` to find the code for a rule name.",
                 ).with_severity(severity_of["SMT901"])
             )
-        unused = _unused_codes(suppression, checked, *codes)
+        unused = _unused_codes(suppression, checked, codes[0], enabled=codes[1])
         if unused is None:
             continue
         label = ", ".join(unused) if unused else "all codes"
@@ -699,7 +709,7 @@ def _suppression_violations(
 
 
 def _unused_codes(
-    suppression: Suppression, checked: set[str], known: set[str], enabled: set[str]
+    suppression: Suppression, checked: set[str], known: set[str], *, enabled: set[str]
 ) -> tuple[str, ...] | None:
     """Codes to remove, ``()`` for the whole comment, None if the suppression is fine.
 

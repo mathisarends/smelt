@@ -66,13 +66,16 @@ class LayerBoundary(Rule):
             source = model.info(detail.importer)
             forbidden = _forbidden_layer(ctx, source, model.info(detail.imported))
             if source is not None and forbidden is not None:
-                yield self._violation(ctx, detail, source, forbidden, chain)
+                yield self._violation(
+                    ctx, detail, source, target_layer=forbidden, chain=chain
+                )
 
     def _violation(
         self,
         ctx: AnalysisContext,
         detail: ImportDetail,
         source: ModuleInfo,
+        *,
         target_layer: str,
         chain: tuple[ImportLink, ...] = (),
     ) -> Violation:
@@ -83,9 +86,9 @@ class LayerBoundary(Rule):
             self,
             ctx,
             detail,
-            f"{layer} must not depend on {target_layer}{via}",
+            message=f"{layer} must not depend on {target_layer}{via}",
             expected={"may_depend_on": allowed},
-            hint=_hint(ctx, detail, source, chain),
+            hint=_hint(ctx, detail, source, chain=chain),
             chain=chain,
         )
 
@@ -117,6 +120,7 @@ def _hint(
     ctx: AnalysisContext,
     detail: ImportDetail,
     source: ModuleInfo,
+    *,
     chain: tuple[ImportLink, ...],
 ) -> str:
     model = ctx.model

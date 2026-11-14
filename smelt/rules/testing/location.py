@@ -162,7 +162,7 @@ def _similar_module(ctx: AnalysisContext, module: str, imported: list[str]) -> s
 
 
 def _named_package(
-    ctx: AnalysisContext, mirror: _Mirror, test_root: str, imported: list[str]
+    ctx: AnalysisContext, mirror: _Mirror, test_root: str, *, imported: list[str]
 ) -> str | None:
     """The package the test is named after, next to the mirrored path.
 
@@ -189,7 +189,7 @@ def _suffix_hint(ctx: AnalysisContext) -> str:
 
 
 def _suffix_sibling(
-    ctx: AnalysisContext, mirror: _Mirror, test_root: str, imported: list[str]
+    ctx: AnalysisContext, mirror: _Mirror, test_root: str, *, imported: list[str]
 ) -> str | None:
     """The module next to the mirrored path that the name ends with.
 
@@ -253,7 +253,7 @@ def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
 
 
 def _ranked(
-    ctx: AnalysisContext, test_root: str, missing: str, modules: list[str]
+    ctx: AnalysisContext, test_root: str, missing: str, *, modules: list[str]
 ) -> list[str]:
     """Imported modules of the test's own member, nearest to its mirrored path first.
 
@@ -295,7 +295,7 @@ def _subjects(subject: str, *, suffixes: bool) -> list[str]:
 
 
 def _candidates(
-    ctx: AnalysisContext, test_root: str, ranked: list[str], imports: list[_Import]
+    ctx: AnalysisContext, test_root: str, ranked: list[str], *, imports: list[_Import]
 ) -> list[dict[str, object]]:
     """The first ranked modules with what the test imports from them; none is a move."""
     found: list[dict[str, object]] = []
@@ -391,10 +391,10 @@ class MisplacedTestFile(Rule):
         named = _named_modules(ctx, subject, modules)
         tested = named[0] if len(named) == 1 else None
         if not named and mirror is not None:
-            tested = _suffix_sibling(ctx, mirror, test.test_root, modules)
+            tested = _suffix_sibling(ctx, mirror, test.test_root, imported=modules)
         package = None
         if not named and tested is None and mirror is not None:
-            package = _named_package(ctx, mirror, test.test_root, modules)
+            package = _named_package(ctx, mirror, test.test_root, imported=modules)
         covered = tested or package
         taken = ""
         if covered is not None:
@@ -404,7 +404,9 @@ class MisplacedTestFile(Rule):
             if expected in ctx.files.tests and expected != test.path:
                 taken = f" {expected} already exists; merge the two tests."
             elif expected != test.path:
-                yield self._misplaced(ctx, test, covered, expected, modules)
+                yield self._misplaced(
+                    ctx, test, covered, expected=expected, imported=modules
+                )
                 return
         if mirror is None:
             pattern = ctx.config.tests.mirror
@@ -418,8 +420,8 @@ class MisplacedTestFile(Rule):
         module = _missing_module(ctx, mirror, test.test_root)
         source = ctx.files.module_to_path(module)
         info = ctx.model.info(module)
-        ranked = _ranked(ctx, test.test_root, module, named or modules)
-        candidates = _candidates(ctx, test.test_root, ranked, imports)
+        ranked = _ranked(ctx, test.test_root, module, modules=named or modules)
+        candidates = _candidates(ctx, test.test_root, ranked, imports=imports)
         details: dict[str, object] = {"source": source}
         message = f"{test.name} has no source module at its mirrored path {source}"
         if len(named) <= 1:
@@ -458,6 +460,7 @@ class MisplacedTestFile(Rule):
         ctx: AnalysisContext,
         test: TestFile,
         module: str,
+        *,
         expected: str,
         imported: list[str],
     ) -> Violation:

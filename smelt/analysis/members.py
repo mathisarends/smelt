@@ -169,7 +169,7 @@ class MemberUsageIndex:
             )
 
         state = update_members(
-            previous, identities, namespaces, self._summary, decision
+            previous, identities, namespaces, build=self._summary, decision=decision
         )
         cache.write(key, state, MEMBER_STATE)
         if retained is not None:
@@ -232,7 +232,7 @@ class MemberUsageIndex:
                 )
             return self._resolve_file(file, states)
 
-        return cache.get("member-values", key, _MEMBERS, build)
+        return cache.get("member-values", key, _MEMBERS, build=build)
 
     def _counted_external(
         self, module: str, name: str, *, production: bool = False
@@ -448,7 +448,7 @@ class MemberUsageIndex:
                     "resolved-members",
                     inputs,
                     _MEMBERS,
-                    partial(self._resolve_file, file, states),
+                    build=partial(self._resolve_file, file, states),
                 )
                 members.extend(cached_members)
         return members
@@ -690,7 +690,9 @@ def _file_facts(
                 for base in node.bases
             )
         ):
-            result.candidates.extend(_methods_in(node, module, visitor, occupied))
+            result.candidates.extend(
+                _methods_in(node, module, visitor, module_names=occupied)
+            )
             result.attribute_candidates.extend(
                 _attribute_candidates(node, module, visitor)
             )
@@ -701,6 +703,7 @@ def _methods_in(
     owner: ast.ClassDef,
     module: ModuleSyntax,
     visitor: _UseVisitor,
+    *,
     module_names: frozenset[str],
 ) -> Iterator[Member]:
     definitions = definition_bindings(ast.Module(body=owner.body, type_ignores=[]))
@@ -915,7 +918,7 @@ class _UseVisitor(ast.NodeVisitor):
             and node.value.id in self.roots
             else None
         )
-        self._record(node.attr, node.value, node.lineno, definition)
+        self._record(node.attr, node.value, node.lineno, definition=definition)
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -934,6 +937,7 @@ class _UseVisitor(ast.NodeVisitor):
         name: str,
         expression: ast.expr,
         line: int,
+        *,
         definition: ast.Attribute | None = None,
     ) -> None:
         self.attributes.setdefault(name, []).append(

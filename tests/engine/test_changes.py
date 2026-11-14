@@ -216,7 +216,7 @@ class TestBaseSnapshot:
         dest = tmp_path_factory.mktemp("base")
 
         repository, comparison = resolve_comparison(repo, None)
-        snapshot = export_base(repo, repository, comparison, dest)
+        snapshot = export_base(repo, repository, comparison, dest=dest)
 
         assert snapshot == dest
         assert (dest / "app/application/service.py").read_text() == ""
@@ -230,7 +230,7 @@ class TestBaseSnapshot:
 
         repository, comparison = resolve_comparison(tmp_path, None)
         snapshot = export_base(
-            tmp_path, repository, comparison, tmp_path_factory.mktemp("base")
+            tmp_path, repository, comparison, dest=tmp_path_factory.mktemp("base")
         )
 
         assert snapshot is None

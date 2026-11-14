@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-14
+
+Report schema 2, YAML version 1, grouped debt baseline version 2, the default
+rule set and exit codes remain unchanged. SMT343/SMT344/SMT346/SMT347 are opt-in;
+SMT345 activates through an explicit package limit. All five reviews require
+manual repairs. Update installation, hook and CI pins together to `0.8.0`
+(`v0.8.0`), refresh the editor schema and reinstall the bundled agent skill with
+`smelt skill install --force`. No baseline rewrite is required. See the
+[upgrade checklist](docs/upgrading.md#070-to-080).
+
 - Optional style review [SMT346](docs/rules/SMT346.md)
   `prefer-deferred-annotations` reports modules that quote annotations such as
   `list["Tab"]`. With the annotations future import or a declared Python 3.14+
@@ -747,7 +757,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/mathisarends/smelt/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/mathisarends/smelt/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/mathisarends/smelt/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mathisarends/smelt/compare/v0.4.0...v0.5.0

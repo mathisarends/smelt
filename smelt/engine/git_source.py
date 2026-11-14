@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.source import SourceStore
-from smelt.engine.changes import _git, read_blobs
+from smelt.engine.changes import read_blobs, run_git
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -51,9 +51,9 @@ class GitSourceStore(SourceStore):
         cls, repository: Path, revision: str, *, cache: FactCache | None = None
     ) -> GitSourceStore:
         blobs: dict[str, str] = {}
-        for record in _git(repository, "ls-tree", "-rz", "--full-tree", revision).split(
-            b"\0"
-        ):
+        for record in run_git(
+            repository, "ls-tree", "-rz", "--full-tree", revision
+        ).split(b"\0"):
             if not record:
                 continue
             metadata, raw_path = record.split(b"\t", 1)

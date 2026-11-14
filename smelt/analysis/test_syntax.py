@@ -220,7 +220,9 @@ def _analyze_test_syntax(
         constructors,
         {
             **(fixtures or {}),
-            **_declared_fixtures(tree, path, constructors, fixtures or {}, specs),
+            **_declared_fixtures(
+                tree, path, constructors, inherited=fixtures or {}, async_specs=specs
+            ),
         },
         specs,
         definitions,
@@ -241,7 +243,9 @@ def _analyze_test_syntax(
         calls = {call.node: call.qualified for call in test.calls}
         for call in test.calls:
             helper = module.helpers.get(call.helper_line or -1)
-            if helper and helper_executes(helper.node, call.node, calls, parents):
+            if helper and helper_executes(
+                helper.node, call.node, calls, parents=parents
+            ):
                 test.helpers.append(HelperCall(call.node, helper))
     return module
 
@@ -886,7 +890,7 @@ class _Visitor(ast.NodeVisitor):
             if self.test:
                 self.test.calls.append(call)
                 if checked_python_assertions(
-                    node, binding.qualified, self.qualified, self._literal_text
+                    node, binding.qualified, self.qualified, text=self._literal_text
                 ):
                     self.test.child_assertions.append(node)
                 result = self.value_binding(node)
@@ -1255,11 +1259,16 @@ def _fixture_facts(
     asts: AstCache,
     path: str,
     constructors: frozenset[str],
+    *,
     inherited: dict[str, _Binding],
     async_specs: dict[str, frozenset[str]],
 ) -> dict[str, _Binding]:
     return _declared_fixtures(
-        asts.parse(path), path, constructors, inherited, async_specs
+        asts.parse(path),
+        path,
+        constructors,
+        inherited=inherited,
+        async_specs=async_specs,
     )
 
 
@@ -1267,6 +1276,7 @@ def _declared_fixtures(
     tree: ast.Module,
     path: str,
     constructors: frozenset[str],
+    *,
     inherited: Mapping[str, _Binding],
     async_specs: Mapping[str, frozenset[str]],
 ) -> dict[str, _Binding]:
@@ -1336,7 +1346,7 @@ class TestSyntaxIndex:
                     "test-source-specs",
                     [path, module, files.content_id(path)],
                     _ASYNC_SPECS,
-                    build,
+                    build=build,
                 )
             )
 
@@ -1384,7 +1394,12 @@ class TestSyntaxIndex:
             async_specs.update(specs(path, path.removesuffix(".py").replace("/", ".")))
 
             build_fixtures = partial(
-                _fixture_facts, asts, path, constructors, inherited, async_specs
+                _fixture_facts,
+                asts,
+                path,
+                constructors,
+                inherited=inherited,
+                async_specs=async_specs,
             )
 
             fixture_scopes[path.removesuffix("conftest.py")] = (
@@ -1403,7 +1418,7 @@ class TestSyntaxIndex:
                         ],
                     ],
                     _BINDINGS,
-                    build_fixtures,
+                    build=build_fixtures,
                 )
             )
         environment = hashlib.sha256(
@@ -1469,7 +1484,7 @@ class TestSyntaxIndex:
             count(path)
             if self._cache is None
             else self._cache.get(
-                "test-count", self.inputs(path), _COUNT, partial(count, path)
+                "test-count", self.inputs(path), _COUNT, build=partial(count, path)
             )
             for path in self.modules
         )
@@ -1497,7 +1512,7 @@ class TestSyntaxIndex:
                     "test-references",
                     self.inputs(path),
                     _REFERENCES,
-                    partial(extract, path),
+                    build=partial(extract, path),
                 )
             )
             yield path, cached

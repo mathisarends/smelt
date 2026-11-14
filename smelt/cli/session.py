@@ -77,7 +77,9 @@ def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
                     watchdog.start()
                     try:
                         try:
-                            response = _respond(stream, token, root, identity, state)
+                            response = _respond(
+                                stream, token, root, identity=identity, state=state
+                            )
                         except (ValueError, KeyError, TypeError, OSError):
                             # Transport failure is never the check's verdict.
                             response = {
@@ -104,6 +106,7 @@ def _respond(
     stream: socket.socket,
     token: str,
     root: str,
+    *,
     identity: str,
     state: RetainedAnalysis,
 ) -> dict[str, Any]:

@@ -14,6 +14,7 @@ def async_deadline(
     node: ast.Call | ast.Await,
     calls: Mapping[ast.Call, str],
     parents: Mapping[ast.AST, ast.AST],
+    *,
     helpers: Sequence[str] = (),
 ) -> AsyncDeadline:
     awaited = isinstance(node, ast.Await)

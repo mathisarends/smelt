@@ -82,13 +82,10 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return EXIT_OK
 
 
-DEFAULT_DEBT = ".smelt/debt.json"
-
-
 def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
     configured = loaded.config.debt
-    relative = configured or DEFAULT_DEBT
+    relative = configured or _DEFAULT_DEBT
     path = loaded.root / relative
     if args.show:
         scopes = tuple(relative_scope(loaded.root, cwd, raw) for raw in args.paths)
@@ -105,7 +102,7 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 )
             ]
         )
-        _show_debt(selected, relative, args.format or "text", console)
+        _show_debt(selected, relative, args.format or "text", console=console)
         return EXIT_OK
     if args.paths or args.format:
         raise CliError("paths and --format require --show")
@@ -159,7 +156,10 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     return EXIT_OK
 
 
-def _show_debt(debt: Debt, path: str, output_format: str, console: Console) -> None:
+_DEFAULT_DEBT = ".smelt/debt.json"
+
+
+def _show_debt(debt: Debt, path: str, output_format: str, *, console: Console) -> None:
     data = debt.to_json()
     if output_format == "json":
         console.print(json.dumps(data, indent=2))

@@ -22,10 +22,10 @@ from smelt.diagnostics.render.machine import render_error_json
 from smelt.engine.native_git import check_scope
 from smelt.engine.result_cache import RecordingStream, ResultCache
 
-type Handler = Callable[[argparse.Namespace, Console, Path], int]
+type _Handler = Callable[[argparse.Namespace, Console, Path], int]
 
 
-type Subparsers = argparse._SubParsersAction[_Parser]
+type _Subparsers = argparse._SubParsersAction[_Parser]
 
 _INVALID_CHOICE = re.compile(r"argument ([^:]+): invalid choice: '([^']*)'")
 
@@ -59,7 +59,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             exc.parser.print_usage(console.err)
             console.err.write(f"{exc.parser.prog}: error: {exc}\n")
         return EXIT_ERROR
-    handler: Handler | None = getattr(args, "handler", None)
+    handler: _Handler | None = getattr(args, "handler", None)
     if handler is None:
         parser.print_help(sys.stderr)
         return EXIT_ERROR
@@ -99,7 +99,7 @@ def _allow_local_config(parser: argparse.ArgumentParser) -> None:
                 _allow_local_config(child)
 
 
-def _add_check(sub: Subparsers) -> None:
+def _add_check(sub: _Subparsers) -> None:
     check = sub.add_parser("check", help="check the project against smelt.yml")
     check.add_argument(
         "paths", nargs="*", metavar="PATHS", help="only report these files"
@@ -176,7 +176,7 @@ def _add_check(sub: Subparsers) -> None:
     check.set_defaults(handler=commands.handler("check"))
 
 
-def _add_discovery(sub: Subparsers) -> None:
+def _add_discovery(sub: _Subparsers) -> None:
     explain = sub.add_parser("explain", help="explain a rule or rule group")
     explain.add_argument("rule", metavar="CODE|NAME|GROUP")
     explain.add_argument("--format", choices=["text", "json"], default="text")
@@ -195,7 +195,7 @@ def _add_discovery(sub: Subparsers) -> None:
     context.set_defaults(handler=commands.handler("context"))
 
 
-def _add_maintenance(sub: Subparsers) -> None:
+def _add_maintenance(sub: _Subparsers) -> None:
     init = sub.add_parser("init", help="write a starter smelt.yml")
     init.add_argument(
         "--config",
@@ -234,7 +234,7 @@ def _add_maintenance(sub: Subparsers) -> None:
     debt.set_defaults(handler=commands.handler("debt"))
 
 
-def _add_config(sub: Subparsers) -> None:
+def _add_config(sub: _Subparsers) -> None:
     config = sub.add_parser("config", help="show the resolved config or its schema")
     config_sub = config.add_subparsers(dest="config_command", metavar="ACTION")
     show = config_sub.add_parser("show", help="print the resolved config")
@@ -249,7 +249,7 @@ def _add_config(sub: Subparsers) -> None:
     schema.set_defaults(handler=commands.handler("config_schema"))
 
 
-def _add_skill(sub: Subparsers) -> None:
+def _add_skill(sub: _Subparsers) -> None:
     skill = sub.add_parser("skill", help="install the official bundled Smelt skill")
     actions = skill.add_subparsers(dest="skill_command", metavar="ACTION")
     install = actions.add_parser("install", help="install or refresh the bundled skill")
@@ -268,7 +268,7 @@ def _add_skill(sub: Subparsers) -> None:
     install.set_defaults(handler=commands.handler("skill_install"))
 
 
-def _run(args: argparse.Namespace, console: Console, handler: Handler) -> int:
+def _run(args: argparse.Namespace, console: Console, handler: _Handler) -> int:
     try:
         cwd = Path.cwd()
         cache = ResultCache.prepare(

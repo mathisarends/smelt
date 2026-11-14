@@ -37,7 +37,7 @@ def static_lazy_exports(tree: ast.Module) -> dict[str, str] | None:
         entries = _entries(statement.value)
         if entries is None or not _handler(handler, table, imports):
             continue
-        if not _stable(tree, handler, table, statement) or _shadows_exports(
+        if not _stable(tree, handler, table, declaration=statement) or _shadows_exports(
             tree, set(entries)
         ):
             continue
@@ -222,7 +222,7 @@ def _forwarded_variables(
 
 
 def _stable(
-    tree: ast.Module, handler: ast.FunctionDef, table: str, declaration: ast.stmt
+    tree: ast.Module, handler: ast.FunctionDef, table: str, *, declaration: ast.stmt
 ) -> bool:
     writes: Counter[str] = Counter()
     imports: Counter[str] = Counter()
@@ -262,7 +262,7 @@ def _stable(
         return False
     if writes["__all__"] > 1:
         return False
-    allowed = _allowed_references(tree, handler, table, declaration)
+    allowed = _allowed_references(tree, handler, table, declaration=declaration)
     return _references_stable(tree, table, allowed)
 
 
@@ -295,7 +295,7 @@ def _references_stable(tree: ast.Module, table: str, allowed: set[ast.AST]) -> b
 
 
 def _allowed_references(
-    tree: ast.Module, handler: ast.FunctionDef, table: str, declaration: ast.stmt
+    tree: ast.Module, handler: ast.FunctionDef, table: str, *, declaration: ast.stmt
 ) -> set[ast.AST]:
     allowed = set(ast.walk(handler)) | set(ast.walk(declaration))
     for statement in tree.body:

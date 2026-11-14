@@ -89,7 +89,7 @@ class ThirdPartyDenied(Rule):
                 self,
                 ctx,
                 detail,
-                message,
+                message=message,
                 expected=_expected(policy),
                 hint=_hint(ctx, detail, source.layer),
                 chain=chain,

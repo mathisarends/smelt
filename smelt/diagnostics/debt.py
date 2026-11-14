@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.violation import Violation
 
-DEBT_VERSION = 2
+_DEBT_VERSION = 2
 
 
 class _DebtItem(BaseModel):
@@ -201,7 +201,7 @@ class Debt:
                 }
             groups[key]["fingerprints"].append(entry.fingerprint)
         return {
-            "version": DEBT_VERSION,
+            "version": _DEBT_VERSION,
             "violations": [
                 {
                     **groups[key],

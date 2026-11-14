@@ -76,7 +76,7 @@ class CompositionRootLeak(Rule):
                 self,
                 ctx,
                 detail,
-                f"{detail.importer} must not import the {label} {detail.imported}",
+                message=f"{detail.importer} must not import the {label} {detail.imported}",
                 expected={"composition_root": list(roots)},
                 hint=(
                     "The composition root depends on everything; nothing depends on it. "

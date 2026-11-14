@@ -50,8 +50,15 @@ composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yml`.
 
-The repository also enables public-first ordering, internal-member/static-helper
-visibility, test-only public functions/attributes and test-quality reviews. Future
+The repository also enables public-first ordering, the complete
+`information-hiding` group, static-helper visibility and test-quality reviews.
+It checks private-symbol imports, redundant delegates/name aliases, deferred
+annotations and explicit `StrEnum` values. Keep serialized enum values stable.
+Functions accept at most three positional parameters; pass later arguments by
+keyword, including in tests and partial applications. Repeated `Literal` types
+and anonymous tuple types remain hints: review their meaning before sharing an
+alias or introducing a named record. Composite lookup keys, source spans and
+Python version pairs can keep tuple semantics. Future
 annotations follow `when-needed` using the supported Python minimum in package
 metadata (currently 3.12), not the developer's interpreter. Keep imports needed for
 forward references, TYPE_CHECKING or runtime annotation consumers.
@@ -318,13 +325,13 @@ environment name must match the workflow exactly.
    run `uv lock` and `cargo check` to refresh both lockfiles, and merge the release
    preparation into `main` after CI passes. Each release needs a new PyPI version.
 2. From an up-to-date, clean `main` checkout, create and push the corresponding tag.
-   For example, after merging version `0.7.0`:
+   For example, after merging version `0.8.0`:
 
    ```bash
    git switch main
    git pull --ff-only
-   git tag v0.7.0
-   git push origin v0.7.0
+   git tag v0.8.0
+   git push origin v0.8.0
    ```
 
 3. Follow the `Publish to PyPI` run in
@@ -339,6 +346,19 @@ environment name must match the workflow exactly.
    cross-compiled. A separate job downloads the validated release artifacts and publishes them
    with OIDC and the publishing action's default attestations enabled.
 
+4. After PyPI publication succeeds, publish the GitHub Release for the same tag.
+   Copy that version's dated changelog section into a release-notes file and
+   replace relative documentation links with absolute links to `blob/v0.8.0/`.
+   Check `gh release view v0.8.0` first; create a missing release with:
+
+   ```bash
+   gh release create v0.8.0 --verify-tag --title 'Smelt 0.8.0' --notes-file release-notes.md
+   ```
+
+   The publishing workflow currently uploads to PyPI only. A missing GitHub
+   Release can be added for an existing published tag; new code needs a new
+   version and tag. Do not move a published tag or reuse its PyPI version.
+
 Both Linux release wheels use `scripts/build_manylinux_wheel.sh` in the
 PyPA manylinux 2.28 container (x86_64) or the rust-cross manylinux 2.28 container
 (ARM64). The script installs pinned `maturin[patchelf]` from PyPI,
@@ -351,7 +371,7 @@ script when adopting a new build-tool version.
 Maintainers and coding agents with permission to push release tags can use this
 procedure without local PyPI credentials. Ordinary branch pushes and pull requests
 do not publish. Manual workflow runs must select an existing `v`-prefixed tag
-(`gh workflow run release.yml --ref v0.7.0`); branch runs skip publishing.
+(`gh workflow run release.yml --ref v0.8.0`); branch runs skip publishing.
 
 If the upload fails because account configuration is missing, finish that setup
 and rerun the failed publishing job so it reuses the validated build artifacts.
