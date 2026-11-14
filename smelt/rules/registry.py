@@ -72,6 +72,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.enum_styles:StrEnumExplicitValues",
     "smelt.rules.structure.aliases:RedundantNameAlias",
     "smelt.rules.structure.parameters:ExcessPositionalParameters",
+    "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
