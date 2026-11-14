@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name
+from smelt.rules.member_names import private_name, rename_advice
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -51,5 +51,5 @@ class InternalPublicAttribute(Rule):
                     "internal_references": list(attribute.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Review making {qualified} private as {suggested_name}; preserve deliberate public APIs with a reasoned SMT335 suppression on the declaration.",
+                hint=f"Unless public by design, {rename_advice(attribute.name, suggested_name)}; otherwise suppress SMT335 with a reason on the declaration.",
             )

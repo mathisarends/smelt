@@ -128,12 +128,48 @@ class TestViolations:
         out = render_text(report, read_line)
 
         assert (
-            "  Expected source: app/auth/bootstrap.py\n"
+            "  Source: app/auth/bootstrap.py\n"
             "  Candidates:\n"
             "    app/auth/application/bootstrap.py (AdminBootstrap via "
             "app.auth.application) → tests/auth/application/test_bootstrap.py\n"
         ) in out
         assert "ambiguous" not in out
+
+    def test_repair_shared_by_several_findings_is_listed_once(
+        self, report: Report
+    ) -> None:
+        first = report.violations[1]
+        report.violations = [first, replace(first, line=2), replace(first, line=3)]
+        hint = "Move Sessions to voice/application/ports.py and update its imports."
+
+        out = render_concise(report)
+
+        assert out.count(hint) == 1
+        assert (
+            f"Repairs shared by several findings (shown once):\n  SMT303 (3x): {hint}\n"
+        ) in out
+        assert f"{first.path}:2:7 SMT303 {first.message}\n" in out
+
+    def test_unique_repair_stays_with_its_finding(self, report: Report) -> None:
+        out = render_text(report, read_line)
+
+        assert "Repairs shared" not in out
+        assert "  Hint: Depend on a port instead.\n" in out
+
+    def test_details_are_labelled_by_name_without_constant_flags(
+        self, report: Report
+    ) -> None:
+        report.violations = [
+            replace(
+                report.violations[1],
+                expected={"suggested_name": "_hits", "automatic_rename": False},
+            )
+        ]
+
+        out = render_text(report, read_line)
+
+        assert "  Suggested name: _hits\n" in out
+        assert "Automatic rename" not in out
 
 
 class TestRepeatedEdges:

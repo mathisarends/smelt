@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name
+from smelt.rules.member_names import private_name, rename_advice
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,7 +58,7 @@ class TestOnlyPublicFunction(Rule):
                         {"path": path, "line": line} for path, line in references
                     ],
                 },
-                hint=f"Review removing {node.name} or renaming it to {suggested_name}; preserve deliberate public APIs explicitly."
+                hint=f"Unless public by design, remove it or {rename_advice(node.name, suggested_name)}."
                 if not function.internal_references
-                else f"Review renaming {node.name} to {suggested_name} and test its public caller; preserve deliberate public APIs explicitly.",
+                else f"Unless public by design, {rename_advice(node.name, suggested_name)} and test its public caller instead.",
             )

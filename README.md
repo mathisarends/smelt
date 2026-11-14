@@ -143,7 +143,7 @@ Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md
 Before editing, run `smelt context <feature-or-path>` to read the applicable policy.
-After editing, run `smelt check --changed --format json` and address new findings.
+After editing, run `smelt check --changed --format concise` and address new findings.
 Use `smelt explain <code>` for the rule's intent and repair advice.
 Run focused tests, stage your changes, then run `prek run --all-files`.
 Inspect and stage any hook fixes, and rerun until the checks pass.
