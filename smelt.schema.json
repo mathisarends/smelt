@@ -1587,6 +1587,21 @@
             "hint"
           ]
         },
+        "redundant-private-delegate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
+          "description": "A method only forwards its parameters to a private method used nowhere else. def events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed. Repair: Move the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.",
+          "markdownDescription": "**SMT343 \u2014 redundant-private-delegate**\n\nA method only forwards its parameters to a private method used nowhere else.\n\ndef events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed.\n\n**Problem**\n```python\nclass Frames:\n    def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        return self._events(run_id=run_id)\n\n    async def _events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\n**Preferred**\n```python\nclass Frames:\n    async def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\nMove the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.\n\nRun `smelt explain redundant-private-delegate` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "redundant-name-alias": {
           "type": "string",
           "enum": [
@@ -2638,6 +2653,21 @@
             "hint"
           ]
         },
+        "^SMT343$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
+          "description": "A method only forwards its parameters to a private method used nowhere else. def events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed. Repair: Move the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.",
+          "markdownDescription": "**SMT343 \u2014 redundant-private-delegate**\n\nA method only forwards its parameters to a private method used nowhere else.\n\ndef events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed.\n\n**Problem**\n```python\nclass Frames:\n    def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        return self._events(run_id=run_id)\n\n    async def _events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\n**Preferred**\n```python\nclass Frames:\n    async def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\nMove the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.\n\nRun `smelt explain redundant-private-delegate` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT344$": {
           "type": "string",
           "enum": [
@@ -3635,6 +3665,21 @@
             "hint"
           ]
         },
+        "redundant-private-delegate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
+          "description": "A method only forwards its parameters to a private method used nowhere else. def events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed. Repair: Move the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.",
+          "markdownDescription": "**SMT343 \u2014 redundant-private-delegate**\n\nA method only forwards its parameters to a private method used nowhere else.\n\ndef events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed.\n\n**Problem**\n```python\nclass Frames:\n    def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        return self._events(run_id=run_id)\n\n    async def _events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\n**Preferred**\n```python\nclass Frames:\n    async def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\nMove the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.\n\nRun `smelt explain redundant-private-delegate` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "redundant-name-alias": {
           "type": "string",
           "enum": [
@@ -4427,6 +4472,21 @@
           "title": "SMT342: A StrEnum derives a value with auto().",
           "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
           "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT343$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
+          "description": "A method only forwards its parameters to a private method used nowhere else. def events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed. Repair: Move the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.",
+          "markdownDescription": "**SMT343 \u2014 redundant-private-delegate**\n\nA method only forwards its parameters to a private method used nowhere else.\n\ndef events(self, *, run_id): return self._events(run_id=run_id) adds a second name and a jump without behavior: calling an async generator already defers its body until iteration, so moving the body into events behaves the same. Validation before the call is the legitimate reason for the split, so only a body consisting of one return is reported. The private method must be an undecorated method of the same class with the same parameter names and kinds, receive every parameter unchanged, and be referenced nowhere else in the module. Dunder and decorated methods, private names defined twice, classes with bases from other modules (a base may call the private hook) and tests are not reported. Subclasses in other modules that override the private method are not analyzed.\n\n**Problem**\n```python\nclass Frames:\n    def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        return self._events(run_id=run_id)\n\n    async def _events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\n**Preferred**\n```python\nclass Frames:\n    async def events(self, *, run_id: UUID) -> AsyncGenerator[Frame]:\n        async for frame in self._source(run_id):\n            yield frame\n```\n\nMove the private method's body and async/def kind into the public method, keep the public name, signature and docstring, and delete the private method. Keep the split with a reasoned suppression when a subclass overrides the private method. No automatic rewrite is performed. Enable rules: {redundant-private-delegate: hint}, or select SMT343.\n\nRun `smelt explain redundant-private-delegate` for details.",
           "examples": [
             "hint"
           ]

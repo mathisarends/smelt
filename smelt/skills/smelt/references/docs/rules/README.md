@@ -51,6 +51,7 @@
 | [SMT340](SMT340.md) | await-in-call-argument | structure | explicit | hint |
 | [SMT341](SMT341.md) | str-enum-auto-values | structure | explicit | hint |
 | [SMT342](SMT342.md) | str-enum-explicit-values | structure | explicit | hint |
+| [SMT343](SMT343.md) | redundant-private-delegate | structure | explicit | hint |
 | [SMT344](SMT344.md) | redundant-name-alias | structure | explicit | hint |
 | [SMT345](SMT345.md) | excess-positional-parameters | structure | policy | warning |
 | [SMT346](SMT346.md) | prefer-deferred-annotations | structure | explicit | hint |
