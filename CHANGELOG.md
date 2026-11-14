@@ -15,6 +15,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   dunders other than `__call__` and tests are ignored. Enable it with
   `rules: {missing-interface-docstring: hint}`; no automatic rewrite.
   Implements [#127](https://github.com/mathisarends/smelt/issues/127).
+- Optional review [SMT349](docs/rules/SMT349.md) `stateful-dataclass` reports
+  a `@dataclass` that is not `frozen=True` when a method other than
+  `__post_init__` assigns, deletes or augments an attribute of `self`, writes
+  an item of a field, calls a mutating container method on a field declared as
+  a mutable container, or calls `setattr` on `self`. Build values before
+  construction and freeze the dataclass, or keep accumulation in a plain class
+  with private attributes. Mutations through other objects and tests are
+  ignored. Enable it with `rules: {stateful-dataclass: hint}`; no automatic
+  rewrite. Implements [#133](https://github.com/mathisarends/smelt/issues/133).
 
 ## [0.8.0] - 2026-11-14
 

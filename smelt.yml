@@ -80,6 +80,7 @@ rules:
   redundant-name-alias: warning
   prefer-deferred-annotations: warning
   missing-interface-docstring: warning
+  stateful-dataclass: warning
   # These reviews need semantic judgment: equal shapes can model distinct concepts.
   duplicate-literal-type: hint
   anonymous-tuple-type: hint

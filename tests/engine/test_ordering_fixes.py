@@ -35,7 +35,7 @@ def test_refused_fix_keeps_source_and_reports_the_exact_trigger(tmp_path: Path) 
     source = "def _helper(): pass\ndef api():\n    return globals()\n"
     root = _project(tmp_path, source=source)
     fixes = apply_ordering_fixes(check(root, OPTIONS))
-    assert fixes.files == []
+    assert fixes.files == ()
     assert len(fixes.skipped) == 1
     assert "app/service.py:3:12: globals" in fixes.skipped[0]["reason"]
     assert (root / "app/service.py").read_text(encoding="utf-8") == source
@@ -47,10 +47,10 @@ def test_explicit_fix_and_second_run_are_idempotent(tmp_path: Path) -> None:
     fixed = apply_ordering_fixes(check(root, OPTIONS))
     after = check(root, OPTIONS)
 
-    assert fixed.files == ["app/service.py"]
+    assert fixed.files == ("app/service.py",)
     assert fixed.sections == 1
     assert not after.report.failed
-    assert apply_ordering_fixes(after).files == []
+    assert apply_ordering_fixes(after).files == ()
     assert (root / "app/service.py").read_text().lstrip().startswith("def api")
 
 
@@ -64,7 +64,7 @@ def test_builtin_union_fix_preserves_annotations_and_later_rebinding(
         config=CONFIG.replace("project:\n", 'project:\n  python_version: "3.12"\n'),
     )
     fixed = apply_ordering_fixes(check(root, OPTIONS))
-    assert fixed.files == ["app/service.py"]
+    assert fixed.files == ("app/service.py",)
     rewritten = (root / "app/service.py").read_text()
     assert (
         rewritten.index("def api")
@@ -73,7 +73,7 @@ def test_builtin_union_fix_preserves_annotations_and_later_rebinding(
     )
     assert "value: _Text | bytes) -> _Text | bytes" in rewritten
     assert not check(root, OPTIONS).report.violations
-    assert apply_ordering_fixes(check(root, OPTIONS)).files == []
+    assert apply_ordering_fixes(check(root, OPTIONS)).files == ()
 
 
 def test_source_bytes_keep_bom_crlf_and_permissions(tmp_path: Path) -> None:
@@ -86,7 +86,7 @@ def test_source_bytes_keep_bom_crlf_and_permissions(tmp_path: Path) -> None:
     fixed = apply_ordering_fixes(check(root, OPTIONS))
     data = source.read_bytes()
 
-    assert fixed.files == ["app/service.py"]
+    assert fixed.files == ("app/service.py",)
     assert data.startswith(codecs.BOM_UTF8)
     assert data[len(codecs.BOM_UTF8) :].lstrip(b"\r\n").startswith(b"def api")
     assert data.count(codecs.BOM_UTF8) == 1
@@ -102,7 +102,7 @@ def test_only_reported_path_scope_is_fixed(tmp_path: Path) -> None:
         check(root, CheckOptions(select=("SMT313",), paths=("app/service.py",)))
     )
 
-    assert fixed.files == ["app/service.py"]
+    assert fixed.files == ("app/service.py",)
     assert (root / "app/other.py").read_text() == SOURCE
 
 
@@ -111,7 +111,7 @@ def test_disabled_rule_is_not_fixed(tmp_path: Path) -> None:
 
     fixed = apply_ordering_fixes(check(root, CheckOptions(select=("SMT312",))))
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert (root / "app/service.py").read_text() == SOURCE
 
 
@@ -121,7 +121,7 @@ def test_suppressed_findings_are_not_fixed(tmp_path: Path) -> None:
 
     fixed = apply_ordering_fixes(check(root, OPTIONS))
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert (root / "app/service.py").read_text() == source
 
 
@@ -134,10 +134,10 @@ def test_accepted_debt_is_not_fixed_without_explicit_no_debt(tmp_path: Path) -> 
     baseline.write(root / "debt.json")
     write_project(root, {"smelt.yml": CONFIG + "\ndebt: debt.json\n"})
 
-    assert apply_ordering_fixes(check(root, OPTIONS)).files == []
+    assert apply_ordering_fixes(check(root, OPTIONS)).files == ()
     assert apply_ordering_fixes(
         check(root, CheckOptions(select=("SMT313",), use_debt=False))
-    ).files == ["app/service.py"]
+    ).files == ("app/service.py",)
 
 
 @pytest.mark.parametrize(
@@ -164,7 +164,7 @@ def test_manual_review_cases_remain_unchanged(
 
     fixed = apply_ordering_fixes(check(root, OPTIONS))
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert any(reason in item["reason"] for item in fixed.skipped)
     assert (root / "app/service.py").read_text() == source
 
@@ -177,7 +177,7 @@ def test_user_edit_after_check_is_preserved(tmp_path: Path) -> None:
 
     fixed = apply_ordering_fixes(outcome)
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert "changed" in fixed.skipped[0]["reason"]
     assert (root / "app/service.py").read_text() == edited
 
@@ -193,7 +193,7 @@ def test_external_source_root_is_checked_but_never_rewritten(tmp_path: Path) -> 
 
     fixed = apply_ordering_fixes(check(tmp_path / "policy", OPTIONS))
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert "inside the project root" in fixed.skipped[0]["reason"]
     assert (tmp_path / "library/src/app/service.py").read_text() == SOURCE
 
@@ -212,7 +212,7 @@ def test_source_replaced_by_symlink_after_check_is_preserved(tmp_path: Path) -> 
 
     fixed = apply_ordering_fixes(outcome)
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert "inside the project root" in fixed.skipped[0]["reason"]
     assert source.is_symlink()
     assert target.read_text() == SOURCE
@@ -230,7 +230,7 @@ def test_failed_replacement_leaves_original_and_cleans_temporary_file(
     monkeypatch.setattr(Path, "replace", fail)
     fixed = apply_ordering_fixes(outcome)
 
-    assert fixed.files == []
+    assert fixed.files == ()
     assert "locked" in fixed.skipped[0]["reason"]
     assert (root / "app/service.py").read_text() == SOURCE
     assert list((root / "app").glob(".smelt-fix-*.tmp")) == []

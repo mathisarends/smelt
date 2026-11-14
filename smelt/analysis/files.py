@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -61,7 +61,7 @@ class PackageDir:
     has_init: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class FileIndex:
     root: Path
     config: SmeltConfig
@@ -78,16 +78,26 @@ class FileIndex:
     _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
-        self.root = self.store.resolve(self.root)
+        object.__setattr__(self, "root", self.store.resolve(self.root))
 
     @classmethod
     def discover(
         cls, root: Path, config: SmeltConfig, *, store: SourceStore | None = None
     ) -> FileIndex:
-        index = cls(root=root, config=config, store=store or SourceStore())
-        index._discover_sources()
-        index._discover_tests()
-        return index
+        probe = cls(root=root, config=config, store=store or SourceStore())
+        found = _Discovery(probe)
+        found.discover_sources()
+        found.discover_tests()
+        # The probe's path-resolution cache carries over to the discovered index.
+        return replace(
+            probe,
+            sources=found.sources,
+            packages=found.packages,
+            package_parts=found.package_parts,
+            package_roots=found.package_roots,
+            tests=found.tests,
+            missing_root_packages=found.missing_root_packages,
+        )
 
     def is_excluded(self, path: str) -> bool:
         return any(
@@ -111,94 +121,6 @@ class FileIndex:
             resolved = self.store.resolve(path)
             self._resolved_paths[path] = resolved
         return resolved
-
-    def _discover_sources(self) -> None:
-        project = self.config.project
-        for package in project.root_packages:
-            candidates = {
-                self.resolve_path(self.root / source_root / package): source_root
-                for source_root in project.source_roots
-                if self.store.is_dir(self.root / source_root / package)
-                and not self.is_excluded(
-                    self.relative(self.root / source_root / package)
-                )
-            }
-            regular = {
-                path: source_root
-                for path, source_root in candidates.items()
-                if self.store.is_file(path / "__init__.py")
-            }
-            # Python gives an ordinary package precedence over namespace portions,
-            # including workspace scaffolding found beneath a broad '.' root.
-            selected = regular or candidates
-            if len(regular) > 1:
-                paths = ", ".join(self.relative(path) for path in regular)
-                raise AnalysisError(f"ambiguous package {package}: {paths}")
-            self.package_roots[package] = list(selected)
-            for directory, source_root in selected.items():
-                self._walk_package(directory, package, source_root)
-            if not selected:
-                self.missing_root_packages.append(package)
-
-    def _walk_package(self, directory: Path, module: str, source_root: str) -> None:
-        rel_dir = self.relative(directory)
-        if self.is_excluded(rel_dir):
-            return
-        init = directory / "__init__.py"
-        portion = PackageDir(module, rel_dir, source_root, self.store.is_file(init))
-        previous = self.packages.get(module)
-        if previous is not None and (previous.has_init or portion.has_init):
-            raise AnalysisError(
-                f"ambiguous package {module}: {previous.path}, {rel_dir}"
-            )
-        self.packages.setdefault(module, portion)
-        self.package_parts.setdefault(module, []).append(portion)
-        for entry in sorted(self.store.iterdir(directory), key=lambda p: p.name):
-            if self.store.is_dir(entry):
-                if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
-                    continue
-                if _contains_python(entry, store=self.store):
-                    self._walk_package(entry, f"{module}.{entry.name}", source_root)
-            elif entry.suffix == ".py" and self.store.is_file(entry):
-                rel = self.relative(entry)
-                if self.is_excluded(rel):
-                    continue
-                if entry.name == "__init__.py":
-                    self._add_source(SourceFile(module, rel, entry, is_package=True))
-                elif entry.stem.isidentifier():
-                    name = f"{module}.{entry.stem}"
-                    self._add_source(SourceFile(name, rel, entry, is_package=False))
-
-    def _add_source(self, source: SourceFile) -> None:
-        previous = self.sources.get(source.module)
-        if previous is not None:
-            raise AnalysisError(
-                f"ambiguous module {source.module}: {previous.path}, {source.path}"
-            )
-        self.sources[source.module] = source
-
-    def _discover_tests(self) -> None:
-        source_paths = {source.path for source in self.sources.values()}
-        # Visit broad roots first so the most specific declared root owns a
-        # test, independently of the order in the configuration.
-        for test_root in sorted(
-            self.config.project.test_roots,
-            key=lambda root: (len(self.resolve_path(self.root / root).parts), root),
-        ):
-            directory = self.root / test_root
-            if not self.store.is_dir(directory):
-                continue
-            for path in sorted(python_files(directory, store=self.store)):
-                rel = self.relative(path)
-                if rel in source_paths or self.is_excluded(rel):
-                    continue
-                name = path.name
-                if (
-                    name == "conftest.py"
-                    or name.startswith("test_")
-                    or path.stem.endswith("_test")
-                ):
-                    self.tests[rel] = TestFile(rel, path, test_root.strip("/"))
 
     @cached_property
     def by_path(self) -> dict[str, SourceFile]:
@@ -333,6 +255,115 @@ def python_files(
                     pending.append(entry)
             elif entry.suffix == ".py":
                 yield entry
+
+
+class _Discovery:
+    """Collect a project's source and test inventory before building a FileIndex."""
+
+    def __init__(self, index: FileIndex) -> None:
+        self._index = index
+        self._root = index.root
+        self._config = index.config
+        self._store = index.store
+        self.sources: dict[str, SourceFile] = {}
+        self.packages: dict[str, PackageDir] = {}
+        self.package_parts: dict[str, list[PackageDir]] = {}
+        self.package_roots: dict[str, list[Path]] = {}
+        self.tests: dict[str, TestFile] = {}
+        self.missing_root_packages: list[str] = []
+
+    def discover_sources(self) -> None:
+        project = self._config.project
+        for package in project.root_packages:
+            candidates = {
+                self._index.resolve_path(
+                    self._root / source_root / package
+                ): source_root
+                for source_root in project.source_roots
+                if self._store.is_dir(self._root / source_root / package)
+                and not self._index.is_excluded(
+                    self._index.relative(self._root / source_root / package)
+                )
+            }
+            regular = {
+                path: source_root
+                for path, source_root in candidates.items()
+                if self._store.is_file(path / "__init__.py")
+            }
+            # Python gives an ordinary package precedence over namespace portions,
+            # including workspace scaffolding found beneath a broad '.' root.
+            selected = regular or candidates
+            if len(regular) > 1:
+                paths = ", ".join(self._index.relative(path) for path in regular)
+                raise AnalysisError(f"ambiguous package {package}: {paths}")
+            self.package_roots[package] = list(selected)
+            for directory, source_root in selected.items():
+                self._walk_package(directory, package, source_root)
+            if not selected:
+                self.missing_root_packages.append(package)
+
+    def discover_tests(self) -> None:
+        source_paths = {source.path for source in self.sources.values()}
+        # Visit broad roots first so the most specific declared root owns a
+        # test, independently of the order in the configuration.
+        for test_root in sorted(
+            self._config.project.test_roots,
+            key=lambda root: (
+                len(self._index.resolve_path(self._root / root).parts),
+                root,
+            ),
+        ):
+            directory = self._root / test_root
+            if not self._store.is_dir(directory):
+                continue
+            for path in sorted(python_files(directory, store=self._store)):
+                rel = self._index.relative(path)
+                if rel in source_paths or self._index.is_excluded(rel):
+                    continue
+                name = path.name
+                if (
+                    name == "conftest.py"
+                    or name.startswith("test_")
+                    or path.stem.endswith("_test")
+                ):
+                    self.tests[rel] = TestFile(rel, path, test_root.strip("/"))
+
+    def _walk_package(self, directory: Path, module: str, source_root: str) -> None:
+        rel_dir = self._index.relative(directory)
+        if self._index.is_excluded(rel_dir):
+            return
+        init = directory / "__init__.py"
+        portion = PackageDir(module, rel_dir, source_root, self._store.is_file(init))
+        previous = self.packages.get(module)
+        if previous is not None and (previous.has_init or portion.has_init):
+            raise AnalysisError(
+                f"ambiguous package {module}: {previous.path}, {rel_dir}"
+            )
+        self.packages.setdefault(module, portion)
+        self.package_parts.setdefault(module, []).append(portion)
+        for entry in sorted(self._store.iterdir(directory), key=lambda p: p.name):
+            if self._store.is_dir(entry):
+                if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
+                    continue
+                if _contains_python(entry, store=self._store):
+                    self._walk_package(entry, f"{module}.{entry.name}", source_root)
+            elif entry.suffix == ".py" and self._store.is_file(entry):
+                rel = self._index.relative(entry)
+                if self._index.is_excluded(rel):
+                    continue
+                if entry.name == "__init__.py":
+                    self._add_source(SourceFile(module, rel, entry, is_package=True))
+                elif entry.stem.isidentifier():
+                    name = f"{module}.{entry.stem}"
+                    self._add_source(SourceFile(name, rel, entry, is_package=False))
+
+    def _add_source(self, source: SourceFile) -> None:
+        previous = self.sources.get(source.module)
+        if previous is not None:
+            raise AnalysisError(
+                f"ambiguous module {source.module}: {previous.path}, {source.path}"
+            )
+        self.sources[source.module] = source
 
 
 def _contains_python(directory: Path, *, store: SourceStore | None = None) -> bool:

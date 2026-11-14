@@ -4,7 +4,6 @@ import ast
 import re
 import sys
 import tomllib
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.errors import (
@@ -19,11 +18,11 @@ if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
 
 
-@dataclass
 class AstCache:
-    files: FileIndex
-    cache: FactCache | None = None
-    _trees: dict[str, ast.Module] = field(default_factory=dict)
+    def __init__(self, files: FileIndex, *, cache: FactCache | None = None) -> None:
+        self.files = files
+        self.cache = cache
+        self._trees: dict[str, ast.Module] = {}
 
     def parse(self, path: str) -> ast.Module:
         tree = self._trees.get(path)
