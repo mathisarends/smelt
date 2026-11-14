@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional style review [SMT346](docs/rules/SMT346.md) `quoted-annotation`
+  reports modules that quote annotations such as `list["Tab"]`. With the
+  annotations future import or a declared Python 3.14+ minimum the quotes are
+  redundant; otherwise the hint suggests adding
+  `from __future__ import annotations`. A `future_annotations: forbid` package
+  contract keeps quotes before 3.14. `Literal` values, `Annotated` metadata,
+  runtime strings such as `cast("Tab", ...)` and tests are ignored. Enable it
+  with `rules: {quoted-annotation: hint}`; no automatic rewrite. Implements
+  [#123](https://github.com/mathisarends/smelt/issues/123).
+
 - Optional review [SMT344](docs/rules/SMT344.md) `redundant-name-alias` reports
   a module-level name that only repeats another class or function name, such as
   `AutofillData = PasswordData`, including `TypeAlias` and `type` statements.
