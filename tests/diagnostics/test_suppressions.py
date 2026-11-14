@@ -30,6 +30,4 @@ class TestParseSuppressions:
     def test_unused_codes_by_prefix(self) -> None:
         [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[SMT1, SMT4]\n")
 
-        found.mark_used("SMT104")
-
-        assert found.unused_codes() == ("SMT4",)
+        assert found.unused_codes(["SMT104"]) == ("SMT4",)

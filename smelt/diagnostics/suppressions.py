@@ -3,10 +3,12 @@ from __future__ import annotations
 import io
 import re
 import tokenize
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from smelt.diagnostics.violation import Violation
 
 _PATTERN = re.compile(
@@ -16,7 +18,7 @@ _PATTERN = re.compile(
 )
 
 
-@dataclass(eq=False)
+@dataclass(frozen=True, eq=False)
 class Suppression:
     path: str
     line: int
@@ -26,7 +28,6 @@ class Suppression:
     reason: str | None
     start_line: int | None = None
     end_line: int | None = None
-    used_codes: set[str] = field(default_factory=set)
 
     def covers(self, code: str) -> bool:
         return not self.codes or any(code.startswith(prefix) for prefix in self.codes)
@@ -45,19 +46,13 @@ class Suppression:
             )
         )
 
-    def mark_used(self, code: str) -> None:
-        self.used_codes.add(code)
-
-    def unused_codes(self) -> tuple[str, ...]:
+    def unused_codes(self, used: Collection[str]) -> tuple[str, ...]:
+        """Return the listed code prefixes that match none of the ``used`` codes."""
         return tuple(
             prefix
             for prefix in self.codes
-            if not any(code.startswith(prefix) for code in self.used_codes)
+            if not any(code.startswith(prefix) for code in used)
         )
-
-    @property
-    def is_used(self) -> bool:
-        return bool(self.used_codes)
 
 
 def parse_suppressions(path: str, source: str) -> list[Suppression]:

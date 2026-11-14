@@ -449,7 +449,7 @@ def _collect(
     active_codes = {rule.code for rule, _ in active}
     severity_of = {rule.code: severity for rule, severity in active}
     suppressions = _collect_suppressions(ctx)
-    violations, suppressed = _apply_suppressions(violations, suppressions)
+    violations, usage = _apply_suppressions(violations, suppressions)
     known_codes = {rule.code for rule in rules.rules}
     # The rules a full run with this config would execute; the others are off and
     # cannot need a suppression.
@@ -458,13 +458,13 @@ def _collect(
     violations.extend(
         _suppression_violations(
             ctx,
-            suppressions,
+            usage,
             active_codes,
             codes=(known_codes, enabled_codes),
             severity_of=severity_of,
         )
     )
-    return violations, suppressed
+    return violations, sum(len(codes) for codes in usage.values())
 
 
 def _resolve_active_rules(
@@ -625,12 +625,13 @@ def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
 
 def _apply_suppressions(
     violations: list[Violation], suppressions: list[Suppression]
-) -> tuple[list[Violation], int]:
+) -> tuple[list[Violation], dict[Suppression, list[str]]]:
+    """Keep unsuppressed violations; map every suppression to the codes it hid."""
     by_path: dict[str, list[Suppression]] = {}
     for suppression in suppressions:
         by_path.setdefault(suppression.path, []).append(suppression)
     kept: list[Violation] = []
-    suppressed = 0
+    usage: dict[Suppression, list[str]] = {item: [] for item in suppressions}
     for violation in violations:
         if violation.code == _COVERAGE:
             kept.append(violation)
@@ -642,14 +643,13 @@ def _apply_suppressions(
         if match is None:
             kept.append(violation)
         else:
-            match.mark_used(violation.code)
-            suppressed += 1
-    return kept, suppressed
+            usage[match].append(violation.code)
+    return kept, usage
 
 
 def _suppression_violations(
     ctx: AnalysisContext,
-    suppressions: list[Suppression],
+    usage: dict[Suppression, list[str]],
     active_codes: set[str],
     *,
     codes: tuple[set[str], set[str]],
@@ -659,7 +659,7 @@ def _suppression_violations(
     unused_rule = UnusedSuppression()
     reason_rule = SuppressionWithoutReason()
     checked = active_codes - _META
-    for suppression in suppressions:
+    for suppression, used in usage.items():
         if (
             "SMT902" in active_codes
             and ctx.config.suppressions.require_reason
@@ -692,7 +692,13 @@ def _suppression_violations(
                     hint="Inline suppressions require stable SMT codes or code prefixes; use `smelt rules` to find the code for a rule name.",
                 ).with_severity(severity_of["SMT901"])
             )
-        unused = _unused_codes(suppression, checked, codes[0], enabled=codes[1])
+        unused = _unused_codes(
+            suppression,
+            used,
+            checked=checked,
+            known=codes[0],
+            enabled=codes[1],
+        )
         if unused is None:
             continue
         label = ", ".join(unused) if unused else "all codes"
@@ -709,7 +715,12 @@ def _suppression_violations(
 
 
 def _unused_codes(
-    suppression: Suppression, checked: set[str], known: set[str], *, enabled: set[str]
+    suppression: Suppression,
+    used: list[str],
+    *,
+    checked: set[str],
+    known: set[str],
+    enabled: set[str],
 ) -> tuple[str, ...] | None:
     """Codes to remove, ``()`` for the whole comment, None if the suppression is fine.
 
@@ -717,10 +728,10 @@ def _unused_codes(
     a narrowed run (``--select``, ``--ignore``) cannot judge the others.
     """
     if not suppression.codes:
-        return None if suppression.is_used or not enabled <= checked else ()
+        return None if used or not enabled <= checked else ()
     evaluated = tuple(
         prefix
-        for prefix in suppression.unused_codes()
+        for prefix in suppression.unused_codes(used)
         if (matching := {code for code in known if code.startswith(prefix)})
         and matching & enabled <= checked
     )
