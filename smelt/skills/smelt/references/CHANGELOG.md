@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional review [SMT348](docs/rules/SMT348.md) `missing-interface-docstring`
+  reports `@abstractmethod` and `typing.Protocol` methods whose body is only
+  `...`, `pass` or `raise NotImplementedError` and which have no docstring, so
+  ports state their contract where implementers read it. Default
+  implementations, `@overload`/`@override` signatures, property setters,
+  dunders other than `__call__` and tests are ignored. Enable it with
+  `rules: {missing-interface-docstring: hint}`; no automatic rewrite.
+  Implements [#127](https://github.com/mathisarends/smelt/issues/127).
+
 ## [0.8.0] - 2026-11-14
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

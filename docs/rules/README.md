@@ -56,6 +56,7 @@
 | [SMT345](SMT345.md) | excess-positional-parameters | structure | policy | warning |
 | [SMT346](SMT346.md) | prefer-deferred-annotations | structure | explicit | hint |
 | [SMT347](SMT347.md) | anonymous-tuple-type | structure | explicit | hint |
+| [SMT348](SMT348.md) | missing-interface-docstring | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

@@ -1662,6 +1662,21 @@
             "hint"
           ]
         },
+        "missing-interface-docstring": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
+          "description": "An abstract or Protocol method has a placeholder body and no docstring. A port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope. Repair: Replace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT348 \u2014 missing-interface-docstring**\n\nAn abstract or Protocol method has a placeholder body and no docstring.\n\nA port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope.\n\n**Problem**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID: ...\n\n    @abstractmethod\n    async def revoke(self) -> None: ...\n```\n\n**Preferred**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID:\n        \"\"\"The tab retained when the profile grant was acquired.\"\"\"\n\n    @abstractmethod\n    async def revoke(self) -> None:\n        \"\"\"Fence native access and settle all resource leases.\"\"\"\n```\n\nReplace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-interface-docstring` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2728,6 +2743,21 @@
             "hint"
           ]
         },
+        "^SMT348$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
+          "description": "An abstract or Protocol method has a placeholder body and no docstring. A port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope. Repair: Replace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT348 \u2014 missing-interface-docstring**\n\nAn abstract or Protocol method has a placeholder body and no docstring.\n\nA port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope.\n\n**Problem**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID: ...\n\n    @abstractmethod\n    async def revoke(self) -> None: ...\n```\n\n**Preferred**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID:\n        \"\"\"The tab retained when the profile grant was acquired.\"\"\"\n\n    @abstractmethod\n    async def revoke(self) -> None:\n        \"\"\"Fence native access and settle all resource leases.\"\"\"\n```\n\nReplace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-interface-docstring` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3740,6 +3770,21 @@
             "hint"
           ]
         },
+        "missing-interface-docstring": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
+          "description": "An abstract or Protocol method has a placeholder body and no docstring. A port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope. Repair: Replace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT348 \u2014 missing-interface-docstring**\n\nAn abstract or Protocol method has a placeholder body and no docstring.\n\nA port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope.\n\n**Problem**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID: ...\n\n    @abstractmethod\n    async def revoke(self) -> None: ...\n```\n\n**Preferred**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID:\n        \"\"\"The tab retained when the profile grant was acquired.\"\"\"\n\n    @abstractmethod\n    async def revoke(self) -> None:\n        \"\"\"Fence native access and settle all resource leases.\"\"\"\n```\n\nReplace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-interface-docstring` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4547,6 +4592,21 @@
           "title": "SMT347: A fixed-length tuple type leaves its fields unnamed.",
           "description": "A fixed-length tuple type leaves its fields unnamed. dict[UUID, tuple[UUID, UUID, BrowserConnection]] does not say which UUID is which; readers decode entry[0] and entry[1] from call sites, and swapping them still type-checks. This opt-in review reports fixed-length tuple types in annotations and type aliases with three or more elements, or with an element type that repeats. Variadic tuple[X, ...], empty tuples, two different element types, quoted annotations, dunder/@override/@overload signatures (dictated elsewhere) and tests are not reported. Repair: Introduce a NamedTuple (keeps unpacking and indexing) or a frozen dataclass that names each field, and use it in place of the tuple. Keep a tuple whose shape an external API dictates with a reasoned suppression. No automatic rewrite is performed. Enable rules: {anonymous-tuple-type: hint}, or select SMT347.",
           "markdownDescription": "**SMT347 \u2014 anonymous-tuple-type**\n\nA fixed-length tuple type leaves its fields unnamed.\n\ndict[UUID, tuple[UUID, UUID, BrowserConnection]] does not say which UUID is which; readers decode entry[0] and entry[1] from call sites, and swapping them still type-checks. This opt-in review reports fixed-length tuple types in annotations and type aliases with three or more elements, or with an element type that repeats. Variadic tuple[X, ...], empty tuples, two different element types, quoted annotations, dunder/@override/@overload signatures (dictated elsewhere) and tests are not reported.\n\n**Problem**\n```python\nclass Connections:\n    def __init__(self) -> None:\n        self._by_tab: dict[UUID, tuple[UUID, UUID, Connection]] = {}\n```\n\n**Preferred**\n```python\nclass Route(NamedTuple):\n    user_id: UUID\n    run_id: UUID\n    connection: Connection\n\nclass Connections:\n    def __init__(self) -> None:\n        self._by_tab: dict[UUID, Route] = {}\n```\n\nIntroduce a NamedTuple (keeps unpacking and indexing) or a frozen dataclass that names each field, and use it in place of the tuple. Keep a tuple whose shape an external API dictates with a reasoned suppression. No automatic rewrite is performed. Enable rules: {anonymous-tuple-type: hint}, or select SMT347.\n\nRun `smelt explain anonymous-tuple-type` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT348$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
+          "description": "An abstract or Protocol method has a placeholder body and no docstring. A port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope. Repair: Replace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT348 \u2014 missing-interface-docstring**\n\nAn abstract or Protocol method has a placeholder body and no docstring.\n\nA port or interface method has no implementation to read, so its docstring is the only place that states the contract: what the method guarantees, what it requires and what it leaves untouched. A bare ... body leaves implementers and callers to guess, and one undocumented member next to documented siblings usually means the contract was forgotten, not that it is obvious. This opt-in review reports @abstractmethod methods (including abstract properties) and methods of typing.Protocol classes whose body is only ..., pass or raise NotImplementedError and which have no docstring. Methods with a default implementation, @overload/@override signatures, property setters/deleters, dunder methods other than __call__ and tests are not reported. Ordinary Protocol attributes have no body and are out of scope.\n\n**Problem**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID: ...\n\n    @abstractmethod\n    async def revoke(self) -> None: ...\n```\n\n**Preferred**\n```python\nclass BrowserAgentProfile(ABC):\n    @property\n    @abstractmethod\n    def initial_tab_id(self) -> UUID:\n        \"\"\"The tab retained when the profile grant was acquired.\"\"\"\n\n    @abstractmethod\n    async def revoke(self) -> None:\n        \"\"\"Fence native access and settle all resource leases.\"\"\"\n```\n\nReplace the placeholder body with a docstring that states the method's contract; a docstring alone is a valid body, so drop the ... (Ruff PIE790 reports a placeholder left after a docstring). No automatic rewrite is performed. Enable rules: {missing-interface-docstring: hint}, or select SMT348. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-interface-docstring` for details.",
           "examples": [
             "hint"
           ]
