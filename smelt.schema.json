@@ -1543,6 +1543,36 @@
             "hint"
           ]
         },
+        "str-enum-auto-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum spells a value that auto() derives.",
+          "description": "A StrEnum spells a value that auto() derives. This opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Replace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 str-enum-auto-values**\n\nA StrEnum spells a value that auto() derives.\n\nThis opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = \"open\"\n    CLOSED = \"closed\"\n```\n\n**Preferred**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = auto()\n    CLOSED = auto()\n```\n\nReplace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-auto-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "str-enum-explicit-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT342: A StrEnum derives a value with auto().",
+          "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2504,6 +2534,36 @@
             "hint"
           ]
         },
+        "^SMT341$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum spells a value that auto() derives.",
+          "description": "A StrEnum spells a value that auto() derives. This opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Replace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 str-enum-auto-values**\n\nA StrEnum spells a value that auto() derives.\n\nThis opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = \"open\"\n    CLOSED = \"closed\"\n```\n\n**Preferred**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = auto()\n    CLOSED = auto()\n```\n\nReplace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-auto-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT342$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT342: A StrEnum derives a value with auto().",
+          "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3411,6 +3471,36 @@
             "hint"
           ]
         },
+        "str-enum-auto-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum spells a value that auto() derives.",
+          "description": "A StrEnum spells a value that auto() derives. This opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Replace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 str-enum-auto-values**\n\nA StrEnum spells a value that auto() derives.\n\nThis opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = \"open\"\n    CLOSED = \"closed\"\n```\n\n**Preferred**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = auto()\n    CLOSED = auto()\n```\n\nReplace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-auto-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "str-enum-explicit-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT342: A StrEnum derives a value with auto().",
+          "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4113,6 +4203,36 @@
           "title": "SMT340: An awaited result is passed directly as a call argument.",
           "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
           "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT341$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum spells a value that auto() derives.",
+          "description": "A StrEnum spells a value that auto() derives. This opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Replace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 str-enum-auto-values**\n\nA StrEnum spells a value that auto() derives.\n\nThis opt-in style rule makes auto() the project convention for StrEnum values: auto() derives the lowercased member name, so an explicit string repeating it is noise and hides which values are deliberate wire contracts. A class is reported when an explicit string equals the lowercased member name. A class with custom values such as 'mouseMoved' keeps explicit strings for every member; there, auto() members are reported instead. Do not enable it together with SMT342 str-enum-explicit-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = \"open\"\n    CLOSED = \"closed\"\n```\n\n**Preferred**\n```python\nclass ConnectionState(StrEnum):\n    OPEN = auto()\n    CLOSED = auto()\n```\n\nReplace each reported explicit string with auto(). In a class with custom values, spell the reported auto() members as their lowercased names instead. No automatic rewrite is performed. Enable rules: {str-enum-auto-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-auto-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT342$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT342: A StrEnum derives a value with auto().",
+          "description": "A StrEnum derives a value with auto(). This opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored. Repair: Spell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT342 \u2014 str-enum-explicit-values**\n\nA StrEnum derives a value with auto().\n\nThis opt-in style rule makes explicit strings the project convention for StrEnum values: every value is visible where it is declared and renaming a member cannot silently change a serialized value. A class is reported when a member uses auto(). Do not enable it together with SMT341 str-enum-auto-values, which states the opposite convention. It considers production classes inheriting directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum). Member aliases, private names and tests are ignored.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = \"description\"\n    READY = \"ready\"\n```\n\nSpell each reported auto() member as its lowercased name, the value auto() produces for a StrEnum. No automatic rewrite is performed. Enable rules: {str-enum-explicit-values: hint}, or select SMT342. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain str-enum-explicit-values` for details.",
           "examples": [
             "hint"
           ]

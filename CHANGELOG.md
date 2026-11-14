@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional style rules fix how `StrEnum` values are declared.
+  [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
+  convention: it reports explicit strings equal to the lowercased member name,
+  and `auto()` members in classes that need custom values such as
+  `"mouseMoved"`. [SMT342](docs/rules/SMT342.md) `str-enum-explicit-values`
+  makes explicit strings the convention and reports every `auto()` member.
+  Enable one of them, e.g. `rules: {str-enum-auto-values: hint}`. Tests are not
+  checked; no automatic rewrite. Implements
+  [#116](https://github.com/mathisarends/smelt/issues/116).
+
 - Repair hints of SMT316, SMT320, SMT335, SMT429 and SMT430 no longer repeat the
   member and its suggested name, which the message and the `suggested_name`
   detail already carry; they name the target only when a collision changes it.

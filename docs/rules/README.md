@@ -49,6 +49,8 @@
 | [SMT338](SMT338.md) | duplicate-literal-type | structure | explicit | hint |
 | [SMT339](SMT339.md) | private-symbol-import | structure | explicit | warning |
 | [SMT340](SMT340.md) | await-in-call-argument | structure | explicit | hint |
+| [SMT341](SMT341.md) | str-enum-auto-values | structure | explicit | hint |
+| [SMT342](SMT342.md) | str-enum-explicit-values | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

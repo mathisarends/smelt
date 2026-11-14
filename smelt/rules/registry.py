@@ -68,6 +68,8 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.literal_types:DuplicateLiteralType",
     "smelt.rules.structure.private_symbols:PrivateSymbolImport",
     "smelt.rules.structure.awaited_arguments:AwaitInCallArgument",
+    "smelt.rules.structure.enum_styles:StrEnumAutoValues",
+    "smelt.rules.structure.enum_styles:StrEnumExplicitValues",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
