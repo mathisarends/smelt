@@ -17,6 +17,16 @@ current configuration and complete rule contracts, see the [README](README.md),
   with `rules: {prefer-deferred-annotations: hint}`; no automatic rewrite.
   Implements [#123](https://github.com/mathisarends/smelt/issues/123).
 
+- Optional review [SMT347](docs/rules/SMT347.md) `anonymous-tuple-type`
+  reports fixed-length tuple types in annotations and type aliases with three
+  or more elements or a repeated element type, such as
+  `dict[UUID, tuple[UUID, UUID, Connection]]`, and suggests a `NamedTuple` or
+  frozen dataclass. `tuple[X, ...]`, two distinct element types, quoted
+  annotations, dunder/`@override`/`@overload` signatures and tests are not
+  reported. Enable it with `rules: {anonymous-tuple-type: hint}`; no automatic
+  rewrite. Implements part of
+  [#121](https://github.com/mathisarends/smelt/issues/121).
+
 - Optional review [SMT344](docs/rules/SMT344.md) `redundant-name-alias` reports
   a module-level name that only repeats another class or function name, such as
   `AutofillData = PasswordData`, including `TypeAlias` and `type` statements.
