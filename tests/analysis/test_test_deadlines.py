@@ -72,7 +72,7 @@ def test_deadlines_distinguish_awaiting_bounding_and_outcome_evidence(
     [wait] = [
         call.node for call in test.calls if call.qualified == "asyncio.Event.wait"
     ]
-    guard = async_deadline(wait, calls, parents, ["tests.timing.deadline"])
+    guard = async_deadline(wait, calls, parents, helpers=["tests.timing.deadline"])
     assert (guard.awaited, guard.bounded, guard.raises_on_timeout) == (
         awaited,
         bounded,

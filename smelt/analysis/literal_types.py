@@ -49,7 +49,7 @@ def literal_types(ctx: AnalysisContext, path: str) -> tuple[LiteralType, ...]:
         "literal-types",
         [path, ctx.files.content_id(path)],
         _FACTS,
-        build,
+        build=build,
     )
 
 

@@ -103,7 +103,7 @@ class CoverageIndex:
                 files.resolve_path(directory / name) for name in ("tests", "test")
             )
         inventory = {
-            source.path: _classify_source(source, files, model, asts)
+            source.path: _classify_source(source, files, model, asts=asts)
             for source in files.sources.values()
         }
         # The most specific import root names a module in nested workspaces.
@@ -213,7 +213,7 @@ def is_governed(info: ModuleInfo | None, *, layers_declared: bool = True) -> boo
 
 
 def _classify_source(
-    source: SourceFile, files: FileIndex, model: ArchitectureModel, asts: AstCache
+    source: SourceFile, files: FileIndex, model: ArchitectureModel, *, asts: AstCache
 ) -> CoverageEntry:
     info = model.info(source.module)
     status: CoverageStatus = "unclassified"
@@ -267,7 +267,7 @@ def _is_facade(source: SourceFile, asts: AstCache) -> bool:
             "facade",
             [source.path, asts.files.content_id(source.path)],
             _BOOL,
-            lambda: _facade_syntax(source, asts),
+            build=lambda: _facade_syntax(source, asts),
         )
     return _facade_syntax(source, asts)
 

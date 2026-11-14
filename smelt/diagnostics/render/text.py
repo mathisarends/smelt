@@ -221,11 +221,11 @@ _STATISTICS_THRESHOLD = 10
 
 class _Style:
     def __init__(self, color: bool, *, concise: bool = False) -> None:
-        self.color = color
+        self._color = color
         self.concise = concise
 
     def __call__(self, text: str, *codes: str) -> str:
-        if not self.color or not codes:
+        if not self._color or not codes:
             return text
         return "".join(codes) + text + _RESET
 

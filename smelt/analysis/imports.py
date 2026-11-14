@@ -198,7 +198,7 @@ class ImportIndex:
             PACKAGE_FINDER=_SourceRootPackageFinder(files),
             MODULE_FINDER=_IndexedModuleFinder(files),
             FILE_SYSTEM=_SourceFileSystem(files, files.store),
-            CACHE_CLASS=import_cache_type(files, asts, cache, inventory),
+            CACHE_CLASS=import_cache_type(files, asts, cache, inventory=inventory),
         )
         try:
             graph = grimp.build_graph(
@@ -267,7 +267,7 @@ class ImportIndex:
                         self._inventory,
                     ],
                     _DETAILS,
-                    lambda: self._details_for(module),
+                    build=lambda: self._details_for(module),
                 )
             )
             self._outgoing[module] = cached
@@ -348,11 +348,17 @@ class ImportIndex:
                 nodes: list[ast.Import | ast.ImportFrom | None] = [
                     node
                     for node in statements.get(line, [])
-                    if _matches_statement(node, module, source.is_package, imported)
+                    if _matches_statement(
+                        node, module, source.is_package, imported=imported
+                    )
                 ]
                 for node in nodes or [None]:
                     names, column, end_column = _describe(
-                        node, module, source.is_package, imported, contents
+                        node,
+                        module,
+                        source.is_package,
+                        imported=imported,
+                        line_contents=contents,
                     )
                     details.append(
                         ImportDetail(
@@ -382,7 +388,7 @@ def _statements_by_line(
 
 
 def _matches_statement(
-    node: ast.Import | ast.ImportFrom, module: str, is_package: bool, imported: str
+    node: ast.Import | ast.ImportFrom, module: str, is_package: bool, *, imported: str
 ) -> bool:
     if isinstance(node, ast.Import):
         names = [alias.name for alias in node.names]
@@ -401,6 +407,7 @@ def _describe(
     node: ast.Import | ast.ImportFrom | None,
     module: str,
     is_package: bool,
+    *,
     imported: str,
     line_contents: str,
 ) -> tuple[tuple[str, ...], int, int]:
@@ -409,7 +416,7 @@ def _describe(
         return (imported,), 1, len(line_contents) + 1
     if isinstance(node, ast.Import):
         return _describe_import(node, imported, line_contents)
-    return _describe_import_from(node, module, is_package, imported)
+    return _describe_import_from(node, module, is_package, imported=imported)
 
 
 def _describe_import(
@@ -432,7 +439,7 @@ def _describe_import(
 
 
 def _describe_import_from(
-    node: ast.ImportFrom, module: str, is_package: bool, imported: str
+    node: ast.ImportFrom, module: str, is_package: bool, *, imported: str
 ) -> tuple[tuple[str, ...], int, int]:
     base = resolve_relative(
         module, is_package=is_package, level=node.level, target=node.module

@@ -144,26 +144,33 @@ class ImportCycle(Rule):
             return (info.feature, info.layer) if info and info.layer else None
 
         if "features" in scopes:
-            yield from self._report(ctx, features, "features", str, feature_of)
+            yield from self._report(
+                ctx, features, "features", label=str, node_of=feature_of
+            )
         if "layers" in scopes:
-            yield from self._report(ctx, layers, "layers", _layer_label, layer_of)
+            yield from self._report(
+                ctx, layers, "layers", label=_layer_label, node_of=layer_of
+            )
         if "siblings" in scopes:
             for parent in sorted(siblings):
                 yield from self._report(
                     ctx,
                     siblings[parent],
                     f"modules in {parent}",
-                    _last_segment,
-                    partial(_child_of, parent),
+                    label=_last_segment,
+                    node_of=partial(_child_of, parent),
                 )
         if "modules" in scopes:
-            yield from self._report(ctx, modules, "concrete modules", str, str)
+            yield from self._report(
+                ctx, modules, "concrete modules", label=str, node_of=str
+            )
 
     def _report[T: Hashable](
         self,
         ctx: AnalysisContext,
         graph: _Graph[T],
         scope: str,
+        *,
         label: Callable[[T], str],
         node_of: Callable[[str], T | None],
     ) -> Iterator[Violation]:
@@ -226,7 +233,7 @@ class ImportCycle(Rule):
                 self,
                 ctx,
                 hops[0],
-                message,
+                message=message,
                 expected=expected,
                 hint=hint,
                 edge=" -> ".join(names),
@@ -288,7 +295,9 @@ def _witness[T: Hashable](
         links.append(ImportLink(hop.importer, hop.imported, hop.line))
         if following is None or following.importer == hop.imported:
             continue
-        path = _path_within(adjacency, hop.imported, following.importer, node_of)
+        path = _path_within(
+            adjacency, hop.imported, following.importer, node_of=node_of
+        )
         links.extend(
             ImportLink(a, b, _line(ctx, a, b, include_type_checking=include))
             for a, b in itertools.pairwise(path)
@@ -300,6 +309,7 @@ def _path_within[T: Hashable](
     adjacency: dict[str, set[str]],
     start: str,
     goal: str,
+    *,
     node_of: Callable[[str], T | None],
 ) -> list[str]:
     node = node_of(start)
@@ -365,7 +375,9 @@ def _reported_elsewhere(
         cross.default == "deny"
         and source.feature is not None
         and target.feature is not None
-        and not cross.allows(source.feature, source.layer, target.feature, target.layer)
+        and not cross.allows(
+            source.feature, source.layer, target.feature, target_layer=target.layer
+        )
     )
 
 

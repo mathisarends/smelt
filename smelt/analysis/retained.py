@@ -19,8 +19,8 @@ class RetainedAnalysis:
     def __init__(
         self, *, max_bytes: int = 8 * 1024 * 1024, max_entries: int = 2
     ) -> None:
-        self.max_bytes = max_bytes
-        self.max_entries = max_entries
+        self._max_bytes = max_bytes
+        self._max_entries = max_entries
         self._states: OrderedDict[StateKey, tuple[MemberIndexState, int]] = (
             OrderedDict()
         )
@@ -28,10 +28,11 @@ class RetainedAnalysis:
 
     def put(self, key: StateKey, state: MemberIndexState, *, size: int) -> None:
         self.take(key)
-        if size > self.max_bytes or self.max_entries < 1:
+        if size > self._max_bytes or self._max_entries < 1:
             return
         while self._states and (
-            self._bytes + size > self.max_bytes or len(self._states) >= self.max_entries
+            self._bytes + size > self._max_bytes
+            or len(self._states) >= self._max_entries
         ):
             _, (_, previous_size) = self._states.popitem(last=False)
             self._bytes -= previous_size
@@ -51,19 +52,19 @@ class RetainedAnalysis:
 
 class _RequestState:
     def __init__(self, state: RetainedAnalysis) -> None:
-        self.state = state
-        self.taken: set[StateKey] = set()
+        self._state = state
+        self._taken: set[StateKey] = set()
 
     def take(self, key: StateKey) -> MemberIndexState | None:
         # Current and historical analyses can use the same disk key within one
         # request. They must never borrow the same live mutable dependency graph.
-        if key in self.taken:
+        if key in self._taken:
             return None
-        self.taken.add(key)
-        return self.state.take(key)
+        self._taken.add(key)
+        return self._state.take(key)
 
     def put(self, key: StateKey, state: MemberIndexState, *, size: int) -> None:
-        self.state.put(key, state, size=size)
+        self._state.put(key, state, size=size)
 
 
 _CURRENT: ContextVar[_RequestState | None] = ContextVar(

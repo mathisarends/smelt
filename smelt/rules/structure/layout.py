@@ -59,13 +59,14 @@ class UnknownLayer(Rule):
         model = ctx.model
         paths = [layer.path.split(".") for layer in model.layers.values()]
         for container in model.grid_containers():
-            yield from self._check_children(ctx, container, container, paths)
+            yield from self._check_children(ctx, container, container, paths=paths)
 
     def _check_children(
         self,
         ctx: AnalysisContext,
         container: str,
         parent: str,
+        *,
         paths: list[list[str]],
     ) -> Iterator[Violation]:
         model = ctx.model
@@ -83,7 +84,9 @@ class UnknownLayer(Rule):
             if any(not rest for rest in rests):
                 continue
             if rests:
-                yield from self._check_children(ctx, container, package.module, rests)
+                yield from self._check_children(
+                    ctx, container, package.module, paths=rests
+                )
                 continue
             owner = info.feature if info and info.feature else container
             layers = list(model.layers)

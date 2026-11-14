@@ -71,7 +71,10 @@ class CrossFeatureImport(Rule):
                 source.layer
                 and target.layer
                 and cross.allows(
-                    source.feature, source.layer, target.feature, target.layer
+                    source.feature,
+                    source.layer,
+                    target.feature,
+                    target_layer=target.layer,
                 )
             ):
                 continue
@@ -92,7 +95,7 @@ class CrossFeatureImport(Rule):
                 self,
                 ctx,
                 detail,
-                f"feature {source.feature} must not import feature {target.feature} ({pair})",
+                message=f"feature {source.feature} must not import feature {target.feature} ({pair})",
                 expected={"cross_feature_allow": allowed},
                 hint=" ".join(hints) or None,
                 chain=chain,
@@ -154,7 +157,7 @@ class SharedImportsFeature(Rule):
                 self,
                 ctx,
                 detail,
-                f"{kind} module {detail.importer} must not import feature {target.feature}",
+                message=f"{kind} module {detail.importer} must not import feature {target.feature}",
                 expected={"may_import": _MAY_IMPORT[kind]},
                 hint=(
                     f"Move what {detail.importer} needs out of {target.feature} into "

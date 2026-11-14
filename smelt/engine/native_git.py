@@ -34,18 +34,18 @@ class GitService:
             stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
-        self.executor = ThreadPoolExecutor(
+        self._executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="smelt-git"
         )
 
     def request(self, message: dict[str, Any]) -> dict[str, Any]:
-        return self.executor.submit(self._exchange, message).result(timeout=10)
+        return self._executor.submit(self._exchange, message).result(timeout=10)
 
     def close(self) -> None:
         if self.process.poll() is None:
             self.process.kill()
         self.process.wait(timeout=5)
-        self.executor.shutdown(wait=True, cancel_futures=True)
+        self._executor.shutdown(wait=True, cancel_futures=True)
         for stream in (self.process.stdin, self.process.stdout):
             if stream is not None:
                 # Closing a buffered input after the child crashed can itself

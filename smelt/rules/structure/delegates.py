@@ -102,8 +102,8 @@ class _Module:
     """Classes, defined functions and name references of one module."""
 
     def __init__(self, tree: ast.Module) -> None:
-        self.classes = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
-        self.local_classes = {node.name: node for node in self.classes}
+        self._classes = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+        self._local_classes = {node.name: node for node in self._classes}
         self.definitions: Counter[str] = Counter()
         self.references: Counter[str] = Counter()
         for node in ast.walk(tree):
@@ -118,7 +118,7 @@ class _Module:
                     self.references[text] += 1
 
     def delegates(self) -> Iterator[_Delegate]:
-        for owner in self.classes:
+        for owner in self._classes:
             if not self._isolated(owner):
                 continue
             methods = {
@@ -146,7 +146,7 @@ class _Module:
                 case ast.Subscript(value=ast.Name(id=name) | ast.Attribute(attr=name)):
                     local = None
                 case ast.Name(id=name):
-                    local = self.local_classes.get(name)
+                    local = self._local_classes.get(name)
                 case ast.Attribute(attr=name):
                     local = None
                 case _:

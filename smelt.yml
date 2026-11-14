@@ -51,6 +51,7 @@ structure:
       match: smelt
       future_annotations: when-needed
       ordering: {fix: safe-only}
+      max_positional_parameters: 3
     module-names:
       match: smelt
       private_modules: forbid
@@ -70,6 +71,17 @@ tests:
   layout: mirror
 
 rules:
+  # Public values are serialized in reports: keep their wire spelling explicit.
+  str-enum-explicit-values: warning
+  deprecated-async-contextmanager-return: warning
+  private-symbol-import: warning
+  await-in-call-argument: warning
+  redundant-private-delegate: warning
+  redundant-name-alias: warning
+  prefer-deferred-annotations: warning
+  # These reviews need semantic judgment: equal shapes can model distinct concepts.
+  duplicate-literal-type: hint
+  anonymous-tuple-type: hint
   caller-before-callee: warning
   redundant-dishka-provider: warning
   secret-settings-field: warning
@@ -83,11 +95,9 @@ rules:
   prefer-match-type-dispatch: error
   public-definitions-first: error
   private-class-constant: error
-  internal-public-member: warning
+  information-hiding: warning
   internal-static-helper: warning
   unnecessary-future-annotations: warning
-  test-only-public-function: warning
-  test-only-public-attribute: warning
   private-test-access: warning
   test-without-outcome-check: warning
   test-only-checks-possibly-empty-data: warning

@@ -62,7 +62,7 @@ class PrivateModuleImport(Rule):
                         self,
                         ctx,
                         replace(detail, imported=target),
-                        f'{detail.importer} imports private module {target} of contract "{contract.name}"',
+                        message=f'{detail.importer} imports private module {target} of contract "{contract.name}"',
                         expected={
                             "contract": contract.name,
                             "package": contract.package,

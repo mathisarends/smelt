@@ -251,7 +251,9 @@ class NavigationNamespaces:
                         )
                     elif isinstance(node, ast.Assign):
                         value = (
-                            self._expression(module, node.value, parameters, shadowed)
+                            self._expression(
+                                module, node.value, parameters, shadowed=shadowed
+                            )
                             if statement.name == "__init__"
                             else None
                         )
@@ -293,6 +295,7 @@ class NavigationNamespaces:
         module: str,
         node: ast.expr,
         parameters: dict[str, _Type | None],
+        *,
         shadowed: set[str],
     ) -> _Type | None:
         if isinstance(node, ast.Name):
@@ -331,7 +334,7 @@ class NavigationNamespaces:
                     qualified,
                     {
                         keyword.arg: self._expression(
-                            module, keyword.value, parameters, shadowed
+                            module, keyword.value, parameters, shadowed=shadowed
                         )
                         for keyword in node.keywords
                         if keyword.arg

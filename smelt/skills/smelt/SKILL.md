@@ -47,6 +47,16 @@ installed skill records the CLI version that installed it.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;
   behavior-changing SMT321 repairs also need `--unsafe-fixes` and review of falsy
   values. `--unsafe-fixes` alone writes nothing. `--staged` rejects `--fix`.
+- Review new style policies before adopting them. SMT341 `str-enum-auto-values`
+  and SMT342 `str-enum-explicit-values` express opposite conventions; select at
+  most one and preserve serialized values. SMT343/SMT344 review forwarding
+  methods and name aliases. SMT346 prefers deferred annotations; verify runtime
+  annotation consumers before removing quotes or adding a future import.
+  SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
+  concepts, so name records where field meaning benefits callers rather than
+  merging unrelated types. `structure.contracts.<name>.max_positional_parameters`
+  activates SMT345; after adding keyword-only parameters, update all callers,
+  including tests and callbacks. These rules have no automatic rewrite.
 - Do not disable checks, broaden exclusions or record debt merely to pass a check.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without

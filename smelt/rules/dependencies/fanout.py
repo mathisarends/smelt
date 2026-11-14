@@ -78,14 +78,14 @@ class PackageImportFanout(Rule):
                         ctx.syntax, ctx.imports, files=ctx.files, count_tests=False
                     )
                 evidence = _bundle_evidence(
-                    ctx, usage, caller, contract.package, targets
+                    ctx, usage, caller, package=contract.package, targets=targets
                 )
                 blocked = evidence["cycle_check"] == "cycle"
                 yield import_violation(
                     self,
                     ctx,
                     first,
-                    f"{caller} imports {len(targets)} modules of {contract.package}; consider its package facade",
+                    message=f"{caller} imports {len(targets)} modules of {contract.package}; consider its package facade",
                     expected={
                         "contract": contract.name,
                         "package": contract.package,
@@ -117,6 +117,7 @@ def _bundle_evidence(
     ctx: AnalysisContext,
     usage: FacadeUsage,
     caller: str,
+    *,
     package: str,
     targets: dict[str, ImportDetail],
 ) -> _BundleEvidence:

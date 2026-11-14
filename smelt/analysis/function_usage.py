@@ -12,8 +12,6 @@ if TYPE_CHECKING:
 
     from smelt.analysis.syntax import ModuleSyntax
 
-type Target = tuple[str, str | None]
-
 
 def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
     definitions: dict[str, list[ast.AST]] = {}

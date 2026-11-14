@@ -58,7 +58,11 @@ class ImportStyle(Rule):
                 ):
                     continue
                 yield from self._statement(
-                    ctx, source, node, contract.spec.imports, contract.name
+                    ctx,
+                    source,
+                    node,
+                    policy=contract.spec.imports,
+                    contract=contract.name,
                 )
 
     def _statement(
@@ -66,6 +70,7 @@ class ImportStyle(Rule):
         ctx: AnalysisContext,
         source: SourceFile,
         node: ast.Import | ast.ImportFrom,
+        *,
         policy: ImportStyleConfig,
         contract: str,
     ) -> Iterator[Violation]:

@@ -18,7 +18,7 @@ def git_repository(cwd: Path, requested: Path | None = None) -> Path:
     """Prefer the caller's repository, including staged directories deleted on disk."""
     try:
         repository = Path(
-            os.fsdecode(_git(cwd, "rev-parse", "--show-toplevel")).strip()
+            os.fsdecode(run_git(cwd, "rev-parse", "--show-toplevel")).strip()
         ).resolve()
     except AnalysisError:
         if requested is None:
@@ -32,31 +32,8 @@ def git_repository(cwd: Path, requested: Path | None = None) -> Path:
         (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
     )
     return Path(
-        os.fsdecode(_git(anchor, "rev-parse", "--show-toplevel")).strip()
+        os.fsdecode(run_git(anchor, "rev-parse", "--show-toplevel")).strip()
     ).resolve()
-
-
-def _git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
-    if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
-        native = native_git.tree_records(root, args[3])
-        if native is not None:
-            return native
-    try:
-        result = subprocess.run(  # noqa: S603
-            ["git", *args],  # noqa: S607
-            cwd=root,
-            capture_output=True,
-            input=input_data,
-            check=False,
-        )
-    except OSError as exc:
-        msg = f"changed/staged checks need git: {exc}"
-        raise AnalysisError(msg) from exc
-    if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", errors="replace").strip()
-        msg = f"git {' '.join(args)} failed: {stderr}"
-        raise AnalysisError(msg)
-    return result.stdout
 
 
 def _head(root: Path) -> str | None:
@@ -148,7 +125,7 @@ def capture_index(repository: Path) -> GitIndex:
     """Capture one immutable manifest, including stage/mode validation."""
     records = native_git.index_records(repository)
     if records is None:
-        records = _git(repository, "ls-files", "--stage", "-z")
+        records = run_git(repository, "ls-files", "--stage", "-z")
     blobs: dict[str, str] = {}
     for record in records.split(b"\0"):
         if not record:
@@ -179,11 +156,11 @@ def resolve_comparison(
     captured: GitRepository | None = None,
 ) -> tuple[Path, Comparison]:
     toplevel = (captured.path if captured else repository) or Path(
-        os.fsdecode(_git(root, "rev-parse", "--show-toplevel")).strip()
+        os.fsdecode(run_git(root, "rev-parse", "--show-toplevel")).strip()
     )
     head = captured.head if captured is not None else _head(root)
     if base is not None:
-        ref = _git(root, "merge-base", head or "HEAD", base).decode().strip()
+        ref = run_git(root, "merge-base", head or "HEAD", base).decode().strip()
     elif head is not None:
         ref = head
     else:
@@ -192,7 +169,7 @@ def resolve_comparison(
 
 
 def export_base(
-    root: Path, toplevel: Path, comparison: Comparison, dest: Path
+    root: Path, toplevel: Path, comparison: Comparison, *, dest: Path
 ) -> Path | None:
     ref = comparison.revision
     if ref is None:
@@ -201,7 +178,7 @@ def export_base(
     selected: list[tuple[str, Path]] = []
     # Read the tree itself: git archive can silently omit export-ignore sources
     # or substitute export-subst contents. Sibling workspace roots matter too.
-    for record in _git(toplevel, "ls-tree", "-rz", "--full-tree", ref).split(b"\0"):
+    for record in run_git(toplevel, "ls-tree", "-rz", "--full-tree", ref).split(b"\0"):
         if not record:
             continue
         metadata, raw_path = record.split(b"\t", 1)
@@ -228,7 +205,7 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     if native is not None:
         return native
     contents = io.BytesIO(
-        _git(
+        run_git(
             repository,
             "cat-file",
             "--batch",
@@ -248,6 +225,29 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
             raise AnalysisError("incomplete staged Git blob")
         result[object_id] = data
     return result
+
+
+def run_git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
+    if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
+        native = native_git.tree_records(root, args[3])
+        if native is not None:
+            return native
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["git", *args],  # noqa: S607
+            cwd=root,
+            capture_output=True,
+            input=input_data,
+            check=False,
+        )
+    except OSError as exc:
+        msg = f"changed/staged checks need git: {exc}"
+        raise AnalysisError(msg) from exc
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
+        msg = f"git {' '.join(args)} failed: {stderr}"
+        raise AnalysisError(msg)
+    return result.stdout
 
 
 def _snapshot_path(dest: Path, path: Path) -> Path:

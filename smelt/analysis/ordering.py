@@ -152,7 +152,7 @@ def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics 
     aliases = builtin_type_aliases() | {
         name: f"builtins.{name}" for name in ("property", "staticmethod", "classmethod")
     }
-    _body(result, tree, "module", aliases, reflection)
+    _body(result, tree, "module", aliases=aliases, fix_blocker=reflection)
     return result
 
 
@@ -276,6 +276,7 @@ def _body(
     result: FileOrder,
     owner: ScopeNode,
     scope: str,
+    *,
     aliases: dict[str, str],
     fix_blocker: _FixBlocker | None,
 ) -> None:
@@ -293,14 +294,14 @@ def _body(
     group: list[DefinitionBlock] = []
     for block in blocks:
         if block.barrier:
-            _section(result, owner, scope, group, fix_blocker)
+            _section(result, owner, scope, blocks=group, fix_blocker=fix_blocker)
             group = []
             result.barriers.append(
                 {"scope": scope, "line": block.line, "reason": block.barrier}
             )
         else:
             group.append(block)
-    _section(result, owner, scope, group, fix_blocker)
+    _section(result, owner, scope, blocks=group, fix_blocker=fix_blocker)
     counts: dict[str, int] = defaultdict(int)
     for child, child_aliases in children:
         ordinal = counts[child.name]
@@ -320,13 +321,16 @@ def _body(
             if triggers
             else None
         )
-        _body(result, child, child_scope, child_aliases, child_blocker)
+        _body(
+            result, child, child_scope, aliases=child_aliases, fix_blocker=child_blocker
+        )
 
 
 def _section(
     result: FileOrder,
     owner: ScopeNode,
     scope: str,
+    *,
     blocks: list[DefinitionBlock],
     fix_blocker: _FixBlocker | None,
 ) -> None:

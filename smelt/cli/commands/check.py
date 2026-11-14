@@ -49,19 +49,19 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 args,
                 console,
                 cwd,
-                staged.loaded,
+                loaded=staged.loaded,
                 staged=staged,
             )
     loaded = load_project_config(args.config, cwd)
-    return _check_loaded(args, console, cwd, loaded)
+    return _check_loaded(args, console, cwd, loaded=loaded)
 
 
 def _check_loaded(
     args: argparse.Namespace,
     console: Console,
     cwd: Path,
-    loaded: LoadedConfig,
     *,
+    loaded: LoadedConfig,
     staged: StagedProject | None = None,
 ) -> int:
     original = staged.original_config if staged else None
@@ -87,7 +87,7 @@ def _check_loaded(
     )
     outcome = run_check(loaded, options)
     if args.fix:
-        outcome = _fix_outcome(args, console, loaded, options, outcome)
+        outcome = _fix_outcome(args, console, loaded, options=options, outcome=outcome)
     report = outcome.report
     if args.staged:
         report.project = project_metadata(origin)
@@ -162,6 +162,7 @@ def _fix_outcome(
     args: argparse.Namespace,
     console: Console,
     loaded: LoadedConfig,
+    *,
     options: CheckOptions,
     outcome: CheckOutcome,
 ) -> CheckOutcome:

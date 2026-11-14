@@ -39,6 +39,7 @@ def update_members(
     state: MemberIndexState,
     identities: dict[str, str],
     namespaces: dict[str, NamespaceIdentity],
+    *,
     build: Callable[[str], MemberSummary],
     decision: Callable[[MemberSummary, dict[str, int]], str],
 ) -> MemberIndexState:

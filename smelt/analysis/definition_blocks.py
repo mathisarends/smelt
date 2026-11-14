@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from smelt.config.models import OrderingConfig
 
 type ScopeNode = ast.Module | ast.ClassDef
-type FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
+type _FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
 
 _TYPE_FACTORIES = frozenset(
     {
@@ -355,7 +355,7 @@ def _namespace_mutation(node: ast.stmt) -> bool:
     )
 
 
-def _wrapper(node: ast.expr, function: FunctionNode, aliases: dict[str, str]) -> bool:
+def _wrapper(node: ast.expr, function: _FunctionNode, aliases: dict[str, str]) -> bool:
     if _qualified_name(node, aliases) in _OVERLOAD | _WRAPPERS:
         return True
     return (
@@ -475,7 +475,7 @@ def _qualified_name(node: ast.expr, aliases: dict[str, str]) -> str | None:
 
 
 def _safe_function(
-    node: FunctionNode,
+    node: _FunctionNode,
     aliases: dict[str, str],
     *,
     deferred: bool,
@@ -526,7 +526,7 @@ def _eager_expressions(node: ast.stmt, *, deferred: bool) -> list[ast.expr]:
     return []
 
 
-def _annotations(node: FunctionNode) -> list[ast.expr]:
+def _annotations(node: _FunctionNode) -> list[ast.expr]:
     args = node.args
     parameters = [
         *args.posonlyargs,

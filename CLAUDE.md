@@ -2,7 +2,7 @@
 
 Maintainer guide for agents. The full rules live in CONTRIBUTING.md:
 
-@CONTRIBUTING.md
+@AGENTS.md
 
 Points that are easy to get wrong:
 
