@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT341](docs/rules/SMT341.md) reports a `StrEnum` that mixes
+  `auto()` members with explicit string values and suggests one canonical form:
+  `auto()` when every explicit string equals the lowercased member name,
+  otherwise explicit strings for every member. Enable
+  `rules: {mixed-str-enum-values: hint}`. Tests are not checked; no automatic
+  rewrite. Implements [#116](https://github.com/mathisarends/smelt/issues/116).
+
 - Optional [SMT340](docs/rules/SMT340.md) reports an awaited result passed
   directly as a call argument, such as `Result(text=await client.read())`, and
   suggests naming it in a local variable first (the keyword for keyword

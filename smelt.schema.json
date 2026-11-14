@@ -1543,6 +1543,21 @@
             "hint"
           ]
         },
+        "mixed-str-enum-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum mixes auto() members with explicit string values.",
+          "description": "A StrEnum mixes auto() members with explicit string values. A StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked. Repair: When every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 mixed-str-enum-values**\n\nA StrEnum mixes auto() members with explicit string values.\n\nA StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = \"candidate\"\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = auto()\n    READY = auto()\n```\n\nWhen every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain mixed-str-enum-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2504,6 +2519,21 @@
             "hint"
           ]
         },
+        "^SMT341$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum mixes auto() members with explicit string values.",
+          "description": "A StrEnum mixes auto() members with explicit string values. A StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked. Repair: When every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 mixed-str-enum-values**\n\nA StrEnum mixes auto() members with explicit string values.\n\nA StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = \"candidate\"\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = auto()\n    READY = auto()\n```\n\nWhen every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain mixed-str-enum-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3411,6 +3441,21 @@
             "hint"
           ]
         },
+        "mixed-str-enum-values": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum mixes auto() members with explicit string values.",
+          "description": "A StrEnum mixes auto() members with explicit string values. A StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked. Repair: When every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 mixed-str-enum-values**\n\nA StrEnum mixes auto() members with explicit string values.\n\nA StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = \"candidate\"\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = auto()\n    READY = auto()\n```\n\nWhen every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain mixed-str-enum-values` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4113,6 +4158,21 @@
           "title": "SMT340: An awaited result is passed directly as a call argument.",
           "description": "An awaited result is passed directly as a call argument. Naming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls. Repair: Assign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.",
           "markdownDescription": "**SMT340 \u2014 await-in-call-argument**\n\nAn awaited result is passed directly as a call argument.\n\nNaming an awaited result before passing it on separates the suspension point from the construction or call that consumes it, and gives the value a name in tracebacks and debuggers. This opt-in review reports an await expression that is a direct positional or keyword argument of a call in production code, including nested forms such as await f(await g()). Plain awaits, return await, assignments, awaits nested inside containers or other expressions and calls without await, such as asyncio.gather(f(), g()), are not reported. Awaits in comprehensions, lambdas, conditional expressions, boolean operators and while conditions are skipped because extracting them would change when or how often they run. Tests are not checked. Extracting an argument evaluates it before the arguments to its left; review order-sensitive calls.\n\n**Problem**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    return ClipboardResult(text=await browser.clipboard.read())\n```\n\n**Preferred**\n```python\nasync def read(browser: Browser) -> ClipboardResult:\n    text = await browser.clipboard.read()\n    return ClipboardResult(text=text)\n```\n\nAssign the awaited result to a local variable in the statement before the call and pass that variable. For a keyword argument the keyword is suggested as the variable name. No automatic rewrite is performed. Enable rules: {await-in-call-argument: hint}, or select SMT340. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain await-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT341$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT341: A StrEnum mixes auto() members with explicit string values.",
+          "description": "A StrEnum mixes auto() members with explicit string values. A StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked. Repair: When every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT341 \u2014 mixed-str-enum-values**\n\nA StrEnum mixes auto() members with explicit string values.\n\nA StrEnum should declare its values in one canonical form: either every member uses auto(), which derives the lowercased member name, or every member spells its string explicitly. Mixing both hides which values are wire contracts and which are derived, and makes readers check each line. This opt-in review reports classes in production code that inherit directly from enum.StrEnum (imported as StrEnum, an alias or enum.StrEnum) and declare at least one auto() member and at least one string literal member. Member aliases, private names and other assignments are ignored. Tests are not checked.\n\n**Problem**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = \"candidate\"\n    READY = auto()\n```\n\n**Preferred**\n```python\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    CANDIDATE = auto()\n    READY = auto()\n```\n\nWhen every explicit string equals the lowercased member name, replace those strings with auto(). Otherwise the explicit values are deliberate, so spell every auto() member as its lowercased name instead. The finding names the suggested style. No automatic rewrite is performed. Enable rules: {mixed-str-enum-values: hint}, or select SMT341. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain mixed-str-enum-values` for details.",
           "examples": [
             "hint"
           ]
