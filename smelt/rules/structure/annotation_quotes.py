@@ -11,10 +11,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class QuotedAnnotation(Rule):
+class PreferDeferredAnnotations(Rule):
     file_local = True
     code = "SMT346"
-    name = "quoted-annotation"
+    name = "prefer-deferred-annotations"
     category = Category.STRUCTURE
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
@@ -53,7 +53,7 @@ class QuotedAnnotation(Rule):
             "runtime annotation consumers (dataclasses, Pydantic, FastAPI, "
             "dependency injection) and names imported only under TYPE_CHECKING. "
             "No automatic rewrite is performed. Enable rules: "
-            "{quoted-annotation: hint}, or select SMT346."
+            "{prefer-deferred-annotations: hint}, or select SMT346."
         ),
         config=("rules", "structure.contracts", "project.python_version"),
     )

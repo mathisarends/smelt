@@ -769,9 +769,9 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.annotation_quotes:QuotedAnnotation",
+    "target": "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
     "code": "SMT346",
-    "name": "quoted-annotation",
+    "name": "prefer-deferred-annotations",
     "category": "structure",
     "default_severity": "hint",
     "requires": [
