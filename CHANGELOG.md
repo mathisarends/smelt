@@ -7,13 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- Optional [SMT341](docs/rules/SMT341.md) keeps `StrEnum` values in one form
-  across the project: `auto()` or explicit strings. It reports a class that
-  mixes both, and a class using the other form than most classes whose strings
-  equal the lowercased member names (`auto()` on a tie). Classes with custom
-  values such as `"mouseMoved"` keep explicit strings and do not decide the
-  style. Enable `rules: {mixed-str-enum-values: hint}`. Tests are not checked;
-  no automatic rewrite. Implements
+- Optional style rules fix how `StrEnum` values are declared.
+  [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
+  convention: it reports explicit strings equal to the lowercased member name,
+  and `auto()` members in classes that need custom values such as
+  `"mouseMoved"`. [SMT342](docs/rules/SMT342.md) `str-enum-explicit-values`
+  makes explicit strings the convention and reports every `auto()` member.
+  Enable one of them, e.g. `rules: {str-enum-auto-values: hint}`. Tests are not
+  checked; no automatic rewrite. Implements
   [#116](https://github.com/mathisarends/smelt/issues/116).
 
 - Repair hints of SMT316, SMT320, SMT335, SMT429 and SMT430 no longer repeat the
