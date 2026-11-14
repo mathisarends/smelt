@@ -146,6 +146,7 @@ class ContractIndex:
             "private_modules",
             "ordering",
             "type_dispatch",
+            "max_positional_parameters",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -237,6 +238,7 @@ class ContractIndex:
                             "module_docstrings",
                             "future_annotations",
                             "private_modules",
+                            "max_positional_parameters",
                         )
                         if getattr(contract.spec, key) is not None
                     }
