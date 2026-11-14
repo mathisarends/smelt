@@ -153,6 +153,28 @@ Use `Rule`, a stable code, a unique kebab-case name, a category, explicit
 | SMT4xx | tests (directory `testing/`) |
 | SMT9xx | meta, evaluated by engine post-processing where appropriate |
 
+### Rule names
+
+A rule name describes the finding, not the command that would fix it. Use
+kebab-case `<qualifier>-<subject>` and reuse the qualifier whose meaning matches:
+
+| Qualifier | Meaning | Examples |
+| --- | --- | --- |
+| `redundant-` | Removing or inlining it keeps the behavior | `redundant-name-alias`, `redundant-private-delegate` |
+| `missing-` | Something required is absent | `missing-module-docstring`, `missing-required-module` |
+| `forbidden-` | A configured policy rejects something present | `forbidden-package-name`, `forbidden-test-mock` |
+| `excess-` | A configured limit is exceeded | `excess-positional-parameters` |
+| `duplicate-`, `unused-`, `deprecated-` | Their plain meaning | `duplicate-literal-type`, `unused-suppression` |
+| `prefer-` | The code is valid; the rule recommends a named alternative | `prefer-package-import`, `prefer-deferred-annotations` |
+
+Use `prefer-<alternative>` only when the reported construct is correct and the
+rule recommends one specific replacement; name the replacement, not the reported
+form. When no qualifier fits, use a noun phrase for the problem itself, such as
+`import-cycle` or `deep-object-navigation`. Do not start new names with `no-`
+(use `forbidden-`), `unnecessary-` (use `redundant-`), or `review-`, `require-`
+and `check-`. Older names such as `no-private-modules` and
+`unnecessary-future-annotations` predate this scheme and stay stable.
+
 Run `uv run smelt rules --format json` before allocating. Gaps are not promises
 that a historical code is reusable; check history, and never repurpose a published
 code or name. Reconcile allocations when concurrent PRs introduce rules.
