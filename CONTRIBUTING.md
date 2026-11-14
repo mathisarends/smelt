@@ -54,7 +54,8 @@ The repository also enables public-first ordering, the complete
 `information-hiding` group, static-helper visibility and test-quality reviews.
 It checks private-symbol imports, redundant delegates/name aliases, deferred
 annotations, explicit `StrEnum` values and docstrings on abstract and
-`Protocol` methods. Keep serialized enum values stable.
+`Protocol` methods and dataclasses that mutate their own fields after
+construction. Keep serialized enum values stable.
 Functions accept at most three positional parameters; pass later arguments by
 keyword, including in tests and partial applications. Repeated `Literal` types
 and anonymous tuple types remain hints: review their meaning before sharing an
