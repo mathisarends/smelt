@@ -40,9 +40,11 @@ class RuleContract(Protocol):
     default_severity: Severity
     requires: frozenset[Index]
 
-    def check(self, ctx: AnalysisContext) -> Iterable[Violation]: ...
+    def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
+        """Yield the rule's findings for the analyzed project, without side effects."""
 
-    def explain(self) -> RuleDoc: ...
+    def explain(self) -> RuleDoc:
+        """Return the documentation shown by `smelt explain` and the rule pages."""
 
 
 class Rule:

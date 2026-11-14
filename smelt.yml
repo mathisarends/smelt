@@ -79,6 +79,7 @@ rules:
   redundant-private-delegate: warning
   redundant-name-alias: warning
   prefer-deferred-annotations: warning
+  missing-interface-docstring: warning
   # These reviews need semantic judgment: equal shapes can model distinct concepts.
   duplicate-literal-type: hint
   anonymous-tuple-type: hint
