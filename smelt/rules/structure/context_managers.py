@@ -4,6 +4,7 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -34,7 +35,8 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
             bindings = _stable_imports(tree)
             for function in ast.walk(tree):
                 if not isinstance(function, ast.AsyncFunctionDef) or not any(
-                    _qualified(decorator, bindings) == "contextlib.asynccontextmanager"
+                    qualified_name(decorator, bindings)
+                    == "contextlib.asynccontextmanager"
                     for decorator in function.decorator_list
                 ):
                     continue
@@ -71,18 +73,10 @@ def _replacement(node: ast.expr | None, bindings: Mapping[str, str]) -> str | No
     if (
         isinstance(node, ast.Subscript)
         and not isinstance(node.slice, ast.Tuple)
-        and _qualified(node.value, bindings)
+        and qualified_name(node.value, bindings)
         in {"collections.abc.AsyncIterator", "typing.AsyncIterator"}
     ):
         return f"AsyncGenerator[{ast.unparse(node.slice)}, None]"
-    return None
-
-
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    if isinstance(node, ast.Name):
-        return bindings.get(node.id)
-    if isinstance(node, ast.Attribute) and (parent := _qualified(node.value, bindings)):
-        return f"{parent}.{node.attr}"
     return None
 
 

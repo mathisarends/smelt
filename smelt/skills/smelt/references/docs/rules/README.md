@@ -60,6 +60,9 @@
 | [SMT349](SMT349.md) | stateful-dataclass | structure | explicit | hint |
 | [SMT350](SMT350.md) | missing-broad-except-reason | structure | explicit | hint |
 | [SMT351](SMT351.md) | missing-dataclass-option | structure | policy | warning |
+| [SMT352](SMT352.md) | duplicate-function | structure | explicit | warning |
+| [SMT355](SMT355.md) | duplicate-class-name | structure | explicit | warning |
+| [SMT356](SMT356.md) | duplicate-narrowing-assert | structure | explicit | warning |
 | [SMT357](SMT357.md) | missing-duration-unit | structure | explicit | warning |
 | [SMT358](SMT358.md) | prefer-named-duration | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |

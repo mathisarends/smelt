@@ -1746,6 +1746,51 @@
             "warning"
           ]
         },
+        "duplicate-function": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "duplicate-class-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "duplicate-narrowing-assert": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
+          "description": "Several methods of a class assert the same narrowing of a self attribute. assert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid. Repair: Make the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.",
+          "markdownDescription": "**SMT356 \u2014 duplicate-narrowing-assert**\n\nSeveral methods of a class assert the same narrowing of a self attribute.\n\nassert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid.\n\n**Problem**\n```python\nclass Tabs:\n    def open(self, url: str) -> None:\n        assert self._stack is not None\n        self._stack.push(url)\n\n    def close(self) -> None:\n        assert self._stack is not None\n        self._stack.pop()\n```\n\n**Preferred**\n```python\nclass Tabs:\n    @property\n    def stack(self) -> Stack:\n        if self._stack is None:\n            raise RuntimeError(\"Tabs used before start()\")\n        return self._stack\n\n    def open(self, url: str) -> None:\n        self.stack.push(url)\n```\n\nMake the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.\n\nRun `smelt explain duplicate-narrowing-assert` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "missing-duration-unit": {
           "type": "string",
           "enum": [
@@ -2902,6 +2947,51 @@
             "warning"
           ]
         },
+        "^SMT352$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT355$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT356$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
+          "description": "Several methods of a class assert the same narrowing of a self attribute. assert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid. Repair: Make the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.",
+          "markdownDescription": "**SMT356 \u2014 duplicate-narrowing-assert**\n\nSeveral methods of a class assert the same narrowing of a self attribute.\n\nassert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid.\n\n**Problem**\n```python\nclass Tabs:\n    def open(self, url: str) -> None:\n        assert self._stack is not None\n        self._stack.push(url)\n\n    def close(self) -> None:\n        assert self._stack is not None\n        self._stack.pop()\n```\n\n**Preferred**\n```python\nclass Tabs:\n    @property\n    def stack(self) -> Stack:\n        if self._stack is None:\n            raise RuntimeError(\"Tabs used before start()\")\n        return self._stack\n\n    def open(self, url: str) -> None:\n        self.stack.push(url)\n```\n\nMake the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.\n\nRun `smelt explain duplicate-narrowing-assert` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT357$": {
           "type": "string",
           "enum": [
@@ -4004,6 +4094,51 @@
             "warning"
           ]
         },
+        "duplicate-function": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "duplicate-class-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "duplicate-narrowing-assert": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
+          "description": "Several methods of a class assert the same narrowing of a self attribute. assert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid. Repair: Make the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.",
+          "markdownDescription": "**SMT356 \u2014 duplicate-narrowing-assert**\n\nSeveral methods of a class assert the same narrowing of a self attribute.\n\nassert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid.\n\n**Problem**\n```python\nclass Tabs:\n    def open(self, url: str) -> None:\n        assert self._stack is not None\n        self._stack.push(url)\n\n    def close(self) -> None:\n        assert self._stack is not None\n        self._stack.pop()\n```\n\n**Preferred**\n```python\nclass Tabs:\n    @property\n    def stack(self) -> Stack:\n        if self._stack is None:\n            raise RuntimeError(\"Tabs used before start()\")\n        return self._stack\n\n    def open(self, url: str) -> None:\n        self.stack.push(url)\n```\n\nMake the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.\n\nRun `smelt explain duplicate-narrowing-assert` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "missing-duration-unit": {
           "type": "string",
           "enum": [
@@ -4901,6 +5036,51 @@
           "title": "SMT351: A dataclass does not set an option its package requires.",
           "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
           "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT352$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT355$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT356$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
+          "description": "Several methods of a class assert the same narrowing of a self attribute. assert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid. Repair: Make the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.",
+          "markdownDescription": "**SMT356 \u2014 duplicate-narrowing-assert**\n\nSeveral methods of a class assert the same narrowing of a self attribute.\n\nassert self._stack is not None in one method narrows a type for the checker. When several methods of the class repeat it, the attribute is optional in its type but required after setup, and every caller depends on a check that python -O removes. This opt-in review reports, once per class and expression, an assert of self.<attribute> is not None or isinstance(self.<attribute>, ...) that appears in at least two methods of the same class, including each operand of an and. Asserts in nested functions belong to that function, static methods are skipped and tests are not checked. Unlike a blanket assert ban, single local narrowings stay valid.\n\n**Problem**\n```python\nclass Tabs:\n    def open(self, url: str) -> None:\n        assert self._stack is not None\n        self._stack.push(url)\n\n    def close(self) -> None:\n        assert self._stack is not None\n        self._stack.pop()\n```\n\n**Preferred**\n```python\nclass Tabs:\n    @property\n    def stack(self) -> Stack:\n        if self._stack is None:\n            raise RuntimeError(\"Tabs used before start()\")\n        return self._stack\n\n    def open(self, url: str) -> None:\n        self.stack.push(url)\n```\n\nMake the attribute required by constructing it before the object is used, or read it through one property or accessor that raises an error naming the missing setup step. No automatic rewrite is performed. Enable rules: {duplicate-narrowing-assert: warning}, or select SMT356.\n\nRun `smelt explain duplicate-narrowing-assert` for details.",
           "examples": [
             "warning"
           ]

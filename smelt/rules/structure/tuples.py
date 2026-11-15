@@ -4,6 +4,7 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -97,7 +98,7 @@ def _anonymous_tuples(tree: ast.Module) -> Iterator[_Tuple]:
         for node in ast.walk(annotation):
             if (
                 isinstance(node, ast.Subscript)
-                and _dotted(node.value) in _TUPLES
+                and dotted_name(node.value) in _TUPLES
                 and isinstance(node.slice, ast.Tuple)
                 and not any(
                     isinstance(element, ast.Constant) and element.value is Ellipsis
@@ -130,7 +131,7 @@ def _annotations(tree: ast.Module) -> Iterator[ast.expr]:
             case ast.AnnAssign():
                 yield node.annotation
                 if (
-                    _dotted(node.annotation) in {"TypeAlias", "typing.TypeAlias"}
+                    dotted_name(node.annotation) in {"TypeAlias", "typing.TypeAlias"}
                     and node.value
                 ):
                     yield node.value
@@ -142,15 +143,7 @@ def _dictated(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     if node.name.startswith("__") and node.name.endswith("__"):
         return True
     return any(
-        _dotted(decorator).rpartition(".")[2] in _EXEMPT_DECORATORS
+        dotted_name(decorator).rpartition(".")[2] in _EXEMPT_DECORATORS
         for decorator in node.decorator_list
-        if _dotted(decorator)
+        if dotted_name(decorator)
     )
-
-
-def _dotted(node: ast.expr) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute) and (owner := _dotted(node.value)):
-        return f"{owner}.{node.attr}"
-    return ""
