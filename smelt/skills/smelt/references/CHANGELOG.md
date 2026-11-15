@@ -42,6 +42,22 @@ current configuration and complete rule contracts, see the [README](README.md),
   outer requirement and `smelt context` shows the policy. Tests are not
   checked; no automatic rewrite. Implements
   [#137](https://github.com/mathisarends/smelt/issues/137).
+- Optional review [SMT355](docs/rules/SMT355.md) `duplicate-class-name`
+  reports public top-level classes whose name is also defined at the top level
+  of another module in the same package, counting the package's `__init__.py`.
+  Each definition gets a finding with the other locations. Re-exports, private
+  and nested classes, separate packages and tests are not compared. Enable it
+  with `rules: {duplicate-class-name: warning}`; no automatic rewrite.
+  Implements [#138](https://github.com/mathisarends/smelt/issues/138).
+- Optional review [SMT356](docs/rules/SMT356.md) `duplicate-narrowing-assert`
+  reports, once per class and expression, `assert self.<attribute> is not None`
+  or `assert isinstance(self.<attribute>, ...)` repeated in at least two methods
+  of the same class, including each operand of an `and`. Single local
+  narrowings, asserts in nested functions, static methods and tests are not
+  reported. Make the attribute required during construction or read it through
+  one property that raises a meaningful error. Enable it with
+  `rules: {duplicate-narrowing-assert: warning}`; no automatic rewrite.
+  Implements [#142](https://github.com/mathisarends/smelt/issues/142).
 - Optional review [SMT352](docs/rules/SMT352.md) `duplicate-function` reports
   module-level functions whose parameters, annotations, decorators and body
   match another function in the same root package, ignoring names,
