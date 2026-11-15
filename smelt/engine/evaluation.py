@@ -33,7 +33,7 @@ raise SystemExit(main(sys.argv[1:]))
 """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EvaluationOptions:
     config: Path
     baseline: Path

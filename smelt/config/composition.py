@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 _MAX_DEPTH = 32
 
 
-@dataclass
+@dataclass(slots=True)
 class ConfigComposition:
     raw: dict[str, Any] = field(default_factory=dict)
     files: list[Path] = field(default_factory=list)

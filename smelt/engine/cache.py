@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from smelt.rules.base import RuleContract
 
 
-@dataclass
+@dataclass(slots=True)
 class CachedAnalysis:
     violations: list[Violation]
     suppressed: int

@@ -110,7 +110,7 @@ class Rule:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class RuleSet:
     rules: list[RuleContract] = field(default_factory=list)
 

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from smelt.config.models import PackageContract
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ResolvedContract:
     name: str
     package: str

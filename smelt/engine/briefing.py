@@ -27,7 +27,7 @@ class TargetError(ValueError):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Target:
     kind: str  # project | feature | module | package
     feature: str | None = None
@@ -36,7 +36,7 @@ class Target:
     planned: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LayerBrief:
     name: str
     package: str | None
@@ -52,7 +52,7 @@ class LayerBrief:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Briefing:
     target: Target
     package: str | None

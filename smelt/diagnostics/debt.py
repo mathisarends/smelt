@@ -128,7 +128,7 @@ def _edge_field(violation: Violation) -> str | None:
     }.get(violation.code)
 
 
-@dataclass
+@dataclass(slots=True)
 class Debt:
     entries: list[DebtEntry]
 

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 type LiteralMembers = tuple[tuple[str, str], ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LiteralType:
     members: LiteralMembers
     scope: str

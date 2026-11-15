@@ -15,7 +15,7 @@ _IMPORTLIB = re.compile(r"import[-_]mode\W*importlib")
 _PYTEST_CONFIGS = ("pyproject.toml", "pytest.ini", "setup.cfg", "tox.ini")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MirrorGuess:
     pattern: str
     mirrored: int  # test files that already sit at their mirrored path

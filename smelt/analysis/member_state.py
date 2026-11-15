@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 type NamespaceIdentity = tuple[str, str, bool] | None
 
 
-@dataclass
+@dataclass(slots=True)
 class MemberSummary:
     identity: str
     namespaces: dict[str, NamespaceIdentity]
@@ -23,7 +23,7 @@ class MemberSummary:
     decision: str = ""
 
 
-@dataclass
+@dataclass(slots=True)
 class MemberIndexState:
     files: dict[str, MemberSummary] = field(default_factory=dict)
     namespaces: dict[str, NamespaceIdentity] = field(default_factory=dict)

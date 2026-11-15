@@ -11,14 +11,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DispatchBranch:
     line: int
     types: tuple[str, ...]
     guard: str | None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TypeDispatch:
     node: ast.If
     subject: str

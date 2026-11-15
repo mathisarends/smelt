@@ -43,7 +43,7 @@ class RecordingStream(io.TextIOBase):
             self.destination.flush()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ResultCache:
     path: Path
     key: str

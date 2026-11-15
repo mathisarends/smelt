@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from smelt.analysis.imports import ImportDetail
 
 
-@dataclass
+@dataclass(slots=True)
 class _Graph[T: Hashable]:
     adjacency: dict[T, set[T]] = field(default_factory=lambda: defaultdict(set))
     witnesses: dict[tuple[T, T], list[ImportDetail]] = field(

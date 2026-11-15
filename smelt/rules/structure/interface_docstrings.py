@@ -107,7 +107,7 @@ class _InterfaceKind(StrEnum):
     PROTOCOL = "protocol"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Member:
     owner: ast.ClassDef
     method: ast.FunctionDef | ast.AsyncFunctionDef

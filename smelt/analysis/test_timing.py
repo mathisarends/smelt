@@ -31,7 +31,7 @@ _ASYNC_WAITS = frozenset(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TestWait:
     node: ast.Call | ast.Await
     qualified: str

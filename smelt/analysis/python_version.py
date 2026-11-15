@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 _DEFERRED_ANNOTATIONS = (3, 14)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PythonTarget:
     minimum: tuple[int, int] | None
     source: str | None

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from smelt.analysis.python_version import PythonTargetIndex
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OrderSection:
     owner: ScopeNode
     scope: str
@@ -52,7 +52,7 @@ class OrderSection:
         return [self.blocks[index].label for index in self.order]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OrderIssue:
     scope: str
     line: int
@@ -63,7 +63,7 @@ class OrderIssue:
     fix_node: ast.stmt | ast.expr | ast.type_param | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class FileOrder:
     path: str
     module: str
@@ -124,7 +124,7 @@ class DefinitionOrderIndex:
         return [result.summary() for _, result in sorted(self.files.items())]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _FixBlocker:
     reason: str
     node: ast.stmt | ast.expr | ast.type_param

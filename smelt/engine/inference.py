@@ -75,14 +75,14 @@ _LAYER_DEPENDENCIES: dict[str, tuple[str, ...]] = {
 }
 
 
-@dataclass
+@dataclass(slots=True)
 class InferredLayer:
     name: str
     path: str
     may_depend_on: list[str]
 
 
-@dataclass
+@dataclass(slots=True)
 class CompositionCandidate:
     """A package that may belong to the composition root; proposed, not applied."""
 
@@ -92,7 +92,7 @@ class CompositionCandidate:
     reason: str
 
 
-@dataclass
+@dataclass(slots=True)
 class InferredConfig:
     root_packages: list[str]
     source_roots: list[str]

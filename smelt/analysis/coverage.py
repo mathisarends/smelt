@@ -59,7 +59,7 @@ class CoverageEntry:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CoverageIndex:
     entries: tuple[CoverageEntry, ...]
     scan_roots: tuple[str, ...]
