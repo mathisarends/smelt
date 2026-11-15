@@ -1852,6 +1852,21 @@
             "warning"
           ]
         },
+        "nested-conditional-expression": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT359: A conditional expression directly contains another result conditional.",
+          "description": "A conditional expression directly contains another result conditional. Nested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used. Repair: Use explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.",
+          "markdownDescription": "**SMT359 \u2014 nested-conditional-expression**\n\nA conditional expression directly contains another result conditional.\n\nNested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used.\n\n**Problem**\n```python\nstatus = OK if completed else TIMEOUT if timed_out else ERROR\n```\n\n**Preferred**\n```python\nif completed:\n    status = OK\nelif timed_out:\n    status = TIMEOUT\nelse:\n    status = ERROR\n```\n\nUse explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.\n\nRun `smelt explain nested-conditional-expression` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -3068,6 +3083,21 @@
             "warning"
           ]
         },
+        "^SMT359$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT359: A conditional expression directly contains another result conditional.",
+          "description": "A conditional expression directly contains another result conditional. Nested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used. Repair: Use explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.",
+          "markdownDescription": "**SMT359 \u2014 nested-conditional-expression**\n\nA conditional expression directly contains another result conditional.\n\nNested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used.\n\n**Problem**\n```python\nstatus = OK if completed else TIMEOUT if timed_out else ERROR\n```\n\n**Preferred**\n```python\nif completed:\n    status = OK\nelif timed_out:\n    status = TIMEOUT\nelse:\n    status = ERROR\n```\n\nUse explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.\n\nRun `smelt explain nested-conditional-expression` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -4230,6 +4260,21 @@
             "warning"
           ]
         },
+        "nested-conditional-expression": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT359: A conditional expression directly contains another result conditional.",
+          "description": "A conditional expression directly contains another result conditional. Nested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used. Repair: Use explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.",
+          "markdownDescription": "**SMT359 \u2014 nested-conditional-expression**\n\nA conditional expression directly contains another result conditional.\n\nNested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used.\n\n**Problem**\n```python\nstatus = OK if completed else TIMEOUT if timed_out else ERROR\n```\n\n**Preferred**\n```python\nif completed:\n    status = OK\nelif timed_out:\n    status = TIMEOUT\nelse:\n    status = ERROR\n```\n\nUse explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.\n\nRun `smelt explain nested-conditional-expression` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -5189,6 +5234,21 @@
           "markdownDescription": "**SMT358 \u2014 prefer-named-duration**\n\nA timeout or delay is written as an inline number.\n\nasyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked.\n\n**Problem**\n```python\nasync with asyncio.timeout(2.5):\n    await page.settle()\n```\n\n**Preferred**\n```python\nSETTLE_TIMEOUT_SECONDS = 2.5\n\nasync with asyncio.timeout(SETTLE_TIMEOUT_SECONDS):\n    await page.settle()\n```\n\nMove the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.\n\nRun `smelt explain prefer-named-duration` for details.",
           "examples": [
             "warning"
+          ]
+        },
+        "^SMT359$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT359: A conditional expression directly contains another result conditional.",
+          "description": "A conditional expression directly contains another result conditional. Nested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used. Repair: Use explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.",
+          "markdownDescription": "**SMT359 \u2014 nested-conditional-expression**\n\nA conditional expression directly contains another result conditional.\n\nNested conditional expressions hide a multi-branch decision inside one expression. This opt-in style review reports a conditional whose body or else branch is another conditional expression, once at the outermost expression in each directly connected chain. Conditionals inside tests, calls, lambdas or comprehensions are separate expressions; their presence alone does not make the enclosing conditional nested. Simple fallbacks and independent conditionals remain valid. Only production source is checked; no type or runtime inference is used.\n\n**Problem**\n```python\nstatus = OK if completed else TIMEOUT if timed_out else ERROR\n```\n\n**Preferred**\n```python\nif completed:\n    status = OK\nelif timed_out:\n    status = TIMEOUT\nelse:\n    status = ERROR\n```\n\nUse explicit if/elif or match statements. Preserve branch order, precedence and lazy evaluation; an eagerly evaluated dictionary can change behavior. No automatic rewrite is performed. Enable rules: {nested-conditional-expression: hint}, or select SMT359. Package overrides and reasoned suppressions are supported.\n\nRun `smelt explain nested-conditional-expression` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {
