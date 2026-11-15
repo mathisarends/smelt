@@ -289,6 +289,40 @@ def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
     )
 
 
+def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              contracts:
+                errors:
+                  match: app
+                  errors: {base: app.errors.AppError, allow: [TypeError, TypeError]}
+                legacy: {match: app.legacy, errors: {}}
+        """,
+            "app/__init__.py": "",
+            "app/legacy/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+    lifted = build_briefing(ctx, resolve_target(ctx, "app.legacy"), outcome.report)
+
+    assert briefing.to_json()["contracts"][0]["errors"] == {
+        "base": "app.errors.AppError",
+        "allow": ["TypeError"],
+    }
+    assert "errors: raise app.errors.AppError; allow TypeError" in render_briefing(
+        briefing, ctx
+    )
+    assert "errors: none" in render_briefing(lifted, ctx)
+
+
 def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

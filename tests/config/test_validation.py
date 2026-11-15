@@ -32,6 +32,9 @@ class TestPackageContracts:
             {"match": "gateway", "rules": {"bundled-instance-assignment": "off"}},
             {"match": "gateway", "type_dispatch": {}},
             {"match": "gateway", "type_dispatch": {"style": "allow"}},
+            {"match": "gateway", "errors": {"base": "gateway.errors.GatewayError"}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["TypeError"]}},
+            {"match": "gateway", "errors": {}},
             {
                 "match": "gateway",
                 "ordering": {},
@@ -68,6 +71,11 @@ class TestPackageContracts:
             {"match": "gateway", "module_docstrings": "sometimes"},
             {"match": "gateway", "future_annotations": "always"},
             {"match": "gateway", "private_modules": "sometimes"},
+            {"match": "gateway", "errors": {"base": "GatewayError"}},
+            {"match": "gateway", "errors": {"base": "app..Error"}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["Nope"]}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["len"]}},
+            {"match": "gateway", "errors": {"base": "app.E", "raise": "x"}},
             {
                 "match": "gateway",
                 "ordering": {"module": ["public", "private"]},

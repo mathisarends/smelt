@@ -139,6 +139,34 @@
       ],
       "type": "string"
     },
+    "ErrorPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fully qualified project exception that production code raises instead of builtin exceptions (SMT354), e.g. app.errors.AppError. Omitted: {} lifts an outer policy.",
+          "title": "Base"
+        },
+        "allow": {
+          "description": "Builtin exception names that may still be raised, in addition to NotImplementedError, StopIteration and StopAsyncIteration, e.g. [TypeError].",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        }
+      },
+      "title": "ErrorPolicy",
+      "type": "object"
+    },
     "FeaturesConfig": {
       "additionalProperties": false,
       "properties": {
@@ -569,6 +597,18 @@
           "default": null,
           "description": "Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
           "title": "Dataclass Options"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; the closest explicit package policy wins; no automatic rewrite."
         },
         "rules": {
           "$ref": "#/$defs/SourceRuleSettings"

@@ -553,6 +553,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "private_modules",
                 "max_positional_parameters",
                 "dataclass_options",
+                "errors",
             )
             if key in contract
         )
@@ -568,7 +569,16 @@ def _policy_value(value: object) -> str:
     # Option lists such as dataclass_options read as the keywords they require.
     if isinstance(value, list):
         return ", ".join(f"{item}=True" for item in value) or "none"
+    if isinstance(value, dict):
+        return _error_policy(value)
     return str(value)
+
+
+def _error_policy(policy: dict[str, Any]) -> str:
+    if policy["base"] is None:
+        return "none"
+    allowed = ", ".join(policy["allow"])
+    return f"raise {policy['base']}" + (f"; allow {allowed}" if allowed else "")
 
 
 def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
