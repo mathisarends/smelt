@@ -33,6 +33,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   ignored. Enable it with `rules: {missing-broad-except-reason: hint}`; no
   automatic rewrite. Implements
   [#143](https://github.com/mathisarends/smelt/issues/143).
+- Package contracts accept `dataclass_options`, a list of `frozen`, `slots`
+  and `kw_only`. Policy rule [SMT351](docs/rules/SMT351.md)
+  `missing-dataclass-option` then reports production `@dataclass` classes
+  that do not set each listed option to `True`. Missing `slots` is not
+  reported below bases from outside the project or for classes with a
+  `functools.cached_property`. The closest package policy wins, `[]` lifts an
+  outer requirement and `smelt context` shows the policy. Tests are not
+  checked; no automatic rewrite. Implements
+  [#137](https://github.com/mathisarends/smelt/issues/137).
 
 ## [0.8.0] - 2026-11-14
 
