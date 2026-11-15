@@ -1746,6 +1746,21 @@
             "warning"
           ]
         },
+        "missing-duration-unit": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT357: A numeric duration is named without its unit.",
+          "description": "A numeric duration is named without its unit. A constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked. Repair: Append the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.",
+          "markdownDescription": "**SMT357 \u2014 missing-duration-unit**\n\nA numeric duration is named without its unit.\n\nA constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked.\n\n**Problem**\n```python\n_FRAME_TIMEOUT = 2.0\n\n\ndef wait(delay: float) -> None:\n    ...\n```\n\n**Preferred**\n```python\n_FRAME_TIMEOUT_SECONDS = 2.0\n\n\ndef wait(delay_seconds: float) -> None:\n    ...\n```\n\nAppend the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.\n\nRun `smelt explain missing-duration-unit` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2872,6 +2887,21 @@
             "warning"
           ]
         },
+        "^SMT357$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT357: A numeric duration is named without its unit.",
+          "description": "A numeric duration is named without its unit. A constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked. Repair: Append the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.",
+          "markdownDescription": "**SMT357 \u2014 missing-duration-unit**\n\nA numeric duration is named without its unit.\n\nA constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked.\n\n**Problem**\n```python\n_FRAME_TIMEOUT = 2.0\n\n\ndef wait(delay: float) -> None:\n    ...\n```\n\n**Preferred**\n```python\n_FRAME_TIMEOUT_SECONDS = 2.0\n\n\ndef wait(delay_seconds: float) -> None:\n    ...\n```\n\nAppend the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.\n\nRun `smelt explain missing-duration-unit` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3944,6 +3974,21 @@
             "warning"
           ]
         },
+        "missing-duration-unit": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT357: A numeric duration is named without its unit.",
+          "description": "A numeric duration is named without its unit. A constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked. Repair: Append the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.",
+          "markdownDescription": "**SMT357 \u2014 missing-duration-unit**\n\nA numeric duration is named without its unit.\n\nA constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked.\n\n**Problem**\n```python\n_FRAME_TIMEOUT = 2.0\n\n\ndef wait(delay: float) -> None:\n    ...\n```\n\n**Preferred**\n```python\n_FRAME_TIMEOUT_SECONDS = 2.0\n\n\ndef wait(delay_seconds: float) -> None:\n    ...\n```\n\nAppend the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.\n\nRun `smelt explain missing-duration-unit` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4811,6 +4856,21 @@
           "title": "SMT351: A dataclass does not set an option its package requires.",
           "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
           "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT357$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT357: A numeric duration is named without its unit.",
+          "description": "A numeric duration is named without its unit. A constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked. Repair: Append the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.",
+          "markdownDescription": "**SMT357 \u2014 missing-duration-unit**\n\nA numeric duration is named without its unit.\n\nA constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked.\n\n**Problem**\n```python\n_FRAME_TIMEOUT = 2.0\n\n\ndef wait(delay: float) -> None:\n    ...\n```\n\n**Preferred**\n```python\n_FRAME_TIMEOUT_SECONDS = 2.0\n\n\ndef wait(delay_seconds: float) -> None:\n    ...\n```\n\nAppend the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.\n\nRun `smelt explain missing-duration-unit` for details.",
           "examples": [
             "warning"
           ]
