@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -101,7 +102,7 @@ class PreferNamedDuration(Rule):
 def _call_literals(
     call: ast.Call, bindings: Mapping[str, str]
 ) -> Iterator[tuple[ast.expr, str]]:
-    qualified = _qualified(call.func, bindings)
+    qualified = qualified_name(call.func, bindings)
     if qualified not in _DURATION_CALLS:
         return
     keyword, position = _DURATION_CALLS[qualified]
@@ -129,7 +130,7 @@ def _deadline_literals(
 def _clock(node: ast.expr, bindings: Mapping[str, str]) -> bool:
     if not isinstance(node, ast.Call) or node.args or node.keywords:
         return False
-    if _qualified(node.func, bindings) in _CLOCKS:
+    if qualified_name(node.func, bindings) in _CLOCKS:
         return True
     # Event loop clocks: loop.time(), asyncio.get_running_loop().time().
     return isinstance(node.func, ast.Attribute) and node.func.attr == "time"
@@ -147,13 +148,3 @@ def _number(node: ast.expr) -> bool:
 
 def _zero(node: ast.expr) -> bool:
     return isinstance(node, ast.Constant) and node.value == 0
-
-
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    attributes: list[str] = []
-    while isinstance(node, ast.Attribute):
-        attributes.append(node.attr)
-        node = node.value
-    if not isinstance(node, ast.Name) or node.id not in bindings:
-        return None
-    return ".".join([bindings[node.id], *reversed(attributes)])

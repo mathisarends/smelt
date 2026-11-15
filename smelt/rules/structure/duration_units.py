@@ -4,6 +4,7 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import last_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -167,7 +168,10 @@ def _numeric_annotation(annotation: ast.expr) -> bool:
             annotation = ast.parse(annotation.value, mode="eval").body
         except SyntaxError:
             return False
-    if isinstance(annotation, ast.Subscript) and _name(annotation.value) in _WRAPPERS:
+    if (
+        isinstance(annotation, ast.Subscript)
+        and last_name(annotation.value) in _WRAPPERS
+    ):
         inner = annotation.slice
         if isinstance(inner, ast.Tuple) and inner.elts:
             inner = inner.elts[0]
@@ -176,7 +180,7 @@ def _numeric_annotation(annotation: ast.expr) -> bool:
         sides = [annotation.left, annotation.right]
         kept = [side for side in sides if not _is_none(side)]
         return len(kept) == 1 and _numeric_annotation(kept[0])
-    return _name(annotation) in _NUMBERS
+    return last_name(annotation) in _NUMBERS
 
 
 def _numeric_literal(value: ast.expr | None) -> bool:
@@ -187,14 +191,6 @@ def _numeric_literal(value: ast.expr | None) -> bool:
         and isinstance(value.value, (int, float))
         and not isinstance(value.value, bool)
     )
-
-
-def _name(node: ast.expr) -> str | None:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    return None
 
 
 def _is_none(node: ast.expr) -> bool:
