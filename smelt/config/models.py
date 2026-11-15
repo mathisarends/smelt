@@ -516,7 +516,7 @@ class PackageContract(_Model):
     )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
-        description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project. The closest explicit package policy wins; no automatic rewrite.",
+        description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
     )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
