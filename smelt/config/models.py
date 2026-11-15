@@ -369,6 +369,9 @@ class ImportStyleConfig(_Model):
     )
 
 
+type DataclassOption = Literal["frozen", "slots", "kw_only"]
+
+
 type ModuleOrderSlot = Literal[
     "docstring",
     "future-imports",
@@ -511,6 +514,10 @@ class PackageContract(_Model):
         ge=0,
         description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
     )
+    dataclass_options: list[DataclassOption] | None = Field(
+        default=None,
+        description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project. The closest explicit package policy wins; no automatic rewrite.",
+    )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
         description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable public-definitions-first.",
@@ -527,6 +534,13 @@ class PackageContract(_Model):
                 "must be a dotted package pattern with whole-segment * wildcards"
             )
         return value
+
+    @field_validator("dataclass_options")
+    @classmethod
+    def _dataclass_options(
+        cls, values: list[DataclassOption] | None
+    ) -> list[DataclassOption] | None:
+        return None if values is None else list(dict.fromkeys(values))
 
     @field_validator("required")
     @classmethod
@@ -566,6 +580,7 @@ class PackageContract(_Model):
             and self.ordering is None
             and self.type_dispatch is None
             and self.max_positional_parameters is None
+            and self.dataclass_options is None
             and not self.rules
         ):
             raise ValueError("set at least one package contract policy")
