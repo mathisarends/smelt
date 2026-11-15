@@ -151,6 +151,13 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT354": PolicyActivation(
+        "A package contract sets errors, including {}.",
+        lambda config: any(
+            contract.errors is not None
+            for contract in config.structure.contracts.values()
+        ),
+    ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
     ),

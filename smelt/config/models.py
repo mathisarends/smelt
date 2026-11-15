@@ -465,7 +465,7 @@ class ErrorPolicy(_Model):
     )
     allow: list[str] = Field(
         default_factory=list,
-        description="Builtin exception names that may still be raised, in addition to NotImplementedError, StopIteration and StopAsyncIteration, e.g. [TypeError].",
+        description="Builtin exception names that may still be raised, in addition to NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit, e.g. [TypeError].",
     )
 
     @field_validator("base")
