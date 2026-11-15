@@ -42,6 +42,13 @@ current configuration and complete rule contracts, see the [README](README.md),
   outer requirement and `smelt context` shows the policy. Tests are not
   checked; no automatic rewrite. Implements
   [#137](https://github.com/mathisarends/smelt/issues/137).
+- Optional review [SMT355](docs/rules/SMT355.md) `duplicate-class-name`
+  reports public top-level classes whose name is also defined at the top level
+  of another module in the same package, counting the package's `__init__.py`.
+  Each definition gets a finding with the other locations. Re-exports, private
+  and nested classes, separate packages and tests are not compared. Enable it
+  with `rules: {duplicate-class-name: warning}`; no automatic rewrite.
+  Implements [#138](https://github.com/mathisarends/smelt/issues/138).
 
 ## [0.8.0] - 2026-11-14
 
