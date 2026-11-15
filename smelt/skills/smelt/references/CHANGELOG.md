@@ -42,6 +42,56 @@ current configuration and complete rule contracts, see the [README](README.md),
   outer requirement and `smelt context` shows the policy. Tests are not
   checked; no automatic rewrite. Implements
   [#137](https://github.com/mathisarends/smelt/issues/137).
+- Optional review [SMT355](docs/rules/SMT355.md) `duplicate-class-name`
+  reports public top-level classes whose name is also defined at the top level
+  of another module in the same package, counting the package's `__init__.py`.
+  Each definition gets a finding with the other locations. Re-exports, private
+  and nested classes, separate packages and tests are not compared. Enable it
+  with `rules: {duplicate-class-name: warning}`; no automatic rewrite.
+  Implements [#138](https://github.com/mathisarends/smelt/issues/138).
+- Optional review [SMT356](docs/rules/SMT356.md) `duplicate-narrowing-assert`
+  reports, once per class and expression, `assert self.<attribute> is not None`
+  or `assert isinstance(self.<attribute>, ...)` repeated in at least two methods
+  of the same class, including each operand of an `and`. Single local
+  narrowings, asserts in nested functions, static methods and tests are not
+  reported. Make the attribute required during construction or read it through
+  one property that raises a meaningful error. Enable it with
+  `rules: {duplicate-narrowing-assert: warning}`; no automatic rewrite.
+  Implements [#142](https://github.com/mathisarends/smelt/issues/142).
+- Optional review [SMT352](docs/rules/SMT352.md) `duplicate-function` reports
+  module-level functions whose parameters, annotations, decorators and body
+  match another function in the same root package, ignoring names,
+  docstrings, comments and formatting. Every copy gets a finding listing the
+  others and their nearest common package. Bodies under three statements,
+  methods, nested functions and tests are ignored. Enable it with
+  `rules: {duplicate-function: warning}`; no automatic rewrite. Implements
+  [#140](https://github.com/mathisarends/smelt/issues/140).
+- Optional review [SMT357](docs/rules/SMT357.md) `missing-duration-unit`
+  reports module constants, class fields and parameters named `*timeout`,
+  `*delay`, `*interval`, `*duration` or `*wait` that hold an `int` or `float`
+  without a unit suffix, such as `_FRAME_TIMEOUT = 2.0`. Names ending in a
+  unit (`_TIMEOUT_SECONDS`, `quiet_ms`), `timedelta` values, `@overload` and
+  `@override` signatures and tests are not reported. Enable it with
+  `rules: {missing-duration-unit: warning}`; no automatic rewrite.
+- Optional review [SMT358](docs/rules/SMT358.md) `prefer-named-duration`
+  reports `int` and `float` literals passed as the duration of
+  `asyncio.timeout`, `asyncio.sleep`, `asyncio.wait_for`, `asyncio.wait`,
+  `time.sleep` and the anyio and trio sleep and timeout scopes, and literals
+  added to a clock reading such as `loop.time() + 10`. `sleep(0)` and tests
+  are not reported. Enable it with `rules: {prefer-named-duration: warning}`;
+  no automatic rewrite. Together with SMT357 implements
+  [#135](https://github.com/mathisarends/smelt/issues/135).
+- Package contracts accept `bases`, a mapping from an outside base class to
+  the project base that replaces it, e.g.
+  `{pydantic.BaseModel: app.core.Options}`. Policy rule
+  [SMT353](docs/rules/SMT353.md) `prefer-project-base-class` then reports
+  production classes that inherit the outside base directly, resolved through
+  imports, aliases and module attributes. Only inheritance is judged:
+  importing the outside base for annotations, `isinstance` or adapters stays
+  valid. The module defining the project base is exempt, the closest package
+  policy wins, `{}` lifts an outer mapping and `smelt context` shows the
+  policy. Tests are not checked; no automatic rewrite. Implements
+  [#139](https://github.com/mathisarends/smelt/issues/139).
 - Package contracts accept `errors: {base: <qualified exception>, allow: [...]}`.
   Policy rule [SMT354](docs/rules/SMT354.md) `prefer-domain-exception` then
   reports production code that raises a builtin exception class instead of

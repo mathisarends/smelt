@@ -546,13 +546,14 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 f"  Export hint: from {contract['export_at']} outside importers per name; count tests: {contract['count_tests']}"
             )
         lines.extend(
-            f"  {key}: {_policy_value(contract[key])}"
+            f"  {key}: {_policy_value(key, contract[key])}"
             for key in (
                 "module_docstrings",
                 "future_annotations",
                 "private_modules",
                 "max_positional_parameters",
                 "dataclass_options",
+                "bases",
                 "errors",
             )
             if key in contract
@@ -565,12 +566,15 @@ def _contract_lines(briefing: Briefing) -> list[str]:
     return lines
 
 
-def _policy_value(value: object) -> str:
+def _policy_value(key: str, value: object) -> str:
+    if key == "errors" and isinstance(value, dict):
+        return _error_policy(value)
     # Option lists such as dataclass_options read as the keywords they require.
     if isinstance(value, list):
         return ", ".join(f"{item}=True" for item in value) or "none"
     if isinstance(value, dict):
-        return _error_policy(value)
+        pairs = (f"{outside} -> {project}" for outside, project in value.items())
+        return ", ".join(pairs) or "none"
     return str(value)
 
 

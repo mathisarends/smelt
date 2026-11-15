@@ -553,6 +553,10 @@ class PackageContract(_Model):
         default=None,
         description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
     )
+    bases: dict[str, str] | None = Field(
+        default=None,
+        description="Map a base class from outside the package to the project base that classes in this package must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. The closest explicit package policy wins; no automatic rewrite.",
+    )
     errors: ErrorPolicy | None = Field(
         default=None,
         description="Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; the closest explicit package policy wins; no automatic rewrite.",
@@ -580,6 +584,23 @@ class PackageContract(_Model):
         cls, values: list[DataclassOption] | None
     ) -> list[DataclassOption] | None:
         return None if values is None else list(dict.fromkeys(values))
+
+    @field_validator("bases")
+    @classmethod
+    def _bases(cls, values: dict[str, str] | None) -> dict[str, str] | None:
+        if values is None:
+            return None
+        for outside, project in values.items():
+            for name in (outside, project):
+                if "." not in name or not all(
+                    _DOTTED_NAME.fullmatch(segment) for segment in name.split(".")
+                ):
+                    raise ValueError(
+                        f"bases entries must be fully qualified class names: {name!r}"
+                    )
+            if outside == project:
+                raise ValueError(f"{outside} cannot replace itself")
+        return values
 
     @field_validator("required")
     @classmethod
@@ -620,6 +641,7 @@ class PackageContract(_Model):
             and self.type_dispatch is None
             and self.max_positional_parameters is None
             and self.dataclass_options is None
+            and self.bases is None
             and self.errors is None
             and not self.rules
         ):

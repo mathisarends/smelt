@@ -4,6 +4,7 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -190,7 +191,7 @@ def _is_mutable_dataclass(owner: ast.ClassDef) -> bool:
         call = decorator if isinstance(decorator, ast.Call) else None
         keywords = call.keywords if call else []
         target = call.func if call else decorator
-        if _dotted(target).rpartition(".")[2] != "dataclass":
+        if dotted_name(target).rpartition(".")[2] != "dataclass":
             continue
         frozen = next((item.value for item in keywords if item.arg == "frozen"), None)
         # An unknown frozen expression is not evidence of a mutable dataclass.
@@ -220,7 +221,7 @@ def _is_container(annotation: ast.expr) -> bool:
             return False
     if isinstance(annotation, ast.Subscript):
         annotation = annotation.value
-    return _dotted(annotation).rpartition(".")[2] in _MUTABLE_CONTAINERS
+    return dotted_name(annotation).rpartition(".")[2] in _MUTABLE_CONTAINERS
 
 
 def _container_factory(value: ast.expr | None) -> bool:
@@ -228,13 +229,15 @@ def _container_factory(value: ast.expr | None) -> bool:
         return False
     return any(
         item.arg == "default_factory"
-        and _dotted(item.value).rpartition(".")[2] in _MUTABLE_CONTAINERS
+        and dotted_name(item.value).rpartition(".")[2] in _MUTABLE_CONTAINERS
         for item in value.keywords
     )
 
 
 def _receiver(method: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
-    decorators = {_dotted(item).rpartition(".")[2] for item in method.decorator_list}
+    decorators = {
+        dotted_name(item).rpartition(".")[2] for item in method.decorator_list
+    }
     if decorators & {"staticmethod", "classmethod"}:
         return None
     arguments = [*method.args.posonlyargs, *method.args.args]
@@ -283,11 +286,3 @@ def _self_attribute(node: ast.expr, receiver: str) -> str | None:
         case ast.Attribute(value=ast.Name(id=name), attr=attribute) if name == receiver:
             return attribute
     return None
-
-
-def _dotted(node: ast.expr) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute) and (owner := _dotted(node.value)):
-        return f"{owner}.{node.attr}"
-    return ""

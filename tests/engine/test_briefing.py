@@ -289,6 +289,33 @@ def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
     )
 
 
+def test_base_class_mapping_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              contracts:
+                models: {match: app, bases: {pydantic.BaseModel: app.core.Options}}
+        """,
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+
+    assert briefing.to_json()["contracts"][0]["bases"] == {
+        "pydantic.BaseModel": "app.core.Options"
+    }
+    assert "bases: pydantic.BaseModel -> app.core.Options" in render_briefing(
+        briefing, ctx
+    )
+
+
 def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

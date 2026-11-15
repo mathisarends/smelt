@@ -151,6 +151,13 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT353": PolicyActivation(
+        "A package contract sets bases, including {}.",
+        lambda config: any(
+            contract.bases is not None
+            for contract in config.structure.contracts.values()
+        ),
+    ),
     "SMT354": PolicyActivation(
         "A package contract sets errors, including {}.",
         lambda config: any(

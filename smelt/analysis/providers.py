@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import ast
-from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from smelt.analysis.bindings import binding_counts
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -130,7 +131,7 @@ def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
 
 
 def _dishka_bindings(tree: ast.Module) -> dict[str, str]:
-    bound = _binding_counts(tree)
+    bound = binding_counts(tree)
     result: dict[str, str] = {}
     if bound["*"]:
         return result
@@ -150,36 +151,3 @@ def _dishka_bindings(tree: ast.Module) -> dict[str, str]:
                 if bound[local] == 1:
                     result[local] = f"dishka.{alias.name}"
     return result
-
-
-def _binding_counts(tree: ast.Module) -> Counter[str]:
-    bound: Counter[str] = Counter()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
-            bound[node.id] += 1
-        elif isinstance(node, ast.arg):
-            bound[node.arg] += 1
-        elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
-            bound[node.name] += 1
-        elif isinstance(node, ast.Import | ast.ImportFrom):
-            bound.update(
-                alias.asname or alias.name.split(".")[0] for alias in node.names
-            )
-        elif isinstance(node, ast.Global | ast.Nonlocal):
-            bound.update(node.names)
-        elif (
-            isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar)
-            and node.name
-        ):
-            bound[node.name] += 1
-        elif isinstance(node, ast.MatchMapping) and node.rest:
-            bound[node.rest] += 1
-        elif isinstance(node, ast.Attribute | ast.Subscript) and isinstance(
-            node.ctx, ast.Store | ast.Del
-        ):
-            root = node.value
-            while isinstance(root, ast.Attribute | ast.Subscript):
-                root = root.value
-            if isinstance(root, ast.Name):
-                bound[root.id] += 1
-    return bound
