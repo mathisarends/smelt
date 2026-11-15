@@ -874,6 +874,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.duplicate_functions:DuplicateFunction",
+    "code": "SMT352",
+    "name": "duplicate-function",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.duplicate_class_names:DuplicateClassName",
     "code": "SMT355",
     "name": "duplicate-class-name",

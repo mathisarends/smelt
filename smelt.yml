@@ -82,6 +82,7 @@ rules:
   prefer-deferred-annotations: warning
   missing-interface-docstring: warning
   stateful-dataclass: warning
+  duplicate-function: warning
   missing-broad-except-reason: warning
   duplicate-class-name: warning
   duplicate-narrowing-assert: warning

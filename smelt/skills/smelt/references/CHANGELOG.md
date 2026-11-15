@@ -58,6 +58,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   one property that raises a meaningful error. Enable it with
   `rules: {duplicate-narrowing-assert: warning}`; no automatic rewrite.
   Implements [#142](https://github.com/mathisarends/smelt/issues/142).
+- Optional review [SMT352](docs/rules/SMT352.md) `duplicate-function` reports
+  module-level functions whose parameters, annotations, decorators and body
+  match another function in the same root package, ignoring names,
+  docstrings, comments and formatting. Every copy gets a finding listing the
+  others and their nearest common package. Bodies under three statements,
+  methods, nested functions and tests are ignored. Enable it with
+  `rules: {duplicate-function: warning}`; no automatic rewrite. Implements
+  [#140](https://github.com/mathisarends/smelt/issues/140).
 
 ## [0.8.0] - 2026-11-14
 

@@ -5,6 +5,7 @@ import builtins
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -138,7 +139,7 @@ def _missing(
 def _caches_properties(owner: ast.ClassDef) -> bool:
     # functools.cached_property stores its value in __dict__, which slots remove.
     return any(
-        _dotted(decorator).rpartition(".")[2] == "cached_property"
+        dotted_name(decorator).rpartition(".")[2] == "cached_property"
         for method in owner.body
         if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
         for decorator in method.decorator_list
@@ -149,7 +150,7 @@ def _dataclass_keywords(owner: ast.ClassDef) -> dict[str, ast.expr] | None:
     for decorator in owner.decorator_list:
         call = decorator if isinstance(decorator, ast.Call) else None
         target = call.func if call else decorator
-        if _dotted(target).rpartition(".")[2] != "dataclass":
+        if dotted_name(target).rpartition(".")[2] != "dataclass":
             continue
         return {
             item.arg: item.value
@@ -184,11 +185,3 @@ def _is_external(module: str, roots: frozenset[str]) -> bool:
     if top in roots:
         return False
     return not (is_stdlib(module) and top in _SLOTTED_MODULES)
-
-
-def _dotted(node: ast.expr) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute) and (owner := _dotted(node.value)):
-        return f"{owner}.{node.attr}"
-    return ""
