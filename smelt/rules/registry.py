@@ -77,6 +77,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.delegates:RedundantPrivateDelegate",
     "smelt.rules.structure.interface_docstrings:MissingInterfaceDocstring",
     "smelt.rules.structure.stateful_dataclasses:StatefulDataclass",
+    "smelt.rules.structure.broad_excepts:MissingBroadExceptReason",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

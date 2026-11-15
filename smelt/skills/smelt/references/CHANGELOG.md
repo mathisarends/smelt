@@ -24,6 +24,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   with private attributes. Mutations through other objects and tests are
   ignored. Enable it with `rules: {stateful-dataclass: hint}`; no automatic
   rewrite. Implements [#133](https://github.com/mathisarends/smelt/issues/133).
+- Optional review [SMT350](docs/rules/SMT350.md) `missing-broad-except-reason`
+  reports `except Exception`, `except BaseException`, tuples containing them
+  and bare `except:` handlers without a comment explaining why they catch
+  everything. Comments on the `except` line, directly above it or before or on
+  the first body statement count; linter directives such as `noqa` or
+  `pylint: disable` alone do not. Handlers that always re-raise and tests are
+  ignored. Enable it with `rules: {missing-broad-except-reason: hint}`; no
+  automatic rewrite. Implements
+  [#143](https://github.com/mathisarends/smelt/issues/143).
 
 ## [0.8.0] - 2026-11-14
 
