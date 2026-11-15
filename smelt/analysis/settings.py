@@ -37,7 +37,7 @@ _TYPING = frozenset(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SecretSetting:
     node: ast.AnnAssign
     owner: str

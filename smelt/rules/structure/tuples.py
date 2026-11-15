@@ -85,7 +85,7 @@ class AnonymousTupleType(Rule):
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Tuple:
     node: ast.Subscript
     elements: list[str]

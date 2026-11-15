@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 _SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NoneDefault:
     node: ast.BoolOp
     parameter: str

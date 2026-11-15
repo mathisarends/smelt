@@ -116,7 +116,7 @@ class MissingBroadExceptReason(Rule):
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Comments:
     texts: dict[int, tuple[str, ...]]
     standalone: frozenset[int]

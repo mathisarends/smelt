@@ -33,7 +33,7 @@ type Function = ast.FunctionDef | ast.AsyncFunctionDef
 _REFLECTION_ARGUMENTS = 2
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Definition:
     name: str
     lineno: int
@@ -44,7 +44,7 @@ class Definition:
         return cls(node.name, node.lineno, node.col_offset)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Member:
     module: str
     path: str
@@ -59,7 +59,7 @@ class Member:
     module_names: frozenset[str] = frozenset()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _AttributeUse:
     module: str
     path: str
@@ -69,7 +69,7 @@ class _AttributeUse:
     definition: ast.Attribute | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AttributeMember:
     module: str
     path: str
@@ -81,7 +81,7 @@ class AttributeMember:
     occupied_names: frozenset[str]
 
 
-@dataclass
+@dataclass(slots=True)
 class _UsageEvidence:
     module_uses: dict[tuple[str, str | None], set[str]]
     production_uses: dict[tuple[str, str | None], set[str]]
@@ -90,7 +90,7 @@ class _UsageEvidence:
     public_exports: set[tuple[str, str | None]] = field(default_factory=set)
 
 
-@dataclass
+@dataclass(slots=True)
 class _FileFacts:
     module: str
     path: str
@@ -106,7 +106,7 @@ class _FileFacts:
 _FACTS = TypeAdapter(_FileFacts)
 
 
-@dataclass
+@dataclass(slots=True)
 class _ResolvedReferences:
     targets: list[tuple[str, str | None]]
     inherited: list[tuple[str, str | None]]

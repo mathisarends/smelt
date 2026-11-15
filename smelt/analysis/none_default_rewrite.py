@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from smelt.analysis.none_defaults import NoneDefault
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Edit:
     start: int
     end: int

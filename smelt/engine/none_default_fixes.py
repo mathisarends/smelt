@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from smelt.engine.check import CheckOutcome
 
 
-@dataclass
+@dataclass(slots=True)
 class NoneDefaultFixes:
     files: list[str] = field(default_factory=list)
     expressions: int = 0

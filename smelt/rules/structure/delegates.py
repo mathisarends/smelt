@@ -91,7 +91,7 @@ class RedundantPrivateDelegate(Rule):
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Delegate:
     owner: ast.ClassDef
     caller: _Function

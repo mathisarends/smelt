@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from smelt.engine.check import CheckOutcome
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OrderingFixes:
     files: tuple[str, ...]
     sections: int
@@ -28,7 +28,7 @@ class OrderingFixes:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Prepared:
     edit: SourceEdit
     sections: int

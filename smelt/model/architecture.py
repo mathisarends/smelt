@@ -51,7 +51,7 @@ def is_within(module: str, package: str) -> bool:
     return module == package or module.startswith(f"{package}.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ArchitectureModel:
     config: SmeltConfig
     modules: Mapping[str, ModuleInfo]

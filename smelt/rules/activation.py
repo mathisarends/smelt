@@ -144,6 +144,13 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT351": PolicyActivation(
+        "A package contract sets dataclass_options, including [].",
+        lambda config: any(
+            contract.dataclass_options is not None
+            for contract in config.structure.contracts.values()
+        ),
+    ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
     ),

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from smelt.engine.changes import GitIndex
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StagedProject:
     loaded: LoadedConfig
     original_config: Path

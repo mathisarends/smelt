@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Definition:
     module: str
     name: str
@@ -30,21 +30,21 @@ class _Definition:
     column: int
 
 
-@dataclass
+@dataclass(slots=True)
 class _Bindings:
     known: dict[str, ast.stmt | str] = field(default_factory=dict)
     bound: set[str] = field(default_factory=set)
     opaque: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Use:
     definition: _Definition
     importer: str
     test: bool
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FacadeGap:
     module: str
     name: str

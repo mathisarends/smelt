@@ -58,7 +58,8 @@ annotations, explicit `StrEnum` values and docstrings on abstract and
 construction and broad exception handlers without a stated reason. Keep
 serialized enum values stable.
 Functions accept at most three positional parameters; pass later arguments by
-keyword, including in tests and partial applications. Repeated `Literal` types
+keyword, including in tests and partial applications. Production dataclasses
+set `slots=True` unless a `cached_property` or an outside base rules it out. Repeated `Literal` types
 and anonymous tuple types remain hints: review their meaning before sharing an
 alias or introducing a named record. Composite lookup keys, source spans and
 Python version pairs can keep tuple semantics. Future

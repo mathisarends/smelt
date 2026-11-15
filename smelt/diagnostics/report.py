@@ -55,7 +55,7 @@ class RuleMeta:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class Report:
     violations: list[Violation]
     modules: int

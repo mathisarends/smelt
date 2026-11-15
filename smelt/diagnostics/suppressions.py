@@ -18,7 +18,7 @@ _PATTERN = re.compile(
 )
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True, eq=False, slots=True)
 class Suppression:
     path: str
     line: int
