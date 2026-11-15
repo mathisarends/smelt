@@ -49,6 +49,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   and nested classes, separate packages and tests are not compared. Enable it
   with `rules: {duplicate-class-name: warning}`; no automatic rewrite.
   Implements [#138](https://github.com/mathisarends/smelt/issues/138).
+- Optional review [SMT356](docs/rules/SMT356.md) `duplicate-narrowing-assert`
+  reports, once per class and expression, `assert self.<attribute> is not None`
+  or `assert isinstance(self.<attribute>, ...)` repeated in at least two methods
+  of the same class, including each operand of an `and`. Single local
+  narrowings, asserts in nested functions, static methods and tests are not
+  reported. Make the attribute required during construction or read it through
+  one property that raises a meaningful error. Enable it with
+  `rules: {duplicate-narrowing-assert: warning}`; no automatic rewrite.
+  Implements [#142](https://github.com/mathisarends/smelt/issues/142).
 
 ## [0.8.0] - 2026-11-14
 
