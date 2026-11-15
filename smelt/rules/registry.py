@@ -80,6 +80,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.broad_excepts:MissingBroadExceptReason",
     "smelt.rules.structure.dataclass_options:MissingDataclassOption",
     "smelt.rules.structure.duration_units:MissingDurationUnit",
+    "smelt.rules.structure.duration_literals:PreferNamedDuration",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

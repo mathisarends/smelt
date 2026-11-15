@@ -1761,6 +1761,21 @@
             "warning"
           ]
         },
+        "prefer-named-duration": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT358: A timeout or delay is written as an inline number.",
+          "description": "A timeout or delay is written as an inline number. asyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked. Repair: Move the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.",
+          "markdownDescription": "**SMT358 \u2014 prefer-named-duration**\n\nA timeout or delay is written as an inline number.\n\nasyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked.\n\n**Problem**\n```python\nasync with asyncio.timeout(2.5):\n    await page.settle()\n```\n\n**Preferred**\n```python\nSETTLE_TIMEOUT_SECONDS = 2.5\n\nasync with asyncio.timeout(SETTLE_TIMEOUT_SECONDS):\n    await page.settle()\n```\n\nMove the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.\n\nRun `smelt explain prefer-named-duration` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2902,6 +2917,21 @@
             "warning"
           ]
         },
+        "^SMT358$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT358: A timeout or delay is written as an inline number.",
+          "description": "A timeout or delay is written as an inline number. asyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked. Repair: Move the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.",
+          "markdownDescription": "**SMT358 \u2014 prefer-named-duration**\n\nA timeout or delay is written as an inline number.\n\nasyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked.\n\n**Problem**\n```python\nasync with asyncio.timeout(2.5):\n    await page.settle()\n```\n\n**Preferred**\n```python\nSETTLE_TIMEOUT_SECONDS = 2.5\n\nasync with asyncio.timeout(SETTLE_TIMEOUT_SECONDS):\n    await page.settle()\n```\n\nMove the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.\n\nRun `smelt explain prefer-named-duration` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3989,6 +4019,21 @@
             "warning"
           ]
         },
+        "prefer-named-duration": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT358: A timeout or delay is written as an inline number.",
+          "description": "A timeout or delay is written as an inline number. asyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked. Repair: Move the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.",
+          "markdownDescription": "**SMT358 \u2014 prefer-named-duration**\n\nA timeout or delay is written as an inline number.\n\nasyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked.\n\n**Problem**\n```python\nasync with asyncio.timeout(2.5):\n    await page.settle()\n```\n\n**Preferred**\n```python\nSETTLE_TIMEOUT_SECONDS = 2.5\n\nasync with asyncio.timeout(SETTLE_TIMEOUT_SECONDS):\n    await page.settle()\n```\n\nMove the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.\n\nRun `smelt explain prefer-named-duration` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4871,6 +4916,21 @@
           "title": "SMT357: A numeric duration is named without its unit.",
           "description": "A numeric duration is named without its unit. A constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked. Repair: Append the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.",
           "markdownDescription": "**SMT357 \u2014 missing-duration-unit**\n\nA numeric duration is named without its unit.\n\nA constant called _FRAME_TIMEOUT = 2.0 does not say whether it means seconds or milliseconds, and code that mixes both converts at every call site until one conversion is forgotten. This opt-in review reports module constants, class fields and function parameters whose name ends in timeout, delay, interval, duration or wait and that hold a number: an int or float annotation, possibly wrapped in Final, ClassVar, Optional, Annotated or | None, or an unannotated int or float literal. Names that end in a unit, such as _TIMEOUT_SECONDS or quiet_ms, and values typed as timedelta are valid. @overload and @override signatures and tests are not checked.\n\n**Problem**\n```python\n_FRAME_TIMEOUT = 2.0\n\n\ndef wait(delay: float) -> None:\n    ...\n```\n\n**Preferred**\n```python\n_FRAME_TIMEOUT_SECONDS = 2.0\n\n\ndef wait(delay_seconds: float) -> None:\n    ...\n```\n\nAppend the unit to the name, e.g. _SECONDS or _ms, and convert once where the value enters the code, or type the value as datetime.timedelta. No automatic rewrite is performed. Enable rules: {missing-duration-unit: warning}, or select SMT357.\n\nRun `smelt explain missing-duration-unit` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT358$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT358: A timeout or delay is written as an inline number.",
+          "description": "A timeout or delay is written as an inline number. asyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked. Repair: Move the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.",
+          "markdownDescription": "**SMT358 \u2014 prefer-named-duration**\n\nA timeout or delay is written as an inline number.\n\nasyncio.timeout(2.5) at two call sites drifts apart as soon as one of them is tuned, and the bare number hides its unit and purpose. Ruff's PLR2004 only covers comparisons. This opt-in review reports int and float literals passed as the duration of asyncio.timeout, asyncio.sleep, asyncio.wait_for, asyncio.wait, time.sleep and the anyio and trio sleep and timeout scopes, resolved through imports and aliases, and literals added to a clock reading such as loop.time() + 10 or time.monotonic() + 10. sleep(0), which yields control instead of waiting, and tests are not checked.\n\n**Problem**\n```python\nasync with asyncio.timeout(2.5):\n    await page.settle()\n```\n\n**Preferred**\n```python\nSETTLE_TIMEOUT_SECONDS = 2.5\n\nasync with asyncio.timeout(SETTLE_TIMEOUT_SECONDS):\n    await page.settle()\n```\n\nMove the value into a module constant or configuration field whose name states its purpose and unit, and reuse it at every call site that means the same wait. No automatic rewrite is performed. Enable rules: {prefer-named-duration: warning}, or select SMT358.\n\nRun `smelt explain prefer-named-duration` for details.",
           "examples": [
             "warning"
           ]
