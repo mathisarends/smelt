@@ -874,6 +874,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.duplicate_functions:DuplicateFunction",
+    "code": "SMT352",
+    "name": "duplicate-function",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.project_bases:PreferProjectBaseClass",
     "code": "SMT353",
     "name": "prefer-project-base-class",
@@ -884,6 +899,66 @@
     ],
     "enabled_by_default": false,
     "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.duplicate_class_names:DuplicateClassName",
+    "code": "SMT355",
+    "name": "duplicate-class-name",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.narrowing_asserts:DuplicateNarrowingAssert",
+    "code": "SMT356",
+    "name": "duplicate-narrowing-assert",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.duration_units:MissingDurationUnit",
+    "code": "SMT357",
+    "name": "missing-duration-unit",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.duration_literals:PreferNamedDuration",
+    "code": "SMT358",
+    "name": "prefer-named-duration",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
     "test_local": false,
     "member_local": false,
     "scope": "source"

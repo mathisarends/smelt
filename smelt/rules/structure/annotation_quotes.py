@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import last_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -132,7 +133,7 @@ def _quoted(node: ast.expr) -> Iterator[ast.Constant]:
         case ast.Constant(value=str()):
             yield node
         case ast.Subscript(value=value, slice=index):
-            name = _last_name(value)
+            name = last_name(value)
             if name == "Literal":
                 return
             if name == "Annotated" and isinstance(index, ast.Tuple) and index.elts:
@@ -144,14 +145,6 @@ def _quoted(node: ast.expr) -> Iterator[ast.Constant]:
             for child in ast.iter_child_nodes(node):
                 if isinstance(child, ast.expr):
                     yield from _quoted(child)
-
-
-def _last_name(node: ast.expr) -> str | None:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    return None
 
 
 def _has_future_import(tree: ast.Module) -> bool:
