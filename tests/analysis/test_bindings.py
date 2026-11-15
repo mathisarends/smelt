@@ -4,7 +4,12 @@ import ast
 
 import pytest
 
-from smelt.analysis.bindings import binding_counts, dotted_name, qualified_name
+from smelt.analysis.bindings import (
+    binding_counts,
+    dotted_name,
+    last_name,
+    qualified_name,
+)
 
 
 def _expression(source: str) -> ast.expr:
@@ -69,3 +74,16 @@ def test_qualified_name_resolves_known_bindings(
 )
 def test_dotted_name_spells_name_chains(source: str, expected: str) -> None:
     assert dotted_name(_expression(source)) == expected
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("Final", "Final"),
+        ("typing.Final", "Final"),
+        ("call().attribute", "attribute"),
+        ("items[0]", None),
+    ],
+)
+def test_last_name_returns_the_final_segment(source: str, expected: str | None) -> None:
+    assert last_name(_expression(source)) == expected

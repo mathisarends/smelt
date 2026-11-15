@@ -66,3 +66,12 @@ def dotted_name(node: ast.expr) -> str:
     if isinstance(node, ast.Attribute) and (owner := dotted_name(node.value)):
         return f"{owner}.{node.attr}"
     return ""
+
+
+def last_name(node: ast.expr) -> str | None:
+    """Return the final segment of a name or attribute chain, e.g. ``Final``."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None

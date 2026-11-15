@@ -919,6 +919,36 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.duration_units:MissingDurationUnit",
+    "code": "SMT357",
+    "name": "missing-duration-unit",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.structure.duration_literals:PreferNamedDuration",
+    "code": "SMT358",
+    "name": "prefer-named-duration",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

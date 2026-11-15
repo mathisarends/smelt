@@ -82,6 +82,8 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.duplicate_class_names:DuplicateClassName",
     "smelt.rules.structure.narrowing_asserts:DuplicateNarrowingAssert",
     "smelt.rules.structure.duplicate_functions:DuplicateFunction",
+    "smelt.rules.structure.duration_units:MissingDurationUnit",
+    "smelt.rules.structure.duration_literals:PreferNamedDuration",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

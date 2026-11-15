@@ -86,6 +86,7 @@ rules:
   missing-broad-except-reason: warning
   duplicate-class-name: warning
   duplicate-narrowing-assert: warning
+  prefer-named-duration: warning
   # These reviews need semantic judgment: equal shapes can model distinct concepts.
   duplicate-literal-type: hint
   anonymous-tuple-type: hint
