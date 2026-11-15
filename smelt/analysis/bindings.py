@@ -6,8 +6,38 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from smelt.analysis.exports import namespace_of
+
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
+
+
+def unshadowed_bindings(
+    tree: ast.Module, *, builtin_names: Iterable[str] = ()
+) -> dict[str, str]:
+    """Resolve module imports and requested builtins, skipping any shadowed name.
+
+    This is deliberately file-wide: local bindings can suppress unrelated uses.
+    Wildcard imports are unknown; relative imports and re-exports are not resolved.
+    """
+    counts = binding_counts(tree)
+    if counts["*"]:
+        return {}
+    imports = namespace_of(tree, "", is_package=False).imported
+    relative = {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.level
+        for alias in node.names
+    }
+    return {
+        **{name: f"builtins.{name}" for name in builtin_names if not counts[name]},
+        **{
+            name: target
+            for name, target in imports.items()
+            if counts[name] == 1 and name not in relative
+        },
+    }
 
 
 def binding_counts(tree: ast.Module) -> Counter[str]:
@@ -31,7 +61,15 @@ def binding_counts(tree: ast.Module) -> Counter[str]:
         elif isinstance(node, ast.Global | ast.Nonlocal):
             bound.update(node.names)
         elif (
-            isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar)
+            isinstance(
+                node,
+                ast.TypeVar
+                | ast.ParamSpec
+                | ast.TypeVarTuple
+                | ast.ExceptHandler
+                | ast.MatchAs
+                | ast.MatchStar,
+            )
             and node.name
         ):
             bound[node.name] += 1
@@ -46,6 +84,18 @@ def binding_counts(tree: ast.Module) -> Counter[str]:
             if isinstance(root, ast.Name):
                 bound[root.id] += 1
     return bound
+
+
+def annotation_name(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
+    """Resolve the outer type of a direct annotation, including a quoted one."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        try:
+            node = ast.parse(node.value, mode="eval").body
+        except SyntaxError:
+            return None
+    if isinstance(node, ast.Subscript):
+        node = node.value
+    return qualified_name(node, bindings)
 
 
 def qualified_name(node: ast.expr, bindings: Mapping[str, str]) -> str | None:

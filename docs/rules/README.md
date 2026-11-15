@@ -68,6 +68,7 @@
 | [SMT357](SMT357.md) | missing-duration-unit | structure | explicit | warning |
 | [SMT358](SMT358.md) | prefer-named-duration | structure | explicit | warning |
 | [SMT359](SMT359.md) | nested-conditional-expression | structure | explicit | hint |
+| [SMT360](SMT360.md) | mutable-field-in-frozen-dataclass | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

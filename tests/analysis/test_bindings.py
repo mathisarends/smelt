@@ -5,10 +5,12 @@ import ast
 import pytest
 
 from smelt.analysis.bindings import (
+    annotation_name,
     binding_counts,
     dotted_name,
     last_name,
     qualified_name,
+    unshadowed_bindings,
 )
 
 
@@ -87,3 +89,36 @@ def test_dotted_name_spells_name_chains(source: str, expected: str) -> None:
 )
 def test_last_name_returns_the_final_segment(source: str, expected: str | None) -> None:
     assert last_name(_expression(source)) == expected
+
+
+def test_unshadowed_bindings_respects_import_scope_and_rebinding() -> None:
+    tree = ast.parse(
+        "import builtins as b\n"
+        "if TYPE_CHECKING:\n    from dataclasses import dataclass as dc\n"
+        "from . import local\n"
+        "def f(list):\n    import dataclasses as inner\n"
+    )
+    assert unshadowed_bindings(tree, builtin_names=("list", "dict")) == {
+        "dict": "builtins.dict",
+        "b": "builtins",
+        "dc": "dataclasses.dataclass",
+    }
+    assert (
+        unshadowed_bindings(ast.parse("from custom import *"), builtin_names=("dict",))
+        == {}
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ('"items[str]"', "builtins.list"),
+        ("items", "builtins.list"),
+        ("items | None", None),
+        ('"invalid["', None),
+    ],
+)
+def test_annotation_name_resolves_only_direct_outer_types(
+    source: str, expected: str | None
+) -> None:
+    assert annotation_name(_expression(source), {"items": "builtins.list"}) == expected
