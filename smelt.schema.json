@@ -1746,6 +1746,21 @@
             "warning"
           ]
         },
+        "duplicate-class-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "duplicate-narrowing-assert": {
           "type": "string",
           "enum": [
@@ -2887,6 +2902,21 @@
             "warning"
           ]
         },
+        "^SMT355$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT356$": {
           "type": "string",
           "enum": [
@@ -3974,6 +4004,21 @@
             "warning"
           ]
         },
+        "duplicate-class-name": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "duplicate-narrowing-assert": {
           "type": "string",
           "enum": [
@@ -4856,6 +4901,21 @@
           "title": "SMT351: A dataclass does not set an option its package requires.",
           "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
           "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT355$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT355: Two modules of one package define a public class with the same name.",
+          "description": "Two modules of one package define a public class with the same name. When two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations. Repair: Rename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.",
+          "markdownDescription": "**SMT355 \u2014 duplicate-class-name**\n\nTwo modules of one package define a public class with the same name.\n\nWhen two modules of the same package each define a public class called PageContent, imports, search results and review comments stop saying which one is meant, and the wrong import still type checks when the shapes are similar. This opt-in review groups public top-level classes by their nearest package, counting a package's __init__.py as part of that package, and reports every class whose name is also defined at the top level of another module there. Re-exports, private classes, nested classes, classes in separate packages and tests are not compared. Each definition gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/observation/models.py\nclass PageContent:\n    html: str\n\n# app/observation/content.py\nclass PageContent(Options):\n    markdown: str\n```\n\n**Preferred**\n```python\n# app/observation/models.py\nclass CapturedPage:\n    html: str\n\n# app/observation/content.py\nclass PageRead(Options):\n    markdown: str\n```\n\nRename the classes after their role so each name says which one is meant, or merge them when they describe the same thing. A class that only exists as a private implementation detail can take a leading underscore. No automatic rewrite is performed. Enable rules: {duplicate-class-name: warning}, or select SMT355.\n\nRun `smelt explain duplicate-class-name` for details.",
           "examples": [
             "warning"
           ]

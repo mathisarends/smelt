@@ -60,6 +60,7 @@
 | [SMT349](SMT349.md) | stateful-dataclass | structure | explicit | hint |
 | [SMT350](SMT350.md) | missing-broad-except-reason | structure | explicit | hint |
 | [SMT351](SMT351.md) | missing-dataclass-option | structure | policy | warning |
+| [SMT355](SMT355.md) | duplicate-class-name | structure | explicit | warning |
 | [SMT356](SMT356.md) | duplicate-narrowing-assert | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
