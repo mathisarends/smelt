@@ -32,6 +32,8 @@ class TestPackageContracts:
             {"match": "gateway", "rules": {"bundled-instance-assignment": "off"}},
             {"match": "gateway", "type_dispatch": {}},
             {"match": "gateway", "type_dispatch": {"style": "allow"}},
+            {"match": "gateway", "bases": {"pydantic.BaseModel": "gateway.Model"}},
+            {"match": "gateway", "bases": {}},
             {
                 "match": "gateway",
                 "ordering": {},
@@ -68,6 +70,9 @@ class TestPackageContracts:
             {"match": "gateway", "module_docstrings": "sometimes"},
             {"match": "gateway", "future_annotations": "always"},
             {"match": "gateway", "private_modules": "sometimes"},
+            {"match": "gateway", "bases": {"BaseModel": "gateway.Model"}},
+            {"match": "gateway", "bases": {"pydantic.BaseModel": "gateway..Model"}},
+            {"match": "gateway", "bases": {"gateway.Model": "gateway.Model"}},
             {
                 "match": "gateway",
                 "ordering": {"module": ["public", "private"]},

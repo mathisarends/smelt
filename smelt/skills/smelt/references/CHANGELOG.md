@@ -81,6 +81,17 @@ current configuration and complete rule contracts, see the [README](README.md),
   are not reported. Enable it with `rules: {prefer-named-duration: warning}`;
   no automatic rewrite. Together with SMT357 implements
   [#135](https://github.com/mathisarends/smelt/issues/135).
+- Package contracts accept `bases`, a mapping from an outside base class to
+  the project base that replaces it, e.g.
+  `{pydantic.BaseModel: app.core.Options}`. Policy rule
+  [SMT353](docs/rules/SMT353.md) `prefer-project-base-class` then reports
+  production classes that inherit the outside base directly, resolved through
+  imports, aliases and module attributes. Only inheritance is judged:
+  importing the outside base for annotations, `isinstance` or adapters stays
+  valid. The module defining the project base is exempt, the closest package
+  policy wins, `{}` lifts an outer mapping and `smelt context` shows the
+  policy. Tests are not checked; no automatic rewrite. Implements
+  [#139](https://github.com/mathisarends/smelt/issues/139).
 
 ## [0.8.0] - 2026-11-14
 
