@@ -4,6 +4,7 @@ import ast
 import builtins
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -175,7 +176,7 @@ def _exempt(
     if name.startswith("__") and name.endswith("__") and name not in _DOMAIN_DUNDERS:
         return True
     return any(
-        _qualified(
+        qualified_name(
             decorator.func if isinstance(decorator, ast.Call) else decorator, bindings
         )
         in _VALIDATORS
@@ -192,21 +193,11 @@ def _builtin(
         if exc.id in _BUILTIN_EXCEPTIONS and exc.id not in shadowed:
             return exc.id
         return None
-    qualified = _qualified(exc, bindings) if exc is not None else None
+    qualified = qualified_name(exc, bindings) if exc is not None else None
     if qualified is None or not qualified.startswith("builtins."):
         return None
     name = qualified.removeprefix("builtins.")
     return name if name in _BUILTIN_EXCEPTIONS else None
-
-
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    attributes: list[str] = []
-    while isinstance(node, ast.Attribute):
-        attributes.append(node.attr)
-        node = node.value
-    if not isinstance(node, ast.Name) or node.id not in bindings:
-        return None
-    return ".".join([bindings[node.id], *reversed(attributes)])
 
 
 def _module_names(tree: ast.Module) -> set[str]:
