@@ -139,6 +139,34 @@
       ],
       "type": "string"
     },
+    "ErrorPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fully qualified project exception that production code raises instead of builtin exceptions (SMT354), e.g. app.errors.AppError. Omitted: {} lifts an outer policy.",
+          "title": "Base"
+        },
+        "allow": {
+          "description": "Builtin exception names that may still be raised, in addition to NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit, e.g. [TypeError].",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        }
+      },
+      "title": "ErrorPolicy",
+      "type": "object"
+    },
     "FeaturesConfig": {
       "additionalProperties": false,
       "properties": {
@@ -585,6 +613,18 @@
           "default": null,
           "description": "Map a base class from outside the package to the project base that classes in this package must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. The closest explicit package policy wins; no automatic rewrite.",
           "title": "Bases"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; the closest explicit package policy wins; no automatic rewrite."
         },
         "rules": {
           "$ref": "#/$defs/SourceRuleSettings"
@@ -1788,6 +1828,21 @@
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
           "description": "A class inherits an outside base directly instead of the project base. Projects often wrap a framework base in their own base class to share configuration, for example a pydantic BaseModel subclass that sets extra='forbid' and frozen=True. A class that inherits the framework base directly silently misses that configuration, and nothing in the class tells a reviewer. A package contract maps each outside base to the project base, e.g. bases: {pydantic.BaseModel: app.core.Options}, and production classes in the package that list the outside base among their direct bases are reported. Bases are resolved through the module's imports, including aliases and module attributes. Only inheritance is judged: importing the outside base for annotations, isinstance checks or adapters stays valid. The module that defines the project base is exempt, a nested package can set bases: {} to allow direct inheritance, and single classes can keep a reasoned suppression. Tests are not checked. Repair: Inherit the project base named in the finding and drop configuration that only repeated it. When a class deliberately needs the outside base, keep a reasoned suppression or move it into a package whose contract sets bases: {}. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, bases: {pydantic.BaseModel: app.core.Options}}.",
           "markdownDescription": "**SMT353 \u2014 prefer-project-base-class**\n\nA class inherits an outside base directly instead of the project base.\n\nProjects often wrap a framework base in their own base class to share configuration, for example a pydantic BaseModel subclass that sets extra='forbid' and frozen=True. A class that inherits the framework base directly silently misses that configuration, and nothing in the class tells a reviewer. A package contract maps each outside base to the project base, e.g. bases: {pydantic.BaseModel: app.core.Options}, and production classes in the package that list the outside base among their direct bases are reported. Bases are resolved through the module's imports, including aliases and module attributes. Only inheritance is judged: importing the outside base for annotations, isinstance checks or adapters stays valid. The module that defines the project base is exempt, a nested package can set bases: {} to allow direct inheritance, and single classes can keep a reasoned suppression. Tests are not checked.\n\n**Problem**\n```python\nfrom pydantic import BaseModel, ConfigDict\n\nclass Manifest(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\")\n```\n\n**Preferred**\n```python\nfrom app.core.options import Options\n\nclass Manifest(Options):\n    ...\n```\n\nInherit the project base named in the finding and drop configuration that only repeated it. When a class deliberately needs the outside base, keep a reasoned suppression or move it into a package whose contract sets bases: {}. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, bases: {pydantic.BaseModel: app.core.Options}}.\n\nRun `smelt explain prefer-project-base-class` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "prefer-domain-exception": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
+          "description": "Production code raises a builtin exception instead of the project hierarchy. A project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked. Repair: Raise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.",
+          "markdownDescription": "**SMT354 \u2014 prefer-domain-exception**\n\nProduction code raises a builtin exception instead of the project hierarchy.\n\nA project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked.\n\n**Problem**\n```python\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ValueError(f\"Could not read {path.name}\") from error\n```\n\n**Preferred**\n```python\nfrom app.errors import ReadError\n\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ReadError(f\"Could not read {path.name}\") from error\n```\n\nRaise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.\n\nRun `smelt explain prefer-domain-exception` for details.",
           "examples": [
             "warning"
           ]
@@ -3023,6 +3078,21 @@
             "warning"
           ]
         },
+        "^SMT354$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
+          "description": "Production code raises a builtin exception instead of the project hierarchy. A project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked. Repair: Raise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.",
+          "markdownDescription": "**SMT354 \u2014 prefer-domain-exception**\n\nProduction code raises a builtin exception instead of the project hierarchy.\n\nA project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked.\n\n**Problem**\n```python\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ValueError(f\"Could not read {path.name}\") from error\n```\n\n**Preferred**\n```python\nfrom app.errors import ReadError\n\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ReadError(f\"Could not read {path.name}\") from error\n```\n\nRaise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.\n\nRun `smelt explain prefer-domain-exception` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT355$": {
           "type": "string",
           "enum": [
@@ -4200,6 +4270,21 @@
             "warning"
           ]
         },
+        "prefer-domain-exception": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
+          "description": "Production code raises a builtin exception instead of the project hierarchy. A project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked. Repair: Raise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.",
+          "markdownDescription": "**SMT354 \u2014 prefer-domain-exception**\n\nProduction code raises a builtin exception instead of the project hierarchy.\n\nA project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked.\n\n**Problem**\n```python\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ValueError(f\"Could not read {path.name}\") from error\n```\n\n**Preferred**\n```python\nfrom app.errors import ReadError\n\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ReadError(f\"Could not read {path.name}\") from error\n```\n\nRaise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.\n\nRun `smelt explain prefer-domain-exception` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "duplicate-class-name": {
           "type": "string",
           "enum": [
@@ -5172,6 +5257,21 @@
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
           "description": "A class inherits an outside base directly instead of the project base. Projects often wrap a framework base in their own base class to share configuration, for example a pydantic BaseModel subclass that sets extra='forbid' and frozen=True. A class that inherits the framework base directly silently misses that configuration, and nothing in the class tells a reviewer. A package contract maps each outside base to the project base, e.g. bases: {pydantic.BaseModel: app.core.Options}, and production classes in the package that list the outside base among their direct bases are reported. Bases are resolved through the module's imports, including aliases and module attributes. Only inheritance is judged: importing the outside base for annotations, isinstance checks or adapters stays valid. The module that defines the project base is exempt, a nested package can set bases: {} to allow direct inheritance, and single classes can keep a reasoned suppression. Tests are not checked. Repair: Inherit the project base named in the finding and drop configuration that only repeated it. When a class deliberately needs the outside base, keep a reasoned suppression or move it into a package whose contract sets bases: {}. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, bases: {pydantic.BaseModel: app.core.Options}}.",
           "markdownDescription": "**SMT353 \u2014 prefer-project-base-class**\n\nA class inherits an outside base directly instead of the project base.\n\nProjects often wrap a framework base in their own base class to share configuration, for example a pydantic BaseModel subclass that sets extra='forbid' and frozen=True. A class that inherits the framework base directly silently misses that configuration, and nothing in the class tells a reviewer. A package contract maps each outside base to the project base, e.g. bases: {pydantic.BaseModel: app.core.Options}, and production classes in the package that list the outside base among their direct bases are reported. Bases are resolved through the module's imports, including aliases and module attributes. Only inheritance is judged: importing the outside base for annotations, isinstance checks or adapters stays valid. The module that defines the project base is exempt, a nested package can set bases: {} to allow direct inheritance, and single classes can keep a reasoned suppression. Tests are not checked.\n\n**Problem**\n```python\nfrom pydantic import BaseModel, ConfigDict\n\nclass Manifest(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\")\n```\n\n**Preferred**\n```python\nfrom app.core.options import Options\n\nclass Manifest(Options):\n    ...\n```\n\nInherit the project base named in the finding and drop configuration that only repeated it. When a class deliberately needs the outside base, keep a reasoned suppression or move it into a package whose contract sets bases: {}. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, bases: {pydantic.BaseModel: app.core.Options}}.\n\nRun `smelt explain prefer-project-base-class` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
+        "^SMT354$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
+          "description": "Production code raises a builtin exception instead of the project hierarchy. A project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked. Repair: Raise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.",
+          "markdownDescription": "**SMT354 \u2014 prefer-domain-exception**\n\nProduction code raises a builtin exception instead of the project hierarchy.\n\nA project exception hierarchy lets callers tell a domain failure apart from a programming error. Code that keeps raising ValueError or RuntimeError for domain failures, or converts every error into one, forces callers to catch broad builtins and guess what went wrong. A package contract names the project base, e.g. errors: {base: app.errors.AppError}, and production code in the package that raises a builtin exception class, with or without arguments and with or without from, is reported. NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit are always allowed, and errors.allow adds more, e.g. [TypeError]. Bare re-raises, raising caught or project exceptions, names that shadow a builtin, raises in protocol dunder methods such as __getattr__ or __getitem__, and pydantic validators, which must raise ValueError or AssertionError, are not reported. Tests are not checked.\n\n**Problem**\n```python\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ValueError(f\"Could not read {path.name}\") from error\n```\n\n**Preferred**\n```python\nfrom app.errors import ReadError\n\ntry:\n    return self._read(path)\nexcept Exception as error:  # surface unreadable files\n    raise ReadError(f\"Could not read {path.name}\") from error\n```\n\nRaise a subclass of the configured base that names the failure, and let callers catch that subclass. When callers rely on a builtin, for example TypeError for wrong argument types, add it to errors.allow, or set errors: {} in a nested package that deliberately raises builtins. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, errors: {base: app.errors.AppError}}.\n\nRun `smelt explain prefer-domain-exception` for details.",
           "examples": [
             "warning"
           ]

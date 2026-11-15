@@ -98,6 +98,17 @@ current configuration and complete rule contracts, see the [README](README.md),
   policy wins, `{}` lifts an outer mapping and `smelt context` shows the
   policy. Tests are not checked; no automatic rewrite. Implements
   [#139](https://github.com/mathisarends/smelt/issues/139).
+- Package contracts accept `errors: {base: <qualified exception>, allow: [...]}`.
+  Policy rule [SMT354](docs/rules/SMT354.md) `prefer-domain-exception` then
+  reports production code that raises a builtin exception class instead of
+  the project hierarchy, including `raise ValueError(...) from error`.
+  `NotImplementedError`, `StopIteration`, `StopAsyncIteration`,
+  `GeneratorExit`, `KeyboardInterrupt` and `SystemExit` are always allowed and
+  `allow` adds more. Bare re-raises, names shadowing a builtin, protocol dunder
+  methods such as `__getattr__` and pydantic validators are not reported. The
+  closest package policy wins, `errors: {}` lifts an outer policy and
+  `smelt context` shows it. Tests are not checked; no automatic rewrite.
+  Implements [#141](https://github.com/mathisarends/smelt/issues/141).
 
 ## [0.8.0] - 2026-11-14
 
