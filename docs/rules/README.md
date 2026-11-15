@@ -60,6 +60,7 @@
 | [SMT349](SMT349.md) | stateful-dataclass | structure | explicit | hint |
 | [SMT350](SMT350.md) | missing-broad-except-reason | structure | explicit | hint |
 | [SMT351](SMT351.md) | missing-dataclass-option | structure | policy | warning |
+| [SMT353](SMT353.md) | prefer-project-base-class | structure | policy | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |
