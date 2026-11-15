@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
@@ -111,12 +112,7 @@ def _defines(tree: ast.Module, module: str, project: str) -> bool:
 
 
 def _resolve(base: ast.expr, bindings: Mapping[str, str]) -> str | None:
+    # Generic bases such as Model[T] name their class before the subscript.
     if isinstance(base, ast.Subscript):
         base = base.value
-    attributes: list[str] = []
-    while isinstance(base, ast.Attribute):
-        attributes.append(base.attr)
-        base = base.value
-    if not isinstance(base, ast.Name) or base.id not in bindings:
-        return None
-    return ".".join([bindings[base.id], *reversed(attributes)])
+    return qualified_name(base, bindings)
