@@ -1,3 +1,4 @@
+import builtins
 import posixpath
 import re
 from typing import Annotated, Literal, Self
@@ -457,6 +458,40 @@ class TypeDispatchConfig(_Model):
     )
 
 
+class ErrorPolicy(_Model):
+    base: str | None = Field(
+        default=None,
+        description="Fully qualified project exception that production code raises instead of builtin exceptions (SMT354), e.g. app.errors.AppError. Omitted: {} lifts an outer policy.",
+    )
+    allow: list[str] = Field(
+        default_factory=list,
+        description="Builtin exception names that may still be raised, in addition to NotImplementedError, StopIteration, StopAsyncIteration, GeneratorExit, KeyboardInterrupt and SystemExit, e.g. [TypeError].",
+    )
+
+    @field_validator("base")
+    @classmethod
+    def _base(cls, value: str | None) -> str | None:
+        if value is not None and (
+            "." not in value or not _DOTTED_NAME.fullmatch(value)
+        ):
+            raise ValueError(
+                f"errors.base must be a fully qualified class name: {value!r}"
+            )
+        return value
+
+    @field_validator("allow")
+    @classmethod
+    def _allow(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if not isinstance(getattr(builtins, value, None), type) or not issubclass(
+                getattr(builtins, value), BaseException
+            ):
+                raise ValueError(
+                    f"errors.allow entries must be builtin exception names: {value!r}"
+                )
+        return list(dict.fromkeys(values))
+
+
 class PackageContract(_Model):
     """Opt-in module layout and entry points for matching packages."""
 
@@ -521,6 +556,10 @@ class PackageContract(_Model):
     bases: dict[str, str] | None = Field(
         default=None,
         description="Map a base class from outside the package to the project base that classes in this package must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. The closest explicit package policy wins; no automatic rewrite.",
+    )
+    errors: ErrorPolicy | None = Field(
+        default=None,
+        description="Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; the closest explicit package policy wins; no automatic rewrite.",
     )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
@@ -603,6 +642,7 @@ class PackageContract(_Model):
             and self.max_positional_parameters is None
             and self.dataclass_options is None
             and self.bases is None
+            and self.errors is None
             and not self.rules
         ):
             raise ValueError("set at least one package contract policy")

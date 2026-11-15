@@ -149,6 +149,7 @@ class ContractIndex:
             "max_positional_parameters",
             "dataclass_options",
             "bases",
+            "errors",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -199,6 +200,11 @@ class ContractIndex:
                         )
                     }
                     if contract.spec.type_dispatch
+                    else {}
+                ),
+                **(
+                    {"errors": contract.spec.errors.model_dump(mode="json")}
+                    if contract.spec.errors
                     else {}
                 ),
                 **(

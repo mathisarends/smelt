@@ -85,6 +85,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.duration_units:MissingDurationUnit",
     "smelt.rules.structure.duration_literals:PreferNamedDuration",
     "smelt.rules.structure.project_bases:PreferProjectBaseClass",
+    "smelt.rules.structure.domain_exceptions:PreferDomainException",
     "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
     "smelt.rules.structure.frozen_collections:MutableFieldInFrozenDataclass",
     "smelt.rules.testing.location:MisplacedTestFile",
