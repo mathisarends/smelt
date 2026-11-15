@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -141,13 +142,13 @@ def _undocumented_members(tree: ast.Module) -> Iterator[_Member]:
 def _is_protocol(base: ast.expr) -> bool:
     if isinstance(base, ast.Subscript):
         base = base.value
-    return _dotted(base).rpartition(".")[2] == "Protocol"
+    return dotted_name(base).rpartition(".")[2] == "Protocol"
 
 
 def _decorator_name(decorator: ast.expr) -> str:
     if isinstance(decorator, ast.Call):
         decorator = decorator.func
-    return _dotted(decorator).rpartition(".")[2]
+    return dotted_name(decorator).rpartition(".")[2]
 
 
 def _is_dunder(name: str) -> bool:
@@ -163,11 +164,3 @@ def _is_placeholder(statement: ast.stmt) -> bool:
         case ast.Raise(exc=ast.Name(id=name) | ast.Call(func=ast.Name(id=name))):
             return name == _NOT_IMPLEMENTED
     return False
-
-
-def _dotted(node: ast.expr) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute) and (owner := _dotted(node.value)):
-        return f"{owner}.{node.attr}"
-    return ""

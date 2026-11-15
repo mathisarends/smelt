@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import ast
-from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.bindings import binding_counts, qualified_name
+
 if TYPE_CHECKING:
+    from collections import Counter
     from collections.abc import Iterator, Mapping
 
 _SECRET_NAMES = (
@@ -46,7 +48,7 @@ class SecretSetting:
 
 
 def secret_settings(tree: ast.Module) -> Iterator[SecretSetting]:
-    bound = _binding_counts(tree)
+    bound = binding_counts(tree)
     bindings = _imports(tree, bound)
     classes = {
         node.name: node
@@ -61,7 +63,7 @@ def secret_settings(tree: ast.Module) -> Iterator[SecretSetting]:
             name
             for name, node in classes.items()
             if any(
-                _qualified(base, bindings) in _SETTINGS
+                qualified_name(base, bindings) in _SETTINGS
                 or (isinstance(base, ast.Name) and base.id in settings)
                 for base in node.bases
             )
@@ -84,39 +86,6 @@ def secret_settings(tree: ast.Module) -> Iterator[SecretSetting]:
             plain = _plain_types(node.annotation, bindings, bound)
             if plain:
                 yield SecretSetting(node, name, node.target.id, tuple(sorted(plain)))
-
-
-def _binding_counts(tree: ast.Module) -> Counter[str]:
-    bound: Counter[str] = Counter()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
-            bound[node.id] += 1
-        elif isinstance(node, ast.arg):
-            bound[node.arg] += 1
-        elif isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
-            bound[node.name] += 1
-        elif isinstance(node, ast.Import | ast.ImportFrom):
-            bound.update(
-                alias.asname or alias.name.split(".")[0] for alias in node.names
-            )
-        elif isinstance(node, ast.Global | ast.Nonlocal):
-            bound.update(node.names)
-        elif (
-            isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar)
-            and node.name
-        ):
-            bound[node.name] += 1
-        elif isinstance(node, ast.MatchMapping) and node.rest:
-            bound[node.rest] += 1
-        elif isinstance(node, ast.Attribute | ast.Subscript) and isinstance(
-            node.ctx, ast.Store | ast.Del
-        ):
-            root = node.value
-            while isinstance(root, ast.Attribute | ast.Subscript):
-                root = root.value
-            if isinstance(root, ast.Name):
-                bound[root.id] += 1
-    return bound
 
 
 def _imports(tree: ast.Module, bound: Counter[str]) -> dict[str, str]:
@@ -159,18 +128,10 @@ def _plain_types(
         )
     if (
         isinstance(node, ast.Subscript)
-        and (wrapper := _qualified(node.value, bindings)) in _TYPING
+        and (wrapper := qualified_name(node.value, bindings)) in _TYPING
     ):
         parts = node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
         if wrapper.endswith("Annotated"):
             parts = parts[:1]
         return set().union(*(_plain_types(part, bindings, bound) for part in parts))
     return set()
-
-
-def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
-    if isinstance(node, ast.Name):
-        return bindings.get(node.id)
-    if isinstance(node, ast.Attribute) and (parent := _qualified(node.value, bindings)):
-        return f"{parent}.{node.attr}"
-    return None
