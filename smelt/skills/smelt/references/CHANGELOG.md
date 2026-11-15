@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional ownership review [SMT360](docs/rules/SMT360.md)
+  `mutable-field-in-frozen-dataclass` reports directly annotated `dict`, `list`
+  and `set` instance fields on explicitly frozen dataclasses, including import
+  aliases. Review mutability and caller aliases; `Mapping` alone freezes nothing
+  and a mapping proxy needs a defensive copy to isolate the caller's dictionary.
+  Enable `rules: {mutable-field-in-frozen-dataclass: warning}`; no automatic rewrite.
+  Implements [#153](https://github.com/mathisarends/smelt/issues/153).
 - Optional style review [SMT359](docs/rules/SMT359.md)
   `nested-conditional-expression` reports direct nesting in either result branch,
   once per outermost chain. Use explicit `if/elif` or `match` while preserving lazy
