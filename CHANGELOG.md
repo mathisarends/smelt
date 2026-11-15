@@ -42,6 +42,21 @@ current configuration and complete rule contracts, see the [README](README.md),
   outer requirement and `smelt context` shows the policy. Tests are not
   checked; no automatic rewrite. Implements
   [#137](https://github.com/mathisarends/smelt/issues/137).
+- Optional review [SMT357](docs/rules/SMT357.md) `missing-duration-unit`
+  reports module constants, class fields and parameters named `*timeout`,
+  `*delay`, `*interval`, `*duration` or `*wait` that hold an `int` or `float`
+  without a unit suffix, such as `_FRAME_TIMEOUT = 2.0`. Names ending in a
+  unit (`_TIMEOUT_SECONDS`, `quiet_ms`), `timedelta` values, `@overload` and
+  `@override` signatures and tests are not reported. Enable it with
+  `rules: {missing-duration-unit: warning}`; no automatic rewrite.
+- Optional review [SMT358](docs/rules/SMT358.md) `prefer-named-duration`
+  reports `int` and `float` literals passed as the duration of
+  `asyncio.timeout`, `asyncio.sleep`, `asyncio.wait_for`, `asyncio.wait`,
+  `time.sleep` and the anyio and trio sleep and timeout scopes, and literals
+  added to a clock reading such as `loop.time() + 10`. `sleep(0)` and tests
+  are not reported. Enable it with `rules: {prefer-named-duration: warning}`;
+  no automatic rewrite. Together with SMT357 implements
+  [#135](https://github.com/mathisarends/smelt/issues/135).
 
 ## [0.8.0] - 2026-11-14
 
