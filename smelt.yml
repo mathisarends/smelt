@@ -81,6 +81,7 @@ rules:
   prefer-deferred-annotations: warning
   missing-interface-docstring: warning
   stateful-dataclass: warning
+  duplicate-function: warning
   missing-broad-except-reason: warning
   # These reviews need semantic judgment: equal shapes can model distinct concepts.
   duplicate-literal-type: hint
