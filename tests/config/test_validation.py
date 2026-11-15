@@ -34,6 +34,9 @@ class TestPackageContracts:
             {"match": "gateway", "type_dispatch": {"style": "allow"}},
             {"match": "gateway", "bases": {"pydantic.BaseModel": "gateway.Model"}},
             {"match": "gateway", "bases": {}},
+            {"match": "gateway", "errors": {"base": "gateway.errors.GatewayError"}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["TypeError"]}},
+            {"match": "gateway", "errors": {}},
             {
                 "match": "gateway",
                 "ordering": {},
@@ -73,6 +76,11 @@ class TestPackageContracts:
             {"match": "gateway", "bases": {"BaseModel": "gateway.Model"}},
             {"match": "gateway", "bases": {"pydantic.BaseModel": "gateway..Model"}},
             {"match": "gateway", "bases": {"gateway.Model": "gateway.Model"}},
+            {"match": "gateway", "errors": {"base": "GatewayError"}},
+            {"match": "gateway", "errors": {"base": "app..Error"}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["Nope"]}},
+            {"match": "gateway", "errors": {"base": "app.E", "allow": ["len"]}},
+            {"match": "gateway", "errors": {"base": "app.E", "raise": "x"}},
             {
                 "match": "gateway",
                 "ordering": {"module": ["public", "private"]},

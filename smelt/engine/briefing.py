@@ -546,7 +546,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 f"  Export hint: from {contract['export_at']} outside importers per name; count tests: {contract['count_tests']}"
             )
         lines.extend(
-            f"  {key}: {_policy_value(contract[key])}"
+            f"  {key}: {_policy_value(key, contract[key])}"
             for key in (
                 "module_docstrings",
                 "future_annotations",
@@ -554,6 +554,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "max_positional_parameters",
                 "dataclass_options",
                 "bases",
+                "errors",
             )
             if key in contract
         )
@@ -565,7 +566,9 @@ def _contract_lines(briefing: Briefing) -> list[str]:
     return lines
 
 
-def _policy_value(value: object) -> str:
+def _policy_value(key: str, value: object) -> str:
+    if key == "errors" and isinstance(value, dict):
+        return _error_policy(value)
     # Option lists such as dataclass_options read as the keywords they require.
     if isinstance(value, list):
         return ", ".join(f"{item}=True" for item in value) or "none"
@@ -573,6 +576,13 @@ def _policy_value(value: object) -> str:
         pairs = (f"{outside} -> {project}" for outside, project in value.items())
         return ", ".join(pairs) or "none"
     return str(value)
+
+
+def _error_policy(policy: dict[str, Any]) -> str:
+    if policy["base"] is None:
+        return "none"
+    allowed = ", ".join(policy["allow"])
+    return f"raise {policy['base']}" + (f"; allow {allowed}" if allowed else "")
 
 
 def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
