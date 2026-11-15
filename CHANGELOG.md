@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional style review [SMT359](docs/rules/SMT359.md)
+  `nested-conditional-expression` reports direct nesting in either result branch,
+  once per outermost chain. Use explicit `if/elif` or `match` while preserving lazy
+  evaluation. Simple fallbacks and independent conditionals remain valid. Enable
+  `rules: {nested-conditional-expression: hint}`; no automatic rewrite. Implements
+  [#152](https://github.com/mathisarends/smelt/issues/152).
 - Optional review [SMT348](docs/rules/SMT348.md) `missing-interface-docstring`
   reports `@abstractmethod` and `typing.Protocol` methods whose body is only
   `...`, `pass` or `raise NotImplementedError` and which have no docstring, so
