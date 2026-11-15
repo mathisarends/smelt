@@ -60,7 +60,7 @@ _CATEGORY_ORDER = [
 ]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CheckOptions:
     paths: tuple[str, ...] = ()  # project-relative POSIX paths
     changed: bool = False
@@ -80,7 +80,7 @@ class CheckOptions:
     comparison: Comparison | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class CheckOutcome:
     report: Report
     context: AnalysisContext

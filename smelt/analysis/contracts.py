@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from smelt.config.models import PackageContract
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ResolvedContract:
     name: str
     package: str
@@ -147,6 +147,7 @@ class ContractIndex:
             "ordering",
             "type_dispatch",
             "max_positional_parameters",
+            "dataclass_options",
         ],
     ) -> ResolvedContract | None:
         return max(
@@ -239,6 +240,7 @@ class ContractIndex:
                             "future_annotations",
                             "private_modules",
                             "max_positional_parameters",
+                            "dataclass_options",
                         )
                         if getattr(contract.spec, key) is not None
                     }

@@ -84,7 +84,7 @@ _CONTEXT_TIMEOUTS = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AsyncDeadline:
     awaited: bool
     bounded: bool

@@ -50,7 +50,7 @@ def _head(root: Path) -> str | None:
     raise AnalysisError(result.stderr.decode("utf-8", errors="replace").strip())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class GitRepository:
     path: Path
     head: str | None
@@ -113,7 +113,7 @@ class Comparison:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class GitIndex:
     repository: Path
     identity: str

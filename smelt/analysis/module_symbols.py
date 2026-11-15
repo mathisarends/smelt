@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import SyntaxIndex
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ModuleSymbol:
     module: str
     path: str

@@ -27,7 +27,7 @@ class TargetError(ValueError):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Target:
     kind: str  # project | feature | module | package
     feature: str | None = None
@@ -36,7 +36,7 @@ class Target:
     planned: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LayerBrief:
     name: str
     package: str | None
@@ -52,7 +52,7 @@ class LayerBrief:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Briefing:
     target: Target
     package: str | None
@@ -546,12 +546,13 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 f"  Export hint: from {contract['export_at']} outside importers per name; count tests: {contract['count_tests']}"
             )
         lines.extend(
-            f"  {key}: {contract[key]}"
+            f"  {key}: {_policy_value(contract[key])}"
             for key in (
                 "module_docstrings",
                 "future_annotations",
                 "private_modules",
                 "max_positional_parameters",
+                "dataclass_options",
             )
             if key in contract
         )
@@ -561,6 +562,13 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             f"Import style: {style['style']}, maximum relative level {style['max_relative_level']} ({style['contract']})"
         )
     return lines
+
+
+def _policy_value(value: object) -> str:
+    # Option lists such as dataclass_options read as the keywords they require.
+    if isinstance(value, list):
+        return ", ".join(f"{item}=True" for item in value) or "none"
+    return str(value)
 
 
 def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:

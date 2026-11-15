@@ -95,7 +95,7 @@ class ExcessPositionalParameters(Rule):
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Signature:
     node: _Function
     positional: list[str]

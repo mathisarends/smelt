@@ -48,13 +48,13 @@ _ALIASES = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Type:
     name: str
     fields: dict[str, _Type | None] | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NamespaceEvidence:
     root_type: str | None
     unresolved_at: tuple[str, ...] | None

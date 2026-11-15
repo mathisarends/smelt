@@ -131,6 +131,14 @@
       ],
       "type": "string"
     },
+    "DataclassOption": {
+      "enum": [
+        "frozen",
+        "slots",
+        "kw_only"
+      ],
+      "type": "string"
+    },
     "FeaturesConfig": {
       "additionalProperties": false,
       "properties": {
@@ -545,6 +553,22 @@
           "default": null,
           "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
           "title": "Max Positional Parameters"
+        },
+        "dataclass_options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DataclassOption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
+          "title": "Dataclass Options"
         },
         "rules": {
           "$ref": "#/$defs/SourceRuleSettings"
@@ -1707,6 +1731,21 @@
             "hint"
           ]
         },
+        "missing-dataclass-option": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT351: A dataclass does not set an option its package requires.",
+          "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
+          "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "duplicate-function": {
           "type": "string",
           "enum": [
@@ -2833,6 +2872,21 @@
             "hint"
           ]
         },
+        "^SMT351$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT351: A dataclass does not set an option its package requires.",
+          "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
+          "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT352$": {
           "type": "string",
           "enum": [
@@ -3905,6 +3959,21 @@
             "hint"
           ]
         },
+        "missing-dataclass-option": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT351: A dataclass does not set an option its package requires.",
+          "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
+          "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "duplicate-function": {
           "type": "string",
           "enum": [
@@ -4774,6 +4843,21 @@
           "markdownDescription": "**SMT350 \u2014 missing-broad-except-reason**\n\nA broad exception handler does not say why it catches everything.\n\nCatching Exception, BaseException or everything with a bare except is sometimes the right call: a background task must survive a failing callback, or a best-effort lookup may fail in many ways. Which of these applies is invisible in the code itself, and a linter pragma such as '# noqa: BLE001' or '# pylint: disable=broad-exception-caught' records only that the warning was silenced, not why. Without the reason, a reviewer cannot tell a deliberate boundary from a swallowed bug. This opt-in review reports an except clause whose type is Exception, BaseException, a tuple containing one of them, or missing, when no explanatory comment sits on the except line, on the comment lines directly above it, or between the except line and the first statement of its body, including a trailing comment on that statement. Tool directives such as noqa, pylint: disable, type: ignore, pragma: no cover and smelt: ignore do not count as an explanation, but text after them does. Handlers whose last statement is a raise and that contain no return, break or continue always propagate the failure and are not reported. Tests are not reported.\n\n**Problem**\n```python\ntry:\n    return plugin.load()\nexcept Exception:  # pylint: disable=broad-exception-caught\n    return None\n```\n\n**Preferred**\n```python\ntry:\n    return plugin.load()\nexcept Exception:  # pylint: disable=broad-exception-caught\n    # Third-party plugins may fail in any way; a broken one is skipped.\n    return None\n```\n\nCatch the specific exceptions the code can recover from. When the handler must stay broad, add a comment that states why, for example which boundary it protects or why any failure is acceptable. No automatic rewrite is performed. Enable rules: {missing-broad-except-reason: hint}, or select SMT350. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-broad-except-reason` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT351$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT351: A dataclass does not set an option its package requires.",
+          "description": "A dataclass does not set an option its package requires. Whether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked. Repair: Add the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.",
+          "markdownDescription": "**SMT351 \u2014 missing-dataclass-option**\n\nA dataclass does not set an option its package requires.\n\nWhether a dataclass is frozen, uses slots or takes keyword-only arguments changes how callers may use it, yet codebases drift between @dataclass, @dataclass(frozen=True) and @dataclass(frozen=True, slots=True) without anyone being able to tell which deviations are deliberate. A package contract lists dataclass_options, any of frozen, slots and kw_only, and every production @dataclass in the package must set each of them to True. An option that is missing or explicitly False is reported; a non-literal value is not judged. Missing slots is not reported when a base class comes from outside the project, such as a third-party or builtin class without __slots__, because slots save nothing there; bases from abc and typing still count. It is also not reported for classes with a functools.cached_property, which needs an instance __dict__. Nested packages can set their own list, and [] lifts the requirement. Tests are not checked.\n\n**Problem**\n```python\n@dataclass(frozen=True)\nclass Policy:\n    timeout_seconds: float\n```\n\n**Preferred**\n```python\n@dataclass(frozen=True, slots=True)\nclass Policy:\n    timeout_seconds: float\n```\n\nAdd the missing options to the decorator. A dataclass that must stay mutable or unslotted keeps a reasoned suppression, or lives in a package whose contract sets its own dataclass_options. No automatic rewrite is performed. Enable it with a package contract, e.g. structure.contracts.<name>: {match: app, dataclass_options: [frozen, slots]}.\n\nRun `smelt explain missing-dataclass-option` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT352$": {

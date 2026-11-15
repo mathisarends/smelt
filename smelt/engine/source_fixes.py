@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SourceEdit:
     path: str
     target: Path

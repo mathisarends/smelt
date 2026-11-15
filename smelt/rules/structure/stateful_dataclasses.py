@@ -157,7 +157,7 @@ class StatefulDataclass(Rule):
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _StatefulClass:
     owner: ast.ClassDef
     methods: tuple[str, ...]

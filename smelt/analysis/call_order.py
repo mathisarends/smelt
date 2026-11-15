@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 type Function = ast.FunctionDef | ast.AsyncFunctionDef
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CallOrderIssue:
     node: Function
     scope: str

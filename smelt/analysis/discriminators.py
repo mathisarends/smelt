@@ -15,7 +15,7 @@ _DISCRIMINATORS = frozenset({"type", "kind", "tag"})
 _WRAPPERS = frozenset({"Annotated", "Required", "NotRequired"})
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StringDiscriminator:
     node: ast.AnnAssign
     owner: str

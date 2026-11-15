@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 _NAMESPACE = TypeAdapter(Namespace)
 
 
-@dataclass
+@dataclass(slots=True)
 class ModuleSyntax:
     module: str
     path: str

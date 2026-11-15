@@ -104,7 +104,7 @@ _ASYNC_FACTORY_TYPES = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Binding:
     qualified: str
     kind: str = "symbol"
@@ -307,7 +307,7 @@ def _nonempty_range(node: ast.Call) -> bool:
     )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TestCall:
     node: ast.Call
     qualified: str
@@ -374,7 +374,7 @@ class TestCall:
         return isinstance(target, ast.Constant) and isinstance(target.value, str)
 
 
-@dataclass
+@dataclass(slots=True)
 class MockObservation:
     node: ast.Call | ast.Attribute
     origin: str
@@ -384,7 +384,7 @@ class MockObservation:
     provenance: str
 
 
-@dataclass
+@dataclass(slots=True)
 class HelperCall:
     node: ast.Call
     function: TestFunction
@@ -406,7 +406,7 @@ class HelperCall:
         ]
 
 
-@dataclass
+@dataclass(slots=True)
 class TestFunction:
     node: Function
     name: str
@@ -475,7 +475,7 @@ class TestFunction:
         return evidence
 
 
-@dataclass
+@dataclass(slots=True)
 class TestModule:
     path: str
     imports: list[tuple[ast.Import | ast.ImportFrom, str]] = field(default_factory=list)
@@ -1286,7 +1286,7 @@ def _declared_fixtures(
     return visitor.defined_fixtures
 
 
-@dataclass
+@dataclass(slots=True)
 class TestReferences:
     imports: list[tuple[int, str]]
     attributes: list[tuple[int, str, bool]]

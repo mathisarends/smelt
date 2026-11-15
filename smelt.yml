@@ -52,6 +52,7 @@ structure:
       future_annotations: when-needed
       ordering: {fix: safe-only}
       max_positional_parameters: 3
+      dataclass_options: [slots]
     module-names:
       match: smelt
       private_modules: forbid

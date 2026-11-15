@@ -38,7 +38,7 @@ class CliError(Exception):
         self.value = value
 
 
-@dataclass
+@dataclass(slots=True)
 class Console:
     out: TextIO
     err: TextIO

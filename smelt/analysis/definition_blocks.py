@@ -52,7 +52,7 @@ def builtin_type_aliases() -> dict[str, str]:
     return {name: f"builtins.{name}" for name in _UNION_BUILTINS}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DefinitionBlock:
     nodes: tuple[ast.stmt, ...]
     first: int

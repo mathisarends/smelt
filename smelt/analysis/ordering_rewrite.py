@@ -28,13 +28,13 @@ _FIX_BOUNDARY = re.compile(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Span:
     start: int
     end: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Move:
     section: OrderSection
     parts: tuple[Span, ...]

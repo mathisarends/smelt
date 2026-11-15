@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ProviderForwarding:
     node: ast.FunctionDef
     owner: str
