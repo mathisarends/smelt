@@ -33,6 +33,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   ignored. Enable it with `rules: {missing-broad-except-reason: hint}`; no
   automatic rewrite. Implements
   [#143](https://github.com/mathisarends/smelt/issues/143).
+- Optional review [SMT352](docs/rules/SMT352.md) `duplicate-function` reports
+  module-level functions whose parameters, annotations, decorators and body
+  match another function in the same root package, ignoring names,
+  docstrings, comments and formatting. Every copy gets a finding listing the
+  others and their nearest common package. Bodies under three statements,
+  methods, nested functions and tests are ignored. Enable it with
+  `rules: {duplicate-function: warning}`; no automatic rewrite. Implements
+  [#140](https://github.com/mathisarends/smelt/issues/140).
 
 ## [0.8.0] - 2026-11-14
 

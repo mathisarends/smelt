@@ -1707,6 +1707,21 @@
             "hint"
           ]
         },
+        "duplicate-function": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -2818,6 +2833,21 @@
             "hint"
           ]
         },
+        "^SMT352$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -3875,6 +3905,21 @@
             "hint"
           ]
         },
+        "duplicate-function": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -4729,6 +4774,21 @@
           "markdownDescription": "**SMT350 \u2014 missing-broad-except-reason**\n\nA broad exception handler does not say why it catches everything.\n\nCatching Exception, BaseException or everything with a bare except is sometimes the right call: a background task must survive a failing callback, or a best-effort lookup may fail in many ways. Which of these applies is invisible in the code itself, and a linter pragma such as '# noqa: BLE001' or '# pylint: disable=broad-exception-caught' records only that the warning was silenced, not why. Without the reason, a reviewer cannot tell a deliberate boundary from a swallowed bug. This opt-in review reports an except clause whose type is Exception, BaseException, a tuple containing one of them, or missing, when no explanatory comment sits on the except line, on the comment lines directly above it, or between the except line and the first statement of its body, including a trailing comment on that statement. Tool directives such as noqa, pylint: disable, type: ignore, pragma: no cover and smelt: ignore do not count as an explanation, but text after them does. Handlers whose last statement is a raise and that contain no return, break or continue always propagate the failure and are not reported. Tests are not reported.\n\n**Problem**\n```python\ntry:\n    return plugin.load()\nexcept Exception:  # pylint: disable=broad-exception-caught\n    return None\n```\n\n**Preferred**\n```python\ntry:\n    return plugin.load()\nexcept Exception:  # pylint: disable=broad-exception-caught\n    # Third-party plugins may fail in any way; a broken one is skipped.\n    return None\n```\n\nCatch the specific exceptions the code can recover from. When the handler must stay broad, add a comment that states why, for example which boundary it protects or why any failure is acceptable. No automatic rewrite is performed. Enable rules: {missing-broad-except-reason: hint}, or select SMT350. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain missing-broad-except-reason` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT352$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT352: A module-level function repeats another function's code.",
+          "description": "A module-level function repeats another function's code. Copy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations. Repair: Keep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.",
+          "markdownDescription": "**SMT352 \u2014 duplicate-function**\n\nA module-level function repeats another function's code.\n\nCopy-pasted helpers drift: a fix or a changed message lands in one copy and the others keep the old behavior, and readers cannot tell whether the difference is intended. This opt-in review compares module-level functions within each analyzed root package and reports every function whose parameters, annotations, decorators and body are identical to another one's, ignoring names, docstrings, comments and formatting. A body needs at least three statements, counting nested ones, so trivial one-liners are not reported. Methods, nested functions, test files and separate root packages are not compared. Each copy gets its own finding with the other locations.\n\n**Problem**\n```python\n# app/tools/keyboard.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/typing.py\ndef _secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n```\n\n**Preferred**\n```python\n# app/tools/effects.py\ndef secret_entered(exact: bool) -> Effect:\n    if exact:\n        return Effect(\"Text entered.\")\n    return Effect(\"Text entered with a slip.\", break_chain=True)\n\n# app/tools/keyboard.py and app/tools/typing.py\nfrom app.tools.effects import secret_entered\n```\n\nKeep one copy in a module both callers may import, usually in their nearest common package, and import it from there. Check architecture boundaries and import cycles when choosing the owner. Copies that must evolve independently keep a reasoned suppression. No automatic rewrite is performed. Enable rules: {duplicate-function: warning}, or select SMT352.\n\nRun `smelt explain duplicate-function` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {

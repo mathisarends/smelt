@@ -55,7 +55,8 @@ The repository also enables public-first ordering, the complete
 It checks private-symbol imports, redundant delegates/name aliases, deferred
 annotations, explicit `StrEnum` values and docstrings on abstract and
 `Protocol` methods, dataclasses that mutate their own fields after
-construction and broad exception handlers without a stated reason. Keep
+construction, broad exception handlers without a stated reason and copied
+module-level functions; shared syntax helpers live in `analysis/bindings.py`. Keep
 serialized enum values stable.
 Functions accept at most three positional parameters; pass later arguments by
 keyword, including in tests and partial applications. Repeated `Literal` types
