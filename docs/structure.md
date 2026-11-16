@@ -430,13 +430,23 @@ by default; it does not fail the usual error gate. Choose `public: ['.']` instea
 to require facade-only imports regardless of their count. No facade or import is
 rewritten automatically.
 
+These package API checks also cover discovered tests and `conftest.py` under
+`project.test_roots`, for example `backend/tests`. Tests are outside callers even
+when their configured test root is inside the contracted package. Thus
+`public: ['.']` rejects deep test imports with [SMT107](rules/SMT107.md), and
+`bundle_imports_at` reviews per-test-file fanout with [SMT108](rules/SMT108.md).
+Production implementation imports inside the package remain allowed.
+`tests.quality_exclude` only affects test-quality reviews; use ordinary reasoned
+suppressions for deliberate API exceptions. Project exclusions still apply.
+
 When the exports already exist, enable `rules: {prefer-package-import: hint}`
 or `--select SMT319`. For example, if `app.observation.__init__` directly exports
 `Observe` and `Snapshot`, it suggests replacing
 `from app.observation.models import Snapshot` with a package import that can join
 `from app.observation import Observe, Snapshot`. Every imported name must have a
 direct, unconditional public re-export; aliases and relative imports are preserved
-in suggestions. Internal imports, package initializers, uncertain exports and
+in suggestions. Tests use the same existing-export suggestions. Internal production
+imports, package initializers, uncertain exports and
 unscanned third-party packages are excluded. See [SMT319](rules/SMT319.md).
 
 To find names that are widely imported but missing from a facade, configure

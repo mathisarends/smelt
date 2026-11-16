@@ -129,6 +129,12 @@ class FileIndex:
     def source_for_path(self, path: str) -> SourceFile | None:
         return self.by_path.get(path)
 
+    def is_test_path(self, path: str) -> bool:
+        """Recognize tests even when a test root overlaps a source package."""
+        return path in self.tests or any(
+            Path(path).is_relative_to(root) for root in self.config.project.test_roots
+        )
+
     def path_for_module(self, module: str) -> str | None:
         source = self.sources.get(module)
         if source is not None:

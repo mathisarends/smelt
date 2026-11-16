@@ -363,6 +363,48 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     assert exported["violations"] == []
 
 
+@pytest.mark.parametrize(
+    ("code", "count"), [("SMT107", 2), ("SMT108", 1), ("SMT319", 1)]
+)
+def test_staged_test_imports_use_index_callers_policy_and_exports(
+    repo: Path, capsys: pytest.CaptureFixture[str], code: str, *, count: int
+) -> None:
+    config = "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, public: ['.'], bundle_imports_at: 2}\n"
+    write_project(
+        repo,
+        {
+            "smelt.yml": config,
+            "app/api/__init__.py": "from .impl import Item\n",
+            "app/api/impl.py": "class Item: pass\n",
+            "app/api/other.py": "class Other: pass\n",
+            "tests/test_api.py": "from app.api import Item\n",
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "public API baseline")
+    write_project(
+        repo,
+        {
+            "tests/test_api.py": "from app.api.impl import Item\nfrom app.api.other import Other\n"
+        },
+    )
+    _git(repo, "add", "tests/test_api.py")
+    # Working-tree repairs and policy changes must not hide staged imports.
+    write_project(
+        repo,
+        {
+            "tests/test_api.py": "from app.api import Item\n",
+            "app/api/__init__.py": "",
+            "smelt.yml": config + f"rules: {{{code}: off}}\n",
+        },
+    )
+    for flags in ((), (), ("--no-cache",)):
+        _, report = _check(repo, capsys, "--select", code, *flags)
+        assert [(v["code"], v["path"]) for v in report["violations"]] == [
+            (code, "tests/test_api.py")
+        ] * count
+
+
 def test_staged_change_finds_unchanged_definition_and_matches_uncached(
     repo: Path,
     capsys: pytest.CaptureFixture[str],

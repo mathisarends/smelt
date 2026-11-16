@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
+    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
     from smelt.config.source import SourceStore
 
 
@@ -103,6 +104,13 @@ class ImportDetail:
 
 _DETAILS = TypeAdapter(list[ImportDetail])
 _CHAIN_CACHE_HOPS = 20_000
+
+
+@dataclass(frozen=True, slots=True)
+class _ImportDescription:
+    names: tuple[str, ...]
+    column: int
+    end_column: int
 
 
 class _SourceRootPackageFinder(AbstractPackageFinder):
@@ -247,6 +255,47 @@ class ImportIndex:
         for module in self.modules():
             yield from self.imports_of(module)
 
+    def imports_in_tests(
+        self, syntax: SyntaxIndex
+    ) -> Iterator[tuple[str, ImportDetail]]:
+        """Direct project imports in separately discovered tests, outside the source graph.
+
+        Preserve the path independently of the module name: workspace test paths
+        may coincide with an installed source module's name.
+        """
+        modules = self.files.sources.keys() | self.files.packages.keys()
+        for path in sorted(self.files.tests):
+            module = syntax.for_path(path)
+            if module is None:
+                continue
+            guarded = type_checking_lines(module.tree)
+            for node in ast.walk(module.tree):
+                if not isinstance(node, ast.Import | ast.ImportFrom):
+                    continue
+                contents = self.files.line(path, node.lineno)
+                for imported in _project_targets(node, module, modules=modules):
+                    description = _describe(
+                        node,
+                        module.module,
+                        module.is_package,
+                        imported=imported,
+                        line_contents=contents,
+                    )
+                    yield (
+                        path,
+                        ImportDetail(
+                            importer=module.module,
+                            imported=imported,
+                            line=node.lineno,
+                            line_contents=contents,
+                            names=description.names,
+                            type_checking=node.lineno in guarded,
+                            external=False,
+                            column=description.column,
+                            end_column=description.end_column,
+                        ),
+                    )
+
     def modules(self) -> list[str]:
         return sorted(m for m in self.first_party if m in self.files.sources)
 
@@ -353,7 +402,7 @@ class ImportIndex:
                     )
                 ]
                 for node in nodes or [None]:
-                    names, column, end_column = _describe(
+                    description = _describe(
                         node,
                         module,
                         source.is_package,
@@ -366,15 +415,39 @@ class ImportIndex:
                             imported=imported,
                             line=line,
                             line_contents=contents,
-                            names=names,
+                            names=description.names,
                             type_checking=line in guarded,
                             external=external,
-                            column=column,
-                            end_column=end_column,
+                            column=description.column,
+                            end_column=description.end_column,
                         )
                     )
         details.sort(key=lambda d: (d.line, d.column, d.imported))
         return details
+
+
+def _project_targets(
+    node: ast.Import | ast.ImportFrom,
+    module: ModuleSyntax,
+    *,
+    modules: set[str],
+) -> list[str]:
+    if isinstance(node, ast.Import):
+        return sorted({alias.name for alias in node.names if alias.name in modules})
+    base = resolve_relative(
+        module.module,
+        is_package=module.is_package,
+        level=node.level,
+        target=node.module,
+    )
+    if base not in modules:
+        return []
+    return sorted(
+        {
+            name if (name := f"{base}.{alias.name}") in modules else base
+            for alias in node.names
+        }
+    )
 
 
 def _statements_by_line(
@@ -410,10 +483,10 @@ def _describe(
     *,
     imported: str,
     line_contents: str,
-) -> tuple[tuple[str, ...], int, int]:
+) -> _ImportDescription:
     """Imported names and the 1-based column span to underline on the first line."""
     if node is None:
-        return (imported,), 1, len(line_contents) + 1
+        return _ImportDescription((imported,), 1, len(line_contents) + 1)
     if isinstance(node, ast.Import):
         return _describe_import(node, imported, line_contents)
     return _describe_import_from(node, module, is_package, imported=imported)
@@ -421,11 +494,12 @@ def _describe(
 
 def _describe_import(
     node: ast.Import, imported: str, line_contents: str
-) -> tuple[tuple[str, ...], int, int]:
+) -> _ImportDescription:
     first_line_end = (
         node.end_col_offset if node.end_lineno == node.lineno else len(line_contents)
     )
-    span = (node.col_offset + 1, (first_line_end or 0) + 1)
+    column = node.col_offset + 1
+    end_column = (first_line_end or 0) + 1
     matching = [
         alias
         for alias in node.names
@@ -434,13 +508,14 @@ def _describe_import(
     names = tuple(alias.name for alias in matching) or (imported,)
     if len(matching) == 1 and matching[0].lineno == node.lineno:
         alias = matching[0]
-        span = (alias.col_offset + 1, (alias.end_col_offset or 0) + 1)
-    return names, *span
+        column = alias.col_offset + 1
+        end_column = (alias.end_col_offset or 0) + 1
+    return _ImportDescription(names, column, end_column)
 
 
 def _describe_import_from(
     node: ast.ImportFrom, module: str, is_package: bool, *, imported: str
-) -> tuple[tuple[str, ...], int, int]:
+) -> _ImportDescription:
     base = resolve_relative(
         module, is_package=is_package, level=node.level, target=node.module
     )
@@ -449,13 +524,17 @@ def _describe_import_from(
     )
     for alias, name in zip(node.names, names, strict=True):
         if name == imported and alias.lineno == node.lineno:
-            return (name,), alias.col_offset + 1, (alias.end_col_offset or 0) + 1
+            return _ImportDescription(
+                (name,), alias.col_offset + 1, (alias.end_col_offset or 0) + 1
+            )
     matching = tuple(
         n for n in names if is_within(n, imported) or is_within(imported, n)
     )
     if len(node.names) == 1 and node.names[0].lineno == node.lineno:
         alias = node.names[0]
-        return matching or names, alias.col_offset + 1, (alias.end_col_offset or 0) + 1
+        return _ImportDescription(
+            matching or names, alias.col_offset + 1, (alias.end_col_offset or 0) + 1
+        )
     start = node.col_offset + len("from ")
     text = "." * node.level + (node.module or "")
-    return matching or names, start + 1, start + len(text) + 1
+    return _ImportDescription(matching or names, start + 1, start + len(text) + 1)

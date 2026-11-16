@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,6 +22,101 @@ structure:
       public: [api]
 """
 OPTIONS = CheckOptions(select=("SMT107",))
+
+
+@pytest.mark.parametrize(
+    "test_path",
+    [
+        "tests/test_orders.py",
+        "backend/tests/conftest.py",
+        "app/orders/tests/test_orders.py",
+    ],
+)
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "import app.orders.storage as db",
+        "from app.orders import storage as db",
+        "from app.orders.storage import OrderStore as Store",
+        "from app.orders.api import database",
+    ],
+)
+def test_tests_obey_the_public_package_interface(
+    tmp_path: Path, test_path: str, statement: str
+) -> None:
+    test_root = test_path.rsplit("/", 1)[0]
+    _project(
+        tmp_path,
+        "",
+        config=CONFIG.replace(
+            "root_packages: [app]", f"root_packages: [app]\n  test_roots: [{test_root}]"
+        ),
+    )
+    write_project(
+        tmp_path,
+        {
+            test_path: "from app.orders.api import OrderStore\n" + statement + "\n",
+            "app/orders/api.py": "from .storage import OrderStore\nfrom . import storage as database\n",
+        },
+    )
+
+    [finding] = violations(tmp_path, OPTIONS)
+
+    assert (finding.code, finding.path, finding.line) == ("SMT107", test_path, 2)
+    assert finding.target_module == "app.orders.storage"
+    assert finding.expected is not None
+    assert finding.expected["public"] == ["app.orders.api"]
+
+
+@pytest.mark.parametrize("policy", ["include", "ignore"])
+def test_guarded_test_imports_follow_policy_despite_quality_exclusions(
+    tmp_path: Path, policy: str
+) -> None:
+    _project(
+        tmp_path,
+        "",
+        config=CONFIG
+        + f"\narchitecture: {{imports: {{type_checking: {policy}}}}}\ntests: {{quality_exclude: ['tests/**']}}\n",
+    )
+    write_project(
+        tmp_path,
+        {
+            "tests/test_orders.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.orders.storage import OrderStore\n"
+        },
+    )
+    found = violations(tmp_path, OPTIONS)
+    assert [(v.code, v.line) for v in found] == (
+        [("SMT107", 3)] if policy == "include" else []
+    )
+
+
+def test_deliberate_private_test_import_can_be_suppressed(tmp_path: Path) -> None:
+    _project(tmp_path, "")
+    write_project(
+        tmp_path,
+        {
+            "tests/test_orders.py": "from app.orders.storage import OrderStore  # smelt: ignore[SMT107] -- integration test of storage adapter\n"
+        },
+    )
+    report = check(tmp_path, OPTIONS).report
+    assert report.violations == []
+    assert report.suppressed == 1
+
+
+def test_project_exclusions_still_exempt_test_imports(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        "",
+        config=CONFIG.replace(
+            "root_packages: [app]",
+            "root_packages: [app]\n  exclude:\n    - {path: tests/**, reason: external integration suite}",
+        ),
+    )
+    write_project(
+        tmp_path,
+        {"tests/test_orders.py": "from app.orders.storage import OrderStore\n"},
+    )
+    assert violations(tmp_path, OPTIONS) == []
 
 
 def _project(tmp_path: Path, client: str, *, config: str = CONFIG) -> None:

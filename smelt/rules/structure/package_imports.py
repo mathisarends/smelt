@@ -28,8 +28,11 @@ class PreferPackageImport(Rule):
             "opt-in hint requires every name in a from-import to have an unconditional, "
             "direct, same-named public re-export in an analyzed ancestor __init__.py. "
             "The nearest eligible package is suggested. Static __all__ is respected. "
-            "Imports inside that package are excluded to avoid routing its own "
-            "implementation through its initializer. Imports in package initializers "
+            "Production imports inside that package are excluded to avoid routing "
+            "its own implementation through its initializer. Discovered tests and "
+            "conftest.py are checked, including configured test roots inside the "
+            "package. Test-quality exclusions do not exempt imports; project "
+            "exclusions and normal suppressions apply. Imports in package initializers "
             "also stay unchanged. Conditional, rebound, private, "
             "star and dynamic exports, re-export chains, module imports and unscanned "
             "third-party packages are outside this check."
@@ -47,7 +50,7 @@ class PreferPackageImport(Rule):
             "effects and dependency cycles. No exports are created and no automatic "
             "rewrite is performed; analyzed code is never executed."
         ),
-        config=("rules", "architecture.imports.type_checking"),
+        config=("rules", "architecture.imports.type_checking", "project.test_roots"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -57,10 +60,11 @@ class PreferPackageImport(Rule):
             if source.is_package
             and (module := ctx.syntax.for_path(source.path)) is not None
         }
-        for source in ctx.files.sources.values():
-            if source.is_package:
+        for path in ctx.files.all_python_paths():
+            source = ctx.syntax.for_path(path)
+            if source is None or source.is_package:
                 continue
-            tree = ctx.asts.parse(source.path)
+            tree = source.tree
             guarded = type_checking_lines(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ImportFrom) or any(
@@ -84,15 +88,21 @@ class PreferPackageImport(Rule):
                 package = base.rpartition(".")[0]
                 while package:
                     exports = facades.get(package, {})
-                    if not is_within(source.module, package) and all(
+                    if (
+                        not is_within(source.module, package)
+                        or ctx.files.is_test_path(path)
+                    ) and all(
                         exports.get(alias.name) == f"{base}.{alias.name}"
                         for alias in node.names
                     ):
                         import_from = package
-                        if node.level and node.module:
-                            import_from = "." * node.level + node.module.removesuffix(
-                                base.removeprefix(package)
-                            )
+                        if node.level:
+                            parts = node.module.split(".") if node.module else []
+                            removed = len(base.split(".")) - len(package.split("."))
+                            remaining = len(parts) - removed
+                            import_from = "." * (
+                                node.level + max(0, -remaining)
+                            ) + ".".join(parts[: max(0, remaining)])
                         replacement = f"from {import_from} import " + ", ".join(
                             ast.unparse(alias) for alias in node.names
                         )

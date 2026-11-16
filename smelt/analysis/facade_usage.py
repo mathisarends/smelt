@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from smelt.analysis.exports import MAX_HOPS
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
@@ -19,6 +19,23 @@ if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
     from smelt.analysis.imports import ImportIndex
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
+
+
+@dataclass(frozen=True, slots=True)
+class _Symbol:
+    module: str
+    name: str
+
+
+class _CanonicalExportIssue(NamedTuple):
+    symbol: str
+    message: str
+
+
+@dataclass(slots=True)
+class _Importers:
+    sources: set[str] = field(default_factory=set)
+    tests: set[str] = field(default_factory=set)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,17 +87,17 @@ class FacadeUsage:
         self._syntax = syntax
         self._files = files
         self._bindings: dict[str, _Bindings] = {}
-        self._resolved: dict[tuple[str, str], _Definition | None] = {}
+        self._resolved: dict[_Symbol, _Definition | None] = {}
         self._uses = tuple(self._collect_uses(count_tests=count_tests))
         self._exports = self._collect_exports()
         self._adjacency = imports.first_party_edges(include_type_checking=False)
 
     def canonical_exports(
         self, declarations: dict[str, str]
-    ) -> tuple[dict[str, str], list[tuple[str, str]]]:
+    ) -> tuple[dict[str, str], list[_CanonicalExportIssue]]:
         """Verify explicit decisions against identity and actual static exports."""
         verified: dict[str, str] = {}
-        issues: list[tuple[str, str]] = []
+        issues: list[_CanonicalExportIssue] = []
         owners: dict[_Definition, str] = {}
         for symbol, export in sorted(declarations.items()):
             module, _, name = symbol.rpartition(".")
@@ -89,7 +106,7 @@ class FacadeUsage:
             target = self._resolve(owner, public_name)
             if definition is None:
                 issues.append(
-                    (
+                    _CanonicalExportIssue(
                         symbol,
                         f"cannot statically resolve {symbol}; use an analyzed, unambiguous definition or static re-export",
                     )
@@ -98,14 +115,14 @@ class FacadeUsage:
                 definition, ()
             ):
                 issues.append(
-                    (
+                    _CanonicalExportIssue(
                         symbol,
                         f"{export} is not a verified public export of {symbol}; declare a static re-export and include it in __all__ when declared. Unsupported dynamic exports cannot verify ownership.",
                     )
                 )
             elif definition in owners and owners[definition] != export:
                 issues.append(
-                    (
+                    _CanonicalExportIssue(
                         symbol,
                         f"conflicting canonical exports for {definition.module}.{definition.name}: {owners[definition]} and {export}; choose one public owner",
                     )
@@ -127,19 +144,22 @@ class FacadeUsage:
         if bindings.opaque or exports is None:
             return
         declares_all = _declares_all(facade.tree)
-        callers: dict[_Definition, tuple[set[str], set[str]]] = {}
+        callers: dict[_Definition, _Importers] = {}
         for use in self._uses:
             definition = use.definition
             if (
                 (use.test and not count_tests)
                 or definition.module == package
                 or not is_within(definition.module, package)
-                or is_within(use.importer, package)
+                or (is_within(use.importer, package) and not use.test)
             ):
                 continue
-            groups = callers.setdefault(definition, (set(), set()))
-            groups[1 if use.test else 0].add(use.importer)
-        for definition, (sources, tests) in sorted(
+            groups = callers.setdefault(definition, _Importers())
+            if use.test:
+                groups.tests.add(use.importer)
+            else:
+                groups.sources.add(use.importer)
+        for definition, importers in sorted(
             callers.items(), key=lambda item: (item[0].module, item[0].name)
         ):
             name = definition.name
@@ -155,8 +175,8 @@ class FacadeUsage:
                 definition.path,
                 definition.line,
                 definition.column,
-                tuple(sorted(sources)),
-                tuple(sorted(tests)),
+                tuple(sorted(importers.sources)),
+                tuple(sorted(importers.tests)),
                 tuple(
                     sorted(self._exports.get(definition, set()) - {f"{package}.{name}"})
                 ),
@@ -166,11 +186,8 @@ class FacadeUsage:
 
     def _collect_uses(self, *, count_tests: bool) -> Iterator[_Use]:
         files = self._files
-        test_roots = tuple(
-            root.rstrip("/") + "/" for root in files.config.project.test_roots
-        )
         paths = [
-            (source.path, source.path.startswith(test_roots))
+            (source.path, files.is_test_path(source.path))
             for source in files.sources.values()
         ]
         if count_tests:
@@ -223,15 +240,15 @@ class FacadeUsage:
         return result
 
     def _resolve(self, module: str, name: str) -> _Definition | None:
-        key = module, name
+        key = _Symbol(module, name)
         if key not in self._resolved:
             self._resolved[key] = self._follow(module, name)
         return self._resolved[key]
 
     def _follow(self, module: str, name: str) -> _Definition | None:
-        seen: set[tuple[str, str]] = set()
-        while len(seen) < MAX_HOPS and (module, name) not in seen:
-            seen.add((module, name))
+        seen: set[_Symbol] = set()
+        while len(seen) < MAX_HOPS and _Symbol(module, name) not in seen:
+            seen.add(_Symbol(module, name))
             bindings = self._for_module(module)
             if bindings.opaque:
                 return None

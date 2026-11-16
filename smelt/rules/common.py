@@ -22,6 +22,13 @@ def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
     )
 
 
+def package_api_imports(ctx: AnalysisContext) -> Iterator[tuple[str, ImportDetail]]:
+    """Source and test callers for package API policy, without widening layer checks."""
+    for detail in ctx.imports.all_imports():
+        yield ctx.files.sources[detail.importer].path, detail
+    yield from ctx.imports.imports_in_tests(ctx.syntax)
+
+
 def boundary_imports(
     ctx: AnalysisContext,
 ) -> Iterator[tuple[ImportDetail, tuple[ImportLink, ...]]]:
@@ -85,8 +92,10 @@ def import_violation(  # noqa: PLR0913
     hint: str | None = None,
     chain: tuple[ImportLink, ...] = (),
     edge: str | None = None,
+    path: str | None = None,
 ) -> Violation:
-    source = ctx.files.sources[detail.importer]
+    if path is None:
+        path = ctx.files.sources[detail.importer].path
     info = ctx.model.info(detail.importer)
     target_module = (
         chain[-1].imported if chain and rule.code != "SMT104" else detail.imported
@@ -100,7 +109,7 @@ def import_violation(  # noqa: PLR0913
         edge = f"{_architecture_node(ctx, detail.importer)} -> {target}"
     return rule.violation(
         message,
-        path=source.path,
+        path=path,
         line=detail.line,
         column=detail.column,
         end_line=detail.line,
