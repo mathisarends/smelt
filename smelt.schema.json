@@ -594,6 +594,20 @@
           "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
           "title": "Max Positional Parameters"
         },
+        "max_comprehension_loops": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
+          "title": "Max Comprehension Loops"
+        },
         "max_constructor_decisions": {
           "anyOf": [
             {
@@ -782,6 +796,13 @@
           "$ref": "#/$defs/_PrivateAttributeBoundary",
           "default": "module",
           "description": "Ownership boundary for cross-module-private-attribute (SMT365): module or immediate Python package. Package contracts can override it. This option alone does not activate the rule."
+        },
+        "max_comprehension_loops": {
+          "default": 1,
+          "description": "Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
+          "minimum": 1,
+          "title": "Max Comprehension Loops",
+          "type": "integer"
         },
         "max_constructor_decisions": {
           "default": 2,
@@ -2008,6 +2029,21 @@
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
           "description": "A membership lookup set is rebuilt in a loop from stable immutable inputs. Repeated lookup-set construction can turn one validation pass into quadratic work and obscure a shared domain set. This opt-in review requires positive, file-local evidence: homogeneous immutable tuple literals, tuple[T, ...] annotations, or tuple fields of standard-library frozen dataclasses declared in the same module. Scalar projections may read directly declared fields of those frozen records. Annotations are assumed to describe standard builtin values and these concrete record types; runtime subclass overrides or frozen-state bypasses are not proved safe. This is not a runtime immutability proof. Records with bases, extra decorators or custom attribute access are excluded, as are descriptors, unknown fields and imported record types. Minimum snapshot evidence is a local @dataclass(frozen=True) record with a plain id: str field and a tuple[Record, ...] input; the outer iteration must also be a known tuple. The original Harnessed example uses Pydantic dataclasses and Annotated fields, which this initial implementation deliberately does not infer. Only direct for loops with a simple name target in functions or ordinary methods are reviewed; while and async loops are not inferred. The body must consist of passive scalar/tuple expressions, simple local assignments, conditionals, returns, breaks/continues or literal builtin error raises. Unknown calls, mutation through aliases, properties, nested loops/scopes, await/yield and uncertain operations make it stay quiet. A single-generator set comprehension must produce known builtin scalar values and appear on the right of in/not in. Equivalent projections are grouped per loop, including renamed comprehension variables. Tests are ignored. Repair: Review computing the lookup set once and reusing it. Preserve the empty-loop case, guards, exception timing and evaluation order: moving construction before a loop or guard can evaluate code that previously never ran. Keep lazy initialization at the first required check when necessary. No automatic hoisting is provided. Enable rules: {loop-invariant-collection: hint}, or select SMT362.",
           "markdownDescription": "**SMT362 \u2014 loop-invariant-collection**\n\nA membership lookup set is rebuilt in a loop from stable immutable inputs.\n\nRepeated lookup-set construction can turn one validation pass into quadratic work and obscure a shared domain set. This opt-in review requires positive, file-local evidence: homogeneous immutable tuple literals, tuple[T, ...] annotations, or tuple fields of standard-library frozen dataclasses declared in the same module. Scalar projections may read directly declared fields of those frozen records. Annotations are assumed to describe standard builtin values and these concrete record types; runtime subclass overrides or frozen-state bypasses are not proved safe. This is not a runtime immutability proof. Records with bases, extra decorators or custom attribute access are excluded, as are descriptors, unknown fields and imported record types. Minimum snapshot evidence is a local @dataclass(frozen=True) record with a plain id: str field and a tuple[Record, ...] input; the outer iteration must also be a known tuple. The original Harnessed example uses Pydantic dataclasses and Annotated fields, which this initial implementation deliberately does not infer. Only direct for loops with a simple name target in functions or ordinary methods are reviewed; while and async loops are not inferred. The body must consist of passive scalar/tuple expressions, simple local assignments, conditionals, returns, breaks/continues or literal builtin error raises. Unknown calls, mutation through aliases, properties, nested loops/scopes, await/yield and uncertain operations make it stay quiet. A single-generator set comprehension must produce known builtin scalar values and appear on the right of in/not in. Equivalent projections are grouped per loop, including renamed comprehension variables. Tests are ignored.\n\n**Problem**\n```python\ndef validate(wanted: tuple[str, ...], available: tuple[str, ...]):\n    for name in wanted:\n        if name not in {item for item in available}:\n            raise ValueError(\"Unknown name\")\n```\n\n**Preferred**\n```python\ndef validate(wanted: tuple[str, ...], available: tuple[str, ...]):\n    # Evaluate at the first required check if earlier evaluation matters.\n    names = set(available)\n    for name in wanted:\n        if name not in names:\n            raise ValueError(\"Unknown name\")\n```\n\nReview computing the lookup set once and reusing it. Preserve the empty-loop case, guards, exception timing and evaluation order: moving construction before a loop or guard can evaluate code that previously never ran. Keep lazy initialization at the first required check when necessary. No automatic hoisting is provided. Enable rules: {loop-invariant-collection: hint}, or select SMT362.\n\nRun `smelt explain loop-invariant-collection` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "complex-comprehension": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT363: A comprehension combines too many iteration or decision steps.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
+          "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
           "examples": [
             "hint"
           ]
@@ -3333,6 +3369,21 @@
             "hint"
           ]
         },
+        "^SMT363$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT363: A comprehension combines too many iteration or decision steps.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
+          "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT364$": {
           "type": "string",
           "enum": [
@@ -4600,6 +4651,21 @@
             "hint"
           ]
         },
+        "complex-comprehension": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT363: A comprehension combines too many iteration or decision steps.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
+          "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "constructor-logic": {
           "type": "string",
           "enum": [
@@ -5662,6 +5728,21 @@
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
           "description": "A membership lookup set is rebuilt in a loop from stable immutable inputs. Repeated lookup-set construction can turn one validation pass into quadratic work and obscure a shared domain set. This opt-in review requires positive, file-local evidence: homogeneous immutable tuple literals, tuple[T, ...] annotations, or tuple fields of standard-library frozen dataclasses declared in the same module. Scalar projections may read directly declared fields of those frozen records. Annotations are assumed to describe standard builtin values and these concrete record types; runtime subclass overrides or frozen-state bypasses are not proved safe. This is not a runtime immutability proof. Records with bases, extra decorators or custom attribute access are excluded, as are descriptors, unknown fields and imported record types. Minimum snapshot evidence is a local @dataclass(frozen=True) record with a plain id: str field and a tuple[Record, ...] input; the outer iteration must also be a known tuple. The original Harnessed example uses Pydantic dataclasses and Annotated fields, which this initial implementation deliberately does not infer. Only direct for loops with a simple name target in functions or ordinary methods are reviewed; while and async loops are not inferred. The body must consist of passive scalar/tuple expressions, simple local assignments, conditionals, returns, breaks/continues or literal builtin error raises. Unknown calls, mutation through aliases, properties, nested loops/scopes, await/yield and uncertain operations make it stay quiet. A single-generator set comprehension must produce known builtin scalar values and appear on the right of in/not in. Equivalent projections are grouped per loop, including renamed comprehension variables. Tests are ignored. Repair: Review computing the lookup set once and reusing it. Preserve the empty-loop case, guards, exception timing and evaluation order: moving construction before a loop or guard can evaluate code that previously never ran. Keep lazy initialization at the first required check when necessary. No automatic hoisting is provided. Enable rules: {loop-invariant-collection: hint}, or select SMT362.",
           "markdownDescription": "**SMT362 \u2014 loop-invariant-collection**\n\nA membership lookup set is rebuilt in a loop from stable immutable inputs.\n\nRepeated lookup-set construction can turn one validation pass into quadratic work and obscure a shared domain set. This opt-in review requires positive, file-local evidence: homogeneous immutable tuple literals, tuple[T, ...] annotations, or tuple fields of standard-library frozen dataclasses declared in the same module. Scalar projections may read directly declared fields of those frozen records. Annotations are assumed to describe standard builtin values and these concrete record types; runtime subclass overrides or frozen-state bypasses are not proved safe. This is not a runtime immutability proof. Records with bases, extra decorators or custom attribute access are excluded, as are descriptors, unknown fields and imported record types. Minimum snapshot evidence is a local @dataclass(frozen=True) record with a plain id: str field and a tuple[Record, ...] input; the outer iteration must also be a known tuple. The original Harnessed example uses Pydantic dataclasses and Annotated fields, which this initial implementation deliberately does not infer. Only direct for loops with a simple name target in functions or ordinary methods are reviewed; while and async loops are not inferred. The body must consist of passive scalar/tuple expressions, simple local assignments, conditionals, returns, breaks/continues or literal builtin error raises. Unknown calls, mutation through aliases, properties, nested loops/scopes, await/yield and uncertain operations make it stay quiet. A single-generator set comprehension must produce known builtin scalar values and appear on the right of in/not in. Equivalent projections are grouped per loop, including renamed comprehension variables. Tests are ignored.\n\n**Problem**\n```python\ndef validate(wanted: tuple[str, ...], available: tuple[str, ...]):\n    for name in wanted:\n        if name not in {item for item in available}:\n            raise ValueError(\"Unknown name\")\n```\n\n**Preferred**\n```python\ndef validate(wanted: tuple[str, ...], available: tuple[str, ...]):\n    # Evaluate at the first required check if earlier evaluation matters.\n    names = set(available)\n    for name in wanted:\n        if name not in names:\n            raise ValueError(\"Unknown name\")\n```\n\nReview computing the lookup set once and reusing it. Preserve the empty-loop case, guards, exception timing and evaluation order: moving construction before a loop or guard can evaluate code that previously never ran. Keep lazy initialization at the first required check when necessary. No automatic hoisting is provided. Enable rules: {loop-invariant-collection: hint}, or select SMT362.\n\nRun `smelt explain loop-invariant-collection` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT363$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT363: A comprehension combines too many iteration or decision steps.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
+          "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
           "examples": [
             "hint"
           ]

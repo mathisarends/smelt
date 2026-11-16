@@ -13,6 +13,15 @@ which is visible in `smelt context`; the option alone does not enable the rule.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
 
+Opt-in `complex-comprehension` (SMT363) reviews list, set, dict and generator
+comprehensions with multiple iteration or decision steps. Enable
+`rules: {complex-comprehension: hint}`. The global
+`structure.max_comprehension_loops` defaults to 1; override it globally or in a
+package contract to permit intentional flattening. Threshold options alone do not
+enable this review. Simple filters and conditional elements with names, attributes
+or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
+exact triggers and repairs that preserve generator laziness.
+
 Opt-in `constructor-logic` (SMT364) reviews decision nodes in `__init__` and
 `__post_init__`. Enable `rules: {constructor-logic: hint}`; the global
 `structure.max_constructor_decisions` defaults to 2 and can be overridden in a

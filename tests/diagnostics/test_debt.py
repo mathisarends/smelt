@@ -132,6 +132,38 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     ]
 
 
+def test_multiline_comprehension_baseline_does_not_hide_changed_logic(
+    tmp_path: Path,
+) -> None:
+    source = "value = [\n    x for group in groups for x in group\n]\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    options = CheckOptions(select=("SMT363",))
+    outcome = check(root, options)
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        root / "debt.json"
+    )
+    assert check(root, options).report.violations == []
+    write_project(
+        root,
+        {
+            "app/client.py": source.replace(
+                "x for group", "convert(x) if ready else x for group"
+            )
+        },
+    )
+    [finding] = check(root, options).report.violations
+    assert finding.code == "SMT363"
+    assert finding.expected is not None
+    assert "nontrivial conditional element" in finding.expected["conditions"]
+
+
 def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) -> None:
     source = "class Client:\n    def __init__(self, values):\n        self.values = [x for x in values]\n"
     root = write_project(

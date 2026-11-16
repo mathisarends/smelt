@@ -58,6 +58,40 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     assert not violations(tmp_path, options)
 
 
+def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
+    tmp_path: Path,
+) -> None:
+    source = "value = [\n    x for group in groups for x in group\n]\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "accept existing comprehension")
+    options = CheckOptions(changed=True, select=("SMT363",))
+    assert violations(root, options) == []
+    write_project(
+        root,
+        {
+            "app/client.py": source.replace(
+                "x for group", "convert(x) if ready else x for group"
+            )
+        },
+    )
+    [finding] = violations(root, options)
+    assert (finding.code, finding.line) == ("SMT363", 1)
+    assert finding.expected is not None
+    assert "nontrivial conditional element" in finding.expected["conditions"]
+    assert violations(
+        root, CheckOptions(changed=True, select=("SMT363",), use_cache=False)
+    ) == [finding]
+
+
 def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     tmp_path: Path,
 ) -> None:

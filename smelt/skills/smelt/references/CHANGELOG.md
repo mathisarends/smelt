@@ -15,6 +15,13 @@ current configuration and complete rule contracts, see the [README](README.md),
   ambiguous inheritance are skipped; no automatic rewrite.
   Implements [#170](https://github.com/mathisarends/smelt/issues/170).
 
+- Opt-in review [SMT363](docs/rules/SMT363.md) `complex-comprehension`
+  reports excessive iteration clauses, nontrivial conditional elements and
+  compound filters, once per outermost comprehension. Enable the rule explicitly;
+  `structure.max_comprehension_loops` and package overrides allow deliberate
+  flattening. No automatic rewrite; preserve generator laziness.
+  Implements [#167](https://github.com/mathisarends/smelt/issues/167).
+
 - Opt-in review [SMT364](docs/rules/SMT364.md) `constructor-logic` reports
   `__init__`/`__post_init__` methods above a configurable decision limit, with the
   counted node locations. Enable the rule explicitly; the global
