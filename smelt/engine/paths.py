@@ -101,6 +101,7 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
             ("module_docstrings", "module docstring policies"),
             ("future_annotations", "future annotation policies"),
             ("private_modules", "private module naming policies"),
+            ("private_attribute_boundary", "private attribute boundaries"),
             ("ordering", "definition ordering policies"),
             ("type_dispatch", "type dispatch policies"),
         ):

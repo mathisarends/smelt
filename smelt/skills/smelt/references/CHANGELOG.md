@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt-in warning [SMT365](docs/rules/SMT365.md) `cross-module-private-attribute`
+  reports private field/method accesses through statically known project receivers
+  owned by another module. Enable the rule explicitly. Global/package
+  `private_attribute_boundary: package` permits immediate-package cooperation;
+  same-module and own/inherited receiver accesses remain valid. Unknown types and
+  ambiguous inheritance are skipped; no automatic rewrite.
+  Implements [#170](https://github.com/mathisarends/smelt/issues/170).
+
 - Opt-in review [SMT364](docs/rules/SMT364.md) `constructor-logic` reports
   `__init__`/`__post_init__` methods above a configurable decision limit, with the
   counted node locations. Enable the rule explicitly; the global

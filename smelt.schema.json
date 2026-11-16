@@ -544,6 +544,18 @@
           "description": "Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
           "title": "Private Modules"
         },
+        "private_attribute_boundary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/_PrivateAttributeBoundary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override structure.private_attribute_boundary for SMT365. module allows same-module cooperation; package allows modules of the same immediate Python package. The closest explicit package policy wins; this option alone does not activate the rule."
+        },
         "ordering": {
           "anyOf": [
             {
@@ -766,6 +778,11 @@
         "file_naming": {
           "$ref": "#/$defs/FileNamingConfig"
         },
+        "private_attribute_boundary": {
+          "$ref": "#/$defs/_PrivateAttributeBoundary",
+          "default": "module",
+          "description": "Ownership boundary for cross-module-private-attribute (SMT365): module or immediate Python package. Package contracts can override it. This option alone does not activate the rule."
+        },
         "max_constructor_decisions": {
           "default": 2,
           "description": "Maximum decision nodes in __init__/__post_init__ when constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
@@ -948,6 +965,13 @@
       },
       "title": "TypeDispatchConfig",
       "type": "object"
+    },
+    "_PrivateAttributeBoundary": {
+      "enum": [
+        "module",
+        "package"
+      ],
+      "type": "string"
     },
     "RuleSettings": {
       "type": "object",
@@ -2001,6 +2025,21 @@
           "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "cross-module-private-attribute": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT365: Code accesses a private attribute owned by another module or package.",
+          "description": "Code accesses a private attribute owned by another module or package. Accessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used. Repair: Expose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.",
+          "markdownDescription": "**SMT365 \u2014 cross-module-private-attribute**\n\nCode accesses a private attribute owned by another module or package.\n\nAccessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used.\n\n**Problem**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images.retain()\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.retain_images()\n```\n\nExpose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.\n\nRun `smelt explain cross-module-private-attribute` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "test-location": {
@@ -3309,6 +3348,21 @@
             "hint"
           ]
         },
+        "^SMT365$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT365: Code accesses a private attribute owned by another module or package.",
+          "description": "Code accesses a private attribute owned by another module or package. Accessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used. Repair: Expose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.",
+          "markdownDescription": "**SMT365 \u2014 cross-module-private-attribute**\n\nCode accesses a private attribute owned by another module or package.\n\nAccessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used.\n\n**Problem**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images.retain()\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.retain_images()\n```\n\nExpose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.\n\nRun `smelt explain cross-module-private-attribute` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -4561,6 +4615,21 @@
             "hint"
           ]
         },
+        "cross-module-private-attribute": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT365: Code accesses a private attribute owned by another module or package.",
+          "description": "Code accesses a private attribute owned by another module or package. Accessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used. Repair: Expose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.",
+          "markdownDescription": "**SMT365 \u2014 cross-module-private-attribute**\n\nCode accesses a private attribute owned by another module or package.\n\nAccessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used.\n\n**Problem**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images.retain()\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.retain_images()\n```\n\nExpose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.\n\nRun `smelt explain cross-module-private-attribute` for details.",
+          "examples": [
+            "warning"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -5610,6 +5679,21 @@
           "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT365$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT365: Code accesses a private attribute owned by another module or package.",
+          "description": "Code accesses a private attribute owned by another module or package. Accessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used. Repair: Expose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.",
+          "markdownDescription": "**SMT365 \u2014 cross-module-private-attribute**\n\nCode accesses a private attribute owned by another module or package.\n\nAccessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used.\n\n**Problem**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images.retain()\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.retain_images()\n```\n\nExpose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.\n\nRun `smelt explain cross-module-private-attribute` for details.",
+          "examples": [
+            "warning"
           ]
         },
         "^SMT429$": {
