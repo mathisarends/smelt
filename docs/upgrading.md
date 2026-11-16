@@ -1,5 +1,46 @@
 # Upgrading Smelt
 
+## 0.9.0 to 0.10.0
+
+0.10.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
+the default rule set and exit codes. No baseline rewrite is required. The two
+new rules require explicit selection. See the
+[changelog](../CHANGELOG.md#0100---2026-11-16).
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.10.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.10.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.10.0]` for isolated Python hooks,
+   `rev: v0.10.0` for source hooks and `uvx --from smelt-cli==0.10.0 smelt check`
+   in CI. Run `prek install` after updating hooks.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`
+   and the agent skill with `smelt skill install --force`. Preserve local skill
+   edits first and retain `--destination` for a custom installation. Run
+   `smelt check --show-hints --fail-on warning`, plus the project's tests and
+   other checks, before relying on changed/staged comparisons.
+
+3. Adopt the new reviews deliberately:
+
+   | Rule | Activation | Review |
+   | --- | --- | --- |
+   | [SMT361](rules/SMT361.md) | `rules: {parallel-record-fields: hint}` | Declared sequence fields of one instance paired with `zip` |
+   | [SMT362](rules/SMT362.md) | `rules: {loop-invariant-collection: hint}` | Repeated membership-set comprehensions over proven immutable inputs in passive `for` loops |
+
+   Repairs remain manual. Review whether parallel fields represent records or
+   deliberate column storage before restructuring them. Preserve guards, empty
+   loops and evaluation order when moving lookup collections. SMT362 initially
+   recognizes tuple literals and explicit immutable tuple/frozen-record inputs
+   using local standard-library dataclasses and plain field types; Pydantic
+   snapshots and `Annotated` fields remain outside its inference limits.
+
 ## 0.8.0 to 0.9.0
 
 0.9.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,

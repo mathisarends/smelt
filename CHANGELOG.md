@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-16
+
+Report schema 2, YAML version 1, grouped debt baseline version 2, the default
+rule set and exit codes remain unchanged. The two new reviews require explicit
+selection and have no automatic rewrites. Update installation, hook and CI pins
+together to `0.10.0` (`v0.10.0`), refresh the editor schema and reinstall the
+bundled agent skill with `smelt skill install --force`. No baseline rewrite is
+required. See the [upgrade checklist](docs/upgrading.md#090-to-0100).
+
 - Optional design review [SMT361](docs/rules/SMT361.md) `parallel-record-fields`
   reports declared sequence fields of the same instance paired with `zip`, once
   per class and field group, with declaration and use locations. It recognizes
@@ -894,7 +903,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/mathisarends/smelt/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/mathisarends/smelt/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/mathisarends/smelt/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/mathisarends/smelt/compare/v0.6.0...v0.7.0
