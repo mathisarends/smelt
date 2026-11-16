@@ -15,7 +15,18 @@ current configuration and complete rule contracts, see the [README](README.md),
   No automatic hoisting: preserve guards, empty loops and evaluation order. The
   initial scope requires local standard-library dataclasses and plain field types;
   Pydantic snapshots and `Annotated` fields remain outside its inference limits.
-  Implements [#154](https://github.com/mathisarends/smelt/issues/154).
+  Initial scope for [#154](https://github.com/mathisarends/smelt/issues/154).
+
+## [0.9.0] - 2026-11-16
+
+Report schema 2, YAML version 1, grouped debt baseline version 2, the default
+rule set and exit codes remain unchanged. The thirteen new reviews require
+explicit selection or package policy and have no automatic rewrites. Update
+installation, hook and CI pins together to `0.9.0` (`v0.9.0`), refresh the editor
+schema and reinstall the bundled agent skill with `smelt skill install --force`.
+No baseline rewrite is required. See the
+[upgrade checklist](docs/upgrading.md#080-to-090).
+
 - Optional ownership review [SMT360](docs/rules/SMT360.md)
   `mutable-field-in-frozen-dataclass` reports directly annotated `dict`, `list`
   and `set` instance fields on explicitly frozen dataclasses, including import
@@ -876,7 +887,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/mathisarends/smelt/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/mathisarends/smelt/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/mathisarends/smelt/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/mathisarends/smelt/compare/v0.5.0...v0.6.0
