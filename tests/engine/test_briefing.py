@@ -261,6 +261,21 @@ def test_positional_parameter_limit_is_available_before_editing(
     assert "max_positional_parameters: 2" in render_briefing(briefing, ctx)
 
 
+def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    constructors: {match: app, max_constructor_decisions: 0}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+    assert briefing.to_json()["contracts"][0]["max_constructor_decisions"] == 0
+    assert "max_constructor_decisions: 0" in render_briefing(briefing, ctx)
+
+
 def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

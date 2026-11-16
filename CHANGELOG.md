@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt-in review [SMT364](docs/rules/SMT364.md) `constructor-logic` reports
+  `__init__`/`__post_init__` methods above a configurable decision limit, with the
+  counted node locations. Enable the rule explicitly; the global
+  `structure.max_constructor_decisions` defaults to 2 and supports closest-package
+  overrides, including zero. Nested helper bodies are excluded. No automatic rewrite.
+  Implements [#166](https://github.com/mathisarends/smelt/issues/166).
+
 ## [0.10.0] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default
