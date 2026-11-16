@@ -1,5 +1,14 @@
 # Package contracts and source conventions
 
+Opt-in `complex-comprehension` (SMT363) reviews list, set, dict and generator
+comprehensions with multiple iteration or decision steps. Enable
+`rules: {complex-comprehension: hint}`. The global
+`structure.max_comprehension_loops` defaults to 1; override it globally or in a
+package contract to permit intentional flattening. Threshold options alone do not
+enable this review. Simple filters and conditional elements with names, attributes
+or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
+exact triggers and repairs that preserve generator laziness.
+
 Choose canonical configuration filenames once per project:
 
 ```yaml

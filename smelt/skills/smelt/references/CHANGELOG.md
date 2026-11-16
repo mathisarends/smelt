@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt-in review [SMT363](docs/rules/SMT363.md) `complex-comprehension`
+  reports excessive iteration clauses, nontrivial conditional elements and
+  compound filters, once per outermost comprehension. Enable the rule explicitly;
+  `structure.max_comprehension_loops` and package overrides allow deliberate
+  flattening. No automatic rewrite; preserve generator laziness.
+  Implements [#167](https://github.com/mathisarends/smelt/issues/167).
+
 ## [0.10.0] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

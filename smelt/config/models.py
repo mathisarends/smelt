@@ -549,6 +549,11 @@ class PackageContract(_Model):
         ge=0,
         description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
     )
+    max_comprehension_loops: int | None = Field(
+        default=None,
+        ge=1,
+        description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
+    )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
         description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
@@ -640,6 +645,7 @@ class PackageContract(_Model):
             and self.ordering is None
             and self.type_dispatch is None
             and self.max_positional_parameters is None
+            and self.max_comprehension_loops is None
             and self.dataclass_options is None
             and self.bases is None
             and self.errors is None
@@ -669,6 +675,11 @@ class StructureConfig(_Model):
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
+    max_comprehension_loops: int = Field(
+        default=1,
+        ge=1,
+        description="Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
+    )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
         description="Named package contracts: required modules and optional public entry points.",

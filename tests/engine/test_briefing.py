@@ -261,6 +261,21 @@ def test_positional_parameter_limit_is_available_before_editing(
     assert "max_positional_parameters: 2" in render_briefing(briefing, ctx)
 
 
+def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    expressions: {match: app, max_comprehension_loops: 2}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+    assert briefing.to_json()["contracts"][0]["max_comprehension_loops"] == 2
+    assert "max_comprehension_loops: 2" in render_briefing(briefing, ctx)
+
+
 def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

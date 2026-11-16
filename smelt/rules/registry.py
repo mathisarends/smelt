@@ -87,6 +87,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.project_bases:PreferProjectBaseClass",
     "smelt.rules.structure.domain_exceptions:PreferDomainException",
     "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
+    "smelt.rules.structure.comprehensions:ComplexComprehension",
     "smelt.rules.structure.frozen_collections:MutableFieldInFrozenDataclass",
     "smelt.rules.structure.parallel_fields:ParallelRecordFields",
     "smelt.rules.structure.loop_collections:LoopInvariantCollection",
