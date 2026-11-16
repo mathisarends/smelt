@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional performance review [SMT362](docs/rules/SMT362.md)
+  `loop-invariant-collection` groups repeated membership-set comprehensions in
+  passive `for` loops when tuple literals or explicit immutable tuple/frozen-record
+  declarations establish stable inputs. Unknown calls, mutable inputs, properties
+  and suspension points stay quiet. Enable `rules: {loop-invariant-collection: hint}`.
+  No automatic hoisting: preserve guards, empty loops and evaluation order. The
+  initial scope requires local standard-library dataclasses and plain field types;
+  Pydantic snapshots and `Annotated` fields remain outside its inference limits.
+  Implements [#154](https://github.com/mathisarends/smelt/issues/154).
 - Optional ownership review [SMT360](docs/rules/SMT360.md)
   `mutable-field-in-frozen-dataclass` reports directly annotated `dict`, `list`
   and `set` instance fields on explicitly frozen dataclasses, including import
