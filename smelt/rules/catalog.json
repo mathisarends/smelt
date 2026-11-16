@@ -1054,6 +1054,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.constructors:ConstructorLogic",
+    "code": "SMT364",
+    "name": "constructor-logic",
+    "category": "structure",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

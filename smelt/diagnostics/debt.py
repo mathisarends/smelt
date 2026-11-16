@@ -127,6 +127,7 @@ def _edge_field(violation: Violation) -> str | None:
         "SMT338": "literal_edges",
         "SMT361": "pairing_edges",
         "SMT362": "lookup_edges",
+        "SMT364": "decision_edges",
         "SMT423": "patch_edges",
     }.get(violation.code)
 

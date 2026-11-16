@@ -149,6 +149,7 @@ class ContractIndex:
             "max_positional_parameters",
             "max_module_imports",
             "module_import_exempt",
+            "max_constructor_decisions",
             "dataclass_options",
             "bases",
             "errors",
@@ -251,6 +252,7 @@ class ContractIndex:
                             "max_positional_parameters",
                             "max_module_imports",
                             "module_import_exempt",
+                            "max_constructor_decisions",
                             "dataclass_options",
                             "bases",
                         )

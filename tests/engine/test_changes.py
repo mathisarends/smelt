@@ -91,6 +91,35 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     ) == [finding]
 
 
+def test_changed_constructor_detects_an_added_decision_at_the_same_method(
+    tmp_path: Path,
+) -> None:
+    source = "class Client:\n    def __init__(self, values):\n        self.values = [x for x in values]\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_constructor_decisions: 0}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "accept existing constructor decision")
+    options = CheckOptions(changed=True, select=("SMT364",))
+    assert violations(root, options) == []
+    write_project(
+        root, {"app/client.py": source + "        self.other = [x for x in values]\n"}
+    )
+    [finding] = violations(root, options)
+    assert (finding.code, finding.line) == ("SMT364", 2)
+    assert finding.expected is not None
+    assert finding.expected["count"] == 2
+    assert violations(
+        root, CheckOptions(changed=True, select=("SMT364",), use_cache=False)
+    ) == [finding]
+
+
 def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     write_project(
         tmp_path,

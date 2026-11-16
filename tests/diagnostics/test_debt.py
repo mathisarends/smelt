@@ -163,6 +163,31 @@ def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
     assert len(current.resolved_debt) == 1
 
 
+def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) -> None:
+    source = "class Client:\n    def __init__(self, values):\n        self.values = [x for x in values]\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_constructor_decisions: 0}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    options = CheckOptions(select=("SMT364",))
+    outcome = check(root, options)
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        root / "debt.json"
+    )
+    assert check(root, options).report.violations == []
+    write_project(
+        root, {"app/client.py": source + "        self.other = [x for x in values]\n"}
+    )
+    [finding] = check(root, options).report.violations
+    assert finding.code == "SMT364"
+    assert finding.expected is not None
+    assert finding.expected["count"] == 2
+
+
 def test_identical_optional_occurrences_keep_their_multiplicity(tmp_path: Path) -> None:
     source = "def create(value: str | None = None):\n    one = value or 'default'\n    one = value or 'default'\n"
     root = write_project(
