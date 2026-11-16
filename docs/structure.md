@@ -9,6 +9,14 @@ enable this review. Simple filters and conditional elements with names, attribut
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
 exact triggers and repairs that preserve generator laziness.
 
+Opt-in `constructor-logic` (SMT364) reviews decision nodes in `__init__` and
+`__post_init__`. Enable `rules: {constructor-logic: hint}`; the global
+`structure.max_constructor_decisions` defaults to 2 and can be overridden in a
+package contract. Zero forbids counted decisions. Options alone do not activate
+the review. A single fallback or guard remains valid at the default threshold;
+nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
+counting rules and repairs that preserve initialization behavior.
+
 Choose canonical configuration filenames once per project:
 
 ```yaml

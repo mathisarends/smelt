@@ -553,6 +553,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "private_modules",
                 "max_positional_parameters",
                 "max_comprehension_loops",
+                "max_constructor_decisions",
                 "dataclass_options",
                 "bases",
                 "errors",

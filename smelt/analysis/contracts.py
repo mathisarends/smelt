@@ -148,6 +148,7 @@ class ContractIndex:
             "type_dispatch",
             "max_positional_parameters",
             "max_comprehension_loops",
+            "max_constructor_decisions",
             "dataclass_options",
             "bases",
             "errors",
@@ -249,6 +250,7 @@ class ContractIndex:
                             "private_modules",
                             "max_positional_parameters",
                             "max_comprehension_loops",
+                            "max_constructor_decisions",
                             "dataclass_options",
                             "bases",
                         )

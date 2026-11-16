@@ -596,6 +596,20 @@
           "description": "Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
           "title": "Max Comprehension Loops"
         },
+        "max_constructor_decisions": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable constructor-logic.",
+          "title": "Max Constructor Decisions"
+        },
         "dataclass_options": {
           "anyOf": [
             {
@@ -771,6 +785,13 @@
           "description": "Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
           "minimum": 1,
           "title": "Max Comprehension Loops",
+          "type": "integer"
+        },
+        "max_constructor_decisions": {
+          "default": 2,
+          "description": "Maximum decision nodes in __init__/__post_init__ when constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
+          "minimum": 0,
+          "title": "Max Constructor Decisions",
           "type": "integer"
         },
         "contracts": {
@@ -1999,6 +2020,21 @@
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
           "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
           "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "constructor-logic": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT364: A constructor contains more decisions than the configured limit.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
           "examples": [
             "hint"
           ]
@@ -3309,6 +3345,21 @@
             "hint"
           ]
         },
+        "^SMT364$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT364: A constructor contains more decisions than the configured limit.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -4561,6 +4612,21 @@
             "hint"
           ]
         },
+        "constructor-logic": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT364: A constructor contains more decisions than the configured limit.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -5608,6 +5674,21 @@
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
           "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.",
           "markdownDescription": "**SMT363 \u2014 complex-comprehension**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complex-comprehension: hint} or select SMT363. structure.max_comprehension_loops defaults to 1; a structure.contracts.<name>.max_comprehension_loops override permits intentional flattening. Threshold options alone do not enable the rule.\n\nRun `smelt explain complex-comprehension` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT364$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT364: A constructor contains more decisions than the configured limit.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 constructor-logic**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {constructor-logic: hint} or select SMT364. Set structure.max_constructor_decisions globally or in a package contract; 0 forbids any counted decision. Threshold options alone do not enable the rule. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain constructor-logic` for details.",
           "examples": [
             "hint"
           ]

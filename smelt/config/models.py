@@ -554,6 +554,11 @@ class PackageContract(_Model):
         ge=1,
         description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
     )
+    max_constructor_decisions: int | None = Field(
+        default=None,
+        ge=0,
+        description="Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable constructor-logic.",
+    )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
         description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
@@ -646,6 +651,7 @@ class PackageContract(_Model):
             and self.type_dispatch is None
             and self.max_positional_parameters is None
             and self.max_comprehension_loops is None
+            and self.max_constructor_decisions is None
             and self.dataclass_options is None
             and self.bases is None
             and self.errors is None
@@ -679,6 +685,11 @@ class StructureConfig(_Model):
         default=1,
         ge=1,
         description="Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
+    )
+    max_constructor_decisions: int = Field(
+        default=2,
+        ge=0,
+        description="Maximum decision nodes in __init__/__post_init__ when constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
     )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
