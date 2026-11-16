@@ -39,6 +39,20 @@ the review. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
+Opt-in [SMT367 `excess-private-definitions`](rules/SMT367.md) reviews modules with
+many private supporting definitions. Enable `rules: {excess-private-definitions: hint}`.
+`structure.max_private_definitions` defaults to 12 and supports closest-package
+overrides, including zero; threshold options alone do not enable the rule.
+Private classes, sync/async functions and PEP 695 type aliases directly in the
+module body count once per kind and name. Private uppercase assignments with values
+are listed separately and never contribute to the limit. Imports, methods,
+nested/local and guarded definitions, dunders and ordinary assignment-style type
+aliases are excluded. A few models beside their consumer remain valid; even a
+larger cohesive model tree or parser can be intentional. Review the listed
+definitions for cohesive groups, carrying constants and validators with them and
+preserving import direction and visibility. No groups or safe moves are inferred;
+there is no automatic rewrite or required `models.py` filename.
+
 Choose canonical configuration filenames once per project:
 
 ```yaml

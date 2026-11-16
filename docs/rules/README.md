@@ -76,6 +76,7 @@
 | [SMT364](SMT364.md) | constructor-logic | structure | explicit | hint |
 | [SMT365](SMT365.md) | cross-module-private-attribute | structure | explicit | warning |
 | [SMT366](SMT366.md) | comprehension-in-call-argument | structure | explicit | hint |
+| [SMT367](SMT367.md) | excess-private-definitions | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

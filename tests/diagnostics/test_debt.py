@@ -220,6 +220,38 @@ def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) ->
     assert finding.expected["count"] == 2
 
 
+@pytest.mark.parametrize("change", ["append", "replace"])
+def test_private_definition_baseline_does_not_hide_new_names(
+    tmp_path: Path, change: str
+) -> None:
+    source = "class _First: pass\nclass _Second: pass\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_private_definitions: 0}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    options = CheckOptions(select=("SMT367",))
+    outcome = check(root, options)
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        root / "debt.json"
+    )
+    assert check(root, options).report.violations == []
+    updated = (
+        source + "class _Added: pass\n"
+        if change == "append"
+        else source.replace("_Second", "_Added")
+    )
+    write_project(root, {"app/client.py": updated})
+    [finding] = check(root, options).report.violations
+    assert finding.code == "SMT367"
+    assert finding.expected is not None
+    assert "class:_Added" in finding.expected["definition_edges"]
+    assert finding.expected["count"] == (3 if change == "append" else 2)
+
+
 def test_identical_optional_occurrences_keep_their_multiplicity(tmp_path: Path) -> None:
     source = "def create(value: str | None = None):\n    one = value or 'default'\n    one = value or 'default'\n"
     root = write_project(
