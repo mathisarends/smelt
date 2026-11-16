@@ -1084,6 +1084,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.private_attributes:CrossModulePrivateAttribute",
+    "code": "SMT365",
+    "name": "cross-module-private-attribute",
+    "category": "structure",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
     "name": "test-location",

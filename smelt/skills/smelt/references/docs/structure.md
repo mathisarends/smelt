@@ -1,5 +1,18 @@
 # Package contracts and source conventions
 
+Opt-in [SMT365 `cross-module-private-attribute`](rules/SMT365.md) complements
+Ruff SLF001 with statically resolved ownership. Enable
+`rules: {cross-module-private-attribute: warning}`. Known reads, writes, calls,
+updates and deletes of private members owned by another module are reported;
+same-module cooperation, direct own/inherited receiver accesses and dunders are
+allowed. Tests remain the responsibility of SMT420. Unresolved receivers are skipped.
+`structure.private_attribute_boundary` defaults to `module`; `package` permits
+cooperation within the same immediate Python package, including its initializer.
+Subpackages remain separate boundaries. Package contracts can override the setting,
+which is visible in `smelt context`; the option alone does not enable the rule.
+No automatic rewrite is performed. Review the documented inference limits before
+depending on the review as an error gate.
+
 Opt-in `complex-comprehension` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
 `rules: {complex-comprehension: hint}`. The global

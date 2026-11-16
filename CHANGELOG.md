@@ -15,6 +15,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   checks and baselines. No automatic rewrite.
   Implements [#168](https://github.com/mathisarends/smelt/issues/168).
 
+- Opt-in warning [SMT365](docs/rules/SMT365.md) `cross-module-private-attribute`
+  reports private field/method accesses through statically known project receivers
+  owned by another module. Enable the rule explicitly. Global/package
+  `private_attribute_boundary: package` permits immediate-package cooperation;
+  same-module and own/inherited receiver accesses remain valid. Unknown types and
+  ambiguous inheritance are skipped; no automatic rewrite.
+  Implements [#170](https://github.com/mathisarends/smelt/issues/170).
+
 - Opt-in review [SMT363](docs/rules/SMT363.md) `complex-comprehension`
   reports excessive iteration clauses, nontrivial conditional elements and
   compound filters, once per outermost comprehension. Enable the rule explicitly;

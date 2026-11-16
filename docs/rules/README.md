@@ -74,6 +74,7 @@
 | [SMT362](SMT362.md) | loop-invariant-collection | structure | explicit | hint |
 | [SMT363](SMT363.md) | complex-comprehension | structure | explicit | hint |
 | [SMT364](SMT364.md) | constructor-logic | structure | explicit | hint |
+| [SMT365](SMT365.md) | cross-module-private-attribute | structure | explicit | warning |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
 | [SMT421](SMT421.md) | forbidden-test-mock | tests | policy | error |

@@ -154,6 +154,35 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     ) == [finding]
 
 
+def test_changed_private_access_detects_an_owner_change_in_a_facade(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "from .first import Store as PublicStore\n",
+            "app/first.py": "class Store:\n    _data = None\n",
+            "app/second.py": "class Store:\n    _data = None\n",
+            "app/client.py": "from app import PublicStore\ndef read(store: PublicStore):\n    return store._data\n",
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "accept existing ownership")
+    options = CheckOptions(changed=True, select=("SMT365",))
+    assert violations(root, options) == []
+    (root / "app/__init__.py").write_text(
+        "from .second import Store as PublicStore\n", encoding="utf-8"
+    )
+    [finding] = violations(root, options)
+    assert finding.target_module == "app.second.Store._data"
+    assert finding.path == "app/client.py"
+    assert violations(
+        root, CheckOptions(changed=True, select=("SMT365",), use_cache=False)
+    ) == [finding]
+
+
 def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     write_project(
         tmp_path,

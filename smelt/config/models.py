@@ -14,6 +14,7 @@ from pydantic import (
 type Policy = Literal["allow", "deny"]
 type SeverityName = Literal["error", "warning", "hint", "off"]
 type _ModuleImportExemption = Literal["facades", "composition_root"]
+type _PrivateAttributeBoundary = Literal["module", "package"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
@@ -550,6 +551,10 @@ class PackageContract(_Model):
         default=None,
         description="Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
     )
+    private_attribute_boundary: _PrivateAttributeBoundary | None = Field(
+        default=None,
+        description="Override structure.private_attribute_boundary for SMT365. module allows same-module cooperation; package allows modules of the same immediate Python package. The closest explicit package policy wins; this option alone does not activate the rule.",
+    )
     ordering: OrderingConfig | None = Field(
         default=None,
         description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins.",
@@ -663,6 +668,7 @@ class PackageContract(_Model):
             and self.module_docstrings is None
             and self.future_annotations is None
             and self.private_modules is None
+            and self.private_attribute_boundary is None
             and self.ordering is None
             and self.type_dispatch is None
             and self.max_positional_parameters is None
@@ -705,6 +711,10 @@ class StructureConfig(_Model):
     module_import_exempt: list[_ModuleImportExemption] = Field(
         default_factory=_default_module_import_exemptions,
         description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots. [] disables exemptions. Package contracts may override; this option alone does not activate the rule.",
+    )
+    private_attribute_boundary: _PrivateAttributeBoundary = Field(
+        default="module",
+        description="Ownership boundary for cross-module-private-attribute (SMT365): module or immediate Python package. Package contracts can override it. This option alone does not activate the rule.",
     )
     max_comprehension_loops: int = Field(
         default=1,
