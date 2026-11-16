@@ -1,5 +1,49 @@
 # Upgrading Smelt
 
+## 0.10.0 to 0.11.0
+
+0.11.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
+the default rule set and exit codes. No baseline rewrite is required. The four
+new rules require explicit selection or package policy. See the
+[changelog](../CHANGELOG.md#0110---2026-11-16).
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.11.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.11.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.11.0]` for isolated Python hooks,
+   `rev: v0.11.0` for source hooks and `uvx --from smelt-cli==0.11.0 smelt check`
+   in CI. Run `prek install` after updating hooks.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`
+   and the agent skill with `smelt skill install --force`. Preserve local skill
+   edits first and retain `--destination` for a custom installation. Run
+   `smelt check --show-hints --fail-on warning`, plus the project's tests and
+   other checks, before relying on changed/staged comparisons.
+
+3. Adopt the new reviews deliberately:
+
+   | Rule | Activation | Review |
+   | --- | --- | --- |
+   | [SMT110](rules/SMT110.md) | `structure.max_module_imports: 10` | Distinct direct imports across project packages; choose a threshold for your project |
+   | [SMT363](rules/SMT363.md) | `rules: {complex-comprehension: hint}` | Excessive iteration clauses, conditional elements and compound filters |
+   | [SMT364](rules/SMT364.md) | `rules: {constructor-logic: hint}` | Constructor decisions above `structure.max_constructor_decisions` (default 2) |
+   | [SMT365](rules/SMT365.md) | `rules: {cross-module-private-attribute: warning}` | Private member accesses through known project receivers owned by another module |
+
+   Repairs remain manual. SMT110 exempts package initializers and declared
+   composition roots by default; `module_import_exempt: []` includes them.
+   SMT363 supports `structure.max_comprehension_loops`; preserve generator
+   laziness when rewriting. SMT364 excludes nested helper bodies and supports
+   a zero decision limit. SMT365 skips unknown receiver types and ambiguous
+   inheritance; `structure.private_attribute_boundary: package` permits
+   cooperation within the immediate package. Closest-package overrides apply.
+
 ## 0.9.0 to 0.10.0
 
 0.10.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
