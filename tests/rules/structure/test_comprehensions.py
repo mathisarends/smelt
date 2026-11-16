@@ -48,7 +48,12 @@ def test_reports_named_conditions(
         9,
     )
     assert finding.severity == Severity.HINT
-    assert finding.expected == {
+    assert finding.expected is not None
+    assert {
+        key: value
+        for key, value in finding.expected.items()
+        if key != "comprehension_edges"
+    } == {
         "max_comprehension_loops": 1,
         "conditions": [condition],
         "automatic_rewrite": False,

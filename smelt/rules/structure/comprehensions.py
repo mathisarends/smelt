@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -72,6 +73,9 @@ class ComplexComprehension(Rule):
                     expected={
                         "max_comprehension_loops": limit,
                         "conditions": reasons,
+                        "comprehension_edges": [
+                            hashlib.sha256(ast.dump(node).encode()).hexdigest()
+                        ],
                         "automatic_rewrite": False,
                     },
                     hint="Name the per-item step or use a loop; preserve lazy evaluation and iteration order.",
