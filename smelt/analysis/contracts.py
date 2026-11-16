@@ -152,6 +152,7 @@ class ContractIndex:
             "module_import_exempt",
             "max_comprehension_loops",
             "max_constructor_decisions",
+            "max_private_definitions",
             "dataclass_options",
             "bases",
             "errors",
@@ -257,6 +258,7 @@ class ContractIndex:
                             "module_import_exempt",
                             "max_comprehension_loops",
                             "max_constructor_decisions",
+                            "max_private_definitions",
                             "dataclass_options",
                             "bases",
                         )

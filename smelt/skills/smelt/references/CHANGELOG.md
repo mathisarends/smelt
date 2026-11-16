@@ -14,6 +14,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   preserve callable lookup and argument evaluation order.
   Implements [#180](https://github.com/mathisarends/smelt/issues/180).
 
+- Opt-in hint [SMT367](docs/rules/SMT367.md) `excess-private-definitions`
+  reviews modules with more than twelve private classes, functions and PEP 695
+  type aliases. Enable the rule explicitly; `structure.max_private_definitions`
+  supports global and closest-package limits, including zero. Findings list
+  definitions and their locations, with private constants as informational context.
+  The count does not prove that a cohesive implementation needs splitting; no
+  automatic rewrite. Implements [#181](https://github.com/mathisarends/smelt/issues/181).
+
 ## [0.11.1] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

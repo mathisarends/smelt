@@ -557,6 +557,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "module_import_exempt",
                 "max_comprehension_loops",
                 "max_constructor_decisions",
+                "max_private_definitions",
                 "dataclass_options",
                 "bases",
                 "errors",

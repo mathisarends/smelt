@@ -127,6 +127,44 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     ) == [finding]
 
 
+@pytest.mark.parametrize("change", ["append", "replace"])
+def test_changed_private_definitions_detect_new_names(
+    tmp_path: Path, change: str
+) -> None:
+    source = "class _First: pass\nclass _Second: pass\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_private_definitions: 0}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "accept existing private definitions")
+    options = CheckOptions(changed=True, select=("SMT367",))
+    assert violations(root, options) == []
+    # Moving declarations and adding constants do not add counted definitions.
+    write_project(root, {"app/client.py": "_LIMIT = 10\n" + "\n" + source})
+    assert violations(root, options) == []
+    updated = (
+        source + "class _Added: pass\n"
+        if change == "append"
+        else source.replace("_Second", "_Added")
+    )
+    write_project(root, {"app/client.py": updated})
+    [finding] = violations(root, options)
+    assert (finding.code, finding.path) == ("SMT367", "app/client.py")
+    assert finding.expected is not None
+    assert "class:_Added" in finding.expected["definition_edges"]
+    assert violations(
+        root, CheckOptions(changed=True, select=("SMT367",), use_cache=False)
+    ) == [finding]
+    write_project(root, {"app/client.py": "class _First: pass\n"})
+    assert violations(root, options) == []
+
+
 def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     tmp_path: Path,
 ) -> None:

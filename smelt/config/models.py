@@ -578,6 +578,11 @@ class PackageContract(_Model):
         ge=0,
         description="Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable constructor-logic.",
     )
+    max_private_definitions: int | None = Field(
+        default=None,
+        ge=0,
+        description="Override structure.max_private_definitions for SMT367, including zero. Counts private module-level classes, functions and PEP 695 type aliases; constants are informational only. The closest explicit package policy wins; this option alone does not enable excess-private-definitions.",
+    )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
         description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
@@ -674,6 +679,7 @@ class PackageContract(_Model):
             and self.max_positional_parameters is None
             and self.max_comprehension_loops is None
             and self.max_constructor_decisions is None
+            and self.max_private_definitions is None
             and self.dataclass_options is None
             and self.bases is None
             and self.errors is None
@@ -725,6 +731,11 @@ class StructureConfig(_Model):
         default=2,
         ge=0,
         description="Maximum decision nodes in __init__/__post_init__ when constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
+    )
+    max_private_definitions: int = Field(
+        default=12,
+        ge=0,
+        description="Maximum private module-level classes, functions and PEP 695 type aliases when excess-private-definitions (SMT367) is selected. Constants are informational only. Package contracts can override this limit, including zero. This option alone does not enable the rule.",
     )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
