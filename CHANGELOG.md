@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Opt-in hint [SMT366](docs/rules/SMT366.md) `comprehension-in-call-argument`
+  asks for named intermediate collections when list, set or dict comprehensions
+  are passed directly to a call. Enable the rule explicitly; generator expressions
+  and conditional/repeated expression contexts are skipped. No automatic rewrite:
+  preserve callable lookup and argument evaluation order.
+  Implements [#180](https://github.com/mathisarends/smelt/issues/180).
+
 ## [0.11.1] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

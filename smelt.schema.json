@@ -2152,6 +2152,21 @@
             "warning"
           ]
         },
+        "comprehension-in-call-argument": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT366: An eager comprehension is passed directly as a call argument.",
+          "description": "An eager comprehension is passed directly as a call argument. Naming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded. Repair: Assign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT366 \u2014 comprehension-in-call-argument**\n\nAn eager comprehension is passed directly as a call argument.\n\nNaming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded.\n\n**Problem**\n```python\ndef to_response(result):\n    return Response(users=[to_user(user) for user in result.users])\n```\n\n**Preferred**\n```python\ndef to_response(result):\n    users = [to_user(user) for user in result.users]\n    return Response(users=users)\n```\n\nAssign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain comprehension-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-location": {
           "type": "string",
           "enum": [
@@ -3503,6 +3518,21 @@
             "warning"
           ]
         },
+        "^SMT366$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT366: An eager comprehension is passed directly as a call argument.",
+          "description": "An eager comprehension is passed directly as a call argument. Naming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded. Repair: Assign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT366 \u2014 comprehension-in-call-argument**\n\nAn eager comprehension is passed directly as a call argument.\n\nNaming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded.\n\n**Problem**\n```python\ndef to_response(result):\n    return Response(users=[to_user(user) for user in result.users])\n```\n\n**Preferred**\n```python\ndef to_response(result):\n    users = [to_user(user) for user in result.users]\n    return Response(users=users)\n```\n\nAssign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain comprehension-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT401$": {
           "type": "string",
           "enum": [
@@ -4800,6 +4830,21 @@
             "warning"
           ]
         },
+        "comprehension-in-call-argument": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT366: An eager comprehension is passed directly as a call argument.",
+          "description": "An eager comprehension is passed directly as a call argument. Naming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded. Repair: Assign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT366 \u2014 comprehension-in-call-argument**\n\nAn eager comprehension is passed directly as a call argument.\n\nNaming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded.\n\n**Problem**\n```python\ndef to_response(result):\n    return Response(users=[to_user(user) for user in result.users])\n```\n\n**Preferred**\n```python\ndef to_response(result):\n    users = [to_user(user) for user in result.users]\n    return Response(users=users)\n```\n\nAssign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain comprehension-in-call-argument` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "test-only-public-function": {
           "type": "string",
           "enum": [
@@ -5894,6 +5939,21 @@
           "markdownDescription": "**SMT365 \u2014 cross-module-private-attribute**\n\nCode accesses a private attribute owned by another module or package.\n\nAccessing a collaborator's private fields or methods couples the caller to implementation details. Unlike Ruff SLF001, this opt-in review reports only accesses whose receiver and defining project class are statically known. Same-module cooperation is allowed. Reads, writes, calls, updates and deletes are checked, including self.log._images. Direct accesses on the method receiver to its own or inherited members are allowed. Evidence comes from parameter/variable annotations, direct constructor assignments, stable local aliases, class/instance fields, property return annotations and bounded single inheritance. Import aliases, relative imports and static facade re-exports resolve to the defining class. Dunders, tests, unresolved receivers/members, unknown factories, inherited lookup across multiple/unknown bases, arbitrary class decorators, local imports, comprehension/lambda bodies and closure/global-variable flow are skipped. Rebound parameters and locals are conservatively left unresolved; no control-flow narrowing, runtime dispatch or analyzed code execution is used.\n\n**Problem**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images.retain()\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.retain_images()\n```\n\nExpose a meaningful operation on the owning class, or pass a deliberate public dependency to the caller. Do not merely rename or wrap internal state to silence the report. Preserve evaluation order, exceptions and side effects. No automatic rewrite is performed. Enable rules: {cross-module-private-attribute: warning} or select SMT365. structure.private_attribute_boundary defaults to module; package permits cooperation between modules of the same immediate Python package. Closest-package contract overrides and reasoned suppressions are supported. Boundary options alone do not activate the rule.\n\nRun `smelt explain cross-module-private-attribute` for details.",
           "examples": [
             "warning"
+          ]
+        },
+        "^SMT366$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT366: An eager comprehension is passed directly as a call argument.",
+          "description": "An eager comprehension is passed directly as a call argument. Naming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded. Repair: Assign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.",
+          "markdownDescription": "**SMT366 \u2014 comprehension-in-call-argument**\n\nAn eager comprehension is passed directly as a call argument.\n\nNaming collection transformations before passing them on separates calculation from object construction or consumption. This opt-in syntax review reports list, set and dict comprehensions used as direct positional or named keyword arguments in production code, once per argument. It applies to any call without inferring constructors or runtime types. Simple mappings are included even when SMT363 accepts their internal logic. Named collections, ordinary calls and attribute reads, generator expressions, starred arguments and comprehensions nested inside another argument expression are outside scope. Calls within lambdas, comprehensions, conditional expressions, boolean operators, chained comparisons, assert messages and while conditions are skipped because extraction can change when or how often they run. Tests are excluded.\n\n**Problem**\n```python\ndef to_response(result):\n    return Response(users=[to_user(user) for user in result.users])\n```\n\n**Preferred**\n```python\ndef to_response(result):\n    users = [to_user(user) for user in result.users]\n    return Response(users=users)\n```\n\nAssign the comprehension to a local variable before the call and pass that variable. A named keyword supplies a suggested variable name. Preserve the callable lookup, argument evaluation order, guards and suspension points: moving an argument before the call can evaluate it before earlier arguments or the callable itself. Do not eagerly materialize generator expressions. No automatic rewrite is performed. Enable rules: {comprehension-in-call-argument: hint} or select SMT366. Package overrides and reasoned inline suppressions are supported.\n\nRun `smelt explain comprehension-in-call-argument` for details.",
+          "examples": [
+            "hint"
           ]
         },
         "^SMT429$": {
