@@ -72,6 +72,16 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
+    "SMT110": PolicyActivation(
+        "structure.max_module_imports or a package contract sets a limit, including zero.",
+        lambda config: (
+            config.structure.max_module_imports is not None
+            or any(
+                contract.max_module_imports is not None
+                for contract in config.structure.contracts.values()
+            )
+        ),
+    ),
     "SMT302": PolicyActivation(
         "structure.forbidden_names contains naming restrictions.",
         lambda config: bool(config.structure.forbidden_names),

@@ -132,6 +132,37 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     ]
 
 
+def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
+    tmp_path: Path,
+) -> None:
+    source = "from app.first import First\nfrom app.second import Second\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_module_imports: 1}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+            "app/first.py": "First = 1\n",
+            "app/second.py": "Second = 1\n",
+            "app/third.py": "Third = 1\n",
+        },
+    )
+    options = CheckOptions(select=("SMT110",))
+    outcome = check(root, options)
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        root / "debt.json"
+    )
+    assert check(root, options).report.violations == []
+    write_project(
+        root,
+        {"app/client.py": source.replace("second import Second", "third import Third")},
+    )
+    current = check(root, options)
+    [finding] = current.report.violations
+    assert finding.code == "SMT110"
+    assert len(current.resolved_debt) == 1
+
+
 def test_multiline_comprehension_baseline_does_not_hide_changed_logic(
     tmp_path: Path,
 ) -> None:

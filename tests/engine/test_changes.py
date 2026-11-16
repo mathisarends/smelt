@@ -58,6 +58,39 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     assert not violations(tmp_path, options)
 
 
+def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
+    tmp_path: Path,
+) -> None:
+    source = "from app.first import First\nfrom app.second import Second\n"
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_module_imports: 1}\n",
+            "app/__init__.py": "",
+            "app/client.py": source,
+            "app/first.py": "First = 1\n",
+            "app/second.py": "Second = 1\n",
+            "app/third.py": "Third = 1\n",
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "accept existing imports")
+    options = CheckOptions(changed=True, select=("SMT110",))
+    assert violations(root, options) == []
+    write_project(
+        root,
+        {"app/client.py": source.replace("second import Second", "third import Third")},
+    )
+    [finding] = violations(root, options)
+    assert (finding.code, finding.path) == ("SMT110", "app/client.py")
+    assert finding.expected is not None
+    assert finding.expected["modules"] == ["app.first", "app.third"]
+    assert violations(
+        root, CheckOptions(changed=True, select=("SMT110",), use_cache=False)
+    ) == [finding]
+
+
 def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     tmp_path: Path,
 ) -> None:

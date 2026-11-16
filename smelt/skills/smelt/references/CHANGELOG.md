@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional [SMT110](docs/rules/SMT110.md) `module-import-fanout` counts distinct
+  direct imports across all project packages. Configure `structure.max_module_imports`
+  or a closest-package threshold to activate the hint. Initializers and declared
+  composition roots are exempt by default; `module_import_exempt: []` includes them.
+  Findings group imports by package and preserve dependency identities for changed
+  checks and baselines. No automatic rewrite.
+  Implements [#168](https://github.com/mathisarends/smelt/issues/168).
+
 - Opt-in warning [SMT365](docs/rules/SMT365.md) `cross-module-private-attribute`
   reports private field/method accesses through statically known project receivers
   owned by another module. Enable the rule explicitly. Global/package

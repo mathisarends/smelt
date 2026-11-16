@@ -369,6 +369,30 @@ under these package contracts.
 
 ## Suggestions to bundle implementation imports
 
+For total coupling across all project packages, configure
+[SMT110 `module-import-fanout`](rules/SMT110.md):
+
+```yaml
+structure:
+  max_module_imports: 20
+  module_import_exempt: [facades, composition_root]  # default; [] checks both
+  contracts:
+    core:
+      match: app.core
+      max_module_imports: 12
+```
+
+Setting a threshold activates this hint. The closest package threshold overrides
+the global limit; without a threshold, even explicit selection checks nothing.
+Counts include direct internal imports across every root package, follow
+`architecture.imports.type_checking`, and retain facade paths without following
+re-exports to definitions. Repeated imports count once. Standard-library and
+third-party imports never count. Package initializers and declared composition
+roots are exempt unless `module_import_exempt` removes that exemption globally
+or in a package contract. `[]` disables both exemptions. This design review has no
+automatic rewrite: split cohesive responsibilities or review deliberate facades
+and their import cycles.
+
 Several imports from the same package can suggest a missing public facade:
 
 ```python

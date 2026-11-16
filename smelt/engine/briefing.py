@@ -553,6 +553,8 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "private_modules",
                 "private_attribute_boundary",
                 "max_positional_parameters",
+                "max_module_imports",
+                "module_import_exempt",
                 "max_comprehension_loops",
                 "max_constructor_decisions",
                 "dataclass_options",
@@ -570,6 +572,8 @@ def _contract_lines(briefing: Briefing) -> list[str]:
 
 
 def _policy_value(key: str, value: object) -> str:
+    if key == "module_import_exempt" and isinstance(value, list):
+        return ", ".join(str(item) for item in value) or "none"
     if key == "errors" and isinstance(value, dict):
         return _error_policy(value)
     # Option lists such as dataclass_options read as the keywords they require.

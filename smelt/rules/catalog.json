@@ -138,6 +138,21 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.dependencies.module_fanout:ModuleImportFanout",
+    "code": "SMT110",
+    "name": "module-import-fanout",
+    "category": "dependencies",
+    "default_severity": "hint",
+    "requires": [
+      "imports"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.layout:UnknownLayer",
     "code": "SMT301",
     "name": "unknown-layer",

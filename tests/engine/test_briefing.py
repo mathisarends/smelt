@@ -261,6 +261,23 @@ def test_positional_parameter_limit_is_available_before_editing(
     assert "max_positional_parameters: 2" in render_briefing(briefing, ctx)
 
 
+def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    imports: {match: app, max_module_imports: 0, module_import_exempt: []}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+    assert briefing.to_json()["contracts"][0]["max_module_imports"] == 0
+    assert briefing.to_json()["contracts"][0]["module_import_exempt"] == []
+    assert "max_module_imports: 0" in render_briefing(briefing, ctx)
+    assert "module_import_exempt: none" in render_briefing(briefing, ctx)
+
+
 def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
