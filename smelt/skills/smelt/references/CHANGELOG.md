@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-16
+
+Report schema 2, YAML version 1, grouped debt baseline version 2, the default
+rule set and exit codes remain unchanged. The two new reviews require explicit
+selection and have no automatic rewrites. Update installation, hook and CI pins
+together to `0.12.0` (`v0.12.0`), refresh the editor schema and reinstall the
+bundled agent skill with `smelt skill install --force`. No baseline rewrite is
+required. See the [upgrade checklist](docs/upgrading.md#0111-to-0120).
+
 - Opt-in hint [SMT366](docs/rules/SMT366.md) `comprehension-in-call-argument`
   asks for named intermediate collections when list, set or dict comprehensions
   are passed directly to a call. Enable the rule explicitly; generator expressions
@@ -973,7 +982,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/mathisarends/smelt/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mathisarends/smelt/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/mathisarends/smelt/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mathisarends/smelt/compare/v0.9.0...v0.10.0

@@ -1,5 +1,46 @@
 # Upgrading Smelt
 
+## 0.11.1 to 0.12.0
+
+0.12.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
+the default rule set and exit codes. No baseline rewrite is required. The two
+new reviews require explicit selection. See the
+[changelog](../CHANGELOG.md#0120---2026-11-16).
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.12.0'
+   # or: python -m pip install --upgrade 'smelt-cli==0.12.0'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.12.0]` for isolated Python hooks,
+   `rev: v0.12.0` for source hooks and `uvx --from smelt-cli==0.12.0 smelt check`
+   in CI. Run `prek install` after updating hooks.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`
+   and the agent skill with `smelt skill install --force`. Preserve local skill
+   edits first and retain `--destination` for a custom installation. Run
+   `smelt check --show-hints --fail-on warning`, plus the project's tests and
+   other checks, before relying on changed/staged comparisons.
+
+3. Adopt the new reviews deliberately:
+
+   | Rule | Activation | Review |
+   | --- | --- | --- |
+   | [SMT366](rules/SMT366.md) | `rules: {comprehension-in-call-argument: hint}` | List, set and dict comprehensions passed directly to calls |
+   | [SMT367](rules/SMT367.md) | `rules: {excess-private-definitions: hint}` | Modules above `structure.max_private_definitions` (default 12) |
+
+   Repairs remain manual. SMT366 skips generator expressions and conditional
+   or repeated expression contexts; preserve callable lookup and argument
+   evaluation order when naming intermediate collections. SMT367 counts private
+   top-level classes, functions and PEP 695 aliases, lists constants separately
+   and does not infer cohesion or safe extraction. Closest-package limits,
+   including zero, are supported; setting a threshold alone does not enable it.
+
 ## 0.11.0 to 0.11.1
 
 0.11.1 retains report schema 2, YAML version 1, grouped debt baseline version 2,

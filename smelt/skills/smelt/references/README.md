@@ -22,8 +22,8 @@ uv tool install smelt-cli
 smelt init --maintainability
 ```
 
-Upgrading to 0.11.1? Follow the [upgrade checklist](docs/upgrading.md#0110-to-0111)
-for pins and the corrected package checks in tests.
+Upgrading to 0.12.0? Follow the [upgrade checklist](docs/upgrading.md#0111-to-0120)
+for pins and the two new optional source reviews.
 
 Review the generated `smelt.yml`: it proposes a starting policy from your layout
 and selects source and test checks. You decide which conventions to adopt.
@@ -103,7 +103,7 @@ repos:
         name: smelt
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.11.1]
+        additional_dependencies: [smelt-cli==0.12.0]
         pass_filenames: false
         always_run: true
         require_serial: true
