@@ -121,6 +121,7 @@ def _edge_field(violation: Violation) -> str | None:
     return {
         "SMT104": "cyclic_edges",
         "SMT109": "export_edges",
+        "SMT110": "import_edges",
         "SMT313": "ordering_edges",
         "SMT315": "dispatch_edges",
         "SMT338": "literal_edges",

@@ -13,6 +13,7 @@ from pydantic import (
 
 type Policy = Literal["allow", "deny"]
 type SeverityName = Literal["error", "warning", "hint", "off"]
+type _ModuleImportExemption = Literal["facades", "composition_root"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
@@ -31,6 +32,10 @@ def _check_dotted(values: list[str]) -> list[str]:
             msg = f'"{value}" is not a dotted module name'
             raise ValueError(msg)
     return values
+
+
+def _default_module_import_exemptions() -> list[_ModuleImportExemption]:
+    return ["facades", "composition_root"]
 
 
 class SourceExclusion(_Model):
@@ -515,6 +520,15 @@ class PackageContract(_Model):
         ge=2,
         description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
     )
+    max_module_imports: int | None = Field(
+        default=None,
+        ge=0,
+        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Activates module-import-fanout; closest package overrides the global threshold, including zero.",
+    )
+    module_import_exempt: list[_ModuleImportExemption] | None = Field(
+        default=None,
+        description="Override structure.module_import_exempt for SMT110. [] checks initializers and composition roots too; omission inherits the enclosing policy. This option alone does not activate the rule.",
+    )
     export_at: int | None = Field(
         default=None,
         ge=2,
@@ -633,6 +647,8 @@ class PackageContract(_Model):
             and self.public is None
             and self.imports is None
             and self.bundle_imports_at is None
+            and self.max_module_imports is None
+            and self.module_import_exempt is None
             and self.export_at is None
             and self.module_docstrings is None
             and self.future_annotations is None
@@ -669,6 +685,15 @@ class StructureConfig(_Model):
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
+    max_module_imports: int | None = Field(
+        default=None,
+        ge=0,
+        description="Maximum distinct direct project-module imports per source module (SMT110, hint). Omitted means no global limit. Setting a limit activates module-import-fanout; closest package limits override it.",
+    )
+    module_import_exempt: list[_ModuleImportExemption] = Field(
+        default_factory=_default_module_import_exemptions,
+        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots. [] disables exemptions. Package contracts may override; this option alone does not activate the rule.",
+    )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
         description="Named package contracts: required modules and optional public entry points.",

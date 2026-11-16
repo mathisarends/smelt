@@ -11,6 +11,7 @@
 | [SMT107](SMT107.md) | private-module-import | dependencies | policy | error |
 | [SMT108](SMT108.md) | package-import-fanout | dependencies | policy | hint |
 | [SMT109](SMT109.md) | facade-export-gap | dependencies | policy | hint |
+| [SMT110](SMT110.md) | module-import-fanout | dependencies | policy | hint |
 | [SMT301](SMT301.md) | unknown-layer | structure | default | error |
 | [SMT302](SMT302.md) | forbidden-package-name | structure | policy | error |
 | [SMT305](SMT305.md) | unclassified-module | structure | explicit | warning |

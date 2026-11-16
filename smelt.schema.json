@@ -471,6 +471,36 @@
           "description": "Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
           "title": "Bundle Imports At"
         },
+        "max_module_imports": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Activates module-import-fanout; closest package overrides the global threshold, including zero.",
+          "title": "Max Module Imports"
+        },
+        "module_import_exempt": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/_ModuleImportExemption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override structure.module_import_exempt for SMT110. [] checks initializers and composition roots too; omission inherits the enclosing policy. This option alone does not activate the rule.",
+          "title": "Module Import Exempt"
+        },
         "export_at": {
           "anyOf": [
             {
@@ -752,6 +782,28 @@
         "file_naming": {
           "$ref": "#/$defs/FileNamingConfig"
         },
+        "max_module_imports": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint). Omitted means no global limit. Setting a limit activates module-import-fanout; closest package limits override it.",
+          "title": "Max Module Imports"
+        },
+        "module_import_exempt": {
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots. [] disables exemptions. Package contracts may override; this option alone does not activate the rule.",
+          "items": {
+            "$ref": "#/$defs/_ModuleImportExemption"
+          },
+          "title": "Module Import Exempt",
+          "type": "array"
+        },
         "contracts": {
           "additionalProperties": {
             "$ref": "#/$defs/PackageContract"
@@ -928,6 +980,13 @@
       "title": "TypeDispatchConfig",
       "type": "object"
     },
+    "_ModuleImportExemption": {
+      "enum": [
+        "facades",
+        "composition_root"
+      ],
+      "type": "string"
+    },
     "RuleSettings": {
       "type": "object",
       "description": "Explicit checks by problem name, rule group or stable SMT code. Each value both enables the check and sets severity; off disables it. Individual settings override a group in the same map, regardless of order.",
@@ -1063,6 +1122,21 @@
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
           "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
           "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "module-import-fanout": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT110: A module imports more project modules than its policy allows.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.",
+          "markdownDescription": "**SMT110 \u2014 module-import-fanout**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.\n\nRun `smelt explain module-import-fanout` for details.",
           "examples": [
             "hint"
           ]
@@ -2358,6 +2432,21 @@
             "hint"
           ]
         },
+        "^SMT110$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT110: A module imports more project modules than its policy allows.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.",
+          "markdownDescription": "**SMT110 \u2014 module-import-fanout**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.\n\nRun `smelt explain module-import-fanout` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "^SMT301$": {
           "type": "string",
           "enum": [
@@ -3640,6 +3729,21 @@
             "hint"
           ]
         },
+        "module-import-fanout": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT110: A module imports more project modules than its policy allows.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.",
+          "markdownDescription": "**SMT110 \u2014 module-import-fanout**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.\n\nRun `smelt explain module-import-fanout` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
         "unknown-layer": {
           "type": "string",
           "enum": [
@@ -4672,6 +4776,21 @@
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
           "description": "A public implementation name has many outside importers but no package export. A contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before. Repair: Review whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.",
           "markdownDescription": "**SMT109 \u2014 facade-export-gap**\n\nA public implementation name has many outside importers but no package export.\n\nA contract's export_at threshold counts distinct analyzed modules outside the defining package, aggregating aliases and static re-export chains. One advisory finding per symbol and facade is anchored at the definition. Tests count only with count_tests: true; TYPE_CHECKING-only imports never count. Private names, module imports, namespace packages, uncertain bindings and recognized dynamic facade exports are skipped. Existing package exports and explicit __all__ re-exports in other modules are context, not coverage for this facade. Frequency suggests an API review, not a requirement to expand the public API. Counts cover analyzed code only. Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before.\n\n**Problem**\n```python\n# app/browser/__init__.py is empty\n# Three outside modules each use:\nfrom app.browser.base import BrowserEvents\n```\n\n**Preferred**\n```python\n# After reviewing ownership and initialization behavior:\n# app/browser/__init__.py\nfrom .base import BrowserEvents\n__all__ = ['BrowserEvents']\n# callers\nfrom app.browser import BrowserEvents\n```\n\nReview whether the name belongs in the package API or whether callers should move. The finding lists importers and other public export paths. A cycle witness means adding the facade dependency closes a runtime import path; no-cycle-found means only that no return path was found in the analyzed explicit module graph, not that initialization is safe. Dynamic imports, implicit package initialization and import order are not proven. No exports, imports or policy are rewritten automatically.\n\nRun `smelt explain facade-export-gap` for details.",
+          "examples": [
+            "hint"
+          ]
+        },
+        "^SMT110$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ],
+          "title": "SMT110: A module imports more project modules than its policy allows.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.",
+          "markdownDescription": "**SMT110 \u2014 module-import-fanout**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Configure structure.max_module_imports or a package contract's max_module_imports to activate this opt-in hint (zero is supported). A rule setting or --select alone has no effect without a threshold. Closest package limits override the global limit. structure.module_import_exempt defaults to [facades, composition_root]; package overrides, including [], are supported.\n\nRun `smelt explain module-import-fanout` for details.",
           "examples": [
             "hint"
           ]

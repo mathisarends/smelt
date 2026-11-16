@@ -147,6 +147,8 @@ class ContractIndex:
             "ordering",
             "type_dispatch",
             "max_positional_parameters",
+            "max_module_imports",
+            "module_import_exempt",
             "dataclass_options",
             "bases",
             "errors",
@@ -247,6 +249,8 @@ class ContractIndex:
                             "future_annotations",
                             "private_modules",
                             "max_positional_parameters",
+                            "max_module_imports",
+                            "module_import_exempt",
                             "dataclass_options",
                             "bases",
                         )
