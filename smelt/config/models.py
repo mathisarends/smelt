@@ -549,6 +549,11 @@ class PackageContract(_Model):
         ge=0,
         description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
     )
+    max_comprehension_loops: int | None = Field(
+        default=None,
+        ge=1,
+        description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
+    )
     max_constructor_decisions: int | None = Field(
         default=None,
         ge=0,
@@ -645,6 +650,7 @@ class PackageContract(_Model):
             and self.ordering is None
             and self.type_dispatch is None
             and self.max_positional_parameters is None
+            and self.max_comprehension_loops is None
             and self.max_constructor_decisions is None
             and self.dataclass_options is None
             and self.bases is None
@@ -675,6 +681,11 @@ class StructureConfig(_Model):
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
+    max_comprehension_loops: int = Field(
+        default=1,
+        ge=1,
+        description="Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
+    )
     max_constructor_decisions: int = Field(
         default=2,
         ge=0,
