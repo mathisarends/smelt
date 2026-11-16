@@ -1,5 +1,38 @@
 # Upgrading Smelt
 
+## 0.11.0 to 0.11.1
+
+0.11.1 retains report schema 2, YAML version 1, grouped debt baseline version 2,
+the default rule set and exit codes. No baseline rewrite is required. Existing
+package policies now also check discovered tests and `conftest.py`, including
+configured test roots inside source packages. See the
+[changelog](../CHANGELOG.md#0111---2026-11-16).
+
+### Upgrade checklist
+
+1. Update installation, dependency, hook and CI pins together:
+
+   ```bash
+   uv tool install --upgrade 'smelt-cli==0.11.1'
+   # or: python -m pip install --upgrade 'smelt-cli==0.11.1'
+   smelt --version
+   ```
+
+   Use `additional_dependencies: [smelt-cli==0.11.1]` for isolated Python hooks,
+   `rev: v0.11.1` for source hooks and `uvx --from smelt-cli==0.11.1 smelt check`
+   in CI. Run `prek install` after updating hooks.
+
+2. Refresh the editor schema with `smelt config schema > .smelt.schema.json`
+   and the agent skill with `smelt skill install --force`. Preserve local skill
+   edits first and retain `--destination` for a custom installation.
+
+3. Run `smelt check --show-hints --fail-on warning`, plus the project's tests
+   and other checks. Review previously missed test imports for public entry
+   points (SMT107), configured bundling thresholds (SMT108), and existing package
+   re-exports when SMT319 is enabled. Repair imports according to the existing
+   package policy. No new setting or automatic rewrite is introduced; SMT109's
+   `count_tests` opt-in remains unchanged.
+
 ## 0.10.0 to 0.11.0
 
 0.11.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
