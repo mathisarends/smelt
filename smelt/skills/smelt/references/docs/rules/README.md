@@ -72,6 +72,7 @@
 | [SMT360](SMT360.md) | mutable-field-in-frozen-dataclass | structure | explicit | warning |
 | [SMT361](SMT361.md) | parallel-record-fields | structure | explicit | hint |
 | [SMT362](SMT362.md) | loop-invariant-collection | structure | explicit | hint |
+| [SMT363](SMT363.md) | complex-comprehension | structure | explicit | hint |
 | [SMT364](SMT364.md) | constructor-logic | structure | explicit | hint |
 | [SMT401](SMT401.md) | test-location | tests | policy | error |
 | [SMT420](SMT420.md) | private-test-access | tests | explicit | error |
