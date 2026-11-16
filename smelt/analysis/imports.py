@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
+    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
     from smelt.config.source import SourceStore
 
 
@@ -247,6 +248,47 @@ class ImportIndex:
         for module in self.modules():
             yield from self.imports_of(module)
 
+    def imports_in_tests(
+        self, syntax: SyntaxIndex
+    ) -> Iterator[tuple[str, ImportDetail]]:
+        """Direct project imports in separately discovered tests, outside the source graph.
+
+        Preserve the path independently of the module name: workspace test paths
+        may coincide with an installed source module's name.
+        """
+        modules = self.files.sources.keys() | self.files.packages.keys()
+        for path in sorted(self.files.tests):
+            module = syntax.for_path(path)
+            if module is None:
+                continue
+            guarded = type_checking_lines(module.tree)
+            for node in ast.walk(module.tree):
+                if not isinstance(node, ast.Import | ast.ImportFrom):
+                    continue
+                contents = self.files.line(path, node.lineno)
+                for imported in _project_targets(node, module, modules=modules):
+                    names, column, end_column = _describe(
+                        node,
+                        module.module,
+                        module.is_package,
+                        imported=imported,
+                        line_contents=contents,
+                    )
+                    yield (
+                        path,
+                        ImportDetail(
+                            importer=module.module,
+                            imported=imported,
+                            line=node.lineno,
+                            line_contents=contents,
+                            names=names,
+                            type_checking=node.lineno in guarded,
+                            external=False,
+                            column=column,
+                            end_column=end_column,
+                        ),
+                    )
+
     def modules(self) -> list[str]:
         return sorted(m for m in self.first_party if m in self.files.sources)
 
@@ -375,6 +417,30 @@ class ImportIndex:
                     )
         details.sort(key=lambda d: (d.line, d.column, d.imported))
         return details
+
+
+def _project_targets(
+    node: ast.Import | ast.ImportFrom,
+    module: ModuleSyntax,
+    *,
+    modules: set[str],
+) -> list[str]:
+    if isinstance(node, ast.Import):
+        return sorted({alias.name for alias in node.names if alias.name in modules})
+    base = resolve_relative(
+        module.module,
+        is_package=module.is_package,
+        level=node.level,
+        target=node.module,
+    )
+    if base not in modules:
+        return []
+    return sorted(
+        {
+            name if (name := f"{base}.{alias.name}") in modules else base
+            for alias in node.names
+        }
+    )
 
 
 def _statements_by_line(

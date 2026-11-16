@@ -9,7 +9,7 @@ from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, join, skip_import
+from smelt.rules.common import import_violation, join, package_api_imports, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -30,7 +30,11 @@ class PrivateModuleImport(Rule):
             "Explicit entry points keep callers coupled to a package's supported "
             "interface. Internal imports and intentional symbol re-exports through "
             "public facades remain valid. Wiring and composition roots still obey "
-            "these contracts. Layer and feature policies apply independently."
+            "these contracts. Discovered tests, including conftest.py and tests "
+            "inside the contracted package's configured test roots, are outside "
+            "callers and must use the public API. Test-quality exclusions do not "
+            "exempt imports; project exclusions and normal suppressions apply. "
+            "Layer and feature policies apply independently."
         ),
         bad="# app/client.py\nfrom app.orders.storage import OrderStore",
         good="# app/client.py\nfrom app.orders.api import place_order",
@@ -40,13 +44,17 @@ class PrivateModuleImport(Rule):
             "Public entries are exact module patterns; add .** only when the whole "
             "subtree is intentionally public."
         ),
-        config=("structure.contracts", "architecture.imports.type_checking"),
+        config=(
+            "structure.contracts",
+            "architecture.imports.type_checking",
+            "project.test_roots",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         if not any(contract.public is not None for contract in ctx.contracts.resolved):
             return
-        for detail in ctx.imports.all_imports():
+        for path, detail in package_api_imports(ctx):
             if detail.external or skip_import(ctx, detail):
                 continue
             for target in _module_targets(ctx, detail):
@@ -54,7 +62,10 @@ class PrivateModuleImport(Rule):
                     if (
                         contract.public is None
                         or not is_within(target, contract.package)
-                        or is_within(detail.importer, contract.package)
+                        or (
+                            is_within(detail.importer, contract.package)
+                            and not ctx.files.is_test_path(path)
+                        )
                         or contract.exposes(target)
                     ):
                         continue
@@ -62,6 +73,7 @@ class PrivateModuleImport(Rule):
                         self,
                         ctx,
                         replace(detail, imported=target),
+                        path=path,
                         message=f'{detail.importer} imports private module {target} of contract "{contract.name}"',
                         expected={
                             "contract": contract.name,

@@ -24,6 +24,77 @@ structure:
 OPTIONS = CheckOptions(select=("SMT108",))
 
 
+@pytest.mark.parametrize(
+    "test_path",
+    [
+        "tests/test_user.py",
+        "backend/tests/conftest.py",
+        "app/user/application/tests/test_user.py",
+    ],
+)
+def test_bundling_reviews_test_callers_with_export_evidence(
+    tmp_path: Path, test_path: str
+) -> None:
+    test_root = test_path.rsplit("/", 1)[0]
+    _project(
+        tmp_path,
+        "",
+        config=CONFIG.replace(
+            "root_packages: [app]", f"root_packages: [app], test_roots: [{test_root}]"
+        ),
+    )
+    write_project(
+        tmp_path,
+        {
+            test_path: "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom app.user.application.delete_user import DeleteUser\n"
+        },
+    )
+
+    [finding] = violations(tmp_path, OPTIONS)
+
+    assert (finding.code, finding.path, finding.line) == ("SMT108", test_path, 1)
+    assert finding.expected is not None
+    assert finding.expected["count"] == 3
+    assert {export["name"] for export in finding.expected["proposed_exports"]} == {
+        "GetUser",
+        "UpdateUser",
+        "DeleteUser",
+    }
+
+
+def test_workspace_test_paths_do_not_merge_with_source_module_names(
+    tmp_path: Path,
+) -> None:
+    config = CONFIG.replace(
+        "root_packages: [app]",
+        "root_packages: [app], source_roots: [src], test_roots: [app]",
+    ).replace("at: 3", "at: 2")
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": config,
+            "src/app/__init__.py": "",
+            "src/app/user/application/__init__.py": "",
+            "src/app/user/application/get_user.py": "class GetUser: pass\n",
+            "src/app/user/application/update_user.py": "class UpdateUser: pass\n",
+            "src/app/user/application/delete_user.py": "class DeleteUser: pass\n",
+            "src/app/test_client.py": "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
+            "app/test_client.py": "from app.user.application.get_user import GetUser\nfrom app.user.application.delete_user import DeleteUser\n",
+        },
+    )
+    found = violations(tmp_path, OPTIONS)
+    assert {v.path for v in found} == {"src/app/test_client.py", "app/test_client.py"}
+    assert all(v.expected is not None and v.expected["count"] == 2 for v in found)
+    assert {
+        v.path: {export["name"] for export in v.expected["proposed_exports"]}
+        for v in found
+        if v.expected is not None
+    } == {
+        "src/app/test_client.py": {"GetUser", "UpdateUser"},
+        "app/test_client.py": {"GetUser", "DeleteUser"},
+    }
+
+
 def _project(tmp_path: Path, caller: str, *, config: str = CONFIG) -> None:
     write_project(
         tmp_path,

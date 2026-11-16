@@ -19,6 +19,86 @@ CLIENT = (
 )
 
 
+@pytest.mark.parametrize(
+    "test_path",
+    [
+        "tests/test_observation.py",
+        "backend/tests/conftest.py",
+        "app/observation/tests/test_observation.py",
+    ],
+)
+def test_existing_reexports_are_preferred_in_tests(
+    tmp_path: Path, test_path: str
+) -> None:
+    test_root = test_path.rsplit("/", 1)[0]
+    root = _project(
+        tmp_path,
+        client="",
+        config=CONFIG.replace(
+            "root_packages: [app]", f"root_packages: [app], test_roots: [{test_root}]"
+        ),
+    )
+    write_project(root, {test_path: CLIENT})
+
+    [finding] = violations(root, OPTIONS)
+
+    assert (finding.code, finding.path, finding.line) == ("SMT319", test_path, 2)
+    assert finding.expected is not None
+    assert finding.expected["replacement"] == "from app.observation import Snapshot"
+
+
+@pytest.mark.parametrize(
+    ("statement", "replacement"),
+    [
+        ("from ..models import Snapshot as State", "from .. import Snapshot as State"),
+        ("from .models import Snapshot", "from .. import Snapshot"),
+    ],
+)
+def test_relative_test_suggestions_reach_the_facade(
+    tmp_path: Path, statement: str, replacement: str
+) -> None:
+    root = _project(
+        tmp_path,
+        client="",
+        exports="from .tests.models import Snapshot\n"
+        if statement.startswith("from .models")
+        else EXPORTS,
+        config=CONFIG.replace(
+            "root_packages: [app]",
+            "root_packages: [app], test_roots: [app/observation/tests]",
+        ),
+    )
+    write_project(
+        root,
+        {
+            "app/observation/tests/test_observation.py": statement + "\n",
+            "app/observation/tests/models.py": "class Snapshot: pass\n",
+        },
+    )
+    [finding] = violations(root, OPTIONS)
+    assert finding.expected is not None
+    assert finding.expected["replacement"] == replacement
+
+
+def test_cached_test_findings_follow_import_and_export_edits(tmp_path: Path) -> None:
+    root = _project(tmp_path, client="")
+    test_path = "tests/test_observation.py"
+    for client, exports, expected in (
+        (CLIENT, EXPORTS, ["SMT319"]),
+        (CLIENT, "", []),
+        (CLIENT, EXPORTS, ["SMT319"]),
+        ("from app.observation import Snapshot\n", EXPORTS, []),
+    ):
+        write_project(root, {test_path: client, "app/observation/__init__.py": exports})
+        warm = violations(root, OPTIONS)
+        assert warm == violations(
+            root, CheckOptions(select=("SMT319",), use_cache=False)
+        )
+        assert [v.code for v in warm] == expected
+    (root / test_path).unlink()
+    assert violations(root, OPTIONS) == []
+
+
 def _project(
     tmp_path: Path,
     *,

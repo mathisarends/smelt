@@ -10,7 +10,7 @@ from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, skip_import
+from smelt.rules.common import import_violation, package_api_imports, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -36,7 +36,11 @@ class PackageImportFanout(Rule):
             "Findings include missing static exports and a cycle witness for the "
             "proposed caller/facade edges. Known cycles block bundling advice. "
             "No-cycle-found covers only explicit runtime imports; dynamic imports "
-            "and implicit package initialization remain unproven."
+            "and implicit package initialization remain unproven. Discovered tests "
+            "and conftest.py also count as outside callers, including configured "
+            "test roots inside the package. Test-quality exclusions do not exempt "
+            "imports; project exclusions and normal suppressions apply. This does "
+            "not change SMT109's separate count_tests opt-in for API expansion."
         ),
         bad="# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser",
         good="# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser",
@@ -48,7 +52,11 @@ class PackageImportFanout(Rule):
             "independent dependencies are intentional, retain them or adjust the "
             "advisory threshold. Declare public: ['.'] to enforce facade-only imports."
         ),
-        config=("structure.contracts", "architecture.imports.type_checking"),
+        config=(
+            "structure.contracts",
+            "architecture.imports.type_checking",
+            "project.test_roots",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -58,33 +66,42 @@ class PackageImportFanout(Rule):
             if threshold is None:
                 continue
             callers: dict[str, dict[str, ImportDetail]] = defaultdict(dict)
-            for detail in ctx.imports.all_imports():
+            for path, detail in package_api_imports(ctx):
                 if (
                     detail.external
                     or skip_import(ctx, detail)
-                    or is_within(detail.importer, contract.package)
+                    or (
+                        is_within(detail.importer, contract.package)
+                        and not ctx.files.is_test_path(path)
+                    )
                     or not is_within(detail.imported, contract.package)
                 ):
                     continue
-                callers[detail.importer].setdefault(detail.imported, detail)
-            for caller, targets in sorted(callers.items()):
+                callers[path].setdefault(detail.imported, detail)
+            for path, targets in sorted(callers.items()):
                 if len(targets) < threshold:
                     continue
                 first = min(
                     targets.values(), key=lambda detail: (detail.line, detail.column)
                 )
+                caller = first.importer
                 if usage is None:
                     usage = FacadeUsage(
-                        ctx.syntax, ctx.imports, files=ctx.files, count_tests=False
+                        ctx.syntax, ctx.imports, files=ctx.files, count_tests=True
                     )
                 evidence = _bundle_evidence(
-                    ctx, usage, caller, package=contract.package, targets=targets
+                    ctx,
+                    usage,
+                    path,
+                    package=contract.package,
+                    targets=targets,
                 )
                 blocked = evidence["cycle_check"] == "cycle"
                 yield import_violation(
                     self,
                     ctx,
                     first,
+                    path=path,
                     message=f"{caller} imports {len(targets)} modules of {contract.package}; consider its package facade",
                     expected={
                         "contract": contract.name,
@@ -116,11 +133,13 @@ class _BundleEvidence(TypedDict):
 def _bundle_evidence(
     ctx: AnalysisContext,
     usage: FacadeUsage,
-    caller: str,
+    path: str,
     *,
     package: str,
     targets: dict[str, ImportDetail],
 ) -> _BundleEvidence:
+    caller = next(iter(targets.values())).importer
+    test = ctx.files.is_test_path(path)
     exports = [
         {
             "definition": f"{gap.module}.{gap.name}",
@@ -128,8 +147,8 @@ def _bundle_evidence(
             "suggested_import": f"from .{gap.module.removeprefix(package + '.')} import {gap.name}",
             "needs_import": gap.needs_import,
         }
-        for gap in usage.gaps(package, count_tests=False)
-        if caller in gap.source_importers
+        for gap in usage.gaps(package, count_tests=True)
+        if caller in (gap.test_importers if test else gap.source_importers)
     ]
     adjacency = {
         name: set(children)
@@ -137,7 +156,11 @@ def _bundle_evidence(
             include_type_checking=False
         ).items()
     }
-    adjacency.setdefault(caller, set()).add(package)
+    source = ctx.files.sources.get(caller)
+    graph_caller = (
+        caller if source is not None and source.path == path else f"<test:{path}>"
+    )
+    adjacency.setdefault(graph_caller, set()).add(package)
     adjacency.setdefault(package, set()).update(set(targets) - {package})
     nodes = set(adjacency) | {
         child for children in adjacency.values() for child in children

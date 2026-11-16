@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Package API checks now include discovered tests and `conftest.py`, including
+  configured test roots inside a source package. [SMT107](docs/rules/SMT107.md)
+  enforces public entry points, [SMT108](docs/rules/SMT108.md) reviews configured
+  bundling thresholds, and opt-in [SMT319](docs/rules/SMT319.md) suggests existing
+  package re-exports. Existing policies can now report previously missed test
+  imports; no new setting or automatic rewrite. SMT109's `count_tests` opt-in
+  remains unchanged. Fixes [#177](https://github.com/mathisarends/smelt/issues/177).
+
 ## [0.11.0] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default

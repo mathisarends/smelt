@@ -134,7 +134,7 @@ class FacadeUsage:
                 (use.test and not count_tests)
                 or definition.module == package
                 or not is_within(definition.module, package)
-                or is_within(use.importer, package)
+                or (is_within(use.importer, package) and not use.test)
             ):
                 continue
             groups = callers.setdefault(definition, (set(), set()))
@@ -166,11 +166,8 @@ class FacadeUsage:
 
     def _collect_uses(self, *, count_tests: bool) -> Iterator[_Use]:
         files = self._files
-        test_roots = tuple(
-            root.rstrip("/") + "/" for root in files.config.project.test_roots
-        )
         paths = [
-            (source.path, source.path.startswith(test_roots))
+            (source.path, files.is_test_path(source.path))
             for source in files.sources.values()
         ]
         if count_tests:

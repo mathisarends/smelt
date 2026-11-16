@@ -20,6 +20,42 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
+@pytest.mark.parametrize(
+    ("code", "count"), [("SMT107", 2), ("SMT108", 1), ("SMT319", 1)]
+)
+def test_changed_checks_find_new_deep_test_imports(
+    tmp_path: Path, code: str, count: int
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, public: ['.'], bundle_imports_at: 2}\n",
+            "app/__init__.py": "",
+            "app/api/__init__.py": "from .impl import Item\n",
+            "app/api/impl.py": "class Item: pass\n",
+            "app/api/other.py": "class Other: pass\n",
+            "tests/test_api.py": "from app.api import Item\n",
+        },
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "public API baseline")
+    assert violations(root, CheckOptions(changed=True, select=(code,))) == []
+    write_project(
+        root,
+        {
+            "tests/test_api.py": "from app.api.impl import Item\nfrom app.api.other import Other\n"
+        },
+    )
+    for use_cache in (True, True, False):
+        found = violations(
+            root, CheckOptions(changed=True, select=(code,), use_cache=use_cache)
+        )
+        assert [(v.code, v.path) for v in found] == [
+            (code, "tests/test_api.py")
+        ] * count
+
+
 def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     tmp_path: Path,
 ) -> None:
