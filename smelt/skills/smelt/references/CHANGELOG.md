@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Optional design review [SMT361](docs/rules/SMT361.md) `parallel-record-fields`
+  reports declared sequence fields of the same instance paired with `zip`, once
+  per class and field group, with declaration and use locations. It recognizes
+  import aliases, simple field aliases and `strict=True`. Local sequences and
+  different receivers remain valid; deliberate column storage can keep reasoned
+  suppressions. Enable `rules: {parallel-record-fields: hint}`; no automatic rewrite.
+  Implements [#155](https://github.com/mathisarends/smelt/issues/155).
 - Optional performance review [SMT362](docs/rules/SMT362.md)
   `loop-invariant-collection` groups repeated membership-set comprehensions in
   passive `for` loops when tuple literals or explicit immutable tuple/frozen-record
