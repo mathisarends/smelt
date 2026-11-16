@@ -14,6 +14,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   different receivers remain valid; deliberate column storage can keep reasoned
   suppressions. Enable `rules: {parallel-record-fields: hint}`; no automatic rewrite.
   Implements [#155](https://github.com/mathisarends/smelt/issues/155).
+- Optional performance review [SMT362](docs/rules/SMT362.md)
+  `loop-invariant-collection` groups repeated membership-set comprehensions in
+  passive `for` loops when tuple literals or explicit immutable tuple/frozen-record
+  declarations establish stable inputs. Unknown calls, mutable inputs, properties
+  and suspension points stay quiet. Enable `rules: {loop-invariant-collection: hint}`.
+  No automatic hoisting: preserve guards, empty loops and evaluation order. The
+  initial scope requires local standard-library dataclasses and plain field types;
+  Pydantic snapshots and `Annotated` fields remain outside its inference limits.
+  Initial scope for [#154](https://github.com/mathisarends/smelt/issues/154).
 
 ## [0.9.0] - 2026-11-16
 

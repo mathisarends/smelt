@@ -89,6 +89,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
     "smelt.rules.structure.frozen_collections:MutableFieldInFrozenDataclass",
     "smelt.rules.structure.parallel_fields:ParallelRecordFields",
+    "smelt.rules.structure.loop_collections:LoopInvariantCollection",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
