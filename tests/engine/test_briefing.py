@@ -291,6 +291,21 @@ def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
     assert "max_constructor_decisions: 0" in render_briefing(briefing, ctx)
 
 
+def test_private_attribute_boundary_is_available_before_editing(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    ownership: {match: app, private_attribute_boundary: package}\n",
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
+    assert briefing.to_json()["contracts"][0]["private_attribute_boundary"] == "package"
+    assert "private_attribute_boundary: package" in render_briefing(briefing, ctx)
+
+
 def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,

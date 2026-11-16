@@ -67,6 +67,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.context_managers:DeprecatedAsyncContextmanagerReturn",
     "smelt.rules.structure.literal_types:DuplicateLiteralType",
     "smelt.rules.structure.private_symbols:PrivateSymbolImport",
+    "smelt.rules.structure.private_attributes:CrossModulePrivateAttribute",
     "smelt.rules.structure.awaited_arguments:AwaitInCallArgument",
     "smelt.rules.structure.enum_styles:StrEnumAutoValues",
     "smelt.rules.structure.enum_styles:StrEnumExplicitValues",

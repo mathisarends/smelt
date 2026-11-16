@@ -551,6 +551,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "module_docstrings",
                 "future_annotations",
                 "private_modules",
+                "private_attribute_boundary",
                 "max_positional_parameters",
                 "max_comprehension_loops",
                 "max_constructor_decisions",
