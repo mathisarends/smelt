@@ -248,7 +248,10 @@ architecture:
 
 This enables [SMT111](rules/SMT111.md) `architecture/member-boundary`.
 The keys and allowances are workspace-relative path globs, using `*`, `**` and
-`?`; `.` names the root project. A source member matching no key is unrestricted.
+`?`; `.` names the root project. Every key and every allowance must match at
+least one analyzed member (or `.`); a glob that matches nothing, such as a typo,
+is a configuration error rather than a boundary that silently checks nothing.
+A source member matching no key is unrestricted.
 If several keys match, their allowances combine. Imports inside the same member
 always pass. Member-local wiring or shared roles do not bypass these boundaries.
 Only direct production imports count, regardless of `architecture.imports.transitive`;

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
 from smelt.config.models import CrossFeatureAllowance, PackagePolicy
-from smelt.config.patterns import module_matches
+from smelt.config.patterns import module_matches, path_matches
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
@@ -69,6 +69,7 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
     for view, location in _architecture_views(ctx):
         issues.extend(_missing_modules(view, location))
         issues.extend(_unknown_allowed_features(view, location))
+    issues.extend(_unmatched_member_globs(ctx))
     issues.extend(_conflicting_package_policies(ctx))
     matched_contracts = {contract.name for contract in ctx.contracts.resolved}
     issues.extend(
@@ -137,6 +138,27 @@ def _unknown_allowed_features(ctx: AnalysisContext, location: str) -> list[Confi
                         f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
                     )
                 )
+    return issues
+
+
+def _unmatched_member_globs(ctx: AnalysisContext) -> list[ConfigIssue]:
+    """Member boundaries whose globs match no member would silently check nothing."""
+    members = ctx.workspace.members
+    issues: list[ConfigIssue] = []
+
+    def unmatched(location: str, pattern: str) -> None:
+        if not any(path_matches(pattern, member) for member in members):
+            issues.append(
+                ConfigIssue(
+                    location,
+                    f'"{pattern}" matches no workspace member{did_you_mean(pattern, members)}',
+                )
+            )
+
+    for pattern, policy in ctx.config.architecture.members.items():
+        unmatched(f"architecture.members.{pattern}", pattern)
+        for index, target in enumerate(policy.may_depend_on):
+            unmatched(f"architecture.members.{pattern}.may_depend_on[{index}]", target)
     return issues
 
 

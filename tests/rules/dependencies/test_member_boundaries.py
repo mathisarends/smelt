@@ -54,7 +54,7 @@ def test_member_boundary_reports_the_import_and_semantic_edge(tmp_path: Path) ->
 @pytest.mark.parametrize(
     ("policy", "expected"),
     [
-        ("members: {'tools/*': {may_depend_on: []}}", []),
+        ("members: {'packages/*': {may_depend_on: []}}", []),
         ("members: {'services/*': {may_depend_on: []}}", ["SMT111"]),
         (
             "members: {'services/*': {may_depend_on: []}, 'services/api': {may_depend_on: ['packages/*']}}",

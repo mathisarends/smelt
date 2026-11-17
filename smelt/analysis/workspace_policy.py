@@ -31,6 +31,11 @@ class WorkspaceIndex:
             else ()
         )
 
+    @property
+    def members(self) -> tuple[str, ...]:
+        """Every analyzed member path, '.' (the workspace root) first."""
+        return (".", *self._paths) if self._enabled else ()
+
     def member_for_module(self, module: str) -> str | None:
         source = self._files.sources.get(module)
         if source is not None:
