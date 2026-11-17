@@ -160,7 +160,7 @@ def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
     root = _project(
         tmp_path, SOURCE, settings="structure: {max_constructor_decisions: 0}\n"
     )
-    assert violations(root) == []
+    assert [v.code for v in violations(root)] == ["SMT364"]
     write_project(
         root,
         {
