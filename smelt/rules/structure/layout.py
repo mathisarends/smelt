@@ -33,6 +33,7 @@ class UnknownLayer(Rule):
     enabled_by_default = True
     code = "SMT301"
     name = "architecture/unknown-layer"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
@@ -132,6 +133,7 @@ class UnknownLayer(Rule):
 class UnclassifiedModule(Rule):
     code = "SMT305"
     name = "architecture/unclassified-module"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.WARNING
     requires = frozenset({Index.FILES})

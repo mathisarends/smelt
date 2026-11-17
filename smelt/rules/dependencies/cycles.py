@@ -57,6 +57,7 @@ class _Graph[T: Hashable]:
 class ImportCycle(Rule):
     code = "SMT104"
     name = "architecture/import-cycle"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})

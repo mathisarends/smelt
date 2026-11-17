@@ -24,6 +24,7 @@ class LayerBoundary(Rule):
     activation = POLICIES["SMT101"]
     code = "SMT101"
     name = "architecture/layer-boundary"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})

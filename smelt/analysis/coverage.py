@@ -220,7 +220,7 @@ def _classify_source(
     reason = (
         "No architecture layer or explicit shared, wiring or composition-root policy."
     )
-    if is_governed(info, layers_declared=bool(model.layers)):
+    if is_governed(info, layers_declared=bool(model.part_for(source.module).layers)):
         status, reason = "governed", "Explicit architecture policy."
     elif source.is_package and _is_facade(source, asts):
         status, reason = (

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
+from smelt.config.workspace import scope_for_path
 from smelt.diagnostics.violation import Violation
 
 if TYPE_CHECKING:
@@ -19,6 +20,9 @@ _VIOLATIONS = TypeAdapter(list[Violation])
 
 
 def rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violation]:
+    if getattr(rule, "architecture_scoped", False) and ctx.model.parts:
+        yield from _architecture_findings(rule, ctx)
+        return
     cache = ctx.cache
     if cache is not None and getattr(rule, "member_local", False):
         yield from _member_findings(rule, ctx)
@@ -54,6 +58,17 @@ def rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violatio
             findings = list(rule.check(ctx.file_view(source)))
             cache.write(key, findings, _VIOLATIONS)
         yield from findings
+
+
+def _architecture_findings(
+    rule: RuleContract, ctx: AnalysisContext
+) -> Iterator[Violation]:
+    """Each architecture judges the files of its own packages and members."""
+    scopes = ctx.architecture_scopes
+    for scope in scopes:
+        for finding in rule_findings(rule, ctx.architecture_view(scope)):
+            if scope_for_path(scopes, finding.path) is scope:
+                yield finding
 
 
 def _test_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violation]:

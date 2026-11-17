@@ -12,7 +12,7 @@ from smelt.engine.briefing import (
     resolve_target,
 )
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
-from tests.helpers import FIXTURES, check, write_project
+from tests.helpers import FIXTURES, MEMBER_ARCHITECTURES, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -777,3 +777,22 @@ class TestMirroredProject:
 
         with pytest.raises(TargetError, match=r"; features: billing, voice$"):
             resolve_target(outcome.context, "nothing")
+
+
+@pytest.mark.parametrize(
+    ("target", "layers"),
+    [
+        ("users", ["domain", "application"]),
+        ("packages/core/src/core/domain", ["domain", "infra"]),
+    ],
+)
+def test_a_member_briefing_shows_the_member_architecture(
+    tmp_path: Path, target: str, layers: list[str]
+) -> None:
+    outcome = check(write_project(tmp_path, MEMBER_ARCHITECTURES))
+
+    briefing = build_briefing(
+        outcome.context, resolve_target(outcome.context, target), outcome.report
+    )
+
+    assert [layer.name for layer in briefing.layers] == layers

@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 _MEMBER_CONFIG_NAMES = ("smelt.yml", "smelt.yaml")
 _UNSUPPORTED_MEMBER_KEYS = {
     "extends": "a member config inherits the workspace root implicitly",
-    "architecture": "architecture is configured in the workspace root for now",
     "tests": "test options are configured in the workspace root",
     "suppressions": "the suppression policy is configured in the workspace root",
     "debt": "the debt file is configured in the workspace root",
@@ -49,6 +48,70 @@ class MemberDirectory:
 
     path: str  # POSIX, relative to the workspace root
     skipped: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ArchitectureScope:
+    """The packages one architecture governs: the root's, or a member's own.
+
+    ``config`` is the root config with this scope's architecture, so rules that
+    read ``config.architecture`` need no knowledge of workspaces.
+    """
+
+    member: str | None  # None for the root architecture
+    config: SmeltConfig
+    packages: tuple[str, ...]
+
+    @property
+    def location(self) -> str:
+        """Where this scope's architecture is declared, as a config key."""
+        if self.member is None:
+            return "architecture"
+        return f"members.{self.member}.architecture"
+
+
+def architecture_scopes(config: SmeltConfig) -> tuple[ArchitectureScope, ...]:
+    """The root scope and one per member architecture; empty if no member has one."""
+    members = [
+        ArchitectureScope(
+            path,
+            config.model_copy(
+                update={
+                    "architecture": member.architecture.model_copy(
+                        update={"imports": config.architecture.imports}
+                    )
+                }
+            ),
+            member.packages,
+        )
+        for path, member in sorted(config.members.items())
+        if member.architecture is not None
+    ]
+    if not members:
+        return ()
+    taken = {name for scope in members for name in scope.packages}
+    root = ArchitectureScope(
+        None,
+        config,
+        tuple(name for name in config.project.root_packages if name not in taken),
+    )
+    return (root, *members)
+
+
+def scope_for_path(
+    scopes: tuple[ArchitectureScope, ...], path: str | None
+) -> ArchitectureScope:
+    """The innermost member scope containing ``path``; else the root scope."""
+    owners = [
+        scope
+        for scope in scopes
+        if scope.member is not None
+        and path is not None
+        and (path == scope.member or path.startswith(scope.member + "/"))
+    ]
+    if owners:
+        return max(owners, key=lambda scope: len(scope.member or ""))
+    return scopes[0]
 
 
 def member_config_files(
@@ -87,6 +150,15 @@ def member_raw_issues(raw: object) -> list[ConfigIssue]:
             )
             for key in project
             if key != "exclude"
+        )
+    architecture = raw.get("architecture")
+    if isinstance(architecture, dict) and "imports" in architecture:
+        issues.append(
+            ConfigIssue(
+                "architecture.imports",
+                "not allowed in a workspace member config: which imports count "
+                "is set once in the workspace root",
+            )
         )
     return issues
 
@@ -312,6 +384,10 @@ def _compile_members(
             "structure": config.structure.model_copy(update={"contracts": contracts}),
             "ignore": ignore,
             "project": config.project.model_copy(update={"exclude": exclude}),
+            "members": {
+                path: member.with_packages(packages.get(path, []))
+                for path, member in config.members.items()
+            },
         }
     )
 

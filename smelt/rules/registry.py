@@ -126,6 +126,7 @@ class _LazyRule:
         self.file_local = bool(metadata["file_local"])
         self.test_local = bool(metadata["test_local"])
         self.member_local = bool(metadata["member_local"])
+        self.architecture_scoped = bool(metadata["architecture_scoped"])
         self._target = str(metadata["target"])
 
     @cached_property
@@ -155,6 +156,7 @@ def catalog_metadata() -> list[dict[str, Any]]:
                     "file_local",
                     "test_local",
                     "member_local",
+                    "architecture_scoped",
                 )
             },
             "scope": getattr(rule, "scope", "source"),

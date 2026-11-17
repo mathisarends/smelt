@@ -8,7 +8,7 @@ import pytest
 
 from smelt.config import load_config
 from smelt.engine.coverage import policy_hash
-from tests.helpers import check, write_project
+from tests.helpers import MEMBER_ARCHITECTURES, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -204,3 +204,17 @@ class TestEffectiveCoverage:
 
         assert same == before
         assert policy_hash(load_config(config).config) != before
+
+
+def test_coverage_lists_the_packages_each_member_architecture_governs(
+    tmp_path: Path,
+) -> None:
+    write_project(tmp_path, MEMBER_ARCHITECTURES)
+
+    coverage = check(tmp_path).report.coverage
+
+    assert coverage is not None
+    assert coverage["member_architectures"] == {
+        "packages/core": ["core"],
+        "services/api": ["api"],
+    }

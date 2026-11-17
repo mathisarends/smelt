@@ -4,22 +4,53 @@ from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
 from smelt.config.models import CrossFeatureAllowance
+from smelt.config.workspace import architecture_scopes
 
 if TYPE_CHECKING:
-    from smelt.config.models import SmeltConfig
+    from collections.abc import Mapping, Sequence
+
+    from smelt.config.models import ArchitectureConfig, LayerConfig, SmeltConfig
 
 
 def validate_semantics(
     config: SmeltConfig,
 ) -> tuple[list[ConfigIssue], list[ConfigIssue]]:
-    validator = _Validator(config)
+    """Errors and warnings; each architecture is checked against its own packages."""
+    scopes = architecture_scopes(config)
+    validator = _Validator(
+        config,
+        architecture=config.architecture,
+        roots=scopes[0].packages if scopes else config.project.root_packages,
+    )
     validator.run()
-    return validator.errors, validator.warnings
+    validator.contracts()
+    errors, warnings = validator.errors, validator.warnings
+    for scope in scopes[1:]:
+        member = _Validator(
+            config,
+            architecture=scope.config.architecture,
+            roots=scope.packages,
+            location=scope.location,
+        )
+        member.run()
+        errors.extend(member.errors)
+        warnings.extend(member.warnings)
+    return errors, warnings
 
 
 class _Validator:
-    def __init__(self, config: SmeltConfig) -> None:
+    def __init__(
+        self,
+        config: SmeltConfig,
+        *,
+        architecture: ArchitectureConfig,
+        roots: Sequence[str],
+        location: str = "architecture",
+    ) -> None:
         self.config = config
+        self.architecture = architecture
+        self.roots = list(roots)
+        self.location = location
         self.errors: list[ConfigIssue] = []
         self.warnings: list[ConfigIssue] = []
 
@@ -27,9 +58,9 @@ class _Validator:
         self._layers()
         self._cross_feature()
         self._module_sets()
-        self._contracts()
 
-    def _contracts(self) -> None:
+    def contracts(self) -> None:
+
         roots = self.config.project.root_packages
         for symbol, export in self.config.structure.canonical_exports.items():
             if any(name.split(".")[0] not in roots for name in (symbol, export)):
@@ -47,8 +78,8 @@ class _Validator:
 
     def _layers(self) -> None:
         seen_paths: dict[str, str] = {}
-        for name, layer in self.config.architecture.layers.items():
-            base = f"architecture.layers.{name}"
+        for name, layer in self.architecture.layers.items():
+            base = f"{self.location}.layers.{name}"
             for index, dep in enumerate(layer.may_depend_on):
                 self._check_layer(f"{base}.may_depend_on[{index}]", dep)
             if layer.path in seen_paths:
@@ -58,16 +89,17 @@ class _Validator:
                     f'(already used by "{seen_paths[layer.path]}")',
                 )
             seen_paths.setdefault(layer.path, name)
-        cycle = _find_layer_cycle(self.config)
+        cycle = _find_layer_cycle(self.architecture.layers)
         if cycle:
             self.warnings.append(
                 ConfigIssue(
-                    "architecture.layers", "cyclic may_depend_on: " + " -> ".join(cycle)
+                    f"{self.location}.layers",
+                    "cyclic may_depend_on: " + " -> ".join(cycle),
                 )
             )
 
     def _cross_feature(self) -> None:
-        for index, allowance in enumerate(self.config.architecture.cross_feature.allow):
+        for index, allowance in enumerate(self.architecture.cross_feature.allow):
             if isinstance(allowance, CrossFeatureAllowance):
                 _, source_layer, _, target_layer = allowance.components()
                 pair = (source_layer, target_layer)
@@ -75,54 +107,59 @@ class _Validator:
                 source_layer, target_layer = allowance.split("->", maxsplit=1)
                 pair = source_layer.strip(), target_layer.strip()
             for name in pair:
-                self._check_layer(f"architecture.cross_feature.allow[{index}]", name)
+                self._check_layer(f"{self.location}.cross_feature.allow[{index}]", name)
 
     def _module_sets(self) -> None:
-        arch = self.config.architecture
+        arch = self.architecture
         named: list[tuple[str, str]] = [
-            (f"architecture.{key}[{index}]", module)
+            (f"{self.location}.{key}[{index}]", module)
             for key in ("shared", "composition_root")
             for index, module in enumerate(getattr(arch, key))
         ]
         named.extend(
-            (f"architecture.modules.{module}", module) for module in arch.modules
+            (f"{self.location}.modules.{module}", module) for module in arch.modules
         )
         for module, layer in arch.modules.items():
-            self._check_layer(f"architecture.modules.{module}", layer)
+            self._check_layer(f"{self.location}.modules.{module}", layer)
         if arch.features and arch.features.root:
-            named.append(("architecture.features.root", arch.features.root))
+            named.append((f"{self.location}.features.root", arch.features.root))
         if arch.features and arch.features.pattern:
             prefix = arch.features.pattern.rsplit(".", 1)[0]
-            named.append(("architecture.features.pattern", prefix))
-        roots = self.config.project.root_packages
+            named.append((f"{self.location}.features.pattern", prefix))
+        roots = self.roots
+        where = (
+            "project.root_packages"
+            if self.location == "architecture"
+            else "this member's packages"
+        )
         for path, module in named:
             if not any(_within(module, root) for root in roots):
                 self._error(
                     path,
-                    f'"{module}" is not inside project.root_packages ({", ".join(roots)})',
+                    f'"{module}" is not inside {where} ({", ".join(roots)})',
                 )
         for index, pattern in enumerate(arch.wiring):
             prefix = pattern.split("*")[0].rstrip(".")
             if not any(_within(prefix, root) for root in roots):
                 self._error(
-                    f"architecture.wiring[{index}]",
-                    f'"{pattern}" is not inside project.root_packages ({", ".join(roots)})',
+                    f"{self.location}.wiring[{index}]",
+                    f'"{pattern}" is not inside {where} ({", ".join(roots)})',
                 )
         self._overlapping_sets()
 
     def _check_layer(self, path: str, name: str) -> None:
-        layers = self.config.architecture.layers
+        layers = self.architecture.layers
         if name not in layers:
             self._error(path, f'unknown layer "{name}"{did_you_mean(name, layers)}')
 
     def _overlapping_sets(self) -> None:
-        arch = self.config.architecture
+        arch = self.architecture
         features_root = arch.features.root if arch.features else None
         for key in ("shared", "composition_root"):
             for index, module in enumerate(getattr(arch, key)):
                 if features_root and _within(module, features_root):
                     self._error(
-                        f"architecture.{key}[{index}]",
+                        f"{self.location}.{key}[{index}]",
                         f'"{module}" is inside the features root "{features_root}"',
                     )
         for module in arch.modules:
@@ -130,14 +167,14 @@ class _Validator:
                 _within(module, features_root) or _within(features_root, module)
             ):
                 self._error(
-                    f"architecture.modules.{module}",
+                    f"{self.location}.modules.{module}",
                     f'"{module}" overlaps the features root "{features_root}"; '
                     "modules are for code outside the features",
                 )
             for other in (*arch.shared, *arch.composition_root):
                 if _within(module, other):
                     self._error(
-                        f"architecture.modules.{module}",
+                        f"{self.location}.modules.{module}",
                         f'"{module}" is already covered by "{other}" '
                         "(shared or composition_root)",
                     )
@@ -145,7 +182,7 @@ class _Validator:
             for other in arch.composition_root:
                 if _within(module, other) or _within(other, module):
                     self._error(
-                        f"architecture.shared[{index}]",
+                        f"{self.location}.shared[{index}]",
                         f'"{module}" overlaps composition_root "{other}"',
                     )
 
@@ -157,8 +194,7 @@ def _within(module: str, package: str) -> bool:
     return module == package or module.startswith(f"{package}.")
 
 
-def _find_layer_cycle(config: SmeltConfig) -> list[str] | None:
-    layers = config.architecture.layers
+def _find_layer_cycle(layers: Mapping[str, LayerConfig]) -> list[str] | None:
     state: dict[str, int] = {}
     stack: list[str] = []
 

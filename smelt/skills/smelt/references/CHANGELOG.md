@@ -290,21 +290,30 @@ unaffected until they set `project.workspace`. See
   two members with the same top-level package name are a configuration error.
 - **Member configs.** A member's `smelt.yml` or `smelt.yaml` inherits the root
   implicitly and may set `rules`, `structure` (options and `contracts`),
-  `ignore` and `project.exclude`. Its paths are member-relative. `rules` apply
+  `ignore`, `project.exclude` and `architecture`. Its paths are member-relative. `rules` apply
   by path to the member's sources and tests, after the root layers and before
   the closest package contract. `structure` options compile into one contract per
   member package, named after the member. Member contracts are named
   `member:name` and must match the member's own packages. A member cannot set
-  `extends`, `architecture`, `tests`, `suppressions`, `debt` or other `project`
-  keys, and cannot lower SMT306 under strict coverage. Errors name the member
+  `extends`, `architecture.imports`, `tests`, `suppressions`, `debt` or other
+  `project` keys, and cannot lower SMT306 under strict coverage. Errors name the member
   file and its own key.
 - **Member checks.** `smelt check` in a member directory, or
   `--config <member>/smelt.yml`, loads the workspace root and checks only that
   member. `smelt config show --sources` lists member files, and `origins` map
   `members.<path>.*` keys to them. The policy hash covers member configs.
   Reports without a workspace keep their previous policy hash.
-- **Not yet:** per-member debt files, architecture and test options. Use the root
-  config and package contracts for these until later releases add them.
+- **Member architecture.** A member's `architecture` replaces the root
+  architecture for the member's packages; the root architecture keeps governing
+  the root project and members without their own. Every module it names must lie
+  inside the member's packages, and layers without features span only those
+  packages. It judges imports inside the member: SMT101-SMT106, SMT301 and
+  SMT305 run once per architecture and report only the files it governs. Imports from one member into
+  another are not judged by a member architecture. `smelt context` shows the
+  governing member's layers, missing modules name the member file, and the
+  coverage report adds `member_architectures` (member path to packages).
+- **Not yet:** per-member debt files and test options. Use the root config and
+  package contracts for these until later releases add them.
 
 ### Internal
 
@@ -334,6 +343,21 @@ unaffected until they set `project.workspace`. See
   from the root YAML. The selected member is `LoadedConfig.member`.
 - `RuleSettings.severity` takes the finding's `path` so member rules also reach
   files outside a source module.
+- `MemberConfig.architecture` and `MemberConfig.packages`.
+  `smelt.config.workspace.architecture_scopes` returns one `ArchitectureScope`
+  (member, config, packages) per architecture, root first, or nothing when no
+  member declares one; `scope_for_path` picks the innermost.
+- `ArchitectureModel.build` takes `scope`, and `ArchitectureModel.combine` joins
+  scoped models into `parts`. `part_for(module)` returns the governing part,
+  `owns` and `roots` describe a scope, and `info` answers from the owning part.
+  `AnalysisContext.model` is combined when scopes exist, and
+  `AnalysisContext.architecture_view(scope)` returns a context whose config and
+  model are that scope's.
+- `Rule.architecture_scoped` (also in rule metadata and `catalog.json`) marks
+  rules that read the architecture config. They run once per scope and keep the
+  findings that scope governs.
+- `smelt.config.validation` validates every architecture scope against its own
+  packages and reports member issues under `members.<path>.architecture`.
 
 ## [0.12.0] - 2026-11-16
 

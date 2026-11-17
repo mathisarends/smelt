@@ -22,6 +22,7 @@ class CompositionRootLeak(Rule):
     activation = POLICIES["SMT106"]
     code = "SMT106"
     name = "architecture/composition-root-leak"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})

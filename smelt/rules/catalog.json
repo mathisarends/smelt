@@ -12,6 +12,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -27,6 +28,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -42,6 +44,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -57,6 +60,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -72,6 +76,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -87,6 +92,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -103,6 +109,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -119,6 +126,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -135,6 +143,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -150,6 +159,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -165,6 +175,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -180,6 +191,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -195,6 +207,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": true,
     "scope": "source"
   },
   {
@@ -210,6 +223,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "project"
   },
   {
@@ -225,6 +239,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -240,6 +255,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -255,6 +271,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -270,6 +287,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -285,6 +303,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -300,6 +319,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -315,6 +335,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -330,6 +351,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -345,6 +367,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -360,6 +383,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": true,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -375,6 +399,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": true,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -390,6 +415,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -405,6 +431,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -421,6 +448,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -436,6 +464,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -451,6 +480,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -466,6 +496,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -481,6 +512,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -496,6 +528,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -511,6 +544,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -526,6 +560,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -541,6 +576,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -556,6 +592,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "project"
   },
   {
@@ -571,6 +608,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -586,6 +624,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -601,6 +640,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -616,6 +656,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -631,6 +672,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -646,6 +688,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -661,6 +704,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -676,6 +720,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -691,6 +736,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -706,6 +752,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -721,6 +768,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -736,6 +784,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -751,6 +800,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -766,6 +816,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -781,6 +832,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -796,6 +848,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -811,6 +864,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -826,6 +880,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -841,6 +896,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -856,6 +912,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -871,6 +928,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -886,6 +944,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -901,6 +960,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -916,6 +976,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -931,6 +992,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -946,6 +1008,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -961,6 +1024,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -976,6 +1040,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -991,6 +1056,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -1006,6 +1072,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -1021,6 +1088,7 @@
     "file_local": true,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -1037,6 +1105,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1052,6 +1121,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1067,6 +1137,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1082,6 +1153,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1097,6 +1169,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1112,6 +1185,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1127,6 +1201,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1142,6 +1217,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1157,6 +1233,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1172,6 +1249,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1188,6 +1266,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -1204,6 +1283,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "source"
   },
   {
@@ -1219,6 +1299,7 @@
     "file_local": false,
     "test_local": true,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "test"
   },
   {
@@ -1232,6 +1313,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "project"
   },
   {
@@ -1245,6 +1327,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "project"
   },
   {
@@ -1258,6 +1341,7 @@
     "file_local": false,
     "test_local": false,
     "member_local": false,
+    "architecture_scoped": false,
     "scope": "project"
   }
 ]

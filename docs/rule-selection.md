@@ -128,6 +128,12 @@ Every other member keeps `complexity: warning`. Within a member file, the most
 specific selector wins, as in any other layer. A rule that only a member enables
 stays off in the other members.
 
+A member's `architecture` activates the architecture rules the same way the root
+architecture does, for example `layers` turns on `architecture/layer-boundary`.
+Each such rule then judges every module against the architecture that governs
+it, the member's or the root's. See
+[member architecture](configuration.md#member-architecture).
+
 ## Activation and precedence
 
 The catalog distinguishes three modes, independently of severity:

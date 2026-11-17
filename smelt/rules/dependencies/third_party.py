@@ -32,6 +32,7 @@ class ThirdPartyDenied(Rule):
     activation = POLICIES["SMT103"]
     code = "SMT103"
     name = "architecture/forbidden-third-party-import"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})

@@ -32,7 +32,9 @@ def effective_coverage(
     inventory = ctx.coverage
     report = {
         "mode": project.coverage,
-        "architecture_configured": bool(architecture.model_fields_set),
+        "architecture_configured": bool(
+            architecture.model_fields_set or ctx.architecture_scopes
+        ),
         **inventory.summary(),
         "policy_hash": policy_hash(config),
         "rules": dict(config.rules),
@@ -45,6 +47,9 @@ def effective_coverage(
             for entry in project.exclude
         ],
         "omitted_workspace_members": _omitted_members(ctx),
+        "member_architectures": {
+            scope.member: list(scope.packages) for scope in ctx.architecture_scopes[1:]
+        },
         "modules": _classification(ctx),
         "exempt": {
             "composition_root": list(architecture.composition_root),

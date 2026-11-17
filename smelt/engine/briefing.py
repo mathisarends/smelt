@@ -202,6 +202,7 @@ def build_briefing(
     *,
     analysis_error: str | None = None,
 ) -> Briefing:
+    ctx = _governing_view(ctx, target)
     model = ctx.model
     arch = ctx.config.architecture
     info = model.info(target.module) if target.module else None
@@ -331,6 +332,20 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
         lines.append(f"Wiring:           {', '.join(briefing.wiring)}")
     lines.extend(("", *_wrap_tests(briefing.tests), "", _violation_line(briefing)))
     return "\n".join(lines) + "\n"
+
+
+def _governing_view(ctx: AnalysisContext, target: Target) -> AnalysisContext:
+    """The view of the architecture that governs ``target``, root or member."""
+    model = ctx.model
+    if not model.parts:
+        return ctx
+    module = target.module
+    if module is None and target.feature is not None:
+        module = model.feature_package_for(target.feature)
+    if module is None:
+        return ctx
+    index = model.parts.index(model.part_for(module))
+    return ctx.architecture_view(ctx.architecture_scopes[index])
 
 
 def _rule_brief(

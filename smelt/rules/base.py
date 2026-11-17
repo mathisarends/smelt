@@ -61,6 +61,9 @@ class Rule:
     file_local: ClassVar[bool] = False
     test_local: ClassVar[bool] = False
     member_local: ClassVar[bool] = False
+    architecture_scoped: ClassVar[bool] = False
+    """Reads architecture policy beyond module classification, so a workspace
+    with member architectures runs it once per architecture."""
     doc: ClassVar[RuleDoc]
 
     def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
