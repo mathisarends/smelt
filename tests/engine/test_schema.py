@@ -1,3 +1,4 @@
+from smelt.diagnostics.violation import Category
 from smelt.engine.schema import config_json_schema
 from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
@@ -16,14 +17,16 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
     schema = config_json_schema()
     settings = schema["$defs"]["RuleSettings"]
 
-    assert (
-        set(settings["properties"])
-        == {rule.name for rule in build_rule_set().rules} | RULE_GROUPS.keys()
+    assert set(settings["properties"]) == (
+        {rule.name for rule in build_rule_set().rules}
+        | RULE_GROUPS.keys()
+        | {family.value for family in Category}
+        | {"ALL"}
     )
     assert settings["additionalProperties"] is False
     for rule in build_rule_set().rules:
         entry = settings["properties"][rule.name]
-        assert entry["enum"] == ["error", "warning", "hint", "off"]
+        assert entry["enum"] == ["error", "warning", "hint", "on", "off"]
         assert rule.code in entry["title"]
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
@@ -53,15 +56,20 @@ def test_package_completion_and_runtime_rule_scope_agree() -> None:
     schema = config_json_schema()
     source = schema["$defs"]["SourceRuleSettings"]["properties"]
 
-    assert (
-        set(source)
-        == {
-            rule.name
-            for rule in build_rule_set().rules
-            if getattr(rule, "scope", "source") == "source"
-        }
+    source_rules = [
+        rule
+        for rule in build_rule_set().rules
+        if getattr(rule, "scope", "source") == "source"
+    ]
+    assert set(source) == (
+        {rule.name for rule in source_rules}
         | RULE_GROUPS.keys()
+        | {rule.category.value for rule in source_rules}
+        | {"ALL"}
     )
+    assert "tests" not in source
+    assert "tests/unbounded-wait" not in source["ALL"]["description"]
+    assert "architecture/uncovered-source" not in source["architecture"]["description"]
     for group in RULE_GROUPS.values():
         assert all(
             getattr(rule, "scope", "source") == "source"

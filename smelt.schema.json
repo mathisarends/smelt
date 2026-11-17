@@ -851,11 +851,12 @@
       "title": "ProjectConfig",
       "type": "object"
     },
-    "SeverityName": {
+    "RuleSetting": {
       "enum": [
         "error",
         "warning",
         "hint",
+        "on",
         "off"
       ],
       "type": "string"
@@ -1335,7 +1336,7 @@
     },
     "RuleSettings": {
       "type": "object",
-      "description": "Explicit checks by problem name, rule group or stable SMT code. Each value both enables the check and sets severity; off disables it. Individual settings override a group in the same map, regardless of order.",
+      "description": "Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order.",
       "properties": {
         "architecture/layer-boundary": {
           "type": "string",
@@ -1343,6 +1344,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -1358,6 +1360,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT102: A feature imports another feature outside the allowed layer pairs.",
@@ -1373,6 +1376,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT103: A layer imports a third-party package its `third_party` policy does not allow.",
@@ -1388,6 +1392,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT104: Import cycles between architecture nodes or explicitly selected concrete modules.",
@@ -1403,6 +1408,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT105: A `shared` module or a central module (`architecture.modules`) imports a feature module.",
@@ -1418,6 +1424,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT106: A module imports the composition root or a declared wiring module.",
@@ -1433,6 +1440,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT107: Code outside a contracted package imports a private implementation module.",
@@ -1448,6 +1456,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT108: One caller spreads a package API across several import paths.",
@@ -1463,6 +1472,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
@@ -1478,6 +1488,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT110: A module imports more project modules than its policy allows.",
@@ -1493,6 +1504,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT301: A feature contains a package or module outside the declared layers.",
@@ -1508,6 +1520,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT302: A package or module name is listed in structure.forbidden_names.",
@@ -1523,6 +1536,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT305: A module maps to no feature, layer, shared set or composition root.",
@@ -1538,6 +1552,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT306: Strict coverage found source outside the architecture policy or an exclusion without a reason.",
@@ -1553,6 +1568,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT307: A package contract is missing a required module or public entry point.",
@@ -1568,6 +1584,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT308: An import does not follow the package's declared relative/absolute style.",
@@ -1583,6 +1600,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT309: A module docstring is missing or present against the package's module_docstrings convention.",
@@ -1598,6 +1616,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT310: The annotations future import violates a package or Python-version policy.",
@@ -1613,6 +1632,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT311: Review an annotations future import with no detected postponement need.",
@@ -1628,6 +1648,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT312: A module or package has an underscore prefix forbidden by its naming policy.",
@@ -1643,6 +1664,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT313: Definitions are out of public-first order within modeled execution boundaries.",
@@ -1658,6 +1680,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT314: An assignment writes multiple direct instance attributes under a separate-assignment convention.",
@@ -1673,6 +1696,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT315: Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
@@ -1688,6 +1712,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT316: A public module function or instance method has no observed use outside its module or class.",
@@ -1703,6 +1728,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT317: An internal static helper can be reviewed for extraction to a private module function.",
@@ -1718,6 +1744,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT318: Review .value on a known StrEnum member for direct use of the member.",
@@ -1733,6 +1760,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT319: Prefer an existing package re-export over an implementation import.",
@@ -1748,6 +1776,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT320: A public module constant or type alias has no observed external use or public-signature evidence.",
@@ -1763,6 +1792,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT321: An optional parameter with a None default uses truthiness to choose a fallback.",
@@ -1778,6 +1808,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT322: Review a method call reached through multiple instance attributes.",
@@ -1793,6 +1824,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT323: A class definition carries a Base prefix or suffix instead of a responsibility.",
@@ -1808,6 +1840,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT324: Prefer StrEnum members for single-string class discriminator fields.",
@@ -1823,6 +1856,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
@@ -1838,6 +1872,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
@@ -1853,6 +1888,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
@@ -1868,6 +1904,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
@@ -1883,6 +1920,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT331: A YAML or Compose filename differs from the project's canonical spelling.",
@@ -1898,6 +1936,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT333: Review __call__ and an operation-based class name for a single public method.",
@@ -1913,6 +1952,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT334: A private literal constant is declared on an ordinary class instead of its module.",
@@ -1928,6 +1968,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT335: A public instance or class data attribute has no observed access outside its class.",
@@ -1943,6 +1984,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
@@ -1958,6 +2000,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
@@ -1973,6 +2016,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT338: Review repeated multi-value Literal types for a shared type alias.",
@@ -1988,6 +2032,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT339: Production code uses a private symbol or private attribute owned by another project module.",
@@ -2003,6 +2048,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT340: An awaited result, eager comprehension or builtin reduction is passed directly as a call argument.",
@@ -2018,6 +2064,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT341: A StrEnum spells its values against the configured auto/explicit convention.",
@@ -2033,6 +2080,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
@@ -2048,6 +2096,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT344: A module-level name only repeats another class or function name.",
@@ -2063,6 +2112,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
@@ -2078,6 +2128,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT346: An annotation is quoted where deferred evaluation makes quotes unnecessary.",
@@ -2093,6 +2144,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT347: A fixed-length tuple type leaves its fields unnamed.",
@@ -2108,6 +2160,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
@@ -2123,6 +2176,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT349: A dataclass mutates its own fields after construction.",
@@ -2138,6 +2192,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT350: A broad exception handler does not say why it catches everything.",
@@ -2153,6 +2208,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT351: A dataclass does not set an option its package requires.",
@@ -2168,6 +2224,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT352: A module-level function repeats another function's code.",
@@ -2183,6 +2240,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
@@ -2198,6 +2256,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
@@ -2213,6 +2272,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT355: Two modules of one package define a public class with the same name.",
@@ -2228,6 +2288,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
@@ -2243,6 +2304,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT357: A numeric duration is named without its unit or written as an inline number.",
@@ -2258,6 +2320,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT359: A conditional expression directly contains another result conditional.",
@@ -2273,6 +2336,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT360: A frozen dataclass directly declares a mutable collection field.",
@@ -2288,6 +2352,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT361: Stored sequence fields of one instance are paired by position.",
@@ -2303,6 +2368,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
@@ -2318,6 +2384,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
@@ -2333,6 +2400,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
@@ -2348,6 +2416,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT367: A module contains more private definitions than the configured limit.",
@@ -2363,6 +2432,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT401: A test file does not live where tests.layout expects it.",
@@ -2378,6 +2448,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT420: A test imports or reads a private production name through a known module or instance.",
@@ -2393,6 +2464,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT421: A recognized mocking operation occurs in a test path that forbids mocks.",
@@ -2408,6 +2480,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT422: A recognized patch call or decorator uses a literal string target.",
@@ -2423,6 +2496,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT423: A collected test exceeds its configured number of recognized patch calls.",
@@ -2438,6 +2512,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT424: A collected test has no recognized explicit outcome assertion.",
@@ -2453,6 +2528,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT425: Every recognized outcome can disappear or pass trivially on empty input.",
@@ -2468,6 +2544,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT426: A known test wait has no local deadline, or the scheduler clock is replaced.",
@@ -2483,6 +2560,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT427: A small literal loop repeats a candidate independent arrange/action/assert case.",
@@ -2498,6 +2576,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT428: A known async mock is checked for calls without corresponding await evidence.",
@@ -2513,6 +2592,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT429: A public module function is accessed from tests but has no observed production use outside its own module.",
@@ -2528,6 +2608,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT430: A public attribute is read from tests but has no observed production access outside its class.",
@@ -2543,6 +2624,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT431: A test module calls a known random or time-derived data generator.",
@@ -2558,6 +2640,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT901: An inline suppression is unused or names an unknown identifier.",
@@ -2573,6 +2656,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT902: An inline suppression without a `-- reason`.",
@@ -2588,6 +2672,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT903: A debt entry that no longer matches any violation.",
@@ -2603,12 +2688,193 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
           "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
+          ]
+        },
+        "architecture": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "architecture: every rule in the architecture family",
+          "description": "architecture: every rule in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/unknown-layer, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "imports": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "imports: every rule in the imports family",
+          "description": "imports: every rule in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "layout: every rule in the layout family",
+          "description": "layout: every rule in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/file-name-convention, layout/misplaced-private-constant, layout/redundant-module-name. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "visibility: every rule in the visibility family",
+          "description": "visibility: every rule in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "modeling": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "modeling: every rule in the modeling family",
+          "description": "modeling: every rule in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "typing": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "typing: every rule in the typing family",
+          "description": "typing: every rule in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "complexity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "complexity: every rule in the complexity family",
+          "description": "complexity: every rule in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "idioms": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "idioms: every rule in the idioms family",
+          "description": "idioms: every rule in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "frameworks": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "frameworks: every rule in the frameworks family",
+          "description": "frameworks: every rule in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "tests": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "tests: every rule in the tests family",
+          "description": "tests: every rule in the tests family. Members: tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, tests/nondeterministic-data. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "meta": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "meta: every rule in the meta family",
+          "description": "meta: every rule in the meta family. Members: meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "ALL": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "ALL: every rule in the catalog",
+          "description": "ALL: every rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, layout/file-name-convention, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, visibility/test-only-public-function, visibility/test-only-public-attribute, tests/nondeterministic-data, meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
           ]
         }
       },
@@ -2619,6 +2885,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -2634,6 +2901,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT102: A feature imports another feature outside the allowed layer pairs.",
@@ -2649,6 +2917,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT103: A layer imports a third-party package its `third_party` policy does not allow.",
@@ -2664,6 +2933,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT104: Import cycles between architecture nodes or explicitly selected concrete modules.",
@@ -2679,6 +2949,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT105: A `shared` module or a central module (`architecture.modules`) imports a feature module.",
@@ -2694,6 +2965,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT106: A module imports the composition root or a declared wiring module.",
@@ -2709,6 +2981,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT107: Code outside a contracted package imports a private implementation module.",
@@ -2724,6 +2997,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT108: One caller spreads a package API across several import paths.",
@@ -2739,6 +3013,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
@@ -2754,6 +3029,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT110: A module imports more project modules than its policy allows.",
@@ -2769,6 +3045,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT301: A feature contains a package or module outside the declared layers.",
@@ -2784,6 +3061,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT302: A package or module name is listed in structure.forbidden_names.",
@@ -2799,6 +3077,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT305: A module maps to no feature, layer, shared set or composition root.",
@@ -2814,6 +3093,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT306: Strict coverage found source outside the architecture policy or an exclusion without a reason.",
@@ -2829,6 +3109,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT307: A package contract is missing a required module or public entry point.",
@@ -2844,6 +3125,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT308: An import does not follow the package's declared relative/absolute style.",
@@ -2859,6 +3141,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT309: A module docstring is missing or present against the package's module_docstrings convention.",
@@ -2874,6 +3157,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT310: The annotations future import violates a package or Python-version policy.",
@@ -2889,6 +3173,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT311: Review an annotations future import with no detected postponement need.",
@@ -2904,6 +3189,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT312: A module or package has an underscore prefix forbidden by its naming policy.",
@@ -2919,6 +3205,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT313: Definitions are out of public-first order within modeled execution boundaries.",
@@ -2934,6 +3221,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT314: An assignment writes multiple direct instance attributes under a separate-assignment convention.",
@@ -2949,6 +3237,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT315: Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
@@ -2964,6 +3253,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT316: A public module function or instance method has no observed use outside its module or class.",
@@ -2979,6 +3269,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT317: An internal static helper can be reviewed for extraction to a private module function.",
@@ -2994,6 +3285,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT318: Review .value on a known StrEnum member for direct use of the member.",
@@ -3009,6 +3301,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT319: Prefer an existing package re-export over an implementation import.",
@@ -3024,6 +3317,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT320: A public module constant or type alias has no observed external use or public-signature evidence.",
@@ -3039,6 +3333,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT321: An optional parameter with a None default uses truthiness to choose a fallback.",
@@ -3054,6 +3349,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT322: Review a method call reached through multiple instance attributes.",
@@ -3069,6 +3365,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT323: A class definition carries a Base prefix or suffix instead of a responsibility.",
@@ -3084,6 +3381,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT324: Prefer StrEnum members for single-string class discriminator fields.",
@@ -3099,6 +3397,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
@@ -3114,6 +3413,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
@@ -3129,6 +3429,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
@@ -3144,6 +3445,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
@@ -3159,6 +3461,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT331: A YAML or Compose filename differs from the project's canonical spelling.",
@@ -3174,6 +3477,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT333: Review __call__ and an operation-based class name for a single public method.",
@@ -3189,6 +3493,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT334: A private literal constant is declared on an ordinary class instead of its module.",
@@ -3204,6 +3509,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT335: A public instance or class data attribute has no observed access outside its class.",
@@ -3219,6 +3525,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
@@ -3234,6 +3541,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
@@ -3249,6 +3557,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT338: Review repeated multi-value Literal types for a shared type alias.",
@@ -3264,6 +3573,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT339: Production code uses a private symbol or private attribute owned by another project module.",
@@ -3279,6 +3589,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT340: An awaited result, eager comprehension or builtin reduction is passed directly as a call argument.",
@@ -3294,6 +3605,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT341: A StrEnum spells its values against the configured auto/explicit convention.",
@@ -3309,6 +3621,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
@@ -3324,6 +3637,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT344: A module-level name only repeats another class or function name.",
@@ -3339,6 +3653,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
@@ -3354,6 +3669,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT346: An annotation is quoted where deferred evaluation makes quotes unnecessary.",
@@ -3369,6 +3685,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT347: A fixed-length tuple type leaves its fields unnamed.",
@@ -3384,6 +3701,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
@@ -3399,6 +3717,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT349: A dataclass mutates its own fields after construction.",
@@ -3414,6 +3733,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT350: A broad exception handler does not say why it catches everything.",
@@ -3429,6 +3749,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT351: A dataclass does not set an option its package requires.",
@@ -3444,6 +3765,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT352: A module-level function repeats another function's code.",
@@ -3459,6 +3781,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
@@ -3474,6 +3797,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
@@ -3489,6 +3813,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT355: Two modules of one package define a public class with the same name.",
@@ -3504,6 +3829,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
@@ -3519,6 +3845,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT357: A numeric duration is named without its unit or written as an inline number.",
@@ -3534,6 +3861,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT359: A conditional expression directly contains another result conditional.",
@@ -3549,6 +3877,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT360: A frozen dataclass directly declares a mutable collection field.",
@@ -3564,6 +3893,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT361: Stored sequence fields of one instance are paired by position.",
@@ -3579,6 +3909,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
@@ -3594,6 +3925,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
@@ -3609,6 +3941,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
@@ -3624,6 +3957,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT367: A module contains more private definitions than the configured limit.",
@@ -3639,6 +3973,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT401: A test file does not live where tests.layout expects it.",
@@ -3654,6 +3989,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT420: A test imports or reads a private production name through a known module or instance.",
@@ -3669,6 +4005,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT421: A recognized mocking operation occurs in a test path that forbids mocks.",
@@ -3684,6 +4021,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT422: A recognized patch call or decorator uses a literal string target.",
@@ -3699,6 +4037,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT423: A collected test exceeds its configured number of recognized patch calls.",
@@ -3714,6 +4053,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT424: A collected test has no recognized explicit outcome assertion.",
@@ -3729,6 +4069,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT425: Every recognized outcome can disappear or pass trivially on empty input.",
@@ -3744,6 +4085,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT426: A known test wait has no local deadline, or the scheduler clock is replaced.",
@@ -3759,6 +4101,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT427: A small literal loop repeats a candidate independent arrange/action/assert case.",
@@ -3774,6 +4117,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT428: A known async mock is checked for calls without corresponding await evidence.",
@@ -3789,6 +4133,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT429: A public module function is accessed from tests but has no observed production use outside its own module.",
@@ -3804,6 +4149,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT430: A public attribute is read from tests but has no observed production access outside its class.",
@@ -3819,6 +4165,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT431: A test module calls a known random or time-derived data generator.",
@@ -3834,6 +4181,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT901: An inline suppression is unused or names an unknown identifier.",
@@ -3849,6 +4197,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT902: An inline suppression without a `-- reason`.",
@@ -3864,6 +4213,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT903: A debt entry that no longer matches any violation.",
@@ -3878,7 +4228,7 @@
     },
     "SourceRuleSettings": {
       "type": "object",
-      "description": "Source rules use the same names and severities. Test-file and project checks belong in the project rules map.",
+      "description": "Source rules use the same names, selectors and values. ALL, families and groups select only their source rules here; test-file and project checks belong in the project rules map.",
       "properties": {
         "architecture/layer-boundary": {
           "type": "string",
@@ -3886,6 +4236,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -3901,6 +4252,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT102: A feature imports another feature outside the allowed layer pairs.",
@@ -3916,6 +4268,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT103: A layer imports a third-party package its `third_party` policy does not allow.",
@@ -3931,6 +4284,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT104: Import cycles between architecture nodes or explicitly selected concrete modules.",
@@ -3946,6 +4300,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT105: A `shared` module or a central module (`architecture.modules`) imports a feature module.",
@@ -3961,6 +4316,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT106: A module imports the composition root or a declared wiring module.",
@@ -3976,6 +4332,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT107: Code outside a contracted package imports a private implementation module.",
@@ -3991,6 +4348,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT108: One caller spreads a package API across several import paths.",
@@ -4006,6 +4364,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
@@ -4021,6 +4380,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT110: A module imports more project modules than its policy allows.",
@@ -4036,6 +4396,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT301: A feature contains a package or module outside the declared layers.",
@@ -4051,6 +4412,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT302: A package or module name is listed in structure.forbidden_names.",
@@ -4066,6 +4428,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT305: A module maps to no feature, layer, shared set or composition root.",
@@ -4081,6 +4444,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT307: A package contract is missing a required module or public entry point.",
@@ -4096,6 +4460,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT308: An import does not follow the package's declared relative/absolute style.",
@@ -4111,6 +4476,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT309: A module docstring is missing or present against the package's module_docstrings convention.",
@@ -4126,6 +4492,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT310: The annotations future import violates a package or Python-version policy.",
@@ -4141,6 +4508,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT311: Review an annotations future import with no detected postponement need.",
@@ -4156,6 +4524,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT312: A module or package has an underscore prefix forbidden by its naming policy.",
@@ -4171,6 +4540,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT313: Definitions are out of public-first order within modeled execution boundaries.",
@@ -4186,6 +4556,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT314: An assignment writes multiple direct instance attributes under a separate-assignment convention.",
@@ -4201,6 +4572,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT315: Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
@@ -4216,6 +4588,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT316: A public module function or instance method has no observed use outside its module or class.",
@@ -4231,6 +4604,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT317: An internal static helper can be reviewed for extraction to a private module function.",
@@ -4246,6 +4620,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT318: Review .value on a known StrEnum member for direct use of the member.",
@@ -4261,6 +4636,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT319: Prefer an existing package re-export over an implementation import.",
@@ -4276,6 +4652,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT320: A public module constant or type alias has no observed external use or public-signature evidence.",
@@ -4291,6 +4668,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT321: An optional parameter with a None default uses truthiness to choose a fallback.",
@@ -4306,6 +4684,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT322: Review a method call reached through multiple instance attributes.",
@@ -4321,6 +4700,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT323: A class definition carries a Base prefix or suffix instead of a responsibility.",
@@ -4336,6 +4716,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT324: Prefer StrEnum members for single-string class discriminator fields.",
@@ -4351,6 +4732,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
@@ -4366,6 +4748,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
@@ -4381,6 +4764,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
@@ -4396,6 +4780,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
@@ -4411,6 +4796,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT333: Review __call__ and an operation-based class name for a single public method.",
@@ -4426,6 +4812,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT334: A private literal constant is declared on an ordinary class instead of its module.",
@@ -4441,6 +4828,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT335: A public instance or class data attribute has no observed access outside its class.",
@@ -4456,6 +4844,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
@@ -4471,6 +4860,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
@@ -4486,6 +4876,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT338: Review repeated multi-value Literal types for a shared type alias.",
@@ -4501,6 +4892,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT339: Production code uses a private symbol or private attribute owned by another project module.",
@@ -4516,6 +4908,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT340: An awaited result, eager comprehension or builtin reduction is passed directly as a call argument.",
@@ -4531,6 +4924,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT341: A StrEnum spells its values against the configured auto/explicit convention.",
@@ -4546,6 +4940,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
@@ -4561,6 +4956,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT344: A module-level name only repeats another class or function name.",
@@ -4576,6 +4972,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
@@ -4591,6 +4988,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT346: An annotation is quoted where deferred evaluation makes quotes unnecessary.",
@@ -4606,6 +5004,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT347: A fixed-length tuple type leaves its fields unnamed.",
@@ -4621,6 +5020,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
@@ -4636,6 +5036,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT349: A dataclass mutates its own fields after construction.",
@@ -4651,6 +5052,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT350: A broad exception handler does not say why it catches everything.",
@@ -4666,6 +5068,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT351: A dataclass does not set an option its package requires.",
@@ -4681,6 +5084,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT352: A module-level function repeats another function's code.",
@@ -4696,6 +5100,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
@@ -4711,6 +5116,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
@@ -4726,6 +5132,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT355: Two modules of one package define a public class with the same name.",
@@ -4741,6 +5148,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
@@ -4756,6 +5164,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT357: A numeric duration is named without its unit or written as an inline number.",
@@ -4771,6 +5180,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT359: A conditional expression directly contains another result conditional.",
@@ -4786,6 +5196,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT360: A frozen dataclass directly declares a mutable collection field.",
@@ -4801,6 +5212,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT361: Stored sequence fields of one instance are paired by position.",
@@ -4816,6 +5228,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
@@ -4831,6 +5244,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
@@ -4846,6 +5260,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
@@ -4861,6 +5276,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT367: A module contains more private definitions than the configured limit.",
@@ -4876,6 +5292,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT429: A public module function is accessed from tests but has no observed production use outside its own module.",
@@ -4891,6 +5308,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT430: A public attribute is read from tests but has no observed production access outside its class.",
@@ -4906,12 +5324,163 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
           "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
+          ]
+        },
+        "architecture": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "architecture: the source rules in the architecture family",
+          "description": "architecture: the source rules in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/unknown-layer, architecture/unclassified-module, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "imports": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "imports: the source rules in the imports family",
+          "description": "imports: the source rules in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "layout: the source rules in the layout family",
+          "description": "layout: the source rules in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/misplaced-private-constant, layout/redundant-module-name. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "visibility: the source rules in the visibility family",
+          "description": "visibility: the source rules in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "modeling": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "modeling: the source rules in the modeling family",
+          "description": "modeling: the source rules in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "typing": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "typing: the source rules in the typing family",
+          "description": "typing: the source rules in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "complexity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "complexity: the source rules in the complexity family",
+          "description": "complexity: the source rules in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "idioms": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "idioms: the source rules in the idioms family",
+          "description": "idioms: the source rules in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "frameworks": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "frameworks: the source rules in the frameworks family",
+          "description": "frameworks: the source rules in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
+          ]
+        },
+        "ALL": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "ALL: every source rule in the catalog",
+          "description": "ALL: every source rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "examples": [
+            "on"
           ]
         }
       },
@@ -4922,6 +5491,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -4937,6 +5507,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT102: A feature imports another feature outside the allowed layer pairs.",
@@ -4952,6 +5523,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT103: A layer imports a third-party package its `third_party` policy does not allow.",
@@ -4967,6 +5539,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT104: Import cycles between architecture nodes or explicitly selected concrete modules.",
@@ -4982,6 +5555,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT105: A `shared` module or a central module (`architecture.modules`) imports a feature module.",
@@ -4997,6 +5571,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT106: A module imports the composition root or a declared wiring module.",
@@ -5012,6 +5587,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT107: Code outside a contracted package imports a private implementation module.",
@@ -5027,6 +5603,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT108: One caller spreads a package API across several import paths.",
@@ -5042,6 +5619,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT109: A public implementation name has many outside importers but no package export.",
@@ -5057,6 +5635,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT110: A module imports more project modules than its policy allows.",
@@ -5072,6 +5651,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT301: A feature contains a package or module outside the declared layers.",
@@ -5087,6 +5667,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT302: A package or module name is listed in structure.forbidden_names.",
@@ -5102,6 +5683,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT305: A module maps to no feature, layer, shared set or composition root.",
@@ -5117,6 +5699,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT307: A package contract is missing a required module or public entry point.",
@@ -5132,6 +5715,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT308: An import does not follow the package's declared relative/absolute style.",
@@ -5147,6 +5731,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT309: A module docstring is missing or present against the package's module_docstrings convention.",
@@ -5162,6 +5747,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT310: The annotations future import violates a package or Python-version policy.",
@@ -5177,6 +5763,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT311: Review an annotations future import with no detected postponement need.",
@@ -5192,6 +5779,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT312: A module or package has an underscore prefix forbidden by its naming policy.",
@@ -5207,6 +5795,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT313: Definitions are out of public-first order within modeled execution boundaries.",
@@ -5222,6 +5811,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT314: An assignment writes multiple direct instance attributes under a separate-assignment convention.",
@@ -5237,6 +5827,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT315: Review a same-subject isinstance/elif chain for match/case under an explicit package policy.",
@@ -5252,6 +5843,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT316: A public module function or instance method has no observed use outside its module or class.",
@@ -5267,6 +5859,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT317: An internal static helper can be reviewed for extraction to a private module function.",
@@ -5282,6 +5875,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT318: Review .value on a known StrEnum member for direct use of the member.",
@@ -5297,6 +5891,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT319: Prefer an existing package re-export over an implementation import.",
@@ -5312,6 +5907,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT320: A public module constant or type alias has no observed external use or public-signature evidence.",
@@ -5327,6 +5923,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT321: An optional parameter with a None default uses truthiness to choose a fallback.",
@@ -5342,6 +5939,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT322: Review a method call reached through multiple instance attributes.",
@@ -5357,6 +5955,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT323: A class definition carries a Base prefix or suffix instead of a responsibility.",
@@ -5372,6 +5971,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT324: Prefer StrEnum members for single-string class discriminator fields.",
@@ -5387,6 +5987,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT327: A secret-named settings field accepts an unwrapped str or bytes value.",
@@ -5402,6 +6003,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT328: A Dishka provider method only forwards typed dependencies to a constructor.",
@@ -5417,6 +6019,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT329: A direct caller appears after same-visibility helpers it calls.",
@@ -5432,6 +6035,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT330: An ordinary module declares __all__ outside a package initializer.",
@@ -5447,6 +6051,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT333: Review __call__ and an operation-based class name for a single public method.",
@@ -5462,6 +6067,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT334: A private literal constant is declared on an ordinary class instead of its module.",
@@ -5477,6 +6083,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT335: A public instance or class data attribute has no observed access outside its class.",
@@ -5492,6 +6099,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT336: A module filename repeats context already supplied by an ancestor package.",
@@ -5507,6 +6115,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT337: An @asynccontextmanager function annotates its return as AsyncIterator[T].",
@@ -5522,6 +6131,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT338: Review repeated multi-value Literal types for a shared type alias.",
@@ -5537,6 +6147,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT339: Production code uses a private symbol or private attribute owned by another project module.",
@@ -5552,6 +6163,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT340: An awaited result, eager comprehension or builtin reduction is passed directly as a call argument.",
@@ -5567,6 +6179,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT341: A StrEnum spells its values against the configured auto/explicit convention.",
@@ -5582,6 +6195,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT343: A method only forwards its parameters to a private method used nowhere else.",
@@ -5597,6 +6211,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT344: A module-level name only repeats another class or function name.",
@@ -5612,6 +6227,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
@@ -5627,6 +6243,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT346: An annotation is quoted where deferred evaluation makes quotes unnecessary.",
@@ -5642,6 +6259,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT347: A fixed-length tuple type leaves its fields unnamed.",
@@ -5657,6 +6275,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT348: An abstract or Protocol method has a placeholder body and no docstring.",
@@ -5672,6 +6291,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT349: A dataclass mutates its own fields after construction.",
@@ -5687,6 +6307,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT350: A broad exception handler does not say why it catches everything.",
@@ -5702,6 +6323,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT351: A dataclass does not set an option its package requires.",
@@ -5717,6 +6339,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT352: A module-level function repeats another function's code.",
@@ -5732,6 +6355,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT353: A class inherits an outside base directly instead of the project base.",
@@ -5747,6 +6371,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT354: Production code raises a builtin exception instead of the project hierarchy.",
@@ -5762,6 +6387,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT355: Two modules of one package define a public class with the same name.",
@@ -5777,6 +6403,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT356: Several methods of a class assert the same narrowing of a self attribute.",
@@ -5792,6 +6419,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT357: A numeric duration is named without its unit or written as an inline number.",
@@ -5807,6 +6435,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT359: A conditional expression directly contains another result conditional.",
@@ -5822,6 +6451,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT360: A frozen dataclass directly declares a mutable collection field.",
@@ -5837,6 +6467,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT361: Stored sequence fields of one instance are paired by position.",
@@ -5852,6 +6483,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT362: A membership lookup set is rebuilt in a loop from stable immutable inputs.",
@@ -5867,6 +6499,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
@@ -5882,6 +6515,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
@@ -5897,6 +6531,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT367: A module contains more private definitions than the configured limit.",
@@ -5912,6 +6547,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT429: A public module function is accessed from tests but has no observed production use outside its own module.",
@@ -5927,6 +6563,7 @@
             "error",
             "warning",
             "hint",
+            "on",
             "off"
           ],
           "title": "SMT430: A public attribute is read from tests but has no observed production access outside its class.",

@@ -526,8 +526,9 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
     out = [
         "# yaml-language-server: $schema=.smelt.schema.json",
         "# Python guardrails for smelt. Reference: `smelt config schema`,",
-        "# rule details: `smelt explain <code>`.",
+        "# rule details: `smelt explain <rule>`.",
         "version: 1",
+        "# extends: smelt:recommended  # every catalog rule except style conventions",
     ]
     out.extend(
         [
@@ -585,11 +586,11 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
     out.extend(
         [
             "",
-            "# Severity overrides by rule name or code: error | warning | hint | off",
+            "# Rule settings by name, family, group or ALL: error | warning | hint | on | off",
             "# rules:",
-            "#   SMT104: error  # opt in to architecture/import-cycle detection",
-            "#   SMT305: warning  # opt in to architecture/unclassified-module hints",
-            "#   architecture/unclassified-module: off  # same as SMT305: off",
+            "#   architecture/import-cycle: error  # opt in to import-cycle detection",
+            "#   architecture/unclassified-module: warning  # opt in to unclassified-module hints",
+            "#   complexity: on  # the whole family with its catalog severities",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",
             "# debt: .smelt/debt.json",

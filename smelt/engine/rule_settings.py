@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
+from smelt.config.models import ALL_RULES
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.renames import retired_hint
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
     from smelt.config.loader import LoadedConfig
     from smelt.rules.base import RuleContract, RuleSet
 
+_STRICT_COVERAGE = "SMT306"
+
 
 class RuleSettings:
     def __init__(self, rules: RuleSet, loaded: LoadedConfig) -> None:
@@ -24,14 +27,24 @@ class RuleSettings:
         self.rules = rules
         self.codes = {rule.code: rule.code for rule in rules.rules}
         self.codes.update({rule.name: rule.code for rule in rules.rules})
+        self.defaults = {rule.code: rule.default_severity.value for rule in rules.rules}
         project_rules = {
             rule.code
             for rule in rules.rules
             if getattr(rule, "scope", "source") != "source"
         }
-        self.global_rules = self._normalize(loaded.config.rules, "rules")
+        # A later layer replaces what an earlier one set: the level wins over specificity.
+        self.global_rules: dict[str, str] = {}
+        for layer in loaded.config.rule_layers:
+            self.global_rules.update(
+                self._normalize(layer, "rules", excluded=self._strict_guard())
+            )
         self.packages = {
-            name: self._normalize(contract.rules, f"structure.contracts.{name}.rules")
+            name: self._normalize(
+                contract.rules,
+                f"structure.contracts.{name}.rules",
+                excluded=frozenset(project_rules),
+            )
             for name, contract in loaded.config.structure.contracts.items()
         }
         for index, entry in enumerate(loaded.config.ignore):
@@ -164,38 +177,71 @@ class RuleSettings:
             and ctx.contracts.policy_for(module, activation.option) is not None
         )
 
-    def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
+    def _normalize(
+        self,
+        raw: Mapping[str, str],
+        location: str,
+        *,
+        excluded: frozenset[str] = frozenset(),
+    ) -> dict[str, str]:
+        """Resolve selectors to codes; ``on`` keeps each rule's catalog severity.
+
+        ALL is the broadest selection, then a family, then a group, then a single
+        rule, regardless of key order. Broad selections skip ``excluded`` codes,
+        which only an individual entry can name.
+        """
         result: dict[str, str] = {}
         issues: list[ConfigIssue] = []
-        # A family is the broadest selection, then a group, then a single rule.
-        for key, value in raw.items():
-            if (family := self.rules.family_codes(key)) is not None:
-                result.update(dict.fromkeys(family, value))
-        for key, value in raw.items():
-            if group := RULE_GROUPS.get(key):
-                result.update(dict.fromkeys(group.codes, value))
+        broad = sorted(
+            (selection[0], key, selection[1])
+            for key in raw
+            if (selection := self._broad_selection(key)) is not None
+        )
+        for _, key, codes in broad:
+            for code in codes:
+                if code not in excluded:
+                    result[code] = self._value(code, raw[key])
         individual: set[str] = set()
         for key, value in raw.items():
-            if key in RULE_GROUPS or self.rules.family_codes(key) is not None:
+            if self._broad_selection(key) is not None:
                 continue
-            code = self.codes.get(key)
-            if code is None:
+            named = self.codes.get(key)
+            if named is None:
                 issues.append(
                     ConfigIssue(
                         f"{location}.{key}",
                         f'unknown rule "{key}"{self._suggestion(key)}',
                     )
                 )
-            elif code in individual:
+            elif named in individual:
                 issues.append(
-                    ConfigIssue(f"{location}.{key}", f"{code} is already configured")
+                    ConfigIssue(f"{location}.{key}", f"{named} is already configured")
                 )
             else:
-                individual.add(code)
-                result[code] = value
+                individual.add(named)
+                result[named] = self._value(named, value)
         if issues:
             raise ConfigError(issues, self.source)
         return result
+
+    def _strict_guard(self) -> frozenset[str]:
+        """Strict coverage stays an error, so broad selections leave it alone."""
+        if self.config.project.coverage == "strict":
+            return frozenset({_STRICT_COVERAGE})
+        return frozenset()
+
+    def _broad_selection(self, key: str) -> tuple[int, tuple[str, ...]] | None:
+        """Breadth rank and codes of ALL, a family or a rule group, else None."""
+        if key == ALL_RULES:
+            return 0, tuple(self.defaults)
+        if (family := self.rules.family_codes(key)) is not None:
+            return 1, family
+        if group := RULE_GROUPS.get(key):
+            return 2, group.codes
+        return None
+
+    def _value(self, code: str, value: str) -> str:
+        return self.defaults[code] if value == "on" else value
 
     def _suggestion(self, key: str) -> str:
         families = [category.value for category in Category]

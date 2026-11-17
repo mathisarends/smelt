@@ -147,7 +147,7 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if args.sources:
         data = {
             "config": data,
-            "sources": [path.as_posix() for path in loaded.inputs],
+            "sources": [*loaded.presets, *(path.as_posix() for path in loaded.inputs)],
             "origins": loaded.origins,
         }
     if args.format == "json":

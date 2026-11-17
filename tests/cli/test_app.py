@@ -95,7 +95,7 @@ def test_inherited_policy_errors_keep_file_origins_in_json(
     assert issue["file"].endswith("base.yml")
 
 
-def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
+def test_a_workspace_rule_replaces_its_base_under_another_alias(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     write_project(
@@ -108,8 +108,8 @@ def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
     code, _, error = _run(
         capsys, "config", "show", "--config", str(tmp_path / "smelt.yml")
     )
-    assert code == 2
-    assert "SMT104 is already configured" in error
+    assert code == 0
+    assert error == ""
 
 
 def test_an_explicit_base_path_widens_the_check_to_its_workspace(

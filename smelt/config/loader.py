@@ -88,6 +88,7 @@ class LoadedConfig:
     source: SourceStore | None = None
     inputs: tuple[Path, ...] = ()
     origins: dict[str, str] = field(default_factory=dict)
+    presets: tuple[str, ...] = ()
 
     @property
     def root(self) -> Path:
@@ -96,7 +97,7 @@ class LoadedConfig:
 
     def explain_error(self, error: ConfigError) -> ConfigError:
         """Attribute effective-policy errors to the file declaring each value."""
-        if len(self.inputs) <= 1:
+        if len(self.inputs) + len(self.presets) <= 1:
             return error
         return _with_origins(error, ConfigComposition(origins=self.origins))
 
@@ -122,10 +123,12 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
             composed.raw, source=path.name, root=path.parent, store=store
         )
     except ConfigError as exc:
-        if len(composed.files) > 1:
+        if composed.composite:
             raise _with_origins(exc, composed) from exc
         raise
-    if len(composed.files) > 1:
+    if len(composed.rule_layers) > 1:
+        config = config.with_rule_layers(composed.rule_layers)
+    if composed.composite:
         warnings = tuple(
             ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
             for issue in warnings
@@ -137,6 +140,7 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
         source=store,
         inputs=tuple(composed.files),
         origins=composed.origins,
+        presets=tuple(composed.presets),
     )
 
 
@@ -270,10 +274,7 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
     if key == "enabled" and "ordering" in loc:
         return message + "; enable or disable rules.layout/definition-order instead"
     if key == "preset":
-        return (
-            message
-            + "; presets were removed: init --maintainability writes explicit rule entries"
-        )
+        return message + "; use extends: smelt:recommended for the built-in base"
     return message
 
 

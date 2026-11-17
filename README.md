@@ -92,7 +92,10 @@ Individual rule settings can override the group.
 
 Rule names have the form `family/finding`, and a family name selects all of its
 rules: `rules: {typing: warning}` or `smelt check --select modeling`.
-`smelt rules` lists the catalog by family.
+`smelt rules` lists the catalog by family. `on` keeps each rule's catalog
+severity, and `extends: smelt:recommended` starts from every rule except the
+style conventions a project chooses itself; see
+[built-in base](docs/rule-selection.md#built-in-base-and-layered-files).
 
 ## Catch it at commit time
 

@@ -10,6 +10,7 @@ from smelt.diagnostics.violation import Severity
 from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.schema import config_json_schema
+from smelt.rules.registry import build_rule_set
 from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
@@ -437,7 +438,7 @@ def test_editor_schema_exposes_the_same_group_at_project_and_package_level() -> 
     assert (
         group == definitions["SourceRuleSettings"]["properties"]["information-hiding"]
     )
-    assert group["enum"] == ["error", "warning", "hint", "off"]
+    assert group["enum"] == ["error", "warning", "hint", "on", "off"]
     assert all(code in group["description"] for code in _GROUP_CODES)
 
 
@@ -464,3 +465,98 @@ def test_group_context_reports_effective_individual_settings(tmp_path: Path) -> 
     assert briefing["rules"]["visibility/internal-public-member"] == "warning"
     assert briefing["rules"]["visibility/internal-public-attribute"] == "off"
     assert briefing["rules"]["visibility/test-only-public-attribute"] == "warning"
+
+
+def _catalog() -> dict[str, Severity]:
+    return {rule.code: rule.default_severity for rule in build_rule_set().rules}
+
+
+def _severities(root: Path, options: CheckOptions | None = None) -> dict[str, Severity]:
+    outcome = check(root, options) if options else check(root)
+    return {rule.code: severity for rule, severity in outcome.active}
+
+
+def test_all_on_activates_every_rule_with_its_catalog_severity(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "ALL: on")
+
+    assert _severities(root) == _catalog()
+
+
+def test_individual_beats_family_beats_all_regardless_of_key_order(
+    tmp_path: Path,
+) -> None:
+    root = _group_project(
+        tmp_path, "complexity/inline-call-argument: error, tests: off, ALL: on"
+    )
+
+    active = _severities(root)
+
+    tests = {
+        rule.code for rule in build_rule_set().rules if rule.category.value == "tests"
+    }
+    assert not tests & active.keys()
+    inline = next(
+        rule.code
+        for rule in build_rule_set().rules
+        if rule.name == "complexity/inline-call-argument"
+    )
+    assert active[inline] == Severity.ERROR
+    assert active.keys() == _catalog().keys() - tests
+
+
+def test_family_severity_applies_to_every_member(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "visibility: hint")
+
+    members = {
+        rule.code
+        for rule in build_rule_set().rules
+        if rule.category.value == "visibility"
+    }
+    active = _severities(root)
+    assert members <= active.keys()
+    assert {active[code] for code in members} == {Severity.HINT}
+
+
+def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "architecture: warning, ALL: hint")
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], coverage: strict}\n"
+            "rules: {architecture: warning, ALL: hint}\n"
+        },
+    )
+
+    active = _severities(root)
+
+    assert active["SMT306"] == Severity.ERROR
+    assert active["SMT101"] == Severity.WARNING
+
+
+def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> None:
+    root = _project(
+        tmp_path,
+        "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n"
+        "      rules: {ALL: off, tests: on, visibility/internal-public-member: warning}\n",
+    )
+
+    found = check(root).report.violations
+
+    assert {v.path for v in found if v.code == "SMT316"} == {
+        "app/legacy/api.py",
+        "app/legacy/new/api.py",
+    }
+
+
+def test_a_child_layer_replaces_its_base_even_when_broader(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "")
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {visibility/internal-public-attribute: off}\n",
+            "smelt.yml": "extends: base.yml\nversion: 1\n"
+            "project: {root_packages: [app]}\nrules: {information-hiding: warning}\n",
+        },
+    )
+
+    assert {v.code for v in violations(root)} == _GROUP_CODES

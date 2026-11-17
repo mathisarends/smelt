@@ -87,7 +87,9 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
 `smelt check` from `runtime/`; both select the same project and paths.
 
 - `extends` is one nonempty relative local file path, resolved from the file
-  containing it. A base may extend another base, up to 32 files. Missing files,
+  containing it, or a built-in preset such as `smelt:recommended` (see
+  [built-in base](rule-selection.md#built-in-base-and-layered-files)). A base
+  may extend another base, up to 32 files. Missing files,
   inheritance cycles, invalid YAML and duplicate YAML keys are configuration errors.
   There is no remote loading, multiple inheritance or automatic cascading discovery.
 - Mappings merge recursively. Explicit child values win. Lists replace the entire
@@ -103,12 +105,16 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   For example, inherited `source_roots: [src]` means `runtime/src` above, even if
   written in the repository-level base. Only the `extends` reference itself uses
   its declaring file as the anchor. Dotted module patterns are unchanged.
-- Override rules with the same key spelling as the base. Using both a rule name
-  and its SMT code in the effective map remains a duplicate-alias error.
-  Unknown rules, invalid severities and strict-coverage restrictions still fail.
+- `rules` do not merge key by key: every file is its own rules layer, and a
+  file's setting for a rule replaces the settings of the files it extends, even
+  when the base names the rule individually and the child selects its family,
+  group or `ALL`. The base may spell a rule by code and the child by name.
+  Within one file, a rule name and its SMT code together remain a
+  duplicate-alias error. Unknown rules, invalid severities and strict-coverage
+  restrictions still fail.
 
 `smelt config show` prints the complete effective policy. Add `--sources` to wrap
-it with `config`, `sources` (base first, workspace last) and `origins` (explicit
+it with `config`, `sources` (presets and bases first, workspace last) and `origins` (explicit
 YAML key locations mapped to absolute declaring-file paths). This works with
 `--format json` or the default YAML; defaults and discovered package names have
 no explicit origin. Inherited validation errors include the declaring file.
