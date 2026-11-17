@@ -54,9 +54,14 @@ installed skill records the CLI version that installed it.
   annotation consumers before removing quotes or adding a future import.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
   concepts, so name records where field meaning benefits callers rather than
-  merging unrelated types. `structure.contracts.<name>.max_positional_parameters`
-  activates SMT345; after adding keyword-only parameters, update all callers,
-  including tests and callbacks. These rules have no automatic rewrite.
+  merging unrelated types. `max_positional_parameters`, set under `structure` or
+  in a package contract, activates SMT345 for that scope; after adding
+  keyword-only parameters, update all callers, including tests and callbacks.
+  These rules have no automatic rewrite.
+- Source-convention options are defined once: set them under `structure` for the
+  project and override them in the closest package contract. An option that
+  belongs to one rule enables that rule where it applies; `smelt context` names
+  the contract or `structure` that set each effective value.
 - Do not disable checks, broaden exclusions or record debt merely to pass a check.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without

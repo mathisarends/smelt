@@ -58,6 +58,57 @@ complete mapping.
 Families can now be selected as a whole, for example `rules: {typing: warning}`
 or `--select modeling`. Individual entries still override a family entry.
 
+### Configuration model
+
+Source-convention options can now be set directly under `structure` for the whole
+project. An option that belongs to one rule now enables that rule.
+
+1. Move project-wide contracts to `structure`. A contract that only matches the
+   root package to set options becomes plain `structure` keys. A contract that
+   only sets `rules` becomes top-level `rules`:
+
+   ```yaml
+   # 0.12
+   structure:
+     contracts:
+       maintainability:
+         match: app
+         max_positional_parameters: 3
+         future_annotations: when-needed
+       strict:
+         match: app
+         rules: {idioms/bundled-instance-assignment: error}
+
+   # 0.13
+   rules:
+     idioms/bundled-instance-assignment: error
+   structure:
+     max_positional_parameters: 3
+     future_annotations: when-needed
+   ```
+
+   Contracts with `match: app` keep working. The move is recommended, not
+   required.
+
+2. Review options that now enable their rule. If `smelt.yml` sets
+   `private_attribute_boundary`, `call_argument_kinds`, `str_enum_values`,
+   `max_comprehension_loops`, `max_constructor_decisions` or
+   `max_private_definitions` without selecting the matching rule, that rule now
+   runs. Keep the option and review the findings. To stay with the 0.12
+   behavior, remove the option, or set the rule to `off` in `rules`.
+
+3. Review rules selected without a threshold. `rules:
+   {complexity/excess-positional-parameters: ...}` now checks a limit of 5, and
+   `rules: {imports/excess-module-imports: ...}` a limit of 20, where no option
+   is set. Set the option to choose a different limit.
+
+4. Check for new conflicts. Equally specific contracts that set different values
+   of the same option for one package are now a configuration error for every
+   shared option.
+
+5. Update tooling that reads `smelt config show`. Unset project-wide options are
+   now `null`, and their defaults are documented in the schema.
+
 ## 0.11.1 to 0.12.0
 
 0.12.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,

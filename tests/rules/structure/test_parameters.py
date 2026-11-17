@@ -44,7 +44,7 @@ def test_reports_parameters_beyond_the_limit(tmp_path: Path) -> None:
         1,
     )
     assert finding.message == (
-        "connect accepts 4 positional parameters; signatures allows 2"
+        'connect accepts 4 positional parameters; contract "signatures" allows 2'
     )
     assert finding.expected == {
         "contract": "signatures",
@@ -167,3 +167,68 @@ def test_ignores_tests(tmp_path: Path) -> None:
         },
     )
     assert violations(root) == []
+
+
+def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure: {max_positional_parameters: 1}
+            """,
+            "app/__init__.py": "",
+            "app/browser.py": "def connect(user, run):\n    return 1\n",
+        },
+    )
+    [finding] = violations(root)
+    assert finding.message == (
+        "connect accepts 2 positional parameters; structure allows 1"
+    )
+    assert finding.expected is not None
+    assert finding.expected["contract"] == "structure"
+
+
+def test_rule_selection_without_a_limit_uses_the_default(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            rules: {complexity/excess-positional-parameters: warning}
+            """,
+            "app/__init__.py": "",
+            "app/browser.py": (
+                "def five(a, b, c, d, e):\n    return 1\n\n\n"
+                "def six(a, b, c, d, e, f):\n    return 1\n"
+            ),
+        },
+    )
+    [finding] = violations(root)
+    assert finding.message == "six accepts 6 positional parameters; default allows 5"
+    assert finding.expected is not None
+    assert finding.expected["contract"] is None
+
+
+def test_contract_activation_is_limited_to_its_package(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              contracts:
+                api: {match: app.api, max_positional_parameters: 1}
+            """,
+            "app/__init__.py": "",
+            "app/core.py": "def wide(a, b, c, d, e, f):\n    return 1\n",
+            "app/api/__init__.py": "",
+            "app/api/routes.py": "def route(a, b):\n    return 1\n",
+        },
+    )
+    assert [(v.path, v.code) for v in violations(root)] == [
+        ("app/api/routes.py", "SMT345")
+    ]

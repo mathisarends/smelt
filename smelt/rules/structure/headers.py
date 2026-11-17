@@ -39,7 +39,7 @@ class ModuleDocstringConvention(Rule):
         bad="# module_docstrings: require\nVALUE = 1",
         good='"""Constants for the calculation service."""\nVALUE = 1',
         fix="Add a useful module docstring before imports and other statements under require; remove or move the module introduction under forbid. Mark an intentional file exception with # smelt: ignore-file[SMT309] -- reason. No documentation is generated or deleted automatically.",
-        config=("structure.contracts",),
+        config=("structure.module_docstrings", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -56,7 +56,7 @@ class ModuleDocstringConvention(Rule):
             if mode == "forbid" and docstring is not None:
                 node = tree.body[0]
                 yield self.violation(
-                    f'contract "{contract.name}" forbids module docstrings',
+                    f"{contract.origin} forbids module docstrings",
                     path=source.path,
                     line=node.lineno,
                     column=node.col_offset + 1,
@@ -68,7 +68,7 @@ class ModuleDocstringConvention(Rule):
                 )
             elif mode == "require" and not (docstring and docstring.strip()):
                 yield self.violation(
-                    f'contract "{contract.name}" requires a non-empty module docstring',
+                    f"{contract.origin} requires a non-empty module docstring",
                     path=source.path,
                     line=1,
                     column=1,
@@ -92,7 +92,7 @@ class ForbiddenFutureAnnotations(Rule):
         bad="from __future__ import annotations\n\nVALUE = 1",
         good="VALUE = 1",
         fix="Follow the declared convention while preserving forward references and runtime behavior. When-needed mode gives review hints on earlier or unknown targets and rejects the import on declared Python 3.14+ targets. An explicit allow exception can retain a runtime compatibility contract. No automatic rewrite is performed.",
-        config=("structure.contracts",),
+        config=("structure.future_annotations", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -113,7 +113,7 @@ class RedundantFutureAnnotations(Rule):
         bad="from __future__ import annotations\n\ndef count(value: int) -> int:\n    return value",
         good="def count(value: int) -> int:\n    return value",
         fix="Review whether postponement is part of the module's runtime contract, then remove unnecessary boilerplate and verify types and behavior. On Python 3.12/3.13, an annotations future import is appropriate when the chosen public-first order uses forward references; SMT313 preserves eager dependencies when the import is absent. Keep the import if it serves a real purpose; annotate a justified exception if required. Self is only an alternative for methods whose return contract follows the receiver's subclass, such as returning self or constructing cls; a matching class-name annotation alone is insufficient. No Self rewrite is suggested automatically.",
-        config=("structure.contracts",),
+        config=("structure.future_annotations", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -151,7 +151,7 @@ def _future_findings(
             continue
         for node in imports:
             yield rule.violation(
-                f'contract "{contract.name}" forbids the annotations future import'
+                f"{contract.origin} forbids the annotations future import"
                 if prohibited
                 else "no static postponement need found; review the annotations future import",
                 path=source.path,

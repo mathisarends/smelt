@@ -95,7 +95,7 @@ class ForbiddenPrivateModule(Rule):
             "A more specific package can explicitly allow the convention. "
             "No files or symbols are renamed automatically."
         ),
-        config=("structure.contracts",),
+        config=("structure.private_modules", "structure.contracts"),
         example_language="text",
     )
 
@@ -121,7 +121,7 @@ class ForbiddenPrivateModule(Rule):
                 continue
             info = ctx.model.info(name)
             yield self.violation(
-                f'contract "{contract.name}" forbids underscore-prefixed {kind} name "{segment}" ({name})',
+                f'{contract.origin} forbids underscore-prefixed {kind} name "{segment}" ({name})',
                 path=path,
                 source_module=name,
                 feature=info.feature if info else None,

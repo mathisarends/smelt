@@ -1,20 +1,48 @@
-"""Typed, declarative activation metadata for configuration-driven rules."""
+"""Typed, declarative activation metadata for configuration-driven rules.
+
+An option that belongs to a single rule enables that rule wherever it applies:
+set under structure it covers the project, set in a package contract it covers
+that package. Selecting the rule in rules or with --select enables it everywhere
+with the built-in defaults, and an explicit off always wins.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from smelt.config.models import SmeltConfig
+    from smelt.analysis.contracts import PolicyOption
+    from smelt.config.models import PackagePolicy, SmeltConfig
 
 
 @dataclass(frozen=True, slots=True)
 class PolicyActivation:
     description: str
     matches: Callable[[SmeltConfig], bool]
+    option: PolicyOption | None = None
+    """The structure or contract option whose scope limits the activation."""
+
+
+def _policies(config: SmeltConfig) -> tuple[PackagePolicy, ...]:
+    return (config.structure, *config.structure.contracts.values())
+
+
+def _option(
+    option: PolicyOption,
+    description: str,
+    accept: Callable[[Any], bool] = lambda value: value is not None,
+) -> PolicyActivation:
+    """Activation by an option set under structure or in any package contract."""
+    return PolicyActivation(
+        description,
+        lambda config: any(
+            accept(getattr(policy, option)) for policy in _policies(config)
+        ),
+        option,
+    )
 
 
 POLICIES = {
@@ -71,15 +99,9 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
-    "SMT110": PolicyActivation(
-        "structure.max_module_imports or a package contract sets a limit, including zero.",
-        lambda config: (
-            config.structure.max_module_imports is not None
-            or any(
-                contract.max_module_imports is not None
-                for contract in config.structure.contracts.values()
-            )
-        ),
+    "SMT110": _option(
+        "max_module_imports",
+        "structure or a package contract sets max_module_imports, including zero.",
     ),
     "SMT302": PolicyActivation(
         "structure.forbidden_names contains naming restrictions.",
@@ -96,76 +118,69 @@ POLICIES = {
             for contract in config.structure.contracts.values()
         ),
     ),
-    "SMT308": PolicyActivation(
-        "A package contract declares an imports style.",
-        lambda config: any(
-            contract.imports is not None
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT308": _option("imports", "structure or a package contract sets imports."),
+    "SMT309": _option(
+        "module_docstrings",
+        "structure or a package contract sets module_docstrings to require or forbid.",
+        lambda value: value in {"forbid", "require"},
     ),
-    "SMT309": PolicyActivation(
-        "A package contract requires or forbids module docstrings.",
-        lambda config: any(
-            contract.module_docstrings in {"forbid", "require"}
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT310": _option(
+        "future_annotations",
+        "structure or a package contract sets future_annotations to forbid or when-needed.",
+        lambda value: value in {"forbid", "when-needed"},
     ),
-    "SMT310": PolicyActivation(
-        "A package contract sets future_annotations to forbid or when-needed.",
-        lambda config: any(
-            contract.future_annotations in {"forbid", "when-needed"}
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT311": _option(
+        "future_annotations",
+        "structure or a package contract sets future_annotations to when-needed.",
+        lambda value: value == "when-needed",
     ),
-    "SMT311": PolicyActivation(
-        "A package contract sets future_annotations to when-needed.",
-        lambda config: any(
-            contract.future_annotations == "when-needed"
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT312": _option(
+        "private_modules",
+        "structure or a package contract sets private_modules to forbid.",
+        lambda value: value == "forbid",
     ),
-    "SMT312": PolicyActivation(
-        "A package contract forbids private module names.",
-        lambda config: any(
-            contract.private_modules == "forbid"
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT315": _option(
+        "type_dispatch",
+        "structure or a package contract sets type_dispatch.style to match.",
+        lambda value: value is not None and value.style == "match",
     ),
-    "SMT315": PolicyActivation(
-        "A package contract sets type_dispatch.style to match.",
-        lambda config: any(
-            contract.type_dispatch is not None
-            and contract.type_dispatch.style == "match"
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT339": _option(
+        "private_attribute_boundary",
+        "structure or a package contract sets private_attribute_boundary.",
     ),
-    "SMT345": PolicyActivation(
-        "A package contract sets max_positional_parameters, including zero.",
-        lambda config: any(
-            contract.max_positional_parameters is not None
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT340": _option(
+        "call_argument_kinds",
+        "structure or a package contract sets call_argument_kinds.",
     ),
-    "SMT351": PolicyActivation(
-        "A package contract sets dataclass_options, including [].",
-        lambda config: any(
-            contract.dataclass_options is not None
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT341": _option(
+        "str_enum_values",
+        "structure or a package contract sets str_enum_values.",
     ),
-    "SMT353": PolicyActivation(
-        "A package contract sets bases, including {}.",
-        lambda config: any(
-            contract.bases is not None
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT345": _option(
+        "max_positional_parameters",
+        "structure or a package contract sets max_positional_parameters, including zero.",
     ),
-    "SMT354": PolicyActivation(
-        "A package contract sets errors, including {}.",
-        lambda config: any(
-            contract.errors is not None
-            for contract in config.structure.contracts.values()
-        ),
+    "SMT351": _option(
+        "dataclass_options",
+        "structure or a package contract sets dataclass_options, including [].",
+    ),
+    "SMT353": _option(
+        "bases", "structure or a package contract sets bases, including {}."
+    ),
+    "SMT354": _option(
+        "errors", "structure or a package contract sets errors, including {}."
+    ),
+    "SMT363": _option(
+        "max_comprehension_loops",
+        "structure or a package contract sets max_comprehension_loops.",
+    ),
+    "SMT364": _option(
+        "max_constructor_decisions",
+        "structure or a package contract sets max_constructor_decisions, including zero.",
+    ),
+    "SMT367": _option(
+        "max_private_definitions",
+        "structure or a package contract sets max_private_definitions, including zero.",
     ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"

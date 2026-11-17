@@ -8,8 +8,10 @@ from smelt.analysis.exports import resolve_dotted, resolve_export
 from smelt.analysis.module_access import module_attributes
 from smelt.analysis.parsing import resolve_relative, type_checking_lines
 from smelt.analysis.private_attributes import PrivateAttributeIndex
+from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
 
 
 class ForeignPrivateAccess(Rule):
+    activation = POLICIES["SMT339"]
     code = "SMT339"
     name = "visibility/foreign-private-access"
     category = Category.VISIBILITY
@@ -80,12 +83,12 @@ class ForeignPrivateAccess(Rule):
             "do not merely rename or wrap internal state to silence the report. "
             "Preserve evaluation order, exceptions and side effects. No automatic "
             "rewrite is performed. Enable rules: {visibility/foreign-private-access: "
-            "warning} or select SMT339. structure.private_attribute_boundary "
-            "defaults to module; package permits attribute cooperation between "
-            "modules of the same immediate Python package and does not relax "
-            "private symbols. Closest-package contract overrides and reasoned "
-            "suppressions on the imported name, read or attribute are supported. "
-            "Boundary options alone do not activate the rule."
+            "warning}, select SMT339, or set private_attribute_boundary under "
+            "structure or in a package contract. The boundary defaults to module; "
+            "package permits attribute cooperation between modules of the same "
+            "immediate Python package and does not relax private symbols. "
+            "Reasoned suppressions on the imported name, read or attribute are "
+            "supported."
         ),
         config=(
             "rules",
@@ -172,7 +175,7 @@ class ForeignPrivateAccess(Rule):
         *,
         index: PrivateAttributeIndex,
     ) -> Iterator[Violation]:
-        boundary = ctx.config.structure.private_attribute_boundary
+        boundary = POLICY_DEFAULTS.private_attribute_boundary
         contract = ctx.contracts.policy_for(source.module, "private_attribute_boundary")
         if (
             contract is not None

@@ -81,3 +81,49 @@ def test_overlapping_contracts_remain_visible_in_context(tmp_path: Path) -> None
         "whole"
     }
     assert ctx.contracts.describe("other") == []
+
+
+def test_policy_for_prefers_the_closest_contract_then_structure(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+            version: 1
+            project: {root_packages: [app]}
+            structure:
+              max_positional_parameters: 3
+              contracts:
+                api:
+                  match: app.api
+                  max_positional_parameters: 2
+        """,
+            "app/__init__.py": "",
+            "app/core.py": "",
+            "app/api/__init__.py": "",
+            "app/api/routes.py": "",
+        },
+    )
+    contracts = AnalysisContext(
+        tmp_path, load_config(tmp_path / "smelt.yml").config
+    ).contracts
+
+    nested = contracts.policy_for("app.api.routes", "max_positional_parameters")
+    outer = contracts.policy_for("app.core", "max_positional_parameters")
+
+    assert nested is not None
+    assert (nested.name, nested.origin) == ("api", 'contract "api"')
+    assert outer is not None
+    assert (outer.name, outer.origin, outer.project_wide) == (
+        "structure",
+        "structure",
+        True,
+    )
+    assert contracts.policy_for("app.core", "dataclass_options") is None
+    assert contracts.threshold("app.core", "max_comprehension_loops") == (1, None)
+    assert contracts.threshold("app.api.routes", "max_positional_parameters") == (
+        2,
+        nested,
+    )
+    assert [entry["name"] for entry in contracts.describe("app.core")] == []

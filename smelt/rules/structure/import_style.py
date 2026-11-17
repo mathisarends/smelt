@@ -12,6 +12,7 @@ from smelt.rules.base import Rule, RuleDoc
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.contracts import ResolvedContract
     from smelt.analysis.files import SourceFile
     from smelt.config.models import ImportStyleConfig
 
@@ -29,8 +30,9 @@ class ImportStyle(Rule):
             "A predictable import style makes ownership easier to read. With relative "
             "style and max_relative_level: 1, local imports use one dot; parent and "
             "cross-root imports stay absolute. Deeper relative imports can be explicitly "
-            "allowed. The closest package contract supplies the style. No style is "
-            "enforced without an explicit contract, and this rule never changes bindings."
+            "allowed. The closest package contract supplies the style, else "
+            "structure.imports. No style is enforced without one, and this rule "
+            "never changes bindings."
         ),
         bad="# app/storage/service.py, relative style with maximum 1\nfrom app.storage.models import Record\nfrom ..domain import Entity",
         good="# app/storage/service.py\nfrom .models import Record\nfrom app.domain import Entity",
@@ -39,7 +41,11 @@ class ImportStyle(Rule):
             "an absolute import. Preserve aliases and update references if converting "
             "an import statement changes its binding. There is no automatic rewrite."
         ),
-        config=("structure.contracts", "architecture.imports.type_checking"),
+        config=(
+            "structure.imports",
+            "structure.contracts",
+            "architecture.imports.type_checking",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -62,7 +68,7 @@ class ImportStyle(Rule):
                     source,
                     node,
                     policy=contract.spec.imports,
-                    contract=contract.name,
+                    contract=contract,
                 )
 
     def _statement(
@@ -72,7 +78,7 @@ class ImportStyle(Rule):
         node: ast.Import | ast.ImportFrom,
         *,
         policy: ImportStyleConfig,
-        contract: str,
+        contract: ResolvedContract,
     ) -> Iterator[Violation]:
         package = (
             source.module if source.is_package else source.module.rpartition(".")[0]
@@ -117,7 +123,7 @@ class ImportStyle(Rule):
                 else f"Use an absolute import from {target}."
             )
             yield self.violation(
-                f'contract "{contract}" expects {"a" if wants_relative else "an"} {expected_style} import of {target}',
+                f"{contract.origin} expects {'a' if wants_relative else 'an'} {expected_style} import of {target}",
                 path=source.path,
                 line=node.lineno,
                 column=node.col_offset + 1,
@@ -126,7 +132,7 @@ class ImportStyle(Rule):
                 source_module=source.module,
                 target_module=target,
                 expected={
-                    "contract": contract,
+                    "contract": contract.name,
                     "style": expected_style,
                     "max_relative_level": policy.max_relative_level,
                     "relative_base": relative[1]

@@ -129,6 +129,65 @@ def test_package_policy_activates_without_a_second_rule_switch(
     )
 
 
+SHARED_OPTIONS = [
+    ({"max_module_imports": 0}, {"SMT110"}),
+    ({"imports": {"style": "absolute"}}, {"SMT308"}),
+    ({"module_docstrings": "require"}, {"SMT309"}),
+    ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
+    ({"private_modules": "forbid"}, {"SMT312"}),
+    ({"type_dispatch": {}}, {"SMT315"}),
+    ({"private_attribute_boundary": "package"}, {"SMT339"}),
+    ({"call_argument_kinds": ["await"]}, {"SMT340"}),
+    ({"str_enum_values": "auto"}, {"SMT341"}),
+    ({"max_positional_parameters": 0}, {"SMT345"}),
+    ({"dataclass_options": []}, {"SMT351"}),
+    ({"bases": {}}, {"SMT353"}),
+    ({"errors": {}}, {"SMT354"}),
+    ({"max_comprehension_loops": 2}, {"SMT363"}),
+    ({"max_constructor_decisions": 0}, {"SMT364"}),
+    ({"max_private_definitions": 0}, {"SMT367"}),
+]
+
+
+@pytest.mark.parametrize(("policy", "expected"), SHARED_OPTIONS)
+@pytest.mark.parametrize("level", ["structure", "contract"])
+def test_a_single_rule_option_activates_its_rule_at_either_level(
+    policy: dict[str, object], expected: set[str], level: str
+) -> None:
+    structure = (
+        policy
+        if level == "structure"
+        else {"contracts": {"api": {"match": "app", **policy}}}
+    )
+    assert _active({"structure": structure}) == BASELINE | expected
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"module_import_exempt": []},
+        {"ordering": {"fix": "off"}},
+        {"module_docstrings": "allow", "type_dispatch": {"style": "allow"}},
+    ],
+)
+def test_modifiers_and_allow_values_do_not_activate_a_rule(
+    policy: dict[str, object],
+) -> None:
+    assert _active({"structure": policy}) == BASELINE
+
+
+def test_off_wins_over_an_activating_option() -> None:
+    assert (
+        _active(
+            {
+                "structure": {"max_comprehension_loops": 2},
+                "rules": {"complexity/complex-comprehension": "off"},
+            }
+        )
+        == BASELINE
+    )
+
+
 def test_scope_settings_alone_do_not_enable_explicit_heuristics() -> None:
     assert _active({"architecture": {"imports": {"cycles": ["siblings"]}}}) == BASELINE
     assert _active(

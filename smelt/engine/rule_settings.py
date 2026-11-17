@@ -113,7 +113,7 @@ class RuleSettings:
         if value is None:
             value = (
                 rule.default_severity.value
-                if self.globally_enabled(rule, selected=selected)
+                if self._enabled_for(rule, ctx, module, selected=selected)
                 else "off"
             )
         if module:
@@ -139,6 +139,29 @@ class RuleSettings:
             selected
             or getattr(rule, "enabled_by_default", False)
             or (activation is not None and activation.matches(self.config))
+        )
+
+    def _enabled_for(
+        self,
+        rule: RuleContract,
+        ctx: AnalysisContext,
+        module: str | None,
+        *,
+        selected: bool,
+    ) -> bool:
+        """An option-scoped activation applies only where structure or a contract sets it."""
+        activation = getattr(rule, "activation", None)
+        if (
+            activation is None
+            or activation.option is None
+            or selected
+            or getattr(rule, "enabled_by_default", False)
+            or module is None
+        ):
+            return self.globally_enabled(rule, selected=selected)
+        return (
+            activation.matches(self.config)
+            and ctx.contracts.policy_for(module, activation.option) is not None
         )
 
     def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:

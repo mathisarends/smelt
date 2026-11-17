@@ -558,6 +558,8 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "max_comprehension_loops",
                 "max_constructor_decisions",
                 "max_private_definitions",
+                "call_argument_kinds",
+                "str_enum_values",
                 "dataclass_options",
                 "bases",
                 "errors",
@@ -573,7 +575,9 @@ def _contract_lines(briefing: Briefing) -> list[str]:
 
 
 def _policy_value(key: str, value: object) -> str:
-    if key == "module_import_exempt" and isinstance(value, list):
+    if key in {"module_import_exempt", "call_argument_kinds"} and isinstance(
+        value, list
+    ):
         return ", ".join(str(item) for item in value) or "none"
     if key == "errors" and isinstance(value, dict):
         return _error_policy(value)

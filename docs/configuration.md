@@ -212,6 +212,12 @@ style, required modules, mirror layout, forbidden mock paths and patch limits
 retain their policy activation. Declaring such a policy is enough to check it.
 The catalog distinguishes those checks from explicitly selected fixed patterns.
 
+Source-convention options such as `max_positional_parameters`,
+`future_annotations` or `dataclass_options` can be set directly under `structure`
+for the whole project and overridden in package contracts. Setting an option that
+belongs to one rule enables that rule for its scope; see
+[project-wide options](structure.md#project-wide-options-and-package-overrides).
+
 ```bash
 smelt check --select visibility/internal-public-member,tests/unbounded-wait
 smelt check --select SMT3 --ignore layout/misplaced-static-helper

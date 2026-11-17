@@ -57,11 +57,11 @@ class MissingDataclassOption(Rule):
             "Add the missing options to the decorator. A dataclass that must "
             "stay mutable or unslotted keeps a reasoned suppression, or lives "
             "in a package whose contract sets its own dataclass_options. No "
-            "automatic rewrite is performed. Enable it with a package "
-            "contract, e.g. structure.contracts.<name>: {match: app, "
-            "dataclass_options: [frozen, slots]}."
+            "automatic rewrite is performed. Enable it for the project with "
+            "structure: {dataclass_options: [frozen, slots]}, or for one package "
+            "with the same option in a package contract."
         ),
-        config=("structure.contracts",),
+        config=("structure.dataclass_options", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -82,7 +82,7 @@ class MissingDataclassOption(Rule):
                 options = ", ".join(f"{option}=True" for option in missing)
                 yield self.violation(
                     f"Dataclass {owner.name} is missing {options}; "
-                    f"{contract.name} requires it",
+                    f"{contract.origin} requires it",
                     path=source.path,
                     line=owner.lineno,
                     column=owner.col_offset + 1,

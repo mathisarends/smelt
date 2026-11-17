@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
@@ -11,9 +12,10 @@ from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import skip_import
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Collection, Iterator
 
     from smelt.analysis.imports import ImportDetail
+    from smelt.config.models import ModuleImportExemption
 
 
 class ModuleImportFanout(Rule):
@@ -42,12 +44,11 @@ class ModuleImportFanout(Rule):
         fix=(
             "Split a cohesive responsibility into its own module or depend on deliberate "
             "package facades. Review import cycles and initializer side effects before "
-            "adding re-exports. No automatic rewrite is performed. Configure "
-            "structure.max_module_imports or a package contract's max_module_imports "
-            "to activate this opt-in hint (zero is supported). A rule setting or "
-            "--select alone has no effect without a threshold. Closest package limits "
-            "override the global limit. structure.module_import_exempt defaults to "
-            "[facades, composition_root]; package overrides, including [], are supported."
+            "adding re-exports. No automatic rewrite is performed. Set "
+            "max_module_imports under structure or in a package contract to enable "
+            "this opt-in hint for that scope (zero is supported). Selecting the rule "
+            "in rules or with --select uses a limit of 20. module_import_exempt "
+            "defaults to [facades, composition_root]; [] checks both."
         ),
         config=(
             "structure.max_module_imports",
@@ -61,13 +62,10 @@ class ModuleImportFanout(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            limit = ctx.config.structure.max_module_imports
-            contract = ctx.contracts.policy_for(source.module, "max_module_imports")
-            if contract is not None:
-                limit = contract.spec.max_module_imports
-            if limit is None:
-                continue
-            exempt = ctx.config.structure.module_import_exempt
+            limit, _ = ctx.contracts.threshold(source.module, "max_module_imports")
+            exempt: Collection[ModuleImportExemption] = (
+                POLICY_DEFAULTS.module_import_exempt
+            )
             exemption_contract = ctx.contracts.policy_for(
                 source.module, "module_import_exempt"
             )

@@ -1,15 +1,73 @@
 # Package contracts and source conventions
 
+## Project-wide options and package overrides
+
+Source conventions are defined once. Set an option directly under `structure`
+to apply it to the whole project, and in a package contract to apply or override
+it for matching packages. The closest contract that sets an option wins, then
+`structure`, then the built-in default:
+
+```yaml
+structure:
+  future_annotations: when-needed
+  max_positional_parameters: 3
+  dataclass_options: [slots]
+  contracts:
+    legacy:
+      match: app.legacy
+      max_positional_parameters: 6
+      dataclass_options: []
+```
+
+Every option has one activation rule:
+
+- An option that belongs to a single rule enables that rule where it applies.
+  Under `structure` that is the whole project; in a contract it is the matching
+  packages. `max_positional_parameters: 3` therefore enables SMT345 and
+  `max_comprehension_loops: 2` enables SMT363.
+- Selecting the rule in `rules` or with `--select` enables it everywhere. Where
+  no option is set, the built-in default applies.
+- `off` in `rules` always wins, including in a package contract's `rules`.
+- `ordering` configures `layout/definition-order`, but the rule is enabled
+  through `rules` like any other fixed pattern.
+
+| Option | Rule | Default when the rule is selected |
+| --- | --- | --- |
+| `imports` | SMT308 | none; nothing is checked without a style |
+| `max_module_imports` | SMT110 | 20 |
+| `module_import_exempt` | SMT110 | `[facades, composition_root]`; does not enable the rule |
+| `module_docstrings` | SMT309 | none |
+| `future_annotations` | SMT310, SMT311 | none |
+| `private_modules` | SMT312 | none |
+| `private_attribute_boundary` | SMT339 | `module` |
+| `type_dispatch` | SMT315 | none |
+| `max_positional_parameters` | SMT345 | 5 |
+| `max_comprehension_loops` | SMT363 | 1 |
+| `max_constructor_decisions` | SMT364 | 2 |
+| `max_private_definitions` | SMT367 | 12 |
+| `call_argument_kinds` | SMT340 | `[await, comprehension, aggregate]` |
+| `str_enum_values` | SMT341 | `explicit` |
+| `dataclass_options` | SMT351 | none |
+| `bases` | SMT353 | none |
+| `errors` | SMT354 | none |
+
+`required`, `public`, `bundle_imports_at`, `export_at`, `count_tests` and `rules`
+describe a concrete package and exist only in contracts. Use top-level `rules`
+for project-wide severities rather than a contract that matches the root
+package. `smelt context` shows each effective option with the contract that set
+it, or `structure` for a project-wide value.
+
+## Source conventions
+
 Opt-in [SMT340 `complexity/inline-call-argument`](rules/SMT340.md) reviews
 three kinds of direct call arguments: awaited results (`await`), list, set and
 dict comprehensions (`comprehension`) and builtin `all`, `any`, `max`, `min`,
 `sorted` or `sum` reductions of a generator (`aggregate`). Enable
 `rules: {complexity/inline-call-argument: hint}` to ask for named intermediate
-values before construction or consumption, and narrow the review with
-`structure.call_argument_kinds` (all three by default):
+values before construction or consumption. Setting `call_argument_kinds` (all
+three by default) both enables the review and narrows it:
 
 ```yaml
-rules: {complexity/inline-call-argument: hint}
 structure:
   call_argument_kinds: [await]
 ```
@@ -30,35 +88,35 @@ known reads, writes, calls, updates and deletes of private members owned by
 another module (`kind: attribute`); same-module cooperation, direct
 own/inherited receiver accesses and dunders are allowed. Tests remain the
 responsibility of SMT420. Unresolved receivers are skipped.
-`structure.private_attribute_boundary` defaults to `module`; `package` permits
+`private_attribute_boundary` defaults to `module`; `package` permits
 attribute cooperation within the same immediate Python package, including its
 initializer. Private module symbols always use the module boundary.
-Subpackages remain separate boundaries. Package contracts can override the setting,
-which is visible in `smelt context`; the option alone does not enable the rule.
+Subpackages remain separate boundaries. Setting the option under `structure` or
+in a package contract enables the rule for that scope, and `smelt context` shows
+the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
 
 Opt-in `complexity/complex-comprehension` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
-`rules: {complexity/complex-comprehension: hint}`. The global
-`structure.max_comprehension_loops` defaults to 1; override it globally or in a
-package contract to permit intentional flattening. Threshold options alone do not
-enable this review. Simple filters and conditional elements with names, attributes
+`rules: {complexity/complex-comprehension: hint}`, or set
+`max_comprehension_loops` (default 1) under `structure` or in a package contract
+to enable it with a limit, for example to permit intentional flattening in one
+package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
 exact triggers and repairs that preserve generator laziness.
 
 Opt-in `complexity/constructor-logic` (SMT364) reviews decision nodes in `__init__` and
-`__post_init__`. Enable `rules: {complexity/constructor-logic: hint}`; the global
-`structure.max_constructor_decisions` defaults to 2 and can be overridden in a
-package contract. Zero forbids counted decisions. Options alone do not activate
-the review. A single fallback or guard remains valid at the default threshold;
+`__post_init__`. Enable `rules: {complexity/constructor-logic: hint}`, or set
+`max_constructor_decisions` (default 2) under `structure` or in a package
+contract. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
 Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
 many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
-`structure.max_private_definitions` defaults to 12 and supports closest-package
-overrides, including zero; threshold options alone do not enable the rule.
+Setting `max_private_definitions` (default 12, zero allowed) under `structure`
+or in a package contract enables the rule for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
 are listed separately and never contribute to the limit. Imports, methods,
@@ -187,13 +245,15 @@ or enabled by default for consumer projects.
 
 ## Positional parameter limits
 
-Make later arguments keyword-only with an explicit package contract:
+Make later arguments keyword-only for the whole project, or for one package
+with a contract:
 
 ```yaml
 structure:
+  max_positional_parameters: 3
   contracts:
     named-arguments:
-      match: app
+      match: app.api
       max_positional_parameters: 2
 ```
 
@@ -202,7 +262,8 @@ structure:
 `connect(user_id, run_id, *, tab_id)` and callers supply `tab_id=...`.
 Zero requires all ordinary parameters to be keyword-only. `self`/`cls`, variadic
 arguments, dunders, overload/override definitions and tests are exempt.
-Omitting the option imposes no limit; the closest explicit package setting wins.
+Setting the option enables the rule for its scope. Selecting SMT345 in `rules`
+without the option uses a limit of 5; the closest package setting wins.
 `smelt context` exposes the effective limit, including for planned paths.
 Update every caller and partial application; keep externally dictated callback
 signatures with a reasoned local exception. There is no automatic rewrite.
@@ -422,8 +483,9 @@ structure:
       max_module_imports: 12
 ```
 
-Setting a threshold activates this hint. The closest package threshold overrides
-the global limit; without a threshold, even explicit selection checks nothing.
+Setting `max_module_imports` activates this hint for its scope, and the closest
+package threshold overrides the project-wide limit. Selecting the rule in `rules`
+or with `--select` without a threshold uses a limit of 20.
 Counts include direct internal imports across every root package, follow
 `architecture.imports.type_checking`, and retain facade paths without following
 re-exports to definitions. Repeated imports count once. Standard-library and
