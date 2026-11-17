@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.discovery import build_package_settings, packages_in
 from smelt.config.source import SourceStore
+from smelt.config.workspace import WorkspaceError, member_directories
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,44 +58,16 @@ def workspace_members(
 ) -> list[WorkspaceMember]:
     """Every member ``tool.uv.workspace`` declares, with its packages or why it has none."""
     store = store or SourceStore()
-    workspace = _pyproject(root, strict=strict, store=store)
-    for key in ("tool", "uv", "workspace"):
-        value = workspace.get(key, {})
-        if not isinstance(value, dict):
-            if strict:
-                raise AnalysisError(
-                    f"pyproject.toml: {key} must be a table for workspace discovery"
-                )
-            return []
-        workspace = value
-    patterns = _strings(
-        workspace.get("members"), strict=strict, field="tool.uv.workspace.members"
-    )
-    excluded = _strings(
-        workspace.get("exclude"), strict=strict, field="tool.uv.workspace.exclude"
-    )
-    resolved_root = store.resolve(root)
-    found: dict[str, WorkspaceMember] = {}
-    for pattern in patterns:
-        matches = [
-            candidate
-            for candidate in store.glob(root, pattern)
-            if store.is_dir(candidate)
-            and store.resolve(candidate).is_relative_to(resolved_root)
-            and store.resolve(candidate) != resolved_root
-        ]
-        if not matches:
-            found.setdefault(
-                pattern, WorkspaceMember(pattern, skipped="matches no directory")
-            )
-        for candidate in matches:
-            relative = candidate.relative_to(root).as_posix()
-            if any(candidate in store.glob(root, entry) for entry in excluded):
-                reason = "excluded by tool.uv.workspace.exclude"
-                found[relative] = WorkspaceMember(relative, skipped=reason)
-            else:
-                found[relative] = _member(root, candidate, store=store)
-    return [found[key] for key in sorted(found)]
+    try:
+        directories = member_directories(root, strict=strict, store=store)
+    except WorkspaceError as exc:
+        raise AnalysisError(str(exc)) from exc
+    return [
+        WorkspaceMember(directory.path, skipped=directory.skipped)
+        if directory.skipped is not None
+        else _member(root, root / directory.path, store=store)
+        for directory in directories
+    ]
 
 
 def _member(root: Path, directory: Path, *, store: SourceStore) -> WorkspaceMember:
@@ -111,36 +83,3 @@ def _member(root: Path, directory: Path, *, store: SourceStore) -> WorkspaceMemb
         packages=tuple(p.name for p in packages),
         namespace=tuple(p.name for p in namespaces),
     )
-
-
-def _pyproject(
-    directory: Path, *, strict: bool = False, store: SourceStore
-) -> dict[str, Any]:
-    try:
-        text = store.read_text(directory / "pyproject.toml")
-        return tomllib.loads(text)
-    except FileNotFoundError:
-        return {}
-    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
-        if strict:
-            raise AnalysisError(
-                f"cannot discover workspace from pyproject.toml: {exc}"
-            ) from exc
-        return {}
-
-
-def _strings(
-    value: object, *, strict: bool = False, field: str = "workspace"
-) -> list[str]:
-    if (
-        strict
-        and value is not None
-        and (
-            not isinstance(value, list)
-            or not all(isinstance(item, str) for item in value)
-        )
-    ):
-        raise AnalysisError(f"pyproject.toml: {field} must be a list of strings")
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, str)]

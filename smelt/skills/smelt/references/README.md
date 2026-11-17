@@ -97,6 +97,11 @@ severity, and `extends: smelt:recommended` starts from every rule except the
 style conventions a project chooses itself; see
 [built-in base](docs/rule-selection.md#built-in-base-and-layered-files).
 
+In a uv workspace, `project: {workspace: uv}` in the root `smelt.yml` checks
+every member as one project. A member can add its own `smelt.yml` with rule and
+convention exceptions for its files; see
+[uv workspaces](docs/configuration.md#uv-workspaces).
+
 ## Catch it at commit time
 
 Smelt uses the pre-commit hook format. With [prek](https://prek.j178.dev/installation/),

@@ -57,8 +57,10 @@ reasoned exclusion.
 
 ## Shared local policy
 
-Independent workspaces can share explicit policy through one local `extends`
-file. Each workspace still has its own configuration and `--config` invocation:
+Independent projects can share explicit policy through one local `extends`
+file. Each project still has its own configuration and `--config` invocation.
+For one policy across a uv workspace, see [uv workspaces](#uv-workspaces)
+instead:
 
 ```yaml
 # smelt.base.yml (a policy fragment; no project selection is required here)
@@ -100,7 +102,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   effective configuration. A fragment need not declare `project` or `version`,
   but the combined result must declare `version: 1` and `project`. The editor
   schema permits fragments; Smelt checks required fields after composition.
-- **All project paths use the selected workspace's directory**, including inherited
+- **All project paths use the selected project's directory**, including inherited
   source/test roots, project exclusions, test globs, `ignore.paths` and `debt`.
   For example, inherited `source_roots: [src]` means `runtime/src` above, even if
   written in the repository-level base. Only the `extends` reference itself uses
@@ -114,7 +116,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   restrictions still fail.
 
 `smelt config show` prints the complete effective policy. Add `--sources` to wrap
-it with `config`, `sources` (presets and bases first, workspace last) and `origins` (explicit
+it with `config`, `sources` (presets and bases first, the project config, then member configs) and `origins` (explicit
 YAML key locations mapped to absolute declaring-file paths). This works with
 `--format json` or the default YAML; defaults and discovered package names have
 no explicit origin. Inherited validation errors include the declaring file.
@@ -122,13 +124,85 @@ no explicit origin. Inherited validation errors include the declaring file.
 Every check reloads policy inputs before analysis reuse. Staged checks read every
 base from the captured Git index, never from unstaged working files; bases must
 therefore be staged and inside the repository. Editing a base invalidates dependent
-staged results, including when the workspace YAML itself is unchanged. `--changed`
+staged results, including when the project YAML itself is unchanged. `--changed`
 and `--staged` continue comparing old and new source under the same effective
 current/index policy. Run a full check to inventory findings after changing policy.
-An explicit check path naming any loaded base widens that workspace's check to
-the whole project. It does not automatically run other workspace configurations.
+An explicit check path naming any loaded base widens that project's check to
+the whole project. It does not automatically run other project configurations.
 The maintainer evaluation runner records every policy input's SHA256 in
 `config_inputs` and rejects a comparison if a base changes during evaluation.
+
+## uv workspaces
+
+A uv workspace is checked as one project: one analysis, one import graph and one
+report. Cross-member usage therefore counts, so a function in `packages/core`
+that only `services/api` calls is not reported as unused. The root config
+declares the workspace and the shared policy:
+
+```yaml
+# smelt.yml (workspace root, next to the pyproject.toml with tool.uv.workspace)
+version: 1
+extends: smelt:recommended
+project:
+  workspace: uv
+  test_roots: [tests]
+rules:
+  tests: warning
+```
+
+- `tool.uv.workspace.members` and `exclude` in `pyproject.toml` select the
+  members. Smelt does not keep a second list.
+- Root `source_roots` and `test_roots` apply inside every member. A member
+  contributes those that exist, for example `services/api/src` and
+  `services/api/tests`. Without `source_roots`, each member uses `src/` if it
+  holds a package and otherwise the member directory itself. Test roots at the
+  workspace root, such as end-to-end tests in `tests/`, are included too. Root
+  source roots count only when the root `pyproject.toml` has a `[project]`
+  table, because uv then treats the root as a member.
+- Top-level package names must be unique across members. `root_packages`
+  defaults to every member's packages; an explicit list narrows them.
+
+Each member may add its own `smelt.yml`, which inherits the root implicitly:
+
+```yaml
+# services/api/smelt.yml
+rules:
+  complexity: off
+  visibility/internal-public-member: error
+structure:
+  max_positional_parameters: 2
+  contracts:
+    http: {match: api.http, public: ['.']}
+ignore:
+  - {rule: tests/excess-patches, paths: [tests/legacy/**], reason: Migrating.}
+project:
+  exclude: [{path: src/api/generated/**, reason: Generated client.}]
+```
+
+- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules` and
+  `ignore`. A member cannot set `extends`, `architecture`, `tests`,
+  `suppressions`, `debt` or other `project` keys. Smelt reports each of these as
+  an error that names the member file.
+- **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
+  resolved from the member directory.
+- **`rules` apply by path** to the member's sources and tests. The root's
+  setting comes first, then the member's, then the closest package contract.
+  See [rule precedence](rule-selection.md#workspace-members).
+- **`structure` options become a contract** for each of the member's packages.
+  The contract is named after the member path, or `member:package` when the
+  member has several packages. A root contract on a nested package, or a member
+  contract, still overrides it.
+- **Member contracts** are named `member:name` in reports and `smelt context`.
+  Their `match` must be one of the member's own packages.
+
+`smelt check` from a member directory, or with `--config services/api/smelt.yml`,
+loads the workspace root and checks only that member. Run `smelt check` at the
+workspace root to check every member. `smelt config show --sources` lists every member file, and `origins`
+map `members.<path>.*` keys to them. In strict coverage mode, a member cannot
+lower SMT306.
+
+Members do not yet have their own debt file, architecture or test options. Use
+the root config, with package contracts, for those.
 
 ## Options and package exceptions
 

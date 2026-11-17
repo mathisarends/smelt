@@ -103,6 +103,10 @@ def policy_hash(config: SmeltConfig) -> str:
         policy["structure"].pop("canonical_exports", None)
     if config.architecture.imports.type_checking_cycles == "include":
         policy["architecture"]["imports"].pop("type_checking_cycles", None)
+    if not config.members:
+        policy.pop("members", None)
+    if config.project.workspace is None:
+        policy["project"].pop("workspace", None)
     if len(config.rule_layers) > 1:
         policy["rule_layers"] = [dict(layer) for layer in config.rule_layers]
     payload = json.dumps(policy, sort_keys=True)

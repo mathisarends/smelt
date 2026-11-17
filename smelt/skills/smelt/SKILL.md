@@ -67,6 +67,14 @@ installed skill records the CLI version that installed it.
   project and override them in the closest package contract. An option that
   belongs to one rule enables that rule where it applies; `smelt context` names
   the contract or `structure` that set each effective value.
+- In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
+  the shared policy, and put member exceptions in that member's own `smelt.yml`
+  (`rules`, `structure`, `ignore`, `project.exclude`; paths member-relative).
+  Do not duplicate the member list or give a member an independent full config.
+  `smelt check` in a member directory checks that member under the root policy.
+  Run the root check before finishing work that changes shared packages. A
+  member override is a scoped exception: give it the same justification as a
+  package contract.
 - Do not disable checks, broaden exclusions or record debt merely to pass a check.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without

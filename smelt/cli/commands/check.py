@@ -150,6 +150,9 @@ def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
     from smelt.config.source import SourceStore  # noqa: PLC0415
 
     store = loaded.source or SourceStore()
+    if not raw and loaded.member is not None:
+        # Started in a workspace member: report that member's files only.
+        return (loaded.member,)
     if any(store.resolve(cwd / path) in loaded.inputs for path in raw):
         return ()
     paths = tuple(relative_scope(loaded.root, cwd, p, store=loaded.source) for p in raw)
