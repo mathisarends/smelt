@@ -6,12 +6,36 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from smelt.config.errors import ConfigError, ConfigIssue
+from smelt.config.models import POLICY_DEFAULTS, PackageContract, PackagePolicy
 from smelt.config.patterns import module_matches
 from smelt.model import is_within
 
 if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
-    from smelt.config.models import PackageContract
+    from smelt.config.models import StructureConfig
+
+_PROJECT_POLICY = "structure"
+
+type PolicyOption = Literal[
+    "imports",
+    "module_docstrings",
+    "future_annotations",
+    "private_modules",
+    "private_attribute_boundary",
+    "ordering",
+    "type_dispatch",
+    "max_positional_parameters",
+    "max_module_imports",
+    "module_import_exempt",
+    "max_comprehension_loops",
+    "max_constructor_decisions",
+    "max_private_definitions",
+    "call_argument_kinds",
+    "str_enum_values",
+    "dataclass_options",
+    "bases",
+    "errors",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +43,16 @@ class ResolvedContract:
     name: str
     package: str
     spec: PackageContract
+
+    @property
+    def project_wide(self) -> bool:
+        """Whether this is the structure-level policy rather than a package contract."""
+        return not self.package
+
+    @property
+    def origin(self) -> str:
+        """How findings name the policy: structure or contract "<name>"."""
+        return _PROJECT_POLICY if self.project_wide else f'contract "{self.name}"'
 
     def qualify(self, relative: str) -> str:
         return self.package if relative == "." else f"{self.package}.{relative}"
@@ -46,6 +80,7 @@ class ContractIndex:
             for package in sorted(files.packages)
             if module_matches(spec.match, package)
         )
+        self.project = _project_policy(files.config.structure)
 
     def facade_policies(
         self, policy: Literal["bundle_imports_at", "export_at"]
@@ -86,7 +121,7 @@ class ContractIndex:
             if contract is not None:
                 policies[key] = {
                     "contract": contract.name,
-                    "package": contract.package,
+                    "package": contract.package or None,
                     "policy": getattr(contract.spec, key),
                 }
         return policies
@@ -98,7 +133,7 @@ class ContractIndex:
         return {
             "private_modules": {
                 "contract": contract.name,
-                "package": contract.package,
+                "package": contract.package or None,
                 "policy": contract.spec.private_modules,
             }
         }
@@ -109,7 +144,7 @@ class ContractIndex:
             return None
         return {
             "contract": contract.name,
-            "package": contract.package,
+            "package": contract.package or None,
             **contract.spec.imports.model_dump(mode="json"),
         }
 
@@ -122,7 +157,7 @@ class ContractIndex:
             return None
         return {
             "contract": contract.name,
-            "package": contract.package,
+            "package": contract.package or None,
             **contract.spec.ordering.model_dump(mode="json", by_alias=True),
         }
 
@@ -132,33 +167,35 @@ class ContractIndex:
             return None
         return {
             "contract": contract.name,
-            "package": contract.package,
+            "package": contract.package or None,
             **contract.spec.type_dispatch.model_dump(mode="json"),
         }
+
+    def threshold(
+        self,
+        module: str,
+        policy: Literal[
+            "max_module_imports",
+            "max_positional_parameters",
+            "max_comprehension_loops",
+            "max_constructor_decisions",
+            "max_private_definitions",
+        ],
+    ) -> tuple[int, ResolvedContract | None]:
+        """The effective limit and where it is set; None means the built-in default."""
+        contract = self.policy_for(module, policy)
+        value: int | None = getattr(contract.spec, policy) if contract else None
+        if value is None:
+            return int(getattr(POLICY_DEFAULTS, policy)), None
+        return value, contract
 
     def policy_for(
         self,
         module: str,
-        policy: Literal[
-            "imports",
-            "module_docstrings",
-            "future_annotations",
-            "private_modules",
-            "private_attribute_boundary",
-            "ordering",
-            "type_dispatch",
-            "max_positional_parameters",
-            "max_module_imports",
-            "module_import_exempt",
-            "max_comprehension_loops",
-            "max_constructor_decisions",
-            "max_private_definitions",
-            "dataclass_options",
-            "bases",
-            "errors",
-        ],
+        policy: PolicyOption,
     ) -> ResolvedContract | None:
-        return max(
+        """The closest contract setting policy, else structure when it sets it."""
+        closest = max(
             (
                 contract
                 for contract in self.resolved
@@ -168,6 +205,9 @@ class ContractIndex:
             key=lambda contract: len(contract.package),
             default=None,
         )
+        if closest is None and getattr(self.project.spec, policy) is not None:
+            return self.project
+        return closest
 
     def missing(self, contract: ResolvedContract) -> list[str]:
         return [
@@ -259,6 +299,8 @@ class ContractIndex:
                             "max_comprehension_loops",
                             "max_constructor_decisions",
                             "max_private_definitions",
+                            "call_argument_kinds",
+                            "str_enum_values",
                             "dataclass_options",
                             "bases",
                         )
@@ -271,3 +313,10 @@ class ContractIndex:
             or is_within(module, contract.package)
             or is_within(contract.package, module)
         ]
+
+
+def _project_policy(structure: StructureConfig) -> ResolvedContract:
+    """structure-level options as a contract that every package inherits."""
+    options = {name: getattr(structure, name) for name in PackagePolicy.model_fields}
+    spec = PackageContract.model_construct(match="*", **options)
+    return ResolvedContract(_PROJECT_POLICY, "", spec)

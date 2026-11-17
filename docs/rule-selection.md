@@ -83,6 +83,14 @@ Declaring layer dependencies activates SMT101; `tests.layout: mirror` activates
 SMT401. An empty public list still declares a private API, and a patch limit of
 zero still forbids patches. Mere ordering options do not activate SMT313.
 
+A source-convention option enables its rule only where it applies. Set under
+`structure`, it covers the project; set in a package contract, it covers the
+matching packages, and the rule reports nothing elsewhere. Selecting the same
+rule in `rules` or with `--select` enables it everywhere and uses built-in
+defaults where no option is set, for example a limit of 5 for SMT345. See
+[project-wide options](structure.md#project-wide-options-and-package-overrides)
+for the defaults.
+
 ```bash
 smelt rules --format json
 smelt explain visibility/internal-public-member

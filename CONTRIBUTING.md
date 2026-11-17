@@ -144,6 +144,16 @@ codes preserve diagnostic and debt identities across a documented name migration
   SmeltConfig; keep the predicate pure and let mypy check field access. It must not
   inspect source files or infer architecture. Per-file checks still resolve closest
   package overrides normally.
+- A source-convention option belongs on `PackagePolicy` in
+  `smelt/config/models.py`, which `structure` and package contracts share. Define
+  it once, with `None` as its default, and put a built-in default in
+  `PolicyDefaults` when selecting the rule without the option should still check
+  something. If the option belongs to a single rule, activate the rule with
+  `_option(...)` in `activation.py`; this limits the activation to modules where
+  structure or a contract sets the option. Read the effective value with
+  `ContractIndex.policy_for` or `ContractIndex.threshold`. Do not add a second
+  project-wide field, and do not document an option as configuration-only when it
+  belongs to one rule.
 - Leave activation unset for a heuristic requiring a deliberate `rules` entry or
   CLI selection. Check applicability inside the rule even when selected with ALL.
 

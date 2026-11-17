@@ -1,6 +1,7 @@
 import builtins
 import posixpath
 import re
+from dataclasses import dataclass
 from typing import Annotated, Literal, Self
 
 from pydantic import (
@@ -13,9 +14,9 @@ from pydantic import (
 
 type Policy = Literal["allow", "deny"]
 type SeverityName = Literal["error", "warning", "hint", "off"]
-type _ModuleImportExemption = Literal["facades", "composition_root"]
-type _PrivateAttributeBoundary = Literal["module", "package"]
-type _CallArgumentKind = Literal["await", "comprehension", "aggregate"]
+type ModuleImportExemption = Literal["facades", "composition_root"]
+type PrivateAttributeBoundary = Literal["module", "package"]
+type CallArgumentKind = Literal["await", "comprehension", "aggregate"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
@@ -36,10 +37,6 @@ def _check_dotted(values: list[str]) -> list[str]:
             msg = f'"{value}" is not a dotted module name'
             raise ValueError(msg)
     return values
-
-
-def _default_module_import_exemptions() -> list[_ModuleImportExemption]:
-    return ["facades", "composition_root"]
 
 
 class SourceExclusion(_Model):
@@ -501,50 +498,30 @@ class ErrorPolicy(_Model):
         return list(dict.fromkeys(values))
 
 
-class PackageContract(_Model):
-    """Opt-in module layout and entry points for matching packages."""
+class PackagePolicy(_Model):
+    """Source conventions set for the whole project or for matching packages.
 
-    match: str = Field(
-        description="Dotted package pattern; a whole-segment * matches one package segment."
-    )
-    required: list[str] = Field(
-        default_factory=list,
-        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
-    )
-    public: list[str] | None = Field(
-        default=None,
-        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
-    )
+    Each option is defined once. structure sets the project-wide value and the
+    closest package contract that sets an option overrides it. Setting an option
+    that belongs to a single rule enables that rule.
+    """
+
     imports: ImportStyleConfig | None = Field(
         default=None,
-        description="Optional import style for code in this package. The most specific enclosing package contract wins.",
-    )
-    bundle_imports_at: int | None = Field(
-        default=None,
-        ge=2,
-        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
+        description="Import style (SMT308). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style.",
     )
     max_module_imports: int | None = Field(
         default=None,
         ge=0,
-        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Activates imports/excess-module-imports; closest package overrides the global threshold, including zero.",
+        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
     )
-    module_import_exempt: list[_ModuleImportExemption] | None = Field(
+    module_import_exempt: list[ModuleImportExemption] | None = Field(
         default=None,
-        description="Override structure.module_import_exempt for SMT110. [] checks initializers and composition roots too; omission inherits the enclosing policy. This option alone does not activate the rule.",
-    )
-    export_at: int | None = Field(
-        default=None,
-        ge=2,
-        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
-    )
-    count_tests: bool = Field(
-        default=False,
-        description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
+        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
     )
     module_docstrings: Literal["allow", "forbid", "require"] | None = Field(
         default=None,
-        description="Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected. The closest explicit package policy wins.",
+        description="Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected.",
     )
     future_annotations: Literal["allow", "forbid", "when-needed"] | None = Field(
         default=None,
@@ -552,74 +529,72 @@ class PackageContract(_Model):
     )
     private_modules: Literal["allow", "forbid"] | None = Field(
         default=None,
-        description="Optional naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected. The closest explicit package policy wins.",
+        description="Naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
     )
-    private_attribute_boundary: _PrivateAttributeBoundary | None = Field(
+    private_attribute_boundary: PrivateAttributeBoundary | None = Field(
         default=None,
-        description="Override structure.private_attribute_boundary for private attribute access in SMT339. module allows same-module cooperation; package allows modules of the same immediate Python package. The closest explicit package policy wins; this option alone does not activate the rule.",
+        description="Ownership boundary for private attribute access in visibility/foreign-private-access (SMT339): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module.",
     )
     ordering: OrderingConfig | None = Field(
         default=None,
-        description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority; the closest explicit policy wins.",
+        description="Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority. Configures layout/definition-order, which is enabled through rules.",
     )
     type_dispatch: TypeDispatchConfig | None = Field(
         default=None,
-        description="Optional SMT315 match/case preference for same-subject isinstance chains. Closest package policy wins; no automatic rewrite.",
+        description="SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite.",
     )
     max_positional_parameters: int | None = Field(
         default=None,
         ge=0,
-        description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite.",
+        description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
     )
     max_comprehension_loops: int | None = Field(
         default=None,
         ge=1,
-        description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complexity/complex-comprehension.",
+        description="Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/complex-comprehension. Omitted means 1.",
     )
     max_constructor_decisions: int | None = Field(
         default=None,
         ge=0,
-        description="Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable complexity/constructor-logic.",
+        description="Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/constructor-logic. Omitted means 2.",
     )
     max_private_definitions: int | None = Field(
         default=None,
         ge=0,
-        description="Override structure.max_private_definitions for SMT367, including zero. Counts private module-level classes, functions and PEP 695 type aliases; constants are informational only. The closest explicit package policy wins; this option alone does not enable visibility/excess-private-definitions.",
+        description="Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
+    )
+    call_argument_kinds: list[CallArgumentKind] | None = Field(
+        default=None,
+        min_length=1,
+        description="Argument kinds complexity/inline-call-argument (SMT340) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
+    )
+    str_enum_values: Literal["auto", "explicit"] | None = Field(
+        default=None,
+        description="StrEnum value convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. Setting it enables modeling/str-enum-value-convention. Omitted means explicit.",
     )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
-        description="Dataclass options every production @dataclass in this package must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. The closest explicit package policy wins; no automatic rewrite.",
+        description="Dataclass options every production @dataclass must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. No automatic rewrite.",
     )
     bases: dict[str, str] | None = Field(
         default=None,
-        description="Map a base class from outside the package to the project base that classes in this package must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. The closest explicit package policy wins; no automatic rewrite.",
+        description="Map a base class from outside the project to the project base that classes must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
     )
     errors: ErrorPolicy | None = Field(
         default=None,
-        description="Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; the closest explicit package policy wins; no automatic rewrite.",
+        description="Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
     )
-    rules: dict[str, SeverityName] = Field(
-        default_factory=dict,
-        description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable layout/definition-order.",
-    )
-
-    @field_validator("match")
-    @classmethod
-    def _package_pattern(cls, value: str) -> str:
-        if any(
-            segment != "*" and not _DOTTED_NAME.fullmatch(segment)
-            for segment in value.split(".")
-        ):
-            raise ValueError(
-                "must be a dotted package pattern with whole-segment * wildcards"
-            )
-        return value
 
     @field_validator("dataclass_options")
     @classmethod
     def _dataclass_options(
         cls, values: list[DataclassOption] | None
     ) -> list[DataclassOption] | None:
+        return None if values is None else list(dict.fromkeys(values))
+
+    @field_validator("module_import_exempt", "call_argument_kinds")
+    @classmethod
+    def _unique(cls, values: list[str] | None) -> list[str] | None:
         return None if values is None else list(dict.fromkeys(values))
 
     @field_validator("bases")
@@ -638,6 +613,83 @@ class PackageContract(_Model):
             if outside == project:
                 raise ValueError(f"{outside} cannot replace itself")
         return values
+
+    def configured(self) -> bool:
+        """Whether any policy option is set at this level."""
+        return any(
+            getattr(self, name) is not None for name in PackagePolicy.model_fields
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyDefaults:
+    """Values used when neither structure nor a package contract sets an option."""
+
+    max_module_imports: int = 20
+    module_import_exempt: tuple[ModuleImportExemption, ...] = (
+        "facades",
+        "composition_root",
+    )
+    private_attribute_boundary: PrivateAttributeBoundary = "module"
+    max_positional_parameters: int = 5
+    max_comprehension_loops: int = 1
+    max_constructor_decisions: int = 2
+    max_private_definitions: int = 12
+    call_argument_kinds: tuple[CallArgumentKind, ...] = (
+        "await",
+        "comprehension",
+        "aggregate",
+    )
+    str_enum_values: Literal["auto", "explicit"] = "explicit"
+
+
+POLICY_DEFAULTS = PolicyDefaults()
+
+
+class PackageContract(PackagePolicy):
+    """Package-specific entry points and overrides for matching packages."""
+
+    match: str = Field(
+        description="Dotted package pattern; a whole-segment * matches one package segment."
+    )
+    required: list[str] = Field(
+        default_factory=list,
+        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
+    )
+    public: list[str] | None = Field(
+        default=None,
+        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+    )
+    bundle_imports_at: int | None = Field(
+        default=None,
+        ge=2,
+        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
+    )
+    export_at: int | None = Field(
+        default=None,
+        ge=2,
+        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+    )
+    count_tests: bool = Field(
+        default=False,
+        description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
+    )
+    rules: dict[str, SeverityName] = Field(
+        default_factory=dict,
+        description="Rule severities for production findings in this package. Use the same problem names, families, rule groups or SMT codes as top-level rules; individual entries override a group or family in the same map, and the closest package override wins. Prefer top-level rules for project-wide severities.",
+    )
+
+    @field_validator("match")
+    @classmethod
+    def _package_pattern(cls, value: str) -> str:
+        if any(
+            segment != "*" and not _DOTTED_NAME.fullmatch(segment)
+            for segment in value.split(".")
+        ):
+            raise ValueError(
+                "must be a dotted package pattern with whole-segment * wildcards"
+            )
+        return value
 
     @field_validator("required")
     @classmethod
@@ -665,28 +717,13 @@ class PackageContract(_Model):
     def _has_contract(self) -> Self:
         if self.count_tests and self.export_at is None:
             raise ValueError("count_tests requires export_at")
-        if (
-            not self.required
-            and self.public is None
-            and self.imports is None
-            and self.bundle_imports_at is None
-            and self.max_module_imports is None
-            and self.module_import_exempt is None
-            and self.export_at is None
-            and self.module_docstrings is None
-            and self.future_annotations is None
-            and self.private_modules is None
-            and self.private_attribute_boundary is None
-            and self.ordering is None
-            and self.type_dispatch is None
-            and self.max_positional_parameters is None
-            and self.max_comprehension_loops is None
-            and self.max_constructor_decisions is None
-            and self.max_private_definitions is None
-            and self.dataclass_options is None
-            and self.bases is None
-            and self.errors is None
-            and not self.rules
+        if not (
+            self.required
+            or self.rules
+            or self.public is not None
+            or self.bundle_imports_at is not None
+            or self.export_at is not None
+            or self.configured()
         ):
             raise ValueError("set at least one package contract policy")
         return self
@@ -705,57 +742,20 @@ class FileNamingConfig(_Model):
     )
 
 
-def _all_call_argument_kinds() -> list[_CallArgumentKind]:
-    return ["await", "comprehension", "aggregate"]
+class StructureConfig(PackagePolicy):
+    """Project-wide source conventions, naming rules and package contracts.
 
-
-class StructureConfig(_Model):
-    """Naming rules for packages and modules."""
+    Policy options set here apply to every package; the closest package contract
+    that sets the same option overrides them.
+    """
 
     forbidden_names: list[str] = Field(
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
-    max_module_imports: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum distinct direct project-module imports per source module (SMT110, hint). Omitted means no global limit. Setting a limit activates imports/excess-module-imports; closest package limits override it.",
-    )
-    module_import_exempt: list[_ModuleImportExemption] = Field(
-        default_factory=_default_module_import_exemptions,
-        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots. [] disables exemptions. Package contracts may override; this option alone does not activate the rule.",
-    )
-    private_attribute_boundary: _PrivateAttributeBoundary = Field(
-        default="module",
-        description="Ownership boundary for visibility/foreign-private-access (SMT339) private attribute access: module or immediate Python package; private module symbols always use the module boundary. Package contracts can override it. This option alone does not activate the rule.",
-    )
-    max_comprehension_loops: int = Field(
-        default=1,
-        ge=1,
-        description="Maximum for clauses in a comprehension when complexity/complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
-    )
-    max_constructor_decisions: int = Field(
-        default=2,
-        ge=0,
-        description="Maximum decision nodes in __init__/__post_init__ when complexity/constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
-    )
-    max_private_definitions: int = Field(
-        default=12,
-        ge=0,
-        description="Maximum private module-level classes, functions and PEP 695 type aliases when visibility/excess-private-definitions (SMT367) is selected. Constants are informational only. Package contracts can override this limit, including zero. This option alone does not enable the rule.",
-    )
-    call_argument_kinds: list[_CallArgumentKind] = Field(
-        default_factory=_all_call_argument_kinds,
-        min_length=1,
-        description="Argument kinds complexity/inline-call-argument (SMT340) reports when selected: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). This option alone does not enable the rule.",
-    )
-    str_enum_values: Literal["auto", "explicit"] = Field(
-        default="explicit",
-        description="StrEnum value convention for modeling/str-enum-value-convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. This option alone does not enable the rule.",
-    )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
-        description="Named package contracts: required modules and optional public entry points.",
+        description="Named package contracts: required modules, public entry points and package-specific overrides of the project-wide options above.",
     )
     canonical_exports: dict[str, str] = Field(
         default_factory=dict,

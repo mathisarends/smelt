@@ -167,8 +167,70 @@ The full mapping:
 | SMT902 | `suppression-without-reason` | `meta/missing-suppression-reason` | renamed |
 | SMT903 | `resolved-debt` | `meta/resolved-debt` | family prefix |
 
+### Configuration model
+
+**Breaking: one definition and one activation rule per option.** Source
+conventions were split between options under `structure` and package contracts.
+Some options existed at both levels, and some enabled their rule while others did
+not.
+
+- **Shared options.** `structure` and package contracts now share one set of
+  source-convention options: `imports`, `max_module_imports`,
+  `module_import_exempt`, `module_docstrings`, `future_annotations`,
+  `private_modules`, `private_attribute_boundary`, `ordering`, `type_dispatch`,
+  `max_positional_parameters`, `max_comprehension_loops`,
+  `max_constructor_decisions`, `max_private_definitions`,
+  `call_argument_kinds`, `str_enum_values`, `dataclass_options`, `bases` and
+  `errors`. A value under `structure` applies to the whole project. The closest
+  contract that sets the same option overrides it.
+- **Contract-only options.** `required`, `public`, `bundle_imports_at`,
+  `export_at`, `count_tests` and `rules` stay contract-only. Project-wide
+  settings no longer need a contract that matches the root package.
+- **Uniform activation.** An option that belongs to a single rule now enables
+  that rule wherever the option applies: the whole project under `structure`,
+  the matching packages in a contract. This is new for:
+  - `private_attribute_boundary` (SMT339)
+  - `call_argument_kinds` (SMT340)
+  - `str_enum_values` (SMT341)
+  - `max_comprehension_loops` (SMT363)
+  - `max_constructor_decisions` (SMT364)
+  - `max_private_definitions` (SMT367)
+
+  Each of these previously only configured its rule. `ordering` still only
+  configures `layout/definition-order`, and `module_import_exempt` only modifies
+  SMT110.
+- **Activation scope.** An activation that comes from a package contract option
+  now applies only to that package. Before, for example, a contract's
+  `max_module_imports` enabled SMT110 and the rule then fell back to the global
+  limit elsewhere.
+- **New built-in defaults.** Selecting SMT345 `complexity/excess-positional-parameters`
+  in `rules` or with `--select` now checks with a limit of 5 where no option is
+  set. Selecting SMT110 `imports/excess-module-imports` now checks with a limit
+  of 20. Before, selecting either rule without an option checked nothing.
+- **Unset globals are null.** `smelt config show` reports unset project-wide
+  options as `null` instead of their former defaults (1, 2, 12, `module`,
+  `explicit` and the full kind and exemption lists). The defaults are unchanged
+  and documented in the schema and in
+  [structure.md](docs/structure.md#project-wide-options-and-package-overrides).
+- **Conflict detection.** Two equally specific contracts that set different
+  values of any shared option for the same package are now a configuration
+  error. Before, only import style, docstring, future-annotation, private-module,
+  private-attribute, ordering and type-dispatch policies were checked.
+- **Message wording.** Findings name a project-wide setting as `structure`, for
+  example `structure forbids module docstrings`, and a contract as
+  `contract "name"`. The SMT345 message now reads `...; contract "api" allows 2`,
+  `structure allows 3` or `default allows 5`, and its payload `contract` is
+  `structure` for a project-wide limit and `null` for the built-in default.
+
 ### Internal
 
+- `smelt.config.models.PackagePolicy` holds the shared options.
+  `PackageContract` and `StructureConfig` inherit from it. `POLICY_DEFAULTS`
+  holds the built-in defaults.
+- `ContractIndex.policy_for` falls back to the `structure` values.
+  `ContractIndex.threshold` returns an effective limit and its source.
+- `PolicyActivation.option` limits an activation to modules where that option is
+  set.
 - `smelt.diagnostics.violation.Category` now enumerates the families.
 - Merged rule classes: `ModuleDocstringConvention`, `ForbiddenBaseClassAffix`,
   `FileNameConvention`, `StrEnumValueConvention`, `ImplicitDurationUnit`

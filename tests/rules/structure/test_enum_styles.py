@@ -154,7 +154,9 @@ def test_rule_is_opt_in_and_uses_configured_severity(
     tmp_path: Path, base: str, members: tuple[str, ...]
 ) -> None:
     source = _enum(*members)
-    assert violations(_project(tmp_path / "default", source, config=base)) == []
+    # Setting str_enum_values enables the rule; the default convention does not.
+    default = violations(_project(tmp_path / "default", source, config=base))
+    assert [v.code for v in default] == (["SMT341"] if base == AUTO_CONFIG else [])
     config = base + "rules: {modeling/str-enum-value-convention: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
     assert (finding.code, finding.severity) == ("SMT341", Severity.WARNING)

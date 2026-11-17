@@ -568,7 +568,7 @@ def test_opt_in_package_off_suppression_and_test_exclusion(tmp_path: Path) -> No
     root = _attribute_project(
         tmp_path, source, settings="structure: {private_attribute_boundary: module}\n"
     )
-    assert violations(root) == []
+    assert [v.code for v in violations(root)] == ["SMT339"]
     write_project(
         root,
         {

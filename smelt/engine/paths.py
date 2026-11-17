@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
-from smelt.config.models import CrossFeatureAllowance
+from smelt.config.models import CrossFeatureAllowance, PackagePolicy
 from smelt.config.patterns import module_matches
 
 if TYPE_CHECKING:
@@ -92,19 +92,23 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
     return issues
 
 
+_POLICY_LABELS = {
+    "imports": "import styles",
+    "module_docstrings": "module docstring policies",
+    "future_annotations": "future annotation policies",
+    "private_modules": "private module naming policies",
+    "private_attribute_boundary": "private attribute boundaries",
+    "ordering": "definition ordering policies",
+    "type_dispatch": "type dispatch policies",
+}
+
+
 def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
     policies: dict[tuple[str, str], object] = {}
     issues: list[ConfigIssue] = []
     for contract in ctx.contracts.resolved:
-        for key, label in (
-            ("imports", "import styles"),
-            ("module_docstrings", "module docstring policies"),
-            ("future_annotations", "future annotation policies"),
-            ("private_modules", "private module naming policies"),
-            ("private_attribute_boundary", "private attribute boundaries"),
-            ("ordering", "definition ordering policies"),
-            ("type_dispatch", "type dispatch policies"),
-        ):
+        for key in PackagePolicy.model_fields:
+            label = _POLICY_LABELS.get(key, f"{key} settings")
             policy = getattr(contract.spec, key)
             if policy is None:
                 continue

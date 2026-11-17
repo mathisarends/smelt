@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Literal
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 class ExcessPrivateDefinitions(Rule):
     file_local = True
+    activation = POLICIES["SMT367"]
     code = "SMT367"
     name = "visibility/excess-private-definitions"
     category = Category.VISIBILITY
@@ -58,25 +60,16 @@ class ExcessPrivateDefinitions(Rule):
             "extract arbitrary fragments merely to lower the count. Keep deliberate "
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
-            "{visibility/excess-private-definitions: hint} or select SMT367. "
-            "structure.max_private_definitions defaults to 12; closest package "
-            "overrides, including zero, are supported. Setting a threshold alone "
-            "does not enable the rule."
+            "{visibility/excess-private-definitions: hint}, select SMT367, or set "
+            "max_private_definitions under structure or in a package contract. "
+            "The limit defaults to 12; zero is supported."
         ),
         config=("rules", "structure.max_private_definitions", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            limit = ctx.config.structure.max_private_definitions
-            contract = ctx.contracts.policy_for(
-                source.module, "max_private_definitions"
-            )
-            if (
-                contract is not None
-                and contract.spec.max_private_definitions is not None
-            ):
-                limit = contract.spec.max_private_definitions
+            limit, _ = ctx.contracts.threshold(source.module, "max_private_definitions")
             declarations = _declarations(ctx.asts.parse(source.path))
             definitions = [item for item in declarations if item.kind != "constant"]
             if len(definitions) <= limit:

@@ -250,7 +250,7 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
     root = _project(
         tmp_path, source, settings="structure: {max_private_definitions: 0}\n"
     )
-    assert violations(root) == []
+    assert [v.code for v in violations(root)] == ["SMT367"]
     write_project(
         root,
         {

@@ -45,9 +45,9 @@
 | [SMT336](SMT336.md) | layout/redundant-module-name | layout | explicit | hint |
 | [SMT337](SMT337.md) | typing/deprecated-async-contextmanager-return | typing | explicit | warning |
 | [SMT338](SMT338.md) | typing/duplicate-literal-type | typing | explicit | hint |
-| [SMT339](SMT339.md) | visibility/foreign-private-access | visibility | explicit | warning |
-| [SMT340](SMT340.md) | complexity/inline-call-argument | complexity | explicit | hint |
-| [SMT341](SMT341.md) | modeling/str-enum-value-convention | modeling | explicit | hint |
+| [SMT339](SMT339.md) | visibility/foreign-private-access | visibility | policy | warning |
+| [SMT340](SMT340.md) | complexity/inline-call-argument | complexity | policy | hint |
+| [SMT341](SMT341.md) | modeling/str-enum-value-convention | modeling | policy | hint |
 | [SMT343](SMT343.md) | visibility/redundant-private-delegate | visibility | explicit | hint |
 | [SMT344](SMT344.md) | idioms/redundant-name-alias | idioms | explicit | hint |
 | [SMT345](SMT345.md) | complexity/excess-positional-parameters | complexity | policy | warning |
@@ -67,9 +67,9 @@
 | [SMT360](SMT360.md) | modeling/mutable-field-in-frozen-dataclass | modeling | explicit | warning |
 | [SMT361](SMT361.md) | modeling/parallel-record-fields | modeling | explicit | hint |
 | [SMT362](SMT362.md) | idioms/loop-invariant-collection | idioms | explicit | hint |
-| [SMT363](SMT363.md) | complexity/complex-comprehension | complexity | explicit | hint |
-| [SMT364](SMT364.md) | complexity/constructor-logic | complexity | explicit | hint |
-| [SMT367](SMT367.md) | visibility/excess-private-definitions | visibility | explicit | hint |
+| [SMT363](SMT363.md) | complexity/complex-comprehension | complexity | policy | hint |
+| [SMT364](SMT364.md) | complexity/constructor-logic | complexity | policy | hint |
+| [SMT367](SMT367.md) | visibility/excess-private-definitions | visibility | policy | hint |
 | [SMT401](SMT401.md) | tests/misplaced-test | tests | policy | error |
 | [SMT420](SMT420.md) | tests/private-access | tests | explicit | error |
 | [SMT421](SMT421.md) | tests/forbidden-mock | tests | policy | error |

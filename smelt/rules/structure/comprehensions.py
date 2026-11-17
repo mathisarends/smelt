@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -18,6 +19,7 @@ _MAX_FILTER_OPERANDS = 2
 
 class ComplexComprehension(Rule):
     file_local = True
+    activation = POLICIES["SMT363"]
     code = "SMT363"
     name = "complexity/complex-comprehension"
     category = Category.COMPLEXITY
@@ -40,24 +42,16 @@ class ComplexComprehension(Rule):
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
             "rewrite is performed. Enable rules: {complexity/complex-comprehension: hint} or "
-            "select SMT363. structure.max_comprehension_loops defaults to 1; a "
-            "structure.contracts.<name>.max_comprehension_loops override permits "
-            "intentional flattening. Threshold options alone do not enable the rule."
+            "select SMT363, or set max_comprehension_loops under structure or in a "
+            "package contract. The limit defaults to 1; a package contract can "
+            "permit intentional flattening."
         ),
         config=("rules", "structure.max_comprehension_loops", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(
-                source.module, "max_comprehension_loops"
-            )
-            limit = ctx.config.structure.max_comprehension_loops
-            if (
-                contract is not None
-                and contract.spec.max_comprehension_loops is not None
-            ):
-                limit = contract.spec.max_comprehension_loops
+            limit, _ = ctx.contracts.threshold(source.module, "max_comprehension_loops")
             for node in _outermost(ctx.asts.parse(source.path)):
                 reasons = _reasons(node, limit)
                 if not reasons:

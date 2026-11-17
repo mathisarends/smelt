@@ -141,9 +141,16 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
     source = "value = [x for group in groups for x in group]\n"
     root = _project(tmp_path, source)
     (root / "smelt.yml").write_text(
-        CONFIG + "structure: {max_comprehension_loops: 1}\n", encoding="utf-8"
+        CONFIG
+        + "structure: {max_comprehension_loops: 1}\n"
+        + "rules: {complexity/complex-comprehension: off}\n",
+        encoding="utf-8",
     )
     assert violations(root) == []
+    (root / "smelt.yml").write_text(
+        CONFIG + "structure: {max_comprehension_loops: 1}\n", encoding="utf-8"
+    )
+    assert [v.code for v in violations(root)] == ["SMT363"]
     write_project(
         root,
         {

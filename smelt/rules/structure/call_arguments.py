@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, TypeGuard
 
 from smelt.analysis.bindings import unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -34,6 +36,7 @@ _CALLEE_PREVIEW = 60
 
 class InlineCallArgument(Rule):
     file_local = True
+    activation = POLICIES["SMT340"]
     code = "SMT340"
     name = "complexity/inline-call-argument"
     category = Category.COMPLEXITY
@@ -50,7 +53,7 @@ class InlineCallArgument(Rule):
             "or call that consumes it, and gives the value a name in tracebacks and "
             "debuggers. This opt-in syntax review reports a direct positional or "
             "named keyword argument of a call in production code that is one of "
-            "the kinds in structure.call_argument_kinds (all by default): await "
+            "the kinds in call_argument_kinds (all by default): await "
             "(an await expression, including nested forms such as "
             "await f(await g())), comprehension (a list, set or dict "
             "comprehension, even when SMT363 accepts its internal logic) or "
@@ -88,16 +91,22 @@ class InlineCallArgument(Rule):
             "and suspension points: moving an argument before the call can "
             "evaluate it before earlier arguments or the callable itself. Do not "
             "eagerly materialize generator expressions. No automatic rewrite is "
-            "performed. Enable rules: {complexity/inline-call-argument: hint}, or "
-            "select SMT340; narrow it with structure.call_argument_kinds. Package "
-            "overrides and reasoned inline suppressions are supported."
+            "performed. Enable rules: {complexity/inline-call-argument: hint}, "
+            "select SMT340, or set call_argument_kinds under structure or in a "
+            "package contract, which also narrows the review to that scope. "
+            "Reasoned inline suppressions are supported."
         ),
         config=("rules", "structure.call_argument_kinds", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        kinds = frozenset(ctx.config.structure.call_argument_kinds)
         for source in ctx.files.sources.values():
+            contract = ctx.contracts.policy_for(source.module, "call_argument_kinds")
+            kinds = frozenset(
+                contract.spec.call_argument_kinds
+                if contract and contract.spec.call_argument_kinds
+                else POLICY_DEFAULTS.call_argument_kinds
+            )
             tree = ctx.asts.parse(source.path)
             if "await" in kinds:
                 for call, awaited, keyword in _awaited_arguments(

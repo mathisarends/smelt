@@ -66,7 +66,7 @@ def test_reports_direct_outside_base_from_the_issue(tmp_path: Path) -> None:
     )
     assert finding.message == (
         "Class _Manifest inherits pydantic.BaseModel directly; "
-        "models expects app.core.Options"
+        'contract "models" expects app.core.Options'
     )
     assert finding.expected == {
         "contract": "models",

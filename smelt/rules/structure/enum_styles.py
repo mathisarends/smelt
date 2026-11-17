@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -22,6 +24,7 @@ _SCOPE = (
 
 class StrEnumValueConvention(Rule):
     file_local = True
+    activation = POLICIES["SMT341"]
     code = "SMT341"
     name = "modeling/str-enum-value-convention"
     category = Category.MODELING
@@ -31,7 +34,7 @@ class StrEnumValueConvention(Rule):
         summary="A StrEnum spells its values against the configured auto/explicit convention.",
         rationale=(
             "StrEnum values follow one project convention, chosen with "
-            "structure.str_enum_values. explicit (the default) keeps every value "
+            "str_enum_values. explicit (the default) keeps every value "
             "visible where it is declared, so renaming a member cannot silently "
             "change a serialized value; a member using auto() is reported. auto "
             "treats auto() as the convention because it derives the lowercased "
@@ -57,15 +60,21 @@ class StrEnumValueConvention(Rule):
             "each reported explicit string with auto(), or spell the auto() "
             "members of a class with custom values explicitly. No automatic "
             "rewrite is performed. Enable rules: "
-            "{modeling/str-enum-value-convention: hint}, or select SMT341. "
-            "Package overrides and reasoned inline suppressions are supported."
+            "{modeling/str-enum-value-convention: hint}, select SMT341, or set "
+            "str_enum_values under structure or in a package contract. Reasoned "
+            "inline suppressions are supported."
         ),
-        config=("rules", "structure.str_enum_values"),
+        config=("rules", "structure.str_enum_values", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        style = ctx.config.structure.str_enum_values
         for enum in _str_enums(ctx):
+            contract = ctx.contracts.policy_for(enum.source.module, "str_enum_values")
+            style = (
+                contract.spec.str_enum_values
+                if contract and contract.spec.str_enum_values
+                else POLICY_DEFAULTS.str_enum_values
+            )
             if (style == "explicit" or enum.custom) and enum.automatic:
                 yield _violation(
                     self,
