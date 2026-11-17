@@ -52,6 +52,7 @@ class TestJson:
             "end_column": 40,
             "feature": "voice",
             "layer": "domain",
+            "member": None,
             "source_module": "gw.features.voice.domain.calls",
             "target_module": "gw.features.voice.infra.sql",
             "edge": "voice.domain -> voice.infra",

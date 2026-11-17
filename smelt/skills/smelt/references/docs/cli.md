@@ -27,6 +27,7 @@ smelt check --staged --no-cache       # recompute to verify the cached result
 smelt check --changed --base origin/main --format json
 smelt check --changed --format concise  # path:line:col CODE family/finding message -> repair
 smelt check --statistics              # findings per rule, hints included
+smelt check --statistics --by member  # findings per uv workspace member, hints included
 smelt check --strict-coverage         # fail on omitted or unclassified production code
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select SMT321 --fix --unsafe-fixes  # use None-only defaults after review
@@ -74,6 +75,11 @@ and a `policy_hash` that is equal for reports checked under the same resolved co
 The report's `project` names the config, project root and repository root. JSON
 finding paths are project-relative; SARIF and GitHub annotation paths are rebased
 to the repository root, including when using a nested `--config`.
+Findings also carry `member`: a uv workspace member directory, `.` for workspace
+root files, or `null` outside a workspace or for findings without a file location.
+In text and concise output, `--statistics --by member` counts every finding,
+including hints, under its member. Unattributed findings use `<project>`.
+`--by member` requires `--statistics`; the default is `--by rule`.
 `smelt context --format json` carries the same import settings, allowances and hash.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 2, "status": "error", "error": {...}}` with `kind`

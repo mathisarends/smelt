@@ -7,6 +7,25 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+### Workspace member boundaries
+
+- Root `architecture.members` maps workspace-relative source globs to
+  `may_depend_on` target globs and enables SMT111 `architecture/member-boundary`.
+  Unmatched members are unrestricted; overlapping source entries combine their
+  allowances. This policy requires `project.workspace: uv` and is forbidden in
+  member configs. See [member boundaries](docs/configuration.md#boundaries-between-members).
+- A uv workspace enables SMT112 `architecture/undeclared-member-dependency` for
+  direct production imports of another member without a static project or
+  optional dependency. It resolves distribution names and inherited/member uv
+  sources, without evaluating environment markers. Dynamic/missing metadata and
+  test imports are outside its inference limits. Both rules honor root
+  `TYPE_CHECKING` policy and check direct imports only.
+- JSON findings add `member` (workspace-relative directory, `.` for root files,
+  `null` otherwise). Text/concise `--statistics --by member` groups all findings,
+  including hints, by member. `coverage.member_boundaries` exposes the root
+  allowlists with `--show-coverage`. Report schema 2 and finding/debt identities
+  remain unchanged; projects without workspace policy keep their policy hashes.
+
 **Breaking: rule taxonomy.** Every rule name now has the form
 `family/finding`, several names were corrected to the documented qualifiers, and
 seven pairs of rules that described one concept were merged (91 → 84 rules). YAML

@@ -152,13 +152,15 @@ def member_raw_issues(raw: object) -> list[ConfigIssue]:
             if key != "exclude"
         )
     architecture = raw.get("architecture")
-    if isinstance(architecture, dict) and "imports" in architecture:
-        issues.append(
+    if isinstance(architecture, dict):
+        issues.extend(
             ConfigIssue(
-                "architecture.imports",
-                "not allowed in a workspace member config: which imports count "
+                f"architecture.{key}",
+                "not allowed in a workspace member config: this policy "
                 "is set once in the workspace root",
             )
+            for key in ("imports", "members")
+            if key in architecture
         )
     return issues
 

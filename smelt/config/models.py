@@ -315,6 +315,34 @@ class ImportsConfig(_Model):
     )
 
 
+def _member_pattern(value: str) -> str:
+    pattern = value.strip().replace("\\", "/")
+    if (
+        not pattern
+        or pattern.startswith("/")
+        or re.match(r"^[A-Za-z]:", pattern)
+        or ".." in pattern.split("/")
+    ):
+        raise ValueError(
+            "member globs must be nonempty workspace-relative paths without '..'"
+        )
+    return posixpath.normpath(pattern)
+
+
+class MemberBoundaryConfig(_Model):
+    """Allowed target members for each matching source member."""
+
+    may_depend_on: list[str] = Field(
+        default_factory=list,
+        description="Workspace-relative member globs this member may import; [] forbids imports of other members. Overlapping source entries combine their allowances.",
+    )
+
+    @field_validator("may_depend_on")
+    @classmethod
+    def _member_globs(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(_member_pattern(value) for value in values))
+
+
 class ArchitectureConfig(_Model):
     """Features, layers and the modules around them."""
 
@@ -346,6 +374,23 @@ class ArchitectureConfig(_Model):
     imports: ImportsConfig = Field(
         default_factory=ImportsConfig, description="Which imports count."
     )
+    members: dict[str, MemberBoundaryConfig] = Field(
+        default_factory=dict,
+        description="Root-only uv workspace boundaries: source member path glob -> {may_depend_on: [target member globs]}. Unmatched source members are unrestricted; '.' names the root project. SMT111 checks direct imports.",
+    )
+
+    @field_validator("members")
+    @classmethod
+    def _member_patterns(
+        cls, values: dict[str, MemberBoundaryConfig]
+    ) -> dict[str, MemberBoundaryConfig]:
+        result: dict[str, MemberBoundaryConfig] = {}
+        for key, policy in values.items():
+            pattern = _member_pattern(key)
+            if pattern in result:
+                raise ValueError(f'duplicate member glob "{pattern}"')
+            result[pattern] = policy
+        return result
 
     @field_validator("shared", "composition_root")
     @classmethod

@@ -464,7 +464,10 @@ def _collect(
             severity_of=severity_of,
         )
     )
-    return violations, sum(len(codes) for codes in usage.values())
+    return [
+        replace(finding, member=ctx.workspace.member_for_path(finding.path))
+        for finding in violations
+    ], sum(len(codes) for codes in usage.values())
 
 
 def _resolve_active_rules(

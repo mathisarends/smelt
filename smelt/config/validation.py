@@ -25,6 +25,21 @@ def validate_semantics(
     validator.run()
     validator.contracts()
     errors, warnings = validator.errors, validator.warnings
+    if config.architecture.members and config.project.workspace != "uv":
+        errors.append(
+            ConfigIssue("architecture.members", "requires project.workspace: uv")
+        )
+    for path, member_config in config.members.items():
+        if (
+            member_config.architecture is not None
+            and member_config.architecture.members
+        ):
+            errors.append(
+                ConfigIssue(
+                    f"members.{path}.architecture.members",
+                    "member boundaries are configured in the workspace root",
+                )
+            )
     for scope in scopes[1:]:
         member = _Validator(
             config,

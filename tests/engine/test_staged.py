@@ -18,7 +18,7 @@ from smelt.cli import main
 from smelt.diagnostics.debt import Debt
 from smelt.engine.changes import GitIndex, capture_index
 from smelt.engine.check import snippet_reader
-from tests.helpers import LAYERED_CONFIG, check, write_project
+from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_project
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
@@ -28,6 +28,47 @@ structure:
   contracts:
     api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
+
+
+def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        repo,
+        {
+            **MEMBER_BOUNDARIES,
+            "services/api/src/api/http.py": "",
+            "services/api/pyproject.toml": '[project]\nname = "web-api"\n',
+        },
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "workspace without imports")
+    write_project(
+        repo, {"services/api/src/api/http.py": "from core.model import Order\n"}
+    )
+    _git(repo, "add", "services/api/src/api/http.py")
+    # The unstaged dependency repair must not change a staged import finding.
+    write_project(
+        repo,
+        {
+            "services/api/pyproject.toml": MEMBER_BOUNDARIES[
+                "services/api/pyproject.toml"
+            ]
+        },
+    )
+    monkeypatch.chdir(repo)
+
+    for flags in ((), (), ("--no-cache",)):
+        status, data = _check(repo, capsys, "--select", "SMT112", *flags)
+        assert status == 1
+        [found] = data["violations"]
+        assert (found["code"], found["member"]) == ("SMT112", "services/api")
+
+    _git(repo, "add", "services/api/pyproject.toml")
+    for flags in ((), ("--no-cache",)):
+        status, data = _check(repo, capsys, "--select", "SMT112", *flags)
+        assert status == 0
+        assert data["violations"] == []
 
 
 def test_staged_literal_groups_use_staged_sources_and_policy(

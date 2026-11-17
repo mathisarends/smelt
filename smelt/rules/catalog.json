@@ -163,6 +163,40 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.dependencies.member_boundaries:MemberBoundary",
+    "code": "SMT111",
+    "name": "architecture/member-boundary",
+    "category": "architecture",
+    "default_severity": "error",
+    "requires": [
+      "imports",
+      "workspace"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "source"
+  },
+  {
+    "target": "smelt.rules.dependencies.member_boundaries:UndeclaredMemberDependency",
+    "code": "SMT112",
+    "name": "architecture/undeclared-member-dependency",
+    "category": "architecture",
+    "default_severity": "error",
+    "requires": [
+      "imports",
+      "workspace"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.layout:UnknownLayer",
     "code": "SMT301",
     "name": "architecture/unknown-layer",

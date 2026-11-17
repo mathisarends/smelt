@@ -12,6 +12,8 @@
 | [SMT108](SMT108.md) | imports/package-import-fanout | imports | policy | hint |
 | [SMT109](SMT109.md) | architecture/missing-facade-export | architecture | policy | hint |
 | [SMT110](SMT110.md) | imports/excess-module-imports | imports | policy | hint |
+| [SMT111](SMT111.md) | architecture/member-boundary | architecture | policy | error |
+| [SMT112](SMT112.md) | architecture/undeclared-member-dependency | architecture | policy | error |
 | [SMT301](SMT301.md) | architecture/unknown-layer | architecture | default | error |
 | [SMT302](SMT302.md) | layout/forbidden-module-name | layout | policy | error |
 | [SMT305](SMT305.md) | architecture/unclassified-module | architecture | explicit | warning |

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from smelt.analysis.python_version import PythonTargetIndex
     from smelt.analysis.syntax import SyntaxIndex
     from smelt.analysis.test_syntax import TestSyntaxIndex
+    from smelt.analysis.workspace_policy import WorkspaceIndex
     from smelt.config.models import SmeltConfig
     from smelt.config.workspace import ArchitectureScope
     from smelt.model import ArchitectureModel
@@ -35,6 +36,7 @@ class Index(StrEnum):
     ORDERING = "ordering"
     SYNTAX = "syntax"
     TESTS = "test_syntax"
+    WORKSPACE = "workspace"
 
 
 class AnalysisContext:
@@ -124,6 +126,12 @@ class AnalysisContext:
         from smelt.analysis.coverage import CoverageIndex  # noqa: PLC0415
 
         return CoverageIndex.build(self.files, self.model, self.asts)
+
+    @cached_property
+    def workspace(self) -> WorkspaceIndex:
+        from smelt.analysis.workspace_policy import WorkspaceIndex  # noqa: PLC0415
+
+        return WorkspaceIndex(self.files)
 
     @cached_property
     def imports(self) -> ImportIndex:

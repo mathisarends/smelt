@@ -50,6 +50,10 @@ def effective_coverage(
         "member_architectures": {
             scope.member: list(scope.packages) for scope in ctx.architecture_scopes[1:]
         },
+        "member_boundaries": {
+            pattern: policy.model_dump(mode="json")
+            for pattern, policy in architecture.members.items()
+        },
         "modules": _classification(ctx),
         "exempt": {
             "composition_root": list(architecture.composition_root),
@@ -110,6 +114,8 @@ def policy_hash(config: SmeltConfig) -> str:
         policy["architecture"]["imports"].pop("type_checking_cycles", None)
     if not config.members:
         policy.pop("members", None)
+    if not config.architecture.members:
+        policy["architecture"].pop("members", None)
     if config.project.workspace is None:
         policy["project"].pop("workspace", None)
     if len(config.rule_layers) > 1:

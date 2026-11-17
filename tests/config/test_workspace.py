@@ -41,6 +41,35 @@ def test_roots_apply_inside_every_declared_member(tmp_path: Path) -> None:
     assert project.root_packages == ["core", "api"]
 
 
+@pytest.mark.parametrize("pattern", ["", "../outside", "/absolute", "C:\\absolute"])
+def test_member_boundary_globs_stay_inside_the_workspace(
+    tmp_path: Path, pattern: str
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": ROOT
+            + f"architecture:\n  members:\n    '{pattern}': {{may_depend_on: []}}\n"
+        },
+    )
+
+    with pytest.raises(ConfigError, match="workspace-relative"):
+        load_config(root / "smelt.yml")
+
+
+def test_member_boundaries_require_a_uv_workspace(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {members: {'packages/*': {may_depend_on: []}}}\n",
+            "app/__init__.py": "",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=r"requires project\.workspace: uv"):
+        load_config(root / "smelt.yml")
+
+
 def test_a_root_project_contributes_its_packages_but_not_member_folders(
     tmp_path: Path,
 ) -> None:
@@ -131,6 +160,11 @@ def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:
         (
             "architecture: {imports: {transitive: true}}\n",
             "architecture.imports",
+            "set once in the workspace root",
+        ),
+        (
+            "architecture: {members: {}}\n",
+            "architecture.members",
             "set once in the workspace root",
         ),
         ("project: {source_roots: [lib]}\n", "project.source_roots", "only add"),

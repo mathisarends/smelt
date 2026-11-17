@@ -30,6 +30,10 @@ if TYPE_CHECKING:
 
 
 def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+    if args.by != "rule" and not args.statistics:
+        raise CliError(
+            "--by member requires --statistics", option="--by", value=args.by
+        )
     if args.staged:
         if args.fix:
             raise CliError(
@@ -116,6 +120,7 @@ def _check_loaded(
                     report,
                     show_hints=args.show_hints or options.changed,
                     statistics=args.statistics,
+                    by=args.by,
                 ),
                 end="",
             )
@@ -128,6 +133,7 @@ def _check_loaded(
                 # Hints on the files just changed are few and relevant.
                 show_hints=args.show_hints or options.changed,
                 statistics=args.statistics,
+                by=args.by,
             )
             console.print(text, end="")
             if args.show_coverage and report.coverage:
