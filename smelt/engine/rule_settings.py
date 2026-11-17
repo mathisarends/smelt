@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.models import ALL_RULES
+from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.renames import retired_hint
@@ -23,6 +24,11 @@ _STRICT_COVERAGE = "SMT306"
 class RuleSettings:
     def __init__(self, rules: RuleSet, loaded: LoadedConfig) -> None:
         self.config = loaded.config
+        # A member architecture's policy activates its rules like the root's does.
+        self._policies = (
+            self.config,
+            *(scope.config for scope in architecture_scopes(self.config)[1:]),
+        )
         self.source = loaded.path.name
         self.rules = rules
         self.codes = {rule.code: rule.code for rule in rules.rules}
@@ -182,7 +188,10 @@ class RuleSettings:
         return bool(
             selected
             or getattr(rule, "enabled_by_default", False)
-            or (activation is not None and activation.matches(self.config))
+            or (
+                activation is not None
+                and any(activation.matches(policy) for policy in self._policies)
+            )
         )
 
     def _member_for(

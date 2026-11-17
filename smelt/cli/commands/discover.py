@@ -26,7 +26,7 @@ def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     ctx = AnalysisContext(loaded.root, loaded.config)
     issues = missing_paths(ctx)
     if issues:
-        raise ConfigError(issues, loaded.path.name)
+        raise loaded.explain_error(ConfigError(issues, loaded.path.name))
     raw = args.target
     if (
         raw is not None

@@ -932,6 +932,21 @@ class MemberConfig(_Model):
         default_factory=list,
         description="Rules to skip; paths are relative to the member.",
     )
+    architecture: ArchitectureConfig | None = Field(
+        default=None,
+        description="The member's own features, layers and boundaries. They replace the root architecture for the member's packages and govern imports inside the member.",
+    )
+    _packages: tuple[str, ...] = PrivateAttr(default=())
+
+    @property
+    def packages(self) -> tuple[str, ...]:
+        """The member's top-level packages, discovered from the workspace roots."""
+        return self._packages
+
+    def with_packages(self, packages: Iterable[str]) -> Self:
+        located = self.model_copy()
+        located._packages = tuple(packages)
+        return located
 
     @field_validator("rules")
     @classmethod

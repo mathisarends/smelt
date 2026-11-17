@@ -133,7 +133,8 @@ def display_module_path(
     model: ArchitectureModel, module: str, *, package: bool = False
 ) -> str:
     """A short path for hints: relative to the feature container (``voice/application/ports.py``)."""
-    spec = model.config.architecture.features
+    scope = model.part_for(module)
+    spec = scope.config.architecture.features
     container: str | None = None
     if spec is not None and spec.root is not None:
         container = spec.root
@@ -143,7 +144,7 @@ def display_module_path(
         module = module[len(container) + 1 :]
     elif spec is None:
         root = module.split(".")[0]
-        if root in model.config.project.root_packages and "." in module:
+        if root in scope.roots and "." in module:
             module = module[len(root) + 1 :]
     return module.replace(".", "/") + ("/" if package else ".py")
 
@@ -164,7 +165,7 @@ def _architecture_node(ctx: AnalysisContext, module: str) -> str:
         return module
     if info.in_grid and (info.feature or info.layer):
         return ".".join(part for part in (info.feature, info.layer) if part)
-    architecture = ctx.config.architecture
+    architecture = ctx.model.part_for(module).config.architecture
     entries = {
         ModuleKind.SHARED: architecture.shared,
         ModuleKind.COMPOSITION_ROOT: architecture.composition_root,

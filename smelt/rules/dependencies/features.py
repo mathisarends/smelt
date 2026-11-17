@@ -17,6 +17,7 @@ class CrossFeatureImport(Rule):
     activation = POLICIES["SMT102"]
     code = "SMT102"
     name = "architecture/cross-feature-import"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
@@ -113,6 +114,7 @@ class SharedImportsFeature(Rule):
     activation = POLICIES["SMT105"]
     code = "SMT105"
     name = "architecture/shared-imports-feature"
+    architecture_scoped = True
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})

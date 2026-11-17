@@ -70,6 +70,10 @@ installed skill records the CLI version that installed it.
 - In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
   the shared policy, and put member exceptions in that member's own `smelt.yml`
   (`rules`, `structure`, `ignore`, `project.exclude`; paths member-relative).
+  A member with its own boundaries declares `architecture` there; it replaces
+  the root architecture for that member's packages and judges only imports
+  inside the member. Run `smelt context <member feature or path>` to see the
+  layers that govern it.
   Do not duplicate the member list or give a member an independent full config.
   `smelt check` in a member directory checks that member under the root policy.
   Run the root check before finishing work that changes shared packages. A

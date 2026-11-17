@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config import parse_config
-from smelt.model import ArchitectureModel, ModuleKind
+from smelt.model import ArchitectureModel, ModuleInfo, ModuleKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -17,11 +17,13 @@ LAYERS = {
 }
 
 
-def _config(architecture: Mapping[str, object]) -> SmeltConfig:
+def _config(
+    architecture: Mapping[str, object], *, roots: list[str] | None = None
+) -> SmeltConfig:
     config, _ = parse_config(
         {
             "version": 1,
-            "project": {"root_packages": ["gw"]},
+            "project": {"root_packages": roots or ["gw"]},
             "architecture": architecture,
         }
     )
@@ -141,3 +143,29 @@ class TestWithoutFeatures:
         model = _model({"layers": LAYERS}, [], ["gw"])
 
         assert model.layer_package(None, "infrastructure") == "gw.infra.adapters"
+
+
+class TestCombinedScopes:
+    def test_each_module_is_answered_by_the_architecture_owning_its_package(
+        self,
+    ) -> None:
+        root = _config({"layers": LAYERS}, roots=["gw", "lib"])
+        member = _config({"layers": {"core": {"path": "core"}}}, roots=["gw", "lib"])
+        modules = ["gw.domain.session", "lib.core.clock", "lib.domain.thing"]
+        parts = (
+            ArchitectureModel.build(root, modules, ["gw", "lib"], scope=["gw"]),
+            ArchitectureModel.build(member, modules, ["gw", "lib"], scope=["lib"]),
+        )
+
+        model = ArchitectureModel.combine(root, parts)
+
+        assert parts[0].modules["lib.core.clock"].kind is ModuleKind.UNCLASSIFIED
+        assert model.part_for("lib.core.clock") is parts[1]
+        assert [model.modules[name].layer for name in modules] == [
+            "domain",
+            "core",
+            None,
+        ]
+        assert model.info("lib.core.later") == ModuleInfo(
+            "lib.core.later", ModuleKind.FEATURE, layer="core"
+        )

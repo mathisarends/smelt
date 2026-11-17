@@ -66,7 +66,9 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
                     f'package "{package}" is in none of the source roots ({roots})',
                 )
             )
-    issues.extend(_missing_modules(ctx))
+    for view, location in _architecture_views(ctx):
+        issues.extend(_missing_modules(view, location))
+        issues.extend(_unknown_allowed_features(view, location))
     issues.extend(_conflicting_package_policies(ctx))
     matched_contracts = {contract.name for contract in ctx.contracts.resolved}
     issues.extend(
@@ -77,18 +79,6 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
         for name, contract in ctx.config.structure.contracts.items()
         if name not in matched_contracts
     )
-    for index, allowance in enumerate(ctx.config.architecture.cross_feature.allow):
-        if not isinstance(allowance, CrossFeatureAllowance):
-            continue
-        for key, value in (("from", allowance.source), ("to", allowance.target)):
-            feature = value.split(".")[0]
-            if feature not in ctx.model.features:
-                issues.append(
-                    ConfigIssue(
-                        f"architecture.cross_feature.allow[{index}].{key}",
-                        f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
-                    )
-                )
     return issues
 
 
@@ -123,7 +113,34 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
     return issues
 
 
-def _missing_modules(ctx: AnalysisContext) -> list[ConfigIssue]:
+def _architecture_views(ctx: AnalysisContext) -> list[tuple[AnalysisContext, str]]:
+    """Each architecture with the config key its entries are reported under."""
+    if not ctx.model.parts:
+        return [(ctx, "architecture")]
+    return [
+        (ctx.architecture_view(scope), scope.location)
+        for scope in ctx.architecture_scopes
+    ]
+
+
+def _unknown_allowed_features(ctx: AnalysisContext, location: str) -> list[ConfigIssue]:
+    issues: list[ConfigIssue] = []
+    for index, allowance in enumerate(ctx.config.architecture.cross_feature.allow):
+        if not isinstance(allowance, CrossFeatureAllowance):
+            continue
+        for key, value in (("from", allowance.source), ("to", allowance.target)):
+            feature = value.split(".")[0]
+            if feature not in ctx.model.features:
+                issues.append(
+                    ConfigIssue(
+                        f"{location}.cross_feature.allow[{index}].{key}",
+                        f'unknown feature "{feature}"{did_you_mean(feature, ctx.model.features)}',
+                    )
+                )
+    return issues
+
+
+def _missing_modules(ctx: AnalysisContext, location: str) -> list[ConfigIssue]:
     arch = ctx.config.architecture
     files = ctx.files
     packages = sorted(files.packages)
@@ -136,7 +153,7 @@ def _missing_modules(ctx: AnalysisContext) -> list[ConfigIssue]:
         if package not in files.packages:
             issues.append(
                 ConfigIssue(
-                    f"architecture.features.{key}",
+                    f"{location}.features.{key}",
                     f'package "{package}" does not exist{did_you_mean(package, packages)}',
                 )
             )
@@ -145,13 +162,13 @@ def _missing_modules(ctx: AnalysisContext) -> list[ConfigIssue]:
             if module not in known:
                 issues.append(
                     ConfigIssue(
-                        f"architecture.{key}[{index}]",
+                        f"{location}.{key}[{index}]",
                         f'module "{module}" does not exist{did_you_mean(module, known)}',
                     )
                 )
     issues.extend(
         ConfigIssue(
-            f"architecture.modules.{module}",
+            f"{location}.modules.{module}",
             f'module "{module}" does not exist{did_you_mean(module, known)}',
         )
         for module in arch.modules
@@ -161,7 +178,7 @@ def _missing_modules(ctx: AnalysisContext) -> list[ConfigIssue]:
         if not any(module_matches(pattern, module) for module in known):
             issues.append(
                 ConfigIssue(
-                    f"architecture.wiring[{index}]",
+                    f"{location}.wiring[{index}]",
                     f'"{pattern}" matches no module',
                 )
             )

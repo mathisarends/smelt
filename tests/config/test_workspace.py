@@ -123,7 +123,16 @@ def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:
     ("member", "location", "message"),
     [
         ("extends: ../../base.yml\n", "extends", "inherits the workspace root"),
-        ("architecture: {shared: [api.shared]}\n", "architecture", "workspace root"),
+        (
+            "architecture: {shared: [core.shared]}\n",
+            "architecture.shared[0]",
+            "not inside this member's packages",
+        ),
+        (
+            "architecture: {imports: {transitive: true}}\n",
+            "architecture.imports",
+            "set once in the workspace root",
+        ),
         ("project: {source_roots: [lib]}\n", "project.source_roots", "only add"),
         ("debt: debt.json\n", "debt", "workspace root"),
         ("rules: {Nope: error}\n", "rules", "not a rule code"),

@@ -8,7 +8,13 @@ from smelt.analysis.members import MemberUsageIndex
 from smelt.analysis.parsing import AstCache
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
-from tests.helpers import LAYERED_CONFIG, check, write_project
+from tests.helpers import (
+    LAYERED_CONFIG,
+    MEMBER_ARCHITECTURES,
+    check,
+    codes_at,
+    write_project,
+)
 
 if TYPE_CHECKING:
     import ast
@@ -193,3 +199,43 @@ def test_native_import_scans_and_details_only_parse_changed_contents(
     assert render_json(cached) == render_json(
         check(tmp_path, CheckOptions(use_cache=False)).report
     )
+
+
+def test_each_member_architecture_judges_only_its_own_modules(
+    tmp_path: Path,
+) -> None:
+    write_project(tmp_path, MEMBER_ARCHITECTURES)
+
+    found = check(tmp_path).report.violations
+
+    assert sorted((code, path) for code, path, _ in codes_at(found)) == [
+        ("SMT101", "packages/core/src/core/domain/thing.py"),
+        ("SMT101", "services/api/src/api/features/users/domain/model.py"),
+        ("SMT102", "services/api/src/api/features/orders/domain/order.py"),
+        ("SMT103", "packages/core/src/core/domain/thing.py"),
+    ]
+
+
+def test_the_root_architecture_governs_members_without_their_own(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_ARCHITECTURES,
+            "smelt.yml": MEMBER_ARCHITECTURES["smelt.yml"]
+            + "architecture: {layers: {domain: {path: domain, third_party: deny}}}\n",
+            "packages/core/smelt.yml": "architecture: {layers: {domain: {path: domain}, infra: {path: infra}}}\n",
+            "packages/util/src/util/__init__.py": "",
+            "packages/util/src/util/domain/__init__.py": "import requests\n",
+        },
+    )
+
+    found = check(tmp_path).report.violations
+
+    assert sorted((code, path) for code, path, _ in codes_at(found)) == [
+        ("SMT101", "packages/core/src/core/domain/thing.py"),
+        ("SMT101", "services/api/src/api/features/users/domain/model.py"),
+        ("SMT102", "services/api/src/api/features/orders/domain/order.py"),
+        ("SMT103", "packages/util/src/util/domain/__init__.py"),
+    ]

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
-from tests.helpers import check, write_project
+from tests.helpers import MEMBER_ARCHITECTURES, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -146,3 +146,22 @@ class TestMissingPaths:
         )
 
         assert check(tmp_path).report.violations == []
+
+
+def test_a_missing_member_module_names_the_member_file(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_ARCHITECTURES,
+            "services/api/smelt.yml": "architecture: {features: {root: api.features}, shared: [api.common]}\n",
+        },
+    )
+
+    with pytest.raises(
+        ConfigError, match=r'module "api\.common" does not exist'
+    ) as caught:
+        check(tmp_path)
+
+    issue = caught.value.issues[0]
+    assert issue.path == "architecture.shared[0]"
+    assert (issue.source or "").endswith("services/api/smelt.yml")

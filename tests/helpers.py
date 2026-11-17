@@ -49,3 +49,37 @@ architecture:
       path: infra
       may_depend_on: [domain, application]
 """
+
+MEMBER_ARCHITECTURES = {
+    "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
+    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src], coverage: strict}\n",
+    "services/api/smelt.yml": """
+        architecture:
+          features: {root: api.features}
+          layers:
+            domain: {path: domain}
+            application: {path: application, may_depend_on: [domain]}
+        """,
+    "services/api/src/api/__init__.py": "",
+    "services/api/src/api/features/__init__.py": "",
+    "services/api/src/api/features/orders/__init__.py": "",
+    "services/api/src/api/features/orders/domain/__init__.py": "",
+    "services/api/src/api/features/orders/domain/order.py": "from api.features.users.domain import model\n",
+    "services/api/src/api/features/users/__init__.py": "",
+    "services/api/src/api/features/users/application/__init__.py": "x = 1\n",
+    "services/api/src/api/features/users/application/service.py": "from core.domain import thing\n",
+    "services/api/src/api/features/users/domain/__init__.py": "",
+    "services/api/src/api/features/users/domain/model.py": "from api.features.users.application import x\n",
+    "packages/core/smelt.yml": """
+        architecture:
+          layers:
+            domain: {path: domain, third_party: deny}
+            infra: {path: infra, may_depend_on: [domain]}
+        """,
+    "packages/core/src/core/__init__.py": "",
+    "packages/core/src/core/domain/__init__.py": "",
+    "packages/core/src/core/domain/thing.py": "import requests\nfrom core.infra import db\n",
+    "packages/core/src/core/infra/__init__.py": "",
+    "packages/core/src/core/infra/db.py": "db = 1\n",
+}
+"""A uv workspace whose two members each declare their own architecture."""

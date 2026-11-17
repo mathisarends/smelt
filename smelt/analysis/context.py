@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from smelt.analysis.syntax import SyntaxIndex
     from smelt.analysis.test_syntax import TestSyntaxIndex
     from smelt.config.models import SmeltConfig
+    from smelt.config.workspace import ArchitectureScope
     from smelt.model import ArchitectureModel
 
 
@@ -62,6 +63,15 @@ class AnalysisContext:
         view.test_syntax = self.test_syntax.for_file(path)
         return view
 
+    def architecture_view(self, scope: ArchitectureScope) -> AnalysisContext:
+        """A view in which one scope's architecture is the project architecture."""
+        model = self.model.parts[self.architecture_scopes.index(scope)]
+        view = copy(self)
+        view.config = scope.config
+        view.model = model
+        view.__dict__.pop("coverage", None)
+        return view
+
     def member_view(self, path: str) -> AnalysisContext:
         view = copy(self)
         view.member_usage = copy(self.member_usage)
@@ -82,11 +92,31 @@ class AnalysisContext:
         return AstCache(self.files, cache=self.cache)
 
     @cached_property
+    def architecture_scopes(self) -> tuple[ArchitectureScope, ...]:
+        """The root and member architectures; empty without member architectures."""
+        from smelt.config.workspace import architecture_scopes  # noqa: PLC0415
+
+        return architecture_scopes(self.config)
+
+    @cached_property
     def model(self) -> ArchitectureModel:
         from smelt.model import ArchitectureModel  # noqa: PLC0415
 
-        return ArchitectureModel.build(
-            self.config, self.files.sources, self.files.packages
+        if not self.architecture_scopes:
+            return ArchitectureModel.build(
+                self.config, self.files.sources, self.files.packages
+            )
+        return ArchitectureModel.combine(
+            self.config,
+            tuple(
+                ArchitectureModel.build(
+                    scope.config,
+                    self.files.sources,
+                    self.files.packages,
+                    scope=scope.packages,
+                )
+                for scope in self.architecture_scopes
+            ),
         )
 
     @cached_property

@@ -53,10 +53,19 @@ def is_within(module: str, package: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class ArchitectureModel:
+    """Where every module sits in one architecture.
+
+    ``scope`` limits the architecture to some top-level packages; modules of the
+    other packages are unclassified in it. A model combined from ``parts``
+    answers each module from the part whose scope contains it.
+    """
+
     config: SmeltConfig
     modules: Mapping[str, ModuleInfo]
     packages: frozenset[str]
     features: Mapping[str, FeatureInfo] = field(default_factory=dict)
+    scope: tuple[str, ...] | None = None
+    parts: tuple[ArchitectureModel, ...] = ()
 
     @classmethod
     def build(
@@ -64,9 +73,12 @@ class ArchitectureModel:
         config: SmeltConfig,
         modules: Iterable[str],
         packages: Iterable[str],
+        *,
+        scope: Iterable[str] | None = None,
     ) -> ArchitectureModel:
         package_set = frozenset(packages)
-        classifier = _Classifier(config, package_set)
+        scoped = None if scope is None else tuple(scope)
+        classifier = _Classifier(config, package_set, scoped)
         infos: dict[str, ModuleInfo] = {}
         features: dict[str, FeatureInfo] = {}
         for name in sorted(set(modules)):
@@ -76,7 +88,42 @@ class ArchitectureModel:
                 package = classifier.feature_package(name)
                 if package is not None:
                     features[info.feature] = FeatureInfo(info.feature, package)
-        return cls(config, infos, package_set, dict(sorted(features.items())))
+        return cls(config, infos, package_set, dict(sorted(features.items())), scoped)
+
+    @classmethod
+    def combine(
+        cls, config: SmeltConfig, parts: tuple[ArchitectureModel, ...]
+    ) -> ArchitectureModel:
+        """One view over several scoped architectures; the first part is the root."""
+        modules: dict[str, ModuleInfo] = {}
+        features: dict[str, FeatureInfo] = {}
+        for part in parts:
+            modules.update(
+                (name, info) for name, info in part.modules.items() if part.owns(name)
+            )
+            for name, feature in part.features.items():
+                features.setdefault(name, feature)
+        return cls(
+            config,
+            dict(sorted(modules.items())),
+            parts[0].packages,
+            dict(sorted(features.items())),
+            parts=parts,
+        )
+
+    @property
+    def roots(self) -> list[str]:
+        """The top-level packages this architecture governs."""
+        if self.scope is None:
+            return list(self.config.project.root_packages)
+        return list(self.scope)
+
+    def owns(self, module: str) -> bool:
+        return self.scope is None or module.split(".", maxsplit=1)[0] in self.scope
+
+    def part_for(self, module: str) -> ArchitectureModel:
+        """The scoped architecture of ``module``; the model itself if not combined."""
+        return next((part for part in self.parts if part.owns(module)), self)
 
     @property
     def layers(self) -> Mapping[str, LayerConfig]:
@@ -92,7 +139,9 @@ class ArchitectureModel:
             return info
         if not self.is_first_party(module):
             return None
-        return _Classifier(self.config, self.packages).classify(module)
+        if self.parts:
+            return self.part_for(module).info(module)
+        return _Classifier(self.config, self.packages, self.scope).classify(module)
 
     def is_first_party(self, module: str) -> bool:
         return any(
@@ -110,7 +159,7 @@ class ArchitectureModel:
             if info is not None:
                 return f"{info.package}.{path}"
             return self.feature_package_for(feature) + f".{path}"
-        roots = self.config.project.root_packages
+        roots = self.roots
         return f"{roots[0]}.{path}" if roots else None
 
     def feature_package_for(self, feature: str) -> str:
@@ -144,15 +193,19 @@ class ArchitectureModel:
             return []
         if self.has_features:
             return sorted(info.package for info in self.features.values())
-        return [
-            root for root in self.config.project.root_packages if root in self.packages
-        ]
+        return [root for root in self.roots if root in self.packages]
 
 
 class _Classifier:
-    def __init__(self, config: SmeltConfig, packages: frozenset[str]) -> None:
+    def __init__(
+        self,
+        config: SmeltConfig,
+        packages: frozenset[str],
+        scope: tuple[str, ...] | None = None,
+    ) -> None:
         arch = config.architecture
-        self._roots = config.project.root_packages
+        self._scope = scope
+        self._roots = config.project.root_packages if scope is None else list(scope)
         self._shared = arch.shared
         self._composition_root = arch.composition_root
         self._wiring = arch.wiring
@@ -171,6 +224,22 @@ class _Classifier:
             self._feature_prefix = arch.features.pattern.split(".")[:-1]
 
     def classify(self, module: str) -> ModuleInfo:
+        if (
+            self._scope is not None
+            and module.split(".", maxsplit=1)[0] not in self._scope
+        ):
+            return ModuleInfo(module, ModuleKind.UNCLASSIFIED)
+        return self._classify_in_scope(module)
+
+    def feature_package(self, module: str) -> str | None:
+        match = self._match_feature(module)
+        if match is None:
+            return None
+        _, rest = match
+        segments = module.split(".")
+        return ".".join(segments[: len(segments) - len(rest)])
+
+    def _classify_in_scope(self, module: str) -> ModuleInfo:
         wiring = any(module_matches(pattern, module) for pattern in self._wiring)
         if any(is_within(module, root) for root in self._composition_root):
             return ModuleInfo(module, ModuleKind.COMPOSITION_ROOT, wiring=wiring)
@@ -199,14 +268,6 @@ class _Classifier:
             self._match_layer(rest),
             wiring,
         )
-
-    def feature_package(self, module: str) -> str | None:
-        match = self._match_feature(module)
-        if match is None:
-            return None
-        _, rest = match
-        segments = module.split(".")
-        return ".".join(segments[: len(segments) - len(rest)])
 
     def _root_layer(self, module: str) -> str | None:
         """Without features, layers sit directly in a root package."""

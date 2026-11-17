@@ -179,10 +179,10 @@ project:
   exclude: [{path: src/api/generated/**, reason: Generated client.}]
 ```
 
-- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules` and
-  `ignore`. A member cannot set `extends`, `architecture`, `tests`,
-  `suppressions`, `debt` or other `project` keys. Smelt reports each of these as
-  an error that names the member file.
+- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`,
+  `ignore` and `architecture` (except `architecture.imports`). A member cannot
+  set `extends`, `tests`, `suppressions`, `debt` or other `project` keys. Smelt
+  reports each of these as an error that names the member file.
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
   resolved from the member directory.
 - **`rules` apply by path** to the member's sources and tests. The root's
@@ -201,8 +201,38 @@ workspace root to check every member. `smelt config show --sources` lists every 
 map `members.<path>.*` keys to them. In strict coverage mode, a member cannot
 lower SMT306.
 
-Members do not yet have their own debt file, architecture or test options. Use
-the root config, with package contracts, for those.
+### Member architecture
+
+A member's `architecture` describes its own features, layers and boundaries:
+
+```yaml
+# services/api/smelt.yml
+architecture:
+  features: {root: api.features}
+  shared: [api.common]
+  layers:
+    domain: {path: domain, third_party: deny}
+    application: {path: application, may_depend_on: [domain]}
+```
+
+- It **replaces** the root `architecture` for the member's packages. It is not
+  merged with it. The root architecture still governs the root project and
+  every member without its own.
+- Every module it names (`features`, `shared`, `composition_root`, `modules`,
+  `wiring`) must lie inside the member's own packages. Layers without features
+  span the member's packages, not the whole workspace.
+- It judges only imports **inside** the member: layers, features, shared code,
+  composition roots, third-party policy and cycles. Imports from one member
+  into another are not judged by either member's architecture.
+- `architecture.imports` (which imports count) is set once in the workspace
+  root.
+- `smelt context` for a member feature or path shows the member's layers. In
+  strict coverage mode, SMT306 and SMT305 use the architecture that governs each
+  module, and `coverage.member_architectures` lists the packages each member
+  architecture governs.
+
+Members do not yet have their own debt file or test options. Use the root
+config, with package contracts, for those.
 
 ## Options and package exceptions
 
