@@ -1,12 +1,15 @@
 # Package contracts and source conventions
 
 Opt-in [SMT366 `comprehension-in-call-argument`](rules/SMT366.md) reviews list,
-set and dict comprehensions passed directly as call arguments. Enable
+set and dict comprehensions passed directly as call arguments, as well as direct
+arguments that reduce a generator with builtin `all`, `any`, `max`, `min`,
+`sorted` or `sum`. Enable
 `rules: {comprehension-in-call-argument: hint}` to ask for named intermediate
 collections before construction or consumption. Unlike SMT363, this includes
 simple mappings: the concern is separating calculation from the consuming call.
-Generator expressions, starred arguments and conditionally or repeatedly evaluated
-expression contexts are excluded. No automatic rewrite is performed; preserve
+Generator expressions passed directly, starred arguments and conditionally or
+repeatedly evaluated expression contexts are excluded; a reported reduction is
+named as a whole so its generator stays lazy. No automatic rewrite is performed; preserve
 callable lookup and argument evaluation order when extracting a variable.
 
 Opt-in [SMT365 `cross-module-private-attribute`](rules/SMT365.md) complements

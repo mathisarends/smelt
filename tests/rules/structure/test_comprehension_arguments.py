@@ -47,6 +47,7 @@ def test_issue_180_reports_each_transformation_without_rewriting(
         "call": "StartOptionsResponse",
         "argument": "available_artificial_users",
         "comprehension_kind": "ListComp",
+        "aggregate": None,
         "suggested_variable": "available_artificial_users",
         "automatic_rewrite": False,
     }
@@ -100,6 +101,99 @@ def test_eager_direct_arguments_are_reported(
     assert finding.expected["suggested_variable"] == argument
     assert finding.hint is not None
     assert "preserve evaluation order" in finding.hint
+
+
+MAPPER = """\
+def to_usability_test(test: UsabilityTestData) -> UsabilityTest:
+    return UsabilityTest(
+        id=test.id,
+        status=summarize_session_status(session.status for session in test.sessions),
+        sessions=TestSessions(
+            total=len(test.sessions),
+            finished=sum(
+                session.status in FINISHED_STATUSES for session in test.sessions
+            ),
+            items=[SessionReference(id=session.id) for session in test.sessions],
+        ),
+    )
+"""
+
+
+def test_builtin_reduction_is_named_while_direct_generators_stay_lazy(
+    tmp_path: Path,
+) -> None:
+    found = violations(_project(tmp_path, MAPPER), SELECT)
+    assert [(v.line, v.column, v.end_line, v.end_column) for v in found] == [
+        (7, 22, 9, 14),
+        (10, 19, 10, 81),
+    ]
+    assert found[0].expected == {
+        "call": "TestSessions",
+        "argument": "finished",
+        "comprehension_kind": "GeneratorExp",
+        "aggregate": "sum",
+        "suggested_variable": "finished",
+        "automatic_rewrite": False,
+    }
+    assert found[0].hint is not None
+    assert "the sum() result to `finished`" in found[0].hint
+    assert "finished=finished" in found[0].hint
+
+
+@pytest.mark.parametrize(
+    ("statement", "aggregate", "argument"),
+    [
+        ("consume(any(x.ready for x in items))", "any", None),
+        ("consume(ready=all(x.ready for x in items))", "all", "ready"),
+        ("consume(top=max((x.score for x in items), default=0))", "max", "top"),
+        ("consume(low=min(x.score for x in items))", "min", "low"),
+        ("consume(order=sorted((x for x in items), key=rank))", "sorted", "order"),
+        ("consume(total=sum((x.size for x in items), 0))", "sum", "total"),
+        ("await client.send(total=sum(x.size for x in items))", "sum", "total"),
+    ],
+)
+def test_builtin_reductions_of_generators_are_reported(
+    tmp_path: Path, statement: str, aggregate: str, argument: str | None
+) -> None:
+    [finding] = violations(_project(tmp_path, _body(statement)), SELECT)
+    assert finding.expected is not None
+    assert finding.expected["comprehension_kind"] == "GeneratorExp"
+    assert finding.expected["aggregate"] == aggregate
+    assert finding.expected["argument"] == argument
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "total = sum(x.size for x in items)\n    consume(total=total)",
+        "consume(total=sum(sizes))",
+        "consume(total=summarize(x.size for x in items))",
+        "consume(total=stats.sum(x.size for x in items))",
+        "consume(total=sum(*(x.size for x in items)))",
+        "consume(total=sum((x.size for x in items), **options))",
+        "consume(total=sum(x.size async for x in items))",
+        "value = consume(total=sum(x for x in items)) if flag else None",
+        "value = [consume(total=sum(x for x in g)) for g in groups]",
+    ],
+)
+def test_non_reduction_or_conditional_generators_are_excluded(
+    tmp_path: Path, statement: str
+) -> None:
+    assert violations(_project(tmp_path, _body(statement)), SELECT) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from app.stats import sum\nconsume(total=sum(x for x in items))\n",
+        "def sum(values):\n    return 0\n\n\nconsume(total=sum(x for x in items))\n",
+        "def run(max):\n    consume(top=max(x for x in items))\n",
+    ],
+)
+def test_shadowed_or_imported_reduction_names_are_excluded(
+    tmp_path: Path, source: str
+) -> None:
+    assert violations(_project(tmp_path, source), SELECT) == []
 
 
 @pytest.mark.parametrize(
