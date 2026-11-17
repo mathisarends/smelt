@@ -12,7 +12,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Root `architecture.members` maps workspace-relative source globs to
   `may_depend_on` target globs and enables SMT111 `architecture/member-boundary`.
   Unmatched members are unrestricted; overlapping source entries combine their
-  allowances. This policy requires `project.workspace: uv` and is forbidden in
+  allowances. A key or allowance glob that matches no analyzed member (or `.`)
+  is a configuration error, so a typo cannot silently disable a boundary. This policy requires `project.workspace: uv` and is forbidden in
   member configs. See [member boundaries](docs/configuration.md#boundaries-between-members).
 - A uv workspace enables SMT112 `architecture/undeclared-member-dependency` for
   direct production imports of another member without a static project or

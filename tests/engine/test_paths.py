@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
-from tests.helpers import MEMBER_ARCHITECTURES, check, write_project
+from tests.helpers import MEMBER_ARCHITECTURES, MEMBER_BOUNDARIES, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -165,3 +165,52 @@ def test_a_missing_member_module_names_the_member_file(tmp_path: Path) -> None:
     issue = caught.value.issues[0]
     assert issue.path == "architecture.shared[0]"
     assert (issue.source or "").endswith("services/api/smelt.yml")
+
+
+@pytest.mark.parametrize(
+    ("members", "location", "pattern"),
+    [
+        (
+            "{'service/*': {may_depend_on: []}}",
+            "architecture.members.service/*",
+            "service/*",
+        ),
+        (
+            "{'services/*': {may_depend_on: [packages/nope]}}",
+            "architecture.members.services/*.may_depend_on[0]",
+            "packages/nope",
+        ),
+    ],
+)
+def test_a_member_boundary_glob_must_match_a_member(
+    tmp_path: Path, members: str, location: str, pattern: str
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\n"
+            f"architecture: {{members: {members}}}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match="matches no workspace member") as caught:
+        check(tmp_path)
+
+    assert [
+        (issue.path, issue.message.split(" matches")[0])
+        for issue in caught.value.issues
+    ] == [(location, f'"{pattern}"')]
+
+
+def test_the_workspace_root_is_a_member_boundary_target(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\n"
+            "architecture: {members: {'.': {may_depend_on: []}, 'packages/*': {may_depend_on: ['.']}}}\n",
+        },
+    )
+
+    assert check(tmp_path).report.violations == []
