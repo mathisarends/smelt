@@ -29,7 +29,7 @@ def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_de
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
             "app/__init__.py": "",
             "app/a.py": "def helper(): pass\n",
             "app/b.py": "def helper(): pass\n",
@@ -66,7 +66,7 @@ def test_attribute_facts_and_test_constructor_specs_reuse_unchanged_production_s
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-only-public-attribute: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/test-only-public-attribute: warning}\n",
             "app/__init__.py": "",
             "app/worker.py": "class Worker:\n    def __init__(self): self.pending = 0\n",
             "app/neighbor.py": "VALUE = 1\n",
@@ -97,7 +97,7 @@ def test_unchanged_test_quality_decisions_do_not_reparse_test_bodies(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
             "app/__init__.py": "",
             "app/worker.py": "class Worker: pass\n",
             "app/neighbor.py": "VALUE = 1\n",
@@ -127,7 +127,7 @@ def test_fixture_changes_invalidate_unchanged_test_quality_decisions(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
             "app/__init__.py": "",
             "tests/conftest.py": "import pytest\nfrom unittest.mock import Mock\n@pytest.fixture\ndef client():\n    return Mock()\n",
             "tests/test_client.py": "def test_client(client):\n    client.assert_called_once()\n",

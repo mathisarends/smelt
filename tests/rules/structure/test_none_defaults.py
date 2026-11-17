@@ -264,7 +264,7 @@ def test_rule_is_opt_in_and_can_be_disabled_for_a_package(tmp_path: Path) -> Non
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {implicit-optional-default: warning}\nstructure:\n  contracts:\n    exception:\n      match: app\n      rules: {implicit-optional-default: off}\n"
+            + "rules: {typing/implicit-optional-default: warning}\nstructure:\n  contracts:\n    exception:\n      match: app\n      rules: {typing/implicit-optional-default: off}\n"
         },
     )
     assert violations(root, OPTIONS) == []
@@ -276,9 +276,12 @@ def test_rule_name_selection_and_configuration_enable_the_review(
     root = _project(
         tmp_path,
         "def create(options: Options | None = None):\n    return options or Options()\n",
-        CONFIG + "rules: {implicit-optional-default: warning}\n",
+        CONFIG + "rules: {typing/implicit-optional-default: warning}\n",
     )
     assert [v.code for v in violations(root)] == ["SMT321"]
     assert (
-        len(violations(root, CheckOptions(select=("implicit-optional-default",)))) == 1
+        len(
+            violations(root, CheckOptions(select=("typing/implicit-optional-default",)))
+        )
+        == 1
     )

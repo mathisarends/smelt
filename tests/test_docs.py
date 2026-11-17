@@ -210,7 +210,7 @@ class TestRulePages:
         page = (ROOT / DOCS_DIR / "SMT401.md").read_text(encoding="utf-8")
 
         assert "## How to fix\n\nMove or rename the file" in page
-        assert page.startswith("# SMT401 test-location\n")
+        assert page.startswith("# SMT401 tests/misplaced-test\n")
 
     def test_index_lists_every_rule(self) -> None:
         index = (ROOT / DOCS_DIR / "README.md").read_text(encoding="utf-8")

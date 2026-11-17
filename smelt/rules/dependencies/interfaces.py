@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class PrivateModuleImport(Rule):
     activation = POLICIES["SMT107"]
     code = "SMT107"
-    name = "private-module-import"
-    category = Category.DEPENDENCIES
+    name = "architecture/non-public-module-import"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS, Index.SYNTAX})
     doc = RuleDoc(

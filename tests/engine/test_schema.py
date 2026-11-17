@@ -68,6 +68,6 @@ def test_package_completion_and_runtime_rule_scope_agree() -> None:
             for rule in build_rule_set().rules
             if rule.code in group.codes
         )
-    assert "test-only-public-attribute" in source
-    assert "unbounded-test-wait" not in source
-    assert "incomplete-coverage" not in source
+    assert "visibility/test-only-public-attribute" in source
+    assert "tests/unbounded-wait" not in source
+    assert "architecture/uncovered-source" not in source

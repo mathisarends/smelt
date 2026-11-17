@@ -30,8 +30,8 @@ class _Site:
 
 class DuplicateNarrowingAssert(Rule):
     code = "SMT356"
-    name = "duplicate-narrowing-assert"
-    category = Category.STRUCTURE
+    name = "idioms/duplicate-narrowing-assert"
+    category = Category.IDIOMS
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -72,7 +72,7 @@ class DuplicateNarrowingAssert(Rule):
             "Make the attribute required by constructing it before the object "
             "is used, or read it through one property or accessor that raises "
             "an error naming the missing setup step. No automatic rewrite is "
-            "performed. Enable rules: {duplicate-narrowing-assert: warning}, or "
+            "performed. Enable rules: {idioms/duplicate-narrowing-assert: warning}, or "
             "select SMT356."
         ),
         config=("rules",),

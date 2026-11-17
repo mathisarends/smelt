@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class InternalPublicMember(Rule):
     member_local = True
     code = "SMT316"
-    name = "internal-public-member"
-    category = Category.STRUCTURE
+    name = "visibility/internal-public-member"
+    category = Category.VISIBILITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.MEMBERS})
     doc = RuleDoc(
@@ -71,8 +71,8 @@ class InternalPublicMember(Rule):
 class InternalStaticHelper(Rule):
     member_local = True
     code = "SMT317"
-    name = "internal-static-helper"
-    category = Category.STRUCTURE
+    name = "layout/misplaced-static-helper"
+    category = Category.LAYOUT
     default_severity = Severity.HINT
     requires = frozenset({Index.MEMBERS})
     doc = RuleDoc(

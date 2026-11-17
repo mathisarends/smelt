@@ -134,7 +134,7 @@ def test_global_and_closest_package_limits_including_zero(tmp_path: Path) -> Non
         tmp_path,
         SOURCE,
         settings="""\
-rules: {constructor-logic: warning}
+rules: {complexity/constructor-logic: warning}
 structure:
   max_constructor_decisions: 3
   contracts:
@@ -149,7 +149,7 @@ structure:
     assert finding.expected["max_constructor_decisions"] == 0
     (root / "smelt.yml").write_text(
         CONFIG
-        + "rules: {constructor-logic: hint}\nstructure: {max_constructor_decisions: 3}\n",
+        + "rules: {complexity/constructor-logic: hint}\nstructure: {max_constructor_decisions: 3}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
@@ -166,10 +166,10 @@ def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
         {
             "smelt.yml": CONFIG
             + """\
-rules: {constructor-logic: warning}
+rules: {complexity/constructor-logic: warning}
 structure:
   contracts:
-    quiet: {match: app.quiet, rules: {constructor-logic: off}}
+    quiet: {match: app.quiet, rules: {complexity/constructor-logic: off}}
 """,
             "app/quiet/__init__.py": SOURCE,
             "app/intentional.py": SOURCE.replace(

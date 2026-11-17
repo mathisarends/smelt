@@ -1,5 +1,63 @@
 # Upgrading Smelt
 
+## 0.12 to 0.13
+
+0.13 renames every rule to `family/finding` and merges seven pairs of rules. YAML
+version 1, report schema 2, exit codes, the default rule set and every unmerged
+SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
+complete mapping.
+
+### Upgrade checklist
+
+1. Run `smelt check` once. Every 0.12 rule name and retired code in `smelt.yml`
+   is reported as unknown, and the error names the replacement:
+
+   ```text
+   rules.private-symbol-import: unknown rule "private-symbol-import"; renamed to "visibility/foreign-private-access" in 0.13.0 (see docs/upgrading.md)
+   rules.SMT366: unknown rule "SMT366"; merged into SMT340 "complexity/inline-call-argument" in 0.13.0 (see docs/upgrading.md)
+   ```
+
+   Replace names in top-level `rules`, package-contract `rules`, CI `--select` and
+   `--ignore` arguments, and hook configuration. SMT codes outside the merged set
+   keep working, so `rules: {SMT101: error}` needs no change.
+
+2. Resolve merged pairs. Where a project configured both halves of a pair, keep
+   a single entry for the surviving rule:
+
+   | Retired | Use instead | Notes |
+   | --- | --- | --- |
+   | SMT325 | SMT309 `layout/module-docstring-convention` | `module_docstrings: require` and `forbid` both enable it. |
+   | SMT326 | SMT323 `modeling/forbidden-base-class-affix` | It reports both prefix and suffix. |
+   | SMT332 | SMT331 `layout/file-name-convention` | There is one finding per file. |
+   | SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `structure.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
+   | SMT358 | SMT357 `modeling/implicit-duration-unit` | It also reports unitless duration names. |
+   | SMT365 | SMT339 `visibility/foreign-private-access` | It also reports private module symbols. |
+   | SMT366 | SMT340 `complexity/inline-call-argument` | Set `structure.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
+
+   The SMT326, SMT357/358 and SMT339/365 merges can report more findings when
+   only one half was enabled before. Review them, or narrow the scope where an
+   option exists. Do not disable the rule just to keep the old count.
+
+3. Update inline suppressions. A comment such as `# smelt: ignore[SMT366]` now
+   names an unknown code, which SMT901 reports. Replace it with the surviving
+   code from the table above.
+
+4. Re-record debt for merged codes. Baseline entries under SMT325, SMT326,
+   SMT332, SMT342, SMT358, SMT365 or SMT366 no longer match. Run
+   `smelt debt --prune`, review the remaining findings, then run `smelt debt`.
+   Entries under every other code are unaffected.
+
+5. Update report consumers. The JSON `category` field and `smelt rules --format
+   json` now carry the family (`architecture`, `layout`, `tests`, ...) instead of
+   `dependencies`, `structure` and `tests`. The `rule` field carries the new
+   name. Merged rules add a `kind` field to `expected`.
+
+6. Refresh the editor schema with `smelt config schema > .smelt.schema.json` and
+   the agent skill with `smelt skill install --force`.
+
+Families can now be selected as a whole, for example `rules: {typing: warning}`
+or `--select modeling`. Individual entries still override a family entry.
+
 ## 0.11.1 to 0.12.0
 
 0.12.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,
@@ -31,7 +89,7 @@ new reviews require explicit selection. See the
 
    | Rule | Activation | Review |
    | --- | --- | --- |
-   | [SMT366](rules/SMT366.md) | `rules: {comprehension-in-call-argument: hint}` | List, set and dict comprehensions passed directly to calls |
+   | [SMT366](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT366.md) | `rules: {comprehension-in-call-argument: hint}` | List, set and dict comprehensions passed directly to calls |
    | [SMT367](rules/SMT367.md) | `rules: {excess-private-definitions: hint}` | Modules above `structure.max_private_definitions` (default 12) |
 
    Repairs remain manual. SMT366 skips generator expressions and conditional
@@ -108,7 +166,7 @@ new rules require explicit selection or package policy. See the
    | [SMT110](rules/SMT110.md) | `structure.max_module_imports: 10` | Distinct direct imports across project packages; choose a threshold for your project |
    | [SMT363](rules/SMT363.md) | `rules: {complex-comprehension: hint}` | Excessive iteration clauses, conditional elements and compound filters |
    | [SMT364](rules/SMT364.md) | `rules: {constructor-logic: hint}` | Constructor decisions above `structure.max_constructor_decisions` (default 2) |
-   | [SMT365](rules/SMT365.md) | `rules: {cross-module-private-attribute: warning}` | Private member accesses through known project receivers owned by another module |
+   | [SMT365](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT365.md) | `rules: {cross-module-private-attribute: warning}` | Private member accesses through known project receivers owned by another module |
 
    Repairs remain manual. SMT110 exempts package initializers and declared
    composition roots by default; `module_import_exempt: []` includes them.
@@ -200,7 +258,7 @@ new rules require explicit selection or package policy. See the
    | [SMT355](rules/SMT355.md) | `rules: {duplicate-class-name: warning}` | Public top-level class names repeated within a package |
    | [SMT356](rules/SMT356.md) | `rules: {duplicate-narrowing-assert: warning}` | Attribute narrowing assertions repeated across methods |
    | [SMT357](rules/SMT357.md) | `rules: {missing-duration-unit: warning}` | Numeric duration names without a unit suffix |
-   | [SMT358](rules/SMT358.md) | `rules: {prefer-named-duration: warning}` | Literal durations in supported sleep, timeout and clock expressions |
+   | [SMT358](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT358.md) | `rules: {prefer-named-duration: warning}` | Literal durations in supported sleep, timeout and clock expressions |
    | [SMT359](rules/SMT359.md) | `rules: {nested-conditional-expression: hint}` | Conditional expressions nested in result branches |
    | [SMT360](rules/SMT360.md) | `rules: {mutable-field-in-frozen-dataclass: warning}` | Mutable container fields on frozen dataclasses |
 
@@ -287,7 +345,7 @@ new rules are opt-in. See the [changelog](../CHANGELOG.md#070---2026-11-14).
    | [SMT339](rules/SMT339.md) | `rules: {private-symbol-import: warning}` | Production access to private project symbols |
    | [SMT340](rules/SMT340.md) | `rules: {await-in-call-argument: hint}` | Awaited results passed directly as arguments |
    | [SMT341](rules/SMT341.md) | `rules: {str-enum-auto-values: hint}` | `StrEnum` values via `auto()` |
-   | [SMT342](rules/SMT342.md) | `rules: {str-enum-explicit-values: hint}` | `StrEnum` values as explicit strings |
+   | [SMT342](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT342.md) | `rules: {str-enum-explicit-values: hint}` | `StrEnum` values as explicit strings |
 
    SMT341 and SMT342 enforce opposite conventions; enable at most one. All
    repairs remain manual.
@@ -334,7 +392,7 @@ new rules are opt-in. See the [changelog](../CHANGELOG.md#060---2026-11-08).
    | Rule | Activation | Review |
    | --- | --- | --- |
    | [SMT331](rules/SMT331.md) | `structure.file_naming.yaml_extension: yaml` (or `yml`) | Canonical YAML extensions |
-   | [SMT332](rules/SMT332.md) | `structure.file_naming.compose_basename: compose` (or `docker-compose`) | Canonical Compose basenames |
+   | [SMT332](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT332.md) | `structure.file_naming.compose_basename: compose` (or `docker-compose`) | Canonical Compose basenames |
    | [SMT333](rules/SMT333.md) | `rules: {prefer-callable-instance: hint}` | Single public instance method |
    | [SMT334](rules/SMT334.md) | `rules: {private-class-constant: warning}` | Private literal class constants |
    | [SMT335](rules/SMT335.md) | `rules: {internal-public-attribute: warning}` | Public data without external use |
@@ -386,9 +444,9 @@ SMT321 debt identities need review. See the
    debt explicitly; pruning does not accept current findings.
 
 3. Adopt new rules deliberately through `rules` or `--select`: [SMT324](rules/SMT324.md),
-   [SMT326](rules/SMT326.md), [SMT327](rules/SMT327.md), [SMT328](rules/SMT328.md),
+   [SMT326](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT326.md), [SMT327](rules/SMT327.md), [SMT328](rules/SMT328.md),
    [SMT329](rules/SMT329.md), [SMT330](rules/SMT330.md) and [SMT431](rules/SMT431.md).
-   Activate [SMT325](rules/SMT325.md) with a package contract's
+   Activate [SMT325](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT325.md) with a package contract's
    `module_docstrings: require`. These new checks do not rewrite code.
 
 ### Grouped debt baselines

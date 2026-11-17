@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 class InternalPublicModuleSymbol(Rule):
     code = "SMT320"
-    name = "internal-public-module-symbol"
-    category = Category.STRUCTURE
+    name = "visibility/internal-public-module-symbol"
+    category = Category.VISIBILITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX, Index.MEMBERS})
     doc = RuleDoc(

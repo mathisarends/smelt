@@ -21,8 +21,8 @@ _ALTERNATIVES = {
 class MutableFieldInFrozenDataclass(Rule):
     file_local = True
     code = "SMT360"
-    name = "mutable-field-in-frozen-dataclass"
-    category = Category.STRUCTURE
+    name = "modeling/mutable-field-in-frozen-dataclass"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -63,7 +63,7 @@ class MutableFieldInFrozenDataclass(Rule):
             "the caller's original dict alone still reflects alias mutations. "
             "Changing only the annotation to Mapping freezes nothing. Copying or "
             "freezing may change behavior, so no automatic rewrite is performed. "
-            "Enable rules: {mutable-field-in-frozen-dataclass: warning}, or select SMT360."
+            "Enable rules: {modeling/mutable-field-in-frozen-dataclass: warning}, or select SMT360."
         ),
         config=("rules", "structure.contracts"),
     )

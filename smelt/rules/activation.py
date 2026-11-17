@@ -19,12 +19,11 @@ class PolicyActivation:
 
 POLICIES = {
     "SMT331": PolicyActivation(
-        "structure.file_naming.yaml_extension selects a canonical YAML extension.",
-        lambda config: config.structure.file_naming.yaml_extension is not None,
-    ),
-    "SMT332": PolicyActivation(
-        "structure.file_naming.compose_basename selects a canonical Compose basename.",
-        lambda config: config.structure.file_naming.compose_basename is not None,
+        "structure.file_naming selects a canonical YAML extension or Compose basename.",
+        lambda config: (
+            config.structure.file_naming.yaml_extension is not None
+            or config.structure.file_naming.compose_basename is not None
+        ),
     ),
     "SMT101": PolicyActivation(
         "architecture.layers defines layer dependencies.",
@@ -105,9 +104,9 @@ POLICIES = {
         ),
     ),
     "SMT309": PolicyActivation(
-        "A package contract forbids module docstrings.",
+        "A package contract requires or forbids module docstrings.",
         lambda config: any(
-            contract.module_docstrings == "forbid"
+            contract.module_docstrings in {"forbid", "require"}
             for contract in config.structure.contracts.values()
         ),
     ),
@@ -137,13 +136,6 @@ POLICIES = {
         lambda config: any(
             contract.type_dispatch is not None
             and contract.type_dispatch.style == "match"
-            for contract in config.structure.contracts.values()
-        ),
-    ),
-    "SMT325": PolicyActivation(
-        "A package contract requires module docstrings.",
-        lambda config: any(
-            contract.module_docstrings == "require"
             for contract in config.structure.contracts.values()
         ),
     ),

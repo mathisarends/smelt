@@ -332,7 +332,7 @@ class MisplacedTestFile(Rule):
     scope = "test"
     activation = POLICIES["SMT401"]
     code = "SMT401"
-    name = "test-location"
+    name = "tests/misplaced-test"
     category = Category.TESTS
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES, Index.SYNTAX})

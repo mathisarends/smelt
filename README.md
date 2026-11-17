@@ -52,8 +52,8 @@ architecture:
 
 rules:
   information-hiding: warning
-  implicit-optional-default: warning
-  unbounded-test-wait: warning
+  typing/implicit-optional-default: warning
+  tests/unbounded-wait: warning
 ```
 
 Smelt catches an import that crosses the declared boundary:
@@ -89,6 +89,10 @@ Use `information-hiding` to review unnecessarily public functions, methods,
 constants, type aliases and attributes together, including APIs used only by
 tests. `smelt explain information-hiding` lists the five checks and their limits.
 Individual rule settings can override the group.
+
+Rule names have the form `family/finding`, and a family name selects all of its
+rules: `rules: {typing: warning}` or `smelt check --select modeling`.
+`smelt rules` lists the catalog by family.
 
 ## Catch it at commit time
 

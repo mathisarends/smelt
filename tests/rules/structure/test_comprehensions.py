@@ -112,7 +112,7 @@ def test_global_limit_and_closest_package_override(tmp_path: Path) -> None:
         {
             "smelt.yml": CONFIG
             + """\
-rules: {complex-comprehension: warning}
+rules: {complexity/complex-comprehension: warning}
 structure:
   max_comprehension_loops: 3
   contracts:
@@ -129,7 +129,7 @@ structure:
     assert finding.expected["max_comprehension_loops"] == 2
     (root / "smelt.yml").write_text(
         CONFIG
-        + "rules: {complex-comprehension: hint}\nstructure: {max_comprehension_loops: 3}\n",
+        + "rules: {complexity/complex-comprehension: hint}\nstructure: {max_comprehension_loops: 3}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
@@ -149,10 +149,10 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
         {
             "smelt.yml": CONFIG
             + """\
-rules: {complex-comprehension: warning}
+rules: {complexity/complex-comprehension: warning}
 structure:
   contracts:
-    quiet: {match: app.quiet, rules: {complex-comprehension: off}}
+    quiet: {match: app.quiet, rules: {complexity/complex-comprehension: off}}
 """,
             "app/quiet/__init__.py": source,
             "app/intentional.py": source.rstrip()

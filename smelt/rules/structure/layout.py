@@ -32,8 +32,8 @@ def _child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
 class UnknownLayer(Rule):
     enabled_by_default = True
     code = "SMT301"
-    name = "unknown-layer"
-    category = Category.STRUCTURE
+    name = "architecture/unknown-layer"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
@@ -131,8 +131,8 @@ class UnknownLayer(Rule):
 
 class UnclassifiedModule(Rule):
     code = "SMT305"
-    name = "unclassified-module"
-    category = Category.STRUCTURE
+    name = "architecture/unclassified-module"
+    category = Category.ARCHITECTURE
     default_severity = Severity.WARNING
     requires = frozenset({Index.FILES})
     doc = RuleDoc(

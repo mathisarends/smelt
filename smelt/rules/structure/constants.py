@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class PrivateClassConstant(Rule):
     file_local = True
     code = "SMT334"
-    name = "private-class-constant"
-    category = Category.STRUCTURE
+    name = "layout/misplaced-private-constant"
+    category = Category.LAYOUT
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -23,7 +23,7 @@ class PrivateClassConstant(Rule):
         rationale="Implementation constants such as a controller's supported file extensions belong beside the class as private module constants when they do not form part of its object contract. This opt-in convention reports private UPPER_CASE names assigned literal scalars or recursively literal sets, lists, tuples and dictionaries in production class bodies, including annotated, chained and guarded assignments. It checks nested and local classes independently. Classes with bases, decorators or class keywords are excluded conservatively because inheritance, enums, data models and metaclasses can give attributes a class-specific contract. Public names, lowercase fields, dunder names, instance assignments, method locals, calls, comprehensions and values referring to other names are outside scope. This is a placement convention; syntax alone cannot prove that callers never override or mutate an attribute.",
         bad='class DownloadController:\n    _DOWNLOADABLE_EXTENSIONS = {".pdf", ".zip"}\n\n    def supports(self, extension: str) -> bool:\n        return extension in self._DOWNLOADABLE_EXTENSIONS',
         good='_DOWNLOADABLE_EXTENSIONS = {".pdf", ".zip"}\n\n\nclass DownloadController:\n    def supports(self, extension: str) -> bool:\n        return extension in _DOWNLOADABLE_EXTENSIONS',
-        fix="Move the constant to the same module with a leading underscore, then update class-qualified and instance-qualified reads to use the constant name directly. Check name collisions, initialization order, name mangling, mutation, subclass overrides and external consumers before moving it. Keep intentional class contracts with a reasoned suppression or package override. Enable rules: {private-class-constant: error} to block the convention, or --select SMT334 to review it. No automatic move or rewrite is performed.",
+        fix="Move the constant to the same module with a leading underscore, then update class-qualified and instance-qualified reads to use the constant name directly. Check name collisions, initialization order, name mangling, mutation, subclass overrides and external consumers before moving it. Keep intentional class contracts with a reasoned suppression or package override. Enable rules: {layout/misplaced-private-constant: error} to block the convention, or --select SMT334 to review it. No automatic move or rewrite is performed.",
         config=("rules", "structure.contracts"),
     )
 

@@ -155,41 +155,74 @@ also activate opt-in rules, while explicit off/ignore and strict coverage retain
 their precedence. The generated catalog and CLI metadata derive activation from
 the rule class; there is no second registration list of activation decisions.
 
-Use `Rule`, a stable code, a unique kebab-case name, a category, explicit
-`requires` and a complete `RuleDoc`. Allocate an unused code from the live catalog:
+Use `Rule`, a stable code, a unique `family/finding` name, the matching
+`category`, explicit `requires` and a complete `RuleDoc`. Allocate an unused code
+from the live catalog. Code ranges are historical and only separate where a rule
+is evaluated; the family, not the code, groups rules for users:
 
-| Range | Category |
+| Range | Evaluated by |
 | --- | --- |
-| SMT1xx | dependencies |
-| SMT3xx | structure |
-| SMT4xx | tests (directory `testing/`) |
+| SMT1xx | import-graph and architecture rules (directory `dependencies/`) |
+| SMT3xx | source rules (directory `structure/`) |
+| SMT4xx | test rules (directory `testing/`) |
 | SMT9xx | meta, evaluated by engine post-processing where appropriate |
 
 ### Rule names
 
-A rule name describes the finding, not the command that would fix it. Use
+A rule name is `<family>/<finding>`. The family groups related findings for
+selection, configuration and output; `rules: {modeling: warning}` or
+`--select modeling` enables a whole family. The `category` attribute must equal
+the family, and the catalog test enforces it:
+
+| Family | Findings about |
+| --- | --- |
+| `architecture` | Layers, features, cycles, facades, composition roots and policy coverage |
+| `imports` | Import style and import fan-out |
+| `layout` | Module names, file names, docstrings and definition order |
+| `visibility` | Public and private surface: underscores, `__all__`, test-only API |
+| `modeling` | Classes, enums, dataclasses, exceptions and value naming |
+| `typing` | Annotations and type expressions |
+| `complexity` | Navigation depth, parameters, nesting and duplicated logic |
+| `idioms` | Local Python idioms with one clearer spelling |
+| `frameworks` | Library-specific conventions such as pydantic or dishka |
+| `tests` | Test layout, isolation, assertions and determinism |
+| `meta` | Suppressions and debt, evaluated after the other rules |
+
+The finding describes what is wrong, not the command that would fix it. Use
 kebab-case `<qualifier>-<subject>` and reuse the qualifier whose meaning matches:
 
 | Qualifier | Meaning | Examples |
 | --- | --- | --- |
-| `redundant-` | Removing or inlining it keeps the behavior | `redundant-name-alias`, `redundant-private-delegate` |
-| `missing-` | Something required is absent | `missing-module-docstring`, `missing-required-module` |
-| `forbidden-` | A configured policy rejects something present | `forbidden-package-name`, `forbidden-test-mock` |
-| `excess-` | A configured limit is exceeded | `excess-positional-parameters` |
-| `duplicate-`, `unused-`, `deprecated-` | Their plain meaning | `duplicate-literal-type`, `unused-suppression` |
-| `prefer-` | The code is valid; the rule recommends a named alternative | `prefer-package-import`, `prefer-deferred-annotations` |
+| `redundant-` | Removing or inlining it keeps the behavior | `idioms/redundant-name-alias`, `typing/redundant-future-annotations` |
+| `missing-` | Something required is absent | `modeling/missing-dataclass-option`, `architecture/missing-required-module` |
+| `forbidden-` | A configured policy rejects something present | `layout/forbidden-module-name`, `tests/forbidden-mock` |
+| `excess-` | A configured limit is exceeded | `complexity/excess-positional-parameters`, `tests/excess-patches` |
+| `misplaced-` | It exists but belongs elsewhere | `layout/misplaced-private-constant`, `tests/misplaced-test` |
+| `duplicate-`, `unused-`, `deprecated-`, `implicit-` | Their plain meaning | `typing/duplicate-literal-type`, `modeling/implicit-duration-unit` |
+| `prefer-` | The code is valid; the rule recommends a named alternative | `imports/prefer-package-import`, `typing/prefer-deferred-annotations` |
+| `-convention` (suffix) | One rule enforces whichever spelling a policy option selects | `layout/module-docstring-convention`, `modeling/str-enum-value-convention` |
 
 Use `prefer-<alternative>` only when the reported construct is correct and the
 rule recommends one specific replacement; name the replacement, not the reported
 form. When no qualifier fits, use a noun phrase for the problem itself, such as
-`import-cycle` or `deep-object-navigation`. Do not start new names with `no-`
-(use `forbidden-`), `unnecessary-` (use `redundant-`), or `review-`, `require-`
-and `check-`. Older names such as `no-private-modules` and
-`unnecessary-future-annotations` predate this scheme and stay stable.
+`architecture/import-cycle` or `complexity/deep-object-navigation`. Do not start
+findings with `no-` (use `forbidden-`), `unnecessary-` (use `redundant-`), or
+`review-`, `require-` and `check-`; the catalog test rejects them.
+
+One concept is one rule. When two candidate rules differ only in the spelling a
+policy option selects (require/forbid, auto/explicit, prefix/suffix), write one
+`-convention` or `forbidden-` rule that reads the option. When they share a
+remedy but report different syntactic forms, write one rule and put the form in
+the payload as `kind`, optionally narrowed by a list option such as
+`structure.call_argument_kinds`. Keep rules separate when their certainty differs,
+for example a policy error and a heuristic hint, so severities stay meaningful.
 
 Run `uv run smelt rules --format json` before allocating. Gaps are not promises
 that a historical code is reusable; check history, and never repurpose a published
-code or name. Reconcile allocations when concurrent PRs introduce rules.
+code or name. Retired names and merged codes live in `smelt/rules/renames.py` so
+configuration errors can point to the replacement; add entries there and to
+`docs/upgrading.md` whenever a published name or code is retired. Reconcile
+allocations when concurrent PRs introduce rules.
 
 1. Implement the decision next to the closest concept. `structure/naming.py` is a
    small file-policy example; `dependencies/interfaces.py` shows richer import
@@ -222,7 +255,7 @@ config models independent of the rule registry. `init` exports the schema locall
 the checker never reads that editor artifact. Verify schema errors and the CLI
 against the same API, including aliases, package overrides and removed keys.
 
-CI verifies registration completeness, unique codes/names, code/category agreement,
+CI verifies registration completeness, unique codes/names, family/category agreement,
 metadata, and generated-file freshness. Duplicate codes or names also fail when a
 `RuleSet` is constructed, before selection can resolve an ambiguous catalog.
 

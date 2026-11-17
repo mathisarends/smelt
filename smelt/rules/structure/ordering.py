@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
 class PublicDefinitionsFirst(Rule):
     code = "SMT313"
-    name = "public-definitions-first"
-    category = Category.STRUCTURE
+    name = "layout/definition-order"
+    category = Category.LAYOUT
     default_severity = Severity.ERROR
     requires = frozenset({Index.ORDERING})
     doc = RuleDoc(

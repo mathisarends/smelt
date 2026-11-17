@@ -7,14 +7,176 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- [SMT366](docs/rules/SMT366.md) `comprehension-in-call-argument` also reports
-  a direct call argument that reduces a generator expression with an unshadowed
-  builtin `all`, `any`, `max`, `min`, `sorted` or `sum`, such as
-  `finished=sum(s.done for s in sessions)`. The whole reduction is named; the
-  generator stays lazy. Generators passed directly, other callables and
-  shadowed or imported names remain out of scope. Findings carry a new
-  `aggregate` payload field (`null` for comprehensions). The rule stays opt-in,
-  so enabled projects may see additional hints after upgrading.
+**Breaking: rule taxonomy.** Every rule name now has the form
+`family/finding`, several names were corrected to the documented qualifiers, and
+seven pairs of rules that described one concept were merged (91 → 84 rules). YAML
+version 1, report schema 2, exit codes and the default rule set remain unchanged,
+and every unmerged SMT code keeps its identity. Configuration that uses a 0.12
+rule name, or a retired code, fails with an error naming the replacement. See
+the [upgrade checklist](docs/upgrading.md#012-to-013).
+
+### Families
+
+- Rules are grouped into eleven families: `architecture`, `imports`, `layout`,
+  `visibility`, `modeling`, `typing`, `complexity`, `idioms`, `frameworks`,
+  `tests` and `meta`. The family is the first segment of the name.
+- A family name selects all of its rules wherever rule names are accepted:
+  `rules: {modeling: warning}`, package-contract `rules`, `--select typing` and
+  `--ignore complexity`. Precedence is family, then rule group, then individual
+  rule, so `{typing: warning, typing/anonymous-tuple-type: off}` works as
+  expected. `smelt explain <family>` lists a family's rules.
+- The report `category` field and the `category` of `smelt rules --format json`
+  now carry the family (`architecture`, `layout`, ...) instead of `dependencies`,
+  `structure` and `tests`. The success line of `smelt check` lists the families
+  that ran, and the `smelt rules` text output is grouped by family.
+- Rule codes are unchanged. The SMT1xx/3xx/4xx/9xx ranges are historical and no
+  longer imply a category.
+
+### Merged rules
+
+The surviving rule keeps the lower code. The retired codes are no longer
+accepted in `rules`, `--select`, `--ignore` or inline suppressions:
+
+| Retired | Now | Rule | How the two behaviors are combined |
+| --- | --- | --- | --- |
+| SMT325 | SMT309 | `layout/module-docstring-convention` | One rule follows `module_docstrings: require` or `forbid`. Activation is unchanged: either policy enables it. |
+| SMT326 | SMT323 | `modeling/forbidden-base-class-affix` | Reports both a `Base` prefix and a `Base` suffix. The payload names the `position`. Projects that enabled only one of the two now see both. |
+| SMT332 | SMT331 | `layout/file-name-convention` | `structure.file_naming.yaml_extension` and `compose_basename` produce one finding per file. That finding lists every correction, for example `filename must use .yml and compose: ...`. The payload holds one key per violated option plus the corrected `path`. |
+| SMT342 | SMT341 | `modeling/str-enum-value-convention` | New option `structure.str_enum_values: explicit` (default) or `auto`. The single rule enforces whichever is chosen. The payload adds `str_enum_values`. |
+| SMT358 | SMT357 | `modeling/implicit-duration-unit` | Reports duration names without a unit and inline duration literals. The payload `kind` is `constant`, `field`, `parameter` or the new `literal`. Projects that enabled only one form now see both. |
+| SMT365 | SMT339 | `visibility/foreign-private-access` | Reports imports and reads of another module's private symbols, plus accesses to private attributes owned by another module. The payload `kind` is `symbol` or `attribute`. `structure.private_attribute_boundary` still applies only to attributes. Projects that enabled only one form now see both. |
+| SMT366 | SMT340 | `complexity/inline-call-argument` | Reports awaited results, eager comprehensions and builtin reductions passed directly as call arguments. New option `structure.call_argument_kinds` (default `[await, comprehension, aggregate]`) narrows the review. The payload `kind` is `await`, `comprehension` or `aggregate`. |
+
+SMT310 `typing/forbidden-future-annotations` and SMT311
+`typing/redundant-future-annotations` deliberately stay separate. SMT310 is a
+certain policy error. SMT311 is a heuristic hint about boilerplate that might
+still be needed. Merging them would force one severity onto two different levels
+of certainty.
+
+The SMT366 entry from the previous Unreleased section is folded into SMT340. A
+direct call argument that reduces a generator expression with an unshadowed
+builtin `all`, `any`, `max`, `min`, `sorted` or `sum` is reported as
+`kind: aggregate`, for example `finished=sum(s.done for s in sessions)`. The
+whole reduction is named, so the generator stays lazy. The payload keeps
+`aggregate`, which is `null` for comprehensions.
+
+### Renamed rules
+
+These names were corrected to the qualifiers in CONTRIBUTING.md:
+
+- `no-`, `unnecessary-` and similar prefixes became `forbidden-` and `redundant-`.
+- `excess-` is used for limits.
+- `misplaced-` is used for code in the wrong place.
+- `-convention` marks rules that follow a policy option.
+- Finding names no longer repeat the family, so `forbidden-test-mock` became
+  `tests/forbidden-mock`.
+
+The full mapping:
+
+| Code | 0.12 name | 0.13 name | Change |
+| --- | --- | --- | --- |
+| SMT101 | `layer-boundary` | `architecture/layer-boundary` | family prefix |
+| SMT102 | `cross-feature-import` | `architecture/cross-feature-import` | family prefix |
+| SMT103 | `third-party-denied` | `architecture/forbidden-third-party-import` | renamed |
+| SMT104 | `import-cycle` | `architecture/import-cycle` | family prefix |
+| SMT105 | `shared-imports-feature` | `architecture/shared-imports-feature` | family prefix |
+| SMT106 | `composition-root-leak` | `architecture/composition-root-leak` | family prefix |
+| SMT107 | `private-module-import` | `architecture/non-public-module-import` | renamed |
+| SMT108 | `package-import-fanout` | `imports/package-import-fanout` | family prefix |
+| SMT109 | `facade-export-gap` | `architecture/missing-facade-export` | renamed |
+| SMT110 | `module-import-fanout` | `imports/excess-module-imports` | renamed |
+| SMT301 | `unknown-layer` | `architecture/unknown-layer` | family prefix |
+| SMT302 | `forbidden-package-name` | `layout/forbidden-module-name` | renamed |
+| SMT305 | `unclassified-module` | `architecture/unclassified-module` | family prefix |
+| SMT306 | `incomplete-coverage` | `architecture/uncovered-source` | renamed |
+| SMT307 | `missing-required-module` | `architecture/missing-required-module` | family prefix |
+| SMT308 | `import-style` | `imports/forbidden-import-style` | renamed |
+| SMT309 | `forbidden-module-docstring` | `layout/module-docstring-convention` | renamed |
+| SMT310 | `forbidden-future-annotations` | `typing/forbidden-future-annotations` | family prefix |
+| SMT311 | `unnecessary-future-annotations` | `typing/redundant-future-annotations` | renamed |
+| SMT312 | `no-private-modules` | `layout/forbidden-private-module` | renamed |
+| SMT313 | `public-definitions-first` | `layout/definition-order` | renamed |
+| SMT314 | `bundled-instance-assignment` | `idioms/bundled-instance-assignment` | family prefix |
+| SMT315 | `prefer-match-type-dispatch` | `idioms/prefer-match-type-dispatch` | family prefix |
+| SMT316 | `internal-public-member` | `visibility/internal-public-member` | family prefix |
+| SMT317 | `internal-static-helper` | `layout/misplaced-static-helper` | renamed |
+| SMT318 | `redundant-str-enum-value` | `modeling/redundant-str-enum-value` | family prefix |
+| SMT319 | `prefer-package-import` | `imports/prefer-package-import` | family prefix |
+| SMT320 | `internal-public-module-symbol` | `visibility/internal-public-module-symbol` | family prefix |
+| SMT321 | `implicit-optional-default` | `typing/implicit-optional-default` | family prefix |
+| SMT322 | `deep-object-navigation` | `complexity/deep-object-navigation` | family prefix |
+| SMT323 | `no-base-class-prefix` | `modeling/forbidden-base-class-affix` | renamed |
+| SMT324 | `prefer-str-enum-discriminator` | `modeling/prefer-str-enum-discriminator` | family prefix |
+| SMT325 → SMT309 | `missing-module-docstring` | `layout/module-docstring-convention` | merged |
+| SMT326 → SMT323 | `no-base-class-suffix` | `modeling/forbidden-base-class-affix` | merged |
+| SMT327 | `secret-settings-field` | `frameworks/prefer-secret-type` | renamed |
+| SMT328 | `redundant-dishka-provider` | `frameworks/redundant-dishka-provider` | family prefix |
+| SMT329 | `caller-before-callee` | `layout/callee-before-caller` | renamed |
+| SMT330 | `package-only-dunder-all` | `visibility/misplaced-dunder-all` | renamed |
+| SMT331 | `yaml-file-extension` | `layout/file-name-convention` | renamed |
+| SMT332 → SMT331 | `compose-file-name` | `layout/file-name-convention` | merged |
+| SMT333 | `prefer-callable-instance` | `idioms/prefer-callable-instance` | family prefix |
+| SMT334 | `private-class-constant` | `layout/misplaced-private-constant` | renamed |
+| SMT335 | `internal-public-attribute` | `visibility/internal-public-attribute` | family prefix |
+| SMT336 | `redundant-module-name` | `layout/redundant-module-name` | family prefix |
+| SMT337 | `deprecated-async-contextmanager-return` | `typing/deprecated-async-contextmanager-return` | family prefix |
+| SMT338 | `duplicate-literal-type` | `typing/duplicate-literal-type` | family prefix |
+| SMT339 | `private-symbol-import` | `visibility/foreign-private-access` | renamed |
+| SMT340 | `await-in-call-argument` | `complexity/inline-call-argument` | renamed |
+| SMT341 | `str-enum-auto-values` | `modeling/str-enum-value-convention` | renamed |
+| SMT342 → SMT341 | `str-enum-explicit-values` | `modeling/str-enum-value-convention` | merged |
+| SMT343 | `redundant-private-delegate` | `visibility/redundant-private-delegate` | family prefix |
+| SMT344 | `redundant-name-alias` | `idioms/redundant-name-alias` | family prefix |
+| SMT345 | `excess-positional-parameters` | `complexity/excess-positional-parameters` | family prefix |
+| SMT346 | `prefer-deferred-annotations` | `typing/prefer-deferred-annotations` | family prefix |
+| SMT347 | `anonymous-tuple-type` | `typing/anonymous-tuple-type` | family prefix |
+| SMT348 | `missing-interface-docstring` | `idioms/missing-interface-docstring` | family prefix |
+| SMT349 | `stateful-dataclass` | `modeling/stateful-dataclass` | family prefix |
+| SMT350 | `missing-broad-except-reason` | `idioms/missing-broad-except-reason` | family prefix |
+| SMT351 | `missing-dataclass-option` | `modeling/missing-dataclass-option` | family prefix |
+| SMT352 | `duplicate-function` | `complexity/duplicate-function` | family prefix |
+| SMT353 | `prefer-project-base-class` | `modeling/prefer-project-base-class` | family prefix |
+| SMT354 | `prefer-domain-exception` | `modeling/prefer-domain-exception` | family prefix |
+| SMT355 | `duplicate-class-name` | `modeling/duplicate-class-name` | family prefix |
+| SMT356 | `duplicate-narrowing-assert` | `idioms/duplicate-narrowing-assert` | family prefix |
+| SMT357 | `missing-duration-unit` | `modeling/implicit-duration-unit` | renamed |
+| SMT358 → SMT357 | `prefer-named-duration` | `modeling/implicit-duration-unit` | merged |
+| SMT359 | `nested-conditional-expression` | `complexity/nested-conditional-expression` | family prefix |
+| SMT360 | `mutable-field-in-frozen-dataclass` | `modeling/mutable-field-in-frozen-dataclass` | family prefix |
+| SMT361 | `parallel-record-fields` | `modeling/parallel-record-fields` | family prefix |
+| SMT362 | `loop-invariant-collection` | `idioms/loop-invariant-collection` | family prefix |
+| SMT363 | `complex-comprehension` | `complexity/complex-comprehension` | family prefix |
+| SMT364 | `constructor-logic` | `complexity/constructor-logic` | family prefix |
+| SMT365 → SMT339 | `cross-module-private-attribute` | `visibility/foreign-private-access` | merged |
+| SMT366 → SMT340 | `comprehension-in-call-argument` | `complexity/inline-call-argument` | merged |
+| SMT367 | `excess-private-definitions` | `visibility/excess-private-definitions` | family prefix |
+| SMT401 | `test-location` | `tests/misplaced-test` | renamed |
+| SMT420 | `private-test-access` | `tests/private-access` | renamed |
+| SMT421 | `forbidden-test-mock` | `tests/forbidden-mock` | renamed |
+| SMT422 | `string-patch-target` | `tests/string-patch-target` | family prefix |
+| SMT423 | `excessive-test-patches` | `tests/excess-patches` | renamed |
+| SMT424 | `test-without-outcome-check` | `tests/missing-outcome-check` | renamed |
+| SMT425 | `test-only-checks-possibly-empty-data` | `tests/vacuous-assertion` | renamed |
+| SMT426 | `unbounded-test-wait` | `tests/unbounded-wait` | renamed |
+| SMT427 | `independent-test-case-loop` | `tests/independent-case-loop` | renamed |
+| SMT428 | `async-mock-without-await-check` | `tests/missing-await-assertion` | renamed |
+| SMT429 | `test-only-public-function` | `visibility/test-only-public-function` | family prefix |
+| SMT430 | `test-only-public-attribute` | `visibility/test-only-public-attribute` | family prefix |
+| SMT431 | `nondeterministic-test-data` | `tests/nondeterministic-data` | renamed |
+| SMT901 | `unused-suppression` | `meta/unused-suppression` | family prefix |
+| SMT902 | `suppression-without-reason` | `meta/missing-suppression-reason` | renamed |
+| SMT903 | `resolved-debt` | `meta/resolved-debt` | family prefix |
+
+### Internal
+
+- `smelt.diagnostics.violation.Category` now enumerates the families.
+- Merged rule classes: `ModuleDocstringConvention`, `ForbiddenBaseClassAffix`,
+  `FileNameConvention`, `StrEnumValueConvention`, `ImplicitDurationUnit`
+  (`structure/durations.py`), `ForeignPrivateAccess`
+  (`structure/private_access.py`) and `InlineCallArgument`
+  (`structure/call_arguments.py`).
+- `smelt/rules/renames.py` records retired names and codes for configuration
+  errors.
 
 ## [0.12.0] - 2026-11-16
 
@@ -25,7 +187,7 @@ together to `0.12.0` (`v0.12.0`), refresh the editor schema and reinstall the
 bundled agent skill with `smelt skill install --force`. No baseline rewrite is
 required. See the [upgrade checklist](docs/upgrading.md#0111-to-0120).
 
-- Opt-in hint [SMT366](docs/rules/SMT366.md) `comprehension-in-call-argument`
+- Opt-in hint [SMT366](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT366.md) `comprehension-in-call-argument`
   asks for named intermediate collections when list, set or dict comprehensions
   are passed directly to a call. Enable the rule explicitly; generator expressions
   and conditional/repeated expression contexts are skipped. No automatic rewrite:
@@ -73,7 +235,7 @@ rewrite is required. See the [upgrade checklist](docs/upgrading.md#0100-to-0110)
   checks and baselines. No automatic rewrite.
   Implements [#168](https://github.com/mathisarends/smelt/issues/168).
 
-- Opt-in warning [SMT365](docs/rules/SMT365.md) `cross-module-private-attribute`
+- Opt-in warning [SMT365](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT365.md) `cross-module-private-attribute`
   reports private field/method accesses through statically known project receivers
   owned by another module. Enable the rule explicitly. Global/package
   `private_attribute_boundary: package` permits immediate-package cooperation;
@@ -210,7 +372,7 @@ No baseline rewrite is required. See the
   unit (`_TIMEOUT_SECONDS`, `quiet_ms`), `timedelta` values, `@overload` and
   `@override` signatures and tests are not reported. Enable it with
   `rules: {missing-duration-unit: warning}`; no automatic rewrite.
-- Optional review [SMT358](docs/rules/SMT358.md) `prefer-named-duration`
+- Optional review [SMT358](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT358.md) `prefer-named-duration`
   reports `int` and `float` literals passed as the duration of
   `asyncio.timeout`, `asyncio.sleep`, `asyncio.wait_for`, `asyncio.wait`,
   `time.sleep` and the anyio and trio sleep and timeout scopes, and literals
@@ -312,7 +474,7 @@ See the [upgrade checklist](docs/upgrading.md#060-to-070).
   [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
   convention: it reports explicit strings equal to the lowercased member name,
   and `auto()` members in classes that need custom values such as
-  `"mouseMoved"`. [SMT342](docs/rules/SMT342.md) `str-enum-explicit-values`
+  `"mouseMoved"`. [SMT342](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT342.md) `str-enum-explicit-values`
   makes explicit strings the convention and reports every `auto()` member.
   Enable one of them, e.g. `rules: {str-enum-auto-values: hint}`. Tests are not
   checked; no automatic rewrite. Implements
@@ -421,7 +583,7 @@ required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-
 
 - Declare canonical YAML extensions and Compose basenames once with
   `structure.file_naming: {yaml_extension: yaml, compose_basename: compose}`.
-  [SMT331](docs/rules/SMT331.md) and [SMT332](docs/rules/SMT332.md) flag other
+  [SMT331](docs/rules/SMT331.md) and [SMT332](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT332.md) flag other
   spellings throughout the project, including hidden configuration directories
   and dotted Compose variants. Policies are optional, respect exclusions and
   support staged checks; renames and reference updates remain manual.
@@ -487,7 +649,7 @@ See the [upgrade checklist](docs/upgrading.md#040-to-050).
   review and explicit re-recording. See [adoption](docs/adoption.md).
 
 - Package contracts now support `module_docstrings: require`, activating
-  [SMT325](docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
+  [SMT325](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
   do not satisfy the requirement. Choose `forbid` for the existing
   [SMT309](docs/rules/SMT309.md) convention; use a reasoned file suppression or an

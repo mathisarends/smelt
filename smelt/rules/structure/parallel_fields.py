@@ -39,8 +39,8 @@ _MIN_FIELDS = 2
 class ParallelRecordFields(Rule):
     file_local = True
     code = "SMT361"
-    name = "parallel-record-fields"
-    category = Category.STRUCTURE
+    name = "modeling/parallel-record-fields"
+    category = Category.MODELING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -94,7 +94,7 @@ class ParallelRecordFields(Rule):
             "one sequence of named records and update construction and consumers "
             "together. Preserve length validation and iteration order. Deliberate "
             "column storage may retain a reasoned suppression. No automatic rewrite "
-            "or correctness claim is made. Enable rules: {parallel-record-fields: hint}, "
+            "or correctness claim is made. Enable rules: {modeling/parallel-record-fields: hint}, "
             "or select SMT361."
         ),
         config=("rules", "structure.contracts"),

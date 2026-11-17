@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class MissingRequiredModule(Rule):
     activation = POLICIES["SMT307"]
     code = "SMT307"
-    name = "missing-required-module"
-    category = Category.STRUCTURE
+    name = "architecture/missing-required-module"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(

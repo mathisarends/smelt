@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 _CONFIG = """version: 1
 project: {root_packages: [app]}
-rules: {internal-public-attribute: warning}
+rules: {visibility/internal-public-attribute: warning}
 """
 _SOURCE = """class Readiness:
     def __init__(self, initial=None, ongoing=None):
@@ -181,8 +181,8 @@ def test_test_only_attributes_are_owned_by_smt430(tmp_path: Path) -> None:
         root,
         {
             "smelt.yml": _CONFIG.replace(
-                "internal-public-attribute: warning",
-                "internal-public-attribute: warning, test-only-public-attribute: warning",
+                "visibility/internal-public-attribute: warning",
+                "visibility/internal-public-attribute: warning, visibility/test-only-public-attribute: warning",
             ),
             "tests/test_readiness.py": "from app.readiness import Readiness\ndef test_initial(): assert Readiness().initial == 1",
         },
@@ -194,7 +194,9 @@ def test_test_only_attributes_are_owned_by_smt430(tmp_path: Path) -> None:
     assert violations(root) == []
 
 
-@pytest.mark.parametrize("selection", ["SMT335", "SMT33", "internal-public-attribute"])
+@pytest.mark.parametrize(
+    "selection", ["SMT335", "SMT33", "visibility/internal-public-attribute"]
+)
 def test_rule_is_opt_in_and_supports_explicit_selection(
     tmp_path: Path, selection: str
 ) -> None:
@@ -203,7 +205,7 @@ def test_rule_is_opt_in_and_supports_explicit_selection(
         root,
         {
             "smelt.yml": _CONFIG.replace(
-                "rules: {internal-public-attribute: warning}", ""
+                "rules: {visibility/internal-public-attribute: warning}", ""
             )
         },
     )
@@ -221,7 +223,7 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
         root,
         {
             "smelt.yml": _CONFIG
-            + "structure:\n  contracts:\n    api:\n      match: app\n      rules: {internal-public-attribute: off}\n"
+            + "structure:\n  contracts:\n    api:\n      match: app\n      rules: {visibility/internal-public-attribute: off}\n"
         },
     )
     assert violations(root, CheckOptions(select=("SMT335",))) == []

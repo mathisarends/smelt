@@ -15,8 +15,8 @@ class IncompleteCoverage(Rule):
     scope = "project"
     activation = POLICIES["SMT306"]
     code = "SMT306"
-    name = "incomplete-coverage"
-    category = Category.STRUCTURE
+    name = "architecture/uncovered-source"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(

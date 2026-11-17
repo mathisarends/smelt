@@ -205,7 +205,7 @@ def test_global_and_closest_package_limits_including_zero(tmp_path: Path) -> Non
         tmp_path,
         source,
         settings="""\
-rules: {excess-private-definitions: warning}
+rules: {visibility/excess-private-definitions: warning}
 structure:
   max_private_definitions: 1
   contracts:
@@ -236,7 +236,7 @@ structure:
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {excess-private-definitions: hint}\nstructure: {max_private_definitions: 1}\n"
+            + "rules: {visibility/excess-private-definitions: hint}\nstructure: {max_private_definitions: 1}\n"
         },
     )
     assert violations(root) == []
@@ -256,11 +256,11 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
         {
             "smelt.yml": CONFIG
             + """\
-rules: {excess-private-definitions: warning}
+rules: {visibility/excess-private-definitions: warning}
 structure:
   max_private_definitions: 0
   contracts:
-    quiet: {match: app.quiet, rules: {excess-private-definitions: off}}
+    quiet: {match: app.quiet, rules: {visibility/excess-private-definitions: off}}
 """,
             "app/quiet/__init__.py": source,
             "app/intentional.py": "class _Local: pass  # smelt: ignore[SMT367] -- cohesive parser implementation\n",

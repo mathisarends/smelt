@@ -184,7 +184,8 @@ def test_rule_is_opt_in_and_error_severity_blocks(tmp_path: Path) -> None:
     assert violations(root) == []
 
     write_project(
-        root, {"smelt.yml": CONFIG + "rules: {private-class-constant: error}\n"}
+        root,
+        {"smelt.yml": CONFIG + "rules: {layout/misplaced-private-constant: error}\n"},
     )
     outcome = check(root)
 
@@ -198,9 +199,9 @@ def test_closest_package_override_can_disable_the_rule(tmp_path: Path) -> None:
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {private-class-constant: error}\n"
+            + "rules: {layout/misplaced-private-constant: error}\n"
             + "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n"
-            + "      rules: {private-class-constant: off}\n",
+            + "      rules: {layout/misplaced-private-constant: off}\n",
             "app/legacy/__init__.py": "",
             "app/legacy/download.py": DOWNLOADS,
         },

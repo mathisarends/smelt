@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class CrossFeatureImport(Rule):
     activation = POLICIES["SMT102"]
     code = "SMT102"
-    name = "cross-feature-import"
-    category = Category.DEPENDENCIES
+    name = "architecture/cross-feature-import"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(
@@ -112,8 +112,8 @@ _MAY_IMPORT = {
 class SharedImportsFeature(Rule):
     activation = POLICIES["SMT105"]
     code = "SMT105"
-    name = "shared-imports-feature"
-    category = Category.DEPENDENCIES
+    name = "architecture/shared-imports-feature"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

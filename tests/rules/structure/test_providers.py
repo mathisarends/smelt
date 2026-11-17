@@ -102,7 +102,7 @@ def test_aliases_and_opt_in_off_and_suppressions(tmp_path: Path) -> None:
         tmp_path,
         source,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {redundant-dishka-provider: off}}\n",
+        + "structure:\n  contracts:\n    legacy: {match: app, rules: {frameworks/redundant-dishka-provider: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

@@ -45,8 +45,8 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
 class BundledInstanceAssignment(Rule):
     file_local = True
     code = "SMT314"
-    name = "bundled-instance-assignment"
-    category = Category.STRUCTURE
+    name = "idioms/bundled-instance-assignment"
+    category = Category.IDIOMS
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="An assignment writes multiple direct instance attributes under a separate-assignment convention.",

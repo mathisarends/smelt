@@ -1,5 +1,63 @@
 # Upgrading Smelt
 
+## 0.12 to 0.13
+
+0.13 renames every rule to `family/finding` and merges seven pairs of rules. YAML
+version 1, report schema 2, exit codes, the default rule set and every unmerged
+SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
+complete mapping.
+
+### Upgrade checklist
+
+1. Run `smelt check` once. Every 0.12 rule name and retired code in `smelt.yml`
+   is reported as unknown, and the error names the replacement:
+
+   ```text
+   rules.private-symbol-import: unknown rule "private-symbol-import"; renamed to "visibility/foreign-private-access" in 0.13.0 (see docs/upgrading.md)
+   rules.SMT366: unknown rule "SMT366"; merged into SMT340 "complexity/inline-call-argument" in 0.13.0 (see docs/upgrading.md)
+   ```
+
+   Replace names in top-level `rules`, package-contract `rules`, CI `--select` and
+   `--ignore` arguments, and hook configuration. SMT codes outside the merged set
+   keep working, so `rules: {SMT101: error}` needs no change.
+
+2. Resolve merged pairs. Where a project configured both halves of a pair, keep
+   a single entry for the surviving rule:
+
+   | Retired | Use instead | Notes |
+   | --- | --- | --- |
+   | SMT325 | SMT309 `layout/module-docstring-convention` | `module_docstrings: require` and `forbid` both enable it. |
+   | SMT326 | SMT323 `modeling/forbidden-base-class-affix` | It reports both prefix and suffix. |
+   | SMT332 | SMT331 `layout/file-name-convention` | There is one finding per file. |
+   | SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `structure.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
+   | SMT358 | SMT357 `modeling/implicit-duration-unit` | It also reports unitless duration names. |
+   | SMT365 | SMT339 `visibility/foreign-private-access` | It also reports private module symbols. |
+   | SMT366 | SMT340 `complexity/inline-call-argument` | Set `structure.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
+
+   The SMT326, SMT357/358 and SMT339/365 merges can report more findings when
+   only one half was enabled before. Review them, or narrow the scope where an
+   option exists. Do not disable the rule just to keep the old count.
+
+3. Update inline suppressions. A comment such as `# smelt: ignore[SMT366]` now
+   names an unknown code, which SMT901 reports. Replace it with the surviving
+   code from the table above.
+
+4. Re-record debt for merged codes. Baseline entries under SMT325, SMT326,
+   SMT332, SMT342, SMT358, SMT365 or SMT366 no longer match. Run
+   `smelt debt --prune`, review the remaining findings, then run `smelt debt`.
+   Entries under every other code are unaffected.
+
+5. Update report consumers. The JSON `category` field and `smelt rules --format
+   json` now carry the family (`architecture`, `layout`, `tests`, ...) instead of
+   `dependencies`, `structure` and `tests`. The `rule` field carries the new
+   name. Merged rules add a `kind` field to `expected`.
+
+6. Refresh the editor schema with `smelt config schema > .smelt.schema.json` and
+   the agent skill with `smelt skill install --force`.
+
+Families can now be selected as a whole, for example `rules: {typing: warning}`
+or `--select modeling`. Individual entries still override a family entry.
+
 ## 0.11.1 to 0.12.0
 
 0.12.0 retains report schema 2, YAML version 1, grouped debt baseline version 2,

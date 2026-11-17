@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 class PreferPackageImport(Rule):
     code = "SMT319"
-    name = "prefer-package-import"
-    category = Category.STRUCTURE
+    name = "imports/prefer-package-import"
+    category = Category.IMPORTS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

@@ -4,8 +4,10 @@ Use `smelt.yml` for project configuration; `smelt init` creates it by default.
 Existing `smelt.yaml` files remain supported. When both filenames exist in the
 same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
 
-Configure a fixed check or coherent rule group once, by name. Its value enables it
-and sets its severity. No separate `review_*` switch is needed.
+Configure a fixed check, a coherent rule group or a whole family (such as
+`typing`) once, by name. Rule names have the form `family/finding`. The value
+enables the rule and sets its severity. No separate `review_*` switch is needed.
+See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Stable SMT codes remain valid aliases and keep existing debt identities.
 
@@ -23,15 +25,15 @@ project:
   test_roots: [tests]
 
 rules:
-  public-definitions-first: error
-  bundled-instance-assignment: error
+  layout/definition-order: error
+  idioms/bundled-instance-assignment: error
   information-hiding: warning
-  internal-static-helper: hint
-  test-without-outcome-check: warning
-  test-only-checks-possibly-empty-data: warning
-  unbounded-test-wait: warning
-  independent-test-case-loop: hint
-  async-mock-without-await-check: warning
+  layout/misplaced-static-helper: hint
+  tests/missing-outcome-check: warning
+  tests/vacuous-assertion: warning
+  tests/unbounded-wait: warning
+  tests/independent-case-loop: hint
+  tests/missing-await-assertion: warning
 ```
 
 Generate this explicit starting selection with `smelt init --maintainability`.
@@ -62,8 +64,8 @@ file. Each workspace still has its own configuration and `--config` invocation:
 # smelt.base.yml (a policy fragment; no project selection is required here)
 version: 1
 rules:
-  import-cycle: error
-  unbounded-test-wait: warning
+  architecture/import-cycle: error
+  tests/unbounded-wait: warning
 suppressions:
   require_reason: true
 ```
@@ -78,7 +80,7 @@ project:
 architecture:
   features: {root: runtime_extension.features}
 rules:
-  unbounded-test-wait: error
+  tests/unbounded-wait: error
 ```
 
 Run `smelt check --config runtime/smelt.yml` from the repository root, or
@@ -177,7 +179,7 @@ structure:
       match: harnessed.integrations
       rules:
         information-hiding: off
-        internal-static-helper: off
+        layout/misplaced-static-helper: off
     strict-core:
       match: harnessed.core
       rules:
@@ -189,7 +191,7 @@ tests:
   quality_exclude: ['tests/generated/**']
 ```
 
-`ordering` contains options, not activation. Enable `public-definitions-first` in
+`ordering` contains options, not activation. Enable `layout/definition-order` in
 `rules`; public must precede private in any customized module/class category list.
 Dependencies and execution barriers still take precedence over category order.
 `fix: off` disables ordering writes; plain checks are always read-only.
@@ -211,9 +213,9 @@ retain their policy activation. Declaring such a policy is enough to check it.
 The catalog distinguishes those checks from explicitly selected fixed patterns.
 
 ```bash
-smelt check --select internal-public-member,unbounded-test-wait
-smelt check --select SMT3 --ignore internal-static-helper
-smelt explain async-mock-without-await-check
+smelt check --select visibility/internal-public-member,tests/unbounded-wait
+smelt check --select SMT3 --ignore layout/misplaced-static-helper
+smelt explain tests/missing-await-assertion
 smelt rules --format json
 smelt config show
 smelt context harnessed.core --format json
@@ -268,19 +270,19 @@ numeric codes keep their meanings. The configuration format remains `version: 1`
 
 | Removed setting | Explicit rule |
 | --- | --- |
-| `ordering.enabled` or an implicitly activating `ordering` object | `public-definitions-first` (SMT313) |
-| `instance_assignments: separate` | `bundled-instance-assignment` (SMT314) |
-| `member_visibility: private-when-internal` | `internal-public-member` (SMT316) |
-| `static_methods: module-functions` | `internal-static-helper` (SMT317) |
-| `tests.forbid_private_imports` | `private-test-access` (SMT420) |
-| `tests.forbid_string_patch_targets` | `string-patch-target` (SMT422) |
-| `tests.require_assertions` | `test-without-outcome-check` (SMT424) |
-| `tests.require_non_vacuous_assertions` | `test-only-checks-possibly-empty-data` (SMT425) |
-| `tests.review_test_deadlines` | `unbounded-test-wait` (SMT426) |
-| `tests.review_case_loops` | `independent-test-case-loop` (SMT427) |
-| `tests.review_async_mock_assertions` | `async-mock-without-await-check` (SMT428) |
-| `tests.review_test_only_public_functions` | `test-only-public-function` (SMT429) |
-| `tests.review_test_only_public_attributes` | `test-only-public-attribute` (SMT430) |
+| `ordering.enabled` or an implicitly activating `ordering` object | `layout/definition-order` (SMT313) |
+| `instance_assignments: separate` | `idioms/bundled-instance-assignment` (SMT314) |
+| `member_visibility: private-when-internal` | `visibility/internal-public-member` (SMT316) |
+| `static_methods: module-functions` | `layout/misplaced-static-helper` (SMT317) |
+| `tests.forbid_private_imports` | `tests/private-access` (SMT420) |
+| `tests.forbid_string_patch_targets` | `tests/string-patch-target` (SMT422) |
+| `tests.require_assertions` | `tests/missing-outcome-check` (SMT424) |
+| `tests.require_non_vacuous_assertions` | `tests/vacuous-assertion` (SMT425) |
+| `tests.review_test_deadlines` | `tests/unbounded-wait` (SMT426) |
+| `tests.review_case_loops` | `tests/independent-case-loop` (SMT427) |
+| `tests.review_async_mock_assertions` | `tests/missing-await-assertion` (SMT428) |
+| `tests.review_test_only_public_functions` | `visibility/test-only-public-function` (SMT429) |
+| `tests.review_test_only_public_attributes` | `visibility/test-only-public-attribute` (SMT430) |
 
 Former names `definition-order`, `prefer-private-module-function`,
 `missing-test-assertion`, `vacuous-test-outcome`, `test-deadline`,

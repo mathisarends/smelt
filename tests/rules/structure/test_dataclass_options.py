@@ -207,7 +207,7 @@ def test_is_inactive_without_policy(tmp_path: Path) -> None:
 
 
 def test_rules_entry_can_turn_it_off(tmp_path: Path) -> None:
-    config = POLICY + "rules: {missing-dataclass-option: off}\n"
+    config = POLICY + "rules: {modeling/missing-dataclass-option: off}\n"
     root = write_project(
         tmp_path,
         {

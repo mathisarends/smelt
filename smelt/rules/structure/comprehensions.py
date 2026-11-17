@@ -19,8 +19,8 @@ _MAX_FILTER_OPERANDS = 2
 class ComplexComprehension(Rule):
     file_local = True
     code = "SMT363"
-    name = "complex-comprehension"
-    category = Category.STRUCTURE
+    name = "complexity/complex-comprehension"
+    category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -39,7 +39,7 @@ class ComplexComprehension(Rule):
         fix=(
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
-            "rewrite is performed. Enable rules: {complex-comprehension: hint} or "
+            "rewrite is performed. Enable rules: {complexity/complex-comprehension: hint} or "
             "select SMT363. structure.max_comprehension_loops defaults to 1; a "
             "structure.contracts.<name>.max_comprehension_loops override permits "
             "intentional flattening. Threshold options alone do not enable the rule."

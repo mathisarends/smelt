@@ -161,7 +161,7 @@ def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> N
     root = _project(tmp_path)
     assert not violations(root)
     assert len(violations(root, CheckOptions(select=("SMT338",)))) == 1
-    config = CONFIG + "rules: {duplicate-literal-type: warning}\n"
+    config = CONFIG + "rules: {typing/duplicate-literal-type: warning}\n"
     (root / "smelt.yml").write_text(config, encoding="utf-8")
     assert violations(root)[0].severity is Severity.WARNING
     (root / "smelt.yml").write_text(

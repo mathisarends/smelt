@@ -46,6 +46,7 @@ architecture:
 
 structure:
   forbidden_names: [utils, helpers]
+  call_argument_kinds: [await]
   contracts:
     maintainability:
       match: smelt
@@ -58,7 +59,7 @@ structure:
       private_modules: forbid
     instance-fields:
       match: smelt
-      rules: {bundled-instance-assignment: error}
+      rules: {idioms/bundled-instance-assignment: error}
     type-dispatch:
       match: smelt.rules.structure
       type_dispatch: {style: match, min_branches: 3}
@@ -73,43 +74,42 @@ tests:
 
 rules:
   # Public values are serialized in reports: keep their wire spelling explicit.
-  str-enum-explicit-values: warning
-  deprecated-async-contextmanager-return: warning
-  private-symbol-import: warning
-  await-in-call-argument: warning
-  redundant-private-delegate: warning
-  redundant-name-alias: warning
-  prefer-deferred-annotations: warning
-  missing-interface-docstring: warning
-  stateful-dataclass: warning
-  duplicate-function: warning
-  missing-broad-except-reason: warning
-  duplicate-class-name: warning
-  duplicate-narrowing-assert: warning
-  prefer-named-duration: warning
+  modeling/str-enum-value-convention: warning
+  typing/deprecated-async-contextmanager-return: warning
+  visibility/foreign-private-access: warning
+  complexity/inline-call-argument: warning
+  visibility/redundant-private-delegate: warning
+  idioms/redundant-name-alias: warning
+  typing/prefer-deferred-annotations: warning
+  idioms/missing-interface-docstring: warning
+  modeling/stateful-dataclass: warning
+  complexity/duplicate-function: warning
+  idioms/missing-broad-except-reason: warning
+  modeling/duplicate-class-name: warning
+  idioms/duplicate-narrowing-assert: warning
+  modeling/implicit-duration-unit: warning
   # These reviews need semantic judgment: equal shapes can model distinct concepts.
-  duplicate-literal-type: hint
-  anonymous-tuple-type: hint
-  caller-before-callee: warning
-  redundant-dishka-provider: warning
-  secret-settings-field: warning
-  no-base-class-suffix: error
-  package-only-dunder-all: error
-  nondeterministic-test-data: error
-  prefer-package-import: warning
-  no-base-class-prefix: error
-  deep-object-navigation: warning
-  import-cycle: error
-  prefer-match-type-dispatch: error
-  public-definitions-first: error
-  private-class-constant: error
+  typing/duplicate-literal-type: hint
+  typing/anonymous-tuple-type: hint
+  layout/callee-before-caller: warning
+  frameworks/redundant-dishka-provider: warning
+  frameworks/prefer-secret-type: warning
+  modeling/forbidden-base-class-affix: error
+  visibility/misplaced-dunder-all: error
+  tests/nondeterministic-data: error
+  imports/prefer-package-import: warning
+  complexity/deep-object-navigation: warning
+  architecture/import-cycle: error
+  idioms/prefer-match-type-dispatch: error
+  layout/definition-order: error
+  layout/misplaced-private-constant: error
   information-hiding: warning
-  internal-static-helper: warning
-  unnecessary-future-annotations: warning
-  private-test-access: warning
-  test-without-outcome-check: warning
-  test-only-checks-possibly-empty-data: warning
-  unbounded-test-wait: warning
-  independent-test-case-loop: warning
-  async-mock-without-await-check: warning
+  layout/misplaced-static-helper: warning
+  typing/redundant-future-annotations: warning
+  tests/private-access: warning
+  tests/missing-outcome-check: warning
+  tests/vacuous-assertion: warning
+  tests/unbounded-wait: warning
+  tests/independent-case-loop: warning
+  tests/missing-await-assertion: warning
 # yaml-language-server: $schema=smelt.schema.json

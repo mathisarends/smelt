@@ -56,8 +56,8 @@ class _Graph[T: Hashable]:
 
 class ImportCycle(Rule):
     code = "SMT104"
-    name = "import-cycle"
-    category = Category.DEPENDENCIES
+    name = "architecture/import-cycle"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

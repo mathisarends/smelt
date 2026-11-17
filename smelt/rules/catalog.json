@@ -2,8 +2,8 @@
   {
     "target": "smelt.rules.dependencies.layers:LayerBoundary",
     "code": "SMT101",
-    "name": "layer-boundary",
-    "category": "dependencies",
+    "name": "architecture/layer-boundary",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -17,8 +17,8 @@
   {
     "target": "smelt.rules.dependencies.features:CrossFeatureImport",
     "code": "SMT102",
-    "name": "cross-feature-import",
-    "category": "dependencies",
+    "name": "architecture/cross-feature-import",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -32,8 +32,8 @@
   {
     "target": "smelt.rules.dependencies.third_party:ThirdPartyDenied",
     "code": "SMT103",
-    "name": "third-party-denied",
-    "category": "dependencies",
+    "name": "architecture/forbidden-third-party-import",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -47,8 +47,8 @@
   {
     "target": "smelt.rules.dependencies.cycles:ImportCycle",
     "code": "SMT104",
-    "name": "import-cycle",
-    "category": "dependencies",
+    "name": "architecture/import-cycle",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -62,8 +62,8 @@
   {
     "target": "smelt.rules.dependencies.features:SharedImportsFeature",
     "code": "SMT105",
-    "name": "shared-imports-feature",
-    "category": "dependencies",
+    "name": "architecture/shared-imports-feature",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -77,8 +77,8 @@
   {
     "target": "smelt.rules.dependencies.composition_root:CompositionRootLeak",
     "code": "SMT106",
-    "name": "composition-root-leak",
-    "category": "dependencies",
+    "name": "architecture/composition-root-leak",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports"
@@ -92,8 +92,8 @@
   {
     "target": "smelt.rules.dependencies.interfaces:PrivateModuleImport",
     "code": "SMT107",
-    "name": "private-module-import",
-    "category": "dependencies",
+    "name": "architecture/non-public-module-import",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "imports",
@@ -108,8 +108,8 @@
   {
     "target": "smelt.rules.dependencies.fanout:PackageImportFanout",
     "code": "SMT108",
-    "name": "package-import-fanout",
-    "category": "dependencies",
+    "name": "imports/package-import-fanout",
+    "category": "imports",
     "default_severity": "hint",
     "requires": [
       "imports",
@@ -124,8 +124,8 @@
   {
     "target": "smelt.rules.dependencies.facades:FacadeExportGap",
     "code": "SMT109",
-    "name": "facade-export-gap",
-    "category": "dependencies",
+    "name": "architecture/missing-facade-export",
+    "category": "architecture",
     "default_severity": "hint",
     "requires": [
       "imports",
@@ -140,8 +140,8 @@
   {
     "target": "smelt.rules.dependencies.module_fanout:ModuleImportFanout",
     "code": "SMT110",
-    "name": "module-import-fanout",
-    "category": "dependencies",
+    "name": "imports/excess-module-imports",
+    "category": "imports",
     "default_severity": "hint",
     "requires": [
       "imports"
@@ -155,8 +155,8 @@
   {
     "target": "smelt.rules.structure.layout:UnknownLayer",
     "code": "SMT301",
-    "name": "unknown-layer",
-    "category": "structure",
+    "name": "architecture/unknown-layer",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "files"
@@ -170,8 +170,8 @@
   {
     "target": "smelt.rules.structure.naming:ForbiddenPackageName",
     "code": "SMT302",
-    "name": "forbidden-package-name",
-    "category": "structure",
+    "name": "layout/forbidden-module-name",
+    "category": "layout",
     "default_severity": "error",
     "requires": [
       "files"
@@ -185,8 +185,8 @@
   {
     "target": "smelt.rules.structure.layout:UnclassifiedModule",
     "code": "SMT305",
-    "name": "unclassified-module",
-    "category": "structure",
+    "name": "architecture/unclassified-module",
+    "category": "architecture",
     "default_severity": "warning",
     "requires": [
       "files"
@@ -200,8 +200,8 @@
   {
     "target": "smelt.rules.structure.coverage:IncompleteCoverage",
     "code": "SMT306",
-    "name": "incomplete-coverage",
-    "category": "structure",
+    "name": "architecture/uncovered-source",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "files"
@@ -215,8 +215,8 @@
   {
     "target": "smelt.rules.structure.contracts:MissingRequiredModule",
     "code": "SMT307",
-    "name": "missing-required-module",
-    "category": "structure",
+    "name": "architecture/missing-required-module",
+    "category": "architecture",
     "default_severity": "error",
     "requires": [
       "files"
@@ -230,8 +230,8 @@
   {
     "target": "smelt.rules.structure.import_style:ImportStyle",
     "code": "SMT308",
-    "name": "import-style",
-    "category": "structure",
+    "name": "imports/forbidden-import-style",
+    "category": "imports",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -243,10 +243,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.headers:ForbiddenModuleDocstring",
+    "target": "smelt.rules.structure.headers:ModuleDocstringConvention",
     "code": "SMT309",
-    "name": "forbidden-module-docstring",
-    "category": "structure",
+    "name": "layout/module-docstring-convention",
+    "category": "layout",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -260,8 +260,8 @@
   {
     "target": "smelt.rules.structure.headers:ForbiddenFutureAnnotations",
     "code": "SMT310",
-    "name": "forbidden-future-annotations",
-    "category": "structure",
+    "name": "typing/forbidden-future-annotations",
+    "category": "typing",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -273,10 +273,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.headers:UnnecessaryFutureAnnotations",
+    "target": "smelt.rules.structure.headers:RedundantFutureAnnotations",
     "code": "SMT311",
-    "name": "unnecessary-future-annotations",
-    "category": "structure",
+    "name": "typing/redundant-future-annotations",
+    "category": "typing",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -288,10 +288,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.naming:NoPrivateModules",
+    "target": "smelt.rules.structure.naming:ForbiddenPrivateModule",
     "code": "SMT312",
-    "name": "no-private-modules",
-    "category": "structure",
+    "name": "layout/forbidden-private-module",
+    "category": "layout",
     "default_severity": "error",
     "requires": [
       "files"
@@ -305,8 +305,8 @@
   {
     "target": "smelt.rules.structure.ordering:PublicDefinitionsFirst",
     "code": "SMT313",
-    "name": "public-definitions-first",
-    "category": "structure",
+    "name": "layout/definition-order",
+    "category": "layout",
     "default_severity": "error",
     "requires": [
       "ordering"
@@ -320,8 +320,8 @@
   {
     "target": "smelt.rules.structure.assignments:BundledInstanceAssignment",
     "code": "SMT314",
-    "name": "bundled-instance-assignment",
-    "category": "structure",
+    "name": "idioms/bundled-instance-assignment",
+    "category": "idioms",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -335,8 +335,8 @@
   {
     "target": "smelt.rules.structure.type_dispatch:PreferMatchTypeDispatch",
     "code": "SMT315",
-    "name": "prefer-match-type-dispatch",
-    "category": "structure",
+    "name": "idioms/prefer-match-type-dispatch",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -350,8 +350,8 @@
   {
     "target": "smelt.rules.structure.members:InternalPublicMember",
     "code": "SMT316",
-    "name": "internal-public-member",
-    "category": "structure",
+    "name": "visibility/internal-public-member",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "member_usage"
@@ -365,8 +365,8 @@
   {
     "target": "smelt.rules.structure.members:InternalStaticHelper",
     "code": "SMT317",
-    "name": "internal-static-helper",
-    "category": "structure",
+    "name": "layout/misplaced-static-helper",
+    "category": "layout",
     "default_severity": "hint",
     "requires": [
       "member_usage"
@@ -380,8 +380,8 @@
   {
     "target": "smelt.rules.structure.enum_values:RedundantStrEnumValue",
     "code": "SMT318",
-    "name": "redundant-str-enum-value",
-    "category": "structure",
+    "name": "modeling/redundant-str-enum-value",
+    "category": "modeling",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -395,8 +395,8 @@
   {
     "target": "smelt.rules.structure.package_imports:PreferPackageImport",
     "code": "SMT319",
-    "name": "prefer-package-import",
-    "category": "structure",
+    "name": "imports/prefer-package-import",
+    "category": "imports",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -410,8 +410,8 @@
   {
     "target": "smelt.rules.structure.module_symbols:InternalPublicModuleSymbol",
     "code": "SMT320",
-    "name": "internal-public-module-symbol",
-    "category": "structure",
+    "name": "visibility/internal-public-module-symbol",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "member_usage",
@@ -426,8 +426,8 @@
   {
     "target": "smelt.rules.structure.none_defaults:ImplicitOptionalDefault",
     "code": "SMT321",
-    "name": "implicit-optional-default",
-    "category": "structure",
+    "name": "typing/implicit-optional-default",
+    "category": "typing",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -441,8 +441,8 @@
   {
     "target": "smelt.rules.structure.navigation:DeepObjectNavigation",
     "code": "SMT322",
-    "name": "deep-object-navigation",
-    "category": "structure",
+    "name": "complexity/deep-object-navigation",
+    "category": "complexity",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -454,10 +454,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.naming:NoBaseClassPrefix",
+    "target": "smelt.rules.structure.naming:ForbiddenBaseClassAffix",
     "code": "SMT323",
-    "name": "no-base-class-prefix",
-    "category": "structure",
+    "name": "modeling/forbidden-base-class-affix",
+    "category": "modeling",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -471,39 +471,9 @@
   {
     "target": "smelt.rules.structure.discriminators:PreferStrEnumDiscriminator",
     "code": "SMT324",
-    "name": "prefer-str-enum-discriminator",
-    "category": "structure",
+    "name": "modeling/prefer-str-enum-discriminator",
+    "category": "modeling",
     "default_severity": "hint",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": true,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.headers:MissingModuleDocstring",
-    "code": "SMT325",
-    "name": "missing-module-docstring",
-    "category": "structure",
-    "default_severity": "error",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": true,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.naming:NoBaseClassSuffix",
-    "code": "SMT326",
-    "name": "no-base-class-suffix",
-    "category": "structure",
-    "default_severity": "error",
     "requires": [
       "syntax"
     ],
@@ -516,8 +486,8 @@
   {
     "target": "smelt.rules.structure.settings:SecretSettingsField",
     "code": "SMT327",
-    "name": "secret-settings-field",
-    "category": "structure",
+    "name": "frameworks/prefer-secret-type",
+    "category": "frameworks",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -531,8 +501,8 @@
   {
     "target": "smelt.rules.structure.providers:RedundantDishkaProvider",
     "code": "SMT328",
-    "name": "redundant-dishka-provider",
-    "category": "structure",
+    "name": "frameworks/redundant-dishka-provider",
+    "category": "frameworks",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -546,8 +516,8 @@
   {
     "target": "smelt.rules.structure.call_order:CallerBeforeCallee",
     "code": "SMT329",
-    "name": "caller-before-callee",
-    "category": "structure",
+    "name": "layout/callee-before-caller",
+    "category": "layout",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -561,8 +531,8 @@
   {
     "target": "smelt.rules.structure.exports:PackageOnlyDunderAll",
     "code": "SMT330",
-    "name": "package-only-dunder-all",
-    "category": "structure",
+    "name": "visibility/misplaced-dunder-all",
+    "category": "visibility",
     "default_severity": "error",
     "requires": [
       "syntax"
@@ -574,25 +544,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.file_naming:YamlFileExtension",
+    "target": "smelt.rules.structure.file_naming:FileNameConvention",
     "code": "SMT331",
-    "name": "yaml-file-extension",
-    "category": "structure",
-    "default_severity": "error",
-    "requires": [
-      "files"
-    ],
-    "enabled_by_default": false,
-    "file_local": false,
-    "test_local": false,
-    "member_local": false,
-    "scope": "project"
-  },
-  {
-    "target": "smelt.rules.structure.file_naming:ComposeFileName",
-    "code": "SMT332",
-    "name": "compose-file-name",
-    "category": "structure",
+    "name": "layout/file-name-convention",
+    "category": "layout",
     "default_severity": "error",
     "requires": [
       "files"
@@ -606,8 +561,8 @@
   {
     "target": "smelt.rules.structure.callables:PreferCallableInstance",
     "code": "SMT333",
-    "name": "prefer-callable-instance",
-    "category": "structure",
+    "name": "idioms/prefer-callable-instance",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -621,8 +576,8 @@
   {
     "target": "smelt.rules.structure.constants:PrivateClassConstant",
     "code": "SMT334",
-    "name": "private-class-constant",
-    "category": "structure",
+    "name": "layout/misplaced-private-constant",
+    "category": "layout",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -636,8 +591,8 @@
   {
     "target": "smelt.rules.structure.attributes:InternalPublicAttribute",
     "code": "SMT335",
-    "name": "internal-public-attribute",
-    "category": "structure",
+    "name": "visibility/internal-public-attribute",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "member_usage"
@@ -651,8 +606,8 @@
   {
     "target": "smelt.rules.structure.naming:RedundantModuleName",
     "code": "SMT336",
-    "name": "redundant-module-name",
-    "category": "structure",
+    "name": "layout/redundant-module-name",
+    "category": "layout",
     "default_severity": "hint",
     "requires": [
       "files"
@@ -666,8 +621,8 @@
   {
     "target": "smelt.rules.structure.context_managers:DeprecatedAsyncContextmanagerReturn",
     "code": "SMT337",
-    "name": "deprecated-async-contextmanager-return",
-    "category": "structure",
+    "name": "typing/deprecated-async-contextmanager-return",
+    "category": "typing",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -681,8 +636,8 @@
   {
     "target": "smelt.rules.structure.literal_types:DuplicateLiteralType",
     "code": "SMT338",
-    "name": "duplicate-literal-type",
-    "category": "structure",
+    "name": "typing/duplicate-literal-type",
+    "category": "typing",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -694,10 +649,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.private_symbols:PrivateSymbolImport",
+    "target": "smelt.rules.structure.private_access:ForeignPrivateAccess",
     "code": "SMT339",
-    "name": "private-symbol-import",
-    "category": "structure",
+    "name": "visibility/foreign-private-access",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -709,10 +664,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.awaited_arguments:AwaitInCallArgument",
+    "target": "smelt.rules.structure.call_arguments:InlineCallArgument",
     "code": "SMT340",
-    "name": "await-in-call-argument",
-    "category": "structure",
+    "name": "complexity/inline-call-argument",
+    "category": "complexity",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -724,25 +679,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.enum_styles:StrEnumAutoValues",
+    "target": "smelt.rules.structure.enum_styles:StrEnumValueConvention",
     "code": "SMT341",
-    "name": "str-enum-auto-values",
-    "category": "structure",
-    "default_severity": "hint",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": true,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.enum_styles:StrEnumExplicitValues",
-    "code": "SMT342",
-    "name": "str-enum-explicit-values",
-    "category": "structure",
+    "name": "modeling/str-enum-value-convention",
+    "category": "modeling",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -756,8 +696,8 @@
   {
     "target": "smelt.rules.structure.delegates:RedundantPrivateDelegate",
     "code": "SMT343",
-    "name": "redundant-private-delegate",
-    "category": "structure",
+    "name": "visibility/redundant-private-delegate",
+    "category": "visibility",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -771,8 +711,8 @@
   {
     "target": "smelt.rules.structure.aliases:RedundantNameAlias",
     "code": "SMT344",
-    "name": "redundant-name-alias",
-    "category": "structure",
+    "name": "idioms/redundant-name-alias",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -786,8 +726,8 @@
   {
     "target": "smelt.rules.structure.parameters:ExcessPositionalParameters",
     "code": "SMT345",
-    "name": "excess-positional-parameters",
-    "category": "structure",
+    "name": "complexity/excess-positional-parameters",
+    "category": "complexity",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -801,8 +741,8 @@
   {
     "target": "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
     "code": "SMT346",
-    "name": "prefer-deferred-annotations",
-    "category": "structure",
+    "name": "typing/prefer-deferred-annotations",
+    "category": "typing",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -816,8 +756,8 @@
   {
     "target": "smelt.rules.structure.tuples:AnonymousTupleType",
     "code": "SMT347",
-    "name": "anonymous-tuple-type",
-    "category": "structure",
+    "name": "typing/anonymous-tuple-type",
+    "category": "typing",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -831,8 +771,8 @@
   {
     "target": "smelt.rules.structure.interface_docstrings:MissingInterfaceDocstring",
     "code": "SMT348",
-    "name": "missing-interface-docstring",
-    "category": "structure",
+    "name": "idioms/missing-interface-docstring",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -846,8 +786,8 @@
   {
     "target": "smelt.rules.structure.stateful_dataclasses:StatefulDataclass",
     "code": "SMT349",
-    "name": "stateful-dataclass",
-    "category": "structure",
+    "name": "modeling/stateful-dataclass",
+    "category": "modeling",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -861,8 +801,8 @@
   {
     "target": "smelt.rules.structure.broad_excepts:MissingBroadExceptReason",
     "code": "SMT350",
-    "name": "missing-broad-except-reason",
-    "category": "structure",
+    "name": "idioms/missing-broad-except-reason",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -876,8 +816,8 @@
   {
     "target": "smelt.rules.structure.dataclass_options:MissingDataclassOption",
     "code": "SMT351",
-    "name": "missing-dataclass-option",
-    "category": "structure",
+    "name": "modeling/missing-dataclass-option",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -891,8 +831,8 @@
   {
     "target": "smelt.rules.structure.duplicate_functions:DuplicateFunction",
     "code": "SMT352",
-    "name": "duplicate-function",
-    "category": "structure",
+    "name": "complexity/duplicate-function",
+    "category": "complexity",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -906,8 +846,8 @@
   {
     "target": "smelt.rules.structure.project_bases:PreferProjectBaseClass",
     "code": "SMT353",
-    "name": "prefer-project-base-class",
-    "category": "structure",
+    "name": "modeling/prefer-project-base-class",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -921,8 +861,8 @@
   {
     "target": "smelt.rules.structure.domain_exceptions:PreferDomainException",
     "code": "SMT354",
-    "name": "prefer-domain-exception",
-    "category": "structure",
+    "name": "modeling/prefer-domain-exception",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -936,8 +876,8 @@
   {
     "target": "smelt.rules.structure.duplicate_class_names:DuplicateClassName",
     "code": "SMT355",
-    "name": "duplicate-class-name",
-    "category": "structure",
+    "name": "modeling/duplicate-class-name",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -951,8 +891,8 @@
   {
     "target": "smelt.rules.structure.narrowing_asserts:DuplicateNarrowingAssert",
     "code": "SMT356",
-    "name": "duplicate-narrowing-assert",
-    "category": "structure",
+    "name": "idioms/duplicate-narrowing-assert",
+    "category": "idioms",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -964,25 +904,10 @@
     "scope": "source"
   },
   {
-    "target": "smelt.rules.structure.duration_units:MissingDurationUnit",
+    "target": "smelt.rules.structure.durations:ImplicitDurationUnit",
     "code": "SMT357",
-    "name": "missing-duration-unit",
-    "category": "structure",
-    "default_severity": "warning",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": false,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.duration_literals:PreferNamedDuration",
-    "code": "SMT358",
-    "name": "prefer-named-duration",
-    "category": "structure",
+    "name": "modeling/implicit-duration-unit",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -996,8 +921,8 @@
   {
     "target": "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
     "code": "SMT359",
-    "name": "nested-conditional-expression",
-    "category": "structure",
+    "name": "complexity/nested-conditional-expression",
+    "category": "complexity",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1011,8 +936,8 @@
   {
     "target": "smelt.rules.structure.frozen_collections:MutableFieldInFrozenDataclass",
     "code": "SMT360",
-    "name": "mutable-field-in-frozen-dataclass",
-    "category": "structure",
+    "name": "modeling/mutable-field-in-frozen-dataclass",
+    "category": "modeling",
     "default_severity": "warning",
     "requires": [
       "syntax"
@@ -1026,8 +951,8 @@
   {
     "target": "smelt.rules.structure.parallel_fields:ParallelRecordFields",
     "code": "SMT361",
-    "name": "parallel-record-fields",
-    "category": "structure",
+    "name": "modeling/parallel-record-fields",
+    "category": "modeling",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1041,8 +966,8 @@
   {
     "target": "smelt.rules.structure.loop_collections:LoopInvariantCollection",
     "code": "SMT362",
-    "name": "loop-invariant-collection",
-    "category": "structure",
+    "name": "idioms/loop-invariant-collection",
+    "category": "idioms",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1056,8 +981,8 @@
   {
     "target": "smelt.rules.structure.comprehensions:ComplexComprehension",
     "code": "SMT363",
-    "name": "complex-comprehension",
-    "category": "structure",
+    "name": "complexity/complex-comprehension",
+    "category": "complexity",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1071,38 +996,8 @@
   {
     "target": "smelt.rules.structure.constructors:ConstructorLogic",
     "code": "SMT364",
-    "name": "constructor-logic",
-    "category": "structure",
-    "default_severity": "hint",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": true,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.private_attributes:CrossModulePrivateAttribute",
-    "code": "SMT365",
-    "name": "cross-module-private-attribute",
-    "category": "structure",
-    "default_severity": "warning",
-    "requires": [
-      "syntax"
-    ],
-    "enabled_by_default": false,
-    "file_local": false,
-    "test_local": false,
-    "member_local": false,
-    "scope": "source"
-  },
-  {
-    "target": "smelt.rules.structure.comprehension_arguments:ComprehensionInCallArgument",
-    "code": "SMT366",
-    "name": "comprehension-in-call-argument",
-    "category": "structure",
+    "name": "complexity/constructor-logic",
+    "category": "complexity",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1116,8 +1011,8 @@
   {
     "target": "smelt.rules.structure.private_definitions:ExcessPrivateDefinitions",
     "code": "SMT367",
-    "name": "excess-private-definitions",
-    "category": "structure",
+    "name": "visibility/excess-private-definitions",
+    "category": "visibility",
     "default_severity": "hint",
     "requires": [
       "syntax"
@@ -1131,7 +1026,7 @@
   {
     "target": "smelt.rules.testing.location:MisplacedTestFile",
     "code": "SMT401",
-    "name": "test-location",
+    "name": "tests/misplaced-test",
     "category": "tests",
     "default_severity": "error",
     "requires": [
@@ -1147,7 +1042,7 @@
   {
     "target": "smelt.rules.testing.private_access:PrivateTestAccess",
     "code": "SMT420",
-    "name": "private-test-access",
+    "name": "tests/private-access",
     "category": "tests",
     "default_severity": "error",
     "requires": [
@@ -1162,7 +1057,7 @@
   {
     "target": "smelt.rules.testing.mocking:ForbiddenTestMock",
     "code": "SMT421",
-    "name": "forbidden-test-mock",
+    "name": "tests/forbidden-mock",
     "category": "tests",
     "default_severity": "error",
     "requires": [
@@ -1177,7 +1072,7 @@
   {
     "target": "smelt.rules.testing.mocking:StringPatchTarget",
     "code": "SMT422",
-    "name": "string-patch-target",
+    "name": "tests/string-patch-target",
     "category": "tests",
     "default_severity": "error",
     "requires": [
@@ -1192,7 +1087,7 @@
   {
     "target": "smelt.rules.testing.mocking:ExcessiveTestPatches",
     "code": "SMT423",
-    "name": "excessive-test-patches",
+    "name": "tests/excess-patches",
     "category": "tests",
     "default_severity": "error",
     "requires": [
@@ -1207,7 +1102,7 @@
   {
     "target": "smelt.rules.testing.outcomes:TestWithoutOutcomeCheck",
     "code": "SMT424",
-    "name": "test-without-outcome-check",
+    "name": "tests/missing-outcome-check",
     "category": "tests",
     "default_severity": "warning",
     "requires": [
@@ -1222,7 +1117,7 @@
   {
     "target": "smelt.rules.testing.outcomes:TestOnlyChecksPossiblyEmptyData",
     "code": "SMT425",
-    "name": "test-only-checks-possibly-empty-data",
+    "name": "tests/vacuous-assertion",
     "category": "tests",
     "default_severity": "warning",
     "requires": [
@@ -1237,7 +1132,7 @@
   {
     "target": "smelt.rules.testing.timing:UnboundedTestWait",
     "code": "SMT426",
-    "name": "unbounded-test-wait",
+    "name": "tests/unbounded-wait",
     "category": "tests",
     "default_severity": "warning",
     "requires": [
@@ -1252,7 +1147,7 @@
   {
     "target": "smelt.rules.testing.cases:IndependentTestCaseLoop",
     "code": "SMT427",
-    "name": "independent-test-case-loop",
+    "name": "tests/independent-case-loop",
     "category": "tests",
     "default_severity": "hint",
     "requires": [
@@ -1267,7 +1162,7 @@
   {
     "target": "smelt.rules.testing.awaits:AsyncMockWithoutAwaitCheck",
     "code": "SMT428",
-    "name": "async-mock-without-await-check",
+    "name": "tests/missing-await-assertion",
     "category": "tests",
     "default_severity": "warning",
     "requires": [
@@ -1282,8 +1177,8 @@
   {
     "target": "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
     "code": "SMT429",
-    "name": "test-only-public-function",
-    "category": "tests",
+    "name": "visibility/test-only-public-function",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "member_usage",
@@ -1298,8 +1193,8 @@
   {
     "target": "smelt.rules.testing.public_attributes:TestOnlyPublicAttribute",
     "code": "SMT430",
-    "name": "test-only-public-attribute",
-    "category": "tests",
+    "name": "visibility/test-only-public-attribute",
+    "category": "visibility",
     "default_severity": "warning",
     "requires": [
       "member_usage",
@@ -1314,7 +1209,7 @@
   {
     "target": "smelt.rules.testing.randomness:NondeterministicTestData",
     "code": "SMT431",
-    "name": "nondeterministic-test-data",
+    "name": "tests/nondeterministic-data",
     "category": "tests",
     "default_severity": "warning",
     "requires": [
@@ -1329,7 +1224,7 @@
   {
     "target": "smelt.rules.meta:UnusedSuppression",
     "code": "SMT901",
-    "name": "unused-suppression",
+    "name": "meta/unused-suppression",
     "category": "meta",
     "default_severity": "warning",
     "requires": [],
@@ -1342,7 +1237,7 @@
   {
     "target": "smelt.rules.meta:SuppressionWithoutReason",
     "code": "SMT902",
-    "name": "suppression-without-reason",
+    "name": "meta/missing-suppression-reason",
     "category": "meta",
     "default_severity": "error",
     "requires": [],
@@ -1355,7 +1250,7 @@
   {
     "target": "smelt.rules.meta:ResolvedDebt",
     "code": "SMT903",
-    "name": "resolved-debt",
+    "name": "meta/resolved-debt",
     "category": "meta",
     "default_severity": "warning",
     "requires": [],

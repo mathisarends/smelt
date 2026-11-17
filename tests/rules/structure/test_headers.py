@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311", "SMT325"))
+OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311"))
 
 
 def _project(
@@ -75,8 +75,8 @@ def test_required_docstring_reports_missing_or_blank_introduction(
 
     [finding] = violations(tmp_path)
 
-    assert finding.code == "SMT325"
-    assert finding.rule == "missing-module-docstring"
+    assert finding.code == "SMT309"
+    assert finding.rule == "layout/module-docstring-convention"
     assert finding.severity.value == "error"
     assert (finding.path, finding.line, finding.column) == ("app/module.py", 1, 1)
     assert finding.source_module == "app.module"
@@ -108,12 +108,12 @@ def test_required_docstring_includes_empty_initializers_and_entry_points(
     _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
     write_project(tmp_path, {path: ""})
 
-    assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "SMT325")]
+    assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "SMT309")]
 
 
 @pytest.mark.parametrize(
     ("mode", "source", "code"),
-    [("require", "VALUE = 1", "SMT325"), ("forbid", '"""Introduction."""', "SMT309")],
+    [("require", "VALUE = 1", "SMT309"), ("forbid", '"""Introduction."""', "SMT309")],
 )
 def test_docstring_file_exceptions_require_a_reason(
     tmp_path: Path, mode: str, source: str, code: str
@@ -158,10 +158,10 @@ def test_nested_docstring_convention_overrides_outer_in_both_directions(
         {"app/nested/__init__.py": '"""Introduction."""' if inner == "forbid" else ""},
     )
 
-    assert {v.path: v.code for v in violations(tmp_path, OPTIONS)} == {
-        "app/module.py": "SMT325" if outer == "require" else "SMT309",
-        "app/nested/__init__.py": "SMT309" if inner == "forbid" else "SMT325",
-    }
+    assert {
+        v.path: (v.expected or {})["module_docstrings"]
+        for v in violations(tmp_path, OPTIONS)
+    } == {"app/module.py": outer, "app/nested/__init__.py": inner}
 
 
 def test_nested_allow_exempts_required_docstrings(tmp_path: Path) -> None:
@@ -213,7 +213,8 @@ def test_conflicting_docstring_conventions_are_configuration_errors(
 
 
 @pytest.mark.parametrize(
-    "setting", ["rules: {missing-module-docstring: off}\n", "rules: {SMT325: off}\n"]
+    "setting",
+    ["rules: {layout/module-docstring-convention: off}\n", "rules: {SMT309: off}\n"],
 )
 def test_required_docstring_respects_explicit_off(tmp_path: Path, setting: str) -> None:
     _project(tmp_path, "VALUE = 1", policy="module_docstrings: require")

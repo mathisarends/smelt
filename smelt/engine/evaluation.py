@@ -41,7 +41,7 @@ class EvaluationOptions:
     reports: Path
     python: Path = field(default_factory=lambda: Path(sys.executable))
     select: tuple[str, ...] = ("SMT42",)
-    timeout: float = 60
+    timeout_seconds: float = 60
     pytest_targets: tuple[str, ...] = ()
     test_python: Path | None = None
     pytest_args: tuple[str, ...] = ()
@@ -55,7 +55,7 @@ def evaluate(
     str, Any
 ]:  # smelt: ignore[SMT429] -- Public evaluation entry point called by excluded scripts/evaluate.py.
     """Never fix sources, alter policy, install packages, suppress findings or record debt."""
-    if not math.isfinite(options.timeout) or options.timeout <= 0:
+    if not math.isfinite(options.timeout_seconds) or options.timeout_seconds <= 0:
         raise ValueError("timeout must be finite and positive")
     config = options.config.resolve()
     policy_hash = hashlib.sha256(config.read_bytes()).hexdigest()
@@ -81,7 +81,7 @@ def evaluate(
         ]
         if options.select:
             command.extend(["--select", ",".join(options.select)])
-        result = _run_process(command, config.parent, options.timeout)
+        result = _run_process(command, config.parent, options.timeout_seconds)
         report = _report(result)
         checks[label] = result
         (output / f"{label}.stdout.txt").write_text(result["stdout"], encoding="utf-8")
@@ -130,7 +130,9 @@ def evaluate(
         ]
         tests = {
             "executed": True,
-            **_run_process(command, config.parent, options.timeout, env=environment),
+            **_run_process(
+                command, config.parent, options.timeout_seconds, env=environment
+            ),
         }
         (output / "pytest.stdout.txt").write_text(tests["stdout"], encoding="utf-8")
         (output / "pytest.stderr.txt").write_text(tests["stderr"], encoding="utf-8")
@@ -230,12 +232,20 @@ def _identity(finding: dict[str, Any]) -> str:
 
 
 def _run_process(
-    args: list[str], cwd: Path, timeout: float, *, env: dict[str, str] | None = None
+    args: list[str],
+    cwd: Path,
+    timeout_seconds: float,
+    *,
+    env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    if not math.isfinite(timeout) or timeout <= 0:
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ValueError("timeout must be finite and positive")
     start = perf_counter()
-    result: dict[str, Any] = {"args": args, "cwd": str(cwd), "timeout_seconds": timeout}
+    result: dict[str, Any] = {
+        "args": args,
+        "cwd": str(cwd),
+        "timeout_seconds": timeout_seconds,
+    }
     try:
         # Argument vectors come from this explicit evaluation command, without a shell.
         process = subprocess.run(  # noqa: S603
@@ -246,7 +256,7 @@ def _run_process(
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=timeout,
+            timeout=timeout_seconds,
             check=False,
         )
         result.update(

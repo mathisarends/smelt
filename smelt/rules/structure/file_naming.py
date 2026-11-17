@@ -12,71 +12,71 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-class YamlFileExtension(Rule):
+class FileNameConvention(Rule):
     code = "SMT331"
-    name = "yaml-file-extension"
-    category = Category.STRUCTURE
+    name = "layout/file-name-convention"
+    category = Category.LAYOUT
     scope = "project"
     activation = POLICIES["SMT331"]
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
-        summary="A YAML filename uses a different extension from the project's canonical spelling.",
-        rationale="Choose yaml or yml once in structure.file_naming.yaml_extension to keep configuration filenames consistent. The policy checks lowercase .yaml and .yml filenames below the directory containing smelt.yml, including the Smelt configuration itself, Compose files and hidden directories such as .github. Project exclusions and tool/cache directories are skipped. No YAML contents are parsed, and an omitted policy permits either spelling even with --select ALL.",
-        bad="# With yaml_extension: yaml\n# settings.yml",
-        good="# With yaml_extension: yaml\n# settings.yaml",
-        fix="Rename the file to the expected path and update references to its old name, including CI, scripts and extends entries. No file or reference is changed automatically. Use a reasoned project.exclude or ignore.paths entry for filenames required by another tool.",
-        config=("structure.file_naming.yaml_extension", "project.exclude", "ignore"),
+        summary="A YAML or Compose filename differs from the project's canonical spelling.",
+        rationale=(
+            "Choose spellings once in structure.file_naming to keep configuration "
+            "filenames consistent. yaml_extension (yaml or yml) checks lowercase "
+            ".yaml and .yml filenames below the directory containing smelt.yml, "
+            "including the Smelt configuration itself, Compose files and hidden "
+            "directories such as .github. compose_basename (compose or "
+            "docker-compose) recognizes compose.yaml, docker-compose.yml and dotted "
+            "variants such as docker-compose.override.yaml anywhere below the "
+            "project root; variant suffixes are preserved. A file violating both "
+            "options gets one finding with the fully corrected path. Custom "
+            "filenames such as stack.yaml are not classified by content. Project "
+            "exclusions and tool/cache directories are skipped. No YAML contents "
+            "are parsed, and an omitted option permits either spelling even with "
+            "--select ALL."
+        ),
+        bad="# With yaml_extension: yaml, compose_basename: compose\n# settings.yml\n# docker-compose.override.yaml",
+        good="# With yaml_extension: yaml, compose_basename: compose\n# settings.yaml\n# compose.override.yaml",
+        fix="Rename the file to the expected path and update references to its old name, including CI, scripts, docker compose -f arguments and extends entries. Check for existing destination files before renaming. No file or reference is changed automatically. Use a reasoned project.exclude or ignore.paths entry for filenames required by another tool.",
+        config=(
+            "structure.file_naming.yaml_extension",
+            "structure.file_naming.compose_basename",
+            "project.exclude",
+            "ignore",
+        ),
         example_language="yaml",
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        extension = ctx.config.structure.file_naming.yaml_extension
-        if extension is None:
+        policy = ctx.config.structure.file_naming
+        extension, basename = policy.yaml_extension, policy.compose_basename
+        if extension is None and basename is None:
             return
         for path in ctx.files.yaml_paths:
-            filename = PurePosixPath(path)
-            if filename.suffix == f".{extension}":
+            expected = PurePosixPath(path)
+            reasons: dict[str, str] = {}
+            if extension is not None and expected.suffix != f".{extension}":
+                expected = expected.with_suffix(f".{extension}")
+                reasons["yaml_extension"] = extension
+            current, separator, variant = expected.stem.partition(".")
+            if (
+                basename is not None
+                and current in {"compose", "docker-compose"}
+                and current != basename
+            ):
+                name = basename + (separator + variant if separator else "")
+                expected = expected.with_name(name + expected.suffix)
+                reasons["compose_basename"] = basename
+            if not reasons:
                 continue
-            expected = filename.with_suffix(f".{extension}").as_posix()
-            yield self.violation(
-                f"YAML filename must use .{extension}: {path}",
-                path=path,
-                expected={"yaml_extension": extension, "path": expected},
-                hint=f'Rename to "{expected}" and update filename references; resolve any existing destination manually.',
+            spelled = " and ".join(
+                f".{value}" if key == "yaml_extension" else value
+                for key, value in reasons.items()
             )
-
-
-class ComposeFileName(Rule):
-    code = "SMT332"
-    name = "compose-file-name"
-    category = Category.STRUCTURE
-    scope = "project"
-    activation = POLICIES["SMT332"]
-    requires = frozenset({Index.FILES})
-    doc = RuleDoc(
-        summary="A Compose filename uses a different basename from the project's canonical spelling.",
-        rationale="Choose compose or docker-compose once in structure.file_naming.compose_basename. The policy recognizes compose.yaml, docker-compose.yml and dotted variants such as docker-compose.override.yaml or compose.prod.yml anywhere below the project root. Variant suffixes are preserved. Custom filenames such as stack.yaml and docker-compose-backup.yml are not classified by content. Extension consistency belongs solely to SMT331; either extension is valid when yaml_extension is omitted. No policy means no finding, including with --select ALL.",
-        bad="# With compose_basename: compose\n# docker-compose.override.yaml",
-        good="# With compose_basename: compose\n# compose.override.yaml",
-        fix="Rename to the expected path and update references such as docker compose -f arguments, scripts and CI. Check for existing destination files before renaming. Files and references are never changed automatically. Use a reasoned ignore.paths entry for an intentional exception.",
-        config=("structure.file_naming.compose_basename", "project.exclude", "ignore"),
-        example_language="yaml",
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        basename = ctx.config.structure.file_naming.compose_basename
-        if basename is None:
-            return
-        for path in ctx.files.yaml_paths:
-            filename = PurePosixPath(path)
-            current, separator, variant = filename.stem.partition(".")
-            if current not in {"compose", "docker-compose"} or current == basename:
-                continue
-            name = basename + (separator + variant if separator else "")
-            expected = filename.with_name(name + filename.suffix).as_posix()
             yield self.violation(
-                f"Compose filename must use {basename}: {path}",
+                f"filename must use {spelled}: {path}",
                 path=path,
-                expected={"compose_basename": basename, "path": expected},
-                hint=f'Rename to "{expected}" and update filename references; resolve any existing destination manually.',
+                expected={**reasons, "path": expected.as_posix()},
+                hint=f'Rename to "{expected.as_posix()}" and update filename references; resolve any existing destination manually.',
             )

@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 class ImportStyle(Rule):
     activation = POLICIES["SMT308"]
     code = "SMT308"
-    name = "import-style"
-    category = Category.STRUCTURE
+    name = "imports/forbidden-import-style"
+    category = Category.IMPORTS
     default_severity = Severity.ERROR
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

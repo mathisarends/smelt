@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class ExcessPrivateDefinitions(Rule):
     file_local = True
     code = "SMT367"
-    name = "excess-private-definitions"
-    category = Category.STRUCTURE
+    name = "visibility/excess-private-definitions"
+    category = Category.VISIBILITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -58,7 +58,7 @@ class ExcessPrivateDefinitions(Rule):
             "extract arbitrary fragments merely to lower the count. Keep deliberate "
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
-            "{excess-private-definitions: hint} or select SMT367. "
+            "{visibility/excess-private-definitions: hint} or select SMT367. "
             "structure.max_private_definitions defaults to 12; closest package "
             "overrides, including zero, are supported. Setting a threshold alone "
             "does not enable the rule."

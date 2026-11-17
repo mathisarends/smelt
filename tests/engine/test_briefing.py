@@ -66,10 +66,10 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("internal-public-member", "warning"),
-        ("internal-static-helper", "hint"),
-        ("deep-object-navigation", "hint"),
-        ("no-base-class-prefix", "error"),
+        ("visibility/internal-public-member", "warning"),
+        ("layout/misplaced-static-helper", "hint"),
+        ("complexity/deep-object-navigation", "hint"),
+        ("modeling/forbidden-base-class-affix", "error"),
     ],
 )
 def test_member_policy_is_available_before_writing_a_module(
@@ -116,7 +116,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
             "app/__init__.py": "",
         },
     )
@@ -125,19 +125,21 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     briefing = build_briefing(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
-    assert briefing.to_json()["rules"]["bundled-instance-assignment"] == "error"
-    assert "Rule: bundled-instance-assignment: error" in render_briefing(briefing, ctx)
+    assert briefing.to_json()["rules"]["idioms/bundled-instance-assignment"] == "error"
+    assert "Rule: idioms/bundled-instance-assignment: error" in render_briefing(
+        briefing, ctx
+    )
 
 
 @pytest.mark.parametrize(
     "flag",
     [
-        "test-without-outcome-check",
-        "test-only-checks-possibly-empty-data",
-        "unbounded-test-wait",
-        "independent-test-case-loop",
-        "async-mock-without-await-check",
-        "test-only-public-function",
+        "tests/missing-outcome-check",
+        "tests/vacuous-assertion",
+        "tests/unbounded-wait",
+        "tests/independent-case-loop",
+        "tests/missing-await-assertion",
+        "visibility/test-only-public-function",
     ],
 )
 def test_test_quality_policy_is_available_for_planned_placement(
@@ -182,7 +184,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        public-definitions-first: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
             "app/__init__.py": "",
         },
     )
@@ -195,7 +197,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     policy = briefing.to_json()["ordering_policy"]
 
     assert briefing.target.planned
-    assert briefing.to_json()["rules"]["public-definitions-first"] == "error"
+    assert briefing.to_json()["rules"]["layout/definition-order"] == "error"
     assert policy["constants_exempt"]
     assert policy["class"] == [
         "class-attributes",
@@ -547,7 +549,7 @@ class TestFeatureBriefing:
         briefing = build_briefing(ctx, resolve_target(ctx, "voice"), outcome.report)
 
         rendered = render_briefing(briefing, ctx)
-        assert "Rule: layer-boundary: error" in rendered
+        assert "Rule: architecture/layer-boundary: error" in rendered
         architecture_text = (
             "\n".join(
                 line for line in rendered.splitlines() if not line.startswith("Rule:")

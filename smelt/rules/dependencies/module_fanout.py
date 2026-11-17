@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 class ModuleImportFanout(Rule):
     activation = POLICIES["SMT110"]
     code = "SMT110"
-    name = "module-import-fanout"
-    category = Category.DEPENDENCIES
+    name = "imports/excess-module-imports"
+    category = Category.IMPORTS
     default_severity = Severity.HINT
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

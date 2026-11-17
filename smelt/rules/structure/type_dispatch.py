@@ -17,8 +17,8 @@ class PreferMatchTypeDispatch(Rule):
     file_local = True
     activation = POLICIES["SMT315"]
     code = "SMT315"
-    name = "prefer-match-type-dispatch"
-    category = Category.STRUCTURE
+    name = "idioms/prefer-match-type-dispatch"
+    category = Category.IDIOMS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

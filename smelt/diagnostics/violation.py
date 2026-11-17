@@ -23,8 +23,17 @@ class Severity(StrEnum):
 
 
 class Category(StrEnum):
-    DEPENDENCIES = "dependencies"
-    STRUCTURE = "structure"
+    """The rule family; every rule name starts with its family and a slash."""
+
+    ARCHITECTURE = "architecture"
+    IMPORTS = "imports"
+    LAYOUT = "layout"
+    VISIBILITY = "visibility"
+    MODELING = "modeling"
+    TYPING = "typing"
+    COMPLEXITY = "complexity"
+    IDIOMS = "idioms"
+    FRAMEWORKS = "frameworks"
     TESTS = "tests"
     META = "meta"
 

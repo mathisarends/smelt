@@ -47,9 +47,9 @@ installed skill records the CLI version that installed it.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;
   behavior-changing SMT321 repairs also need `--unsafe-fixes` and review of falsy
   values. `--unsafe-fixes` alone writes nothing. `--staged` rejects `--fix`.
-- Review new style policies before adopting them. SMT341 `str-enum-auto-values`
-  and SMT342 `str-enum-explicit-values` express opposite conventions; select at
-  most one and preserve serialized values. SMT343/SMT344 review forwarding
+- Review new style policies before adopting them. SMT341 `modeling/str-enum-value-convention`
+  follows `structure.str_enum_values` (`explicit` or `auto`); choose the project's
+  convention once and preserve serialized values. SMT343/SMT344 review forwarding
   methods and name aliases. SMT346 prefers deferred annotations; verify runtime
   annotation consumers before removing quotes or adding a future import.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct

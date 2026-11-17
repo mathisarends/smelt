@@ -15,10 +15,13 @@ type Policy = Literal["allow", "deny"]
 type SeverityName = Literal["error", "warning", "hint", "off"]
 type _ModuleImportExemption = Literal["facades", "composition_root"]
 type _PrivateAttributeBoundary = Literal["module", "package"]
+type _CallArgumentKind = Literal["await", "comprehension", "aggregate"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
-_RULE_NAME = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+_RULE_NAME = re.compile(
+    r"^[a-z][a-z0-9]*(-[a-z0-9]+)*(/([a-z][a-z0-9]*(-[a-z0-9]+)*)?)?$"
+)
 _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
 _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
@@ -433,7 +436,7 @@ class OrderingConfig(_Model):
                 "module order must contain every module category exactly once"
             )
         if values.index("public") > values.index("private"):
-            raise ValueError("public-definitions-first requires public before private")
+            raise ValueError("layout/definition-order requires public before private")
         if (
             values[:3] != ["docstring", "future-imports", "imports"]
             or values[-1] != "main-guard"
@@ -451,7 +454,7 @@ class OrderingConfig(_Model):
                 "class order must contain every class category exactly once"
             )
         if values.index("public") > values.index("private"):
-            raise ValueError("public-definitions-first requires public before private")
+            raise ValueError("layout/definition-order requires public before private")
         return values
 
 
@@ -524,7 +527,7 @@ class PackageContract(_Model):
     max_module_imports: int | None = Field(
         default=None,
         ge=0,
-        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Activates module-import-fanout; closest package overrides the global threshold, including zero.",
+        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Activates imports/excess-module-imports; closest package overrides the global threshold, including zero.",
     )
     module_import_exempt: list[_ModuleImportExemption] | None = Field(
         default=None,
@@ -541,7 +544,7 @@ class PackageContract(_Model):
     )
     module_docstrings: Literal["allow", "forbid", "require"] | None = Field(
         default=None,
-        description="Module-docstring convention: require a non-empty initial docstring (SMT325), forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected. The closest explicit package policy wins.",
+        description="Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected. The closest explicit package policy wins.",
     )
     future_annotations: Literal["allow", "forbid", "when-needed"] | None = Field(
         default=None,
@@ -553,7 +556,7 @@ class PackageContract(_Model):
     )
     private_attribute_boundary: _PrivateAttributeBoundary | None = Field(
         default=None,
-        description="Override structure.private_attribute_boundary for SMT365. module allows same-module cooperation; package allows modules of the same immediate Python package. The closest explicit package policy wins; this option alone does not activate the rule.",
+        description="Override structure.private_attribute_boundary for private attribute access in SMT339. module allows same-module cooperation; package allows modules of the same immediate Python package. The closest explicit package policy wins; this option alone does not activate the rule.",
     )
     ordering: OrderingConfig | None = Field(
         default=None,
@@ -571,17 +574,17 @@ class PackageContract(_Model):
     max_comprehension_loops: int | None = Field(
         default=None,
         ge=1,
-        description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complex-comprehension.",
+        description="Override structure.max_comprehension_loops for SMT363. The closest explicit package policy wins; this option alone does not enable complexity/complex-comprehension.",
     )
     max_constructor_decisions: int | None = Field(
         default=None,
         ge=0,
-        description="Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable constructor-logic.",
+        description="Override structure.max_constructor_decisions for SMT364, including zero. The closest explicit package policy wins; this option alone does not enable complexity/constructor-logic.",
     )
     max_private_definitions: int | None = Field(
         default=None,
         ge=0,
-        description="Override structure.max_private_definitions for SMT367, including zero. Counts private module-level classes, functions and PEP 695 type aliases; constants are informational only. The closest explicit package policy wins; this option alone does not enable excess-private-definitions.",
+        description="Override structure.max_private_definitions for SMT367, including zero. Counts private module-level classes, functions and PEP 695 type aliases; constants are informational only. The closest explicit package policy wins; this option alone does not enable visibility/excess-private-definitions.",
     )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
@@ -597,7 +600,7 @@ class PackageContract(_Model):
     )
     rules: dict[str, SeverityName] = Field(
         default_factory=dict,
-        description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable public-definitions-first.",
+        description="Rule severities for production findings in this package. Use the same problem names, rule groups or SMT codes as top-level rules; individual entries override a group in the same map, and the closest package override wins. Options alone do not enable layout/definition-order.",
     )
 
     @field_validator("match")
@@ -698,8 +701,12 @@ class FileNamingConfig(_Model):
     )
     compose_basename: Literal["compose", "docker-compose"] | None = Field(
         default=None,
-        description="Canonical Compose basename (SMT332), including dotted variants such as compose.override.yaml. The extension is controlled only by yaml_extension. Omitted means either basename is allowed.",
+        description="Canonical Compose basename (SMT331), including dotted variants such as compose.override.yaml. The extension is controlled only by yaml_extension. Omitted means either basename is allowed.",
     )
+
+
+def _all_call_argument_kinds() -> list[_CallArgumentKind]:
+    return ["await", "comprehension", "aggregate"]
 
 
 class StructureConfig(_Model):
@@ -712,7 +719,7 @@ class StructureConfig(_Model):
     max_module_imports: int | None = Field(
         default=None,
         ge=0,
-        description="Maximum distinct direct project-module imports per source module (SMT110, hint). Omitted means no global limit. Setting a limit activates module-import-fanout; closest package limits override it.",
+        description="Maximum distinct direct project-module imports per source module (SMT110, hint). Omitted means no global limit. Setting a limit activates imports/excess-module-imports; closest package limits override it.",
     )
     module_import_exempt: list[_ModuleImportExemption] = Field(
         default_factory=_default_module_import_exemptions,
@@ -720,22 +727,31 @@ class StructureConfig(_Model):
     )
     private_attribute_boundary: _PrivateAttributeBoundary = Field(
         default="module",
-        description="Ownership boundary for cross-module-private-attribute (SMT365): module or immediate Python package. Package contracts can override it. This option alone does not activate the rule.",
+        description="Ownership boundary for visibility/foreign-private-access (SMT339) private attribute access: module or immediate Python package; private module symbols always use the module boundary. Package contracts can override it. This option alone does not activate the rule.",
     )
     max_comprehension_loops: int = Field(
         default=1,
         ge=1,
-        description="Maximum for clauses in a comprehension when complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
+        description="Maximum for clauses in a comprehension when complexity/complex-comprehension (SMT363) is selected. Package contracts can override this limit. This option alone does not enable the rule.",
     )
     max_constructor_decisions: int = Field(
         default=2,
         ge=0,
-        description="Maximum decision nodes in __init__/__post_init__ when constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
+        description="Maximum decision nodes in __init__/__post_init__ when complexity/constructor-logic (SMT364) is selected. Package contracts can override this limit; zero forbids all counted decisions. This option alone does not enable the rule.",
     )
     max_private_definitions: int = Field(
         default=12,
         ge=0,
-        description="Maximum private module-level classes, functions and PEP 695 type aliases when excess-private-definitions (SMT367) is selected. Constants are informational only. Package contracts can override this limit, including zero. This option alone does not enable the rule.",
+        description="Maximum private module-level classes, functions and PEP 695 type aliases when visibility/excess-private-definitions (SMT367) is selected. Constants are informational only. Package contracts can override this limit, including zero. This option alone does not enable the rule.",
+    )
+    call_argument_kinds: list[_CallArgumentKind] = Field(
+        default_factory=_all_call_argument_kinds,
+        min_length=1,
+        description="Argument kinds complexity/inline-call-argument (SMT340) reports when selected: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). This option alone does not enable the rule.",
+    )
+    str_enum_values: Literal["auto", "explicit"] = Field(
+        default="explicit",
+        description="StrEnum value convention for modeling/str-enum-value-convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. This option alone does not enable the rule.",
     )
     contracts: dict[str, PackageContract] = Field(
         default_factory=dict,
@@ -907,8 +923,9 @@ class SmeltConfig(_Model):
         for key in values:
             if not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
                 msg = (
-                    f'"{key}" is not a rule code like "SMT101" '
-                    'or a rule name like "layer-boundary"'
+                    f'"{key}" is not a rule code like "SMT101", '
+                    'a rule name like "architecture/layer-boundary", '
+                    'a family like "modeling" or a rule group'
                 )
                 raise ValueError(msg)
         return values

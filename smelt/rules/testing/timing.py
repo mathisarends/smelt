@@ -15,7 +15,7 @@ class UnboundedTestWait(Rule):
     test_local = True
     scope = "test"
     code = "SMT426"
-    name = "unbounded-test-wait"
+    name = "tests/unbounded-wait"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})

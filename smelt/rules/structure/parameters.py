@@ -21,8 +21,8 @@ class ExcessPositionalParameters(Rule):
     file_local = True
     activation = POLICIES["SMT345"]
     code = "SMT345"
-    name = "excess-positional-parameters"
-    category = Category.STRUCTURE
+    name = "complexity/excess-positional-parameters"
+    category = Category.COMPLEXITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

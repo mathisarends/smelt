@@ -117,7 +117,7 @@ def test_is_opt_in_and_supports_intentional_reference_holder(tmp_path: Path) -> 
     assert violations(root, SELECT) == []
 
     (root / "smelt.yml").write_text(
-        CONFIG + "rules: {mutable-field-in-frozen-dataclass: warning}\n",
+        CONFIG + "rules: {modeling/mutable-field-in-frozen-dataclass: warning}\n",
         encoding="utf-8",
     )
     assert violations(root) == []

@@ -19,7 +19,7 @@ class PrivateTestAccess(Rule):
     test_local = True
     scope = "test"
     code = "SMT420"
-    name = "private-test-access"
+    name = "tests/private-access"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(

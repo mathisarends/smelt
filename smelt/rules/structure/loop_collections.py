@@ -42,8 +42,8 @@ _VARIADIC_TUPLE_PARTS = 2
 class LoopInvariantCollection(Rule):
     file_local = True
     code = "SMT362"
-    name = "loop-invariant-collection"
-    category = Category.STRUCTURE
+    name = "idioms/loop-invariant-collection"
+    category = Category.IDIOMS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -96,7 +96,7 @@ class LoopInvariantCollection(Rule):
             "moving construction before a loop or guard can evaluate code that "
             "previously never ran. Keep lazy initialization at the first required "
             "check when necessary. No automatic hoisting is provided. Enable "
-            "rules: {loop-invariant-collection: hint}, or select SMT362."
+            "rules: {idioms/loop-invariant-collection: hint}, or select SMT362."
         ),
         config=("rules", "structure.contracts"),
     )

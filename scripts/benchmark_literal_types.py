@@ -59,7 +59,7 @@ def benchmark(parent: Path, files: int, repeats: int, *, dense: bool) -> dict[st
         (package / "__init__.py").write_text("", encoding="utf-8")
         (root / "smelt.yml").write_text(
             "version: 1\nproject: {root_packages: [app]}\n"
-            "rules: {duplicate-literal-type: hint}\n",
+            "rules: {typing/duplicate-literal-type: hint}\n",
             encoding="utf-8",
         )
         for index in range(files):

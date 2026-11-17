@@ -41,9 +41,9 @@ class TestJson:
         assert first == {
             "id": report.violations[0].finding_id,
             "code": "SMT101",
-            "rule": "layer-boundary",
+            "rule": "architecture/layer-boundary",
             "severity": "error",
-            "category": "dependencies",
+            "category": "architecture",
             "message": "domain must not import infrastructure",
             "path": "gw/features/voice/domain/calls.py",
             "line": 1,
@@ -114,7 +114,7 @@ class TestSarif:
         assert driver["name"] == "smelt"
         assert driver["version"] == "0.1.0"
         assert [rule["id"] for rule in driver["rules"]] == ["SMT101", "SMT303"]
-        assert driver["rules"][1]["properties"] == {"category": "structure"}
+        assert driver["rules"][1]["properties"] == {"category": "layout"}
 
     def test_result_carries_location_and_hint(self, report: Report) -> None:
         results = _loads(render_sarif(report, "0.1.0"))["runs"][0]["results"]
@@ -163,7 +163,7 @@ class TestGithub:
 
         assert lines[0] == (
             "::error file=gw/features/voice/domain/calls.py,line=1,col=1,"
-            "endLine=1,endColumn=40,title=SMT101 layer-boundary::"
+            "endLine=1,endColumn=40,title=SMT101 architecture/layer-boundary::"
             "domain must not import infrastructure%0AHint: Depend on a port instead."
         )
         assert lines[2].startswith("::notice file=gw/features/voice/infra/,")

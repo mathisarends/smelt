@@ -103,7 +103,7 @@ def create_project(args: argparse.Namespace, root: Path) -> Path:
             architecture_config += "  imports: {transitive: true}\n"
     (root / "smelt.yml").write_text(
         "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n"
-        "    api: {match: app, rules: {internal-public-member: warning}}\n"
+        "    api: {match: app, rules: {visibility/internal-public-member: warning}}\n"
         + architecture_config,
         encoding="utf-8",
     )

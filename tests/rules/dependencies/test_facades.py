@@ -431,7 +431,7 @@ def test_threshold_and_rule_off_and_missing_policy_are_respected(
     for config in (
         CONFIG.replace("export_at: 3", "export_at: 4"),
         CONFIG.replace("export_at: 3", "required: [base]"),
-        CONFIG + "rules: {facade-export-gap: off}\n",
+        CONFIG + "rules: {architecture/missing-facade-export: off}\n",
     ):
         _project(tmp_path, config=config)
         assert violations(tmp_path, OPTIONS) == []

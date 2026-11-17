@@ -21,8 +21,8 @@ _MIN_PLURAL_LENGTH = 4
 class ForbiddenPackageName(Rule):
     activation = POLICIES["SMT302"]
     code = "SMT302"
-    name = "forbidden-package-name"
-    category = Category.STRUCTURE
+    name = "layout/forbidden-module-name"
+    category = Category.LAYOUT
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
@@ -70,11 +70,11 @@ class ForbiddenPackageName(Rule):
             )
 
 
-class NoPrivateModules(Rule):
+class ForbiddenPrivateModule(Rule):
     activation = POLICIES["SMT312"]
     code = "SMT312"
-    name = "no-private-modules"
-    category = Category.STRUCTURE
+    name = "layout/forbidden-private-module"
+    category = Category.LAYOUT
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
@@ -136,39 +136,50 @@ class NoPrivateModules(Rule):
             )
 
 
-class NoBaseClassPrefix(Rule):
+class ForbiddenBaseClassAffix(Rule):
     file_local = True
     code = "SMT323"
-    name = "no-base-class-prefix"
-    category = Category.STRUCTURE
+    name = "modeling/forbidden-base-class-affix"
+    category = Category.MODELING
     default_severity = Severity.ERROR
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
-        summary="A class definition uses the Base prefix forbidden by the selected naming convention.",
+        summary="A class definition carries a Base prefix or suffix instead of a responsibility.",
         rationale=(
-            "BaseService names a position in an inheritance hierarchy rather than "
-            "the abstraction's responsibility. A responsibility-based name such as "
-            "Service keeps that implementation choice out of the name. The prefix "
-            "does not itself create additional dependency coupling, and inheritance "
-            "can be intentional, so this is an opt-in naming convention rather than "
-            "a correctness check or an inheritance ban. It checks all class "
-            "definitions in matching production modules, including private, nested "
-            "and local classes, without inferring whether they have subclasses. "
-            "After leading underscores, Base must be the whole name or be followed "
-            "by an uppercase letter or underscore. Baseline, Baseball and Base64 "
-            "remain valid. Imports, aliases, function names and test files are "
-            "outside scope; inheriting from an imported BaseModel is allowed."
+            "BaseService and MessageBase name a position in an inheritance "
+            "hierarchy rather than the abstraction's responsibility. A "
+            "responsibility-based name such as Service keeps that implementation "
+            "choice out of the name. The affix does not itself create dependency "
+            "coupling, and inheritance can be intentional, so this is an opt-in "
+            "naming convention rather than a correctness check or an inheritance "
+            "ban. It checks all class definitions in production modules, "
+            "including private, nested and local classes, without inferring "
+            "whether they have subclasses. After leading underscores, a prefix "
+            "Base must be the whole name or be followed by an uppercase letter or "
+            "underscore; a suffix Base must follow a non-empty name. Baseline, "
+            "Baseball, Database and Base64 remain valid. Imports, aliases, "
+            "base-class expressions, function names and test files are outside "
+            "scope; inheriting from an imported BaseModel is allowed."
         ),
-        bad="class BaseRepository:\n    ...\n\nclass SqlRepository(BaseRepository):\n    ...",
-        good="class Repository:\n    ...\n\nclass SqlRepository(Repository):\n    ...",
+        bad=(
+            "class BaseRepository:\n    ...\n\n"
+            "class _MessageBase:\n    ...\n\n"
+            "class SqlRepository(BaseRepository):\n    ..."
+        ),
+        good=(
+            "class Repository:\n    ...\n\n"
+            "class Message:\n    ...\n\n"
+            "class SqlRepository(Repository):\n    ..."
+        ),
         fix=(
             "Choose a name describing the class's responsibility or contract, "
             "then update references and deliberate exports. Preserve inheritance "
             "where it serves the design. A more specific package rule can "
-            "disable the convention for compatibility. No symbols are "
-            "renamed automatically. Enable with rules: "
-            "{no-base-class-prefix: error}, globally or in a package contract, "
-            "or --select SMT323."
+            "disable the convention for compatibility, or a reasoned suppression "
+            "can preserve a published name. No symbols are renamed "
+            "automatically. Enable with rules: "
+            "{modeling/forbidden-base-class-affix: error}, globally or in a "
+            "package contract, or --select SMT323."
         ),
         config=("rules", "structure.contracts"),
     )
@@ -177,12 +188,13 @@ class NoBaseClassPrefix(Rule):
         for name, source in sorted(ctx.files.sources.items()):
             info = ctx.model.info(name)
             for node in ast.walk(ctx.asts.parse(source.path)):
-                if not isinstance(node, ast.ClassDef) or not _has_base_prefix(
-                    node.name
-                ):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                affix = _base_affix(node.name)
+                if affix is None:
                     continue
                 yield self.violation(
-                    f'class "{node.name}" uses the forbidden Base prefix',
+                    f'class "{node.name}" uses the forbidden Base {affix}',
                     path=source.path,
                     line=node.lineno,
                     column=node.col_offset + 1,
@@ -190,47 +202,8 @@ class NoBaseClassPrefix(Rule):
                     feature=info.feature if info else None,
                     layer=info.layer if info else None,
                     expected={
-                        "forbidden_prefix": "Base",
-                        "class": node.name,
-                        "automatic_rename": False,
-                    },
-                    hint="Name the class after its responsibility or contract instead of its inheritance role; update references and exports.",
-                )
-
-
-class NoBaseClassSuffix(Rule):
-    file_local = True
-    code = "SMT326"
-    name = "no-base-class-suffix"
-    category = Category.STRUCTURE
-    default_severity = Severity.ERROR
-    requires = frozenset({Index.SYNTAX})
-    doc = RuleDoc(
-        summary="A class definition ends in the Base suffix forbidden by the selected convention.",
-        rationale="MessageBase and _MessageBase describe an inheritance role instead of the abstraction's responsibility. This opt-in naming convention checks production class definitions, including private, nested and local classes. Imported names, aliases, base-class expressions and test files are not renamed or rejected. It complements SMT323 without changing that rule's prefix contract. A bare Base belongs to SMT323; Database, Base64 and responsibility-based class names remain valid.",
-        bad="class _MessageBase:\n    ...\n\nclass AssistantMessage(_MessageBase):\n    ...",
-        good="class Message:\n    ...\n\nclass AssistantMessage(Message):\n    ...",
-        fix="Name the class after its responsibility or contract and update references and deliberate exports. Keep intentional inheritance. Enable rules: {no-base-class-suffix: error}; package overrides or a reasoned suppression can preserve a published name. No automatic rename is performed.",
-        config=("rules", "structure.contracts"),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            for node in ast.walk(ctx.asts.parse(source.path)):
-                if (
-                    not isinstance(node, ast.ClassDef)
-                    or not node.name.endswith("Base")
-                    or not node.name[:-4].strip("_")
-                ):
-                    continue
-                yield self.violation(
-                    f'class "{node.name}" uses the forbidden Base suffix',
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "forbidden_suffix": "Base",
+                        "forbidden_affix": "Base",
+                        "position": affix,
                         "class": node.name,
                         "automatic_rename": False,
                     },
@@ -240,8 +213,8 @@ class NoBaseClassSuffix(Rule):
 
 class RedundantModuleName(Rule):
     code = "SMT336"
-    name = "redundant-module-name"
-    category = Category.STRUCTURE
+    name = "layout/redundant-module-name"
+    category = Category.LAYOUT
     default_severity = Severity.HINT
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
@@ -266,7 +239,7 @@ class RedundantModuleName(Rule):
             "Review the shorter filename and update imports and facade exports "
             "when renaming. An occupied module/package name is not suggested. "
             "No files are renamed automatically. Enable with rules: "
-            "{redundant-module-name: hint}, globally or in a package contract, "
+            "{layout/redundant-module-name: hint}, globally or in a package contract, "
             "or --select SMT336. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),
@@ -342,9 +315,11 @@ def _redundant_module_context(module: str) -> tuple[str, str, str] | None:
     return None
 
 
-def _has_base_prefix(name: str) -> bool:
+def _base_affix(name: str) -> str | None:
     name = name.lstrip("_")
-    suffix = name.removeprefix("Base")
-    return name.startswith("Base") and (
-        not suffix or suffix[0].isupper() or suffix[0] == "_"
-    )
+    rest = name.removeprefix("Base")
+    if name.startswith("Base") and (not rest or rest[0].isupper() or rest[0] == "_"):
+        return "prefix"
+    if name.endswith("Base") and name[:-4].strip("_"):
+        return "suffix"
+    return None

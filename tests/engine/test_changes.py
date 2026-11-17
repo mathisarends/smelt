@@ -244,7 +244,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing ownership")
-    options = CheckOptions(changed=True, select=("SMT365",))
+    options = CheckOptions(changed=True, select=("SMT339",))
     assert violations(root, options) == []
     (root / "app/__init__.py").write_text(
         "from .second import Store as PublicStore\n", encoding="utf-8"
@@ -253,7 +253,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     assert finding.target_module == "app.second.Store._data"
     assert finding.path == "app/client.py"
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT365",), use_cache=False)
+        root, CheckOptions(changed=True, select=("SMT339",), use_cache=False)
     ) == [finding]
 
 
@@ -275,7 +275,6 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     found = violations(tmp_path, options)
     assert [(v.code, v.path) for v in found] == [
         ("SMT331", "deploy/docker-compose.prod.yaml"),
-        ("SMT332", "deploy/docker-compose.prod.yaml"),
     ]
     (tmp_path / "deploy/docker-compose.prod.yaml").rename(
         tmp_path / "deploy/compose.prod.yml"
@@ -450,7 +449,7 @@ class TestChangedMode:
         source = "class Controller:\n    def run(self):\n        self.browser.input.motor()\n"
         config = repo / "smelt.yml"
         config.write_text(
-            config.read_text() + "\nrules: {deep-object-navigation: hint}\n",
+            config.read_text() + "\nrules: {complexity/deep-object-navigation: hint}\n",
             encoding="utf-8",
         )
         write_project(repo, {"app/application/service.py": source})
@@ -474,8 +473,12 @@ class TestChangedMode:
     @pytest.mark.parametrize(
         ("code", "policy", "decorator"),
         [
-            ("SMT316", "rules: {internal-public-member: warning}", ""),
-            ("SMT317", "rules: {internal-static-helper: hint}", "    @staticmethod\n"),
+            ("SMT316", "rules: {visibility/internal-public-member: warning}", ""),
+            (
+                "SMT317",
+                "rules: {layout/misplaced-static-helper: hint}",
+                "    @staticmethod\n",
+            ),
         ],
     )
     def test_member_findings_keep_the_owning_class_in_their_identity(
@@ -506,7 +509,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    members:\n      match: app\n      rules:\n        internal-public-member: warning\n",
+            + "\nstructure:\n  contracts:\n    members:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n",
             encoding="utf-8",
         )
         write_project(
@@ -531,13 +534,13 @@ class TestChangedMode:
         [
             (
                 ("SMT429", 1),
-                "test-only-public-function",
+                "visibility/test-only-public-function",
                 "def helper(): pass\ndef run(): helper()",
                 "from app.application.service import helper",
             ),
             (
                 ("SMT430", 2),
-                "test-only-public-attribute",
+                "visibility/test-only-public-attribute",
                 "class Worker:\n    def __init__(self): self.pending = []",
                 "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
             ),
@@ -578,13 +581,13 @@ class TestChangedMode:
         [
             (
                 "SMT429",
-                "test-only-public-function",
+                "visibility/test-only-public-function",
                 "def helper(): pass",
                 "from app.application.service import helper",
             ),
             (
                 "SMT430",
-                "test-only-public-attribute",
+                "visibility/test-only-public-attribute",
                 "class Worker:\n    def __init__(self): self.pending = []",
                 "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
             ),
@@ -620,7 +623,8 @@ class TestChangedMode:
     ) -> None:
         config = repo / "smelt.yml"
         config.write_text(
-            config.read_text() + "\nrules: {test-only-public-attribute: warning}\n",
+            config.read_text()
+            + "\nrules: {visibility/test-only-public-attribute: warning}\n",
             encoding="utf-8",
         )
         test = "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []"
@@ -652,7 +656,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -680,7 +684,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -710,7 +714,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
+            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(

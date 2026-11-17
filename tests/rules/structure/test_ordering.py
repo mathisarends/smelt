@@ -10,7 +10,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n"
+CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
 OPTIONS = CheckOptions(select=("SMT313",))
 
 
@@ -106,7 +106,7 @@ def test_check_exposes_execution_barriers_and_expected_order(tmp_path: Path) -> 
 def test_inner_disabled_policy_overrides_parent_ordering(tmp_path: Path) -> None:
     config = (
         CONFIG
-        + "    legacy:\n      match: app.legacy\n      ordering: {}\n      rules:\n        public-definitions-first: 'off'\n"
+        + "    legacy:\n      match: app.legacy\n      ordering: {}\n      rules:\n        layout/definition-order: 'off'\n"
     )
     write_project(
         tmp_path,

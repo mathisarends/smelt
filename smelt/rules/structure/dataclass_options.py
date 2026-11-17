@@ -23,8 +23,8 @@ class MissingDataclassOption(Rule):
     file_local = True
     activation = POLICIES["SMT351"]
     code = "SMT351"
-    name = "missing-dataclass-option"
-    category = Category.STRUCTURE
+    name = "modeling/missing-dataclass-option"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

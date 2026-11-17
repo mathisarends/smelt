@@ -43,7 +43,7 @@ def main() -> int:
                 reports=args.reports,
                 python=args.python,
                 select=tuple(value for value in args.select.split(",") if value),
-                timeout=args.timeout,
+                timeout_seconds=args.timeout,
                 pytest_targets=tuple(args.pytest_target),
                 pytest_args=tuple(args.pytest_arg),
                 test_python=args.test_python,

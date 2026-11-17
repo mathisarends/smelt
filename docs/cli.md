@@ -5,8 +5,8 @@ by release, including changes to agent workflows and rule defaults.
 For the schema 1 to 2 transition, see the [upgrade checklist and parser example](upgrading.md#json-report-consumers).
 
 Most rules are opt-in. Smelt enables declared architecture/package/test policies
-without a second switch; only unknown-layer and suppression/debt diagnostics run
-by default. Import cycles and unclassified-module hints require explicit selection.
+without a second switch; only architecture/unknown-layer and suppression/debt diagnostics run
+by default. Import cycles and architecture/unclassified-module hints require explicit selection.
 See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 

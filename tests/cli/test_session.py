@@ -28,7 +28,7 @@ CONFIG = """version: 1
 project: {root_packages: [app]}
 structure:
   contracts:
-    api: {match: app, rules: {internal-public-member: warning}}
+    api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
 
 

@@ -25,7 +25,7 @@ class _EngineRule(Rule):
 
 class UnusedSuppression(_EngineRule):
     code = "SMT901"
-    name = "unused-suppression"
+    name = "meta/unused-suppression"
     default_severity = Severity.WARNING
     doc = RuleDoc(
         summary="An inline suppression is unused or names an unknown identifier.",
@@ -43,7 +43,7 @@ class UnusedSuppression(_EngineRule):
 
 class SuppressionWithoutReason(_EngineRule):
     code = "SMT902"
-    name = "suppression-without-reason"
+    name = "meta/missing-suppression-reason"
     default_severity = Severity.ERROR
     doc = RuleDoc(
         summary="An inline suppression without a `-- reason`.",
@@ -60,7 +60,7 @@ class SuppressionWithoutReason(_EngineRule):
 
 class ResolvedDebt(_EngineRule):
     code = "SMT903"
-    name = "resolved-debt"
+    name = "meta/resolved-debt"
     default_severity = Severity.WARNING
     doc = RuleDoc(
         summary="A debt entry that no longer matches any violation.",

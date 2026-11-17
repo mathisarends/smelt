@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class NestedConditionalExpression(Rule):
     file_local = True
     code = "SMT359"
-    name = "nested-conditional-expression"
-    category = Category.STRUCTURE
+    name = "complexity/nested-conditional-expression"
+    category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -43,7 +43,7 @@ class NestedConditionalExpression(Rule):
             "Use explicit if/elif or match statements. Preserve branch order, "
             "precedence and lazy evaluation; an eagerly evaluated dictionary can "
             "change behavior. No automatic rewrite is performed. Enable "
-            "rules: {nested-conditional-expression: hint}, or select SMT359. "
+            "rules: {complexity/nested-conditional-expression: hint}, or select SMT359. "
             "Package overrides and reasoned suppressions are supported."
         ),
         config=("rules", "structure.contracts"),

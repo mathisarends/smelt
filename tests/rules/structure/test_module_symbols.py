@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-module-symbol: warning}\n"
+CONFIG = "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-module-symbol: warning}\n"
 SOURCE = "MIN_LENGTH = 8\ntype Payload = str | bytes\ndef _valid(value: Payload): return len(value) >= MIN_LENGTH\n"
 
 
@@ -109,7 +109,7 @@ def test_package_override_and_reasoned_suppression_are_respected(
         tmp_path,
         "MIN_LENGTH = 8  # smelt: ignore[SMT320] -- Supported external constant.\n",
         config=CONFIG
-        + "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {internal-public-module-symbol: off}\n",
+        + "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-module-symbol: off}\n",
     )
     write_project(root, {"app/legacy/models.py": SOURCE})
     assert violations(root) == []

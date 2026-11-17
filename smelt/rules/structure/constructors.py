@@ -31,8 +31,8 @@ _DECISIONS = (
 class ConstructorLogic(Rule):
     file_local = True
     code = "SMT364"
-    name = "constructor-logic"
-    category = Category.STRUCTURE
+    name = "complexity/constructor-logic"
+    category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -68,7 +68,7 @@ class ConstructorLogic(Rule):
             "or classmethod and assign its result. Preserve evaluation order, exceptions "
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
-            "{constructor-logic: hint} or select SMT364. Set "
+            "{complexity/constructor-logic: hint} or select SMT364. Set "
             "structure.max_constructor_decisions globally or in a package contract; "
             "0 forbids any counted decision. Threshold options alone do not enable "
             "the rule. Reasoned suppressions and package off overrides are supported."

@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class InternalPublicAttribute(Rule):
     code = "SMT335"
-    name = "internal-public-attribute"
-    category = Category.STRUCTURE
+    name = "visibility/internal-public-attribute"
+    category = Category.VISIBILITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.MEMBERS})
     doc = RuleDoc(
@@ -27,7 +27,7 @@ class InternalPublicAttribute(Rule):
         ),
         bad="class Readiness:\n    def __init__(self, initial):\n        self.initial = initial\n    def select(self):\n        return self.initial",
         good="class Readiness:\n    def __init__(self, initial):\n        self._initial = initial\n    def select(self):\n        return self._initial",
-        fix="Review whether the attribute belongs to the supported API. For internal state, add a leading underscore and update internal reads and writes, checking name collisions and dynamic consumers. Preserve deliberate public contracts with `# smelt: ignore[SMT335] -- <specific API reason>` on the reported assignment or declaration, or a package rule override. Suggested names avoid observed collisions; no automatic rename is performed. Enable rules: {internal-public-attribute: warning} or select --select SMT335.",
+        fix="Review whether the attribute belongs to the supported API. For internal state, add a leading underscore and update internal reads and writes, checking name collisions and dynamic consumers. Preserve deliberate public contracts with `# smelt: ignore[SMT335] -- <specific API reason>` on the reported assignment or declaration, or a package rule override. Suggested names avoid observed collisions; no automatic rename is performed. Enable rules: {visibility/internal-public-attribute: warning} or select --select SMT335.",
         config=("rules", "structure.contracts", "project.test_roots"),
     )
 

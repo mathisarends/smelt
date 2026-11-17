@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class PreferStrEnumDiscriminator(Rule):
     file_local = True
     code = "SMT324"
-    name = "prefer-str-enum-discriminator"
-    category = Category.STRUCTURE
+    name = "modeling/prefer-str-enum-discriminator"
+    category = Category.MODELING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

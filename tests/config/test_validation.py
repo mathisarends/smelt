@@ -26,10 +26,16 @@ class TestPackageContracts:
             {
                 "match": "gateway",
                 "ordering": {},
-                "rules": {"public-definitions-first": "error"},
+                "rules": {"layout/definition-order": "error"},
             },
-            {"match": "gateway", "rules": {"bundled-instance-assignment": "error"}},
-            {"match": "gateway", "rules": {"bundled-instance-assignment": "off"}},
+            {
+                "match": "gateway",
+                "rules": {"idioms/bundled-instance-assignment": "error"},
+            },
+            {
+                "match": "gateway",
+                "rules": {"idioms/bundled-instance-assignment": "off"},
+            },
             {"match": "gateway", "type_dispatch": {}},
             {"match": "gateway", "type_dispatch": {"style": "allow"}},
             {"match": "gateway", "bases": {"pydantic.BaseModel": "gateway.Model"}},
@@ -40,7 +46,7 @@ class TestPackageContracts:
             {
                 "match": "gateway",
                 "ordering": {},
-                "rules": {"public-definitions-first": "off"},
+                "rules": {"layout/definition-order": "off"},
             },
         ],
     )
@@ -65,7 +71,10 @@ class TestPackageContracts:
             {"match": "gateway", "public": ["/api"]},
             {"match": "other", "public": []},
             {"match": "gateway", "imports": {"style": "sometimes"}},
-            {"match": "gateway", "rules": {"bundled-instance-assignment": "sometimes"}},
+            {
+                "match": "gateway",
+                "rules": {"idioms/bundled-instance-assignment": "sometimes"},
+            },
             {"match": "gateway", "type_dispatch": {"style": "sometimes"}},
             {"match": "gateway", "type_dispatch": {"min_branches": 1}},
             {"match": "gateway", "imports": {"max_relative_level": 0}},
@@ -84,17 +93,17 @@ class TestPackageContracts:
             {
                 "match": "gateway",
                 "ordering": {"module": ["public", "private"]},
-                "rules": {"public-definitions-first": "error"},
+                "rules": {"layout/definition-order": "error"},
             },
             {
                 "match": "gateway",
                 "ordering": {"class": ["init", "public", "private"]},
-                "rules": {"public-definitions-first": "error"},
+                "rules": {"layout/definition-order": "error"},
             },
             {
                 "match": "gateway",
                 "ordering": {"fix": "unsafe"},
-                "rules": {"public-definitions-first": "error"},
+                "rules": {"layout/definition-order": "error"},
             },
         ],
     )

@@ -22,8 +22,8 @@ _MAX_LOCATIONS = 5
 
 class DuplicateFunction(Rule):
     code = "SMT352"
-    name = "duplicate-function"
-    category = Category.STRUCTURE
+    name = "complexity/duplicate-function"
+    category = Category.COMPLEXITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -68,7 +68,7 @@ class DuplicateFunction(Rule):
             "architecture boundaries and import cycles when choosing the "
             "owner. Copies that must evolve independently keep a reasoned "
             "suppression. No automatic rewrite is performed. Enable rules: "
-            "{duplicate-function: warning}, or select SMT352."
+            "{complexity/duplicate-function: warning}, or select SMT352."
         ),
         config=("rules",),
     )

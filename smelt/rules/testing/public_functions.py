@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
 class TestOnlyPublicFunction(Rule):
     code = "SMT429"
-    name = "test-only-public-function"
-    category = Category.TESTS
+    name = "visibility/test-only-public-function"
+    category = Category.VISIBILITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.MEMBERS, Index.TESTS})
     doc = RuleDoc(

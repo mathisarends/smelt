@@ -51,8 +51,8 @@ class PreferDomainException(Rule):
     file_local = True
     activation = POLICIES["SMT354"]
     code = "SMT354"
-    name = "prefer-domain-exception"
-    category = Category.STRUCTURE
+    name = "modeling/prefer-domain-exception"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

@@ -25,18 +25,18 @@ CONFIG_FILENAME = "smelt.yml"
 CONFIG_FILENAMES = (CONFIG_FILENAME, "smelt.yaml")
 
 _REMOVED_SWITCHES = {
-    "member_visibility": "internal-public-member",
-    "static_methods": "internal-static-helper",
-    "instance_assignments": "bundled-instance-assignment",
-    "forbid_private_imports": "private-test-access",
-    "forbid_string_patch_targets": "string-patch-target",
-    "require_assertions": "test-without-outcome-check",
-    "require_non_vacuous_assertions": "test-only-checks-possibly-empty-data",
-    "review_test_deadlines": "unbounded-test-wait",
-    "review_case_loops": "independent-test-case-loop",
-    "review_async_mock_assertions": "async-mock-without-await-check",
-    "review_test_only_public_functions": "test-only-public-function",
-    "review_test_only_public_attributes": "test-only-public-attribute",
+    "member_visibility": "visibility/internal-public-member",
+    "static_methods": "layout/misplaced-static-helper",
+    "instance_assignments": "idioms/bundled-instance-assignment",
+    "forbid_private_imports": "tests/private-access",
+    "forbid_string_patch_targets": "tests/string-patch-target",
+    "require_assertions": "tests/missing-outcome-check",
+    "require_non_vacuous_assertions": "tests/vacuous-assertion",
+    "review_test_deadlines": "tests/unbounded-wait",
+    "review_case_loops": "tests/independent-case-loop",
+    "review_async_mock_assertions": "tests/missing-await-assertion",
+    "review_test_only_public_functions": "visibility/test-only-public-function",
+    "review_test_only_public_attributes": "visibility/test-only-public-attribute",
 }
 
 
@@ -268,7 +268,7 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
             + f"; this switch was removed: configure rules.{_REMOVED_SWITCHES[key]} with error, warning, hint or off instead"
         )
     if key == "enabled" and "ordering" in loc:
-        return message + "; enable or disable rules.public-definitions-first instead"
+        return message + "; enable or disable rules.layout/definition-order instead"
     if key == "preset":
         return (
             message

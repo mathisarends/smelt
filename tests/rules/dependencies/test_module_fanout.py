@@ -172,8 +172,8 @@ def test_off_override_suppression_and_tests_are_respected(tmp_path: Path) -> Non
 structure:
   max_module_imports: 2
   contracts:
-    quiet: {match: app.quiet, rules: {module-import-fanout: off}}
-rules: {module-import-fanout: warning}
+    quiet: {match: app.quiet, rules: {imports/excess-module-imports: off}}
+rules: {imports/excess-module-imports: warning}
 """,
     )
     write_project(

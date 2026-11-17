@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    helpers:\n      match: app\n      rules:\n        internal-public-member: warning\n        internal-static-helper: hint\n"
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    helpers:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n        layout/misplaced-static-helper: hint\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -263,7 +263,7 @@ def test_test_only_module_function_stays_with_smt429_without_duplicate_findings(
     root = _project(
         tmp_path,
         "def normalize(value): return value.strip()",
-        CONFIG + "rules:\n  test-only-public-function: warning\n",
+        CONFIG + "rules:\n  visibility/test-only-public-function: warning\n",
     )
     write_project(root, {"tests/test_browser.py": "from app.browser import normalize"})
     [finding] = violations(root)
@@ -412,7 +412,7 @@ def test_closest_allow_overrides_apply_to_both_member_policies(tmp_path: Path) -
         tmp_path,
         "",
         CONFIG
-        + "    compat:\n      match: app.compat\n      rules:\n        internal-public-member: 'off'\n        internal-static-helper: 'off'\n",
+        + "    compat:\n      match: app.compat\n      rules:\n        visibility/internal-public-member: 'off'\n        layout/misplaced-static-helper: 'off'\n",
     )
     write_project(
         root,

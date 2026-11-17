@@ -34,8 +34,8 @@ _SEPARATORS = " \t-:;,."
 class MissingBroadExceptReason(Rule):
     file_local = True
     code = "SMT350"
-    name = "missing-broad-except-reason"
-    category = Category.STRUCTURE
+    name = "idioms/missing-broad-except-reason"
+    category = Category.IDIOMS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -78,7 +78,7 @@ class MissingBroadExceptReason(Rule):
             "handler must stay broad, add a comment that states why, for example "
             "which boundary it protects or why any failure is acceptable. "
             "No automatic rewrite is performed. Enable rules: "
-            "{missing-broad-except-reason: hint}, or select SMT350. Package "
+            "{idioms/missing-broad-except-reason: hint}, or select SMT350. Package "
             "overrides and reasoned inline suppressions are supported."
         ),
         config=("rules",),

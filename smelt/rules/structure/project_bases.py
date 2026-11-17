@@ -18,8 +18,8 @@ class PreferProjectBaseClass(Rule):
     file_local = True
     activation = POLICIES["SMT353"]
     code = "SMT353"
-    name = "prefer-project-base-class"
-    category = Category.STRUCTURE
+    name = "modeling/prefer-project-base-class"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
