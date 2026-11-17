@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.config import parse_config
+from smelt.config import load_config, parse_config
 from smelt.config.loader import (
     LoadedConfig,
     _load_yaml,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
@@ -42,6 +42,32 @@ class TestInferConfig:
         assert "1 of 2 test files match this mirror pattern" in text
         assert "Detected a mirrored layout" not in text
         assert "layout: none" in text
+
+    def test_commented_rule_examples_are_valid_once_uncommented(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(tmp_path, {"app/__init__.py": "", "app/alpha.py": ""})
+        inferred = infer_config(tmp_path)
+        assert inferred is not None
+        text = render_config(inferred)
+        examples = [
+            "# extends: smelt:recommended",
+            "#   architecture/import-cycle: error",
+            "#   complexity: on",
+        ]
+        assert all(example in text for example in examples)
+
+        enabled = text.replace("# extends:", "extends:").replace(
+            "\n# rules:\n", "\nrules:\n"
+        )
+        for example in examples[1:]:
+            enabled = enabled.replace(example, example.replace("#", " ", 1))
+        write_project(tmp_path, {"smelt.yml": enabled})
+
+        loaded = load_config(tmp_path / "smelt.yml")
+
+        assert loaded.presets == ("smelt:recommended",)
+        assert loaded.config.rules["complexity"] == "on"
 
     def test_workspace_member_scaffolding_does_not_become_a_package(
         self, tmp_path: Path

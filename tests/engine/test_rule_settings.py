@@ -10,6 +10,7 @@ from smelt.diagnostics.violation import Severity
 from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.schema import config_json_schema
+from smelt.rules.registry import build_rule_set
 from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
@@ -437,7 +438,7 @@ def test_editor_schema_exposes_the_same_group_at_project_and_package_level() -> 
     assert (
         group == definitions["SourceRuleSettings"]["properties"]["information-hiding"]
     )
-    assert group["enum"] == ["error", "warning", "hint", "off"]
+    assert group["enum"] == ["error", "warning", "hint", "on", "off"]
     assert all(code in group["description"] for code in _GROUP_CODES)
 
 
@@ -464,3 +465,177 @@ def test_group_context_reports_effective_individual_settings(tmp_path: Path) -> 
     assert briefing["rules"]["visibility/internal-public-member"] == "warning"
     assert briefing["rules"]["visibility/internal-public-attribute"] == "off"
     assert briefing["rules"]["visibility/test-only-public-attribute"] == "warning"
+
+
+def _catalog() -> dict[str, Severity]:
+    return {rule.code: rule.default_severity for rule in build_rule_set().rules}
+
+
+def _severities(root: Path, options: CheckOptions | None = None) -> dict[str, Severity]:
+    outcome = check(root, options) if options else check(root)
+    return {rule.code: severity for rule, severity in outcome.active}
+
+
+def test_all_on_activates_every_rule_with_its_catalog_severity(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "ALL: on")
+
+    assert _severities(root) == _catalog()
+
+
+def test_individual_beats_family_beats_all_regardless_of_key_order(
+    tmp_path: Path,
+) -> None:
+    root = _group_project(
+        tmp_path, "complexity/inline-call-argument: error, tests: off, ALL: on"
+    )
+
+    active = _severities(root)
+
+    tests = {
+        rule.code for rule in build_rule_set().rules if rule.category.value == "tests"
+    }
+    assert not tests & active.keys()
+    inline = next(
+        rule.code
+        for rule in build_rule_set().rules
+        if rule.name == "complexity/inline-call-argument"
+    )
+    assert active[inline] == Severity.ERROR
+    assert active.keys() == _catalog().keys() - tests
+
+
+def test_family_severity_applies_to_every_member(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "visibility: hint")
+
+    members = {
+        rule.code
+        for rule in build_rule_set().rules
+        if rule.category.value == "visibility"
+    }
+    active = _severities(root)
+    assert members <= active.keys()
+    assert {active[code] for code in members} == {Severity.HINT}
+
+
+def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "architecture: warning, ALL: hint")
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], coverage: strict}\n"
+            "rules: {architecture: warning, ALL: hint}\n"
+        },
+    )
+
+    active = _severities(root)
+
+    assert active["SMT306"] == Severity.ERROR
+    assert active["SMT101"] == Severity.WARNING
+
+
+def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> None:
+    root = _project(
+        tmp_path,
+        "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n"
+        "      rules: {ALL: off, tests: on, visibility/internal-public-member: warning}\n",
+    )
+
+    found = check(root).report.violations
+
+    assert {v.path for v in found if v.code == "SMT316"} == {
+        "app/legacy/api.py",
+        "app/legacy/new/api.py",
+    }
+
+
+def test_a_child_layer_replaces_its_base_even_when_broader(tmp_path: Path) -> None:
+    root = _group_project(tmp_path, "")
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {visibility/internal-public-attribute: off}\n",
+            "smelt.yml": "extends: base.yml\nversion: 1\n"
+            "project: {root_packages: [app]}\nrules: {information-hiding: warning}\n",
+        },
+    )
+
+    assert {v.code for v in violations(root)} == _GROUP_CODES
+
+
+_WORKSPACE = {
+    "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
+    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n",
+    "services/api/src/api/__init__.py": "",
+    "services/api/src/api/views.py": "def helper(): return 1\n",
+    "services/api/src/api/legacy/__init__.py": "def helper(): return 1\n",
+    "services/api/tests/test_views.py": "def test_views():\n    print(1)\n",
+    "packages/core/src/core/__init__.py": "",
+    "packages/core/src/core/views.py": "def helper(): return 1\n",
+    "packages/core/tests/test_core.py": "def test_core():\n    print(1)\n",
+    "tests/test_e2e.py": "def test_e2e():\n    print(1)\n",
+}
+
+
+def _members(tmp_path: Path, files: dict[str, str]) -> Path:
+    return write_project(tmp_path, {**_WORKSPACE, **files})
+
+
+def test_member_rules_reach_its_sources_and_tests_only(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "services/api/smelt.yml": "rules:\n"
+            "  visibility/internal-public-member: warning\n"
+            "  tests/missing-outcome-check: hint\n"
+        },
+    )
+
+    found = {(v.rule, v.path, v.severity) for v in check(root).report.violations}
+
+    assert found == {
+        (
+            "visibility/internal-public-member",
+            "services/api/src/api/legacy/__init__.py",
+            Severity.WARNING,
+        ),
+        (
+            "visibility/internal-public-member",
+            "services/api/src/api/views.py",
+            Severity.WARNING,
+        ),
+        (
+            "tests/missing-outcome-check",
+            "services/api/tests/test_views.py",
+            Severity.HINT,
+        ),
+    }
+
+
+def test_a_package_contract_beats_the_member_setting(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "services/api/smelt.yml": "rules: {visibility/internal-public-member: warning}\n"
+            "structure:\n  contracts:\n    legacy:\n      match: api.legacy\n"
+            "      rules: {visibility/internal-public-member: off}\n"
+        },
+    )
+
+    found = {v.path for v in check(root).report.violations}
+
+    assert found == {"services/api/src/api/views.py"}
+
+
+def test_a_member_cannot_relax_strict_coverage(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "smelt.yml": _WORKSPACE["smelt.yml"].replace("}", ", coverage: strict}"),
+            "services/api/smelt.yml": "rules: {SMT306: warning}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match="strict coverage must remain") as caught:
+        check(root)
+
+    assert caught.value.issues[0].path == "rules.SMT306"

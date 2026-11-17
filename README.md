@@ -92,7 +92,15 @@ Individual rule settings can override the group.
 
 Rule names have the form `family/finding`, and a family name selects all of its
 rules: `rules: {typing: warning}` or `smelt check --select modeling`.
-`smelt rules` lists the catalog by family.
+`smelt rules` lists the catalog by family. `on` keeps each rule's catalog
+severity, and `extends: smelt:recommended` starts from every rule except the
+style conventions a project chooses itself; see
+[built-in base](docs/rule-selection.md#built-in-base-and-layered-files).
+
+In a uv workspace, `project: {workspace: uv}` in the root `smelt.yml` checks
+every member as one project. A member can add its own `smelt.yml` with rule and
+convention exceptions for its files; see
+[uv workspaces](docs/configuration.md#uv-workspaces).
 
 ## Catch it at commit time
 

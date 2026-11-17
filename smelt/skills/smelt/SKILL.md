@@ -32,7 +32,11 @@ installed skill records the CLI version that installed it.
 
 ## Policy and repair rules
 
-- Most checks are opt-in. Fixed patterns use `rules: {rule-name: severity}`.
+- Most checks are opt-in. Fixed patterns use `rules: {rule-name: severity}`;
+  `rules` also accepts families (`complexity`), groups and `ALL`, and `on` keeps
+  a rule's catalog severity. `extends: smelt:recommended` starts from every rule
+  except the style conventions. Each `extends` file is a rules layer: a project
+  setting replaces its base's setting for the same rule, even when broader.
   `rules: {information-hiding: warning}` selects SMT316/SMT320/SMT335/SMT429/SMT430,
   including public APIs used only by tests. Individual entries override a group
   in the same map; closer package entries still win. Inspect the exact membership
@@ -43,7 +47,8 @@ installed skill records the CLI version that installed it.
 - `--select` replaces normal selection; names, groups, SMT prefixes and `ALL` are accepted.
   Explicit `off`, closest-package overrides and CLI ignores retain their semantics.
   Strict coverage cannot be bypassed with selection or lower severities. Choose
-  policy for the project's intended boundaries; do not enable ALL as a default.
+  policy for the project's intended boundaries; do not switch the project to
+  `ALL` or the recommended base without the user's agreement.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;
   behavior-changing SMT321 repairs also need `--unsafe-fixes` and review of falsy
   values. `--unsafe-fixes` alone writes nothing. `--staged` rejects `--fix`.
@@ -62,6 +67,14 @@ installed skill records the CLI version that installed it.
   project and override them in the closest package contract. An option that
   belongs to one rule enables that rule where it applies; `smelt context` names
   the contract or `structure` that set each effective value.
+- In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
+  the shared policy, and put member exceptions in that member's own `smelt.yml`
+  (`rules`, `structure`, `ignore`, `project.exclude`; paths member-relative).
+  Do not duplicate the member list or give a member an independent full config.
+  `smelt check` in a member directory checks that member under the root policy.
+  Run the root check before finishing work that changes shared packages. A
+  member override is a scoped exception: give it the same justification as a
+  package contract.
 - Do not disable checks, broaden exclusions or record debt merely to pass a check.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without

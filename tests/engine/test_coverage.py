@@ -47,6 +47,8 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     legacy = config.model_dump(mode="json")
     legacy["structure"].pop("canonical_exports")
     legacy["architecture"]["imports"].pop("type_checking_cycles")
+    legacy.pop("members")
+    legacy["project"].pop("workspace")
     expected = (
         "sha256:"
         + hashlib.sha256(json.dumps(legacy, sort_keys=True).encode()).hexdigest()[:16]

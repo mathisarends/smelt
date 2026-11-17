@@ -95,7 +95,10 @@ def _render(
     if facades:
         lines.extend([*facades, ""])
     many_rules = len({violation.code for violation in shown}) > 1
-    if shown and (statistics or (len(shown) > _STATISTICS_THRESHOLD and many_rules)):
+    if statistics and report.violations:
+        # Counts plan the work, so they include hints that are not listed.
+        lines.extend([_statistics(report.violations, style), ""])
+    elif len(shown) > _STATISTICS_THRESHOLD and many_rules:
         lines.extend([_statistics(shown, style), ""])
     if report.scope:
         lines.append(
@@ -345,9 +348,8 @@ def _render_violation(
         if violation.line and not violation.column:
             location += ":1"
         hint = f" -> {' '.join(shown_hint.split())}" if shown_hint else ""
-        return (
-            f"{location} {violation.code} {' '.join(violation.message.split())}{hint}"
-        )
+        message = " ".join(violation.message.split())
+        return f"{location} {violation.code} {violation.rule} {message}{hint}"
     severity = style(f"[{violation.severity.value}]", _COLORS[violation.severity])
     header = f"{style(location, _BOLD)}  {style(violation.code, _BOLD)} {violation.rule}  {severity}"
     out = [header, f"  {violation.message}"]

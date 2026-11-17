@@ -28,6 +28,7 @@ python-source = "."
 python-packages = ["smelt"]
 include = [
     { path = "smelt/rules/catalog.json", format = ["sdist", "wheel"] },
+    { path = "smelt/config/presets/*.yml", format = ["sdist", "wheel"] },
     { path = "smelt/skills/smelt/**/*", format = ["sdist", "wheel"] },
 ]
 

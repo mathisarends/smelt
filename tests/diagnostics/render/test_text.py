@@ -16,7 +16,7 @@ class TestViolations:
         out = render_concise(report)
 
         assert (
-            "gw/features/voice/domain/calls.py:1:1 SMT101 domain must not import infrastructure -> Depend on a port instead."
+            "gw/features/voice/domain/calls.py:1:1 SMT101 architecture/layer-boundary domain must not import infrastructure -> Depend on a port instead."
             in out
         )
         assert "Chain:" not in out
@@ -148,7 +148,7 @@ class TestViolations:
         assert (
             f"Repairs shared by several findings (shown once):\n  SMT303 (3x): {hint}\n"
         ) in out
-        assert f"{first.path}:2:7 SMT303 {first.message}\n" in out
+        assert f"{first.path}:2:7 SMT303 {first.rule} {first.message}\n" in out
 
     def test_unique_repair_stays_with_its_finding(self, report: Report) -> None:
         out = render_text(report, read_line)
@@ -236,6 +236,13 @@ class TestStatistics:
             "\n"
             "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
         )
+
+    def test_requested_statistics_count_hints_without_show_hints(
+        self, report: Report
+    ) -> None:
+        out = render_text(report, read_line, statistics=True)
+
+        assert "1  SMT305 crowded-package              [hint]\n" in out
 
     def test_long_listing_ends_with_statistics(self, report: Report) -> None:
         many = replace(report, violations=report.violations * 6)

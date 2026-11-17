@@ -95,7 +95,7 @@ def test_inherited_policy_errors_keep_file_origins_in_json(
     assert issue["file"].endswith("base.yml")
 
 
-def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
+def test_a_workspace_rule_replaces_its_base_under_another_alias(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     write_project(
@@ -108,8 +108,8 @@ def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
     code, _, error = _run(
         capsys, "config", "show", "--config", str(tmp_path / "smelt.yml")
     )
-    assert code == 2
-    assert "SMT104 is already configured" in error
+    assert code == 0
+    assert error == ""
 
 
 def test_an_explicit_base_path_widens_the_check_to_its_workspace(
@@ -138,6 +138,43 @@ def test_an_explicit_base_path_widens_the_check_to_its_workspace(
     assert error == ""
     assert [v["code"] for v in report["violations"]] == ["SMT426"]
     assert report["scope"]["paths"] == []
+
+
+def test_a_member_check_runs_the_workspace_scoped_to_that_member(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+            "smelt.yml": "version: 1\nproject: {workspace: uv}\n"
+            "rules: {visibility/internal-public-member: warning}\n",
+            "services/api/smelt.yml": "rules: {visibility/internal-public-member: error}\n",
+            "services/api/src/api/__init__.py": "",
+            "services/api/src/api/views.py": "def helper(): return 1\n",
+            "services/web/src/web/__init__.py": "",
+            "services/web/src/web/views.py": "def helper(): return 1\n",
+        },
+    )
+    explicit = _run(
+        capsys,
+        "check",
+        "--config",
+        str(tmp_path / "services/api/smelt.yml"),
+        "--format",
+        "json",
+    )
+    monkeypatch.chdir(tmp_path / "services/api")
+
+    code, output, _ = _run(capsys, "check", "--format", "json")
+
+    report = json.loads(output)
+    assert code == 1
+    assert report["scope"]["paths"] == ["services/api"]
+    assert [(v["path"], v["severity"]) for v in report["violations"]] == [
+        ("services/api/src/api/views.py", "error")
+    ]
+    assert explicit == (code, output, "")
 
 
 def _run(capsys: pytest.CaptureFixture[str], *args: str) -> tuple[int, str, str]:

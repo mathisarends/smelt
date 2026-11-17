@@ -29,8 +29,42 @@ rules:
 
 A family entry enables every rule in it, including heuristic hints, so prefer it
 for exploration or for families whose findings the project has already reviewed.
-Precedence within one map is family, then group, then individual rule,
-regardless of YAML key order.
+`ALL` selects the whole catalog. The value `on` keeps each rule's catalog
+severity instead of forcing one severity onto certain errors and heuristic hints:
+
+```yaml
+rules:
+  ALL: on
+  tests: off
+  complexity/inline-call-argument: error
+```
+
+Precedence within one map is `ALL`, then family, then group, then individual
+rule, regardless of YAML key order. In a package contract, `ALL` and families
+select only source rules; test-file and project-level rules stay at project
+level. Under strict coverage, broad selections leave SMT306 at `error`.
+
+## Built-in base and layered files
+
+`extends: smelt:recommended` starts from `ALL: on` with the style conventions
+turned off where either spelling is valid, so the project chooses them
+deliberately. The preset ships with the installed Smelt version; upgrading can
+enable newly cataloged rules.
+
+```yaml
+extends: smelt:recommended
+version: 1
+project: {root_packages: [app]}
+rules:
+  layout/definition-order: error  # adopt one convention
+  complexity: warning             # tighten a family
+```
+
+Every file in an `extends` chain is its own rules layer. A file's setting for a
+rule replaces the setting of the files it extends, even when it is broader: a
+project `layout: on` re-enables a convention the preset turned off. Within one
+file, the most specific entry wins. `smelt config show --sources` names the file
+or preset behind each entry.
 
 ## Information hiding
 
@@ -68,6 +102,31 @@ the five checks it previously omitted.
 Private instance state is valid. Moving private class constants to module scope
 (SMT334) and extracting static helpers (SMT317) concern placement and stay
 independent. They are not members of this group.
+
+## Workspace members
+
+In a [uv workspace](configuration.md#uv-workspaces), a member's `smelt.yml` is
+one more rules layer. It applies by path to the member's sources and tests:
+
+1. the root rules layers, presets and bases first;
+2. the member's `rules`, from the innermost member that contains the file;
+3. the closest package contract, including the contract the member's
+   `structure` options compile into.
+
+```yaml
+# smelt.yml at the workspace root
+rules: {complexity: warning}
+```
+
+```yaml
+# packages/legacy/smelt.yml
+rules: {complexity: off, complexity/duplicate-function: hint}
+```
+
+Here `packages/legacy` reports only `complexity/duplicate-function`, as a hint.
+Every other member keeps `complexity: warning`. Within a member file, the most
+specific selector wins, as in any other layer. A rule that only a member enables
+stays off in the other members.
 
 ## Activation and precedence
 

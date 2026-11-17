@@ -1,6 +1,7 @@
 import builtins
 import posixpath
 import re
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Annotated, Literal, Self
 
@@ -8,17 +9,19 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     field_validator,
     model_validator,
 )
 
 type Policy = Literal["allow", "deny"]
-type SeverityName = Literal["error", "warning", "hint", "off"]
+type RuleSetting = Literal["error", "warning", "hint", "on", "off"]
 type ModuleImportExemption = Literal["facades", "composition_root"]
 type PrivateAttributeBoundary = Literal["module", "package"]
 type CallArgumentKind = Literal["await", "comprehension", "aggregate"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
+ALL_RULES = "ALL"
 _RULE_CODE = re.compile(r"^[A-Z]+[0-9]+$")
 _RULE_NAME = re.compile(
     r"^[a-z][a-z0-9]*(-[a-z0-9]+)*(/([a-z][a-z0-9]*(-[a-z0-9]+)*)?)?$"
@@ -80,6 +83,10 @@ class ProjectConfig(_Model):
     coverage: Literal["configured", "strict"] = Field(
         default="configured",
         description="strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
+    )
+    workspace: Literal["uv"] | None = Field(
+        default=None,
+        description="uv: read members from tool.uv.workspace in pyproject.toml. source_roots and test_roots then apply inside every member, root packages are discovered per member, and a member's own smelt.yml refines this policy for its files.",
     )
     python_version: str | None = Field(
         default=None,
@@ -674,9 +681,9 @@ class PackageContract(PackagePolicy):
         default=False,
         description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
     )
-    rules: dict[str, SeverityName] = Field(
+    rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Rule severities for production findings in this package. Use the same problem names, families, rule groups or SMT codes as top-level rules; individual entries override a group or family in the same map, and the closest package override wins. Prefer top-level rules for project-wide severities.",
+        description="Rule severities for production findings in this package. Use the same problem names, families, rule groups, SMT codes, ALL and values as top-level rules; ALL, families and groups select only the source rules among their members, individual entries override them in the same map, and the closest package override wins. Prefer top-level rules for project-wide severities.",
     )
 
     @field_validator("match")
@@ -893,15 +900,54 @@ class SuppressionsConfig(_Model):
     require_reason: bool = True
 
 
+class MemberProjectConfig(_Model):
+    """Exclusions of one workspace member; its roots come from the workspace root."""
+
+    exclude: list[str | SourceExclusion] = Field(
+        default_factory=list,
+        description="Member-relative path globs or {path, reason} entries; added to the root exclusions.",
+    )
+
+
+class MemberStructureConfig(PackagePolicy):
+    """Source conventions and contracts for one workspace member's packages."""
+
+    contracts: dict[str, PackageContract] = Field(
+        default_factory=dict,
+        description="Package contracts inside this member; each match must name one of its packages.",
+    )
+
+
+class MemberConfig(_Model):
+    """A workspace member's own smelt.yml, refining the root policy for its files."""
+
+    version: Literal[1] | None = None
+    project: MemberProjectConfig = Field(default_factory=MemberProjectConfig)
+    structure: MemberStructureConfig = Field(default_factory=MemberStructureConfig)
+    rules: dict[str, RuleSetting] = Field(
+        default_factory=dict,
+        description="Rule settings for this member's source and test files. They replace the root settings for the same rules; package contracts still win.",
+    )
+    ignore: list[IgnoreEntry] = Field(
+        default_factory=list,
+        description="Rules to skip; paths are relative to the member.",
+    )
+
+    @field_validator("rules")
+    @classmethod
+    def _rule_keys(cls, values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:
+        return _check_rule_keys(values)
+
+
 class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
     structure: StructureConfig = Field(default_factory=StructureConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)
-    rules: dict[str, SeverityName] = Field(
+    rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Explicit checks by problem name, rule group or stable SMT code. A severity enables the check; off disables it. Individual entries override a group in the same map, regardless of order. No additional boolean switch is required for fixed-pattern rules.",
+        description="Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order. No additional boolean switch is required for fixed-pattern rules.",
     )
     ignore: list[IgnoreEntry] = Field(
         default_factory=list, description="Rules to skip for modules or paths."
@@ -914,18 +960,41 @@ class SmeltConfig(_Model):
         default=None,
         description="Debt file with known violations, e.g. .smelt/debt.json.",
     )
+    members: dict[str, MemberConfig] = Field(
+        default_factory=dict,
+        description="Workspace member configs by member path, read from each member's own smelt.yml; never written in the root file.",
+    )
+    _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
+
+    @property
+    def rule_layers(self) -> tuple[Mapping[str, RuleSetting], ...]:
+        """The rules map of every composed file, base first.
+
+        A later file's selection replaces what an earlier file set for the same
+        rules, so a project family overrides an individual entry of its base.
+        """
+        return self._rule_layers or (self.rules,)
+
+    def with_rule_layers(self, layers: Iterable[dict[str, RuleSetting]]) -> Self:
+        layered = self.model_copy()
+        layered._rule_layers = tuple(layers)
+        return layered
 
     @field_validator("rules")
     @classmethod
     def _rule_codes_are_well_formed(
-        cls, values: dict[str, SeverityName]
-    ) -> dict[str, SeverityName]:
-        for key in values:
-            if not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
-                msg = (
-                    f'"{key}" is not a rule code like "SMT101", '
-                    'a rule name like "architecture/layer-boundary", '
-                    'a family like "modeling" or a rule group'
-                )
-                raise ValueError(msg)
-        return values
+        cls, values: dict[str, RuleSetting]
+    ) -> dict[str, RuleSetting]:
+        return _check_rule_keys(values)
+
+
+def _check_rule_keys(values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:
+    for key in values:
+        if key != ALL_RULES and not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
+            msg = (
+                f'"{key}" is not a rule code like "SMT101", '
+                'a rule name like "architecture/layer-boundary", '
+                'a family like "modeling", a rule group or ALL'
+            )
+            raise ValueError(msg)
+    return values

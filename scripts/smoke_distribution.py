@@ -96,6 +96,8 @@ def smoke(directory: Path) -> None:
             catalog = package.parent / "rules/catalog.json"
             if not json.loads(catalog.read_text(encoding="utf-8")):
                 raise AssertionError("missing packaged rule catalog")
+            if not (package.parent / "config/presets/recommended.yml").is_file():
+                raise AssertionError("missing packaged smelt:recommended preset")
             for arguments in (
                 ["--version"],
                 ["rules"],

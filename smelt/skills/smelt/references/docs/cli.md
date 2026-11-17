@@ -25,7 +25,8 @@ smelt check --changed                # only what the working tree introduced sin
 smelt check --staged --fail-on warning  # review the actual commit, including new warnings
 smelt check --staged --no-cache       # recompute to verify the cached result
 smelt check --changed --base origin/main --format json
-smelt check --changed --format concise  # one line per finding with repair advice
+smelt check --changed --format concise  # path:line:col CODE family/finding message -> repair
+smelt check --statistics              # findings per rule, hints included
 smelt check --strict-coverage         # fail on omitted or unclassified production code
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select SMT321 --fix --unsafe-fixes  # use None-only defaults after review

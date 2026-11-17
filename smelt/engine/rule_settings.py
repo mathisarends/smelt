@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
+from smelt.config.models import ALL_RULES
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.renames import retired_hint
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
     from smelt.config.loader import LoadedConfig
     from smelt.rules.base import RuleContract, RuleSet
 
+_STRICT_COVERAGE = "SMT306"
+
 
 class RuleSettings:
     def __init__(self, rules: RuleSet, loaded: LoadedConfig) -> None:
@@ -24,16 +27,51 @@ class RuleSettings:
         self.rules = rules
         self.codes = {rule.code: rule.code for rule in rules.rules}
         self.codes.update({rule.name: rule.code for rule in rules.rules})
+        self.defaults = {rule.code: rule.default_severity.value for rule in rules.rules}
         project_rules = {
             rule.code
             for rule in rules.rules
             if getattr(rule, "scope", "source") != "source"
         }
-        self.global_rules = self._normalize(loaded.config.rules, "rules")
+        # A later layer replaces what an earlier one set: the level wins over specificity.
+        self.global_rules: dict[str, str] = {}
+        for layer in loaded.config.rule_layers:
+            self.global_rules.update(
+                self._normalize(layer, "rules", excluded=self._strict_guard())
+            )
         self.packages = {
-            name: self._normalize(contract.rules, f"structure.contracts.{name}.rules")
+            name: self._normalize(
+                contract.rules,
+                f"structure.contracts.{name}.rules",
+                excluded=frozenset(project_rules),
+            )
             for name, contract in loaded.config.structure.contracts.items()
         }
+        # Workspace members refine the root by path, so their tests are covered too.
+        self.members = {
+            path: self._normalize(
+                member.rules, f"members.{path}.rules", excluded=self._strict_guard()
+            )
+            for path, member in loaded.config.members.items()
+        }
+        self._member_paths = sorted(self.members, key=len, reverse=True)
+        lowered = [
+            path
+            for path, settings in self.members.items()
+            if self._strict_guard()
+            and settings.get(_STRICT_COVERAGE, "error") != "error"
+        ]
+        if lowered:
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        f"members.{path}.rules.{_STRICT_COVERAGE}",
+                        "strict coverage must remain an error; use reasoned project.exclude entries instead",
+                    )
+                    for path in lowered
+                ],
+                self.source,
+            )
         for index, entry in enumerate(loaded.config.ignore):
             if not rules.matching_codes(entry.rule):
                 raise ConfigError(
@@ -74,8 +112,10 @@ class RuleSettings:
             raise ConfigError(issues, self.source)
 
     def has_package_activation(self, code: str) -> bool:
+        """Whether a package contract or workspace member enables the rule locally."""
         return any(
-            settings.get(code, "off") != "off" for settings in self.packages.values()
+            settings.get(code, "off") != "off"
+            for settings in (*self.packages.values(), *self.members.values())
         )
 
     def severity_for_path(
@@ -99,7 +139,7 @@ class RuleSettings:
                             parts.pop()
                         module = ".".join(parts)
                         break
-        return self.severity(rule, ctx, module, selected=selected)
+        return self.severity(rule, ctx, module, path=path, selected=selected)
 
     def severity(
         self,
@@ -107,8 +147,10 @@ class RuleSettings:
         ctx: AnalysisContext,
         module: str | None,
         *,
+        path: str | None = None,
         selected: bool = False,
     ) -> Severity | None:
+        """Root setting, then the member's, then the closest package contract."""
         value = self.global_rules.get(rule.code)
         if value is None:
             value = (
@@ -116,6 +158,8 @@ class RuleSettings:
                 if self._enabled_for(rule, ctx, module, selected=selected)
                 else "off"
             )
+        if (member := self._member_for(ctx, module, path)) is not None:
+            value = self.members[member].get(rule.code, value)
         if module:
             applicable = sorted(
                 (
@@ -141,6 +185,24 @@ class RuleSettings:
             or (activation is not None and activation.matches(self.config))
         )
 
+    def _member_for(
+        self, ctx: AnalysisContext, module: str | None, path: str | None
+    ) -> str | None:
+        """The innermost workspace member with a config that contains the file."""
+        if not self.members:
+            return None
+        location = path or (ctx.files.path_for_module(module) if module else None)
+        if location is None:
+            return None
+        return next(
+            (
+                member
+                for member in self._member_paths
+                if location == member or location.startswith(member + "/")
+            ),
+            None,
+        )
+
     def _enabled_for(
         self,
         rule: RuleContract,
@@ -164,38 +226,71 @@ class RuleSettings:
             and ctx.contracts.policy_for(module, activation.option) is not None
         )
 
-    def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
+    def _normalize(
+        self,
+        raw: Mapping[str, str],
+        location: str,
+        *,
+        excluded: frozenset[str] = frozenset(),
+    ) -> dict[str, str]:
+        """Resolve selectors to codes; ``on`` keeps each rule's catalog severity.
+
+        ALL is the broadest selection, then a family, then a group, then a single
+        rule, regardless of key order. Broad selections skip ``excluded`` codes,
+        which only an individual entry can name.
+        """
         result: dict[str, str] = {}
         issues: list[ConfigIssue] = []
-        # A family is the broadest selection, then a group, then a single rule.
-        for key, value in raw.items():
-            if (family := self.rules.family_codes(key)) is not None:
-                result.update(dict.fromkeys(family, value))
-        for key, value in raw.items():
-            if group := RULE_GROUPS.get(key):
-                result.update(dict.fromkeys(group.codes, value))
+        broad = sorted(
+            (selection[0], key, selection[1])
+            for key in raw
+            if (selection := self._broad_selection(key)) is not None
+        )
+        for _, key, codes in broad:
+            for code in codes:
+                if code not in excluded:
+                    result[code] = self._value(code, raw[key])
         individual: set[str] = set()
         for key, value in raw.items():
-            if key in RULE_GROUPS or self.rules.family_codes(key) is not None:
+            if self._broad_selection(key) is not None:
                 continue
-            code = self.codes.get(key)
-            if code is None:
+            named = self.codes.get(key)
+            if named is None:
                 issues.append(
                     ConfigIssue(
                         f"{location}.{key}",
                         f'unknown rule "{key}"{self._suggestion(key)}',
                     )
                 )
-            elif code in individual:
+            elif named in individual:
                 issues.append(
-                    ConfigIssue(f"{location}.{key}", f"{code} is already configured")
+                    ConfigIssue(f"{location}.{key}", f"{named} is already configured")
                 )
             else:
-                individual.add(code)
-                result[code] = value
+                individual.add(named)
+                result[named] = self._value(named, value)
         if issues:
             raise ConfigError(issues, self.source)
         return result
+
+    def _strict_guard(self) -> frozenset[str]:
+        """Strict coverage stays an error, so broad selections leave it alone."""
+        if self.config.project.coverage == "strict":
+            return frozenset({_STRICT_COVERAGE})
+        return frozenset()
+
+    def _broad_selection(self, key: str) -> tuple[int, tuple[str, ...]] | None:
+        """Breadth rank and codes of ALL, a family or a rule group, else None."""
+        if key == ALL_RULES:
+            return 0, tuple(self.defaults)
+        if (family := self.rules.family_codes(key)) is not None:
+            return 1, family
+        if group := RULE_GROUPS.get(key):
+            return 2, group.codes
+        return None
+
+    def _value(self, code: str, value: str) -> str:
+        return self.defaults[code] if value == "on" else value
 
     def _suggestion(self, key: str) -> str:
         families = [category.value for category in Category]

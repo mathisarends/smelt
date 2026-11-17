@@ -210,3 +210,40 @@ def test_absolute_parent_paths_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="local relative file path"):
         load_config(tmp_path / "smelt.yml")
+
+
+def test_built_in_preset_is_the_first_rule_layer(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "extends: smelt:recommended\nrules: {complexity: off}\n",
+            "smelt.yml": "extends: base.yml\nversion: 1\n"
+            "project: {root_packages: [app]}\nrules: {layout: on}\n",
+            "app/__init__.py": "",
+        },
+    )
+
+    loaded = load_config(tmp_path / "smelt.yml")
+
+    assert loaded.presets == ("smelt:recommended",)
+    assert loaded.inputs == (
+        (tmp_path / "base.yml").resolve(),
+        (tmp_path / "smelt.yml").resolve(),
+    )
+    assert loaded.origins["rules.ALL"] == "smelt:recommended"
+    layers = loaded.config.rule_layers
+    assert [layer.get("ALL") for layer in layers] == ["on", None, None]
+    assert layers[0]["layout/definition-order"] == "off"
+    assert [dict(layer) for layer in layers[1:]] == [
+        {"complexity": "off"},
+        {"layout": "on"},
+    ]
+
+
+def test_unknown_preset_lists_the_built_in_ones(tmp_path: Path) -> None:
+    write_project(tmp_path, {"smelt.yml": "extends: smelt:nope\nversion: 1\n"})
+
+    with pytest.raises(ConfigError, match="use smelt:recommended") as caught:
+        load_config(tmp_path / "smelt.yml")
+
+    assert caught.value.issues[0].path == "extends"

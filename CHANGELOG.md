@@ -222,6 +222,90 @@ not.
   `structure allows 3` or `default allows 5`, and its payload `contract` is
   `structure` for a project-wide limit and `null` for the built-in default.
 
+### Rule selection and presets
+
+**Breaking: rules files are layers, and output names the rule.** One root
+configuration can now enable the whole catalog and leave exceptions to the
+files that extend it.
+
+- **`ALL` and `on`.** `rules` accepts `ALL` next to families, groups and
+  individual rules, and every entry accepts `on` in addition to `error`,
+  `warning`, `hint` and `off`. `on` uses the rule's catalog severity, so
+  `{ALL: on}` enables every rule as `smelt rules` lists it and
+  `{complexity: on}` enables one family without choosing one severity for
+  heuristics and certain findings alike. Precedence within one map is `ALL`,
+  then family, then group, then individual rule, regardless of key order.
+- **`extends: smelt:recommended`.** A built-in base that ships with the
+  installed Smelt version. It sets `ALL: on` and turns off the style conventions
+  where either spelling is valid (definition order, callee placement, static
+  helpers, private constants, module names, bundled assignments, callable
+  instances, base-class affixes, StrEnum values, `__all__` placement and
+  deferred annotations). Upgrading Smelt can enable newly cataloged rules
+  through it. An unknown `smelt:` name is a configuration error that lists the
+  built-in presets. `smelt config show --sources` lists the preset first and
+  names it as the origin of its entries.
+- **Breaking: a later file replaces earlier rule settings.** Each file in an
+  `extends` chain is now a separate rules layer, and a file's setting for a rule
+  replaces the setting of every file it extends, whether the entry is broader or
+  narrower. Before, all `rules` maps were merged into one and the most specific
+  entry won. A base `{visibility/internal-public-attribute: off}` stayed off
+  under a project `{information-hiding: warning}`; the project's group setting
+  now enables it. Naming one rule by code in the base and by name in the
+  project is no longer a duplicate-alias error: the project wins. Within one
+  file, duplicates remain errors and the most specific entry still wins.
+- **Broad selections in package contracts.** `ALL` and families in a package
+  contract's `rules` select only source rules. Before, a family that contained
+  test-file or project-level rules (`tests`, `architecture`, `meta`) was
+  rejected in a contract. Naming one of those rules individually is still an
+  error.
+- **Broad selections under strict coverage.** `ALL`, families and groups in
+  project `rules` no longer touch SMT306 `architecture/uncovered-source` when
+  strict coverage is on. Before, `{architecture: warning}` under
+  `project.coverage: strict` was a configuration error because it lowered
+  SMT306. Lowering SMT306 by name is still rejected.
+- **Breaking: concise lines name the rule.** `--format concise` prints
+  `path:line:col CODE family/finding message -> repair`. Scripts that parse
+  the message after the code must skip the rule name.
+- **Breaking: `--statistics` counts hints.** Requested statistics now include
+  hint rows without `--show-hints`. The automatic statistics after a long text
+  listing still follow `--show-hints`.
+- **Schema.** The editor schema completes `ALL` and every family at project
+  level, `ALL` and the families with source rules in package contracts, and
+  offers `on` everywhere. `smelt init` comments show
+  `extends: smelt:recommended` and a family example.
+
+### uv workspaces
+
+One root configuration now checks a uv workspace as one project, and each
+member can refine it with its own `smelt.yml`. Existing configurations are
+unaffected until they set `project.workspace`. See
+[uv workspaces](docs/configuration.md#uv-workspaces).
+
+- **`project.workspace: uv`.** Members come from `tool.uv.workspace.members` and
+  `exclude` in `pyproject.toml`. Root `source_roots` and `test_roots` apply
+  inside every member. Without `source_roots`, each member uses `src/` when it
+  holds a package and otherwise the member directory. Root-level test roots are
+  always included, root source roots only when the root `pyproject.toml` has a
+  `[project]` table. `root_packages` defaults to every member's packages, and
+  two members with the same top-level package name are a configuration error.
+- **Member configs.** A member's `smelt.yml` or `smelt.yaml` inherits the root
+  implicitly and may set `rules`, `structure` (options and `contracts`),
+  `ignore` and `project.exclude`. Its paths are member-relative. `rules` apply
+  by path to the member's sources and tests, after the root layers and before
+  the closest package contract. `structure` options compile into one contract per
+  member package, named after the member. Member contracts are named
+  `member:name` and must match the member's own packages. A member cannot set
+  `extends`, `architecture`, `tests`, `suppressions`, `debt` or other `project`
+  keys, and cannot lower SMT306 under strict coverage. Errors name the member
+  file and its own key.
+- **Member checks.** `smelt check` in a member directory, or
+  `--config <member>/smelt.yml`, loads the workspace root and checks only that
+  member. `smelt config show --sources` lists member files, and `origins` map
+  `members.<path>.*` keys to them. The policy hash covers member configs.
+  Reports without a workspace keep their previous policy hash.
+- **Not yet:** per-member debt files, architecture and test options. Use the root
+  config and package contracts for these until later releases add them.
+
 ### Internal
 
 - `smelt.config.models.PackagePolicy` holds the shared options.
@@ -239,6 +323,17 @@ not.
   (`structure/call_arguments.py`).
 - `smelt/rules/renames.py` records retired names and codes for configuration
   errors.
+- `smelt.config.models.SeverityName` became `RuleSetting` and includes `on`.
+  `SmeltConfig.rule_layers` holds the rules map of every composed file, base
+  first; `SmeltConfig.rules` remains the merged view for display.
+- Built-in presets live in `smelt/config/presets/*.yml`, are packaged in the
+  wheel and sdist, and are listed in `LoadedConfig.presets`.
+- uv member discovery moved to `smelt.config.workspace.member_directories`.
+  `smelt.analysis.workspace.workspace_members` builds on it. Member configs are
+  `SmeltConfig.members` (`MemberConfig`), filled by the loader and never read
+  from the root YAML. The selected member is `LoadedConfig.member`.
+- `RuleSettings.severity` takes the finding's `path` so member rules also reach
+  files outside a source module.
 
 ## [0.12.0] - 2026-11-16
 
