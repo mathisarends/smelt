@@ -1,0 +1,13 @@
+version: 1
+project:
+  workspace: uv
+  source_roots: [src]
+  coverage: strict
+structure:
+  max_positional_parameters: 3
+rules:
+  tests/missing-outcome-check: warning
+architecture:
+  members:
+    services/*: {may_depend_on: [packages/*]}
+    packages/*: {may_depend_on: []}

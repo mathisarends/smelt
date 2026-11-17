@@ -83,8 +83,20 @@ installed skill records the CLI version that installed it.
   Do not duplicate the member list or give a member an independent full config.
   `smelt check` in a member directory checks that member under the root policy.
   Run the root check before finishing work that changes shared packages. A
-  member override is a scoped exception: give it the same justification as a
-  package contract.
+  member override that lowers root severity must use
+  `{severity: warning, reason: "specific justification"}` (or `off`/`hint`).
+  This also applies inside member package contracts. `on` uses the catalog
+  severity, and a winning individual entry needs its own reason. Strict coverage
+  cannot be lowered even with a reason. Review thresholds and architecture
+  replacements separately as policy decisions.
+  `smelt init` drafts root policy and one architecture per Python member;
+  `init --member <workspace-relative-path>` drafts only that member under an
+  existing root. Review every draft before using `--force`, which overwrites
+  all selected config targets. No target is written if another already exists.
+  A member may set its own member-relative `debt`; stored finding paths remain
+  workspace-relative. Root debt covers files without a member baseline. From
+  a member, `smelt debt` affects only that member; root invocations maintain
+  per-member files. `--prune` never creates a new member scope or accepts new debt.
 - Do not disable checks, broaden exclusions or record debt merely to pass a check.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without

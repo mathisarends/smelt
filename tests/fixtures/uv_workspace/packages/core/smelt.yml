@@ -1,0 +1,5 @@
+architecture:
+  layers:
+    domain: {path: domain}
+    infrastructure: {path: infra, may_depend_on: [domain]}
+debt: .smelt/debt.json

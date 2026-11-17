@@ -71,6 +71,72 @@ def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
         assert data["violations"] == []
 
 
+def test_staged_member_reason_cannot_be_supplied_by_an_unstaged_repair(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        repo,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {complexity/excess-positional-parameters: error}\n",
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: warning}\n",
+        },
+    )
+    _git(repo, "add", ".")
+    write_project(
+        repo,
+        {
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, reason: Migration review.}}\n"
+        },
+    )
+    monkeypatch.chdir(repo)
+
+    for flags in ((), ("--no-cache",)):
+        code = main(["check", "--staged", "--format", "json", *flags])
+        data = json.loads(capsys.readouterr().out)
+        assert code == 2
+        assert "reason" in json.dumps(data["error"])
+        assert "services/api/smelt.yml" in json.dumps(data["error"])
+
+    _git(repo, "add", "services/api/smelt.yml")
+    code, data = _check(repo, capsys)
+    assert code == 0
+    assert data["violations"] == []
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_staged_member_scope_uses_workspace_paths_and_metadata(
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    explicit: bool,
+) -> None:
+    files = {
+        **MEMBER_BOUNDARIES,
+        "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nstructure: {max_positional_parameters: 1}\n",
+        "services/api/src/api/http.py": "def helper(first, second):\n    return first\n",
+        "packages/core/src/core/model.py": "def helper(first, second):\n    return first\n",
+    }
+    if explicit:
+        files["services/api/smelt.yml"] = "{}\n"
+    write_project(repo, files)
+    _git(repo, "add", ".")
+    monkeypatch.chdir(repo / "services/api")
+    options = ["--config", "smelt.yml"] if explicit else []
+
+    status = main(
+        ["check", "--staged", "--fail-on", "warning", "--format", "json", *options]
+    )
+    report = json.loads(capsys.readouterr().out)
+
+    assert status == 1
+    assert report["scope"]["paths"] == ["services/api"]
+    assert [v["path"] for v in report["violations"]] == ["services/api/src/api/http.py"]
+    assert report["project"]["root"] == repo.as_posix()
+    assert report["project"]["config"] == (repo / "smelt.yml").as_posix()
+
+
 def test_staged_literal_groups_use_staged_sources_and_policy(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

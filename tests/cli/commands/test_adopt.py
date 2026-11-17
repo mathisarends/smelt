@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from typing import TYPE_CHECKING
 
 import pytest
@@ -8,10 +9,120 @@ import pytest
 from smelt.cli import main
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, write_project
+from tests.helpers import FIXTURES, check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _member_debt_project(tmp_path: Path) -> Path:
+    root = shutil.copytree(FIXTURES / "uv_workspace", tmp_path, dirs_exist_ok=True)
+    return write_project(
+        root,
+        {
+            "packages/core/src/core/infra/db.py": "DB = 1\n",
+            "packages/core/src/core/domain/task.py": "from core.infra.db import DB\ndef run():\n    return DB\n",
+            "services/api/src/api/features/orders/domain/bad.py": "from api.features.orders.application.service import serve\n",
+        },
+    )
+
+
+def test_member_debt_records_only_its_findings_and_prunes_without_accepting_new(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _member_debt_project(tmp_path)
+    api_debt = root / "services/api/.smelt/debt.json"
+    before_api = api_debt.read_bytes()
+    monkeypatch.chdir(root / "packages/core")
+
+    assert main(["debt"]) == 0
+    assert capsys.readouterr().err == ""
+    assert api_debt.read_bytes() == before_api
+    [entry] = Debt.load(root / "packages/core/.smelt/debt.json").entries
+    assert entry.path == "packages/core/src/core/domain/task.py"
+    assert check(root).report.in_debt == 1
+    assert all(v.member == "services/api" for v in check(root).report.violations)
+
+    write_project(
+        root,
+        {
+            "packages/core/src/core/domain/task.py": "def run():\n    return 1\n",
+            "packages/core/src/core/domain/new.py": "from core.infra.db import DB\n",
+        },
+    )
+    assert main(["debt", "--prune"]) == 0
+    assert "Removed 1 resolved entry" in capsys.readouterr().out
+    assert Debt.load(root / "packages/core/.smelt/debt.json").entries == []
+    assert any(
+        v.path == "packages/core/src/core/domain/new.py"
+        for v in check(root).report.violations
+    )
+
+
+def test_workspace_debt_and_show_use_separate_member_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _member_debt_project(tmp_path)
+    monkeypatch.chdir(root)
+
+    assert main(["debt"]) == 0
+    assert capsys.readouterr().err == ""
+    assert check(root).report.in_debt == 2
+    assert check(root).report.violations == []
+    assert main(["debt", "--show", "--format", "json"]) == 0
+    stored = json.loads(capsys.readouterr().out)
+    assert set(stored["files"]) == {
+        "packages/core/.smelt/debt.json",
+        "services/api/.smelt/debt.json",
+        ".smelt/debt.json",
+    }
+    for member in ("packages/core", "services/api"):
+        assert all(
+            (entry.path or "").startswith(member + "/")
+            for entry in Debt.load(root / member / ".smelt/debt.json").entries
+        )
+    monkeypatch.chdir(root / "packages/core")
+    before = (root / "packages/core/.smelt/debt.json").read_bytes()
+    assert main(["debt", "--show", "--format", "json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert len(data["violations"]) == 1
+    assert (root / "packages/core/.smelt/debt.json").read_bytes() == before
+
+
+def test_a_member_debt_file_cannot_accept_another_members_finding(
+    tmp_path: Path,
+) -> None:
+    root = _member_debt_project(tmp_path)
+    outcome = check(root)
+    from smelt.engine.check import snippet_reader  # noqa: PLC0415
+
+    Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
+        root / "packages/core/.smelt/debt.json"
+    )
+
+    found = check(root).report
+
+    assert found.in_debt == 1
+    assert [v.member for v in found.violations] == ["services/api"]
+
+
+def test_prune_without_member_debt_does_not_create_a_new_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _member_debt_project(tmp_path)
+    member_config = root / "packages/core/smelt.yml"
+    member_config.write_text(
+        member_config.read_text(encoding="utf-8").replace(
+            "debt: .smelt/debt.json\n", ""
+        ),
+        encoding="utf-8",
+    )
+    before = member_config.read_bytes()
+    monkeypatch.chdir(root / "packages/core")
+
+    assert main(["debt", "--prune"]) == 0
+    assert capsys.readouterr().err == ""
+    assert member_config.read_bytes() == before
 
 
 @pytest.mark.parametrize("version", [1, 2])

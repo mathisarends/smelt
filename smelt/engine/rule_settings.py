@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
-from smelt.config.models import ALL_RULES
+from smelt.config.models import ALL_RULES, RuleOverride
+from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.groups import RULE_GROUPS
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
     from smelt.config.loader import LoadedConfig
+    from smelt.config.models import RuleSetting
     from smelt.rules.base import RuleContract, RuleSet
 
 _STRICT_COVERAGE = "SMT306"
@@ -61,6 +64,12 @@ class RuleSettings:
             for path, member in loaded.config.members.items()
         }
         self._member_paths = sorted(self.members, key=len, reverse=True)
+        self._base_loaded = (
+            replace(loaded, config=base)
+            if (base := self.config.workspace_base) is not None
+            else None
+        )
+        self._validate_member_overrides()
         lowered = [
             path
             for path, settings in self.members.items()
@@ -116,6 +125,7 @@ class RuleSettings:
                     )
         if issues:
             raise ConfigError(issues, self.source)
+        self._validate_member_overrides(ctx)
 
     def has_package_activation(self, code: str) -> bool:
         """Whether a package contract or workspace member enables the rule locally."""
@@ -194,6 +204,87 @@ class RuleSettings:
             )
         )
 
+    def _validate_member_overrides(self, ctx: AnalysisContext | None = None) -> None:
+        if self._base_loaded is None:
+            return
+        root = RuleSettings(self.rules, self._base_loaded)
+        root_ctx = None
+        if ctx is not None:
+            from smelt.analysis.context import AnalysisContext  # noqa: PLC0415
+
+            root_ctx = AnalysisContext(ctx.root, root.config, store=ctx.store)
+            root_ctx.files = replace(ctx.files, config=root.config)
+        issues: dict[str, ConfigIssue] = {}
+        members = self.config.members
+        for member_path, member in members.items():
+            maps: list[tuple[str, Mapping[str, RuleSetting], str | None]] = [
+                (f"members.{member_path}.rules", member.rules, None)
+            ]
+            maps.extend(
+                (
+                    f"members.{member_path}.structure.contracts.{name}.rules",
+                    contract.rules,
+                    contract.match,
+                )
+                for name, contract in member.structure.contracts.items()
+            )
+            for location, raw, pattern in maps:
+                entries = self._entries(raw, location, excluded=self._strict_guard())
+                for code, setting in entries.items():
+                    if code in self._strict_guard() or isinstance(
+                        setting, RuleOverride
+                    ):
+                        continue
+                    rule = self.rules.by_code(code)
+                    if rule is None:
+                        continue
+                    inherited = root.global_rules.get(code)
+                    activation = getattr(rule, "activation", None)
+                    option = getattr(activation, "option", None)
+                    if inherited is None:
+                        enabled = root.globally_enabled(rule)
+                        if (
+                            option is not None
+                            and getattr(root.config.structure, option) is None
+                        ):
+                            enabled = False
+                        inherited = rule.default_severity.value if enabled else "off"
+                    values = [inherited]
+                    if ctx is not None and root_ctx is not None:
+                        values.extend(
+                            severity.value if severity is not None else "off"
+                            for source in ctx.files.sources.values()
+                            if source.path.startswith(member_path + "/")
+                            and (
+                                pattern is None
+                                or any(
+                                    module_matches(
+                                        pattern,
+                                        ".".join(source.module.split(".")[:end]),
+                                    )
+                                    for end in range(
+                                        1, len(source.module.split(".")) + 1
+                                    )
+                                )
+                            )
+                            for severity in [
+                                root.severity(
+                                    rule, root_ctx, source.module, path=source.path
+                                )
+                            ]
+                        )
+                    rank = {"off": 0, "hint": 1, "warning": 2, "error": 3}
+                    if rank[self._value(code, setting)] < max(
+                        rank[value] for value in values
+                    ):
+                        key = f"{location}.{code}"
+                        issues[key] = ConfigIssue(
+                            key,
+                            f"lowering {code} below the inherited root severity requires {{severity: {setting}, reason: '...'}}",
+                        )
+        if issues:
+            raise ConfigError(list(issues.values()), self.source)
+
     def _member_for(
         self, ctx: AnalysisContext, module: str | None, path: str | None
     ) -> str | None:
@@ -237,18 +328,30 @@ class RuleSettings:
 
     def _normalize(
         self,
-        raw: Mapping[str, str],
+        raw: Mapping[str, RuleSetting],
         location: str,
         *,
         excluded: frozenset[str] = frozenset(),
     ) -> dict[str, str]:
-        """Resolve selectors to codes; ``on`` keeps each rule's catalog severity.
+        return {
+            code: self._value(code, value)
+            for code, value in self._entries(raw, location, excluded=excluded).items()
+        }
+
+    def _entries(
+        self,
+        raw: Mapping[str, RuleSetting],
+        location: str,
+        *,
+        excluded: frozenset[str] = frozenset(),
+    ) -> dict[str, RuleSetting]:
+        """Resolve selectors to their winning settings, retaining reasons.
 
         ALL is the broadest selection, then a family, then a group, then a single
         rule, regardless of key order. Broad selections skip ``excluded`` codes,
         which only an individual entry can name.
         """
-        result: dict[str, str] = {}
+        result: dict[str, RuleSetting] = {}
         issues: list[ConfigIssue] = []
         broad = sorted(
             (selection[0], key, selection[1])
@@ -258,7 +361,7 @@ class RuleSettings:
         for _, key, codes in broad:
             for code in codes:
                 if code not in excluded:
-                    result[code] = self._value(code, raw[key])
+                    result[code] = raw[key]
         individual: set[str] = set()
         for key, value in raw.items():
             if self._broad_selection(key) is not None:
@@ -277,7 +380,7 @@ class RuleSettings:
                 )
             else:
                 individual.add(named)
-                result[named] = self._value(named, value)
+                result[named] = value
         if issues:
             raise ConfigError(issues, self.source)
         return result
@@ -298,7 +401,8 @@ class RuleSettings:
             return 2, group.codes
         return None
 
-    def _value(self, code: str, value: str) -> str:
+    def _value(self, code: str, setting: RuleSetting) -> str:
+        value = setting.severity if isinstance(setting, RuleOverride) else setting
         return self.defaults[code] if value == "on" else value
 
     def _suggestion(self, key: str) -> str:

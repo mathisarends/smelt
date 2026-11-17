@@ -7,6 +7,30 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+### Workspace policy and initialization
+
+- **Member weakening requires a reason.** Lowering inherited rule severity or
+  setting `off` in member rules or package contracts now requires
+  `{severity: ..., reason: "..."}`. The guard resolves selectors, catalog
+  defaults and root policy activation/contracts before comparing. A winning
+  individual entry needs its own reason. Strict coverage still cannot be
+  lowered. Root settings also accept the object form; short values remain valid.
+- `smelt init` in a uv workspace writes shared root policy and one independent
+  architecture draft per Python member. New members inherit root style and
+  automatically discovered roots. `init --member PATH` drafts only one declared
+  member under an existing root. Init checks every target before writing and
+  refuses existing targets without `--force`; full workspace force overwrites
+  all config targets. See [workspace init](docs/configuration.md#workspace-initialization).
+- Member-relative `debt` files accept only that member's findings, with stored
+  paths remaining workspace-relative. Root debt is the fallback for other files.
+  The debt CLI records per-member baselines at the root, or only the selected
+  member. `--prune` does not create new member scopes; multi-file JSON inspection
+  uses a `files` map. See [workspace debt](docs/adoption.md#workspace-debt).
+- Member-directory invocations also select the member when it has no local
+  config, including staged checks. The bundled skill documents the canonical
+  root-style/member-architecture/root-boundary workflow. A portable uv fixture
+  covers inheritance, different architectures, cross-member imports and debt.
+
 ### Workspace member boundaries
 
 - Root `architecture.members` maps workspace-relative source globs to
@@ -310,12 +334,12 @@ unaffected until they set `project.workspace`. See
   two members with the same top-level package name are a configuration error.
 - **Member configs.** A member's `smelt.yml` or `smelt.yaml` inherits the root
   implicitly and may set `rules`, `structure` (options and `contracts`),
-  `ignore`, `project.exclude` and `architecture`. Its paths are member-relative. `rules` apply
+  `ignore`, `project.exclude`, `debt` and `architecture`. Its paths are member-relative. `rules` apply
   by path to the member's sources and tests, after the root layers and before
   the closest package contract. `structure` options compile into one contract per
   member package, named after the member. Member contracts are named
   `member:name` and must match the member's own packages. A member cannot set
-  `extends`, `architecture.imports`, `tests`, `suppressions`, `debt` or other
+  `extends`, `architecture.imports`, `architecture.members`, `tests`, `suppressions` or other
   `project` keys, and cannot lower SMT306 under strict coverage. Errors name the member
   file and its own key.
 - **Member checks.** `smelt check` in a member directory, or
@@ -332,8 +356,7 @@ unaffected until they set `project.workspace`. See
   another are not judged by a member architecture. `smelt context` shows the
   governing member's layers, missing modules name the member file, and the
   coverage report adds `member_architectures` (member path to packages).
-- **Not yet:** per-member debt files and test options. Use the root config and
-  package contracts for these until later releases add them.
+- **Test options** remain root-only. Member `rules` still apply to that member's tests.
 
 ### Internal
 

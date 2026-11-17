@@ -167,7 +167,7 @@ Each member may add its own `smelt.yml`, which inherits the root implicitly:
 ```yaml
 # services/api/smelt.yml
 rules:
-  complexity: off
+  complexity: {severity: off, reason: Migrating legacy handlers to the shared style.}
   visibility/internal-public-member: error
 structure:
   max_positional_parameters: 2
@@ -179,9 +179,9 @@ project:
   exclude: [{path: src/api/generated/**, reason: Generated client.}]
 ```
 
-- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`,
+- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`, `debt`,
   `ignore` and `architecture` (except `architecture.imports` and `architecture.members`). A member cannot
-  set `extends`, `tests`, `suppressions`, `debt` or other `project` keys. Smelt
+  set `extends`, `tests`, `suppressions` or other `project` keys. Smelt
   reports each of these as an error that names the member file.
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
   resolved from the member directory.
@@ -231,8 +231,59 @@ architecture:
   module, and `coverage.member_architectures` lists the packages each member
   architecture governs.
 
-Members do not yet have their own debt file or test options. Use the root
-config, with package contracts, for those.
+Test options remain in the root. A member can declare its own member-relative
+`debt` file; see [workspace debt](adoption.md#workspace-debt).
+
+### Reasoned member exceptions
+
+Keep shared style in the root, internal architecture in each member, and
+boundaries between members in root `architecture.members`. A member may enable a
+rule or raise its severity with a short value. Lowering an inherited severity,
+including setting `off`, requires an object with a nonempty `reason`:
+
+```yaml
+# packages/legacy/smelt.yml
+rules:
+  complexity:
+    severity: warning
+    reason: Migrating legacy constructors before enforcing the root error level.
+```
+
+The guard compares effective selectors with the root policy, including rule
+activation and applicable root package contracts. It applies to member `rules`
+and rules in member package contracts. `on` resolves to each rule's catalog
+severity before comparison. A more specific entry must carry its own reason if
+it weakens the policy; it cannot borrow the reason of an overridden family or
+group. Empty or whitespace-only reasons are config errors. Strict coverage
+cannot be lowered even with a reason. Root rules and contracts may also use the
+object form, but only member weakening requires it. Reasons survive
+`config show --sources`; finding severities remain plain values in reports.
+
+This guard checks rule severities. Review changes to thresholds, exclusions,
+ignores and replacement member architectures as policy decisions as well.
+
+### Workspace initialization
+
+Run `smelt init` in a uv workspace root to write one shared root config and an
+architecture draft in every discovered Python member. `--maintainability` writes
+the style selection in the root. Each member gets its own inferred layers,
+features, shared code and composition root. No observed cross-member import is
+automatically blessed as a member-boundary allowance: review and add those in
+the root.
+
+Root source roots are omitted so each current or future member uses its own
+`src/` directory or flat package layout automatically. Test roots cover `tests`
+and `test` inside every member. Non-Python and excluded members are skipped.
+Drafts need review before adopting strict coverage or recording debt.
+
+Use `smelt init --member packages/new` to draft just one declared Python member
+under an existing `project.workspace: uv` root. The path is workspace-relative.
+The root config and other member configs are preserved. Existing `.yml`/`.yaml`
+filenames are respected. Without `--force`, any existing target refuses the
+entire write before the root config, member configs or editor schema change.
+With `--force`, ordinary workspace init overwrites all generated config targets;
+with `--member`, only that member's target is overwritten. Editor schemas are
+replaced only when identified as Smelt-generated.
 
 ### Boundaries between members
 

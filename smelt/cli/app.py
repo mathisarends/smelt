@@ -213,6 +213,11 @@ def _add_maintenance(sub: _Subparsers) -> None:
         "--force", action="store_true", help="overwrite the target if it exists"
     )
     init.add_argument(
+        "--member",
+        metavar="PATH",
+        help="draft only this declared uv member; requires an existing root config",
+    )
+    init.add_argument(
         "--maintainability",
         action="store_true",
         help="write explicit source/test review rules into the starter (no runtime preset)",

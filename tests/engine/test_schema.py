@@ -26,7 +26,7 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
     assert settings["additionalProperties"] is False
     for rule in build_rule_set().rules:
         entry = settings["properties"][rule.name]
-        assert entry["enum"] == ["error", "warning", "hint", "on", "off"]
+        assert entry["$ref"] == "#/$defs/RuleSetting"
         assert rule.code in entry["title"]
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
@@ -34,6 +34,14 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
     assert schema["$defs"]["PackageContract"]["properties"]["rules"] == {
         "$ref": "#/$defs/SourceRuleSettings"
     }
+    assert schema["$defs"]["RuleSeverity"]["enum"] == [
+        "error",
+        "warning",
+        "hint",
+        "on",
+        "off",
+    ]
+    assert schema["$defs"]["RuleOverride"]["required"] == ["severity", "reason"]
 
 
 def test_editor_schema_does_not_advertise_removed_switches() -> None:

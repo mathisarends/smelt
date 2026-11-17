@@ -1,27 +1,46 @@
 from __future__ import annotations
 
 import json
+import posixpath
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import CONFIG_FILENAME, CONFIG_FILENAMES, load_config
+from smelt.config.workspace import (
+    DebtScope,
+    debt_scope_for_path,
+    debt_scopes,
+    member_config_files,
+)
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check, snippet_reader
 from smelt.engine.inference import infer_config, render_config
 from smelt.engine.rule_settings import RuleSettings
 from smelt.engine.schema import SCHEMA_COMMENT, config_json_schema
+from smelt.engine.workspace_init import workspace_drafts
 
 if TYPE_CHECKING:
     import argparse
 
+    from smelt.config import LoadedConfig
+    from smelt.engine.check import CheckOutcome
     from smelt.engine.inference import InferredConfig
     from smelt.engine.workspace import WorkspaceMember
 
 
 def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
+    if args.member is not None:
+        loaded = load_project_config(args.config, cwd)
+        if loaded.config.project.workspace != "uv":
+            raise CliError(
+                "--member requires a root config with project.workspace: uv",
+                option="--member",
+                value=args.member,
+            )
+        return _init_workspace(args, console, loaded.root, target=loaded.path)
     custom: str | None = args.config
     target, shown = _init_target(custom, cwd)
     if target.is_dir():
@@ -43,6 +62,8 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             "run `smelt init` from the project root or configure source_roots manually"
         )
         raise CliError(msg)
+    if inferred.members:
+        return _init_workspace(args, console, root, target=target, inferred=inferred)
     schema_path = root / ".smelt.schema.json"
     schema_text = json.dumps(config_json_schema(), indent=2) + "\n"
     if schema_path.exists():
@@ -84,29 +105,116 @@ def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    configured = loaded.config.debt
-    relative = configured or _DEFAULT_DEBT
-    path = loaded.root / relative
-    if args.show:
-        scopes = tuple(relative_scope(loaded.root, cwd, raw) for raw in args.paths)
-        existing = Debt.load(path, store=loaded.source)
-        selected = Debt(
-            [
-                entry
-                for entry in existing.entries
-                if not scopes
-                or any(
-                    scope in (".", entry.path)
-                    or (entry.path or "").startswith(scope.rstrip("/") + "/")
-                    for scope in scopes
-                )
-            ]
-        )
-        _show_debt(selected, relative, args.format or "text", console=console)
-        return EXIT_OK
-    if args.paths or args.format:
+    if not args.show and (args.paths or args.format):
         raise CliError("paths and --format require --show")
-    outcome = run_check(loaded, CheckOptions(use_debt=False))
+    outcome = None if args.show else run_check(loaded, CheckOptions(use_debt=False))
+    targets = _debt_targets(loaded, readonly=args.show or args.prune, show=args.show)
+    if outcome is not None:
+        for scope in targets:
+            Debt.load(loaded.root / scope.path)
+    shown: dict[str, dict[str, object]] = {}
+    paths = tuple(relative_scope(loaded.root, cwd, raw) for raw in args.paths)
+    for scope in targets:
+        if args.show:
+            existing = Debt.load(loaded.root / scope.path, store=loaded.source)
+            selected = Debt(
+                [
+                    entry
+                    for entry in existing.entries
+                    if debt_scope_for_path(targets, entry.path) == scope
+                    and (
+                        loaded.member is None
+                        or (entry.path or "").startswith(loaded.member + "/")
+                    )
+                    and (
+                        not paths
+                        or any(
+                            path in (".", entry.path)
+                            or (entry.path or "").startswith(path.rstrip("/") + "/")
+                            for path in paths
+                        )
+                    )
+                ]
+            )
+            if args.format == "json" and len(targets) != 1:
+                shown[scope.path] = selected.to_json()
+            else:
+                _show_debt(selected, scope.path, args.format or "text", console=console)
+        elif outcome is not None:
+            _update_debt(args, console, loaded, outcome=outcome, scope=scope)
+    if args.show and args.format == "json" and len(targets) != 1:
+        console.print(json.dumps({"files": shown}, indent=2))
+    return EXIT_OK
+
+
+def _init_workspace(
+    args: argparse.Namespace,
+    console: Console,
+    root: Path,
+    *,
+    target: Path,
+    inferred: InferredConfig | None = None,
+) -> int:
+    try:
+        drafts = workspace_drafts(
+            root,
+            root_filename=target.name,
+            maintainability=args.maintainability,
+            member=args.member,
+        )
+    except AnalysisError as exc:
+        raise CliError(str(exc), option="--member", value=args.member) from exc
+    schema = root / ".smelt.schema.json"
+    for path in [root / name for name in drafts]:
+        if path.is_dir() or (path.exists() and not args.force):
+            raise CliError(
+                f"{path.relative_to(root).as_posix()} already exists (use --force to overwrite)"
+            )
+    if schema.exists():
+        try:
+            existing = json.loads(schema.read_text(encoding="utf-8"))
+        except (ValueError, UnicodeError) as exc:
+            raise CliError(f"cannot replace non-Smelt editor schema {schema}") from exc
+        if not isinstance(existing, dict) or existing.get("$comment") != SCHEMA_COMMENT:
+            raise CliError(f"{schema} already exists and was not generated by Smelt")
+    schema.write_text(
+        json.dumps(config_json_schema(), indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    for name, text in drafts.items():
+        (root / name).write_text(text, encoding="utf-8", newline="\n")
+        console.print(f"Wrote {name}")
+    console.print(
+        "  Wrote .smelt.schema.json for editor completion, validation and hover examples."
+    )
+    if inferred is not None:
+        for line in _summary(inferred, architecture=False):
+            if not line.startswith("architecture:"):
+                console.print(f"  {line}")
+        console.print(
+            "  architecture: review the independent drafts in each member's config"
+        )
+    console.print(_violation_summary(target))
+    return EXIT_OK
+
+
+def _update_debt(
+    args: argparse.Namespace,
+    console: Console,
+    loaded: LoadedConfig,
+    *,
+    outcome: CheckOutcome,
+    scope: DebtScope,
+) -> None:
+    targets = _debt_targets(loaded, readonly=args.prune)
+    relative = scope.path
+    path = loaded.root / relative
+    configured = (
+        loaded.config.debt
+        if scope.member is None
+        else getattr(loaded.config.members.get(scope.member), "debt", None)
+    )
     if any(v.code == "SMT306" for v in outcome.unfiltered):
         raise CliError(
             "Resolve strict coverage gaps before recording or pruning debt; coverage cannot be accepted as debt."
@@ -115,7 +223,9 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     current = [
         v
         for v in outcome.unfiltered
-        if v.code != "SMT903" and v.severity is not Severity.HINT
+        if v.code != "SMT903"
+        and v.severity is not Severity.HINT
+        and debt_scope_for_path(targets, v.path) == scope
     ]
     existing = Debt.load(path)
     policy = RuleSettings(outcome.rules, loaded)
@@ -123,7 +233,8 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     eligible = [
         entry
         for entry in existing.entries
-        if (rule := active.get(entry.code)) is not None
+        if debt_scope_for_path(targets, entry.path) == scope
+        and (rule := active.get(entry.code)) is not None
         and policy.severity_for_path(rule, outcome.context, entry.path)
         not in (None, Severity.HINT)
     ]
@@ -151,9 +262,59 @@ def debt(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             f"Kept {len(dormant)} unassessed debt entries for inactive or hint-only rules."
         )
     if configured is None:
-        _enable_debt(loaded.path, relative)
-        console.print(f"Added `debt: {relative}` to {loaded.path.name}")
-    return EXIT_OK
+        file = (
+            loaded.path
+            if scope.member is None
+            else member_config_files(loaded.root).get(
+                scope.member, loaded.root / scope.member / CONFIG_FILENAME
+            )
+        )
+        local = (
+            relative
+            if scope.member is None
+            else posixpath.relpath(relative, scope.member)
+        )
+        _enable_debt(file, local)
+        console.print(
+            f"Added `debt: {local}` to {file.relative_to(loaded.root).as_posix()}"
+        )
+
+
+def _debt_targets(
+    loaded: LoadedConfig, *, readonly: bool, show: bool = False
+) -> tuple[DebtScope, ...]:
+    if loaded.config.project.workspace != "uv":
+        return (DebtScope(loaded.config.debt or _DEFAULT_DEBT),)
+    if readonly:
+        configured = debt_scopes(loaded.config)
+        if loaded.member is not None:
+            member_files = tuple(
+                scope for scope in configured if scope.member == loaded.member
+            )
+            if member_files or not show:
+                return member_files
+            return tuple(scope for scope in configured if scope.member is None) or (
+                DebtScope(posixpath.join(loaded.member, _DEFAULT_DEBT), loaded.member),
+            )
+        return configured
+    from smelt.engine.workspace import workspace_members  # noqa: PLC0415
+
+    targets = []
+    for member in workspace_members(loaded.root):
+        if member.skipped is not None or (
+            loaded.member is not None and member.path != loaded.member
+        ):
+            continue
+        policy = loaded.config.members.get(member.path)
+        relative = (
+            policy.debt
+            if policy is not None and policy.debt is not None
+            else _DEFAULT_DEBT
+        )
+        targets.append(DebtScope(posixpath.join(member.path, relative), member.path))
+    if loaded.member is None:
+        targets.append(DebtScope(loaded.config.debt or _DEFAULT_DEBT))
+    return tuple(sorted(targets, key=lambda scope: -len(scope.member or "")))
 
 
 _DEFAULT_DEBT = ".smelt/debt.json"
@@ -304,7 +465,7 @@ def _violation_summary(path: Path) -> str:
 
 def _enable_debt(config: Path, relative: str) -> None:
     """Set the debt key, uncommenting the line `smelt init` leaves if it is there."""
-    text = config.read_text(encoding="utf-8")
+    text = config.read_text(encoding="utf-8") if config.exists() else ""
     line = f"debt: {relative}"
     lines = text.splitlines()
     for index, existing in enumerate(lines):

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from smelt.analysis.context import AnalysisContext
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import ConfigError
 from smelt.config.errors import did_you_mean
@@ -137,7 +138,11 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
     try:
-        RuleSettings(build_rule_set(lazy=True), loaded)
+        settings = RuleSettings(build_rule_set(lazy=True), loaded)
+        if loaded.config.members:
+            settings.validate_packages(
+                AnalysisContext(loaded.root, loaded.config, store=loaded.source)
+            )
     except ConfigError as exc:
         explained = loaded.explain_error(exc)
         if explained is exc:

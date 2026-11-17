@@ -19,6 +19,7 @@ diagnostic codes and report schema version 2 remain unchanged.
 ```bash
 smelt init                           # draft smelt.yml from the code (also uv workspaces)
 smelt init --maintainability         # write source/test reviews, including information-hiding
+smelt init --member packages/new    # draft one member under an existing uv workspace root
 smelt init --config other.yml       # write a config and editor schema in that directory
 smelt check                          # whole project
 smelt check --changed                # only what the working tree introduced since HEAD
@@ -44,6 +45,17 @@ smelt config schema                  # the JSON schema of smelt.yml
 smelt skill install                  # install the release's official skill in this project
 smelt skill install --force          # replace an older installed skill completely
 ```
+
+In a uv workspace, `init` writes shared root policy and an independent architecture
+draft in every Python member. `init --member PATH` writes just that member's
+draft. Paths are workspace-relative; `--force` authorizes overwriting the selected
+config targets. All targets are checked before any write.
+
+`debt` from a workspace root maintains one baseline per member plus root debt;
+from a member it maintains only that member's baseline. `--prune` never creates a
+new member scope. Workspace-wide `debt --show --format json` returns one object
+with a `files` map when several baselines are selected; one selected file retains
+the normal version-2 document. Stored paths remain workspace-relative.
 
 Normal checks are read-only. `--fix` applies permitted safe ordering fixes.
 Opt-in [SMT321](rules/SMT321.md) reviews `parameter or fallback` for optional

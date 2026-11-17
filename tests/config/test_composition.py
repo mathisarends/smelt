@@ -122,6 +122,10 @@ def test_cycles_report_the_chain_even_with_equivalent_paths(tmp_path: Path) -> N
             "rules: {architecture/import-cycle: banana}",
             "rules.architecture/import-cycle",
         ),
+        (
+            "rules: {architecture/import-cycle: {severity: off, reason: ' '}}",
+            "rules.architecture/import-cycle.reason",
+        ),
         ("architecture: {layerz: {}}", "architecture.layerz"),
         ("version: 2", "version"),
     ],

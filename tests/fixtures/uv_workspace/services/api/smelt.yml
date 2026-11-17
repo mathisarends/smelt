@@ -1,0 +1,10 @@
+architecture:
+  features: {root: api.features}
+  layers:
+    domain: {path: domain}
+    application: {path: application, may_depend_on: [domain]}
+rules:
+  tests/missing-outcome-check:
+    severity: hint
+    reason: Review API smoke checks before requiring outcome assertions.
+debt: .smelt/debt.json
