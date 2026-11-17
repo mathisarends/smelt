@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
@@ -79,7 +79,19 @@ def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
     if found is None:
         msg = "no smelt.yml found in this directory or its parents (run `smelt init`)"
         raise CliError(msg, kind="config")
-    return load_config(found)
+    loaded = load_config(found)
+    if loaded.config.project.workspace == "uv":
+        from smelt.config.workspace import member_directories  # noqa: PLC0415
+
+        owners = [
+            m.path
+            for m in member_directories(loaded.root)
+            if m.skipped is None
+            and cwd.resolve().is_relative_to((loaded.root / m.path).resolve())
+        ]
+        if owners:
+            loaded = replace(loaded, member=max(owners, key=len))
+    return loaded
 
 
 def configure_streams() -> None:

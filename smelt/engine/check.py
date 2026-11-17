@@ -16,6 +16,7 @@ from smelt.analysis.facade_usage import FacadeUsage
 from smelt.analysis.files import FileIndex
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
+from smelt.config.workspace import debt_scope_for_path, debt_scopes
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
 from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
@@ -256,15 +257,17 @@ def _run_check(
     in_debt = 0
     resolved: list[DebtEntry] = []
     severity_of = {rule.code: severity for rule, severity in active}
-    if options.use_debt and config.debt:
-        debt = Debt.load(loaded.root / config.debt, store=ctx.store)
+    scopes = debt_scopes(config) if options.use_debt else ()
+    for debt_scope in scopes:
+        debt = Debt.load(loaded.root / debt_scope.path, store=ctx.store)
         # Inactive rules have not been checked; their debt is not resolved.
         policy = RuleSettings(rules, loaded)
         debt = Debt(
             [
                 entry
                 for entry in debt.entries
-                if entry.code in severity_of
+                if debt_scope_for_path(scopes, entry.path) == debt_scope
+                and entry.code in severity_of
                 and (rule := rules.by_code(entry.code)) is not None
                 and policy.severity_for_path(
                     rule, ctx, entry.path, selected=bool(options.select)
@@ -272,12 +275,15 @@ def _run_check(
                 is not None
             ]
         )
-        violations, known, resolved = debt.match(violations, snippet_reader(ctx))
-        in_debt = len(known)
-        full_run = not options.paths and not options.changed
-        if "SMT903" in severity_of and full_run:
+        violations, known, scope_resolved = debt.match(violations, snippet_reader(ctx))
+        resolved.extend(scope_resolved)
+        in_debt += len(known)
+        if "SMT903" in severity_of and not options.paths and not options.changed:
             violations.extend(
-                _resolved_violations(resolved, config.debt, severity_of["SMT903"])
+                replace(finding, member=debt_scope.member)
+                for finding in _resolved_violations(
+                    scope_resolved, debt_scope.path, severity_of["SMT903"]
+                )
             )
     comparison: Comparison | None = None
     if options.changed:

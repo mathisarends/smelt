@@ -118,10 +118,11 @@ class InferredConfig:
         return self.features_root is not None or self.features_pattern is not None
 
 
-def infer_config(root: Path) -> InferredConfig | None:
-    members = workspace_members(root)
+def infer_config(root: Path, *, include_members: bool = True) -> InferredConfig | None:
+    declared = workspace_members(root)
+    members = declared if include_members else []
     located = import_root(root)
-    member_directories = {(root / member.path).resolve() for member in members}
+    member_directories = {(root / member.path).resolve() for member in declared}
     packages = (
         [
             package

@@ -168,7 +168,7 @@ def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:
             "set once in the workspace root",
         ),
         ("project: {source_roots: [lib]}\n", "project.source_roots", "only add"),
-        ("debt: debt.json\n", "debt", "workspace root"),
+        ("debt: ../debt.json\n", "debt", "member-relative"),
         ("rules: {Nope: error}\n", "rules", "not a rule code"),
         (
             "structure:\n  contracts:\n    x: {match: core, public: ['.']}\n",

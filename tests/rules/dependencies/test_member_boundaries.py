@@ -237,7 +237,7 @@ def test_member_rules_and_suppressions_retain_their_scope(tmp_path: Path) -> Non
     root = _workspace(
         tmp_path,
         {
-            "packages/core/smelt.yml": "rules: {architecture/member-boundary: warning}\n",
+            "packages/core/smelt.yml": "rules: {architecture/member-boundary: {severity: warning, reason: Reviewing the migration boundary.}}\n",
             "packages/core/src/core/model.py": "from api.http import Order  # smelt: ignore[SMT112] -- Host provides the API during migration.\n",
         },
     )

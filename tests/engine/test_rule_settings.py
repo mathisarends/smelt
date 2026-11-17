@@ -11,10 +11,98 @@ from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set
-from tests.helpers import check, violations, write_project
+from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.mark.parametrize("value", ["off", "warning", "hint", "on"])
+def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {complexity/excess-positional-parameters: error}\n",
+            "services/api/smelt.yml": f"rules: {{complexity/excess-positional-parameters: {value}}}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=r"requires.*reason") as caught:
+        check(root)
+
+    assert caught.value.issues[0].source is not None
+    assert caught.value.issues[0].source.endswith("services/api/smelt.yml")
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        "rules: {complexity: {severity: off, reason: Legacy API migration.}}\n",
+        "structure:\n  contracts:\n    api: {match: api, rules: {complexity/excess-positional-parameters: {severity: warning, reason: Legacy API migration.}}}\n",
+    ],
+)
+def test_reasoned_member_and_contract_exceptions_are_accepted(
+    tmp_path: Path, policy: str
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {complexity/excess-positional-parameters: error}\n",
+            "services/api/smelt.yml": policy,
+        },
+    )
+
+    assert check(root).report.violations == []
+
+
+def test_specific_member_entry_cannot_borrow_a_broader_reason(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {complexity: error}\n",
+            "services/api/smelt.yml": "rules:\n  complexity: {severity: off, reason: Legacy API migration.}\n  complexity/excess-positional-parameters: warning\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=r"SMT345.*reason"):
+        check(root)
+
+
+def test_root_contract_activation_is_included_in_the_member_guard(
+    tmp_path: Path,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "structure:\n          contracts:\n            api: {match: api, max_positional_parameters: 2}\n",
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: off}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=r"SMT345.*reason"):
+        check(root)
+
+
+@pytest.mark.parametrize("reason", ["''", "'  '"])
+def test_blank_member_override_reasons_are_invalid(tmp_path: Path, reason: str) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "services/api/smelt.yml": f"rules: {{complexity: {{severity: off, reason: {reason}}}}}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match="reason"):
+        check(root)
 
 
 def _project(tmp_path: Path, policy: str) -> Path:
@@ -438,7 +526,7 @@ def test_editor_schema_exposes_the_same_group_at_project_and_package_level() -> 
     assert (
         group == definitions["SourceRuleSettings"]["properties"]["information-hiding"]
     )
-    assert group["enum"] == ["error", "warning", "hint", "on", "off"]
+    assert group["$ref"] == "#/$defs/RuleSetting"
     assert all(code in group["description"] for code in _GROUP_CODES)
 
 

@@ -146,7 +146,12 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
             raise _with_origins(exc, composed) from exc
         raise
     if len(composed.rule_layers) > 1:
-        config = config.with_rule_layers(composed.rule_layers)
+        try:
+            config = config.with_rule_layers(composed.rule_layers)
+        except ValidationError as exc:
+            raise _with_origins(
+                ConfigError(_issues_from_validation(exc), path.name), composed
+            ) from exc
     if composed.composite:
         warnings = tuple(
             ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
@@ -296,7 +301,9 @@ def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
     exclusion_prefix = ("project", "exclude")
     exclusion_branch_index = len(exclusion_prefix) + 1
     for error in exc.errors():
-        loc = tuple(error["loc"])
+        loc = _rule_setting_location(tuple(error["loc"]), value=error.get("input"))
+        if loc is None:
+            continue
         # Expose YAML keys, not the internal branches of the allowance union.
         if loc[: len(allowance_prefix)] == allowance_prefix and len(loc) > branch_index:
             branch = str(loc[branch_index])
@@ -334,6 +341,24 @@ def _issues_from_validation(exc: ValidationError) -> list[ConfigIssue]:
             message = f"{message}, got {error.get('input')!r}"
         issues.append(ConfigIssue(format_loc(loc), message))
     return issues
+
+
+def _rule_setting_location(
+    loc: tuple[str | int, ...], *, value: object
+) -> tuple[str | int, ...] | None:
+    """Show the supplied severity/object branch at the actual YAML key."""
+    for index, branch in enumerate(loc):
+        if index < 2 or loc[index - 2] != "rules":  # noqa: PLR2004 - map key and union branch follow rules
+            continue
+        if branch == "RuleOverride":
+            if len(loc) == index + 1 and not isinstance(value, dict):
+                return None
+            return (*loc[:index], *loc[index + 1 :])
+        if str(branch).startswith("literal["):
+            if isinstance(value, dict):
+                return None
+            return (*loc[:index], *loc[index + 1 :])
+    return loc
 
 
 def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...]) -> str:

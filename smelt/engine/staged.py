@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from smelt.analysis.cache import FactCache
 from smelt.analysis.errors import AnalysisError
 from smelt.config import discover_config, load_config
 from smelt.config.errors import ConfigError, ConfigIssue
+from smelt.config.workspace import debt_scopes, member_directories
 from smelt.engine.changes import capture_index, git_repository, lexical_path
 from smelt.engine.git_source import GitSourceStore
 
@@ -56,6 +57,17 @@ def staged_project(
     store.cache = cache
     try:
         loaded = load_config(path, store=store)
+        if requested is None and loaded.config.project.workspace == "uv":
+            owners = [
+                m.path
+                for m in member_directories(loaded.root, store=store)
+                if m.skipped is None
+                and store.resolve(cwd).is_relative_to(
+                    store.resolve(loaded.root / m.path)
+                )
+            ]
+            if owners:
+                loaded = replace(loaded, member=max(owners, key=len))
     finally:
         if cache is not None:
             cache.close()
@@ -68,8 +80,9 @@ def staged_project(
             raise AnalysisError(
                 "--staged source/test roots must be inside the Git repository"
             )
-    if loaded.config.debt and not store.resolve(
-        loaded.root / loaded.config.debt
-    ).is_relative_to(repository):
+    if any(
+        not store.resolve(loaded.root / scope.path).is_relative_to(repository)
+        for scope in debt_scopes(loaded.config)
+    ):
         raise AnalysisError("--staged debt file must be inside the Git repository")
-    yield StagedProject(loaded, path, repository, index.identity)
+    yield StagedProject(loaded, loaded.path, repository, index.identity)

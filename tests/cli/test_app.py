@@ -1461,7 +1461,10 @@ class TestInitCommand:
         assert err == ""
         config = load_config(tmp_path / "smelt.yml").config
         assert config.project.root_packages == ["app", "client"]
-        assert set(config.architecture.layers) == {"domain", "infrastructure"}
+        assert config.architecture.layers == {}
+        architecture = config.members["backend"].architecture
+        assert architecture is not None
+        assert set(architecture.layers) == {"domain", "infrastructure"}
         assert config.tests.layout == "none"
         assert {"SMT101", "SMT313", "SMT316"} <= {
             v.code for v in check(tmp_path).report.violations

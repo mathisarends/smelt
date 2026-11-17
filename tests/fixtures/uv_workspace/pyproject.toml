@@ -1,0 +1,5 @@
+[tool.uv.workspace]
+members = ["services/*", "packages/*"]
+
+[tool.uv.sources]
+core-lib = {workspace = true}

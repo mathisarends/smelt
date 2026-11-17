@@ -120,13 +120,19 @@ rules: {complexity: warning}
 
 ```yaml
 # packages/legacy/smelt.yml
-rules: {complexity: off, complexity/duplicate-function: hint}
+rules:
+  complexity: {severity: off, reason: Migrating the legacy service.}
+  complexity/duplicate-function: {severity: hint, reason: Review duplication before enforcement.}
 ```
 
 Here `packages/legacy` reports only `complexity/duplicate-function`, as a hint.
 Every other member keeps `complexity: warning`. Within a member file, the most
 specific selector wins, as in any other layer. A rule that only a member enables
 stays off in the other members.
+
+A lower member severity needs `{severity: ..., reason: "..."}`, including in
+member package contracts. The winning selector supplies the reason; `on` is
+compared using the catalog severity. See [reasoned member exceptions](configuration.md#reasoned-member-exceptions).
 
 A member's `architecture` activates the architecture rules the same way the root
 architecture does, for example `layers` turns on `architecture/layer-boundary`.

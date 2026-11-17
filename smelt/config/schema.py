@@ -13,6 +13,7 @@ def config_json_schema() -> dict[str, Any]:
     schema.pop("required", None)
     for definition in schema.get("$defs", {}).values():
         definition.pop("required", None)
+    schema["$defs"]["RuleOverride"]["required"] = ["severity", "reason"]
     # Member configs are separate files; the root never writes them inline.
     schema["properties"].pop("members", None)
     for name in ("MemberConfig", "MemberProjectConfig", "MemberStructureConfig"):

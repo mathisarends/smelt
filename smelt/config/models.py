@@ -10,12 +10,13 @@ from pydantic import (
     ConfigDict,
     Field,
     PrivateAttr,
+    TypeAdapter,
     field_validator,
     model_validator,
 )
 
 type Policy = Literal["allow", "deny"]
-type RuleSetting = Literal["error", "warning", "hint", "on", "off"]
+type RuleSeverity = Literal["error", "warning", "hint", "on", "off"]
 type ModuleImportExemption = Literal["facades", "composition_root"]
 type PrivateAttributeBoundary = Literal["module", "package"]
 type CallArgumentKind = Literal["await", "comprehension", "aggregate"]
@@ -32,6 +33,23 @@ _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
 class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class RuleOverride(_Model):
+    """An explicit severity with the reason for a policy exception."""
+
+    severity: RuleSeverity
+    reason: str = Field(min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_is_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("reason must not be blank")
+        return value.strip()
+
+
+type RuleSetting = RuleSeverity | RuleOverride
 
 
 def _check_dotted(values: list[str]) -> list[str]:
@@ -981,6 +999,10 @@ class MemberConfig(_Model):
         default=None,
         description="The member's own features, layers and boundaries. They replace the root architecture for the member's packages and govern imports inside the member.",
     )
+    debt: str | None = Field(
+        default=None,
+        description="Member-relative debt file. It may accept findings only inside this member; stored finding paths remain workspace-relative.",
+    )
     _packages: tuple[str, ...] = PrivateAttr(default=())
 
     @property
@@ -992,6 +1014,22 @@ class MemberConfig(_Model):
         located = self.model_copy()
         located._packages = tuple(packages)
         return located
+
+    @field_validator("debt")
+    @classmethod
+    def _debt_is_member_relative(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        path = value.strip().replace("\\", "/")
+        if (
+            not path
+            or path.startswith("/")
+            or re.match(r"^[A-Za-z]:", path)
+            or ".." in path.split("/")
+            or path == "."
+        ):
+            raise ValueError("debt must name a member-relative file without '..'")
+        return posixpath.normpath(path)
 
     @field_validator("rules")
     @classmethod
@@ -1025,6 +1063,19 @@ class SmeltConfig(_Model):
         description="Workspace member configs by member path, read from each member's own smelt.yml; never written in the root file.",
     )
     _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
+    _workspace_base: Self | None = PrivateAttr(default=None)
+
+    @property
+    def workspace_base(self) -> Self | None:
+        """Root policy before member options and contracts were compiled into it."""
+        if self._workspace_base is None:
+            return None
+        return self._workspace_base.with_rule_layers(self.rule_layers)
+
+    def with_workspace_base(self, base: Self) -> Self:
+        scoped = self.model_copy()
+        scoped._workspace_base = base
+        return scoped
 
     @property
     def rule_layers(self) -> tuple[Mapping[str, RuleSetting], ...]:
@@ -1035,9 +1086,10 @@ class SmeltConfig(_Model):
         """
         return self._rule_layers or (self.rules,)
 
-    def with_rule_layers(self, layers: Iterable[dict[str, RuleSetting]]) -> Self:
+    def with_rule_layers(self, layers: Iterable[Mapping[str, RuleSetting]]) -> Self:
         layered = self.model_copy()
-        layered._rule_layers = tuple(layers)
+        adapter = TypeAdapter(dict[str, RuleSetting])
+        layered._rule_layers = tuple(adapter.validate_python(layer) for layer in layers)
         return layered
 
     @field_validator("rules")

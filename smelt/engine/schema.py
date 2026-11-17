@@ -74,6 +74,10 @@ def config_json_schema() -> dict[str, Any]:
         "ALL: every source rule in the catalog",
         [rule for rule in rules if getattr(rule, "scope", "source") == "source"],
     )
+    for definition in (*properties.values(), *source_properties.values()):
+        definition.pop("type", None)
+        definition.pop("enum", None)
+        definition["$ref"] = "#/$defs/RuleSetting"
     rule_settings = {
         "type": "object",
         "description": "Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order.",

@@ -33,7 +33,6 @@ _UNSUPPORTED_MEMBER_KEYS = {
     "extends": "a member config inherits the workspace root implicitly",
     "tests": "test options are configured in the workspace root",
     "suppressions": "the suppression policy is configured in the workspace root",
-    "debt": "the debt file is configured in the workspace root",
     "members": "members are declared in pyproject.toml",
 }
 
@@ -68,6 +67,43 @@ class ArchitectureScope:
         if self.member is None:
             return "architecture"
         return f"members.{self.member}.architecture"
+
+
+@dataclass(frozen=True, slots=True)
+class DebtScope:
+    """A debt file and the member whose findings it may accept."""
+
+    path: str
+    member: str | None = None
+
+
+def debt_scopes(config: SmeltConfig) -> tuple[DebtScope, ...]:
+    members = tuple(
+        DebtScope(posixpath.join(path, member.debt), path)
+        for path, member in sorted(
+            config.members.items(), key=lambda item: -len(item[0])
+        )
+        if member.debt is not None
+    )
+    return (*members, *((DebtScope(config.debt),) if config.debt else ()))
+
+
+def debt_scope_for_path(
+    scopes: tuple[DebtScope, ...], path: str | None
+) -> DebtScope | None:
+    """The closest member file wins over root debt; root debt covers the remainder."""
+    return next(
+        (
+            scope
+            for scope in scopes
+            if scope.member is None
+            or (
+                path is not None
+                and (path == scope.member or path.startswith(scope.member + "/"))
+            )
+        ),
+        None,
+    )
 
 
 def architecture_scopes(config: SmeltConfig) -> tuple[ArchitectureScope, ...]:
@@ -225,7 +261,8 @@ def expand_workspace(
             )
         }
     )
-    return _compile_members(expanded, packages)
+    base = expanded.model_copy(update={"members": {}})
+    return _compile_members(expanded, packages).with_workspace_base(base)
 
 
 def member_directories(

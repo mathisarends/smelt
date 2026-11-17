@@ -7,6 +7,15 @@ version 1, report schema 2, exit codes, the default rule set and every unmerged
 SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
 complete mapping.
 
+Workspace member rules that lower root severity now require
+`{severity: warning, reason: "..."}` (or the intended severity), including member
+package contracts. `on` uses the catalog severity; strict coverage cannot be
+lowered. Review existing exceptions and add their actual justification.
+Workspace `init` now generates a root plus per-member architecture drafts;
+review all targets before using `--force`. Member debt files are supported;
+existing root debt remains usable for members without their own file. See
+[workspace configuration](configuration.md#uv-workspaces).
+
 ### Upgrade checklist
 
 1. Run `smelt check` once. Every 0.12 rule name and retired code in `smelt.yml`

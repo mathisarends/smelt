@@ -37,7 +37,7 @@ def effective_coverage(
         ),
         **inventory.summary(),
         "policy_hash": policy_hash(config),
-        "rules": dict(config.rules),
+        "rules": config.model_dump(mode="json")["rules"],
         "root_packages": list(project.root_packages),
         "source_roots": list(project.source_roots),
         "test_roots": list(project.test_roots),
@@ -119,7 +119,13 @@ def policy_hash(config: SmeltConfig) -> str:
     if config.project.workspace is None:
         policy["project"].pop("workspace", None)
     if len(config.rule_layers) > 1:
-        policy["rule_layers"] = [dict(layer) for layer in config.rule_layers]
+        policy["rule_layers"] = [
+            {
+                key: value if isinstance(value, str) else value.model_dump(mode="json")
+                for key, value in layer.items()
+            }
+            for layer in config.rule_layers
+        ]
     payload = json.dumps(policy, sort_keys=True)
     return "sha256:" + hashlib.sha256(payload.encode()).hexdigest()[:16]
 

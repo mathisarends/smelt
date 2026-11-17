@@ -1,0 +1,129 @@
+from __future__ import annotations
+
+import shutil
+from typing import TYPE_CHECKING
+
+import pytest
+
+from smelt.cli import main
+from smelt.config import load_config
+from smelt.engine.check import CheckOptions
+from tests.helpers import FIXTURES, check, write_project
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _workspace(tmp_path: Path) -> Path:
+    return shutil.copytree(FIXTURES / "uv_workspace", tmp_path, dirs_exist_ok=True)
+
+
+def test_workspace_fixture_keeps_one_graph_with_member_architectures(
+    tmp_path: Path,
+) -> None:
+    root = _workspace(tmp_path)
+    outcome = check(root)
+
+    assert outcome.report.violations == []
+    assert set(outcome.context.model.part_for("core.domain.task").layers) == {
+        "domain",
+        "infrastructure",
+    }
+    assert set(
+        outcome.context.model.part_for("api.features.orders.application.service").layers
+    ) == {"domain", "application"}
+    assert (
+        outcome.context.imports.imports_of("api.features.orders.application.service")[
+            0
+        ].imported
+        == "core.domain.task"
+    )
+    visibility = check(
+        root, CheckOptions(select=("information-hiding",))
+    ).report.violations
+    assert not any(finding.member == "packages/core" for finding in visibility)
+
+
+def test_init_writes_shared_root_and_independent_member_drafts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _workspace(tmp_path)
+    for name in ("smelt.yml", "services/api/smelt.yml", "packages/core/smelt.yml"):
+        (root / name).unlink()
+    monkeypatch.chdir(root)
+
+    assert main(["init", "--maintainability"]) == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert "independent drafts" in output.out
+    config = load_config(root / "smelt.yml").config
+    assert config.project.workspace == "uv"
+    assert set(config.architecture.layers) == set()
+    api = config.members["services/api"].architecture
+    core = config.members["packages/core"].architecture
+    assert api is not None
+    assert core is not None
+    assert set(api.layers) == {
+        "domain",
+        "application",
+    }
+    assert set(core.layers) == {
+        "domain",
+        "infrastructure",
+    }
+    assert "layout/definition-order" in config.rules
+    assert "rules:" not in (root / "services/api/smelt.yml").read_text(encoding="utf-8")
+    write_project(root, {"packages/new/src/new/__init__.py": ""})
+    assert "new" in load_config(root / "smelt.yml").config.project.root_packages
+
+
+def test_member_init_preserves_root_and_other_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _workspace(tmp_path)
+    before = {
+        path: (root / path).read_bytes()
+        for path in ("smelt.yml", "packages/core/smelt.yml")
+    }
+    (root / "services/api/smelt.yml").unlink()
+    monkeypatch.chdir(root)
+
+    assert main(["init", "--member", "services/api"]) == 0
+    assert capsys.readouterr().err == ""
+    assert all(
+        (root / path).read_bytes() == content for path, content in before.items()
+    )
+    architecture = (
+        load_config(root / "smelt.yml").config.members["services/api"].architecture
+    )
+    assert architecture is not None
+    assert "application" in architecture.layers
+
+
+def test_init_checks_all_outputs_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _workspace(tmp_path)
+    (root / "smelt.yml").unlink()
+    before = (root / "services/api/smelt.yml").read_bytes()
+    monkeypatch.chdir(root)
+
+    assert main(["init"]) == 2
+    assert "already exists" in capsys.readouterr().err
+    assert not (root / "smelt.yml").exists()
+    assert not (root / ".smelt.schema.json").exists()
+    assert (root / "services/api/smelt.yml").read_bytes() == before
+
+
+@pytest.mark.parametrize("member", ["../outside", "services/missing", "packages"])
+def test_member_init_rejects_undeclared_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    member: str,
+) -> None:
+    root = _workspace(tmp_path)
+    monkeypatch.chdir(root)
+
+    assert main(["init", "--member", member]) == 2
+    assert "not a declared" in capsys.readouterr().err
