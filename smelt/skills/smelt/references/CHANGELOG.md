@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- [SMT366](docs/rules/SMT366.md) `comprehension-in-call-argument` also reports
+  a direct call argument that reduces a generator expression with an unshadowed
+  builtin `all`, `any`, `max`, `min`, `sorted` or `sum`, such as
+  `finished=sum(s.done for s in sessions)`. The whole reduction is named; the
+  generator stays lazy. Generators passed directly, other callables and
+  shadowed or imported names remain out of scope. Findings carry a new
+  `aggregate` payload field (`null` for comprehensions). The rule stays opt-in,
+  so enabled projects may see additional hints after upgrading.
+
 ## [0.12.0] - 2026-11-16
 
 Report schema 2, YAML version 1, grouped debt baseline version 2, the default
