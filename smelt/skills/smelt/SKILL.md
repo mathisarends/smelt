@@ -74,6 +74,12 @@ installed skill records the CLI version that installed it.
   the root architecture for that member's packages and judges only imports
   inside the member. Run `smelt context <member feature or path>` to see the
   layers that govern it.
+  Keep boundaries between members in root `architecture.members` (SMT111).
+  Declare imported member distributions in `project.dependencies` or
+  `project.optional-dependencies` and configure their uv sources (SMT112);
+  a source entry alone is not a dependency declaration. Both checks use direct
+  production imports. `smelt check --statistics --by member` counts findings,
+  including hints, by member; JSON findings carry the member path.
   Do not duplicate the member list or give a member an independent full config.
   `smelt check` in a member directory checks that member under the root policy.
   Run the root check before finishing work that changes shared packages. A

@@ -37,26 +37,35 @@ _COLORS = {
 }
 
 
-def render_text(
+def render_text(  # noqa: PLR0913 - CLI rendering options
     report: Report,
     read_line: LineReader,
     *,
     color: bool = False,
     show_hints: bool = False,
     statistics: bool = False,
+    by: str = "rule",
 ) -> str:
     return _render(
-        report, read_line, _Style(color), show_hints=show_hints, statistics=statistics
+        report,
+        read_line,
+        _Style(color, statistics_by=by),
+        show_hints=show_hints,
+        statistics=statistics,
     )
 
 
 def render_concise(
-    report: Report, *, show_hints: bool = False, statistics: bool = False
+    report: Report,
+    *,
+    show_hints: bool = False,
+    statistics: bool = False,
+    by: str = "rule",
 ) -> str:
     return _render(
         report,
         lambda _path, _line: "",
-        _Style(False, concise=True),
+        _Style(False, concise=True, statistics_by=by),
         show_hints=show_hints,
         statistics=statistics,
     )
@@ -97,7 +106,14 @@ def _render(
     many_rules = len({violation.code for violation in shown}) > 1
     if statistics and report.violations:
         # Counts plan the work, so they include hints that are not listed.
-        lines.extend([_statistics(report.violations, style), ""])
+        lines.extend(
+            [
+                _member_statistics(report.violations)
+                if style.statistics_by == "member"
+                else _statistics(report.violations, style),
+                "",
+            ]
+        )
     elif len(shown) > _STATISTICS_THRESHOLD and many_rules:
         lines.extend([_statistics(shown, style), ""])
     if report.scope:
@@ -223,7 +239,10 @@ _STATISTICS_THRESHOLD = 10
 
 
 class _Style:
-    def __init__(self, color: bool, *, concise: bool = False) -> None:
+    def __init__(
+        self, color: bool, *, concise: bool = False, statistics_by: str = "rule"
+    ) -> None:
+        self.statistics_by = statistics_by
         self._color = color
         self.concise = concise
 
@@ -301,6 +320,13 @@ def _facades(violations: list[Violation]) -> list[str]:
     if len(groups) > _TOP_EDGES:
         lines.append(f"  … {len(groups) - _TOP_EDGES} more")
     return lines
+
+
+def _member_statistics(violations: list[Violation]) -> str:
+    counts = Counter(v.member or "<project>" for v in violations)
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    width = len(str(ordered[0][1]))
+    return "\n".join(f"{count:>{width}}  {member}" for member, count in ordered)
 
 
 def _statistics(violations: list[Violation], style: _Style) -> str:

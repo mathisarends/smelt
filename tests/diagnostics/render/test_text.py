@@ -12,6 +12,21 @@ if TYPE_CHECKING:
 
 
 class TestViolations:
+    def test_member_statistics_include_root_and_unattributed_hints(
+        self, report: Report
+    ) -> None:
+        report.violations = [
+            replace(report.violations[0], member="services/api"),
+            replace(report.violations[1], member="."),
+            report.violations[2],
+        ]
+
+        out = render_concise(report, statistics=True, by="member")
+
+        assert "1  services/api" in out
+        assert "1  ." in out
+        assert "1  <project>" in out
+
     def test_concise_lists_findings_without_detail_blocks(self, report: Report) -> None:
         out = render_concise(report)
 

@@ -12,9 +12,62 @@ import yaml
 from smelt.cli import main
 from smelt.config import load_config
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
-from tests.helpers import FIXTURES, LAYERED_CONFIG, check, write_project
+from tests.helpers import (
+    FIXTURES,
+    LAYERED_CONFIG,
+    MEMBER_BOUNDARIES,
+    check,
+    write_project,
+)
 
 GATEWAY = FIXTURES / "gateway"
+
+
+@pytest.mark.parametrize("format_name", ["text", "concise"])
+def test_statistics_by_member_includes_source_findings_and_test_hints(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    format_name: str,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {tests/independent-case-loop: hint}\n",
+            "packages/core/src/core/model.py": "from api.http import Order\n",
+            "services/api/tests/test_http.py": "def test_http():\n    for case in [1, 2]:\n        selected = select(case)\n        assert selected == case\n",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code, out, err = _run(
+        capsys, "check", "--statistics", "--by", "member", "--format", format_name
+    )
+
+    assert code == 1
+    assert err == ""
+    assert "2  packages/core" in out
+    assert "1  services/api" in out
+    _, out, _ = _run(capsys, "check", "--format", "json")
+    found = json.loads(out)["violations"]
+    assert [(v["code"], v["member"]) for v in found] == [
+        ("SMT111", "packages/core"),
+        ("SMT112", "packages/core"),
+        ("SMT427", "services/api"),
+    ]
+
+
+def test_statistics_grouping_requires_statistics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    code, out, _ = _run(capsys, "check", "--by", "member", "--format", "json")
+
+    assert code == 2
+    assert "requires --statistics" in json.loads(out)["error"]["message"]
 
 
 def test_inherited_config_show_explains_sources_and_is_cwd_independent(

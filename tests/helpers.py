@@ -83,3 +83,22 @@ MEMBER_ARCHITECTURES = {
     "packages/core/src/core/infra/db.py": "db = 1\n",
 }
 """A uv workspace whose two members each declare their own architecture."""
+
+MEMBER_BOUNDARIES = {
+    "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
+    "smelt.yml": """
+        version: 1
+        project: {workspace: uv, source_roots: [src]}
+        architecture:
+          members:
+            services/*: {may_depend_on: [packages/*]}
+            packages/*: {may_depend_on: []}
+        """,
+    "services/api/pyproject.toml": '[project]\nname = "web-api"\ndependencies = ["core-lib"]\n[tool.uv.sources]\ncore-lib = {workspace = true}\n',
+    "services/api/src/api/__init__.py": "",
+    "services/api/src/api/http.py": "from core.model import Order\n",
+    "packages/core/pyproject.toml": '[project]\nname = "core-lib"\ndependencies = []\n',
+    "packages/core/src/core/__init__.py": "",
+    "packages/core/src/core/model.py": "class Order: pass\n",
+}
+"""A uv workspace with declared dependencies and root member boundaries."""

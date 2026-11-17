@@ -47,6 +47,7 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     legacy = config.model_dump(mode="json")
     legacy["structure"].pop("canonical_exports")
     legacy["architecture"]["imports"].pop("type_checking_cycles")
+    legacy["architecture"].pop("members")
     legacy.pop("members")
     legacy["project"].pop("workspace")
     expected = (

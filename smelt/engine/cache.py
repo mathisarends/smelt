@@ -63,4 +63,7 @@ def analysis_inputs(
         [entry.to_json() for entry in ctx.coverage.entries],
         ctx.coverage.summary(),
         [member.to_json() for member in workspace_members(ctx.root, store=ctx.store)],
+        ctx.workspace.metadata
+        if any(rule.code == "SMT112" for rule, _ in active)
+        else None,
     ]

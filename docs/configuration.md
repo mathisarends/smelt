@@ -180,7 +180,7 @@ project:
 ```
 
 - **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`,
-  `ignore` and `architecture` (except `architecture.imports`). A member cannot
+  `ignore` and `architecture` (except `architecture.imports` and `architecture.members`). A member cannot
   set `extends`, `tests`, `suppressions`, `debt` or other `project` keys. Smelt
   reports each of these as an error that names the member file.
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
@@ -224,8 +224,8 @@ architecture:
 - It judges only imports **inside** the member: layers, features, shared code,
   composition roots, third-party policy and cycles. Imports from one member
   into another are not judged by either member's architecture.
-- `architecture.imports` (which imports count) is set once in the workspace
-  root.
+- `architecture.imports` (which imports count) and `architecture.members`
+  (boundaries between members) are set once in the workspace root.
 - `smelt context` for a member feature or path shows the member's layers. In
   strict coverage mode, SMT306 and SMT305 use the architecture that governs each
   module, and `coverage.member_architectures` lists the packages each member
@@ -233,6 +233,63 @@ architecture:
 
 Members do not yet have their own debt file or test options. Use the root
 config, with package contracts, for those.
+
+### Boundaries between members
+
+Keep internal layers in each member and declare dependencies between members in
+the root `smelt.yml`:
+
+```yaml
+architecture:
+  members:
+    "services/*": {may_depend_on: ["packages/*"]}
+    "packages/*": {may_depend_on: []}
+```
+
+This enables [SMT111](rules/SMT111.md) `architecture/member-boundary`.
+The keys and allowances are workspace-relative path globs, using `*`, `**` and
+`?`; `.` names the root project. A source member matching no key is unrestricted.
+If several keys match, their allowances combine. Imports inside the same member
+always pass. Member-local wiring or shared roles do not bypass these boundaries.
+Only direct production imports count, regardless of `architecture.imports.transitive`;
+`TYPE_CHECKING` imports follow the root `architecture.imports.type_checking` setting.
+
+`project.workspace: uv` also enables [SMT112](rules/SMT112.md)
+`architecture/undeclared-member-dependency`. A production import of another member
+requires a declaration in the importing member's `project.dependencies` or
+`project.optional-dependencies`. Distribution names come from `[project].name`,
+independently of Python package names; for example package `core` can belong to
+distribution `core-lib`:
+
+```toml
+# services/api/pyproject.toml
+[project]
+name = "web-api"
+dependencies = ["core-lib"]
+
+[tool.uv.sources]
+core-lib = {workspace = true}
+```
+
+An entry in `tool.uv.sources` alone does not declare a dependency. Sources in the
+root apply to all members, and a member's source for a dependency replaces the
+root's entry. Workspace sources and local paths must identify the imported
+member; an explicit source elsewhere does not supply it. Local source paths are
+relative to the file declaring them. Without a source entry, a matching
+distribution name counts as declared; Smelt does not validate uv's resolver setup.
+Names are normalized, and all marker/extra branches count without evaluating the
+analyzer's environment. Development groups and test imports are outside SMT112.
+Members with dynamic dependencies or missing project metadata are skipped rather
+than guessed. Invalid static requirements or unreadable metadata are analysis errors.
+Only a direct import requires a direct declaration.
+
+Both rules use the existing severity, ignore, suppression and debt mechanisms.
+They run on the shared import graph even when members declare different internal
+architectures. JSON findings add `member`: the member directory, `.` for workspace
+root files, or `null` outside a workspace or without a file location.
+`smelt check --statistics --by member` counts findings per member, including hints;
+the default grouping remains per rule. `--show-coverage` includes
+`coverage.member_boundaries`, the effective root allowlists.
 
 ## Options and package exceptions
 

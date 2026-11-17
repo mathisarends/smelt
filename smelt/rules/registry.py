@@ -31,6 +31,8 @@ _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.fanout:PackageImportFanout",
     "smelt.rules.dependencies.facades:FacadeExportGap",
     "smelt.rules.dependencies.module_fanout:ModuleImportFanout",
+    "smelt.rules.dependencies.member_boundaries:MemberBoundary",
+    "smelt.rules.dependencies.member_boundaries:UndeclaredMemberDependency",
     "smelt.rules.structure.layout:UnknownLayer",
     "smelt.rules.structure.naming:ForbiddenPackageName",
     "smelt.rules.structure.layout:UnclassifiedModule",

@@ -147,6 +147,12 @@ def _add_check(sub: _Subparsers) -> None:
         help="show counts per rule instead of each violation",
     )
     check.add_argument("--no-color", action="store_true")
+    check.add_argument(
+        "--by",
+        choices=["rule", "member"],
+        default="rule",
+        help="group --statistics by rule (default) or workspace member",
+    )
     check.add_argument("--no-debt", action="store_true", help="ignore the debt file")
     check.add_argument(
         "--no-cache",

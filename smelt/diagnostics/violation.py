@@ -71,6 +71,7 @@ class Violation:
     edge: str | None = None
     docs_url: str | None = None
     category: Category | None = field(default=None, compare=False)
+    member: str | None = None
 
     def with_severity(self, severity: Severity) -> Self:
         return replace(self, severity=severity)
@@ -113,6 +114,7 @@ class Violation:
             "end_column": self.end_column,
             "feature": self.feature,
             "layer": self.layer,
+            "member": self.member,
             "source_module": self.source_module,
             "target_module": self.target_module,
             "edge": self.edge,

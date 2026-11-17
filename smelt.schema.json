@@ -64,6 +64,14 @@
         "imports": {
           "$ref": "#/$defs/ImportsConfig",
           "description": "Which imports count."
+        },
+        "members": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MemberBoundaryConfig"
+          },
+          "description": "Root-only uv workspace boundaries: source member path glob -> {may_depend_on: [target member globs]}. Unmatched source members are unrestricted; '.' names the root project. SMT111 checks direct imports.",
+          "title": "Members",
+          "type": "object"
         }
       },
       "title": "ArchitectureConfig",
@@ -368,6 +376,22 @@
         }
       },
       "title": "LayerConfig",
+      "type": "object"
+    },
+    "MemberBoundaryConfig": {
+      "additionalProperties": false,
+      "description": "Allowed target members for each matching source member.",
+      "properties": {
+        "may_depend_on": {
+          "description": "Workspace-relative member globs this member may import; [] forbids imports of other members. Overlapping source entries combine their allowances.",
+          "items": {
+            "type": "string"
+          },
+          "title": "May Depend On",
+          "type": "array"
+        }
+      },
+      "title": "MemberBoundaryConfig",
       "type": "object"
     },
     "ModuleImportExemption": {
@@ -1510,6 +1534,38 @@
           "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under structure or in a package contract to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exempt defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "architecture/member-boundary": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT111: A workspace member imports a member outside its may_depend_on allowlist.",
+          "description": "A workspace member imports a member outside its may_depend_on allowlist. Member-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply. Repair: Move the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.",
+          "markdownDescription": "**SMT111 \u2014 architecture/member-boundary**\n\nA workspace member imports a member outside its may_depend_on allowlist.\n\nMember-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply.\n\n**Problem**\n```python\n# packages/core/src/core/model.py\nfrom api.http import serve\n# root policy: architecture.members: {'packages/*': {may_depend_on: []}}\n```\n\n**Preferred**\n```python\n# services/api/src/api/http.py\nfrom core.model import Order\n# root policy: architecture.members: {'services/*': {may_depend_on: ['packages/*']}}\n```\n\nMove the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.\n\nRun `smelt explain architecture/member-boundary` for details.",
+          "examples": [
+            "error"
+          ]
+        },
+        "architecture/undeclared-member-dependency": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT112: A workspace member imports another member without declaring a direct project dependency.",
+          "description": "A workspace member imports another member without declaring a direct project dependency. One shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations. Repair: Declare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.",
+          "markdownDescription": "**SMT112 \u2014 architecture/undeclared-member-dependency**\n\nA workspace member imports another member without declaring a direct project dependency.\n\nOne shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations.\n\n**Problem**\n```toml\n[project]\nname = \"api\"\ndependencies = []\n# api imports core.model\n```\n\n**Preferred**\n```toml\n[project]\nname = \"api\"\ndependencies = [\"core-lib\"]\n[tool.uv.sources]\ncore-lib = {workspace = true}\n```\n\nDeclare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.\n\nRun `smelt explain architecture/undeclared-member-dependency` for details.",
+          "examples": [
+            "error"
           ]
         },
         "architecture/unknown-layer": {
@@ -2721,7 +2777,7 @@
             "off"
           ],
           "title": "architecture: every rule in the architecture family",
-          "description": "architecture: every rule in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/unknown-layer, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "description": "architecture: every rule in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
           "examples": [
             "on"
           ]
@@ -2886,7 +2942,7 @@
             "off"
           ],
           "title": "ALL: every rule in the catalog",
-          "description": "ALL: every rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, layout/file-name-convention, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, visibility/test-only-public-function, visibility/test-only-public-attribute, tests/nondeterministic-data, meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
+          "description": "ALL: every rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, layout/file-name-convention, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, visibility/test-only-public-function, visibility/test-only-public-attribute, tests/nondeterministic-data, meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
           "examples": [
             "on"
           ]
@@ -3051,6 +3107,38 @@
           "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under structure or in a package contract to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exempt defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT111$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT111: A workspace member imports a member outside its may_depend_on allowlist.",
+          "description": "A workspace member imports a member outside its may_depend_on allowlist. Member-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply. Repair: Move the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.",
+          "markdownDescription": "**SMT111 \u2014 architecture/member-boundary**\n\nA workspace member imports a member outside its may_depend_on allowlist.\n\nMember-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply.\n\n**Problem**\n```python\n# packages/core/src/core/model.py\nfrom api.http import serve\n# root policy: architecture.members: {'packages/*': {may_depend_on: []}}\n```\n\n**Preferred**\n```python\n# services/api/src/api/http.py\nfrom core.model import Order\n# root policy: architecture.members: {'services/*': {may_depend_on: ['packages/*']}}\n```\n\nMove the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.\n\nRun `smelt explain architecture/member-boundary` for details.",
+          "examples": [
+            "error"
+          ]
+        },
+        "^SMT112$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT112: A workspace member imports another member without declaring a direct project dependency.",
+          "description": "A workspace member imports another member without declaring a direct project dependency. One shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations. Repair: Declare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.",
+          "markdownDescription": "**SMT112 \u2014 architecture/undeclared-member-dependency**\n\nA workspace member imports another member without declaring a direct project dependency.\n\nOne shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations.\n\n**Problem**\n```toml\n[project]\nname = \"api\"\ndependencies = []\n# api imports core.model\n```\n\n**Preferred**\n```toml\n[project]\nname = \"api\"\ndependencies = [\"core-lib\"]\n[tool.uv.sources]\ncore-lib = {workspace = true}\n```\n\nDeclare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.\n\nRun `smelt explain architecture/undeclared-member-dependency` for details.",
+          "examples": [
+            "error"
           ]
         },
         "^SMT301$": {
@@ -4404,6 +4492,38 @@
             "hint"
           ]
         },
+        "architecture/member-boundary": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT111: A workspace member imports a member outside its may_depend_on allowlist.",
+          "description": "A workspace member imports a member outside its may_depend_on allowlist. Member-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply. Repair: Move the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.",
+          "markdownDescription": "**SMT111 \u2014 architecture/member-boundary**\n\nA workspace member imports a member outside its may_depend_on allowlist.\n\nMember-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply.\n\n**Problem**\n```python\n# packages/core/src/core/model.py\nfrom api.http import serve\n# root policy: architecture.members: {'packages/*': {may_depend_on: []}}\n```\n\n**Preferred**\n```python\n# services/api/src/api/http.py\nfrom core.model import Order\n# root policy: architecture.members: {'services/*': {may_depend_on: ['packages/*']}}\n```\n\nMove the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.\n\nRun `smelt explain architecture/member-boundary` for details.",
+          "examples": [
+            "error"
+          ]
+        },
+        "architecture/undeclared-member-dependency": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT112: A workspace member imports another member without declaring a direct project dependency.",
+          "description": "A workspace member imports another member without declaring a direct project dependency. One shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations. Repair: Declare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.",
+          "markdownDescription": "**SMT112 \u2014 architecture/undeclared-member-dependency**\n\nA workspace member imports another member without declaring a direct project dependency.\n\nOne shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations.\n\n**Problem**\n```toml\n[project]\nname = \"api\"\ndependencies = []\n# api imports core.model\n```\n\n**Preferred**\n```toml\n[project]\nname = \"api\"\ndependencies = [\"core-lib\"]\n[tool.uv.sources]\ncore-lib = {workspace = true}\n```\n\nDeclare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.\n\nRun `smelt explain architecture/undeclared-member-dependency` for details.",
+          "examples": [
+            "error"
+          ]
+        },
         "architecture/unknown-layer": {
           "type": "string",
           "enum": [
@@ -5357,7 +5477,7 @@
             "off"
           ],
           "title": "architecture: the source rules in the architecture family",
-          "description": "architecture: the source rules in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/unknown-layer, architecture/unclassified-module, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "description": "architecture: the source rules in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
           "examples": [
             "on"
           ]
@@ -5492,7 +5612,7 @@
             "off"
           ],
           "title": "ALL: every source rule in the catalog",
-          "description": "ALL: every source rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "description": "ALL: every source rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
           "examples": [
             "on"
           ]
@@ -5657,6 +5777,38 @@
           "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.imports.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under structure or in a package contract to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exempt defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
+          ]
+        },
+        "^SMT111$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT111: A workspace member imports a member outside its may_depend_on allowlist.",
+          "description": "A workspace member imports a member outside its may_depend_on allowlist. Member-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply. Repair: Move the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.",
+          "markdownDescription": "**SMT111 \u2014 architecture/member-boundary**\n\nA workspace member imports a member outside its may_depend_on allowlist.\n\nMember-local layers describe internal design; workspace member boundaries describe which projects may depend on one another. Only direct production imports between discovered members count. Unmatched source members are unrestricted, overlapping source globs combine their allowances, and imports inside one member always pass. Wiring and shared modules retain these boundaries. TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply.\n\n**Problem**\n```python\n# packages/core/src/core/model.py\nfrom api.http import serve\n# root policy: architecture.members: {'packages/*': {may_depend_on: []}}\n```\n\n**Preferred**\n```python\n# services/api/src/api/http.py\nfrom core.model import Order\n# root policy: architecture.members: {'services/*': {may_depend_on: ['packages/*']}}\n```\n\nMove the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.\n\nRun `smelt explain architecture/member-boundary` for details.",
+          "examples": [
+            "error"
+          ]
+        },
+        "^SMT112$": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "on",
+            "off"
+          ],
+          "title": "SMT112: A workspace member imports another member without declaring a direct project dependency.",
+          "description": "A workspace member imports another member without declaring a direct project dependency. One shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations. Repair: Declare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.",
+          "markdownDescription": "**SMT112 \u2014 architecture/undeclared-member-dependency**\n\nA workspace member imports another member without declaring a direct project dependency.\n\nOne shared import graph makes undeclared imports work locally, but the member may fail when installed independently. This rule compares direct production imports with project.dependencies, project.optional-dependencies and tool.uv.sources. Distribution names are normalized independently of Python package names. Markers and extras count without evaluating the analyzer's environment. uv sources alone do not declare dependencies. A member source overrides the root source, even when marked. Dependency groups and test imports are not assessed; projects with dynamic dependencies or without static metadata are skipped. architecture.imports.transitive does not require transitive declarations.\n\n**Problem**\n```toml\n[project]\nname = \"api\"\ndependencies = []\n# api imports core.model\n```\n\n**Preferred**\n```toml\n[project]\nname = \"api\"\ndependencies = [\"core-lib\"]\n[tool.uv.sources]\ncore-lib = {workspace = true}\n```\n\nDeclare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.\n\nRun `smelt explain architecture/undeclared-member-dependency` for details.",
+          "examples": [
+            "error"
           ]
         },
         "^SMT301$": {

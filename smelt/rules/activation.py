@@ -103,6 +103,14 @@ POLICIES = {
         "max_module_imports",
         "structure or a package contract sets max_module_imports, including zero.",
     ),
+    "SMT111": PolicyActivation(
+        "architecture.members declares workspace member boundaries.",
+        lambda config: bool(config.architecture.members),
+    ),
+    "SMT112": PolicyActivation(
+        "project.workspace is uv; static member metadata declares dependencies.",
+        lambda config: config.project.workspace == "uv",
+    ),
     "SMT302": PolicyActivation(
         "structure.forbidden_names contains naming restrictions.",
         lambda config: bool(config.structure.forbidden_names),
