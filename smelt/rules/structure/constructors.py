@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -30,9 +31,10 @@ _DECISIONS = (
 
 class ConstructorLogic(Rule):
     file_local = True
+    activation = POLICIES["SMT364"]
     code = "SMT364"
-    name = "constructor-logic"
-    category = Category.STRUCTURE
+    name = "complexity/constructor-logic"
+    category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -68,25 +70,19 @@ class ConstructorLogic(Rule):
             "or classmethod and assign its result. Preserve evaluation order, exceptions "
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
-            "{constructor-logic: hint} or select SMT364. Set "
-            "structure.max_constructor_decisions globally or in a package contract; "
-            "0 forbids any counted decision. Threshold options alone do not enable "
-            "the rule. Reasoned suppressions and package off overrides are supported."
+            "{complexity/constructor-logic: hint}, select SMT364, or set "
+            "max_constructor_decisions under structure or in a package contract. "
+            "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
+            "suppressions and package off overrides are supported."
         ),
         config=("rules", "structure.max_constructor_decisions", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            limit = ctx.config.structure.max_constructor_decisions
-            contract = ctx.contracts.policy_for(
+            limit, _ = ctx.contracts.threshold(
                 source.module, "max_constructor_decisions"
             )
-            if (
-                contract is not None
-                and contract.spec.max_constructor_decisions is not None
-            ):
-                limit = contract.spec.max_constructor_decisions
             for owner in ast.walk(ctx.asts.parse(source.path)):
                 if not isinstance(owner, ast.ClassDef):
                     continue

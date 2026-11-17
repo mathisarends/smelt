@@ -182,7 +182,7 @@ def test_truncates_long_copy_lists(tmp_path: Path) -> None:
 def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     files = {"app/tools/keyboard.py": _helper(), "app/tools/typing.py": _helper()}
     assert violations(_project(tmp_path / "default", files)) == []
-    config = CONFIG + "rules: {duplicate-function: warning}\n"
+    config = CONFIG + "rules: {complexity/duplicate-function: warning}\n"
     found = violations(_project(tmp_path / "enabled", files, config=config))
     assert [(item.code, item.severity) for item in found] == [
         ("SMT352", Severity.WARNING),

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
-from smelt.diagnostics.violation import Severity
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.groups import RULE_GROUPS
+from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -20,6 +21,7 @@ class RuleSettings:
     def __init__(self, rules: RuleSet, loaded: LoadedConfig) -> None:
         self.config = loaded.config
         self.source = loaded.path.name
+        self.rules = rules
         self.codes = {rule.code: rule.code for rule in rules.rules}
         self.codes.update({rule.name: rule.code for rule in rules.rules})
         project_rules = {
@@ -38,7 +40,7 @@ class RuleSettings:
                     [
                         ConfigIssue(
                             f"ignore[{index}].rule",
-                            f'unknown rule "{entry.rule}"{did_you_mean(entry.rule, self.codes)}',
+                            f'unknown rule "{entry.rule}"{self._suggestion(entry.rule)}',
                         )
                     ],
                     self.source,
@@ -111,7 +113,7 @@ class RuleSettings:
         if value is None:
             value = (
                 rule.default_severity.value
-                if self.globally_enabled(rule, selected=selected)
+                if self._enabled_for(rule, ctx, module, selected=selected)
                 else "off"
             )
         if module:
@@ -139,22 +141,49 @@ class RuleSettings:
             or (activation is not None and activation.matches(self.config))
         )
 
+    def _enabled_for(
+        self,
+        rule: RuleContract,
+        ctx: AnalysisContext,
+        module: str | None,
+        *,
+        selected: bool,
+    ) -> bool:
+        """An option-scoped activation applies only where structure or a contract sets it."""
+        activation = getattr(rule, "activation", None)
+        if (
+            activation is None
+            or activation.option is None
+            or selected
+            or getattr(rule, "enabled_by_default", False)
+            or module is None
+        ):
+            return self.globally_enabled(rule, selected=selected)
+        return (
+            activation.matches(self.config)
+            and ctx.contracts.policy_for(module, activation.option) is not None
+        )
+
     def _normalize(self, raw: Mapping[str, str], location: str) -> dict[str, str]:
         result: dict[str, str] = {}
         issues: list[ConfigIssue] = []
+        # A family is the broadest selection, then a group, then a single rule.
+        for key, value in raw.items():
+            if (family := self.rules.family_codes(key)) is not None:
+                result.update(dict.fromkeys(family, value))
         for key, value in raw.items():
             if group := RULE_GROUPS.get(key):
                 result.update(dict.fromkeys(group.codes, value))
         individual: set[str] = set()
         for key, value in raw.items():
-            if key in RULE_GROUPS:
+            if key in RULE_GROUPS or self.rules.family_codes(key) is not None:
                 continue
             code = self.codes.get(key)
             if code is None:
                 issues.append(
                     ConfigIssue(
                         f"{location}.{key}",
-                        f'unknown rule "{key}"{did_you_mean(key, [*self.codes, *RULE_GROUPS])}',
+                        f'unknown rule "{key}"{self._suggestion(key)}',
                     )
                 )
             elif code in individual:
@@ -167,3 +196,9 @@ class RuleSettings:
         if issues:
             raise ConfigError(issues, self.source)
         return result
+
+    def _suggestion(self, key: str) -> str:
+        families = [category.value for category in Category]
+        return retired_hint(key, self.codes) or did_you_mean(
+            key, [*self.codes, *RULE_GROUPS, *families]
+        )

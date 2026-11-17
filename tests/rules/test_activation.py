@@ -57,21 +57,21 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"structure": {"forbidden_names": ["utils"]}}, {"SMT302"}),
         ({"structure": {"max_module_imports": 0}}, {"SMT110"}),
         ({"structure": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
-        ({"structure": {"file_naming": {"compose_basename": "compose"}}}, {"SMT332"}),
+        ({"structure": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
         ({"project": {"root_packages": ["app"], "coverage": "strict"}}, {"SMT306"}),
         ({"tests": {"layout": "mirror"}}, {"SMT401"}),
-        ({"rules": {"private-test-access": "error"}}, {"SMT420"}),
+        ({"rules": {"tests/private-access": "error"}}, {"SMT420"}),
         ({"tests": {"forbid_mocks_in": ["tests/domain/**"]}}, {"SMT421"}),
-        ({"rules": {"string-patch-target": "error"}}, {"SMT422"}),
+        ({"rules": {"tests/string-patch-target": "error"}}, {"SMT422"}),
         ({"tests": {"max_patches_per_test": 0}}, {"SMT423"}),
-        ({"rules": {"test-without-outcome-check": "warning"}}, {"SMT424"}),
-        ({"rules": {"test-only-checks-possibly-empty-data": "warning"}}, {"SMT425"}),
-        ({"rules": {"unbounded-test-wait": "warning"}}, {"SMT426"}),
-        ({"rules": {"independent-test-case-loop": "hint"}}, {"SMT427"}),
-        ({"rules": {"async-mock-without-await-check": "warning"}}, {"SMT428"}),
-        ({"rules": {"test-only-public-function": "warning"}}, {"SMT429"}),
-        ({"rules": {"test-only-public-attribute": "warning"}}, {"SMT430"}),
-        ({"rules": {"deep-object-navigation": "hint"}}, {"SMT322"}),
+        ({"rules": {"tests/missing-outcome-check": "warning"}}, {"SMT424"}),
+        ({"rules": {"tests/vacuous-assertion": "warning"}}, {"SMT425"}),
+        ({"rules": {"tests/unbounded-wait": "warning"}}, {"SMT426"}),
+        ({"rules": {"tests/independent-case-loop": "hint"}}, {"SMT427"}),
+        ({"rules": {"tests/missing-await-assertion": "warning"}}, {"SMT428"}),
+        ({"rules": {"visibility/test-only-public-function": "warning"}}, {"SMT429"}),
+        ({"rules": {"visibility/test-only-public-attribute": "warning"}}, {"SMT430"}),
+        ({"rules": {"complexity/deep-object-navigation": "hint"}}, {"SMT322"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(
@@ -92,16 +92,16 @@ def test_explicit_project_policy_activates_its_checks(
         ({"export_at": 3, "count_tests": True}, {"SMT109"}),
         ({"imports": {"style": "absolute"}}, {"SMT308"}),
         ({"module_docstrings": "forbid"}, {"SMT309"}),
-        ({"module_docstrings": "require"}, {"SMT325"}),
+        ({"module_docstrings": "require"}, {"SMT309"}),
         ({"future_annotations": "forbid"}, {"SMT310"}),
         ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
         ({"private_modules": "forbid"}, {"SMT312"}),
-        ({"ordering": {}, "rules": {"public-definitions-first": "error"}}, {"SMT313"}),
-        ({"rules": {"bundled-instance-assignment": "error"}}, {"SMT314"}),
+        ({"ordering": {}, "rules": {"layout/definition-order": "error"}}, {"SMT313"}),
+        ({"rules": {"idioms/bundled-instance-assignment": "error"}}, {"SMT314"}),
         ({"type_dispatch": {}}, {"SMT315"}),
-        ({"rules": {"internal-public-member": "warning"}}, {"SMT316"}),
-        ({"rules": {"internal-static-helper": "hint"}}, {"SMT317"}),
-        ({"rules": {"deep-object-navigation": "hint"}}, {"SMT322"}),
+        ({"rules": {"visibility/internal-public-member": "warning"}}, {"SMT316"}),
+        ({"rules": {"layout/misplaced-static-helper": "hint"}}, {"SMT317"}),
+        ({"rules": {"complexity/deep-object-navigation": "hint"}}, {"SMT322"}),
         (
             {
                 "module_docstrings": "allow",
@@ -110,10 +110,10 @@ def test_explicit_project_policy_activates_its_checks(
                 "ordering": {},
                 "type_dispatch": {"style": "allow"},
                 "rules": {
-                    "internal-public-member": "off",
-                    "internal-static-helper": "off",
-                    "bundled-instance-assignment": "off",
-                    "public-definitions-first": "off",
+                    "visibility/internal-public-member": "off",
+                    "layout/misplaced-static-helper": "off",
+                    "idioms/bundled-instance-assignment": "off",
+                    "layout/definition-order": "off",
                 },
             },
             set(),
@@ -129,10 +129,69 @@ def test_package_policy_activates_without_a_second_rule_switch(
     )
 
 
+SHARED_OPTIONS = [
+    ({"max_module_imports": 0}, {"SMT110"}),
+    ({"imports": {"style": "absolute"}}, {"SMT308"}),
+    ({"module_docstrings": "require"}, {"SMT309"}),
+    ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
+    ({"private_modules": "forbid"}, {"SMT312"}),
+    ({"type_dispatch": {}}, {"SMT315"}),
+    ({"private_attribute_boundary": "package"}, {"SMT339"}),
+    ({"call_argument_kinds": ["await"]}, {"SMT340"}),
+    ({"str_enum_values": "auto"}, {"SMT341"}),
+    ({"max_positional_parameters": 0}, {"SMT345"}),
+    ({"dataclass_options": []}, {"SMT351"}),
+    ({"bases": {}}, {"SMT353"}),
+    ({"errors": {}}, {"SMT354"}),
+    ({"max_comprehension_loops": 2}, {"SMT363"}),
+    ({"max_constructor_decisions": 0}, {"SMT364"}),
+    ({"max_private_definitions": 0}, {"SMT367"}),
+]
+
+
+@pytest.mark.parametrize(("policy", "expected"), SHARED_OPTIONS)
+@pytest.mark.parametrize("level", ["structure", "contract"])
+def test_a_single_rule_option_activates_its_rule_at_either_level(
+    policy: dict[str, object], expected: set[str], level: str
+) -> None:
+    structure = (
+        policy
+        if level == "structure"
+        else {"contracts": {"api": {"match": "app", **policy}}}
+    )
+    assert _active({"structure": structure}) == BASELINE | expected
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"module_import_exempt": []},
+        {"ordering": {"fix": "off"}},
+        {"module_docstrings": "allow", "type_dispatch": {"style": "allow"}},
+    ],
+)
+def test_modifiers_and_allow_values_do_not_activate_a_rule(
+    policy: dict[str, object],
+) -> None:
+    assert _active({"structure": policy}) == BASELINE
+
+
+def test_off_wins_over_an_activating_option() -> None:
+    assert (
+        _active(
+            {
+                "structure": {"max_comprehension_loops": 2},
+                "rules": {"complexity/complex-comprehension": "off"},
+            }
+        )
+        == BASELINE
+    )
+
+
 def test_scope_settings_alone_do_not_enable_explicit_heuristics() -> None:
     assert _active({"architecture": {"imports": {"cycles": ["siblings"]}}}) == BASELINE
     assert _active(
-        {"rules": {"SMT104": "error", "unclassified-module": "warning"}}
+        {"rules": {"SMT104": "error", "architecture/unclassified-module": "warning"}}
     ) == BASELINE | {"SMT104", "SMT305"}
 
 

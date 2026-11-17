@@ -19,7 +19,7 @@ class ForbiddenTestMock(Rule):
     scope = "test"
     activation = POLICIES["SMT421"]
     code = "SMT421"
-    name = "forbidden-test-mock"
+    name = "tests/forbidden-mock"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
@@ -57,7 +57,7 @@ class StringPatchTarget(Rule):
     test_local = True
     scope = "test"
     code = "SMT422"
-    name = "string-patch-target"
+    name = "tests/string-patch-target"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(
@@ -92,7 +92,7 @@ class ExcessiveTestPatches(Rule):
     scope = "test"
     activation = POLICIES["SMT423"]
     code = "SMT423"
-    name = "excessive-test-patches"
+    name = "tests/excess-patches"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
     doc = RuleDoc(

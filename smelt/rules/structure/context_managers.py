@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class DeprecatedAsyncContextmanagerReturn(Rule):
     file_local = True
     code = "SMT337"
-    name = "deprecated-async-contextmanager-return"
-    category = Category.STRUCTURE
+    name = "typing/deprecated-async-contextmanager-return"
+    category = Category.TYPING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -25,7 +25,7 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
         rationale="The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.",
         bad="from collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield",
         good="from collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield",
-        fix="Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
+        fix="Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {typing/deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
         config=("rules", "structure.contracts"),
     )
 

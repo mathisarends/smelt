@@ -21,8 +21,8 @@ class ExcessPositionalParameters(Rule):
     file_local = True
     activation = POLICIES["SMT345"]
     code = "SMT345"
-    name = "excess-positional-parameters"
-    category = Category.STRUCTURE
+    name = "complexity/excess-positional-parameters"
+    category = Category.COMPLEXITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -30,7 +30,8 @@ class ExcessPositionalParameters(Rule):
         rationale=(
             "Call sites such as connect(user, run, tab, True) do not say which "
             "value is which, and swapping two arguments of the same type still "
-            "type-checks. A package contract sets max_positional_parameters; "
+            "type-checks. max_positional_parameters, set under structure or in a "
+            "package contract, is the limit; "
             "parameters after that limit must be keyword-only so every call names "
             "them. self and cls are not counted, nor are *args and **kwargs. "
             "Dunder methods, @overload and @override definitions are exempt "
@@ -49,21 +50,23 @@ class ExcessPositionalParameters(Rule):
             "Insert * after the last allowed positional parameter, then pass the "
             "remaining arguments by keyword at every call site. Callbacks whose "
             "positional signature is fixed by a framework keep it with a reasoned "
-            "suppression. No automatic rewrite is performed. Enable it with a "
-            "package contract, e.g. structure.contracts.<name>: {match: app, "
-            "max_positional_parameters: 2}."
+            "suppression. No automatic rewrite is performed. Enable it for the "
+            "project with structure: {max_positional_parameters: 3}, for one "
+            "package with a contract, or with rules, which uses a limit of 5."
         ),
-        config=("structure.contracts",),
+        config=(
+            "rules",
+            "structure.max_positional_parameters",
+            "structure.contracts",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(
+            limit, contract = ctx.contracts.threshold(
                 source.module, "max_positional_parameters"
             )
-            if contract is None or contract.spec.max_positional_parameters is None:
-                continue
-            limit = contract.spec.max_positional_parameters
+            origin = contract.origin if contract else "default"
             for function in _functions(ctx.asts.parse(source.path)):
                 if len(function.positional) <= limit:
                     continue
@@ -75,13 +78,13 @@ class ExcessPositionalParameters(Rule):
                 )
                 yield self.violation(
                     f"{function.node.name} accepts {len(function.positional)} "
-                    f"positional parameters; {contract.name} allows {limit}",
+                    f"positional parameters; {origin} allows {limit}",
                     path=source.path,
                     line=function.node.lineno,
                     column=function.node.col_offset + 1,
                     source_module=source.module,
                     expected={
-                        "contract": contract.name,
+                        "contract": contract.name if contract else None,
                         "max_positional_parameters": limit,
                         "function": function.node.name,
                         "positional": function.positional,

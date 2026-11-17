@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
 class PreferCallableInstance(Rule):
     code = "SMT333"
-    name = "prefer-callable-instance"
-    category = Category.STRUCTURE
+    name = "idioms/prefer-callable-instance"
+    category = Category.IDIOMS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     file_local = True
@@ -56,7 +56,7 @@ class PreferCallableInstance(Rule):
             "and async behavior; do not move constructor dependencies into __call__. Review callers, "
             "dependency injection registrations and public compatibility before changing either name. "
             "No names, arguments or callers are rewritten automatically. Enable rules: "
-            "{prefer-callable-instance: hint}, globally or in a package contract, or --select SMT333. "
+            "{idioms/prefer-callable-instance: hint}, globally or in a package contract, or --select SMT333. "
             "Keep an intentional named API with a package rules override set to off or a reasoned SMT333 suppression."
         ),
         config=("rules", "structure.contracts"),

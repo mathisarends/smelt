@@ -87,13 +87,15 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
     source = "from pydantic_settings import BaseSettings\nclass Settings(BaseSettings):\n    password: str\n"
     root = _project(tmp_path, source)
     assert violations(root) == []
-    _project(tmp_path, source, CONFIG + "rules: {secret-settings-field: warning}\n")
+    _project(
+        tmp_path, source, CONFIG + "rules: {frameworks/prefer-secret-type: warning}\n"
+    )
     assert [v.code for v in violations(root)] == ["SMT327"]
     _project(
         tmp_path,
         source,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {secret-settings-field: off}}\n",
+        + "structure:\n  contracts:\n    legacy: {match: app, rules: {frameworks/prefer-secret-type: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

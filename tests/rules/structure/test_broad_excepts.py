@@ -213,6 +213,6 @@ def test_suppression_reason_explains_the_handler(tmp_path: Path) -> None:
 def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     body = "    except Exception:\n        return None\n"
     assert violations(_project(tmp_path / "default", body)) == []
-    config = CONFIG + "rules: {missing-broad-except-reason: warning}\n"
+    config = CONFIG + "rules: {idioms/missing-broad-except-reason: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", body, config=config))
     assert (finding.code, finding.severity) == ("SMT350", Severity.WARNING)

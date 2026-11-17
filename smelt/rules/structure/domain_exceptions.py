@@ -51,8 +51,8 @@ class PreferDomainException(Rule):
     file_local = True
     activation = POLICIES["SMT354"]
     code = "SMT354"
-    name = "prefer-domain-exception"
-    category = Category.STRUCTURE
+    name = "modeling/prefer-domain-exception"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -94,11 +94,11 @@ class PreferDomainException(Rule):
             "builtin, for example TypeError for wrong argument types, add it "
             "to errors.allow, or set errors: {} in a nested package that "
             "deliberately raises builtins. No automatic rewrite is performed. "
-            "Enable it with a package contract, e.g. "
-            "structure.contracts.<name>: {match: app, errors: {base: "
-            "app.errors.AppError}}."
+            "Enable it for the project with structure: {errors: {base: "
+            "app.errors.AppError}}, or for one package with the same option in a "
+            "package contract."
         ),
-        config=("structure.contracts",),
+        config=("structure.errors", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -140,7 +140,7 @@ class PreferDomainException(Rule):
     ) -> Violation:
         module, _, short = base.rpartition(".")
         return self.violation(
-            f"Raise of builtin {name}; {contract.name} expects a subclass of {base}",
+            f"Raise of builtin {name}; {contract.origin} expects a subclass of {base}",
             path=source.path,
             line=raised.lineno,
             column=raised.col_offset + 1,

@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 class LayerBoundary(Rule):
     activation = POLICIES["SMT101"]
     code = "SMT101"
-    name = "layer-boundary"
-    category = Category.DEPENDENCIES
+    name = "architecture/layer-boundary"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

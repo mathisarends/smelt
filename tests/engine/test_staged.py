@@ -26,7 +26,7 @@ CONFIG = """version: 1
 project: {root_packages: [app]}
 structure:
   contracts:
-    api: {match: app, rules: {internal-public-member: warning}}
+    api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
 
 
@@ -172,7 +172,7 @@ def test_staged_redundant_module_name_uses_index_paths(
 ) -> None:
     config = """version: 1
 project: {root_packages: [app]}
-rules: {redundant-module-name: warning}
+rules: {layout/redundant-module-name: warning}
 """
     write_project(repo, {"smelt.yml": config, "app/cars/application/exporter.py": ""})
     _git(repo, "add", ".")
@@ -221,7 +221,6 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
         assert code == 1
         assert [(v["code"], v["path"]) for v in data["violations"]] == [
             ("SMT331", "deploy/docker-compose.yaml"),
-            ("SMT332", "deploy/docker-compose.yaml"),
         ]
     _git(repo, "add", "deploy")
     code, data = _check(repo, capsys, "--select", "SMT33")
@@ -261,7 +260,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     write_project(
         repo,
         {
-            "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
             "smelt.yml": "extends: policy/base.yml\n",
         },
     )
@@ -280,7 +279,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
 
     # Only the inherited policy changes in the index. The child is untouched.
     (repo / "policy/base.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: off}\n",
+        "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: off}\n",
         encoding="utf-8",
     )
     _git(repo, "add", "policy/base.yml")
@@ -302,7 +301,7 @@ def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
     write_project(
         repo,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
             "smelt.yml": "extends: base.yml\n",
         },
     )
@@ -549,7 +548,7 @@ def test_staged_python_metadata_determines_version_aware_findings(
 ) -> None:
     (repo / "smelt.yml").write_text(
         CONFIG.replace(
-            "rules: {internal-public-member: warning}",
+            "rules: {visibility/internal-public-member: warning}",
             "future_annotations: when-needed",
         )
     )
@@ -723,7 +722,10 @@ def test_changed_staged_policy_cannot_reuse_previous_blob(
     assert _check(repo, capsys)[0] == 1
     config = repo / "smelt.yml"
     config.write_text(
-        CONFIG.replace("internal-public-member: warning", "internal-public-member: off")
+        CONFIG.replace(
+            "visibility/internal-public-member: warning",
+            "visibility/internal-public-member: off",
+        )
     )
     _git(repo, "add", "smelt.yml")
     config.write_text("invalid: [")

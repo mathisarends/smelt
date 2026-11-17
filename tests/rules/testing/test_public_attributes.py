@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 CONFIG = """version: 1
 project: {root_packages: [app]}
-rules: {test-only-public-attribute: warning}
+rules: {visibility/test-only-public-attribute: warning}
 """
 SOURCE = """class Worker:
     def __init__(self):
@@ -280,7 +280,7 @@ def test_multiple_writes_and_tests_produce_one_finding_with_sorted_evidence(
             CheckOptions(select=("ALL",)),
         ),
         (
-            "rules: {test-only-public-attribute: off}",
+            "rules: {visibility/test-only-public-attribute: off}",
             CheckOptions(),
         ),
         (

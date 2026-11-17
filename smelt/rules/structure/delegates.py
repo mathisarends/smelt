@@ -20,8 +20,8 @@ _NEUTRAL_BASES = frozenset({"object", "ABC", "Protocol", "Generic"})
 class RedundantPrivateDelegate(Rule):
     file_local = True
     code = "SMT343"
-    name = "redundant-private-delegate"
-    category = Category.STRUCTURE
+    name = "visibility/redundant-private-delegate"
+    category = Category.VISIBILITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -59,7 +59,7 @@ class RedundantPrivateDelegate(Rule):
             "method, keep the public name, signature and docstring, and delete the "
             "private method. Keep the split with a reasoned suppression when a "
             "subclass overrides the private method. No automatic rewrite is "
-            "performed. Enable rules: {redundant-private-delegate: hint}, or "
+            "performed. Enable rules: {visibility/redundant-private-delegate: hint}, or "
             "select SMT343."
         ),
         config=("rules",),

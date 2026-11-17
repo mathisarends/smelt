@@ -19,7 +19,7 @@ structure:
     internal-helpers:
       match: app
       rules:
-        internal-public-member: warning
+        visibility/internal-public-member: warning
 ```
 
 In the existing Smelt prek repository entry, choose `id: smelt-staged`.

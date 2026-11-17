@@ -5,13 +5,32 @@ single activation setting:
 
 ```yaml
 rules:
-  public-definitions-first: error
+  layout/definition-order: error
   information-hiding: warning
-  internal-static-helper: hint
-  test-without-outcome-check: warning
-  unbounded-test-wait: warning
-  async-mock-without-await-check: warning
+  layout/misplaced-static-helper: hint
+  tests/missing-outcome-check: warning
+  tests/unbounded-wait: warning
+  tests/missing-await-assertion: warning
 ```
+
+## Families
+
+Every rule name starts with its family: `architecture`, `imports`, `layout`,
+`visibility`, `modeling`, `typing`, `complexity`, `idioms`, `frameworks`, `tests`
+or `meta`. A family name selects all of its rules wherever rule names are
+accepted, including package-contract `rules`, `--select` and `--ignore`.
+`smelt explain <family>` lists the family's rules.
+
+```yaml
+rules:
+  typing: warning
+  typing/anonymous-tuple-type: off  # A more specific entry wins.
+```
+
+A family entry enables every rule in it, including heuristic hints, so prefer it
+for exploration or for families whose findings the project has already reviewed.
+Precedence within one map is family, then group, then individual rule,
+regardless of YAML key order.
 
 ## Information hiding
 
@@ -30,7 +49,7 @@ expand the underlying checks' evidence or coverage.
 ```yaml
 rules:
   information-hiding: warning
-  internal-public-attribute: off  # Keep this specific review disabled.
+  visibility/internal-public-attribute: off  # Keep this specific review disabled.
 ```
 
 An individual rule entry overrides its group's severity in the same map,
@@ -58,18 +77,26 @@ The catalog distinguishes three modes, independently of severity:
 | --- | --- |
 | `default` | SMT301 and suppression/debt hygiene SMT901–SMT903 |
 | `policy` | Explicit architecture/interface policies or real parameters such as import style, mirror layout, mock paths and patch limits |
-| `explicit` | Fixed source/test patterns, import cycles and unclassified-module hints; enable with `rules` or CLI selection |
+| `explicit` | Fixed source/test patterns, import cycles and architecture/unclassified-module hints; enable with `rules` or CLI selection |
 
 Declaring layer dependencies activates SMT101; `tests.layout: mirror` activates
 SMT401. An empty public list still declares a private API, and a patch limit of
 zero still forbids patches. Mere ordering options do not activate SMT313.
 
+A source-convention option enables its rule only where it applies. Set under
+`structure`, it covers the project; set in a package contract, it covers the
+matching packages, and the rule reports nothing elsewhere. Selecting the same
+rule in `rules` or with `--select` enables it everywhere and uses built-in
+defaults where no option is set, for example a limit of 5 for SMT345. See
+[project-wide options](structure.md#project-wide-options-and-package-overrides)
+for the defaults.
+
 ```bash
 smelt rules --format json
-smelt explain internal-public-member
-smelt check --select information-hiding,unbounded-test-wait
+smelt explain visibility/internal-public-member
+smelt check --select information-hiding,tests/unbounded-wait
 smelt check --select SMT3
-smelt check --select ALL --ignore import-cycle
+smelt check --select ALL --ignore architecture/import-cycle
 ```
 
 `--select` replaces normal selection and accepts canonical names, rule groups,

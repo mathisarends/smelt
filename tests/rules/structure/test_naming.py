@@ -75,7 +75,7 @@ def _module_project(
     return write_project(root, {"smelt.yml": config, "app/__init__.py": "", **files})
 
 
-class TestNoPrivateModules:
+class TestForbiddenPrivateModule:
     @pytest.mark.parametrize(
         "name", ["_service", "__service", "__service__", "_", "__", "__about__"]
     )
@@ -266,7 +266,7 @@ structure:
   contracts:
     class-names:
       match: app
-      rules: {no-base-class-prefix: error}
+      rules: {modeling/forbidden-base-class-affix: error}
 """
 CLASS_OPTIONS = CheckOptions(select=("SMT323",))
 
@@ -279,10 +279,11 @@ def test_base_suffix_definitions_are_reported_without_renaming(
 ) -> None:
     source = f"class {name}: pass\n"
     root = _module_project(tmp_path, {"app/service.py": source}, CLASS_CONFIG)
-    [finding] = violations(root, CheckOptions(select=("SMT326",)))
-    assert codes_at([finding]) == [("SMT326", "app/service.py", 1)]
+    [finding] = violations(root, CheckOptions(select=("SMT323",)))
+    assert codes_at([finding]) == [("SMT323", "app/service.py", 1)]
     assert finding.expected == {
-        "forbidden_suffix": "Base",
+        "forbidden_affix": "Base",
+        "position": "suffix",
         "class": name,
         "automatic_rename": False,
     }
@@ -299,31 +300,36 @@ def test_suffix_convention_is_opt_in_and_preserves_imports_and_nearby_names(
         },
         CLASS_CONFIG,
     )
-    assert violations(root, CheckOptions(select=("SMT326",))) == []
-    write_project(root, {"app/service.py": "class MessageBase: pass\n"})
+    assert violations(root, CLASS_OPTIONS) == []
+    plain = "version: 1\nproject: {root_packages: [app]}\n"
+    write_project(
+        root, {"smelt.yml": plain, "app/service.py": "class MessageBase: pass\n"}
+    )
     assert violations(root) == []
     write_project(
-        root, {"smelt.yml": CLASS_CONFIG + "\nrules: {no-base-class-suffix: error}\n"}
+        root,
+        {"smelt.yml": plain + "rules: {modeling/forbidden-base-class-affix: error}\n"},
     )
-    assert [v.code for v in violations(root)] == ["SMT326"]
+    assert [v.code for v in violations(root)] == ["SMT323"]
 
 
 def test_suffix_package_override_and_suppression(tmp_path: Path) -> None:
     config = CLASS_CONFIG.replace(
-        "no-base-class-prefix: error", "no-base-class-suffix: off"
+        "modeling/forbidden-base-class-affix: error",
+        "modeling/forbidden-base-class-affix: off",
     )
     root = _module_project(
         tmp_path, {"app/service.py": "class MessageBase: pass\n"}, config
     )
-    assert violations(root, CheckOptions(select=("SMT326",))) == []
+    assert violations(root, CheckOptions(select=("SMT323",))) == []
     write_project(
         root,
         {
             "smelt.yml": CLASS_CONFIG,
-            "app/service.py": "class MessageBase:  # smelt: ignore[SMT326] -- Published plugin abstraction name.\n    pass\n",
+            "app/service.py": "class MessageBase:  # smelt: ignore[SMT323] -- Published plugin abstraction name.\n    pass\n",
         },
     )
-    assert violations(root, CheckOptions(select=("SMT326",))) == []
+    assert violations(root, CheckOptions(select=("SMT323",))) == []
 
 
 def test_suffix_checks_nested_and_local_definitions_but_not_tests(
@@ -337,13 +343,13 @@ def test_suffix_checks_nested_and_local_definitions_but_not_tests(
         },
         CLASS_CONFIG,
     )
-    assert codes_at(violations(root, CheckOptions(select=("SMT326",)))) == [
-        ("SMT326", "app/service.py", 2),
-        ("SMT326", "app/service.py", 4),
+    assert codes_at(violations(root, CheckOptions(select=("SMT323",)))) == [
+        ("SMT323", "app/service.py", 2),
+        ("SMT323", "app/service.py", 4),
     ]
 
 
-class TestNoBaseClassPrefix:
+class TestBaseClassPrefix:
     @pytest.mark.parametrize(
         "name",
         [
@@ -368,7 +374,8 @@ class TestNoBaseClassPrefix:
         assert found[0].column == 1
         assert found[0].source_module == "app.service"
         assert found[0].expected == {
-            "forbidden_prefix": "Base",
+            "forbidden_affix": "Base",
+            "position": "prefix",
             "class": name,
             "automatic_rename": False,
         }
@@ -385,7 +392,6 @@ class TestNoBaseClassPrefix:
             "Base64",
             "Base64Encoder",
             "Database",
-            "ServiceBase",
         ],
     )
     def test_nearby_names_are_valid(self, tmp_path: Path, name: str) -> None:
@@ -429,7 +435,9 @@ class TestNoBaseClassPrefix:
 
         assert violations(root) == []
 
-    @pytest.mark.parametrize("selector", ["SMT323", "no-base-class-prefix"])
+    @pytest.mark.parametrize(
+        "selector", ["SMT323", "modeling/forbidden-base-class-affix"]
+    )
     def test_default_is_off_and_explicit_selection_activates_the_rule(
         self, tmp_path: Path, selector: str
     ) -> None:
@@ -449,7 +457,7 @@ class TestNoBaseClassPrefix:
     ) -> None:
         config = (
             CLASS_CONFIG
-            + "    compatibility:\n      match: app.compat\n      rules: {no-base-class-prefix: off}\n"
+            + "    compatibility:\n      match: app.compat\n      rules: {modeling/forbidden-base-class-affix: off}\n"
             + "    modern:\n      match: app.compat.modern\n      rules: {SMT323: error}\n"
         )
         root = _module_project(
@@ -493,7 +501,7 @@ class TestNoBaseClassPrefix:
         root = _module_project(
             tmp_path,
             {"app/service.py": "class BaseService: pass\n"},
-            "version: 1\nproject: {root_packages: [app]}\nrules: {no-base-class-prefix: error}\n",
+            "version: 1\nproject: {root_packages: [app]}\nrules: {modeling/forbidden-base-class-affix: error}\n",
         )
 
         assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
@@ -503,7 +511,8 @@ class TestNoBaseClassPrefix:
             tmp_path,
             {"app/service.py": "class BaseService: pass\n"},
             CLASS_CONFIG.replace(
-                "no-base-class-prefix: error", "no-base-class-prefix: off"
+                "modeling/forbidden-base-class-affix: error",
+                "modeling/forbidden-base-class-affix: off",
             ),
         )
 
@@ -533,7 +542,7 @@ class TestNoBaseClassPrefix:
 
 REDUNDANT_CONFIG = """version: 1
 project: {root_packages: [backend]}
-rules: {redundant-module-name: hint}
+rules: {layout/redundant-module-name: hint}
 """
 REDUNDANT_PATH = "backend/features/cars/application/car_exporter.py"
 
@@ -618,7 +627,9 @@ class TestRedundantModuleName:
 
         assert violations(root) == []
 
-    @pytest.mark.parametrize("selector", ["SMT336", "redundant-module-name", "SMT33"])
+    @pytest.mark.parametrize(
+        "selector", ["SMT336", "layout/redundant-module-name", "SMT33"]
+    )
     def test_opt_in_selection_without_architecture_policy(
         self, tmp_path: Path, selector: str
     ) -> None:
@@ -649,10 +660,10 @@ class TestRedundantModuleName:
   contracts:
     compatibility:
       match: backend.features.cars
-      rules: {redundant-module-name: off}
+      rules: {layout/redundant-module-name: off}
     modern:
       match: backend.features.cars.application
-      rules: {redundant-module-name: warning}
+      rules: {layout/redundant-module-name: warning}
 """,
                 REDUNDANT_PATH: "",
                 "backend/features/cars/car_legacy.py": "",
@@ -676,7 +687,7 @@ project:
   root_packages: [backend]
   source_roots: [cars]
   exclude: [cars/backend/cars/car_generated.py]
-rules: {redundant-module-name: hint}
+rules: {layout/redundant-module-name: hint}
 """,
                 "cars/backend/car_exporter.py": "",
                 "cars/backend/cars/car_generated.py": "",

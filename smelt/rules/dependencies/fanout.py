@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class PackageImportFanout(Rule):
     activation = POLICIES["SMT108"]
     code = "SMT108"
-    name = "package-import-fanout"
-    category = Category.DEPENDENCIES
+    name = "imports/package-import-fanout"
+    category = Category.IMPORTS
     default_severity = Severity.HINT
     requires = frozenset({Index.IMPORTS, Index.SYNTAX})
     doc = RuleDoc(

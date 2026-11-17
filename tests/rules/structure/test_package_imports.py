@@ -279,7 +279,7 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT319", "prefer-package-import"])
+@pytest.mark.parametrize("name", ["SMT319", "imports/prefer-package-import"])
 def test_explicit_settings_enable_the_rule(tmp_path: Path, name: str) -> None:
     [finding] = violations(
         _project(tmp_path, config=CONFIG + f"rules: {{{name}: hint}}")
@@ -291,9 +291,9 @@ def test_closest_package_can_disable_the_rule(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
         config=CONFIG
-        + "rules: {prefer-package-import: error}\n"
+        + "rules: {imports/prefer-package-import: error}\n"
         + "structure:\n  contracts:\n    local:\n      match: app\n"
-        + "      rules: {prefer-package-import: off}\n",
+        + "      rules: {imports/prefer-package-import: off}\n",
     )
     assert violations(root, OPTIONS) == []
 
@@ -310,7 +310,9 @@ def test_deliberate_implementation_import_can_be_suppressed(tmp_path: Path) -> N
 
 
 def test_cached_findings_follow_export_edits_and_deletion(tmp_path: Path) -> None:
-    root = _project(tmp_path, config=CONFIG + "rules: {prefer-package-import: hint}\n")
+    root = _project(
+        tmp_path, config=CONFIG + "rules: {imports/prefer-package-import: hint}\n"
+    )
     [initial] = violations(root)
     assert initial.code == "SMT319"
     initializer = root / "app/observation/__init__.py"

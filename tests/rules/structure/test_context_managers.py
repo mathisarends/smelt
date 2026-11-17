@@ -152,14 +152,14 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
     _project(
         tmp_path,
         SOURCE,
-        CONFIG + "rules: {deprecated-async-contextmanager-return: warning}\n",
+        CONFIG + "rules: {typing/deprecated-async-contextmanager-return: warning}\n",
     )
     assert [v.code for v in violations(root)] == ["SMT337"]
     _project(
         tmp_path,
         SOURCE,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {deprecated-async-contextmanager-return: off}}\n",
+        + "structure:\n  contracts:\n    legacy: {match: app, rules: {typing/deprecated-async-contextmanager-return: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

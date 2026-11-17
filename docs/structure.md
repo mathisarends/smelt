@@ -1,51 +1,122 @@
 # Package contracts and source conventions
 
-Opt-in [SMT366 `comprehension-in-call-argument`](rules/SMT366.md) reviews list,
-set and dict comprehensions passed directly as call arguments, as well as direct
-arguments that reduce a generator with builtin `all`, `any`, `max`, `min`,
-`sorted` or `sum`. Enable
-`rules: {comprehension-in-call-argument: hint}` to ask for named intermediate
-collections before construction or consumption. Unlike SMT363, this includes
-simple mappings: the concern is separating calculation from the consuming call.
-Generator expressions passed directly, starred arguments and conditionally or
-repeatedly evaluated expression contexts are excluded; a reported reduction is
-named as a whole so its generator stays lazy. No automatic rewrite is performed; preserve
-callable lookup and argument evaluation order when extracting a variable.
+## Project-wide options and package overrides
 
-Opt-in [SMT365 `cross-module-private-attribute`](rules/SMT365.md) complements
+Source conventions are defined once. Set an option directly under `structure`
+to apply it to the whole project, and in a package contract to apply or override
+it for matching packages. The closest contract that sets an option wins, then
+`structure`, then the built-in default:
+
+```yaml
+structure:
+  future_annotations: when-needed
+  max_positional_parameters: 3
+  dataclass_options: [slots]
+  contracts:
+    legacy:
+      match: app.legacy
+      max_positional_parameters: 6
+      dataclass_options: []
+```
+
+Every option has one activation rule:
+
+- An option that belongs to a single rule enables that rule where it applies.
+  Under `structure` that is the whole project; in a contract it is the matching
+  packages. `max_positional_parameters: 3` therefore enables SMT345 and
+  `max_comprehension_loops: 2` enables SMT363.
+- Selecting the rule in `rules` or with `--select` enables it everywhere. Where
+  no option is set, the built-in default applies.
+- `off` in `rules` always wins, including in a package contract's `rules`.
+- `ordering` configures `layout/definition-order`, but the rule is enabled
+  through `rules` like any other fixed pattern.
+
+| Option | Rule | Default when the rule is selected |
+| --- | --- | --- |
+| `imports` | SMT308 | none; nothing is checked without a style |
+| `max_module_imports` | SMT110 | 20 |
+| `module_import_exempt` | SMT110 | `[facades, composition_root]`; does not enable the rule |
+| `module_docstrings` | SMT309 | none |
+| `future_annotations` | SMT310, SMT311 | none |
+| `private_modules` | SMT312 | none |
+| `private_attribute_boundary` | SMT339 | `module` |
+| `type_dispatch` | SMT315 | none |
+| `max_positional_parameters` | SMT345 | 5 |
+| `max_comprehension_loops` | SMT363 | 1 |
+| `max_constructor_decisions` | SMT364 | 2 |
+| `max_private_definitions` | SMT367 | 12 |
+| `call_argument_kinds` | SMT340 | `[await, comprehension, aggregate]` |
+| `str_enum_values` | SMT341 | `explicit` |
+| `dataclass_options` | SMT351 | none |
+| `bases` | SMT353 | none |
+| `errors` | SMT354 | none |
+
+`required`, `public`, `bundle_imports_at`, `export_at`, `count_tests` and `rules`
+describe a concrete package and exist only in contracts. Use top-level `rules`
+for project-wide severities rather than a contract that matches the root
+package. `smelt context` shows each effective option with the contract that set
+it, or `structure` for a project-wide value.
+
+## Source conventions
+
+Opt-in [SMT340 `complexity/inline-call-argument`](rules/SMT340.md) reviews
+three kinds of direct call arguments: awaited results (`await`), list, set and
+dict comprehensions (`comprehension`) and builtin `all`, `any`, `max`, `min`,
+`sorted` or `sum` reductions of a generator (`aggregate`). Enable
+`rules: {complexity/inline-call-argument: hint}` to ask for named intermediate
+values before construction or consumption. Setting `call_argument_kinds` (all
+three by default) both enables the review and narrows it:
+
+```yaml
+structure:
+  call_argument_kinds: [await]
+```
+
+Unlike SMT363, comprehensions include simple mappings: the concern is separating
+calculation from the consuming call. Generator expressions passed directly,
+starred arguments and conditionally or repeatedly evaluated expression contexts
+are excluded; a reported reduction is named as a whole so its generator stays
+lazy. Each finding carries its `kind` in the machine-readable payload. No
+automatic rewrite is performed; preserve callable lookup and argument evaluation
+order when extracting a variable.
+
+Opt-in [SMT339 `visibility/foreign-private-access`](rules/SMT339.md) complements
 Ruff SLF001 with statically resolved ownership. Enable
-`rules: {cross-module-private-attribute: warning}`. Known reads, writes, calls,
-updates and deletes of private members owned by another module are reported;
-same-module cooperation, direct own/inherited receiver accesses and dunders are
-allowed. Tests remain the responsibility of SMT420. Unresolved receivers are skipped.
-`structure.private_attribute_boundary` defaults to `module`; `package` permits
-cooperation within the same immediate Python package, including its initializer.
-Subpackages remain separate boundaries. Package contracts can override the setting,
-which is visible in `smelt context`; the option alone does not enable the rule.
+`rules: {visibility/foreign-private-access: warning}`. Imports and module-qualified
+reads of another module's private symbols (`kind: symbol`) are reported, as are
+known reads, writes, calls, updates and deletes of private members owned by
+another module (`kind: attribute`); same-module cooperation, direct
+own/inherited receiver accesses and dunders are allowed. Tests remain the
+responsibility of SMT420. Unresolved receivers are skipped.
+`private_attribute_boundary` defaults to `module`; `package` permits
+attribute cooperation within the same immediate Python package, including its
+initializer. Private module symbols always use the module boundary.
+Subpackages remain separate boundaries. Setting the option under `structure` or
+in a package contract enables the rule for that scope, and `smelt context` shows
+the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
 
-Opt-in `complex-comprehension` (SMT363) reviews list, set, dict and generator
+Opt-in `complexity/complex-comprehension` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
-`rules: {complex-comprehension: hint}`. The global
-`structure.max_comprehension_loops` defaults to 1; override it globally or in a
-package contract to permit intentional flattening. Threshold options alone do not
-enable this review. Simple filters and conditional elements with names, attributes
+`rules: {complexity/complex-comprehension: hint}`, or set
+`max_comprehension_loops` (default 1) under `structure` or in a package contract
+to enable it with a limit, for example to permit intentional flattening in one
+package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
 exact triggers and repairs that preserve generator laziness.
 
-Opt-in `constructor-logic` (SMT364) reviews decision nodes in `__init__` and
-`__post_init__`. Enable `rules: {constructor-logic: hint}`; the global
-`structure.max_constructor_decisions` defaults to 2 and can be overridden in a
-package contract. Zero forbids counted decisions. Options alone do not activate
-the review. A single fallback or guard remains valid at the default threshold;
+Opt-in `complexity/constructor-logic` (SMT364) reviews decision nodes in `__init__` and
+`__post_init__`. Enable `rules: {complexity/constructor-logic: hint}`, or set
+`max_constructor_decisions` (default 2) under `structure` or in a package
+contract. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
-Opt-in [SMT367 `excess-private-definitions`](rules/SMT367.md) reviews modules with
-many private supporting definitions. Enable `rules: {excess-private-definitions: hint}`.
-`structure.max_private_definitions` defaults to 12 and supports closest-package
-overrides, including zero; threshold options alone do not enable the rule.
+Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
+many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
+Setting `max_private_definitions` (default 12, zero allowed) under `structure`
+or in a package contract enables the rule for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
 are listed separately and never contribute to the limit. Imports, methods,
@@ -65,9 +136,10 @@ structure:
     compose_basename: compose   # compose or docker-compose
 ```
 
-[SMT331](rules/SMT331.md) reports other YAML extensions;
-[SMT332](rules/SMT332.md) reports other Compose basenames. The two policies are
-independent: omitting either allows both spellings for that part of the name.
+[SMT331](rules/SMT331.md) reports files that use another YAML extension or
+Compose basename, with one finding per file that lists every correction. The two
+policies are independent: omitting either allows both spellings for that part of
+the name.
 No separate `rules` entry is needed; use one to adjust severity or disable a check.
 
 Checks cover lowercase `.yaml` and `.yml` files below the directory containing
@@ -91,7 +163,7 @@ Prefer private module functions for class-internal static helpers by enabling:
 
 ```yaml
 rules:
-  internal-static-helper: warning
+  layout/misplaced-static-helper: warning
 ```
 
 `smelt check --select SMT317` reviews helpers such as `_build_match_clause` and
@@ -173,13 +245,15 @@ or enabled by default for consumer projects.
 
 ## Positional parameter limits
 
-Make later arguments keyword-only with an explicit package contract:
+Make later arguments keyword-only for the whole project, or for one package
+with a contract:
 
 ```yaml
 structure:
+  max_positional_parameters: 3
   contracts:
     named-arguments:
-      match: app
+      match: app.api
       max_positional_parameters: 2
 ```
 
@@ -188,7 +262,8 @@ structure:
 `connect(user_id, run_id, *, tab_id)` and callers supply `tab_id=...`.
 Zero requires all ordinary parameters to be keyword-only. `self`/`cls`, variadic
 arguments, dunders, overload/override definitions and tests are exempt.
-Omitting the option imposes no limit; the closest explicit package setting wins.
+Setting the option enables the rule for its scope. Selecting SMT345 in `rules`
+without the option uses a limit of 5; the closest package setting wins.
 `smelt context` exposes the effective limit, including for planned paths.
 Update every caller and partial application; keep externally dictated callback
 signatures with a reasoned local exception. There is no automatic rewrite.
@@ -199,10 +274,10 @@ These reviews are independent and opt-in:
 
 ```yaml
 rules:
-  redundant-private-delegate: hint
-  redundant-name-alias: hint
-  prefer-deferred-annotations: hint
-  anonymous-tuple-type: hint
+  visibility/redundant-private-delegate: hint
+  idioms/redundant-name-alias: hint
+  typing/prefer-deferred-annotations: hint
+  typing/anonymous-tuple-type: hint
 ```
 
 [SMT343](rules/SMT343.md) reviews methods that only forward unchanged arguments
@@ -240,7 +315,7 @@ structure:
       private_modules: forbid
 ```
 
-SMT312 (`no-private-modules`) rejects `_service.py`, `_internal/` and other
+SMT312 (`layout/forbidden-private-module`) rejects `_service.py`, `_internal/` and other
 underscore-prefixed module/package names, including double-underscore names.
 Python's special `__init__.py` and `__main__.py` files are allowed; arbitrary names
 such as `__service__.py` are still checked. This exception applies to files, not
@@ -273,7 +348,7 @@ structure:
     instance-fields:
       match: app
       rules:
-        bundled-instance-assignment: error
+        idioms/bundled-instance-assignment: error
 ```
 
 This reports `self.log, self.control = log, control` and chained assignments such
@@ -292,7 +367,7 @@ helper bodies are outside the check. Nested classes use their own receiver.
 Recognized static/class methods are excluded; arbitrary decorator and assignment
 aliases are not inferred. Only analyzed production modules are covered.
 
-The closest package rule wins; `rules: {bundled-instance-assignment: off}` exempts
+The closest package rule wins; `rules: {idioms/bundled-instance-assignment: off}` exempts
 a package. Effective rule severities appear in `context`, including planned modules.
 This is an optional readability convention. There is no autofix: parallel
 assignment, properties, swaps and unpacking failures can change behavior when
@@ -301,7 +376,7 @@ then assigning each field while preserving evaluation timing.
 
 ## Type dispatch with match/case
 
-`SMT315 prefer-match-type-dispatch` suggests reviewing longer positive
+`SMT315 idioms/prefer-match-type-dispatch` suggests reviewing longer positive
 `isinstance`/`elif` chains over the same simple name:
 
 ```yaml
@@ -396,7 +471,7 @@ under these package contracts.
 ## Suggestions to bundle implementation imports
 
 For total coupling across all project packages, configure
-[SMT110 `module-import-fanout`](rules/SMT110.md):
+[SMT110 `imports/excess-module-imports`](rules/SMT110.md):
 
 ```yaml
 structure:
@@ -408,8 +483,9 @@ structure:
       max_module_imports: 12
 ```
 
-Setting a threshold activates this hint. The closest package threshold overrides
-the global limit; without a threshold, even explicit selection checks nothing.
+Setting `max_module_imports` activates this hint for its scope, and the closest
+package threshold overrides the project-wide limit. Selecting the rule in `rules`
+or with `--select` without a threshold uses a limit of 20.
 Counts include direct internal imports across every root package, follow
 `architecture.imports.type_checking`, and retain facade paths without following
 re-exports to definitions. Repeated imports count once. Standard-library and
@@ -465,7 +541,7 @@ Production implementation imports inside the package remain allowed.
 `tests.quality_exclude` only affects test-quality reviews; use ordinary reasoned
 suppressions for deliberate API exceptions. Project exclusions still apply.
 
-When the exports already exist, enable `rules: {prefer-package-import: hint}`
+When the exports already exist, enable `rules: {imports/prefer-package-import: hint}`
 or `--select SMT319`. For example, if `app.observation.__init__` directly exports
 `Observe` and `Snapshot`, it suggests replacing
 `from app.observation.models import Snapshot` with a package import that can join
@@ -476,7 +552,7 @@ imports, package initializers, uncertain exports and
 unscanned third-party packages are excluded. See [SMT319](rules/SMT319.md).
 
 To find names that are widely imported but missing from a facade, configure
-[SMT109 `facade-export-gap`](rules/SMT109.md):
+[SMT109 `architecture/missing-facade-export`](rules/SMT109.md):
 
 ```yaml
 structure:
@@ -537,7 +613,7 @@ structure:
 
 Choose one canonical `module_docstrings` convention for a package:
 
-- `require` enables SMT325: every analyzed production module needs a non-empty
+- `require` enables SMT309: every analyzed production module needs a non-empty
   initial docstring, including empty files, `__init__.py` and `__main__.py`.
   Empty/whitespace-only strings, comments, later strings and class/function
   documentation do not satisfy the requirement.
@@ -553,10 +629,10 @@ module; a more specific package can deliberately choose the opposite convention.
 For an individual file exception, mark the file with a reason:
 
 ```python
-# smelt: ignore-file[SMT325] -- Empty compatibility facade; documented in the public API.
+# smelt: ignore-file[SMT309] -- Empty compatibility facade; documented in the public API.
 ```
 
-Use `SMT309` instead when retaining a docstring under `forbid`. Normal suppression
+The same code covers retaining a docstring under `forbid`. Normal suppression
 checks require reasons and flag unused exceptions. Smelt never adds or removes
 documentation automatically.
 
@@ -594,7 +670,7 @@ package exception where its string-based behavior is intentional.
 
 ## Definition order with execution dependencies
 
-Enable `SMT313 public-definitions-first` to put the public interface first while keeping
+Enable `SMT313 layout/definition-order` to put the public interface first while keeping
 prerequisites, binding versions and runtime boundaries intact:
 
 ```yaml
@@ -621,12 +697,12 @@ structure:
         constants_exempt: false
         fix: safe-only
       rules:
-        public-definitions-first: error
+        layout/definition-order: error
 ```
 
 The defaults are shown above. Each list must contain its categories exactly once;
 module docstrings, future imports and imports form the fixed prefix, and the
-main guard belongs last. Use package `rules: {public-definitions-first: off}` to exempt a package.
+main guard belongs last. Use package `rules: {layout/definition-order: off}` to exempt a package.
 The closest explicit rule setting wins; ordering options alone do not activate the check. This extends `smelt.yml` package contracts rather than adding
 a second `[tool.smelt.ordering]` configuration source.
 
@@ -713,13 +789,13 @@ structure:
     internal-helpers:
       match: app
       rules:
-        internal-public-member: warning
-        internal-static-helper: hint
+        visibility/internal-public-member: warning
+        layout/misplaced-static-helper: hint
     deliberate-api:
       match: app.integrations
       rules:
-        internal-public-member: 'off'
-        internal-static-helper: 'off'
+        visibility/internal-public-member: 'off'
+        layout/misplaced-static-helper: 'off'
 ```
 
 [SMT316](rules/SMT316.md) reviews public module functions and ordinary instance
@@ -750,7 +826,7 @@ Enable [SMT320](rules/SMT320.md) separately to review module data:
 
 ```yaml
 rules:
-  internal-public-module-symbol: warning
+  visibility/internal-public-module-symbol: warning
 ```
 
 The rule covers single, unconditional uppercase assignments and PEP 695

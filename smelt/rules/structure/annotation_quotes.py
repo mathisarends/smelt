@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class PreferDeferredAnnotations(Rule):
     file_local = True
     code = "SMT346"
-    name = "prefer-deferred-annotations"
-    category = Category.STRUCTURE
+    name = "typing/prefer-deferred-annotations"
+    category = Category.TYPING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -54,7 +54,7 @@ class PreferDeferredAnnotations(Rule):
             "runtime annotation consumers (dataclasses, Pydantic, FastAPI, "
             "dependency injection) and names imported only under TYPE_CHECKING. "
             "No automatic rewrite is performed. Enable rules: "
-            "{prefer-deferred-annotations: hint}, or select SMT346."
+            "{typing/prefer-deferred-annotations: hint}, or select SMT346."
         ),
         config=("rules", "structure.contracts", "project.python_version"),
     )

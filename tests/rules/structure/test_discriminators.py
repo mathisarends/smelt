@@ -40,7 +40,7 @@ def test_reports_the_checkpoint_discriminator_without_changing_source(
     [finding] = violations(root, OPTIONS)
 
     assert finding.code == "SMT324"
-    assert finding.rule == "prefer-str-enum-discriminator"
+    assert finding.rule == "modeling/prefer-str-enum-discriminator"
     assert finding.severity is Severity.HINT
     assert (finding.path, finding.line, finding.column) == ("app/events.py", 8, 5)
     assert (finding.end_line, finding.end_column) == (
@@ -233,7 +233,7 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT324", "prefer-str-enum-discriminator"])
+@pytest.mark.parametrize("name", ["SMT324", "modeling/prefer-str-enum-discriminator"])
 def test_explicit_rule_settings_enable_the_hint(tmp_path: Path, name: str) -> None:
     [finding] = violations(
         _project(tmp_path, config=CONFIG + f"rules: {{{name}: hint}}\n")
@@ -249,9 +249,9 @@ def test_explicit_rule_settings_enable_the_hint(tmp_path: Path, name: str) -> No
         (CONFIG, CheckOptions(select=("SMT324",), ignore=("SMT324",))),
         (
             CONFIG
-            + "rules: {prefer-str-enum-discriminator: error}\n"
+            + "rules: {modeling/prefer-str-enum-discriminator: error}\n"
             + "structure:\n  contracts:\n    external-schema:\n"
-            + "      match: app\n      rules: {prefer-str-enum-discriminator: off}\n",
+            + "      match: app\n      rules: {modeling/prefer-str-enum-discriminator: off}\n",
             OPTIONS,
         ),
     ],
@@ -263,7 +263,7 @@ def test_explicit_disable_ignore_and_package_overrides(
 
 
 def test_intentional_schema_strings_can_be_suppressed(tmp_path: Path) -> None:
-    config = CONFIG + "rules: {prefer-str-enum-discriminator: error}\n"
+    config = CONFIG + "rules: {modeling/prefer-str-enum-discriminator: error}\n"
     root = _project(tmp_path, config=config)
     assert check(root).report.failed
     source = root / "app/events.py"

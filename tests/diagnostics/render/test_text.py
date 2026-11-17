@@ -52,7 +52,7 @@ class TestViolations:
             replace(
                 report.violations[0],
                 code="SMT313",
-                rule="public-definitions-first",
+                rule="layout/definition-order",
                 path="app/__init__.py",
                 edge=None,
                 import_chain=(),
@@ -70,7 +70,7 @@ class TestViolations:
 
     def test_full_report(self, report: Report) -> None:
         assert render_text(report, read_line) == (
-            "gw/features/voice/domain/calls.py:1:1  SMT101 layer-boundary  [error]\n"
+            "gw/features/voice/domain/calls.py:1:1  SMT101 architecture/layer-boundary  [error]\n"
             "  domain must not import infrastructure\n"
             "    from gw.features.voice.infra import sql\n"
             "    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
@@ -230,9 +230,9 @@ class TestStatistics:
         out = render_text(report, read_line, statistics=True, show_hints=True)
 
         assert out == (
-            "1  SMT101 layer-boundary   [error]\n"
-            "1  SMT303 role-file        [warning]\n"
-            "1  SMT305 crowded-package  [hint]\n"
+            "1  SMT101 architecture/layer-boundary  [error]\n"
+            "1  SMT303 role-file                    [warning]\n"
+            "1  SMT305 crowded-package              [hint]\n"
             "\n"
             "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
         )
@@ -243,8 +243,8 @@ class TestStatistics:
         out = render_text(many, read_line)
 
         assert out.endswith(
-            "6  SMT101 layer-boundary  [error]\n"
-            "6  SMT303 role-file       [warning]\n"
+            "6  SMT101 architecture/layer-boundary  [error]\n"
+            "6  SMT303 role-file                    [warning]\n"
             "\n"
             "✗ 6 errors · 6 warnings · 6 hints (use --show-hints) · 1 suppressed · "
             "2 in debt · 4 modules\n"
@@ -253,7 +253,7 @@ class TestStatistics:
     def test_short_listing_has_no_statistics(self, report: Report) -> None:
         out = render_text(report, read_line)
 
-        assert "\n1  SMT101 layer-boundary" not in out
+        assert "\n1  SMT101 architecture/layer-boundary" not in out
 
 
 class TestSummary:
@@ -272,10 +272,10 @@ class TestSummary:
 
     def test_clean_report_lists_the_categories(self, clean_report: Report) -> None:
         assert render_text(clean_report, read_line) == (
-            "✓ dependencies ✓ structure · 4 modules\n"
+            "✓ architecture ✓ layout · 4 modules\n"
         )
 
     def test_clean_report_with_color(self, clean_report: Report) -> None:
         assert render_text(clean_report, read_line, color=True) == (
-            "\x1b[32m✓ dependencies\x1b[0m \x1b[32m✓ structure\x1b[0m · 4 modules\n"
+            "\x1b[32m✓ architecture\x1b[0m \x1b[32m✓ layout\x1b[0m · 4 modules\n"
         )

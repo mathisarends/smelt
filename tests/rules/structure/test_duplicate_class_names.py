@@ -157,6 +157,6 @@ def test_is_opt_in(tmp_path: Path) -> None:
     enabled = _project(
         tmp_path / "enabled",
         files,
-        config=CONFIG + "rules: {duplicate-class-name: warning}\n",
+        config=CONFIG + "rules: {modeling/duplicate-class-name: warning}\n",
     )
     assert [item.code for item in violations(enabled)].count("SMT355") == 2

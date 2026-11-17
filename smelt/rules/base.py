@@ -135,9 +135,18 @@ class RuleSet:
             None,
         )
 
+    def family_codes(self, selector: str) -> tuple[str, ...] | None:
+        """Codes of a family selected as `modeling` or `modeling/`, else None."""
+        wanted = selector.strip().lower().removesuffix("/")
+        if wanted not in Category:
+            return None
+        return tuple(rule.code for rule in self.rules if rule.category == wanted)
+
     def matching_codes(self, selector: str) -> tuple[str, ...]:
-        """Resolve a name, group, SMT prefix or ALL against this rule set."""
+        """Resolve a name, family, group, SMT prefix or ALL against this rule set."""
         wanted = selector.strip()
+        if (family := self.family_codes(wanted)) is not None:
+            return family
         if group := RULE_GROUPS.get(wanted.lower()):
             known = {rule.code for rule in self.rules}
             return tuple(code for code in group.codes if code in known)

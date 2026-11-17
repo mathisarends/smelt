@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 class DuplicateLiteralType(Rule):
     code = "SMT338"
-    name = "duplicate-literal-type"
-    category = Category.STRUCTURE
+    name = "typing/duplicate-literal-type"
+    category = Category.TYPING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

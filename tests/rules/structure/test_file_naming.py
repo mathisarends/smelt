@@ -73,12 +73,12 @@ def test_compose_basename_preserves_variants_and_does_not_choose_an_extension(
     )
     found = check(tmp_path).report.violations
     assert {(v.code, v.path, (v.expected or {})["path"]) for v in found} == {
-        ("SMT332", f"{other}.yml", f"{basename}.yml"),
-        ("SMT332", f"deploy/{other}.prod.eu.yaml", f"deploy/{basename}.prod.eu.yaml"),
+        ("SMT331", f"{other}.yml", f"{basename}.yml"),
+        ("SMT331", f"deploy/{other}.prod.eu.yaml", f"deploy/{basename}.prod.eu.yaml"),
     }
 
 
-def test_both_policies_report_independent_parts_and_existing_destinations(
+def test_both_policies_combine_into_one_finding_per_file(
     tmp_path: Path,
 ) -> None:
     write_project(
@@ -92,10 +92,19 @@ def test_both_policies_report_independent_parts_and_existing_destinations(
         },
     )
     found = check(tmp_path).report.violations
-    assert [(v.code, (v.expected or {})["path"]) for v in found] == [
-        ("SMT331", "deploy/docker-compose.override.yml"),
-        ("SMT332", "deploy/compose.override.yaml"),
-    ]
+    [finding] = found
+    assert (finding.code, finding.path) == (
+        "SMT331",
+        "deploy/docker-compose.override.yaml",
+    )
+    assert finding.expected == {
+        "yaml_extension": "yml",
+        "compose_basename": "compose",
+        "path": "deploy/compose.override.yml",
+    }
+    assert finding.message == (
+        "filename must use .yml and compose: deploy/docker-compose.override.yaml"
+    )
     assert (tmp_path / "deploy/docker-compose.override.yaml").exists()
     assert (tmp_path / "deploy/compose.override.yml").exists()
 
@@ -125,7 +134,7 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
                 "root_packages: [app]", "root_packages: [app], exclude: ['vendor/**']"
             )
             + "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
-            + "rules: {yaml-file-extension: warning, compose-file-name: off}\n"
+            + "rules: {layout/file-name-convention: warning}\n"
             + "ignore:\n  - {rule: SMT331, paths: ['special.yaml'], reason: External contract}\n",
             "app/__init__.py": "",
             "vendor/docker-compose.yaml": "",
@@ -158,7 +167,7 @@ def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
     cached = check(tmp_path).report
     fresh = check(tmp_path, CheckOptions(use_cache=False)).report
     assert cached.violations == fresh.violations
-    assert [v.code for v in cached.violations] == ["SMT331", "SMT332"]
+    assert [v.code for v in cached.violations] == ["SMT331"]
     (tmp_path / "docker-compose.yaml").unlink()
     assert not check(tmp_path).report.violations
 

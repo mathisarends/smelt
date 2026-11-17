@@ -67,7 +67,7 @@ def test_reports_builtin_raised_for_a_domain_failure(tmp_path: Path) -> None:
         9,
     )
     assert finding.message == (
-        "Raise of builtin ValueError; errors expects a subclass of app.errors.AppError"
+        'Raise of builtin ValueError; contract "errors" expects a subclass of app.errors.AppError'
     )
     assert finding.expected == {
         "contract": "errors",

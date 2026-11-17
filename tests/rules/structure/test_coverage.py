@@ -181,7 +181,7 @@ class TestStrictCoverage:
         text = render_text(outcome.report, lambda path, line: "")
 
         assert len(outcome.report.violations) == 2
-        assert text.count("SMT306 incomplete-coverage") == 1
+        assert text.count("SMT306 architecture/uncovered-source") == 1
         assert "2 source files have incomplete policy coverage" in text
 
     @pytest.mark.parametrize(
@@ -429,7 +429,10 @@ class TestStrictCoverage:
     ) -> None:
         root = _project(
             tmp_path,
-            {"smelt.yml": CONFIG + f"rules: {{incomplete-coverage: {setting}}}\n"},
+            {
+                "smelt.yml": CONFIG
+                + f"rules: {{architecture/uncovered-source: {setting}}}\n"
+            },
         )
 
         with pytest.raises(ConfigError, match="strict coverage must remain an error"):

@@ -28,14 +28,14 @@ tests:
   - tests.timing.deadline
   quality_exclude: []
 rules:
-  private-test-access: error
-  string-patch-target: error
-  test-without-outcome-check: warning
-  test-only-checks-possibly-empty-data: warning
-  unbounded-test-wait: warning
-  independent-test-case-loop: hint
-  async-mock-without-await-check: warning
-  test-only-public-function: warning
+  tests/private-access: error
+  tests/string-patch-target: error
+  tests/missing-outcome-check: warning
+  tests/vacuous-assertion: warning
+  tests/unbounded-wait: warning
+  tests/independent-case-loop: hint
+  tests/missing-await-assertion: warning
+  visibility/test-only-public-function: warning
 ```
 
 | Code | Checks |
@@ -145,7 +145,7 @@ imports count as production consumers; star imports and escaped module values
 conservatively preserve public visibility. External users, packaging entry points
 and arbitrary dynamic access remain review limits. Checks do not rename code.
 
-Enable SMT430 with `rules: {test-only-public-attribute: warning}` or
+Enable SMT430 with `rules: {visibility/test-only-public-attribute: warning}` or
 `--select SMT430`. It reviews public attributes such as `worker.pending` when only
 tests read them outside the owning class. It shares the member-use analysis with
 SMT316, SMT317 and SMT429 and suggests an available private name. Known

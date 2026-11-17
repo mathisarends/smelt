@@ -35,7 +35,7 @@ def _project(tmp_path: Path, policy: str) -> Path:
 def test_named_rule_needs_no_second_policy_and_preserves_explicit_api(
     tmp_path: Path,
 ) -> None:
-    root = _project(tmp_path, "rules: {internal-public-member: warning}\n")
+    root = _project(tmp_path, "rules: {visibility/internal-public-member: warning}\n")
 
     found = check(root).report.violations
 
@@ -45,7 +45,7 @@ def test_named_rule_needs_no_second_policy_and_preserves_explicit_api(
         "app/legacy/new/api.py",
     }
     assert all(
-        v.rule == "internal-public-member" and v.severity == Severity.WARNING
+        v.rule == "visibility/internal-public-member" and v.severity == Severity.WARNING
         for v in found
     )
 
@@ -58,7 +58,7 @@ structure:
   contracts:
     legacy:
       match: app.legacy
-      rules: {internal-public-member: warning}
+      rules: {visibility/internal-public-member: warning}
     new:
       match: app.legacy.new
       rules: {SMT316: error}
@@ -73,7 +73,7 @@ structure:
     ]
     with (root / "smelt.yml").open("a", encoding="utf-8") as target:
         target.write(
-            "    disabled:\n      match: app.legacy.new\n      rules: {internal-public-member: off}\n"
+            "    disabled:\n      match: app.legacy.new\n      rules: {visibility/internal-public-member: off}\n"
         )
     with pytest.raises(ConfigError, match="conflicting SMT316"):
         check(root)
@@ -85,12 +85,12 @@ def test_closest_package_override_can_reenable_a_globally_disabled_rule(
     root = _project(
         tmp_path,
         """
-rules: {internal-public-member: off}
+rules: {visibility/internal-public-member: off}
 structure:
   contracts:
     legacy:
       match: app.legacy
-      rules: {internal-public-member: warning}
+      rules: {visibility/internal-public-member: warning}
     new:
       match: app.legacy.new
       rules: {SMT316: off}
@@ -105,14 +105,18 @@ structure:
         resolve_target(outcome.context, "app/legacy/new/planned.py"),
         outcome.report,
     )
-    assert briefing.to_json()["rules"]["internal-public-member"] == "off"
+    assert briefing.to_json()["rules"]["visibility/internal-public-member"] == "off"
     assert (
-        check(root, CheckOptions(ignore=("internal-public-member",))).report.violations
+        check(
+            root, CheckOptions(ignore=("visibility/internal-public-member",))
+        ).report.violations
         == []
     )
 
 
-@pytest.mark.parametrize("selector", ["SMT316", "smt316", "internal-public-member"])
+@pytest.mark.parametrize(
+    "selector", ["SMT316", "smt316", "visibility/internal-public-member"]
+)
 def test_select_accepts_the_same_canonical_name_as_yaml(
     tmp_path: Path, selector: str
 ) -> None:
@@ -125,7 +129,7 @@ def test_select_accepts_the_same_canonical_name_as_yaml(
 @pytest.mark.parametrize(
     "settings",
     [
-        "SMT316: warning, internal-public-member: error",
+        "SMT316: warning, visibility/internal-public-member: error",
         "internal-pubic-member: warning",
     ],
 )
@@ -143,14 +147,14 @@ def test_duplicate_aliases_and_typos_are_config_errors(
 
 
 def test_scoped_off_does_not_report_old_debt_as_fixed(tmp_path: Path) -> None:
-    root = _project(tmp_path, "rules: {internal-public-member: warning}\n")
+    root = _project(tmp_path, "rules: {visibility/internal-public-member: warning}\n")
     original = check(root)
     Debt.from_violations(
         original.report.violations, snippet_reader(original.context)
     ).write(root / "debt.json")
     with (root / "smelt.yml").open("a", encoding="utf-8") as target:
         target.write(
-            "debt: debt.json\nstructure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {internal-public-member: off}\n"
+            "debt: debt.json\nstructure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
         )
 
     outcome = check(root)
@@ -178,7 +182,12 @@ def test_removed_switches_are_rejected_instead_of_silently_ignored(key: str) -> 
 
 
 @pytest.mark.parametrize(
-    "name", ["unbounded-test-wait", "unused-suppression", "incomplete-coverage"]
+    "name",
+    [
+        "tests/unbounded-wait",
+        "meta/unused-suppression",
+        "architecture/uncovered-source",
+    ],
 )
 def test_test_file_and_project_rules_cannot_silently_become_package_overrides(
     tmp_path: Path, name: str
@@ -196,9 +205,9 @@ def test_reasoned_ignore_accepts_the_canonical_rule_name(tmp_path: Path) -> None
     root = _project(
         tmp_path,
         """
-rules: {internal-public-member: warning}
+rules: {visibility/internal-public-member: warning}
 ignore:
-  - rule: internal-public-member
+  - rule: visibility/internal-public-member
     modules: ['app.legacy.**']
     reason: Supported legacy callbacks used outside this repository.
 """,
@@ -298,7 +307,8 @@ def test_group_can_be_disabled_with_one_individual_exception(
 def test_individual_severity_override(tmp_path: Path) -> None:
     findings = violations(
         _group_project(
-            tmp_path, "information-hiding: warning, internal-public-attribute: hint"
+            tmp_path,
+            "information-hiding: warning, visibility/internal-public-attribute: hint",
         )
     )
     assert {v.code for v in findings} == _GROUP_CODES
@@ -311,7 +321,7 @@ def test_group_does_not_allow_duplicate_individual_aliases(tmp_path: Path) -> No
         check(
             _group_project(
                 tmp_path,
-                "information-hiding: warning, SMT335: off, internal-public-attribute: warning",
+                "information-hiding: warning, SMT335: off, visibility/internal-public-attribute: warning",
             )
         )
 
@@ -451,6 +461,6 @@ def test_group_context_reports_effective_individual_settings(tmp_path: Path) -> 
         resolve_target(outcome.context, "app/planned.py"),
         outcome.report,
     ).to_json()
-    assert briefing["rules"]["internal-public-member"] == "warning"
-    assert briefing["rules"]["internal-public-attribute"] == "off"
-    assert briefing["rules"]["test-only-public-attribute"] == "warning"
+    assert briefing["rules"]["visibility/internal-public-member"] == "warning"
+    assert briefing["rules"]["visibility/internal-public-attribute"] == "off"
+    assert briefing["rules"]["visibility/test-only-public-attribute"] == "warning"

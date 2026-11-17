@@ -13,9 +13,13 @@ import pytest
 import smelt.rules
 from smelt.analysis.context import Index
 from smelt.config.models import SmeltConfig
-from smelt.diagnostics.violation import Category, Severity
+from smelt.diagnostics.violation import Severity
 from smelt.rules.base import Rule, RuleContract, RuleSet
 from smelt.rules.registry import build_rule_set
+
+# Qualifiers the naming scheme in CONTRIBUTING.md replaces with
+# forbidden-, redundant- or a finding noun.
+_RETIRED_QUALIFIERS = ("no-", "unnecessary-", "review-", "require-", "check-")
 
 
 class TestBuiltins:
@@ -40,14 +44,11 @@ class TestBuiltins:
 
     @pytest.mark.parametrize("rule", build_rule_set().rules, ids=lambda rule: rule.code)
     def test_catalog_contract(self, rule: Rule) -> None:
-        family = {
-            Category.DEPENDENCIES: "1",
-            Category.STRUCTURE: "3",
-            Category.TESTS: "4",
-            Category.META: "9",
-        }
-        assert re.fullmatch(rf"SMT{family[rule.category]}\d{{2}}", rule.code)
-        assert re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", rule.name)
+        assert re.fullmatch(r"SMT[1349]\d{2}", rule.code)
+        family, _, finding = rule.name.partition("/")
+        assert family == rule.category.value, "a rule name starts with its family"
+        assert re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", finding)
+        assert not finding.startswith(_RETIRED_QUALIFIERS), rule.name
         assert isinstance(rule.default_severity, Severity)
         assert isinstance(rule.requires, frozenset)
         assert all(isinstance(index, Index) for index in rule.requires)
@@ -71,7 +72,9 @@ class TestBuiltins:
         rule_set = build_rule_set()
 
         assert rule_set.lookup("smt101") is rule_set.by_code("SMT101")
-        assert rule_set.lookup("layer-boundary") is rule_set.by_code("SMT101")
+        assert rule_set.lookup("architecture/layer-boundary") is rule_set.by_code(
+            "SMT101"
+        )
         assert rule_set.lookup("nope") is None
 
 
@@ -114,7 +117,7 @@ def test_member_check_does_not_import_inactive_test_rules(tmp_path: Path) -> Non
     (tmp_path / "app").mkdir()
     (tmp_path / "app/__init__.py").write_text("def helper(): pass\n")
     (tmp_path / "smelt.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n"
+        "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n"
     )
     script = """
 import sys

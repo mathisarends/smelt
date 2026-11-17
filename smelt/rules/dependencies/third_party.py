@@ -31,8 +31,8 @@ def _is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
 class ThirdPartyDenied(Rule):
     activation = POLICIES["SMT103"]
     code = "SMT103"
-    name = "third-party-denied"
-    category = Category.DEPENDENCIES
+    name = "architecture/forbidden-third-party-import"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

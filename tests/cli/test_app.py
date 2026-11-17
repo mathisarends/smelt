@@ -23,8 +23,8 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     write_project(
         tmp_path,
         {
-            "policy/base.yml": "version: 1\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {import-cycle: error, unbounded-test-wait: error}\n",
-            "runtime/smelt.yml": "extends: ../policy/base.yml\nrules: {import-cycle: warning}\n",
+            "policy/base.yml": "version: 1\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {architecture/import-cycle: error, tests/unbounded-wait: error}\n",
+            "runtime/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/import-cycle: warning}\n",
             "runtime/src/app/__init__.py": "",
             "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
             "runtime/tests/generated/test_generated.py": "import subprocess\ndef test_generated():\n    subprocess.run(['tool'], check=True)\n",
@@ -41,8 +41,8 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     assert config["project"]["source_roots"] == ["src"]
     assert config["debt"] == ".smelt/debt.json"
     assert config["rules"] == {
-        "import-cycle": "warning",
-        "unbounded-test-wait": "error",
+        "architecture/import-cycle": "warning",
+        "tests/unbounded-wait": "error",
     }
     before = _run(capsys, "check", "--config", "runtime/smelt.yml", "--format", "json")
     assert before[0] == 1
@@ -64,7 +64,9 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
         (tmp_path / "policy/base.yml").resolve().as_posix(),
         (tmp_path / "runtime/smelt.yml").resolve().as_posix(),
     ]
-    assert explained["origins"]["rules.import-cycle"].endswith("runtime/smelt.yml")
+    assert explained["origins"]["rules.architecture/import-cycle"].endswith(
+        "runtime/smelt.yml"
+    )
     assert explained["origins"]["debt"].endswith("policy/base.yml")
 
 
@@ -99,7 +101,7 @@ def test_rule_alias_duplicates_across_bases_remain_explicit_errors(
     write_project(
         tmp_path,
         {
-            "base.yml": "rules: {import-cycle: error}\n",
+            "base.yml": "rules: {architecture/import-cycle: error}\n",
             "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\nrules: {SMT104: off}\n",
         },
     )
@@ -116,7 +118,7 @@ def test_an_explicit_base_path_widens_the_check_to_its_workspace(
     write_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: error}\n",
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
             "runtime/smelt.yml": "extends: ../base.yml\n",
             "runtime/app/__init__.py": "",
             "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
@@ -165,7 +167,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {test-without-outcome-check: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
                 "app/__init__.py": "",
                 "tests/test_smoke.py": "def test_smoke(): pass\n",
             },
@@ -364,7 +366,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
                 "app/__init__.py": "",
                 "app/service.py": source,
             },
@@ -391,7 +393,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  string-patch-target: error\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/string-patch-target: error\n",
                 "app/__init__.py": "",
                 "tests/test_service.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')",
             },
@@ -419,7 +421,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        public-definitions-first: error\n",
+                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
                 "app/service.py": "def _helper(): return 7\n\ndef api(): return _helper()\n",
             },
         )
@@ -730,11 +732,11 @@ class TestCheckCommand:
         _, output, _ = _run(capsys, "check", "--select", "SMT305", "--format", "json")
         _, statistics, _ = _run(capsys, "check", "--select", "SMT305", "--statistics")
 
-        assert text.count("SMT305 unclassified-module") == 1
+        assert text.count("SMT305 architecture/unclassified-module") == 1
         assert "2 modules have no architecture classification" in text
         assert "Give app.platform a layer" in text
         assert len(json.loads(output)["violations"]) == 2
-        assert "2  SMT305 unclassified-module" in statistics
+        assert "2  SMT305 architecture/unclassified-module" in statistics
 
     @pytest.mark.parametrize("path", ["app/domian", "README.md"])
     def test_rejects_missing_or_unanalyzed_scope(
@@ -883,7 +885,7 @@ class TestCheckCommand:
         assert code == 0
         assert out == (
             "Policy coverage: complete (configured); 0 uncovered, 0 unclassified sources\n"
-            "✓ dependencies ✓ structure · 4 modules\n"
+            "✓ architecture · 4 modules\n"
         )
 
     def test_json_document(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1061,7 +1063,7 @@ class TestChangedHints:
     def test_changed_mode_shows_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
         _, out, _ = _run(capsys, "check", "--changed", "--no-color")
 
-        assert "app/misc.py  SMT305 unclassified-module  [hint]" in out
+        assert "app/misc.py  SMT305 architecture/unclassified-module  [hint]" in out
 
     @pytest.mark.usefixtures("repo")
     def test_full_check_folds_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1120,11 +1122,11 @@ class TestInfoCommands:
         assert explanation["config"] == entry["config"]
 
     def test_explain_by_name(self, capsys: pytest.CaptureFixture[str]) -> None:
-        code, out, _ = _run(capsys, "explain", "layer-boundary")
+        code, out, _ = _run(capsys, "explain", "architecture/layer-boundary")
 
         assert code == 0
         assert out.startswith(
-            "SMT101 layer-boundary  [dependencies, activation: policy, severity: error]"
+            "SMT101 architecture/layer-boundary  [architecture, activation: policy, severity: error]"
         )
 
     def test_explain_unknown_rule(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1149,7 +1151,7 @@ class TestInfoCommands:
             ("SMT524", ""),  # Ambiguous between SMT324 and SMT424.
             ("SMT527", ""),  # Ambiguous between SMT327 and SMT427.
             ("SMT199", ' (did you mean "SMT109"?)'),
-            ("layer-boundry", ' (did you mean "layer-boundary"?)'),
+            ("layer-boundry", ' (did you mean "architecture/layer-boundary"?)'),
         ],
     )
     def test_explain_suggests_only_close_rules(
@@ -1320,10 +1322,10 @@ class TestInitCommand:
         schema_path = tmp_path / ".smelt.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         properties = schema["$defs"]["RuleSettings"]["properties"]
-        assert "internal-public-member" in properties
+        assert "visibility/internal-public-member" in properties
         assert (
             "class Browser"
-            in properties["internal-public-member"]["markdownDescription"]
+            in properties["visibility/internal-public-member"]["markdownDescription"]
         )
         assert written.startswith(
             "# yaml-language-server: $schema=.smelt.schema.json\n"
@@ -1538,7 +1540,7 @@ class TestDebtCommand:
         write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": "def helper(): pass\n",
                 "app/legacy/__init__.py": "",
@@ -1552,7 +1554,7 @@ class TestDebtCommand:
         config = tmp_path / "smelt.yml"
         with config.open("a", encoding="utf-8") as target:
             target.write(
-                "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {internal-public-member: off}\n"
+                "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
             )
 
         code, _, err = _run(capsys, "debt", "--prune")

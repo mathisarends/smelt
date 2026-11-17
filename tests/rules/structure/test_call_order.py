@@ -67,13 +67,13 @@ def test_opt_in_override_and_reasoned_suppression(tmp_path: Path) -> None:
     source = "def parse(): return 1\ndef load(): return parse()\n"
     root = _project(tmp_path, source)
     assert violations(root) == []
-    _project(tmp_path, source, CONFIG + "rules: {caller-before-callee: hint}\n")
+    _project(tmp_path, source, CONFIG + "rules: {layout/callee-before-caller: hint}\n")
     assert [v.code for v in violations(root)] == ["SMT329"]
     _project(
         tmp_path,
         source,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {caller-before-callee: off}}\n",
+        + "structure:\n  contracts:\n    legacy: {match: app, rules: {layout/callee-before-caller: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

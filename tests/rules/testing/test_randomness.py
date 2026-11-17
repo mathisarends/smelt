@@ -92,13 +92,13 @@ def test_opt_in_off_and_reasoned_suppression(tmp_path: Path) -> None:
     )
     assert violations(tmp_path) == []
     write_project(
-        tmp_path, {"smelt.yml": CONFIG + "rules: {nondeterministic-test-data: off}\n"}
+        tmp_path, {"smelt.yml": CONFIG + "rules: {tests/nondeterministic-data: off}\n"}
     )
     assert violations(tmp_path, OPTIONS) == []
     write_project(
         tmp_path,
         {
-            "smelt.yml": CONFIG + "rules: {nondeterministic-test-data: warning}\n",
+            "smelt.yml": CONFIG + "rules: {tests/nondeterministic-data: warning}\n",
             "tests/test_create.py": source.replace(
                 "assert uuid4()",
                 "assert uuid4()  # smelt: ignore[SMT431] -- Exercises the UUID generator itself.",

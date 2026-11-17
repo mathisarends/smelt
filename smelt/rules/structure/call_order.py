@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class CallerBeforeCallee(Rule):
     file_local = True
     code = "SMT329"
-    name = "caller-before-callee"
-    category = Category.STRUCTURE
+    name = "layout/callee-before-caller"
+    category = Category.LAYOUT
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -23,7 +23,7 @@ class CallerBeforeCallee(Rule):
         rationale="A step-down reading order introduces a higher-level operation before its lower-level helpers. This opt-in review covers stable undecorated top-level sync/async functions and direct methods on undecorated classes without bases. It resolves direct same-module names and receiver.method calls, excludes shadowed bindings, nested scopes, comprehensions, dunder methods and recursive call components, and respects definition-time parameter/return dependencies. Only same-visibility pairs are reviewed so SMT313's public-first categories retain precedence. Dynamic lookup, inherited APIs and general call graphs are not inferred. This is a reading convention, not a correctness check.",
         bad="def parse():\n    return 1\n\ndef load():\n    return parse()",
         good="def load():\n    return parse()\n\ndef parse():\n    return 1",
-        fix="Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {caller-before-callee: hint} or select SMT329; package overrides and reasoned suppressions apply.",
+        fix="Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {layout/callee-before-caller: hint} or select SMT329; package overrides and reasoned suppressions apply.",
         config=("rules", "structure.contracts"),
     )
 

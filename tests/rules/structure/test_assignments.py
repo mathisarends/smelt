@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT314",))
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        bundled-instance-assignment: error\n"
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -122,7 +122,8 @@ def test_implicit_static_and_class_methods_are_excluded(
     [
         "version: 1\nproject: {root_packages: [app]}",
         CONFIG.replace(
-            "bundled-instance-assignment: error", "bundled-instance-assignment: off"
+            "idioms/bundled-instance-assignment: error",
+            "idioms/bundled-instance-assignment: off",
         ),
     ],
 )
@@ -140,7 +141,7 @@ def test_closest_allow_override_wins(tmp_path: Path) -> None:
         tmp_path,
         "",
         CONFIG
-        + "    exception:\n      match: app.compat\n      rules:\n        bundled-instance-assignment: 'off'\n",
+        + "    exception:\n      match: app.compat\n      rules:\n        idioms/bundled-instance-assignment: 'off'\n",
     )
     write_project(
         root,
@@ -156,7 +157,7 @@ def test_closest_allow_override_wins(tmp_path: Path) -> None:
             contract
             for contract in outcome.context.contracts.describe("app.compat.service")
             if contract["package"] == "app.compat"
-        )["rules"]["bundled-instance-assignment"]
+        )["rules"]["idioms/bundled-instance-assignment"]
         == "off"
     )
 

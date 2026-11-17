@@ -15,7 +15,7 @@ SOURCES = {
 
 LAYER_VIOLATION = Violation(
     code="SMT101",
-    rule="layer-boundary",
+    rule="architecture/layer-boundary",
     severity=Severity.ERROR,
     message="domain must not import infrastructure",
     path="gw/features/voice/domain/calls.py",
@@ -34,7 +34,7 @@ LAYER_VIOLATION = Violation(
     hint="Depend on a port instead.",
     edge="voice.domain -> voice.infra",
     docs_url="https://example.test/rules/SMT101",
-    category=Category.DEPENDENCIES,
+    category=Category.ARCHITECTURE,
 )
 
 ROLE_VIOLATION = Violation(
@@ -50,7 +50,7 @@ ROLE_VIOLATION = Violation(
     expected={"path": "voice/application/ports.py"},
     hint="Move Sessions to voice/application/ports.py and update its imports.",
     docs_url="https://example.test/rules/SMT303",
-    category=Category.STRUCTURE,
+    category=Category.LAYOUT,
 )
 
 HINT_VIOLATION = Violation(
@@ -60,14 +60,14 @@ HINT_VIOLATION = Violation(
     message="voice/infra has 12 modules",
     path="gw/features/voice/infra/",
     docs_url="https://example.test/rules/SMT305",
-    category=Category.STRUCTURE,
+    category=Category.LAYOUT,
 )
 
 RULES = [
     RuleMeta(
         code="SMT101",
-        name="layer-boundary",
-        category=Category.DEPENDENCIES,
+        name="architecture/layer-boundary",
+        category=Category.ARCHITECTURE,
         default_severity=Severity.ERROR,
         enabled_by_default=True,
         summary="A module imports a layer it may not depend on.",
@@ -76,7 +76,7 @@ RULES = [
     RuleMeta(
         code="SMT303",
         name="role-file",
-        category=Category.STRUCTURE,
+        category=Category.LAYOUT,
         default_severity=Severity.ERROR,
         enabled_by_default=True,
         summary="A class with a role lives in another module.",
@@ -94,7 +94,7 @@ def report() -> Report:
     return Report(
         violations=[LAYER_VIOLATION, ROLE_VIOLATION, HINT_VIOLATION],
         modules=4,
-        categories=[Category.DEPENDENCIES, Category.STRUCTURE],
+        categories=[Category.ARCHITECTURE, Category.LAYOUT],
         rules=RULES,
         suppressed=1,
         in_debt=2,
@@ -106,6 +106,6 @@ def clean_report() -> Report:
     return Report(
         violations=[],
         modules=4,
-        categories=[Category.DEPENDENCIES, Category.STRUCTURE],
+        categories=[Category.ARCHITECTURE, Category.LAYOUT],
         rules=RULES,
     )

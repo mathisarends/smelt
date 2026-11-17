@@ -120,7 +120,8 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
     ]
 
     write_project(
-        root, {"smelt.yml": CONFIG + "rules: {prefer-callable-instance: warning}\n"}
+        root,
+        {"smelt.yml": CONFIG + "rules: {idioms/prefer-callable-instance: warning}\n"},
     )
     [finding] = violations(root)
     assert finding.code == "SMT333"
@@ -130,7 +131,7 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
         root,
         {
             "smelt.yml": CONFIG
-            + "structure:\n  contracts:\n    api: {match: app, rules: {prefer-callable-instance: hint}}\n"
+            + "structure:\n  contracts:\n    api: {match: app, rules: {idioms/prefer-callable-instance: hint}}\n"
         },
     )
     assert [v.code for v in violations(root)] == ["SMT333"]
@@ -139,8 +140,8 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {prefer-callable-instance: hint}\n"
-            + "structure:\n  contracts:\n    api: {match: app, rules: {prefer-callable-instance: off}}\n"
+            + "rules: {idioms/prefer-callable-instance: hint}\n"
+            + "structure:\n  contracts:\n    api: {match: app, rules: {idioms/prefer-callable-instance: off}}\n"
         },
     )
     assert violations(root, OPTIONS) == []

@@ -15,7 +15,7 @@ class AsyncMockWithoutAwaitCheck(Rule):
     test_local = True
     scope = "test"
     code = "SMT428"
-    name = "async-mock-without-await-check"
+    name = "tests/missing-await-assertion"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})

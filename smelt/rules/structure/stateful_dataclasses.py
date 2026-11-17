@@ -56,8 +56,8 @@ _MUTATING_METHODS = frozenset(
 class StatefulDataclass(Rule):
     file_local = True
     code = "SMT349"
-    name = "stateful-dataclass"
-    category = Category.STRUCTURE
+    name = "modeling/stateful-dataclass"
+    category = Category.MODELING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -123,7 +123,7 @@ class StatefulDataclass(Rule):
             "dataclasses.replace. When the object genuinely accumulates state, "
             "make it a plain class whose scratch attributes are private, or "
             "move the accumulation into a separate builder. No automatic "
-            "rewrite is performed. Enable rules: {stateful-dataclass: hint}, "
+            "rewrite is performed. Enable rules: {modeling/stateful-dataclass: hint}, "
             "or select SMT349. Package overrides and reasoned inline "
             "suppressions are supported."
         ),

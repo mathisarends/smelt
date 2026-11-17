@@ -16,7 +16,7 @@ class TestWithoutOutcomeCheck(Rule):
     test_local = True
     scope = "test"
     code = "SMT424"
-    name = "test-without-outcome-check"
+    name = "tests/missing-outcome-check"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})
@@ -82,7 +82,7 @@ class TestOnlyChecksPossiblyEmptyData(Rule):
     test_local = True
     scope = "test"
     code = "SMT425"
-    name = "test-only-checks-possibly-empty-data"
+    name = "tests/vacuous-assertion"
     category = Category.TESTS
     default_severity = Severity.WARNING
     requires = frozenset({Index.TESTS})

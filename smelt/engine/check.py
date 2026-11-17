@@ -53,11 +53,7 @@ _BASELINE = TypeAdapter(list[DebtEntry])
 _SUPPRESSIONS = TypeAdapter(list[Suppression])
 
 
-_CATEGORY_ORDER = [
-    Category.DEPENDENCIES,
-    Category.STRUCTURE,
-    Category.TESTS,
-]
+_CATEGORY_ORDER = [category for category in Category if category is not Category.META]
 
 
 @dataclass(frozen=True, slots=True)

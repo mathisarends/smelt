@@ -217,6 +217,6 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
         "    def bump(self) -> None:\n        self.count += 1\n"
     )
     assert violations(_project(tmp_path / "default", source)) == []
-    config = CONFIG + "rules: {stateful-dataclass: warning}\n"
+    config = CONFIG + "rules: {modeling/stateful-dataclass: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
     assert (finding.code, finding.severity) == ("SMT349", Severity.WARNING)

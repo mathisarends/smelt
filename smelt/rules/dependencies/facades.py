@@ -17,8 +17,8 @@ _IMPORTER_PREVIEW = 4
 class FacadeExportGap(Rule):
     activation = POLICIES["SMT109"]
     code = "SMT109"
-    name = "facade-export-gap"
-    category = Category.DEPENDENCIES
+    name = "architecture/missing-facade-export"
+    category = Category.ARCHITECTURE
     default_severity = Severity.HINT
     requires = frozenset({Index.IMPORTS, Index.SYNTAX})
     doc = RuleDoc(

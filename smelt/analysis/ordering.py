@@ -113,9 +113,7 @@ class DefinitionOrderIndex:
                 if contract and contract.spec.ordering
                 else OrderingConfig(),
                 source=source,
-                contract=contract.name
-                if contract
-                else "rules.public-definitions-first",
+                contract=contract.name if contract else "rules.layout/definition-order",
                 deferred=deferred,
                 builtin_unions=target.minimum is not None and target.minimum >= (3, 10),
             )

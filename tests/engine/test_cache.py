@@ -23,7 +23,7 @@ CONFIG = """version: 1
 project: {root_packages: [app]}
 structure:
   contracts:
-    api: {match: app, rules: {internal-public-member: warning}}
+    api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
 
 
@@ -35,7 +35,7 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
     write_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: off}\n",
+            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: off}\n",
             "first/smelt.yml": "extends: ../base.yml\n",
             "second/smelt.yml": "extends: ../base.yml\n",
             "first/app/__init__.py": "",
@@ -48,7 +48,7 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
     assert not check(root).report.violations
 
     (tmp_path / "base.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {unbounded-test-wait: error}\n",
+        "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
         encoding="utf-8",
     )
 
@@ -77,7 +77,7 @@ def test_facade_exports_invalidate_public_member_decisions(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, test-only-public-attribute: warning}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, visibility/test-only-public-attribute: warning}\n",
             "app/__init__.py": "",
             "app/models.py": "class Tab:\n    def __init__(self): self.loading = False\n    def reload(self): pass\n",
             "tests/test_tab.py": "from app.models import Tab\ndef test_tab(): assert Tab().loading is False\n",
@@ -196,7 +196,7 @@ def test_explicit_selection_cannot_reuse_a_package_only_result(tmp_path: Path) -
     initial = check(tmp_path)
     ignore = tuple(rule.code for rule, _ in initial.active if rule.code != "SMT316")
     assert check(tmp_path, CheckOptions(ignore=ignore)).report.violations == []
-    options = CheckOptions(select=("internal-public-member",), ignore=ignore)
+    options = CheckOptions(select=("visibility/internal-public-member",), ignore=ignore)
     selected = check(tmp_path, options).report
     assert [(v.code, v.path) for v in selected.violations] == [
         ("SMT316", "app/other.py")
@@ -222,7 +222,10 @@ def test_policy_changes_and_deletions_invalidate_cached_findings(
     )
     assert check(tmp_path).report.violations
     (tmp_path / "smelt.yml").write_text(
-        CONFIG.replace("internal-public-member: warning", "internal-public-member: off")
+        CONFIG.replace(
+            "visibility/internal-public-member: warning",
+            "visibility/internal-public-member: off",
+        )
     )
     assert not check(tmp_path).report.violations
     (tmp_path / "smelt.yml").write_text(CONFIG)

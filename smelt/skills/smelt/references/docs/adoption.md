@@ -83,7 +83,7 @@ may therefore reappear for review: the old fingerprints cannot establish the ful
 dependency they accepted. `smelt debt --prune` removes stale entries without accepting
 these findings; review them before explicitly recording new debt.
 
-Override severities by rule name or code, e.g. `rules: {unclassified-module: off}`.
+Override severities by rule name or code, e.g. `rules: {architecture/unclassified-module: off}`.
 
 Silence a single finding inline, always with a reason:
 

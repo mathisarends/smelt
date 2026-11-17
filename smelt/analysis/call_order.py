@@ -1,4 +1,4 @@
-"""Bounded caller-before-callee review within one definition namespace."""
+"""Bounded layout/callee-before-caller review within one definition namespace."""
 
 from __future__ import annotations
 

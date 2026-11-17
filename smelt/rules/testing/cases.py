@@ -16,7 +16,7 @@ class IndependentTestCaseLoop(Rule):
     test_local = True
     scope = "test"
     code = "SMT427"
-    name = "independent-test-case-loop"
+    name = "tests/independent-case-loop"
     category = Category.TESTS
     default_severity = Severity.HINT
     requires = frozenset({Index.TESTS})

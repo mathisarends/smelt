@@ -18,8 +18,8 @@ class PreferProjectBaseClass(Rule):
     file_local = True
     activation = POLICIES["SMT353"]
     code = "SMT353"
-    name = "prefer-project-base-class"
-    category = Category.STRUCTURE
+    name = "modeling/prefer-project-base-class"
+    category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
@@ -54,11 +54,11 @@ class PreferProjectBaseClass(Rule):
             "configuration that only repeated it. When a class deliberately "
             "needs the outside base, keep a reasoned suppression or move it "
             "into a package whose contract sets bases: {}. No automatic "
-            "rewrite is performed. Enable it with a package contract, e.g. "
-            "structure.contracts.<name>: {match: app, bases: "
-            "{pydantic.BaseModel: app.core.Options}}."
+            "rewrite is performed. Enable it for the project with structure: "
+            "{bases: {pydantic.BaseModel: app.core.Options}}, or for one package "
+            "with the same option in a package contract."
         ),
-        config=("structure.contracts",),
+        config=("structure.bases", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -84,7 +84,7 @@ class PreferProjectBaseClass(Rule):
                     project = mapping[outside]
                     yield self.violation(
                         f"Class {owner.name} inherits {outside} directly; "
-                        f"{contract.name} expects {project}",
+                        f"{contract.origin} expects {project}",
                         path=source.path,
                         line=owner.lineno,
                         column=owner.col_offset + 1,

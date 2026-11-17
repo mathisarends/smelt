@@ -163,7 +163,7 @@ def _import(
 ) -> Violation:
     return Violation(
         code=code,
-        rule="layer-boundary",
+        rule="architecture/layer-boundary",
         severity=Severity.ERROR,
         message=f"{edge} in {path}",
         path=path,
@@ -242,7 +242,7 @@ class TestGroupFindings:
         )
         cycle = Violation(
             code="SMT104",
-            rule="import-cycle",
+            rule="architecture/import-cycle",
             severity=Severity.ERROR,
             message="import cycle",
             path="app/features/x.py",
@@ -261,7 +261,7 @@ class TestGroupFindings:
         def move(name: str) -> Violation:
             return Violation(
                 code="SMT401",
-                rule="test-location",
+                rule="tests/misplaced-test",
                 severity=Severity.ERROR,
                 message=f"{name} belongs in tests/auth/infrastructure/",
                 path=f"tests/auth/{name}",

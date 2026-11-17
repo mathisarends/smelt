@@ -165,6 +165,6 @@ def test_ignores_tests(tmp_path: Path) -> None:
 def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     source = HEADER + "class Clock(Protocol):\n    def now(self) -> float: ...\n"
     assert violations(_project(tmp_path / "default", source)) == []
-    config = CONFIG + "rules: {missing-interface-docstring: warning}\n"
+    config = CONFIG + "rules: {idioms/missing-interface-docstring: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
     assert (finding.code, finding.severity) == ("SMT348", Severity.WARNING)

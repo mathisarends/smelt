@@ -8,11 +8,13 @@ import yaml
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import ConfigError
 from smelt.config.errors import did_you_mean
+from smelt.diagnostics.violation import Category
 from smelt.engine.check import rule_meta
 from smelt.engine.rule_settings import RuleSettings
 from smelt.engine.schema import config_json_schema
 from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
+from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
     import argparse
@@ -48,6 +50,22 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             )
             for member in members:
                 console.print(f"  {member['code']} {member['name']}")
+        return EXIT_OK
+    if (family := rules.family_codes(args.rule)) is not None:
+        members = [
+            rule_meta(rule).to_json() for rule in rules.rules if rule.code in family
+        ]
+        name = args.rule.strip().lower().removesuffix("/")
+        if args.format == "json":
+            console.print(json.dumps({"family": name, "rules": members}, indent=2))
+        else:
+            console.print(
+                f"{name} [rule family]\n\nEnable all: rules: {{{name}: warning}}\n"
+            )
+            for member in members:
+                console.print(
+                    f"  {member['code']} {member['name']}  {member['summary']}"
+                )
         return EXIT_OK
     rule = rules.lookup(args.rule)
     if rule is None:
@@ -100,10 +118,16 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if args.format == "json":
         console.print(json.dumps([m.to_json() for m in metas], indent=2))
         return EXIT_OK
-    for meta in metas:
-        console.print(
-            f"{meta.code}  {meta.name:<28} {meta.category.value:<13} {meta.activation['mode']:<8} {meta.default_severity.value}"
-        )
+    width = max(len(meta.name) for meta in metas)
+    for family in Category:
+        members = [meta for meta in metas if meta.category is family]
+        if not members:
+            continue
+        console.print(f"{family.value}:")
+        for meta in members:
+            console.print(
+                f"  {meta.code}  {meta.name:<{width}} {meta.activation['mode']:<8} {meta.default_severity.value}"
+            )
     console.print("\nRule groups:")
     for group in RULE_GROUPS.values():
         console.print(f"{group.name}  {', '.join(group.codes)}  {group.summary}")
@@ -141,9 +165,12 @@ def config_schema(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def _suggestion(raw: str, rules: RuleSet) -> str:
     """A close rule name, or a code that differs in one character only."""
+    codes = {rule.name: rule.code for rule in rules.rules}
+    if retired := retired_hint(raw.strip(), codes):
+        return retired
     wanted = raw.strip().upper()
     if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
-        return did_you_mean(raw.strip(), [*[r.name for r in rules.rules], *RULE_GROUPS])
+        return did_you_mean(raw.strip(), [*codes, *RULE_GROUPS])
     close = [
         r.code
         for r in rules.rules

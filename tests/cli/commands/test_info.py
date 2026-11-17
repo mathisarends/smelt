@@ -31,7 +31,7 @@ def test_explain_information_hiding(
         ]
     else:
         assert "rules: {information-hiding: warning}" in output
-        assert "SMT335 internal-public-attribute" in output
+        assert "SMT335 visibility/internal-public-attribute" in output
 
 
 def test_catalog_exposes_group_membership_without_adding_fake_diagnostics(
@@ -55,6 +55,6 @@ def test_maintainability_init_writes_one_information_hiding_setting(
     capsys.readouterr()
     config = (tmp_path / "smelt.yml").read_text()
     assert "information-hiding: warning" in config
-    assert "internal-public-member:" not in config
-    assert "test-only-public-function:" not in config
-    assert "test-only-public-attribute:" not in config
+    assert "visibility/internal-public-member:" not in config
+    assert "visibility/test-only-public-function:" not in config
+    assert "visibility/test-only-public-attribute:" not in config

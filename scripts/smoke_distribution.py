@@ -121,7 +121,7 @@ def smoke(directory: Path) -> None:
                 "architecture:\n  layers:\n    domain: {path: domain}\n"
                 "  imports: {transitive: true}\n"
                 "structure:\n  contracts:\n"
-                "    api: {match: app, rules: {internal-public-member: warning}}\n"
+                "    api: {match: app, rules: {visibility/internal-public-member: warning}}\n"
             )
             command = [str(binary), "check", "--format", "json"]
             if json.loads(run(command, project))["violations"]:

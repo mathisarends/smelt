@@ -17,9 +17,9 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     write_project(
         tmp_path,
         {
-            "policy/base.yml": "version: 1\nrules: {import-cycle: error, unbounded-test-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
+            "policy/base.yml": "version: 1\nrules: {architecture/import-cycle: error, tests/unbounded-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
             "first/smelt.yml": "extends: ../policy/base.yml\nproject: {coverage: strict}\narchitecture: {modules: {first: domain}, layers: {domain: {path: domain}}}\n",
-            "second/smelt.yml": "extends: ../policy/base.yml\nrules: {unbounded-test-wait: error}\narchitecture: {modules: {second: domain}, layers: {domain: {path: domain}}}\n",
+            "second/smelt.yml": "extends: ../policy/base.yml\nrules: {tests/unbounded-wait: error}\narchitecture: {modules: {second: domain}, layers: {domain: {path: domain}}}\n",
             "first/src/first/__init__.py": "",
             "second/src/second/__init__.py": "",
         },
@@ -29,12 +29,12 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     second = load_config(tmp_path / "second/smelt.yml")
 
     assert first.config.rules == {
-        "import-cycle": "error",
-        "unbounded-test-wait": "warning",
+        "architecture/import-cycle": "error",
+        "tests/unbounded-wait": "warning",
     }
     assert second.config.rules == {
-        "import-cycle": "error",
-        "unbounded-test-wait": "error",
+        "architecture/import-cycle": "error",
+        "tests/unbounded-wait": "error",
     }
     assert first.config.project.root_packages == ["first"]
     assert second.config.project.root_packages == ["second"]
@@ -45,8 +45,8 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
         (tmp_path / "policy/base.yml").resolve(),
         (tmp_path / "first/smelt.yml").resolve(),
     )
-    assert second.origins["rules.import-cycle"].endswith("policy/base.yml")
-    assert second.origins["rules.unbounded-test-wait"].endswith("second/smelt.yml")
+    assert second.origins["rules.architecture/import-cycle"].endswith("policy/base.yml")
+    assert second.origins["rules.tests/unbounded-wait"].endswith("second/smelt.yml")
 
 
 def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) -> None:
@@ -118,7 +118,10 @@ def test_cycles_report_the_chain_even_with_equivalent_paths(tmp_path: Path) -> N
 @pytest.mark.parametrize(
     ("base", "location"),
     [
-        ("rules: {import-cycle: banana}", "rules.import-cycle"),
+        (
+            "rules: {architecture/import-cycle: banana}",
+            "rules.architecture/import-cycle",
+        ),
         ("architecture: {layerz: {}}", "architecture.layerz"),
         ("version: 2", "version"),
     ],
@@ -148,7 +151,7 @@ def test_inherited_duplicate_yaml_keys_are_still_errors(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "base.yml": "rules: {import-cycle: error, import-cycle: off}\n",
+            "base.yml": "rules: {architecture/import-cycle: error, architecture/import-cycle: off}\n",
             "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\n",
         },
     )

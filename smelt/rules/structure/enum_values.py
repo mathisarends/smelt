@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 class RedundantStrEnumValue(Rule):
     code = "SMT318"
-    name = "redundant-str-enum-value"
-    category = Category.STRUCTURE
+    name = "modeling/redundant-str-enum-value"
+    category = Category.MODELING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

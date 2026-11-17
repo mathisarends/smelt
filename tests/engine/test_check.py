@@ -105,7 +105,7 @@ class TestRuleSelection:
             check(root)
 
     def test_rule_configured_by_name(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  layer-boundary: warning\n"
+        config = LAYERED_CONFIG + "rules:\n  architecture/layer-boundary: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         found = violations(root)
@@ -116,11 +116,16 @@ class TestRuleSelection:
         config = LAYERED_CONFIG + "rules:\n  layer-boundry: off\n"
         root = _layered(tmp_path, "", config)
 
-        with pytest.raises(ConfigError, match='did you mean "layer-boundary"'):
+        with pytest.raises(
+            ConfigError, match='did you mean "architecture/layer-boundary"'
+        ):
             check(root)
 
     def test_rule_configured_by_code_and_name(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  SMT101: off\n  layer-boundary: error\n"
+        config = (
+            LAYERED_CONFIG
+            + "rules:\n  SMT101: off\n  architecture/layer-boundary: error\n"
+        )
         root = _layered(tmp_path, "", config)
 
         with pytest.raises(ConfigError, match="SMT101 is already configured"):
@@ -178,7 +183,7 @@ class TestSuppressions:
             {
                 "smelt.yml": (
                     "version: 1\nproject: {root_packages: [app]}\n"
-                    "rules: {private-test-access: error, unused-suppression: error}\n"
+                    "rules: {tests/private-access: error, meta/unused-suppression: error}\n"
                 ),
                 "app/__init__.py": "",
                 "app/service.py": "def _state(): return None\n",
@@ -198,7 +203,7 @@ class TestSuppressions:
         write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": source,
             },
@@ -226,7 +231,7 @@ class TestSuppressions:
         write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {internal-public-member: warning, bundled-instance-assignment: warning}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, idioms/bundled-instance-assignment: warning}\n",
                 "app/__init__.py": "",
                 "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[SMT316, SMT314] -- deliberate API\n        self.first = self.second = 0\n",
             },
@@ -348,7 +353,7 @@ class TestSuppressions:
 
 
 @pytest.mark.parametrize(
-    "identifier", ["SMT999", "private-test-access", "SMTX", "SMT1010"]
+    "identifier", ["SMT999", "tests/private-access", "SMTX", "SMT1010"]
 )
 def test_unknown_suppression_identifiers_are_diagnosed_in_narrowed_checks(
     tmp_path: Path, identifier: str

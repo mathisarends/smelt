@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class CompositionRootLeak(Rule):
     activation = POLICIES["SMT106"]
     code = "SMT106"
-    name = "composition-root-leak"
-    category = Category.DEPENDENCIES
+    name = "architecture/composition-root-leak"
+    category = Category.ARCHITECTURE
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(

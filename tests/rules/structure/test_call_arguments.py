@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
@@ -12,8 +13,129 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT366",))
-SOURCE = """\
+AWAIT = CheckOptions(select=("SMT340",))
+AWAIT_SOURCE = """\
+async def read(browser):
+    return ClipboardResult(text=await browser.clipboard.read())
+"""
+
+
+def _await_project(tmp_path: Path, source: str, *, config: str = CONFIG) -> Path:
+    return write_project(
+        tmp_path,
+        {"smelt.yml": config, "app/__init__.py": "", "app/channel.py": source},
+    )
+
+
+def _await_body(statement: str) -> str:
+    return f"async def run(client, items, flag):\n    {statement}\n"
+
+
+def test_keyword_argument_reports_location_and_suggests_keyword_name(
+    tmp_path: Path,
+) -> None:
+    root = _await_project(tmp_path, AWAIT_SOURCE)
+    [finding] = violations(root, AWAIT)
+    assert (finding.code, finding.path, finding.line, finding.column) == (
+        "SMT340",
+        "app/channel.py",
+        2,
+        33,
+    )
+    assert finding.expected == {
+        "kind": "await",
+        "call": "ClipboardResult",
+        "argument": "text",
+        "awaited": "browser.clipboard.read()",
+        "suggested_variable": "text",
+        "automatic_rewrite": False,
+    }
+    assert finding.hint is not None
+    assert "text = await browser.clipboard.read()" in finding.hint
+    assert (root / "app/channel.py").read_text() == AWAIT_SOURCE
+
+
+@pytest.mark.parametrize(
+    ("statement", "call", "argument"),
+    [
+        ("print(await client.fetch())", "print", None),
+        ("client.store(1, await client.fetch())", "client.store", None),
+        ("result = Wrapper(value=await client.fetch())", "Wrapper", "value"),
+        ("await client.send(await client.fetch())", "client.send", None),
+        ("async with client.open(await client.token()): pass", "client.open", None),
+        ("if check(await client.fetch()): pass", "check", None),
+        ("x = [1, f(await client.fetch())]", "f", None),
+    ],
+)
+def test_direct_await_arguments_are_reported(
+    tmp_path: Path, statement: str, call: str, argument: str | None
+) -> None:
+    [finding] = violations(_await_project(tmp_path, _await_body(statement)), AWAIT)
+    assert finding.expected is not None
+    assert (finding.expected["call"], finding.expected["argument"]) == (call, argument)
+
+
+def test_each_awaited_argument_is_reported_once(tmp_path: Path) -> None:
+    source = _await_body("f(await client.a(), key=await client.b())")
+    found = violations(_await_project(tmp_path, source), AWAIT)
+    assert [finding.expected["awaited"] for finding in found if finding.expected] == [
+        "client.a()",
+        "client.b()",
+    ]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "return await client.fetch()",
+        "value = await client.fetch()",
+        "await client.fetch()",
+        "await asyncio.gather(client.a(), client.b())",
+        "f([await client.fetch()])",
+        "f(await client.fetch() + 1)",
+        "f(*await client.fetch())",
+        "f(**await client.fetch())",
+        "x = f(await client.fetch()) if flag else None",
+        "x = flag and f(await client.fetch())",
+        "x = [f(await client.get(i)) for i in items]",
+        "while f(await client.poll()): pass",
+    ],
+)
+def test_non_extractable_or_named_awaits_are_not_reported(
+    tmp_path: Path, statement: str
+) -> None:
+    assert violations(_await_project(tmp_path, _await_body(statement)), AWAIT) == []
+
+
+def test_while_body_is_still_reported(tmp_path: Path) -> None:
+    source = _await_body("while flag:\n        f(await client.fetch())")
+    [finding] = violations(_await_project(tmp_path, source), AWAIT)
+    assert finding.line == 3
+
+
+def test_awaits_in_tests_are_not_checked(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": CONFIG,
+            "app/__init__.py": "",
+            "tests/test_channel.py": AWAIT_SOURCE,
+        },
+    )
+    assert violations(root, AWAIT) == []
+
+
+def test_await_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
+    assert violations(_await_project(tmp_path / "default", AWAIT_SOURCE)) == []
+    config = CONFIG + "rules: {complexity/inline-call-argument: warning}\n"
+    [finding] = violations(
+        _await_project(tmp_path / "enabled", AWAIT_SOURCE, config=config)
+    )
+    assert (finding.code, finding.severity) == ("SMT340", Severity.WARNING)
+
+
+SELECT = CheckOptions(select=("SMT340",))
+MAPPING_SOURCE = """\
 def to_start_options_response(result: StartOptionsResult) -> StartOptionsResponse:
     return StartOptionsResponse(
         available_artificial_users=[
@@ -35,15 +157,16 @@ def to_start_options_response(result: StartOptionsResult) -> StartOptionsRespons
 def test_issue_180_reports_each_transformation_without_rewriting(
     tmp_path: Path,
 ) -> None:
-    root = _project(tmp_path, SOURCE)
-    found = violations(root, CheckOptions(select=("SMT363", "SMT366")))
+    root = _project(tmp_path, MAPPING_SOURCE)
+    found = violations(root, CheckOptions(select=("SMT363", "SMT340")))
     assert [(v.code, v.line, v.column, v.end_line, v.end_column) for v in found] == [
-        ("SMT366", 3, 36, 6, 10),
-        ("SMT366", 7, 36, 10, 10),
-        ("SMT366", 11, 23, 14, 10),
+        ("SMT340", 3, 36, 6, 10),
+        ("SMT340", 7, 36, 10, 10),
+        ("SMT340", 11, 23, 14, 10),
     ]
     assert found[0].severity == Severity.HINT
     assert found[0].expected == {
+        "kind": "comprehension",
         "call": "StartOptionsResponse",
         "argument": "available_artificial_users",
         "comprehension_kind": "ListComp",
@@ -53,7 +176,7 @@ def test_issue_180_reports_each_transformation_without_rewriting(
     }
     assert found[0].hint is not None
     assert "available_artificial_users=available_artificial_users" in found[0].hint
-    assert (root / "app/mapping.py").read_text() == SOURCE
+    assert (root / "app/mapping.py").read_text() == MAPPING_SOURCE
 
 
 @pytest.mark.parametrize(
@@ -128,6 +251,7 @@ def test_builtin_reduction_is_named_while_direct_generators_stay_lazy(
         (10, 19, 10, 81),
     ]
     assert found[0].expected == {
+        "kind": "aggregate",
         "call": "TestSessions",
         "argument": "finished",
         "comprehension_kind": "GeneratorExp",
@@ -243,8 +367,8 @@ def test_guarded_and_loop_bodies_keep_their_local_extraction_point(
 
 
 def test_only_production_sources_are_checked(tmp_path: Path) -> None:
-    root = _project(tmp_path, SOURCE)
-    write_project(root, {"tests/test_mapping.py": SOURCE})
+    root = _project(tmp_path, MAPPING_SOURCE)
+    write_project(root, {"tests/test_mapping.py": MAPPING_SOURCE})
     found = violations(root, SELECT)
     assert len(found) == 3
     assert {v.path for v in found} == {"app/mapping.py"}
@@ -255,10 +379,10 @@ def test_rule_is_opt_in_and_configurable(tmp_path: Path) -> None:
     assert violations(root) == []
     write_project(
         root,
-        {"smelt.yml": CONFIG + "rules: {comprehension-in-call-argument: warning}\n"},
+        {"smelt.yml": CONFIG + "rules: {complexity/inline-call-argument: warning}\n"},
     )
     [finding] = violations(root)
-    assert (finding.code, finding.severity) == ("SMT366", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("SMT340", Severity.WARNING)
 
 
 def test_package_overrides_suppression_and_uncached_results(tmp_path: Path) -> None:
@@ -269,16 +393,16 @@ def test_package_overrides_suppression_and_uncached_results(tmp_path: Path) -> N
         {
             "smelt.yml": CONFIG
             + """\
-rules: {comprehension-in-call-argument: hint}
+rules: {complexity/inline-call-argument: hint}
 structure:
   contracts:
-    quiet: {match: app.quiet, rules: {comprehension-in-call-argument: off}}
-    strict: {match: app.strict, rules: {comprehension-in-call-argument: warning}}
+    quiet: {match: app.quiet, rules: {complexity/inline-call-argument: off}}
+    strict: {match: app.strict, rules: {complexity/inline-call-argument: warning}}
 """,
             "app/quiet/__init__.py": source,
             "app/strict/__init__.py": source,
             "app/intentional.py": source.rstrip()
-            + "  # smelt: ignore[SMT366] -- preserve the existing argument evaluation order\n",
+            + "  # smelt: ignore[SMT340] -- preserve the existing argument evaluation order\n",
         },
     )
     found = violations(root)
@@ -299,3 +423,39 @@ def _project(tmp_path: Path, source: str) -> Path:
 
 def _body(statement: str) -> str:
     return f"async def run(client, items, flag):\n    {statement}\n"
+
+
+@pytest.mark.parametrize(
+    ("kinds", "expected"),
+    [
+        ("[await]", ["await"]),
+        ("[comprehension]", ["comprehension"]),
+        ("[aggregate]", ["aggregate"]),
+        ("[await, aggregate]", ["await", "aggregate"]),
+    ],
+)
+def test_call_argument_kinds_narrow_the_review(
+    tmp_path: Path, kinds: str, expected: list[str]
+) -> None:
+    source = (
+        "async def run(client, items):\n"
+        "    consume(a=await client.fetch())\n"
+        "    consume(b=[x for x in items])\n"
+        "    consume(c=sum(x for x in items))\n"
+    )
+    root = _project(tmp_path, source)
+    write_project(
+        root,
+        {"smelt.yml": CONFIG + f"structure: {{call_argument_kinds: {kinds}}}\n"},
+    )
+    found = violations(root, SELECT)
+    assert [(v.expected or {})["kind"] for v in found] == expected
+
+
+def test_empty_call_argument_kinds_are_rejected(tmp_path: Path) -> None:
+    root = _project(tmp_path, "consume(values=[x for x in items])\n")
+    write_project(
+        root, {"smelt.yml": CONFIG + "structure: {call_argument_kinds: []}\n"}
+    )
+    with pytest.raises(ConfigError, match="call_argument_kinds"):
+        violations(root, SELECT)

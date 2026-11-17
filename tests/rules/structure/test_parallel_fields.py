@@ -152,7 +152,7 @@ def test_opt_in_and_intentional_column_storage_suppression(tmp_path: Path) -> No
     assert not any(item.code == "SMT361" for item in violations(root))
     assert violations(root, SELECT) == []
     (root / "smelt.yml").write_text(
-        CONFIG + "rules: {parallel-record-fields: hint}\n", encoding="utf-8"
+        CONFIG + "rules: {modeling/parallel-record-fields: hint}\n", encoding="utf-8"
     )
     assert violations(root) == []
     write_project(root, {"app/model.py": source.replace("# smelt:", "# reason:")})

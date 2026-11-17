@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 class ImplicitOptionalDefault(Rule):
     file_local = True
     code = "SMT321"
-    name = "implicit-optional-default"
-    category = Category.STRUCTURE
+    name = "typing/implicit-optional-default"
+    category = Category.TYPING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -20,81 +22,29 @@ _SCOPE = (
 )
 
 
-class StrEnumAutoValues(Rule):
+class StrEnumValueConvention(Rule):
     file_local = True
+    activation = POLICIES["SMT341"]
     code = "SMT341"
-    name = "str-enum-auto-values"
-    category = Category.STRUCTURE
+    name = "modeling/str-enum-value-convention"
+    category = Category.MODELING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
-        summary="A StrEnum spells a value that auto() derives.",
+        summary="A StrEnum spells its values against the configured auto/explicit convention.",
         rationale=(
-            "This opt-in style rule makes auto() the project convention for StrEnum "
-            "values: auto() derives the lowercased member name, so an explicit "
-            "string repeating it is noise and hides which values are deliberate "
-            "wire contracts. A class is reported when an explicit string equals the "
-            "lowercased member name. A class with custom values such as "
-            "'mouseMoved' keeps explicit strings for every member; there, auto() "
-            "members are reported instead. Do not enable it together with SMT342 "
-            "str-enum-explicit-values, which states the opposite convention. " + _SCOPE
+            "StrEnum values follow one project convention, chosen with "
+            "str_enum_values. explicit (the default) keeps every value "
+            "visible where it is declared, so renaming a member cannot silently "
+            "change a serialized value; a member using auto() is reported. auto "
+            "treats auto() as the convention because it derives the lowercased "
+            "member name: an explicit string repeating that name is noise and "
+            "hides which values are deliberate wire contracts. Under auto, a class "
+            "with custom values such as 'mouseMoved' keeps explicit strings for "
+            "every member and its auto() members are reported instead. " + _SCOPE
         ),
         bad=(
-            'class ConnectionState(StrEnum):\n    OPEN = "open"\n    CLOSED = "closed"'
-        ),
-        good=(
-            "class ConnectionState(StrEnum):\n    OPEN = auto()\n    CLOSED = auto()"
-        ),
-        fix=(
-            "Replace each reported explicit string with auto(). In a class with "
-            "custom values, spell the reported auto() members as their lowercased "
-            "names instead. No automatic rewrite is performed. Enable "
-            "rules: {str-enum-auto-values: hint}, or select SMT341. Package "
-            "overrides and reasoned inline suppressions are supported."
-        ),
-        config=("rules",),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for enum in _str_enums(ctx):
-            if enum.custom:
-                if enum.automatic:
-                    yield _violation(
-                        self,
-                        enum,
-                        f"StrEnum {enum.node.name} has custom values; spell its "
-                        "auto() members explicitly",
-                        members=enum.automatic,
-                        hint=_spell(enum.automatic),
-                    )
-            elif enum.literal:
-                yield _violation(
-                    self,
-                    enum,
-                    f"StrEnum {enum.node.name} spells values that auto() derives",
-                    members=sorted(enum.literal),
-                    hint="Use auto() for " + ", ".join(enum.literal) + ".",
-                )
-
-
-class StrEnumExplicitValues(Rule):
-    file_local = True
-    code = "SMT342"
-    name = "str-enum-explicit-values"
-    category = Category.STRUCTURE
-    default_severity = Severity.HINT
-    requires = frozenset({Index.SYNTAX})
-    doc = RuleDoc(
-        summary="A StrEnum derives a value with auto().",
-        rationale=(
-            "This opt-in style rule makes explicit strings the project convention "
-            "for StrEnum values: every value is visible where it is declared and "
-            "renaming a member cannot silently change a serialized value. A class "
-            "is reported when a member uses auto(). Do not enable it together with "
-            "SMT341 str-enum-auto-values, which states the opposite convention. "
-            + _SCOPE
-        ),
-        bad=(
+            "# structure: {str_enum_values: explicit}\n"
             "class SignalingMessageType(StrEnum):\n"
             "    DESCRIPTION = auto()\n"
             "    READY = auto()"
@@ -105,23 +55,44 @@ class StrEnumExplicitValues(Rule):
             '    READY = "ready"'
         ),
         fix=(
-            "Spell each reported auto() member as its lowercased name, the value "
-            "auto() produces for a StrEnum. No automatic rewrite is performed. "
-            "Enable rules: {str-enum-explicit-values: hint}, or select SMT342. "
-            "Package overrides and reasoned inline suppressions are supported."
+            "Under explicit, spell each reported auto() member as its lowercased "
+            "name, the value auto() produces for a StrEnum. Under auto, replace "
+            "each reported explicit string with auto(), or spell the auto() "
+            "members of a class with custom values explicitly. No automatic "
+            "rewrite is performed. Enable rules: "
+            "{modeling/str-enum-value-convention: hint}, select SMT341, or set "
+            "str_enum_values under structure or in a package contract. Reasoned "
+            "inline suppressions are supported."
         ),
-        config=("rules",),
+        config=("rules", "structure.str_enum_values", "structure.contracts"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for enum in _str_enums(ctx):
-            if enum.automatic:
+            contract = ctx.contracts.policy_for(enum.source.module, "str_enum_values")
+            style = (
+                contract.spec.str_enum_values
+                if contract and contract.spec.str_enum_values
+                else POLICY_DEFAULTS.str_enum_values
+            )
+            if (style == "explicit" or enum.custom) and enum.automatic:
                 yield _violation(
                     self,
                     enum,
-                    f"StrEnum {enum.node.name} derives values with auto()",
-                    members=enum.automatic,
-                    hint=_spell(enum.automatic),
+                    f"StrEnum {enum.node.name} derives values with auto()"
+                    if style == "explicit"
+                    else f"StrEnum {enum.node.name} has custom values; spell its "
+                    "auto() members explicitly",
+                    style=style,
+                    automatic=True,
+                )
+            elif style == "auto" and not enum.custom and enum.literal:
+                yield _violation(
+                    self,
+                    enum,
+                    f"StrEnum {enum.node.name} spells values that auto() derives",
+                    style=style,
+                    automatic=False,
                 )
 
 
@@ -148,8 +119,15 @@ def _str_enums(ctx: AnalysisContext) -> Iterator[_StrEnum]:
 
 
 def _violation(
-    rule: Rule, enum: _StrEnum, message: str, *, members: list[str], hint: str
+    rule: Rule, enum: _StrEnum, message: str, *, style: str, automatic: bool
 ) -> Violation:
+    """Report auto() members to spell out, or literal values auto() derives."""
+    if automatic:
+        members = enum.automatic
+        hint = _spell(members)
+    else:
+        members = sorted(enum.literal)
+        hint = "Use auto() for " + ", ".join(enum.literal) + "."
     return rule.violation(
         message,
         path=enum.source.path,
@@ -159,6 +137,7 @@ def _violation(
         expected={
             "enum": enum.node.name,
             "members": members,
+            "str_enum_values": style,
             "automatic_rewrite": False,
         },
         hint=hint,

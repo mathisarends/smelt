@@ -61,7 +61,7 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT318", "redundant-str-enum-value"])
+@pytest.mark.parametrize("name", ["SMT318", "modeling/redundant-str-enum-value"])
 def test_explicit_rule_setting_enables_the_hint(tmp_path: Path, name: str) -> None:
     [finding] = violations(_project(tmp_path, CONFIG + f"rules: {{{name}: hint}}\n"))
     assert finding.code == "SMT318"
