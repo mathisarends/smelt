@@ -274,6 +274,38 @@ files that extend it.
   offers `on` everywhere. `smelt init` comments show
   `extends: smelt:recommended` and a family example.
 
+### uv workspaces
+
+One root configuration now checks a uv workspace as one project, and each
+member can refine it with its own `smelt.yml`. Existing configurations are
+unaffected until they set `project.workspace`. See
+[uv workspaces](docs/configuration.md#uv-workspaces).
+
+- **`project.workspace: uv`.** Members come from `tool.uv.workspace.members` and
+  `exclude` in `pyproject.toml`. Root `source_roots` and `test_roots` apply
+  inside every member. Without `source_roots`, each member uses `src/` when it
+  holds a package and otherwise the member directory. Root-level test roots are
+  always included, root source roots only when the root `pyproject.toml` has a
+  `[project]` table. `root_packages` defaults to every member's packages, and
+  two members with the same top-level package name are a configuration error.
+- **Member configs.** A member's `smelt.yml` or `smelt.yaml` inherits the root
+  implicitly and may set `rules`, `structure` (options and `contracts`),
+  `ignore` and `project.exclude`. Its paths are member-relative. `rules` apply
+  by path to the member's sources and tests, after the root layers and before
+  the closest package contract. `structure` options compile into one contract per
+  member package, named after the member. Member contracts are named
+  `member:name` and must match the member's own packages. A member cannot set
+  `extends`, `architecture`, `tests`, `suppressions`, `debt` or other `project`
+  keys, and cannot lower SMT306 under strict coverage. Errors name the member
+  file and its own key.
+- **Member checks.** `smelt check` in a member directory, or
+  `--config <member>/smelt.yml`, loads the workspace root and checks only that
+  member. `smelt config show --sources` lists member files, and `origins` map
+  `members.<path>.*` keys to them. The policy hash covers member configs.
+  Reports without a workspace keep their previous policy hash.
+- **Not yet:** per-member debt files, architecture and test options. Use the root
+  config and package contracts for these until later releases add them.
+
 ### Internal
 
 - `smelt.config.models.PackagePolicy` holds the shared options.
@@ -296,6 +328,12 @@ files that extend it.
   first; `SmeltConfig.rules` remains the merged view for display.
 - Built-in presets live in `smelt/config/presets/*.yml`, are packaged in the
   wheel and sdist, and are listed in `LoadedConfig.presets`.
+- uv member discovery moved to `smelt.config.workspace.member_directories`.
+  `smelt.analysis.workspace.workspace_members` builds on it. Member configs are
+  `SmeltConfig.members` (`MemberConfig`), filled by the loader and never read
+  from the root YAML. The selected member is `LoadedConfig.member`.
+- `RuleSettings.severity` takes the finding's `path` so member rules also reach
+  files outside a source module.
 
 ## [0.12.0] - 2026-11-16
 

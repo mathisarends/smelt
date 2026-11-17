@@ -275,7 +275,7 @@ def build_briefing(
         ordering_policy=ctx.contracts.ordering_brief(target.module or package),
         test_policy=ctx.config.tests.model_dump(mode="json"),
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
-        rules=_rule_brief(ctx, target.module or package),
+        rules=_rule_brief(ctx, target.module or package, target_path),
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -333,12 +333,14 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _rule_brief(ctx: AnalysisContext, module: str | None) -> dict[str, str]:
+def _rule_brief(
+    ctx: AnalysisContext, module: str | None, path: str | None
+) -> dict[str, str]:
     rules = build_rule_set()
     policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yml"))
     return {
         rule.name: severity.value
-        if (severity := policy.severity(rule, ctx, module))
+        if (severity := policy.severity(rule, ctx, module, path=path))
         else "off"
         for rule in rules.rules
     }

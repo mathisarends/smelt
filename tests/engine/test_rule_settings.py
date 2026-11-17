@@ -560,3 +560,82 @@ def test_a_child_layer_replaces_its_base_even_when_broader(tmp_path: Path) -> No
     )
 
     assert {v.code for v in violations(root)} == _GROUP_CODES
+
+
+_WORKSPACE = {
+    "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
+    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n",
+    "services/api/src/api/__init__.py": "",
+    "services/api/src/api/views.py": "def helper(): return 1\n",
+    "services/api/src/api/legacy/__init__.py": "def helper(): return 1\n",
+    "services/api/tests/test_views.py": "def test_views():\n    print(1)\n",
+    "packages/core/src/core/__init__.py": "",
+    "packages/core/src/core/views.py": "def helper(): return 1\n",
+    "packages/core/tests/test_core.py": "def test_core():\n    print(1)\n",
+    "tests/test_e2e.py": "def test_e2e():\n    print(1)\n",
+}
+
+
+def _members(tmp_path: Path, files: dict[str, str]) -> Path:
+    return write_project(tmp_path, {**_WORKSPACE, **files})
+
+
+def test_member_rules_reach_its_sources_and_tests_only(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "services/api/smelt.yml": "rules:\n"
+            "  visibility/internal-public-member: warning\n"
+            "  tests/missing-outcome-check: hint\n"
+        },
+    )
+
+    found = {(v.rule, v.path, v.severity) for v in check(root).report.violations}
+
+    assert found == {
+        (
+            "visibility/internal-public-member",
+            "services/api/src/api/legacy/__init__.py",
+            Severity.WARNING,
+        ),
+        (
+            "visibility/internal-public-member",
+            "services/api/src/api/views.py",
+            Severity.WARNING,
+        ),
+        (
+            "tests/missing-outcome-check",
+            "services/api/tests/test_views.py",
+            Severity.HINT,
+        ),
+    }
+
+
+def test_a_package_contract_beats_the_member_setting(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "services/api/smelt.yml": "rules: {visibility/internal-public-member: warning}\n"
+            "structure:\n  contracts:\n    legacy:\n      match: api.legacy\n"
+            "      rules: {visibility/internal-public-member: off}\n"
+        },
+    )
+
+    found = {v.path for v in check(root).report.violations}
+
+    assert found == {"services/api/src/api/views.py"}
+
+
+def test_a_member_cannot_relax_strict_coverage(tmp_path: Path) -> None:
+    root = _members(
+        tmp_path,
+        {
+            "smelt.yml": _WORKSPACE["smelt.yml"].replace("}", ", coverage: strict}"),
+            "services/api/smelt.yml": "rules: {SMT306: warning}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match="strict coverage must remain") as caught:
+        check(root)
+
+    assert caught.value.issues[0].path == "rules.SMT306"

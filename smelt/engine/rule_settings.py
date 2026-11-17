@@ -47,6 +47,31 @@ class RuleSettings:
             )
             for name, contract in loaded.config.structure.contracts.items()
         }
+        # Workspace members refine the root by path, so their tests are covered too.
+        self.members = {
+            path: self._normalize(
+                member.rules, f"members.{path}.rules", excluded=self._strict_guard()
+            )
+            for path, member in loaded.config.members.items()
+        }
+        self._member_paths = sorted(self.members, key=len, reverse=True)
+        lowered = [
+            path
+            for path, settings in self.members.items()
+            if self._strict_guard()
+            and settings.get(_STRICT_COVERAGE, "error") != "error"
+        ]
+        if lowered:
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        f"members.{path}.rules.{_STRICT_COVERAGE}",
+                        "strict coverage must remain an error; use reasoned project.exclude entries instead",
+                    )
+                    for path in lowered
+                ],
+                self.source,
+            )
         for index, entry in enumerate(loaded.config.ignore):
             if not rules.matching_codes(entry.rule):
                 raise ConfigError(
@@ -87,8 +112,10 @@ class RuleSettings:
             raise ConfigError(issues, self.source)
 
     def has_package_activation(self, code: str) -> bool:
+        """Whether a package contract or workspace member enables the rule locally."""
         return any(
-            settings.get(code, "off") != "off" for settings in self.packages.values()
+            settings.get(code, "off") != "off"
+            for settings in (*self.packages.values(), *self.members.values())
         )
 
     def severity_for_path(
@@ -112,7 +139,7 @@ class RuleSettings:
                             parts.pop()
                         module = ".".join(parts)
                         break
-        return self.severity(rule, ctx, module, selected=selected)
+        return self.severity(rule, ctx, module, path=path, selected=selected)
 
     def severity(
         self,
@@ -120,8 +147,10 @@ class RuleSettings:
         ctx: AnalysisContext,
         module: str | None,
         *,
+        path: str | None = None,
         selected: bool = False,
     ) -> Severity | None:
+        """Root setting, then the member's, then the closest package contract."""
         value = self.global_rules.get(rule.code)
         if value is None:
             value = (
@@ -129,6 +158,8 @@ class RuleSettings:
                 if self._enabled_for(rule, ctx, module, selected=selected)
                 else "off"
             )
+        if (member := self._member_for(ctx, module, path)) is not None:
+            value = self.members[member].get(rule.code, value)
         if module:
             applicable = sorted(
                 (
@@ -152,6 +183,24 @@ class RuleSettings:
             selected
             or getattr(rule, "enabled_by_default", False)
             or (activation is not None and activation.matches(self.config))
+        )
+
+    def _member_for(
+        self, ctx: AnalysisContext, module: str | None, path: str | None
+    ) -> str | None:
+        """The innermost workspace member with a config that contains the file."""
+        if not self.members:
+            return None
+        location = path or (ctx.files.path_for_module(module) if module else None)
+        if location is None:
+            return None
+        return next(
+            (
+                member
+                for member in self._member_paths
+                if location == member or location.startswith(member + "/")
+            ),
+            None,
         )
 
     def _enabled_for(

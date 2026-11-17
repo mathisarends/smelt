@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from smelt.config.composition import ConfigComposition, compose_config
+from smelt.config.composition import ConfigComposition, add_member, compose_config
 from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_loc
 from smelt.config.models import SmeltConfig
 from smelt.config.source import SourceStore
 from smelt.config.validation import validate_semantics
+from smelt.config.workspace import expand_workspace, member_config_files
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -89,6 +90,7 @@ class LoadedConfig:
     inputs: tuple[Path, ...] = ()
     origins: dict[str, str] = field(default_factory=dict)
     presets: tuple[str, ...] = ()
+    member: str | None = None  # the workspace member whose config was selected
 
     @property
     def root(self) -> Path:
@@ -115,9 +117,26 @@ def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | 
 
 
 def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig:
+    """Load a project config; a workspace member's config selects its root."""
     view = store or SourceStore()
     path = view.resolve(path)
+    member: str | None = None
+    if (workspace := _workspace_of(path, view)) is not None:
+        path, member = workspace
     composed = compose_config(path, view, _load_yaml)
+    if composed.raw.get("members"):
+        raise ConfigError(
+            [
+                ConfigIssue(
+                    "members",
+                    "not a config key; each workspace member keeps its own smelt.yml",
+                )
+            ],
+            composed.source_for("members") or path.name,
+        )
+    if _declares_workspace(composed.raw):
+        for name, file in member_config_files(path.parent, store=view).items():
+            add_member(composed, name, file, store=view, parse_yaml=_load_yaml)
     try:
         config, warnings = parse_config(
             composed.raw, source=path.name, root=path.parent, store=store
@@ -141,6 +160,7 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
         inputs=tuple(composed.files),
         origins=composed.origins,
         presets=tuple(composed.presets),
+        member=member,
     )
 
 
@@ -162,6 +182,16 @@ def parse_config(
         config = SmeltConfig.model_validate(raw)
     except ValidationError as exc:
         raise ConfigError(_issues_from_validation(exc), source) from exc
+    if config.members and config.project.workspace is None:
+        raise ConfigError(
+            [ConfigIssue("members", "member configs require project.workspace: uv")],
+            source,
+        )
+    if config.project.workspace is not None and root is not None:
+        try:
+            config = expand_workspace(config, root, store=store)
+        except ConfigError as exc:
+            raise ConfigError(exc.issues, source) from exc
     config = _with_root_packages(config, root, source, store=store)
     errors, warnings = validate_semantics(config)
     if errors:
@@ -169,14 +199,56 @@ def parse_config(
     return config, tuple(warnings)
 
 
+def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str] | None:
+    """The nearest enclosing config and member path, if it declares ``path`` a member."""
+    directory = path.parent
+    for parent in directory.parents:
+        candidate = next(
+            (
+                parent / name
+                for name in CONFIG_FILENAMES
+                if store.is_file(parent / name)
+            ),
+            None,
+        )
+        if candidate is None:
+            continue
+        if not _declares_workspace(compose_config(candidate, store, _load_yaml).raw):
+            return None
+        member = directory.relative_to(parent).as_posix()
+        if member_config_files(parent, store=store).get(member) == path:
+            return candidate, member
+        return None
+    return None
+
+
+def _declares_workspace(raw: dict[str, Any]) -> bool:
+    project = raw.get("project")
+    return isinstance(project, dict) and project.get("workspace") == "uv"
+
+
 def _with_origins(error: ConfigError, composed: ConfigComposition) -> ConfigError:
     return ConfigError(
         [
-            ConfigIssue(issue.path, issue.message, composed.source_for(issue.path))
+            ConfigIssue(
+                _member_relative(issue.path, composed),
+                issue.message,
+                composed.source_for(issue.path),
+            )
             for issue in error.issues
         ],
         error.source,
     )
+
+
+def _member_relative(location: str, composed: ConfigComposition) -> str:
+    """Name a member's key as written in its own file: ``rules.x``, not ``members.m.rules.x``."""
+    members = [
+        key
+        for key in composed.origins
+        if key.startswith("members.") and location.startswith(key + ".")
+    ]
+    return location.removeprefix(max(members, key=len) + ".") if members else location
 
 
 def _with_root_packages(

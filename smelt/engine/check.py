@@ -435,7 +435,11 @@ def _collect(
             continue
         for violation in rule_findings(rule, ctx):
             severity = policy.severity(
-                rule, ctx, violation.source_module, selected=bool(options.select)
+                rule,
+                ctx,
+                violation.source_module,
+                path=violation.path,
+                selected=bool(options.select),
             )
             if severity is not None:
                 violations.append(violation.with_severity(severity))

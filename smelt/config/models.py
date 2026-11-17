@@ -84,6 +84,10 @@ class ProjectConfig(_Model):
         default="configured",
         description="strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
     )
+    workspace: Literal["uv"] | None = Field(
+        default=None,
+        description="uv: read members from tool.uv.workspace in pyproject.toml. source_roots and test_roots then apply inside every member, root packages are discovered per member, and a member's own smelt.yml refines this policy for its files.",
+    )
     python_version: str | None = Field(
         default=None,
         pattern=r"^3\.[0-9]+$",
@@ -896,6 +900,45 @@ class SuppressionsConfig(_Model):
     require_reason: bool = True
 
 
+class MemberProjectConfig(_Model):
+    """Exclusions of one workspace member; its roots come from the workspace root."""
+
+    exclude: list[str | SourceExclusion] = Field(
+        default_factory=list,
+        description="Member-relative path globs or {path, reason} entries; added to the root exclusions.",
+    )
+
+
+class MemberStructureConfig(PackagePolicy):
+    """Source conventions and contracts for one workspace member's packages."""
+
+    contracts: dict[str, PackageContract] = Field(
+        default_factory=dict,
+        description="Package contracts inside this member; each match must name one of its packages.",
+    )
+
+
+class MemberConfig(_Model):
+    """A workspace member's own smelt.yml, refining the root policy for its files."""
+
+    version: Literal[1] | None = None
+    project: MemberProjectConfig = Field(default_factory=MemberProjectConfig)
+    structure: MemberStructureConfig = Field(default_factory=MemberStructureConfig)
+    rules: dict[str, RuleSetting] = Field(
+        default_factory=dict,
+        description="Rule settings for this member's source and test files. They replace the root settings for the same rules; package contracts still win.",
+    )
+    ignore: list[IgnoreEntry] = Field(
+        default_factory=list,
+        description="Rules to skip; paths are relative to the member.",
+    )
+
+    @field_validator("rules")
+    @classmethod
+    def _rule_keys(cls, values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:
+        return _check_rule_keys(values)
+
+
 class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
@@ -916,6 +959,10 @@ class SmeltConfig(_Model):
     debt: str | None = Field(
         default=None,
         description="Debt file with known violations, e.g. .smelt/debt.json.",
+    )
+    members: dict[str, MemberConfig] = Field(
+        default_factory=dict,
+        description="Workspace member configs by member path, read from each member's own smelt.yml; never written in the root file.",
     )
     _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
 
@@ -938,14 +985,16 @@ class SmeltConfig(_Model):
     def _rule_codes_are_well_formed(
         cls, values: dict[str, RuleSetting]
     ) -> dict[str, RuleSetting]:
-        for key in values:
-            if key != ALL_RULES and not (
-                _RULE_CODE.match(key) or _RULE_NAME.match(key)
-            ):
-                msg = (
-                    f'"{key}" is not a rule code like "SMT101", '
-                    'a rule name like "architecture/layer-boundary", '
-                    'a family like "modeling", a rule group or ALL'
-                )
-                raise ValueError(msg)
-        return values
+        return _check_rule_keys(values)
+
+
+def _check_rule_keys(values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:
+    for key in values:
+        if key != ALL_RULES and not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
+            msg = (
+                f'"{key}" is not a rule code like "SMT101", '
+                'a rule name like "architecture/layer-boundary", '
+                'a family like "modeling", a rule group or ALL'
+            )
+            raise ValueError(msg)
+    return values

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
+from smelt.config.workspace import member_raw_issues
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -49,6 +50,34 @@ def compose_config(
     composed = ConfigComposition()
     _visit(store.resolve(path), store, parse_yaml, parents=(), composed=composed)
     return composed
+
+
+def add_member(
+    composed: ConfigComposition,
+    member: str,
+    path: Path,
+    *,
+    store: SourceStore,
+    parse_yaml: Callable[[str], object],
+) -> None:
+    """Place a member's own config under ``members.<path>``; it inherits the root."""
+    source = path.as_posix()
+    try:
+        raw = parse_yaml(store.read_text(path))
+    except (OSError, UnicodeError) as exc:
+        raise ConfigError(
+            [ConfigIssue("", f"cannot read {path}: {exc}")], source
+        ) from exc
+    except yaml.YAMLError as exc:
+        raise ConfigError([ConfigIssue("", f"invalid YAML: {exc}")], source) from exc
+    raw = {} if raw is None else raw
+    issues = member_raw_issues(raw)
+    if issues:
+        raise ConfigError(issues, source)
+    _check_tree(raw, (), frozenset(), source=source)
+    composed.raw.setdefault("members", {})[member] = raw
+    composed.origins[f"members.{member}"] = source
+    composed.files.append(path)
 
 
 def _visit(

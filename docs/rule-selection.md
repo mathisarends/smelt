@@ -103,6 +103,31 @@ Private instance state is valid. Moving private class constants to module scope
 (SMT334) and extracting static helpers (SMT317) concern placement and stay
 independent. They are not members of this group.
 
+## Workspace members
+
+In a [uv workspace](configuration.md#uv-workspaces), a member's `smelt.yml` is
+one more rules layer. It applies by path to the member's sources and tests:
+
+1. the root rules layers, presets and bases first;
+2. the member's `rules`, from the innermost member that contains the file;
+3. the closest package contract, including the contract the member's
+   `structure` options compile into.
+
+```yaml
+# smelt.yml at the workspace root
+rules: {complexity: warning}
+```
+
+```yaml
+# packages/legacy/smelt.yml
+rules: {complexity: off, complexity/duplicate-function: hint}
+```
+
+Here `packages/legacy` reports only `complexity/duplicate-function`, as a hint.
+Every other member keeps `complexity: warning`. Within a member file, the most
+specific selector wins, as in any other layer. A rule that only a member enables
+stays off in the other members.
+
 ## Activation and precedence
 
 The catalog distinguishes three modes, independently of severity:
