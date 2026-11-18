@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT316 and SMT320 preserve public runtime entry points in declared composition roots.
+
 ### Context
 
 - `smelt context` now identifies the feature and layer of a planned path inside
