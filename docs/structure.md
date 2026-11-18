@@ -34,6 +34,7 @@ Every option has one activation rule:
 | Option | Rule | Default when the rule is selected |
 | --- | --- | --- |
 | `imports` | SMT308 | none; nothing is checked without a style |
+| `reexports` | SMT369 | `all` |
 | `max_module_imports` | SMT110 | 20 |
 | `module_import_exemptions` | SMT110 | `[facades, composition_root]`; does not enable the rule |
 | `module_docstrings` | SMT309 | none |
@@ -475,6 +476,41 @@ other import rules, `architecture.import_graph.type_checking` controls guarded i
 Ruff's [TID252](https://docs.astral.sh/ruff/rules/relative-imports/) already covers
 forbidding parent-relative imports; Smelt additionally checks the preferred form
 under these style overrides.
+
+## Re-export spelling in package initializers
+
+Set `style.reexports` to activate [SMT369](rules/SMT369.md) for package
+initializers. `all` uses ordinary imports and an explicit list of public names.
+
+```python
+from .models import Event
+
+__all__ = ["Event"]
+```
+
+`alias` marks the re-export at the import. Keep `__all__` where callers depend
+on its precise runtime contents, including for star imports.
+
+```python
+from .models import Event as Event
+```
+
+A package can choose a different style or allow either spelling when maintaining
+an exact runtime export list. `smelt context app.plugins` shows the effective
+value and the reason for the override.
+
+```yaml
+style:
+  reexports: alias
+  overrides:
+    plugin-registry:
+      match: app.plugins
+      reexports: {value: allow, reason: Plugins are discovered via __all__.}
+```
+
+The rule uses direct, unambiguous import bindings. Real renames such as
+`from .models import Event as PublicEvent` can use `__all__` in either style.
+Selecting SMT369 directly uses `all` wherever the project has set no convention.
 
 ## Suggestions to bundle implementation imports
 

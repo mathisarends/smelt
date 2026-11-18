@@ -151,6 +151,8 @@ SHARED_OPTIONS = [
     ({"max_comprehension_loops": 2}, {"SMT363"}),
     ({"max_constructor_decisions": 0}, {"SMT364"}),
     ({"max_private_definitions": 0}, {"SMT367"}),
+    ({"reexports": "all"}, {"SMT369"}),
+    ({"reexports": "alias"}, {"SMT369"}),
 ]
 
 
@@ -173,6 +175,7 @@ def test_a_single_rule_option_activates_its_rule_at_either_level(
         {"module_import_exemptions": []},
         {"ordering": {"fix": "off"}},
         {"module_docstrings": "allow", "type_dispatch": {"style": "allow"}},
+        {"reexports": "allow"},
     ],
 )
 def test_modifiers_and_allow_values_do_not_activate_a_rule(

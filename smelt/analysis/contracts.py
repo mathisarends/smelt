@@ -18,6 +18,7 @@ _PROJECT_POLICY = "style"
 
 type PolicyOption = Literal[
     "imports",
+    "reexports",
     "module_docstrings",
     "future_annotations",
     "private_modules",
@@ -299,6 +300,7 @@ class ContractIndex:
                         for key in (
                             "module_docstrings",
                             "future_annotations",
+                            "reexports",
                             "private_modules",
                             "public_attribute_boundary",
                             "private_attribute_boundary",

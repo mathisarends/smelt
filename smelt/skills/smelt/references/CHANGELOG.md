@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Set `style.reexports` to `all` or `alias` to have [SMT369](docs/rules/SMT369.md)
+  check explicit re-export spelling in package initializers. Package overrides
+  can select another spelling or allow an intentional runtime export list.
 - Enable [SMT368](docs/rules/SMT368.md) with `layout/reexport-only-module: hint`
   to review ordinary modules made entirely of explicit re-exports.
 - The `smelt.engine.workspace` import path was removed. Import `WorkspaceMember`,
