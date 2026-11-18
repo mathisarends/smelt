@@ -172,11 +172,8 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
             + "style: {max_positional_parameters: 3, dataclass_options: [slots]}\n",
             "packages/core/smelt.yml": """
                 style:
-                  max_positional_parameters: 0
-                  dataclass_options: []
-                  reasons:
-                    max_positional_parameters: " Prefer named arguments. "
-                    dataclass_options: Generated classes predate slots.
+                  max_positional_parameters: {value: 0, reason: " Prefer named arguments. "}
+                  dataclass_options: {value: [], reason: Generated classes predate slots.}
                 """,
             "services/api/smelt.yml": """
                 style:
@@ -192,9 +189,13 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
 
     assert contract.max_positional_parameters == 0
     assert contract.dataclass_options == []
-    assert data["members"]["packages/core"]["style"]["reasons"] == {
+    assert contract.reasons == {
         "max_positional_parameters": "Prefer named arguments.",
         "dataclass_options": "Generated classes predate slots.",
+    }
+    assert data["members"]["packages/core"]["style"]["dataclass_options"] == {
+        "value": [],
+        "reason": "Generated classes predate slots.",
     }
     assert (
         config.structure.contracts["services/api"].future_annotations == "when-needed"
@@ -259,8 +260,8 @@ def test_root_style_override_cannot_target_a_member(
     )
     data = load_config(root / "smelt.yml").config.model_dump(mode="json")
     assert data["members"]["services/api"]["style"]["overrides"]["legacy"][
-        "reasons"
-    ] == {"future_annotations": "Legacy modules use forward references."}
+        "future_annotations"
+    ] == {"value": "allow", "reason": "Legacy modules use forward references."}
 
 
 def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:

@@ -125,14 +125,31 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         if explained is exc:
             raise
         raise explained from exc
-    data = loaded.config.model_dump(mode="json", by_alias=True)
+    config = loaded.config
+    base = config.workspace_base
+    data = (base or config).model_dump(
+        mode="json",
+        by_alias=True,
+        exclude={"members"},
+        exclude_none=True,
+        exclude_unset=base is not None,
+    )
     if args.sources:
         data = {
             "config": data,
             "sources": [path.as_posix() for path in loaded.inputs],
-            "origins": loaded.origins,
+            "origins": {
+                key: source for key, source in loaded.origins.items() if "[" not in key
+            },
             "rule_selectors": settings.selector_rules,
         }
+        if config.project.workspace == "uv":
+            data["workspace_members"] = {
+                path: member.model_dump(mode="json", by_alias=True, exclude_unset=True)
+                for path, member in config.members.items()
+            }
+        if loaded.warnings:
+            data["warnings"] = [str(issue) for issue in loaded.warnings]
     if args.format == "json":
         console.print(json.dumps(data, indent=2))
     else:

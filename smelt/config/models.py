@@ -3,16 +3,19 @@ import posixpath
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     PrivateAttr,
+    SerializerFunctionWrapHandler,
     StringConstraints,
     TypeAdapter,
+    ValidationError,
     field_validator,
+    model_serializer,
     model_validator,
 )
 
@@ -51,8 +54,8 @@ class RuleOverride(_Model):
 
 
 type RuleSetting = RuleSeverity | RuleOverride
-type _PolicyReasons = dict[
-    str, Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+type _PolicyReason = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1)
 ]
 
 
@@ -820,7 +823,57 @@ class PolicyDefaults:
 POLICY_DEFAULTS = PolicyDefaults()
 
 
-class StyleOverride(PackagePolicy, _PackageTarget):
+class _ReasonedStyleValue(_Model):
+    value: Any
+    reason: _PolicyReason
+
+
+class _ReasonedStyle(PackagePolicy):
+    reasons: dict[str, _PolicyReason] = Field(default_factory=dict)
+
+    @model_serializer(mode="wrap")
+    def _inline_reasons(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        data.pop("reasons", None)
+        for name, reason in self.reasons.items():
+            if name in data:
+                data[name] = {"value": data[name], "reason": reason}
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _read_inline_reasons(cls, raw: object) -> object:
+        if not isinstance(raw, dict):
+            return raw
+        values = dict(raw)
+        legacy = values.get("reasons", {})
+        if not isinstance(legacy, dict):
+            return raw
+        reasons = dict(legacy)
+        for name in PackagePolicy.model_fields.keys() & values.keys():
+            value = values[name]
+            if not isinstance(value, dict) or not ({"value", "reason"} & value.keys()):
+                continue
+            if name in reasons:
+                raise ValueError(f"{name} already has a reason in reasons.{name}")
+            try:
+                setting = _ReasonedStyleValue.model_validate(value)
+            except ValidationError as exc:
+                raise ValueError(f"{name}: {exc.errors()[0]['msg']}") from exc
+            values[name], reasons[name] = setting.value, setting.reason
+        if reasons:
+            values["reasons"] = reasons
+        return values
+
+    @model_validator(mode="after")
+    def _reasons_explain_options(self) -> Self:
+        for name in self.reasons:
+            if name not in PackagePolicy.model_fields or getattr(self, name) is None:
+                raise ValueError(f"reasons.{name} must explain a style option set here")
+        return self
+
+
+class StyleOverride(_ReasonedStyle, _PackageTarget):
     """Conventions and rule severity choices for matching packages."""
 
     rules: dict[str, RuleSetting] = Field(
@@ -833,6 +886,24 @@ class PackageContract(PackageBoundary, StyleOverride):
     """Compiled package policy for rules that consume style and API together."""
 
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+    _style_location: str | None = PrivateAttr(default=None)
+    _style_override: bool = PrivateAttr(default=False)
+
+    @property
+    def style_location(self) -> str | None:
+        """Input key of the style portion of this compiled policy."""
+        return self._style_location
+
+    @property
+    def style_override(self) -> bool:
+        """Whether the style comes from an explicit package override."""
+        return self._style_override
+
+    def with_style_location(self, location: str, *, override: bool = False) -> Self:
+        policy = self.model_copy()
+        policy._style_location = location
+        policy._style_override = override
+        return policy
 
 
 class FileNamingConfig(_Model):
@@ -848,7 +919,7 @@ class FileNamingConfig(_Model):
     )
 
 
-class _ProjectStyle(PackagePolicy):
+class _ProjectStyle(_ReasonedStyle):
     forbidden_names: list[str] = Field(
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
@@ -989,26 +1060,14 @@ class MemberProjectConfig(_Model):
     )
 
 
-class MemberStyleOverride(StyleOverride):
-    """A member can justify changes to inherited source conventions."""
-
-    reasons: _PolicyReasons = Field(default_factory=dict)
-
-
-class MemberStyleConfig(PackagePolicy):
+class MemberStyleConfig(_ReasonedStyle):
     """Conventions and package overrides for one workspace member."""
 
-    reasons: _PolicyReasons = Field(default_factory=dict)
-    overrides: dict[str, MemberStyleOverride] = Field(default_factory=dict)
+    overrides: dict[str, StyleOverride] = Field(default_factory=dict)
 
 
-class MemberPackageContract(PackageContract):
-    reasons: _PolicyReasons = Field(default_factory=dict)
-
-
-class MemberStructureConfig(PackagePolicy):
-    reasons: _PolicyReasons = Field(default_factory=dict)
-    contracts: dict[str, MemberPackageContract] = Field(default_factory=dict)
+class MemberStructureConfig(_ReasonedStyle):
+    contracts: dict[str, PackageContract] = Field(default_factory=dict)
 
 
 class MemberConfig(_Model):
@@ -1051,9 +1110,7 @@ class MemberConfig(_Model):
     def _compile_policy(self) -> Self:
         packages = self.architecture.packages if self.architecture else {}
         style = self.style
-        contracts = _combine_packages(
-            packages, style.overrides, model=MemberPackageContract
-        )
+        contracts = _combine_packages(packages, style.overrides)
         self._structure = MemberStructureConfig(
             **style.model_dump(exclude={"overrides"}, by_alias=True),
             contracts=contracts,
@@ -1144,9 +1201,7 @@ class SmeltConfig(_Model):
         architecture = self.architecture
         self._structure = StructureConfig(
             **style.model_dump(exclude={"overrides"}, by_alias=True),
-            contracts=_combine_packages(
-                architecture.packages, style.overrides, model=PackageContract
-            ),
+            contracts=_combine_packages(architecture.packages, style.overrides),
             canonical_exports=architecture.canonical_exports,
         )
         return self
@@ -1202,12 +1257,10 @@ class SmeltConfig(_Model):
         return _check_rule_keys(values)
 
 
-def _combine_packages[C: PackageContract](
+def _combine_packages(
     boundaries: Mapping[str, PackageBoundary],
     overrides: Mapping[str, StyleOverride],
-    *,
-    model: type[C],
-) -> dict[str, C]:
+) -> dict[str, PackageContract]:
     contracts = {}
     for name in dict.fromkeys((*boundaries, *overrides)):
         if not name.strip():
@@ -1233,7 +1286,12 @@ def _combine_packages[C: PackageContract](
             raise ValueError(f"architecture.packages.{name} has no package policy")
         if override is not None and not (override.configured() or override.rules):
             raise ValueError(f"style.overrides.{name} has no style policy")
-        contracts[name] = model.model_validate(api | style)
+        contract = PackageContract.model_validate(api | style)
+        contracts[name] = (
+            contract.with_style_location(f"style.overrides.{name}", override=True)
+            if override
+            else contract
+        )
     return contracts
 
 

@@ -140,7 +140,12 @@ class ArchitectureModel:
         if not self.is_first_party(module):
             return None
         if self.parts:
-            return self.part_for(module).info(module)
+            part = self.part_for(module)
+            return (
+                part.info(module)
+                if part is not self
+                else ModuleInfo(module, ModuleKind.UNCLASSIFIED)
+            )
         return _Classifier(self.config, self.packages, self.scope).classify(module)
 
     def planned_info(self, module: str, *, is_package: bool) -> ModuleInfo | None:

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
+from smelt.config.models import PackagePolicy
 from smelt.config.workspace import member_raw_issues
 
 if TYPE_CHECKING:
@@ -72,8 +73,13 @@ def add_member(
     if issues:
         raise ConfigError(issues, source)
     _check_tree(raw, (), frozenset(), source=source)
-    composed.raw.setdefault("members", {})[member] = raw
-    composed.origins[f"members.{member}"] = source
+    _merge(
+        composed.raw.setdefault("members", {}),
+        {member: raw},
+        ("members",),
+        source=source,
+        origins=composed.origins,
+    )
     composed.files.append(path)
 
 
@@ -200,7 +206,11 @@ def _merge(
         location = (*prefix, key)
         shown = format_loc(location)
         previous = target.get(key)
-        if isinstance(value, dict) and isinstance(previous, dict):
+        if (
+            isinstance(value, dict)
+            and isinstance(previous, dict)
+            and not _replace_style_value(location, value, previous)
+        ):
             _merge(previous, value, location, source=source, origins=origins)
         else:
             for old in list(origins):
@@ -214,6 +224,19 @@ def _merge(
             origins[shown] = source
         if isinstance(value, list):
             _list_origins(value, location, source, origins=origins)
+
+
+def _replace_style_value(
+    location: tuple[str | int, ...], value: dict[Any, Any], previous: dict[Any, Any]
+) -> bool:
+    """A reason belongs to the whole style option written by one file."""
+    match location:
+        case ("style", name) | ("style", "overrides", _, name) if (
+            name in PackagePolicy.model_fields
+        ):
+            return bool({"value", "reason"} & (previous.keys() | value.keys()))
+        case _:
+            return False
 
 
 def _list_origins(

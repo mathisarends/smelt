@@ -20,6 +20,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ### Context
 
+- `smelt context` shows effective style and rule settings, their declaring files,
+  and exception reasons. It lists package APIs separately in the text view.
+- Source-convention exceptions can use `{value: ..., reason: ...}`. The older
+  `reasons` map is still accepted. `smelt config show --sources` lists member
+  policy and explicit origins alongside the resolved root config.
+
 - Workspace context names the owner, governing configuration and rules layers.
   Scoped workspace checks label whole-workspace totals and policy coverage.
 

@@ -105,8 +105,15 @@ class LoadedConfig:
         if len(self.inputs) <= 1:
             return error.relative_to(self.root)
         return _with_origins(
-            error, ConfigComposition(origins=self.origins)
+            error,
+            ConfigComposition(
+                raw={"members": self.config.members}, origins=self.origins
+            ),
         ).relative_to(self.root)
+
+    def source_for(self, location: str) -> str | None:
+        """The nearest explicitly declared key's file."""
+        return ConfigComposition(origins=self.origins).source_for(location)
 
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
@@ -176,7 +183,7 @@ def _load_selected(
     path: Path, view: SourceStore, *, member: str | None, store: SourceStore | None
 ) -> LoadedConfig:
     composed = compose_config(path, view, _load_yaml)
-    if composed.raw.get("members"):
+    if "members" in composed.raw:
         raise ConfigError(
             [
                 ConfigIssue(
@@ -338,12 +345,14 @@ def _with_origins(error: ConfigError, composed: ConfigComposition) -> ConfigErro
 
 def _member_relative(location: str, composed: ConfigComposition) -> str:
     """Name a member's key as written in its own file: ``rules.x``, not ``members.m.rules.x``."""
-    members = [
-        key
-        for key in composed.origins
-        if key.startswith("members.") and location.startswith(key + ".")
-    ]
-    return location.removeprefix(max(members, key=len) + ".") if members else location
+    prefixes = (f"members.{member}." for member in composed.raw.get("members", {}))
+    return location.removeprefix(
+        max(
+            (prefix for prefix in prefixes if location.startswith(prefix)),
+            key=len,
+            default="",
+        )
+    )
 
 
 def _with_root_packages(

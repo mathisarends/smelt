@@ -290,6 +290,77 @@ def test_context_names_the_governing_workspace_files(
     assert f"Rules: {' < '.join(rule_sources)}" in output
 
 
+def test_context_and_config_show_explain_member_style_and_rule_exceptions(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "base.yml": "style: {future_annotations: when-needed}\n",
+            "smelt.yml": """
+                extends: base.yml
+                version: 1
+                project: {workspace: uv}
+                style: {max_positional_parameters: 3}
+                rules: {visibility/internal-public-member: warning}
+                """,
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+            "services/api/src/api/__init__.py": "",
+            "services/api/src/api/legacy/__init__.py": "",
+            "services/api/smelt.yaml": """
+                style:
+                  max_positional_parameters: {value: 5, reason: Preserve plugin callbacks.}
+                  overrides:
+                    legacy:
+                      match: api
+                      max_positional_parameters: {value: 6, reason: Match generated driver calls.}
+                      rules:
+                        visibility/internal-public-member: {severity: hint, reason: Plugin entry points.}
+                architecture:
+                  packages:
+                    legacy: {match: api, public: ['.']}
+                """,
+        },
+    )
+    config = str(root / "smelt.yml")
+    args = ("context", "services/api/src/api/legacy/adapter.py", "--config", config)
+    code, output, error = _run(capsys, *args, "--format", "json")
+    assert (code, error) == (0, "")
+    brief = json.loads(output)
+    assert brief["style"]["future_annotations"]["source"] == "base.yml"
+    option = brief["style"]["max_positional_parameters"]
+    assert (option["value"], option["source"], option["reason"]) == (
+        6,
+        "services/api/smelt.yaml",
+        "Match generated driver calls.",
+    )
+    assert (
+        brief["rule_details"]["complexity/excess-positional-parameters"]["activation"]
+        == "policy"
+    )
+    rule = brief["rule_details"]["visibility/internal-public-member"]
+    assert (rule["severity"], rule["source"], rule["reason"]) == (
+        "hint",
+        "services/api/smelt.yaml",
+        "Plugin entry points.",
+    )
+    _, output, _ = _run(capsys, *args)
+    assert "Package API services/api:legacy" in output
+    assert "Match generated driver calls." in output
+    assert "Plugin entry points." in output
+
+    code, output, error = _run(
+        capsys, "config", "show", "--sources", "--config", config, "--format", "json"
+    )
+    assert (code, error) == (0, "")
+    data = json.loads(output)
+    assert "members" not in data["config"]
+    assert "services/api" in data["workspace_members"]
+    assert data["origins"][
+        "members.services/api.style.overrides.legacy.max_positional_parameters.reason"
+    ].endswith("services/api/smelt.yaml")
+
+
 def _run(capsys: pytest.CaptureFixture[str], *args: str) -> tuple[int, str, str]:
     code = main(list(args))
     captured = capsys.readouterr()

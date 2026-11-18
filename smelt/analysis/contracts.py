@@ -202,7 +202,7 @@ class ContractIndex:
                 if getattr(contract.spec, policy) is not None
                 and is_within(module, contract.package)
             ),
-            key=lambda contract: len(contract.package),
+            key=lambda contract: (len(contract.package), contract.spec.style_override),
             default=None,
         )
         if closest is None and getattr(self.project.spec, policy) is not None:
@@ -230,7 +230,9 @@ class ContractIndex:
                 "name": contract.name,
                 "package": contract.package,
                 "match": contract.spec.match,
-                "rules": dict(contract.spec.rules),
+                "rules": contract.spec.model_dump(mode="json", include={"rules"})[
+                    "rules"
+                ],
                 "required": [
                     contract.qualify(entry) for entry in contract.spec.required
                 ],
@@ -318,5 +320,7 @@ class ContractIndex:
 def _project_policy(structure: StructureConfig) -> ResolvedContract:
     """structure-level options as a contract that every package inherits."""
     options = {name: getattr(structure, name) for name in PackagePolicy.model_fields}
-    spec = PackageContract.model_construct(match="*", **options)
+    spec = PackageContract.model_construct(
+        match="*", reasons=structure.reasons, **options
+    ).with_style_location(_PROJECT_POLICY)
     return ResolvedContract(_PROJECT_POLICY, "", spec)
