@@ -85,6 +85,12 @@ class Report:
         )
 
     @property
+    def workspace_totals(self) -> bool:
+        return bool(
+            self.scope and self.coverage and self.coverage.get("scope") == "workspace"
+        )
+
+    @property
     def failed(self) -> bool:
         return any(v.severity.at_least(self.fail_on) for v in self.violations) or any(
             diagnostic.severity.at_least(self.fail_on)
