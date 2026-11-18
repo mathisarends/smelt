@@ -33,6 +33,7 @@ class Index(StrEnum):
     FILES = "files"
     IMPORTS = "imports"
     MEMBERS = "member_usage"
+    MODEL = "model"
     ORDERING = "ordering"
     SYNTAX = "syntax"
     TESTS = "test_syntax"

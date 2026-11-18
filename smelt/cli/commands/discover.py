@@ -41,9 +41,11 @@ def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     try:
         outcome = run_check(loaded, CheckOptions(), context=ctx)
     except (AnalysisError, ConfigError) as exc:
-        briefing = build_briefing(ctx, target, None, analysis_error=str(exc))
+        briefing = build_briefing(
+            ctx, target, None, analysis_error=str(exc), loaded=loaded
+        )
     else:
-        briefing = build_briefing(ctx, target, outcome.report)
+        briefing = build_briefing(ctx, target, outcome.report, loaded=loaded)
     if args.format == "json":
         console.print(json.dumps(briefing.to_json(), indent=2))
     else:

@@ -138,8 +138,13 @@ def _render(
         coverage = report.coverage
         counts = coverage.get("counts", {})
         state = "complete" if coverage["complete"] else "incomplete"
+        label = (
+            "Workspace policy coverage"
+            if report.workspace_totals
+            else "Policy coverage"
+        )
         lines.append(
-            f"Policy coverage: {state} ({coverage.get('mode', 'configured')}); "
+            f"{label}: {state} ({coverage.get('mode', 'configured')}); "
             f"{counts.get('uncovered', 0)} uncovered, {counts.get('unclassified', 0)} unclassified sources"
         )
         lines.extend(
@@ -488,11 +493,12 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     if hints and not show_hints:
         hint_text += " (use --show-hints)"
     tail: list[str] = []
+    scope = " in workspace" if report.workspace_totals else ""
     if report.suppressed:
-        tail.append(f"{report.suppressed} suppressed")
+        tail.append(f"{report.suppressed} suppressed{scope}")
     if report.in_debt:
-        tail.append(f"{report.in_debt} in debt")
-    tail.append(_plural(report.modules, "module"))
+        tail.append(f"{report.in_debt} in debt{scope}")
+    tail.append(_plural(report.modules, "module") + scope)
 
     if errors == 0 and warnings == 0:
         checks = " ".join(style(f"✓ {c.value}", _GREEN) for c in report.categories)
