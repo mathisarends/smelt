@@ -2036,9 +2036,34 @@
       },
       "type": "object"
     },
+    "BroadRuleSetting": {
+      "anyOf": [
+        {
+          "enum": [
+            "error",
+            "warning",
+            "hint",
+            "off"
+          ]
+        },
+        {
+          "$ref": "#/$defs/RuleOverride",
+          "properties": {
+            "severity": {
+              "enum": [
+                "error",
+                "warning",
+                "hint",
+                "off"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "RuleSettings": {
       "type": "object",
-      "description": "Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order.",
+      "description": "Enable individual checks by name or SMT code. Families, groups and ALL can disable or cap active rules.",
       "properties": {
         "architecture/layer-boundary": {
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -2815,108 +2840,108 @@
           "$ref": "#/$defs/RuleSetting"
         },
         "information-hiding": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
           "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+          ]
         },
         "architecture": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "architecture: every rule in the architecture family",
-          "description": "architecture: every rule in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "description": "architecture: every rule in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "imports": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "imports: every rule in the imports family",
-          "description": "imports: every rule in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. on keeps each member's catalog severity; individual entries override it.",
+          "description": "imports: every rule in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "layout": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "layout: every rule in the layout family",
-          "description": "layout: every rule in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/file-name-convention, layout/misplaced-private-constant, layout/redundant-module-name. on keeps each member's catalog severity; individual entries override it.",
+          "description": "layout: every rule in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/file-name-convention, layout/misplaced-private-constant, layout/redundant-module-name. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "visibility": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "visibility: every rule in the visibility family",
-          "description": "visibility: every rule in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "description": "visibility: every rule in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "modeling": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "modeling: every rule in the modeling family",
-          "description": "modeling: every rule in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. on keeps each member's catalog severity; individual entries override it.",
+          "description": "modeling: every rule in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "typing": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "typing: every rule in the typing family",
-          "description": "typing: every rule in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. on keeps each member's catalog severity; individual entries override it.",
+          "description": "typing: every rule in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "complexity": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "complexity: every rule in the complexity family",
-          "description": "complexity: every rule in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. on keeps each member's catalog severity; individual entries override it.",
+          "description": "complexity: every rule in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "idioms": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "idioms: every rule in the idioms family",
-          "description": "idioms: every rule in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. on keeps each member's catalog severity; individual entries override it.",
+          "description": "idioms: every rule in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "frameworks": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "frameworks: every rule in the frameworks family",
-          "description": "frameworks: every rule in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. on keeps each member's catalog severity; individual entries override it.",
+          "description": "frameworks: every rule in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "tests": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "tests: every rule in the tests family",
-          "description": "tests: every rule in the tests family. Members: tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, tests/nondeterministic-data. on keeps each member's catalog severity; individual entries override it.",
+          "description": "tests: every rule in the tests family. Members: tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, tests/nondeterministic-data. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "meta": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "meta: every rule in the meta family",
-          "description": "meta: every rule in the meta family. Members: meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
+          "description": "meta: every rule in the meta family. Members: meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "ALL": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "ALL: every rule in the catalog",
-          "description": "ALL: every rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, layout/file-name-convention, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, visibility/test-only-public-function, visibility/test-only-public-attribute, tests/nondeterministic-data, meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. on keeps each member's catalog severity; individual entries override it.",
+          "description": "ALL: every rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/uncovered-source, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, layout/file-name-convention, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, tests/misplaced-test, tests/private-access, tests/forbidden-mock, tests/string-patch-target, tests/excess-patches, tests/missing-outcome-check, tests/vacuous-assertion, tests/unbounded-wait, tests/independent-case-loop, tests/missing-await-assertion, visibility/test-only-public-function, visibility/test-only-public-attribute, tests/nondeterministic-data, meta/unused-suppression, meta/missing-suppression-reason, meta/resolved-debt. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         }
       },
       "patternProperties": {
@@ -3699,7 +3724,7 @@
     },
     "SourceRuleSettings": {
       "type": "object",
-      "description": "Source rules use the same names, selectors and values. ALL, families and groups select only their source rules here; test-file and project checks belong in the project rules map.",
+      "description": "Enable source rules by name or SMT code. ALL, families and groups disable or cap active source rules. Configure test-file and project rules at project level.",
       "properties": {
         "architecture/layer-boundary": {
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -4332,92 +4357,92 @@
           "$ref": "#/$defs/RuleSetting"
         },
         "information-hiding": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
           "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
           "examples": [
             "warning"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+          ]
         },
         "architecture": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "architecture: the source rules in the architecture family",
-          "description": "architecture: the source rules in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/missing-required-module. on keeps each member's catalog severity; individual entries override it.",
+          "description": "architecture: the source rules in the architecture family. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, architecture/missing-facade-export, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, architecture/unclassified-module, architecture/missing-required-module. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "imports": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "imports: the source rules in the imports family",
-          "description": "imports: the source rules in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. on keeps each member's catalog severity; individual entries override it.",
+          "description": "imports: the source rules in the imports family. Members: imports/package-import-fanout, imports/excess-module-imports, imports/forbidden-import-style, imports/prefer-package-import. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "layout": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "layout: the source rules in the layout family",
-          "description": "layout: the source rules in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/misplaced-private-constant, layout/redundant-module-name. on keeps each member's catalog severity; individual entries override it.",
+          "description": "layout: the source rules in the layout family. Members: layout/forbidden-module-name, layout/module-docstring-convention, layout/forbidden-private-module, layout/definition-order, layout/misplaced-static-helper, layout/callee-before-caller, layout/misplaced-private-constant, layout/redundant-module-name. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "visibility": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "visibility: the source rules in the visibility family",
-          "description": "visibility: the source rules in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "description": "visibility: the source rules in the visibility family. Members: visibility/internal-public-member, visibility/internal-public-module-symbol, visibility/misplaced-dunder-all, visibility/internal-public-attribute, visibility/foreign-private-access, visibility/redundant-private-delegate, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "modeling": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "modeling: the source rules in the modeling family",
-          "description": "modeling: the source rules in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. on keeps each member's catalog severity; individual entries override it.",
+          "description": "modeling: the source rules in the modeling family. Members: modeling/redundant-str-enum-value, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, modeling/str-enum-value-convention, modeling/stateful-dataclass, modeling/missing-dataclass-option, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, modeling/implicit-duration-unit, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "typing": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "typing: the source rules in the typing family",
-          "description": "typing: the source rules in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. on keeps each member's catalog severity; individual entries override it.",
+          "description": "typing: the source rules in the typing family. Members: typing/forbidden-future-annotations, typing/redundant-future-annotations, typing/implicit-optional-default, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, typing/prefer-deferred-annotations, typing/anonymous-tuple-type. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "complexity": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "complexity: the source rules in the complexity family",
-          "description": "complexity: the source rules in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. on keeps each member's catalog severity; individual entries override it.",
+          "description": "complexity: the source rules in the complexity family. Members: complexity/deep-object-navigation, complexity/inline-call-argument, complexity/excess-positional-parameters, complexity/duplicate-function, complexity/nested-conditional-expression, complexity/complex-comprehension, complexity/constructor-logic. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "idioms": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "idioms: the source rules in the idioms family",
-          "description": "idioms: the source rules in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. on keeps each member's catalog severity; individual entries override it.",
+          "description": "idioms: the source rules in the idioms family. Members: idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, idioms/prefer-callable-instance, idioms/redundant-name-alias, idioms/missing-interface-docstring, idioms/missing-broad-except-reason, idioms/duplicate-narrowing-assert, idioms/loop-invariant-collection. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "frameworks": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "frameworks: the source rules in the frameworks family",
-          "description": "frameworks: the source rules in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. on keeps each member's catalog severity; individual entries override it.",
+          "description": "frameworks: the source rules in the frameworks family. Members: frameworks/prefer-secret-type, frameworks/redundant-dishka-provider. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         },
         "ALL": {
+          "$ref": "#/$defs/BroadRuleSetting",
           "title": "ALL: every source rule in the catalog",
-          "description": "ALL: every source rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. on keeps each member's catalog severity; individual entries override it.",
+          "description": "ALL: every source rule in the catalog. Members: architecture/layer-boundary, architecture/cross-feature-import, architecture/forbidden-third-party-import, architecture/import-cycle, architecture/shared-imports-feature, architecture/composition-root-leak, architecture/non-public-module-import, imports/package-import-fanout, architecture/missing-facade-export, imports/excess-module-imports, architecture/member-boundary, architecture/undeclared-member-dependency, architecture/unknown-layer, layout/forbidden-module-name, architecture/unclassified-module, architecture/missing-required-module, imports/forbidden-import-style, layout/module-docstring-convention, typing/forbidden-future-annotations, typing/redundant-future-annotations, layout/forbidden-private-module, layout/definition-order, idioms/bundled-instance-assignment, idioms/prefer-match-type-dispatch, visibility/internal-public-member, layout/misplaced-static-helper, modeling/redundant-str-enum-value, imports/prefer-package-import, visibility/internal-public-module-symbol, typing/implicit-optional-default, complexity/deep-object-navigation, modeling/forbidden-base-class-affix, modeling/prefer-str-enum-discriminator, frameworks/prefer-secret-type, frameworks/redundant-dishka-provider, layout/callee-before-caller, visibility/misplaced-dunder-all, idioms/prefer-callable-instance, layout/misplaced-private-constant, visibility/internal-public-attribute, layout/redundant-module-name, typing/deprecated-async-contextmanager-return, typing/duplicate-literal-type, visibility/foreign-private-access, complexity/inline-call-argument, modeling/str-enum-value-convention, visibility/redundant-private-delegate, idioms/redundant-name-alias, complexity/excess-positional-parameters, typing/prefer-deferred-annotations, typing/anonymous-tuple-type, idioms/missing-interface-docstring, modeling/stateful-dataclass, idioms/missing-broad-except-reason, modeling/missing-dataclass-option, complexity/duplicate-function, modeling/prefer-project-base-class, modeling/prefer-domain-exception, modeling/duplicate-class-name, idioms/duplicate-narrowing-assert, modeling/implicit-duration-unit, complexity/nested-conditional-expression, modeling/mutable-field-in-frozen-dataclass, modeling/parallel-record-fields, idioms/loop-invariant-collection, complexity/complex-comprehension, complexity/constructor-logic, visibility/excess-private-definitions, visibility/test-only-public-function, visibility/test-only-public-attribute. Disable or cap active rules; individual entries take precedence.",
           "examples": [
-            "on"
-          ],
-          "$ref": "#/$defs/RuleSetting"
+            "off"
+          ]
         }
       },
       "patternProperties": {

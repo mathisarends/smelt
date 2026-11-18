@@ -750,7 +750,7 @@ class PackageContract(PackagePolicy):
     )
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Rule severities for production findings in this package. Use the same problem names, families, rule groups, SMT codes, ALL and values as top-level rules; ALL, families and groups select only the source rules among their members, individual entries override them in the same map, and the closest package override wins. Prefer top-level rules for project-wide severities.",
+        description="Rule severities for production findings in this package. Enable individual rules by name or SMT code. Families, groups and ALL can disable or cap active source rules. Individual entries override broad entries, and the closest package override wins.",
     )
 
     @field_validator("match")
@@ -1066,7 +1066,7 @@ class SmeltConfig(_Model):
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order. No additional boolean switch is required for fixed-pattern rules.",
+        description="Enable individual checks by name or SMT code. on uses the catalog severity and off disables the check. Families, groups and ALL can only disable or cap active rules.",
     )
     ignore: list[IgnoreEntry] = Field(
         default_factory=list, description="Rules to skip for modules or paths."

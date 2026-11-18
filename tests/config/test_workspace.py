@@ -367,13 +367,18 @@ def test_root_architecture_error_names_the_governing_member(tmp_path: Path) -> N
 
 
 def test_loading_a_member_config_selects_the_workspace_root(tmp_path: Path) -> None:
-    root = _workspace(tmp_path, {"services/api/smelt.yml": "rules: {complexity: on}\n"})
+    root = _workspace(
+        tmp_path,
+        {"services/api/smelt.yml": "rules: {complexity/duplicate-function: on}\n"},
+    )
 
     loaded = load_config(root / "services/api/smelt.yml")
 
     assert loaded.path == (root / "smelt.yml").resolve()
     assert loaded.member == "services/api"
-    assert loaded.config.members["services/api"].rules == {"complexity": "on"}
+    assert loaded.config.members["services/api"].rules == {
+        "complexity/duplicate-function": "on"
+    }
     assert loaded.inputs[-1] == (root / "services/api/smelt.yml").resolve()
 
 

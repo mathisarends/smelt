@@ -46,8 +46,7 @@ def config_json_schema() -> dict[str, Any]:
             source_codes[f"^{rule.code}$"] = definition
     for group in RULE_GROUPS.values():
         definition = {
-            "type": "string",
-            "enum": _VALUES,
+            "$ref": "#/$defs/BroadRuleSetting",
             "title": f"{group.name}: {group.summary}",
             "description": f"{group.summary} {group.rationale} Members: {', '.join(group.codes)}.",
             "examples": ["warning"],
@@ -77,10 +76,20 @@ def config_json_schema() -> dict[str, Any]:
     for definition in (*properties.values(), *source_properties.values()):
         definition.pop("type", None)
         definition.pop("enum", None)
-        definition["$ref"] = "#/$defs/RuleSetting"
+        definition.setdefault("$ref", "#/$defs/RuleSetting")
+    broad_severity = {"enum": [value for value in _VALUES if value != "on"]}
+    schema["$defs"]["BroadRuleSetting"] = {
+        "anyOf": [
+            broad_severity,
+            {
+                "$ref": "#/$defs/RuleOverride",
+                "properties": {"severity": broad_severity},
+            },
+        ],
+    }
     rule_settings = {
         "type": "object",
-        "description": "Explicit checks by problem name, family, rule group, stable SMT code or ALL. A severity enables the check with that severity, on enables it with its catalog severity and off disables it. ALL is the broadest selection, then a family, then a group, then an individual rule, regardless of key order.",
+        "description": "Enable individual checks by name or SMT code. Families, groups and ALL can disable or cap active rules.",
         "properties": properties,
         "patternProperties": codes,
         "additionalProperties": False,
@@ -88,7 +97,7 @@ def config_json_schema() -> dict[str, Any]:
     schema["$defs"]["RuleSettings"] = rule_settings
     schema["$defs"]["SourceRuleSettings"] = {
         **rule_settings,
-        "description": "Source rules use the same names, selectors and values. ALL, families and groups select only their source rules here; test-file and project checks belong in the project rules map.",
+        "description": "Enable source rules by name or SMT code. ALL, families and groups disable or cap active source rules. Configure test-file and project rules at project level.",
         "properties": source_properties,
         "patternProperties": source_codes,
     }
@@ -102,12 +111,11 @@ def config_json_schema() -> dict[str, Any]:
 
 def _selection(title: str, members: Sequence[RuleContract]) -> dict[str, Any]:
     return {
-        "type": "string",
-        "enum": _VALUES,
+        "$ref": "#/$defs/BroadRuleSetting",
         "title": title,
         "description": (
             f"{title}. Members: {', '.join(rule.name for rule in members)}. "
-            "on keeps each member's catalog severity; individual entries override it."
+            "Disable or cap active rules; individual entries take precedence."
         ),
-        "examples": ["on"],
+        "examples": ["off"],
     }

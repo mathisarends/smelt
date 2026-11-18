@@ -10,7 +10,12 @@ import yaml
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.loader import CONFIG_FILENAMES
-from smelt.engine.inference import InferredConfig, infer_config, render_config
+from smelt.engine.inference import (
+    InferredConfig,
+    infer_config,
+    maintainability_rules,
+    render_config,
+)
 from smelt.engine.workspace import workspace_members
 
 if TYPE_CHECKING:
@@ -38,7 +43,7 @@ def workspace_drafts(
             infer_config(root, include_members=False) if "project" in project else None
         )
         base = inferred or InferredConfig([], [], ["tests"])
-        data = yaml.safe_load(render_config(base, maintainability=maintainability))
+        data = yaml.safe_load(render_config(base))
         data["project"].pop("source_roots", None)
         data["project"]["workspace"] = "uv"
         data["project"]["test_roots"] = ["tests", "test"]
@@ -50,6 +55,8 @@ def workspace_drafts(
             "# Member rules that lower inherited severity need {severity: ..., reason: '...'}.\n"
             + yaml.safe_dump(data, sort_keys=False)
         )
+        if maintainability:
+            drafts[root_filename] += "\n" + "\n".join(maintainability_rules()) + "\n"
     for path in members:
         if selected is not None and path != selected:
             continue

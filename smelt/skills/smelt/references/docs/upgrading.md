@@ -2,6 +2,11 @@
 
 ## 0.12 to 0.13
 
+Replace enabling family, group and `ALL` settings with the individual names or
+SMT codes you intend to run. Broad settings can disable or cap active rules.
+Replace the unreleased `smelt:recommended` preset with named entries from
+`smelt init --maintainability` or a local `extends` file.
+
 0.13 renames every rule to `family/finding` and merges seven pairs of rules. YAML
 version 1, report schema 2, exit codes, the default rule set and every unmerged
 SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
