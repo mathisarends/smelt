@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-18
+
 - Configuration now distinguishes shared `style` and `rules`, package APIs under
   `architecture.packages`, and independent member architectures. See
   [configuration and inheritance](docs/configuration.md).
@@ -91,8 +93,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   `may_depend_on` target globs and enables SMT111 `architecture/member-boundary`.
   Unmatched members are unrestricted; overlapping source entries combine their
   allowances. A key or allowance glob that matches no analyzed member (or `.`)
-  is a configuration error, so a typo cannot silently disable a boundary. This policy requires `project.workspace: uv` and is forbidden in
-  member configs. See [member boundaries](docs/configuration.md#boundaries-between-members).
+  is a configuration error. Configure member boundaries in the root policy of a
+  uv workspace with `project.workspace: uv`. See
+  [member boundaries](docs/configuration.md#boundaries-between-members).
 - A uv workspace enables SMT112 `architecture/undeclared-member-dependency` for
   direct production imports of another member without a static project or
   optional dependency. It resolves distribution names and inherited/member uv
@@ -103,11 +106,11 @@ current configuration and complete rule contracts, see the [README](README.md),
   `null` otherwise). Text/concise `--statistics --by member` groups all findings,
   including hints, by member. `coverage.member_boundaries` exposes the root
   allowlists with `--show-coverage`. Report schema 2 and finding/debt identities
-  remain unchanged; projects without workspace policy keep their policy hashes.
+  remain unchanged.
 
 **Breaking: rule taxonomy.** Every rule name now has the form
 `family/finding`, several names were corrected to the documented qualifiers, and
-seven pairs of rules that described one concept were merged (91 → 84 rules). YAML
+seven pairs of rules that described one concept were merged. YAML
 version 1, report schema 2, exit codes and the default rule set remain unchanged,
 and every unmerged SMT code keeps its identity. Configuration that uses a 0.12
 rule name, or a retired code, fails with an error naming the replacement. See
@@ -149,10 +152,9 @@ certain policy error. SMT311 is a heuristic hint about boilerplate that might
 still be needed. Merging them would force one severity onto two different levels
 of certainty.
 
-The SMT366 entry from the previous Unreleased section is folded into SMT340. A
-direct call argument that reduces a generator expression with an unshadowed
-builtin `all`, `any`, `max`, `min`, `sorted` or `sum` is reported as
-`kind: aggregate`, for example `finished=sum(s.done for s in sessions)`. The
+SMT340 reports generator expressions passed to an unshadowed builtin `all`,
+`any`, `max`, `min`, `sorted` or `sum` as `kind: aggregate` when the reduction
+is itself a direct call argument, for example `finished=sum(s.done for s in sessions)`. The
 whole reduction is named, so the generator stays lazy. The payload keeps
 `aggregate`, which is `null` for comprehensions.
 
@@ -371,14 +373,14 @@ unaffected until they set `project.workspace`. See
   `--config <member>/smelt.yml`, loads the workspace root and checks only that
   member. `smelt config show --sources` lists member files, and `origins` map
   `members.<path>.*` keys to them. The policy hash covers member configs.
-  Reports without a workspace keep their previous policy hash.
 - **Member architecture.** A member's architecture layout governs the member's
-  packages. The root layout governs the root project and members without their
-  own layout, including members with only package API policy. Every module it names must lie
-  inside the member's packages, and layers without features span only those
-  packages. It judges imports inside the member: SMT101-SMT106, SMT301 and
-  SMT305 run once per architecture and report only the files it governs. Imports from one member into
-  another are not judged by a member architecture. `smelt context` shows the
+  packages. The root layout governs only packages owned by the root project.
+  Members declare their own layers and features. Strict coverage applies to
+  members with an empty layout as well. Every module named by a member layout
+  must belong to that member. Layers without features span only its packages.
+  SMT101-SMT106, SMT301 and SMT305 run once per architecture and report only
+  the files it governs. Use `architecture.members` to govern imports between
+  members. `smelt context` shows the
   governing member's layers, missing modules name the member file, and the
   coverage report adds `member_architectures` (member path to packages).
 - **Test options** remain root-only. Member `rules` still apply to that member's tests.
@@ -434,7 +436,7 @@ together to `0.12.0` (`v0.12.0`), refresh the editor schema and reinstall the
 bundled agent skill with `smelt skill install --force`. No baseline rewrite is
 required. See the [upgrade checklist](docs/upgrading.md#0111-to-0120).
 
-- Opt-in hint [SMT366](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT366.md) `comprehension-in-call-argument`
+- Opt-in hint [SMT366](https://github.com/mathisarends/smelt/blob/v0.12.0/docs/rules/SMT366.md) `comprehension-in-call-argument`
   asks for named intermediate collections when list, set or dict comprehensions
   are passed directly to a call. Enable the rule explicitly; generator expressions
   and conditional/repeated expression contexts are skipped. No automatic rewrite:
@@ -482,7 +484,7 @@ rewrite is required. See the [upgrade checklist](docs/upgrading.md#0100-to-0110)
   checks and baselines. No automatic rewrite.
   Implements [#168](https://github.com/mathisarends/smelt/issues/168).
 
-- Opt-in warning [SMT365](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT365.md) `cross-module-private-attribute`
+- Opt-in warning [SMT365](https://github.com/mathisarends/smelt/blob/v0.11.0/docs/rules/SMT365.md) `cross-module-private-attribute`
   reports private field/method accesses through statically known project receivers
   owned by another module. Enable the rule explicitly. Global/package
   `private_attribute_boundary: package` permits immediate-package cooperation;
@@ -619,7 +621,7 @@ No baseline rewrite is required. See the
   unit (`_TIMEOUT_SECONDS`, `quiet_ms`), `timedelta` values, `@overload` and
   `@override` signatures and tests are not reported. Enable it with
   `rules: {missing-duration-unit: warning}`; no automatic rewrite.
-- Optional review [SMT358](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT358.md) `prefer-named-duration`
+- Optional review [SMT358](https://github.com/mathisarends/smelt/blob/v0.9.0/docs/rules/SMT358.md) `prefer-named-duration`
   reports `int` and `float` literals passed as the duration of
   `asyncio.timeout`, `asyncio.sleep`, `asyncio.wait_for`, `asyncio.wait`,
   `time.sleep` and the anyio and trio sleep and timeout scopes, and literals
@@ -721,7 +723,7 @@ See the [upgrade checklist](docs/upgrading.md#060-to-070).
   [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
   convention: it reports explicit strings equal to the lowercased member name,
   and `auto()` members in classes that need custom values such as
-  `"mouseMoved"`. [SMT342](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT342.md) `str-enum-explicit-values`
+  `"mouseMoved"`. [SMT342](https://github.com/mathisarends/smelt/blob/v0.7.0/docs/rules/SMT342.md) `str-enum-explicit-values`
   makes explicit strings the convention and reports every `auto()` member.
   Enable one of them, e.g. `rules: {str-enum-auto-values: hint}`. Tests are not
   checked; no automatic rewrite. Implements
@@ -830,7 +832,7 @@ required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-
 
 - Declare canonical YAML extensions and Compose basenames once with
   `structure.file_naming: {yaml_extension: yaml, compose_basename: compose}`.
-  [SMT331](docs/rules/SMT331.md) and [SMT332](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT332.md) flag other
+  [SMT331](docs/rules/SMT331.md) and [SMT332](https://github.com/mathisarends/smelt/blob/v0.6.0/docs/rules/SMT332.md) flag other
   spellings throughout the project, including hidden configuration directories
   and dotted Compose variants. Policies are optional, respect exclusions and
   support staged checks; renames and reference updates remain manual.
@@ -896,7 +898,7 @@ See the [upgrade checklist](docs/upgrading.md#040-to-050).
   review and explicit re-recording. See [adoption](docs/adoption.md).
 
 - Package contracts now support `module_docstrings: require`, activating
-  [SMT325](https://github.com/mathisarends/smelt/blob/main/docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
+  [SMT325](https://github.com/mathisarends/smelt/blob/v0.5.0/docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
   do not satisfy the requirement. Choose `forbid` for the existing
   [SMT309](docs/rules/SMT309.md) convention; use a reasoned file suppression or an
@@ -1400,7 +1402,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/mathisarends/smelt/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mathisarends/smelt/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mathisarends/smelt/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/mathisarends/smelt/compare/v0.10.0...v0.11.0
