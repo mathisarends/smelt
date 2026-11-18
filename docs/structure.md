@@ -712,6 +712,12 @@ behavior. Smelt never removes imports or documentation automatically. Verify
 annotation consumers and tests before removing an import, and use an explicit
 package exception where its string-based behavior is intentional.
 
+Enable [SMT370](rules/SMT370.md) with `rules: {layout/misplaced-module-logger: warning}`
+to place module-level `logging.getLogger(__name__)` assignments immediately after
+imports and before constants or other code. Import-only guards such as
+`if TYPE_CHECKING` can stay in the import section. Smelt reports the assignment
+for manual review so initialization dependencies can be preserved.
+
 ## Definition order with execution dependencies
 
 Enable `SMT313 layout/definition-order` to put the public interface first while keeping
