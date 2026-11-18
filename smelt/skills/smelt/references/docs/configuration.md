@@ -192,9 +192,7 @@ project:
   setting comes first, then the member's, then the closest package contract.
   See [rule precedence](rule-selection.md#workspace-members).
 - **`style` options become a contract** for each of the member's packages.
-  The contract is named after the member path, or `member:package` when the
-  member has several packages. A root contract on a nested package, or a member
-  contract, still overrides it.
+  A more specific style override lives in the same member file.
 - **Member contracts** are named `member:name` in reports and `smelt context`.
   Their `match` must be one of the member's own packages.
 
@@ -218,11 +216,12 @@ architecture:
     application: {path: application, may_depend_on: [domain]}
 ```
 
-- It **replaces** the root `architecture` for the member's packages. It is not
-  merged with it. The root architecture still governs the root project and
-  every member without its own. A member that only supplies `architecture.packages`
-  also inherits the root architecture. If the root names a package governed by a member,
-  move the entry to that member's config or remove the member architecture.
+- Root layers and features govern packages owned by the root project. A member
+  declares its own architecture, including when it shares a layer layout with
+  another member. An empty or omitted architecture leaves the member without local
+  layers. Strict coverage still checks its sources.
+- An entry under `architecture.packages` or `style.overrides` belongs in the config of
+  the project that owns the matched packages.
 - Every module it names (`features`, `shared`, `composition_root`, `modules`,
   `wiring`) must lie inside the member's own packages. Layers without features
   span the member's packages, not the whole workspace.
@@ -255,7 +254,7 @@ rules:
 ```
 
 The guard compares effective selectors with the root policy, including rule
-activation and applicable root style overrides. It applies to member `rules`
+activation and shared root style. It applies to member `rules`
 and rules in member style overrides. `on` resolves to each rule's catalog
 severity before comparison. A more specific entry must carry its own reason if
 it weakens the policy. The reason of an overridden family does not carry over.
@@ -267,9 +266,7 @@ object form, but only member weakening requires it. Reasons survive
 A member that changes a source convention set in root `style` must give a
 nonempty reason under `reasons` in the same mapping. This applies to thresholds,
 lists and other package-level options, in member `style` and in individual
-member contracts. A member contract also needs a reason if it changes a root
-contract's value and its match can replace that contract. Both tighter and looser
-values require a reason. Copying a root value or setting an option that the root
+member style overrides. Both tighter and looser values require a reason. Copying a root value or setting an option that the root
 leaves open needs no reason. Reasons appear under the member's settings in
 `smelt config show --sources`.
 

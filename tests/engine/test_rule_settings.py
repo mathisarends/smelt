@@ -96,15 +96,15 @@ def test_specific_member_entry_cannot_borrow_a_broader_reason(tmp_path: Path) ->
         check(root)
 
 
-def test_root_contract_activation_is_included_in_the_member_guard(
+def test_inherited_root_style_activation_is_included_in_the_member_guard(
     tmp_path: Path,
 ) -> None:
     root = write_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
-            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + "style:\n          overrides:\n            api: {match: api, max_positional_parameters: 2}\n",
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"] + "extends: policy.yml\n",
+            "policy.yml": "style: {max_positional_parameters: 2}\n",
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: off}\n",
         },
     )

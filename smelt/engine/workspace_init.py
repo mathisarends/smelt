@@ -69,7 +69,7 @@ def workspace_drafts(
             .get("workspace", {})
             .get("members", [])
         )
-        draft_patterns = [
+        draft_patterns = (["."] if inferred is not None else []) + [
             pattern
             for pattern in patterns
             if any(path_matches(pattern, path) for path in members)
@@ -88,6 +88,8 @@ def workspace_drafts(
         data = yaml.safe_load(render_config(inferred))
         architecture = data.get("architecture", {})
         architecture.pop("import_graph", None)
+        for layer in architecture.get("layers", {}).values():
+            layer.pop("third_party", None)
         if inferred.layer_gaps:
             for key in ("layers", "features", "modules", "cross_feature"):
                 architecture.pop(key, None)
@@ -97,10 +99,10 @@ def workspace_drafts(
         )
         schema = posixpath.relpath(".smelt.schema.json", path)
         policy = (
-            "# This architecture replaces the root architecture for this member. Review the inferred boundaries.\n"
+            "# This file defines the internal architecture for this member. Review the inferred boundaries.\n"
             + yaml.safe_dump({"architecture": architecture}, sort_keys=False)
             if architecture
-            else "# No member architecture was inferred. This member inherits the root architecture.\n{}\n"
+            else "# No member architecture was inferred. Declare local layers here when needed.\n{}\n"
         )
         drafts[posixpath.join(path, filename)] = (
             f"# yaml-language-server: $schema={schema}\n" + policy
@@ -135,6 +137,7 @@ def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> st
         edges = _observed_edges(AnalysisContext(root, config))
     except (AnalysisError, ConfigError):
         # A draft remains useful when imports could not be analyzed.
+        edges = []
         observations = ["# Observed imports are unavailable."]
     else:
         observations = [f"#   {source} -> {target}" for source, target in edges]
@@ -143,7 +146,18 @@ def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> st
     example = yaml.safe_dump(
         {
             "architecture": {
-                "members": {pattern: {"may_depend_on": []} for pattern in patterns}
+                "members": {
+                    pattern: {
+                        "may_depend_on": sorted(
+                            {
+                                target
+                                for source, target in edges
+                                if path_matches(pattern, source)
+                            }
+                        )
+                    }
+                    for pattern in patterns
+                }
             }
         },
         sort_keys=False,

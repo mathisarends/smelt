@@ -246,15 +246,15 @@ def test_a_member_check_runs_the_workspace_scoped_to_that_member(
         ),
         (
             "rules: {visibility/internal-public-member: warning}\n",
-            "smelt.yml",
+            None,
             ["smelt.yml", "services/api/smelt.yaml"],
         ),
         (
             "architecture:\n  packages:\n    api: {match: api, public: ['.']}\n",
-            "smelt.yml",
+            None,
             ["smelt.yml", "services/api/smelt.yaml"],
         ),
-        (None, "smelt.yml", ["smelt.yml"]),
+        (None, None, ["smelt.yml"]),
     ],
 )
 def test_context_names_the_governing_workspace_files(
@@ -262,7 +262,7 @@ def test_context_names_the_governing_workspace_files(
     capsys: pytest.CaptureFixture[str],
     *,
     member_config: str | None,
-    source: str,
+    source: str | None,
     rule_sources: list[str],
 ) -> None:
     files = {
@@ -286,7 +286,7 @@ def test_context_names_the_governing_workspace_files(
     )
     _, output, _ = _run(capsys, *args)
     assert "Member: services/api" in output
-    assert f"Architecture: {source}" in output
+    assert f"Architecture: {source or 'no local layout declared'}" in output
     assert f"Rules: {' < '.join(rule_sources)}" in output
 
 

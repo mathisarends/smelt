@@ -61,9 +61,9 @@ installed skill records the CLI version that installed it.
 - In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
   the shared policy, and put member exceptions in that member's own `smelt.yml`
   (`rules`, `style`, `ignore`, `project.exclude`; paths member-relative).
-  A member with its own boundaries declares `architecture` there; it replaces
-  the root architecture for that member's packages and judges only imports
-  inside the member. Run `smelt context <member feature or path>` to see the
+  Declare local features, layers and package APIs under `architecture` in the
+  config of the project or member that owns them. A member inherits shared
+  style and rule settings from the root. Run `smelt context <member feature or path>` to see the
   layers that govern it.
   Keep boundaries between members in root `architecture.members` (SMT111).
   Declare imported member distributions in `project.dependencies` or

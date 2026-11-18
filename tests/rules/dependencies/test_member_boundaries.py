@@ -286,3 +286,90 @@ def test_root_project_participates_as_dot(tmp_path: Path) -> None:
 
     assert [v.code for v in found] == ["SMT111", "SMT112"]
     assert all(v.member == "." for v in found)
+
+
+@pytest.mark.parametrize(
+    "api_config",
+    [
+        "",
+        "architecture: {packages: {api: {match: api, public: ['.']}}}",
+        "architecture: {layers: {infra: {path: infra}}}",
+    ],
+)
+def test_local_layer_checks_do_not_cross_member_boundaries(
+    tmp_path: Path, api_config: str
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "  layers: {domain: {path: domain}, infra: {path: infra}}\n",
+            "pyproject.toml": '[project]\nname = "root-app"\n'
+            + MEMBER_BOUNDARIES["pyproject.toml"],
+            "src/root_app/__init__.py": "",
+            "src/root_app/domain/__init__.py": "",
+            "src/root_app/domain/service.py": "import root_app.infra.storage\nimport api.infra.http\n",
+            "src/root_app/infra/__init__.py": "",
+            "src/root_app/infra/storage.py": "",
+            "services/api/src/api/infra/__init__.py": "",
+            "services/api/src/api/infra/http.py": "",
+            "services/api/smelt.yml": api_config,
+        },
+    )
+
+    [finding] = violations(root, CheckOptions(select=("SMT101",)))
+
+    assert finding.target_module == "root_app.infra.storage"
+
+
+@pytest.mark.parametrize("source_roots", ["", "  source_roots: [src]\n"])
+def test_explicit_namespace_package_uses_its_member_layers(
+    tmp_path: Path, source_roots: str
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject:\n  workspace: uv\n  root_packages: [core, plugins]\n"
+            + source_roots,
+            "services/api/smelt.yml": "architecture: {layers: {domain: {path: domain}, infra: {path: infra}}}\n",
+            "services/api/src/plugins/domain/handlers/service.py": "import plugins.infra.adapters.storage\n",
+            "services/api/src/plugins/infra/adapters/storage.py": "",
+        },
+    )
+
+    [finding] = violations(root, CheckOptions(select=("SMT101",)))
+
+    assert finding.member == "services/api"
+    assert finding.target_module == "plugins.infra.adapters.storage"
+
+
+def test_transitive_third_party_check_uses_only_paths_inside_the_owner(
+    tmp_path: Path,
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "  import_graph: {transitive: true}\n",
+            "packages/core/src/core/model.py": "import requests\n",
+            "services/api/smelt.yml": """
+                architecture:
+                  layers:
+                    domain: {path: domain, third_party: {default: deny}}
+                    infra: {path: infra}
+                """,
+            "services/api/src/api/domain/remote.py": "import core.model\n",
+            "services/api/src/api/domain/local.py": "import core.model\nimport api.infra.bridge\n",
+            "services/api/src/api/infra/bridge.py": "import api.infra.client\n",
+            "services/api/src/api/infra/client.py": "import requests\n",
+        },
+    )
+
+    [finding] = violations(root, CheckOptions(select=("SMT103",)))
+
+    assert finding.source_module == "api.domain.local"
+    assert [link.imported for link in finding.import_chain] == [
+        "api.infra.bridge",
+        "api.infra.client",
+        "requests",
+    ]

@@ -16,10 +16,14 @@ from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_l
 from smelt.config.models import SmeltConfig
 from smelt.config.source import SourceStore
 from smelt.config.validation import validate_semantics
-from smelt.config.workspace import expand_workspace, member_config_files
+from smelt.config.workspace import (
+    expand_workspace,
+    member_config_files,
+    member_directories,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
 CONFIG_FILENAME = "smelt.yml"
@@ -122,9 +126,9 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
     view = store or SourceStore()
     path = view.resolve(path)
     member: str | None = None
-    if (workspace := _workspace_of(path, view)) is not None:
-        path, member = workspace
     try:
+        if (workspace := _workspace_of(path, view)) is not None:
+            path, member = workspace
         return _load_selected(path, view, member=member, store=store)
     except ConfigError as exc:
         shown = exc.relative_to(path.parent)
@@ -182,9 +186,12 @@ def _load_selected(
             ],
             composed.source_for("members") or path.name,
         )
+    misplaced: tuple[ConfigIssue, ...] = ()
     if _declares_workspace(composed.raw):
-        for name, file in member_config_files(path.parent, store=view).items():
+        members = member_config_files(path.parent, store=view)
+        for name, file in members.items():
             add_member(composed, name, file, store=view, parse_yaml=_load_yaml)
+        misplaced = _misplaced_configs(path, view, known=set(composed.files))
     try:
         config, warnings = parse_config(
             composed.raw, source=path.name, root=path.parent, store=store
@@ -208,7 +215,7 @@ def _load_selected(
     return LoadedConfig(
         config=config,
         path=path,
-        warnings=warnings,
+        warnings=(*warnings, *misplaced),
         source=store,
         inputs=tuple(composed.files),
         origins=composed.origins,
@@ -216,8 +223,10 @@ def _load_selected(
     )
 
 
-def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str] | None:
-    """The nearest enclosing config and member path, if it declares ``path`` a member."""
+def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str | None] | None:
+    """Find the enclosing workspace even when a nested policy is misplaced."""
+    if path.name not in CONFIG_FILENAMES:
+        return None
     directory = path.parent
     for parent in directory.parents:
         candidate = next(
@@ -234,13 +243,78 @@ def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str] | None:
             composed = compose_config(candidate, store, _load_yaml)
         except ConfigError as exc:
             raise exc.relative_to(candidate.parent) from exc
-        if not _declares_workspace(composed.raw):
-            return None
-        member = directory.relative_to(parent).as_posix()
-        if member_config_files(parent, store=store).get(member) == path:
-            return candidate, member
+        members = [
+            entry.path
+            for entry in member_directories(parent, store=store)
+            if entry.skipped is None
+        ]
+        relative = directory.relative_to(parent).as_posix()
+        if _declares_workspace(composed.raw):
+            owners = [
+                name
+                for name in members
+                if relative == name or relative.startswith(name + "/")
+            ]
+            return candidate, max(owners, key=len, default=None)
+        if (
+            relative in members
+            and "version" not in compose_config(path, store, _load_yaml).raw
+        ):
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        "project.workspace",
+                        "this looks like a member config; set project.workspace: uv in the workspace root",
+                    )
+                ],
+                candidate.as_posix(),
+            )
+        if relative not in members:
+            continue
         return None
     return None
+
+
+def _misplaced_configs(
+    root_file: Path, store: SourceStore, *, known: set[Path]
+) -> tuple[ConfigIssue, ...]:
+    root = root_file.parent
+    return tuple(
+        ConfigIssue(
+            "",
+            "ignored config; workspace policy belongs at the root or in a declared member directory",
+            candidate.relative_to(root).as_posix(),
+        )
+        for candidate in sorted(_workspace_config_paths(root, store))
+        if candidate not in known
+    )
+
+
+def _workspace_config_paths(root: Path, store: SourceStore) -> Iterator[Path]:
+    inventory = store.yaml_inventory(root)
+    skip = {"venv", "env", "node_modules", "build", "dist", "__pycache__"}
+    if inventory is not None:
+        for relative in inventory:
+            candidate = root / relative
+            if candidate.name in CONFIG_FILENAMES and not any(
+                part.startswith(".") or part in skip
+                for part in relative.split("/")[:-1]
+            ):
+                yield candidate
+        return
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        for entry in store.iterdir(directory):
+            if entry.name in CONFIG_FILENAMES and store.is_file(entry):
+                yield entry
+            elif (
+                not entry.name.startswith(".")
+                and entry.name not in skip
+                and store.is_dir(entry)
+                and store.resolve(entry) == entry
+            ):
+                pending.append(entry)
 
 
 def _declares_workspace(raw: dict[str, Any]) -> bool:

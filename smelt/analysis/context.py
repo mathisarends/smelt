@@ -96,7 +96,7 @@ class AnalysisContext:
 
     @cached_property
     def architecture_scopes(self) -> tuple[ArchitectureScope, ...]:
-        """The root and member architectures; empty without member architectures."""
+        """The independent architectures of a workspace, including the root."""
         from smelt.config.workspace import architecture_scopes  # noqa: PLC0415
 
         return architecture_scopes(self.config)

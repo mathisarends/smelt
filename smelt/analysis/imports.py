@@ -183,7 +183,10 @@ class ImportIndex:
             m for m in graph.modules if any(is_within(m, r) for r in roots)
         )
         self._outgoing: dict[str, list[ImportDetail]] = {}
-        self._chains: dict[tuple[str, bool], tuple[tuple[ImportDetail, ...], ...]] = {}
+        self._chains: dict[
+            tuple[str, bool, tuple[str, ...] | None],
+            tuple[tuple[ImportDetail, ...], ...],
+        ] = {}
         self._chain_hops = 0
 
     @classmethod
@@ -323,17 +326,23 @@ class ImportIndex:
         return cached
 
     def shortest_chains_from(
-        self, module: str, *, include_type_checking: bool = True
+        self,
+        module: str,
+        *,
+        include_type_checking: bool = True,
+        first_party_roots: tuple[str, ...] | None = None,
     ) -> Iterator[tuple[ImportDetail, ...]]:
         """Share deterministic witnesses between rules within this graph view."""
-        key = module, include_type_checking
+        key = module, include_type_checking, first_party_roots
         if key in self._chains:
             yield from self._chains[key]
             return
         paths: list[tuple[ImportDetail, ...]] = []
         hops = 0
         for path in self._shortest_chains_from(
-            module, include_type_checking=include_type_checking
+            module,
+            include_type_checking=include_type_checking,
+            first_party_roots=first_party_roots,
         ):
             hops += len(path)
             if hops + self._chain_hops <= _CHAIN_CACHE_HOPS:
@@ -346,7 +355,11 @@ class ImportIndex:
             self._chain_hops += hops
 
     def _shortest_chains_from(
-        self, module: str, *, include_type_checking: bool
+        self,
+        module: str,
+        *,
+        include_type_checking: bool,
+        first_party_roots: tuple[str, ...] | None,
     ) -> Iterator[tuple[ImportDetail, ...]]:
         """Shortest import paths, including external leaves, without revisiting cycles.
 
@@ -367,6 +380,11 @@ class ImportIndex:
                 if detail.type_checking and not include_type_checking:
                     continue
                 if not detail.external:
+                    if (
+                        first_party_roots is not None
+                        and detail.top_level not in first_party_roots
+                    ):
+                        continue
                     if detail.imported in visited:
                         continue
                     visited.add(detail.imported)
