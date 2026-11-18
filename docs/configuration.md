@@ -4,9 +4,9 @@ Use `smelt.yml` for project configuration; `smelt init` creates it by default.
 Existing `smelt.yaml` files remain supported. When both filenames exist in the
 same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
 
-Configure a fixed check, a coherent rule group or a whole family (such as
-`typing`) once, by name. Rule names have the form `family/finding`. The value
-enables the rule and sets its severity. No separate `review_*` switch is needed.
+Configure each fixed check by its individual name or SMT code. Rule names have
+the form `family/finding`. The value activates that check and sets its severity.
+A family selector can disable or cap rules that are already active.
 See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Stable SMT codes remain valid aliases and keep existing debt identities.
@@ -27,7 +27,11 @@ project:
 rules:
   layout/definition-order: error
   idioms/bundled-instance-assignment: error
-  information-hiding: warning
+  visibility/internal-public-member: warning
+  visibility/internal-public-module-symbol: warning
+  visibility/internal-public-attribute: warning
+  visibility/test-only-public-function: warning
+  visibility/test-only-public-attribute: warning
   layout/misplaced-static-helper: hint
   tests/missing-outcome-check: warning
   tests/vacuous-assertion: warning
@@ -38,10 +42,8 @@ rules:
 
 Generate this explicit starting selection with `smelt init --maintainability`.
 The flag chooses what `init` writes; later checks read the configured entries.
-`information-hiding` covers SMT316/SMT320/SMT335/SMT429/SMT430, including public APIs
-used only by tests. Individual entries override a group in the same map regardless
-of key order; closest-package overrides still win. Existing individual selections
-remain supported. See [group scope and migration](rule-selection.md#information-hiding).
+The visibility reviews cover APIs used only by tests. See
+[visibility reviews](rule-selection.md#information-hiding).
 Plain `init` retains its conservative architecture starter. Neither command
 overwrites an existing config without `--force`.
 
@@ -89,8 +91,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
 `smelt check` from `runtime/`; both select the same project and paths.
 
 - `extends` is one nonempty relative local file path, resolved from the file
-  containing it, or a built-in preset such as `smelt:recommended` (see
-  [built-in base](rule-selection.md#built-in-base-and-layered-files)). A base
+  containing it. A base
   may extend another base, up to 32 files. Missing files,
   inheritance cycles, invalid YAML and duplicate YAML keys are configuration errors.
   There is no remote loading, multiple inheritance or automatic cascading discovery.
@@ -108,15 +109,15 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   written in the repository-level base. Only the `extends` reference itself uses
   its declaring file as the anchor. Dotted module patterns are unchanged.
 - `rules` do not merge key by key: every file is its own rules layer, and a
-  file's setting for a rule replaces the settings of the files it extends, even
-  when the base names the rule individually and the child selects its family,
-  group or `ALL`. The base may spell a rule by code and the child by name.
+  named setting can replace an earlier setting. Families and `ALL` can
+  cap or disable active rules. The base may spell a rule by code and the child by name.
   Within one file, a rule name and its SMT code together remain a
   duplicate-alias error. Unknown rules, invalid severities and strict-coverage
   restrictions still fail.
 
 `smelt config show` prints the complete effective policy. Add `--sources` to wrap
-it with `config`, `sources` (presets and bases first, the project config, then member configs) and `origins` (explicit
+it with `config`, `sources` (bases first, then the project and members),
+`rule_selectors` (active matches for broad selectors) and `origins` (explicit
 YAML key locations mapped to absolute declaring-file paths). This works with
 `--format json` or the default YAML; defaults and discovered package names have
 no explicit origin. Inherited validation errors include the declaring file.
@@ -142,12 +143,11 @@ declares the workspace and the shared policy:
 ```yaml
 # smelt.yml (workspace root, next to the pyproject.toml with tool.uv.workspace)
 version: 1
-extends: smelt:recommended
 project:
   workspace: uv
   test_roots: [tests]
 rules:
-  tests: warning
+  tests/missing-outcome-check: warning
 ```
 
 - `tool.uv.workspace.members` and `exclude` in `pyproject.toml` select the
@@ -255,12 +255,12 @@ rules:
 ```
 
 The guard compares effective selectors with the root policy, including rule
-activation and applicable root package contracts. It applies to member `rules`
-and rules in member package contracts. `on` resolves to each rule's catalog
+activation and applicable root style overrides. It applies to member `rules`
+and rules in member style overrides. `on` resolves to each rule's catalog
 severity before comparison. A more specific entry must carry its own reason if
-it weakens the policy; it cannot borrow the reason of an overridden family or
-group. Empty or whitespace-only reasons are config errors. Strict coverage
-cannot be lowered even with a reason. Root rules and contracts may also use the
+it weakens the policy. The reason of an overridden family does not carry over.
+Empty or whitespace-only reasons are config errors. Strict coverage
+cannot be lowered even with a reason. Root rules and style overrides may also use the
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
@@ -430,12 +430,12 @@ style:
     supported-integrations:
       match: harnessed.integrations
       rules:
-        information-hiding: off
+        visibility: off
         layout/misplaced-static-helper: off
     strict-core:
       match: harnessed.core
       rules:
-        information-hiding: error
+        visibility/internal-public-member: error
 
 tests:
   assertion_helpers: [tests.assertions.assert_response]
@@ -448,7 +448,7 @@ tests:
 Dependencies and execution barriers still take precedence over category order.
 `fix: off` disables ordering writes; plain checks are always read-only.
 
-Package `rules` use the same names, groups, codes and values as the project map. They apply
+Package `rules` use the same selectors and values as the project map. They apply
 to findings originating in production modules of the matching package, including
 test-only API findings located in production code. The closest enclosing package
 entry wins for each rule. It can change severity, disable a global check, or
@@ -466,9 +466,9 @@ The catalog distinguishes those checks from explicitly selected fixed patterns.
 
 Source-convention options such as `max_positional_parameters`,
 `future_annotations` or `dataclass_options` can be set directly under `style`
-for the whole project and overridden in package contracts. Setting an option that
+for the whole project and overridden in `style.overrides`. Setting an option that
 belongs to one rule enables that rule for its scope; see
-[project-wide options](style.md#project-wide-options-and-package-overrides).
+[project-wide options](structure.md#project-wide-options-and-package-overrides).
 
 ```bash
 smelt check --select visibility/internal-public-member,tests/unbounded-wait

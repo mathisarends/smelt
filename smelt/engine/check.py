@@ -37,9 +37,9 @@ from smelt.engine.file_checks import rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_settings import RuleSettings
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
+from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -110,9 +110,6 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
             else "Enable by rule setting or --select.",
         },
         scope=getattr(rule, "scope", "source"),
-        groups=tuple(
-            group.name for group in RULE_GROUPS.values() if rule.code in group.codes
-        ),
     )
 
 
@@ -168,11 +165,6 @@ def relative_scope(
         ).as_posix()
     except ValueError:
         return Path(raw).as_posix()
-
-
-def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
-    """Key ``rules:`` overrides by code; the config may name a rule by code or name."""
-    return RuleSettings(rules, loaded).global_rules
 
 
 def _run_check(
@@ -480,7 +472,6 @@ def _resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
 ) -> list[tuple[RuleContract, Severity]]:
     policy = RuleSettings(rules, loaded)
-    settings = policy.global_rules
     known = {rule.code for rule in rules.rules}
     normalized: dict[str, tuple[str, ...]] = {}
     for key in ("select", "ignore"):
@@ -489,7 +480,7 @@ def _resolve_active_rules(
             matches = rules.matching_codes(prefix)
             if not matches:
                 msg = (
-                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
+                    f'unknown rule prefix "{prefix}" for --{key}{retired_hint(prefix, {}) or _prefix_suggestion(prefix, known)}; '
                     "`smelt rules` lists valid codes"
                 )
                 raise InvalidOptionError(msg, option=f"--{key}", value=prefix)
@@ -499,7 +490,7 @@ def _resolve_active_rules(
 
     active: list[tuple[RuleContract, Severity]] = []
     for rule in rules.rules:
-        setting = settings.get(rule.code)
+        setting = policy.global_value(rule)
         if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
             _validate_strict_coverage(loaded, options, setting)
             active.append((rule, Severity.ERROR))
@@ -512,10 +503,7 @@ def _resolve_active_rules(
             continue
         if setting is not None and setting != "off":
             severity = Severity(setting)
-        elif (
-            policy.globally_enabled(rule, selected=explicitly_selected)
-            or package_enabled
-        ):
+        elif explicitly_selected or package_enabled:
             severity = rule.default_severity
         else:
             continue

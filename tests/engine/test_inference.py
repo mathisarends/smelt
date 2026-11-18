@@ -51,23 +51,20 @@ class TestInferConfig:
         assert inferred is not None
         text = render_config(inferred)
         examples = [
-            "# extends: smelt:recommended",
             "#   architecture/import-cycle: error",
-            "#   complexity: on",
+            "#   architecture/unclassified-module: warning",
         ]
         assert all(example in text for example in examples)
 
-        enabled = text.replace("# extends:", "extends:").replace(
-            "\n# rules:\n", "\nrules:\n"
-        )
-        for example in examples[1:]:
+        enabled = text.replace("\n# rules:\n", "\nrules:\n")
+        for example in examples:
             enabled = enabled.replace(example, example.replace("#", " ", 1))
         write_project(tmp_path, {"smelt.yml": enabled})
 
         loaded = load_config(tmp_path / "smelt.yml")
 
-        assert loaded.presets == ("smelt:recommended",)
-        assert loaded.config.rules["complexity"] == "on"
+        assert loaded.config.rules["architecture/import-cycle"] == "error"
+        assert loaded.config.rules["architecture/unclassified-module"] == "warning"
 
     def test_workspace_member_scaffolding_does_not_become_a_package(
         self, tmp_path: Path

@@ -6,7 +6,7 @@ Test mirroring and test quality are independent.
 When `project.test_roots` overlap, the most specific declared root owns each test,
 independent of list order. Mirror paths are relative to that root.
 
-Tests also obey [package API policies](style.md#suggestions-to-bundle-implementation-imports):
+Tests also obey [package API policies](structure.md#suggestions-to-bundle-implementation-imports):
 SMT107 enforces declared public entry points, SMT108 reviews configured import
 bundling thresholds, and opt-in SMT319 suggests existing package re-exports.
 This includes `conftest.py` and configured test roots inside a source package.

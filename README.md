@@ -51,7 +51,11 @@ architecture:
     infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
 
 rules:
-  information-hiding: warning
+  visibility/internal-public-member: warning
+  visibility/internal-public-module-symbol: warning
+  visibility/internal-public-attribute: warning
+  visibility/test-only-public-function: warning
+  visibility/test-only-public-attribute: warning
   typing/implicit-optional-default: warning
   tests/unbounded-wait: warning
 ```
@@ -85,17 +89,13 @@ The same configuration can describe [feature boundaries and third-party dependen
 [test conventions](docs/testing.md). Most checks require explicit selection or
 an applicable policy; see [rule activation](docs/rule-selection.md).
 
-Use `information-hiding` to review unnecessarily public functions, methods,
-constants, type aliases and attributes together, including APIs used only by
-tests. `smelt explain information-hiding` lists the five checks and their limits.
-Individual rule settings can override the group.
+Use the visibility rules to review unnecessarily public definitions and APIs
+whose only observed users are tests.
 
-Rule names have the form `family/finding`, and a family name selects all of its
-rules: `rules: {typing: warning}` or `smelt check --select modeling`.
-`smelt rules` lists the catalog by family. `on` keeps each rule's catalog
-severity, and `extends: smelt:recommended` starts from every rule except the
-style conventions a project chooses itself; see
-[built-in base](docs/rule-selection.md#built-in-base-and-layered-files).
+Enable individual rules in YAML by their `family/finding` names or SMT codes.
+`on` uses the named rule's catalog severity. Families, groups and `ALL` can
+disable or cap already-active rules in YAML. Use `smelt check --select modeling`
+to explore a family and `smelt rules --unconfigured` to discover rules to review.
 
 In a uv workspace, `project: {workspace: uv}` in the root `smelt.yml` checks
 every member as one project. A member can add its own `smelt.yml` with rule and

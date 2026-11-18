@@ -59,6 +59,21 @@ with `smelt config show --sources` and a full `smelt check`.
 Refresh the editor schema with `smelt config schema`. The policy hash reflects
 the new configuration layout. Existing SMT codes still identify accepted debt.
 
+### Removed rule group
+
+Replace the old `information-hiding` selector with SMT316, SMT320, SMT335,
+SMT429 and SMT430 using the former severity for each entry. Use these same
+codes as a comma-separated CLI selection when you want the exact old scope.
+The `visibility` family also includes other rules. Catalog metadata no longer
+includes rule groups.
+
+### Explicit rule activation
+
+Replace enabling family and `ALL` settings with the individual names or
+SMT codes you intend to run. Broad settings can disable or cap active rules.
+Replace the unreleased `smelt:recommended` preset with named entries from
+`smelt init --maintainability` or a local `extends` file.
+
 ### Renamed rules
 
 The following reviews use more precise names. Their SMT codes still identify the
@@ -135,8 +150,8 @@ existing root debt remains usable for members without their own file. See
 6. Refresh the editor schema with `smelt config schema > .smelt.schema.json` and
    the agent skill with `smelt skill install --force`.
 
-Families can now be selected as a whole, for example `rules: {typing: warning}`
-or `--select modeling`. Individual entries still override a family entry.
+Use `--select modeling` to explore a whole family. YAML family settings can
+disable or cap active rules, and individual entries take precedence.
 
 ### Configuration model
 

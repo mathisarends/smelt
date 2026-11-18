@@ -99,7 +99,11 @@ rules:
   idioms/prefer-match-type-dispatch: error
   layout/definition-order: error
   layout/misplaced-private-constant: error
-  information-hiding: warning
+  visibility/internal-public-member: warning
+  visibility/internal-public-module-symbol: warning
+  visibility/internal-public-attribute: warning
+  visibility/test-only-public-function: warning
+  visibility/test-only-public-attribute: warning
   layout/misplaced-static-helper: warning
   typing/redundant-future-annotations: warning
   tests/private-access: warning

@@ -13,7 +13,6 @@ from smelt.diagnostics.violation import Category
 from smelt.engine.check import rule_meta
 from smelt.engine.rule_settings import RuleSettings
 from smelt.engine.schema import config_json_schema
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
 
@@ -26,32 +25,6 @@ if TYPE_CHECKING:
 
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rules = build_rule_set()
-    if args.rule in RULE_GROUPS:
-        group = RULE_GROUPS[args.rule]
-        members = [
-            rule_meta(rule).to_json()
-            for rule in rules.rules
-            if rule.code in group.codes
-        ]
-        if args.format == "json":
-            console.print(
-                json.dumps(
-                    {
-                        "name": group.name,
-                        "summary": group.summary,
-                        "rationale": group.rationale,
-                        "rules": members,
-                    },
-                    indent=2,
-                )
-            )
-        else:
-            console.print(
-                f"{group.name} [rule group]\n\n{group.summary}\n\n{group.rationale}\n\nEnable: rules: {{{group.name}: warning}}\n"
-            )
-            for member in members:
-                console.print(f"  {member['code']} {member['name']}")
-        return EXIT_OK
     if (family := rules.family_codes(args.rule)) is not None:
         members = [
             rule_meta(rule).to_json() for rule in rules.rules if rule.code in family
@@ -61,7 +34,7 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             console.print(json.dumps({"family": name, "rules": members}, indent=2))
         else:
             console.print(
-                f"{name} [rule family]\n\nEnable all: rules: {{{name}: warning}}\n"
+                f"{name} [rule family]\n\nExplore: smelt check --select {name}\n"
             )
             for member in members:
                 console.print(
@@ -115,11 +88,18 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 
 def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rule_set = build_rule_set()
-    metas = [rule_meta(rule) for rule in rule_set.rules]
+    codes = (
+        RuleSettings(
+            rule_set, load_project_config(args.config, cwd)
+        ).unconfigured_codes()
+        if args.unconfigured
+        else {rule.code for rule in rule_set.rules}
+    )
+    metas = [rule_meta(rule) for rule in rule_set.rules if rule.code in codes]
     if args.format == "json":
         console.print(json.dumps([m.to_json() for m in metas], indent=2))
         return EXIT_OK
-    width = max(len(meta.name) for meta in metas)
+    width = max((len(meta.name) for meta in metas), default=0)
     for family in Category:
         members = [meta for meta in metas if meta.category is family]
         if not members:
@@ -129,9 +109,6 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             console.print(
                 f"  {meta.code}  {meta.name:<{width}} {meta.activation['mode']:<8} {meta.default_severity.value}"
             )
-    console.print("\nRule groups:")
-    for group in RULE_GROUPS.values():
-        console.print(f"{group.name}  {', '.join(group.codes)}  {group.summary}")
     return EXIT_OK
 
 
@@ -139,7 +116,7 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
     try:
         settings = RuleSettings(build_rule_set(lazy=True), loaded)
-        if loaded.config.members:
+        if loaded.config.members or args.sources:
             settings.validate_packages(
                 AnalysisContext(loaded.root, loaded.config, store=loaded.source)
             )
@@ -152,8 +129,9 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     if args.sources:
         data = {
             "config": data,
-            "sources": [*loaded.presets, *(path.as_posix() for path in loaded.inputs)],
+            "sources": [path.as_posix() for path in loaded.inputs],
             "origins": loaded.origins,
+            "rule_selectors": settings.selector_rules,
         }
     if args.format == "json":
         console.print(json.dumps(data, indent=2))
@@ -175,7 +153,7 @@ def _suggestion(raw: str, rules: RuleSet) -> str:
         return retired
     wanted = raw.strip().upper()
     if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
-        return did_you_mean(raw.strip(), [*codes, *RULE_GROUPS])
+        return did_you_mean(raw.strip(), codes)
     close = [
         r.code
         for r in rules.rules

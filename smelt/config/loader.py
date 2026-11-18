@@ -89,7 +89,6 @@ class LoadedConfig:
     source: SourceStore | None = None
     inputs: tuple[Path, ...] = ()
     origins: dict[str, str] = field(default_factory=dict)
-    presets: tuple[str, ...] = ()
     member: str | None = None  # the workspace member whose config was selected
 
     @property
@@ -99,7 +98,7 @@ class LoadedConfig:
 
     def explain_error(self, error: ConfigError) -> ConfigError:
         """Attribute effective-policy errors to the file declaring each value."""
-        if len(self.inputs) + len(self.presets) <= 1:
+        if len(self.inputs) <= 1:
             return error.relative_to(self.root)
         return _with_origins(
             error, ConfigComposition(origins=self.origins)
@@ -213,7 +212,6 @@ def _load_selected(
         source=store,
         inputs=tuple(composed.files),
         origins=composed.origins,
-        presets=tuple(composed.presets),
         member=member,
     )
 
@@ -392,7 +390,7 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
     if key == "enabled" and "ordering" in loc:
         return message + "; enable or disable rules.layout/definition-order instead"
     if key == "preset":
-        return message + "; use extends: smelt:recommended for the built-in base"
+        return message + "; list rules individually or extend a local base file"
     return message
 
 

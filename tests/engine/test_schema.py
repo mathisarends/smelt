@@ -1,6 +1,5 @@
 from smelt.diagnostics.violation import Category
 from smelt.engine.schema import config_json_schema
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 
 
@@ -19,7 +18,6 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
 
     assert set(settings["properties"]) == (
         {rule.name for rule in build_rule_set().rules}
-        | RULE_GROUPS.keys()
         | {family.value for family in Category}
         | {"ALL"}
     )
@@ -83,19 +81,12 @@ def test_package_completion_and_runtime_rule_scope_agree() -> None:
     ]
     assert set(source) == (
         {rule.name for rule in source_rules}
-        | RULE_GROUPS.keys()
         | {rule.category.value for rule in source_rules}
         | {"ALL"}
     )
     assert "tests" not in source
     assert "tests/unbounded-wait" not in source["ALL"]["description"]
     assert "architecture/uncovered-source" not in source["architecture"]["description"]
-    for group in RULE_GROUPS.values():
-        assert all(
-            getattr(rule, "scope", "source") == "source"
-            for rule in build_rule_set().rules
-            if rule.code in group.codes
-        )
     assert "visibility/test-only-public-attribute" in source
     assert "tests/unbounded-wait" not in source
     assert "architecture/uncovered-source" not in source
