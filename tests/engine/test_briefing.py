@@ -522,6 +522,64 @@ class TestResolveTarget:
 
         assert (target.kind, target.feature) == ("feature", "voice")
 
+    def test_planned_feature_uses_the_configured_layers(
+        self, outcome: CheckOutcome
+    ) -> None:
+        ctx = outcome.context
+        target = resolve_target(ctx, "src/gateway/features/payments/domain/payment.py")
+        briefing = build_briefing(ctx, target, outcome.report)
+        data = briefing.to_json()
+
+        assert (data["feature"], data["module_kind"], data["layer"]) == (
+            "payments",
+            "feature",
+            "domain",
+        )
+        assert data["coverage"]["policy_status"] == "governed"
+        assert data["feature_planned"] is True
+        assert data["cross_feature_policy"] is not None
+        assert "payments" not in data["features"]
+        assert "feature payments (planned), layer domain" in render_briefing(
+            briefing, ctx
+        )
+
+    def test_planned_file_is_not_itself_a_feature_package(
+        self, outcome: CheckOutcome
+    ) -> None:
+        ctx = outcome.context
+        target = resolve_target(ctx, "src/gateway/features/payments.py")
+        briefing = build_briefing(ctx, target, outcome.report)
+
+        assert briefing.target.feature is None
+        assert briefing.coverage["policy_status"] == "unclassified"
+        assert briefing.to_json()["feature_planned"] is False
+
+    def test_planned_feature_uses_the_member_pattern(self, tmp_path: Path) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
+                "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+                "services/api/smelt.yml": """
+                    architecture:
+                      features: {pattern: "api.features.{feature}"}
+                      layers: {domain: {path: domain}}
+                    """,
+                "services/api/src/api/__init__.py": "",
+                "services/api/src/api/features/__init__.py": "",
+            },
+        )
+        outcome = check(root)
+        target = resolve_target(
+            outcome.context, "services/api/src/api/features/payments/domain/__init__.py"
+        )
+        briefing = build_briefing(outcome.context, target, outcome.report)
+
+        assert briefing.target.module == "api.features.payments.domain"
+        assert briefing.target.feature == "payments"
+        assert briefing.layer == "domain"
+        assert briefing.layers[0].package == "api.features.payments.domain"
+
     def test_source_file_path(self, outcome: CheckOutcome) -> None:
         target = resolve_target(
             outcome.context, "src/gateway/features/billing/domain/money.py"

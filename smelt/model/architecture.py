@@ -143,6 +143,18 @@ class ArchitectureModel:
             return self.part_for(module).info(module)
         return _Classifier(self.config, self.packages, self.scope).classify(module)
 
+    def planned_info(self, module: str, *, is_package: bool) -> ModuleInfo | None:
+        """Classify a prospective source path with its implied package parents."""
+        if not self.is_first_party(module):
+            return None
+        part = self.part_for(module)
+        package = module if is_package else module.rpartition(".")[0]
+        segments = package.split(".")
+        parents = {".".join(segments[:end]) for end in range(1, len(segments) + 1)}
+        return _Classifier(part.config, part.packages | parents, part.scope).classify(
+            module
+        )
+
     def is_first_party(self, module: str) -> bool:
         return any(
             is_within(module, root) for root in self.config.project.root_packages
