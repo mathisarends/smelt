@@ -368,7 +368,10 @@ def _governing_view(ctx: AnalysisContext, target: Target) -> AnalysisContext:
         module = model.feature_package_for(target.feature)
     if module is None:
         return ctx
-    index = model.parts.index(model.part_for(module))
+    part = model.part_for(module)
+    if part is model:
+        return ctx
+    index = model.parts.index(part)
     return ctx.architecture_view(ctx.architecture_scopes[index])
 
 
