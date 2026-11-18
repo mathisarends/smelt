@@ -215,9 +215,14 @@ kebab-case `<qualifier>-<subject>` and reuse the qualifier whose meaning matches
 Use `prefer-<alternative>` only when the reported construct is correct and the
 rule recommends one specific replacement; name the replacement, not the reported
 form. When no qualifier fits, use a noun phrase for the problem itself, such as
-`architecture/import-cycle` or `complexity/deep-object-navigation`. Do not start
+`architecture/import-cycle` or `complexity/excess-attribute-depth`. Do not start
 findings with `no-` (use `forbidden-`), `unnecessary-` (use `redundant-`), or
 `review-`, `require-` and `check-`; the catalog test rejects them.
+
+Architecture findings can name the violated policy directly when it reads
+naturally as a problem, for example `architecture/member-boundary` or
+`architecture/composition-root-leak`. Advisory reviews can use a descriptive
+noun phrase when the evidence permits several valid design choices.
 
 One concept is one rule. When two candidate rules differ only in the spelling a
 policy option selects (require/forbid, auto/explicit, prefix/suffix), write one
