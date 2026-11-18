@@ -105,12 +105,34 @@ def test_missing_declaration_is_separate_from_allowed_boundary(tmp_path: Path) -
 
     assert found.code == "SMT112"
     assert found.member == "services/api"
+    assert found.hint
+    assert "Declare core-lib" in found.hint
     assert found.expected == {
         "source_member": "services/api",
         "target_member": "packages/core",
         "dependency": "core-lib",
         "declared_members": [],
     }
+
+
+@pytest.mark.parametrize("selection", [(), ("SMT112",)])
+def test_forbidden_dependency_repair_does_not_recommend_declaring_it(
+    tmp_path: Path, selection: tuple[str, ...]
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {"packages/core/src/core/model.py": "from api.http import Order\n"},
+    )
+
+    found = violations(root, CheckOptions(select=selection))
+
+    assert [v.code for v in found] == (
+        ["SMT112"] if selection else ["SMT111", "SMT112"]
+    )
+    hint = found[-1].hint
+    assert hint
+    assert "Remove this import" in hint
+    assert "Declare" not in hint
 
 
 @pytest.mark.parametrize(

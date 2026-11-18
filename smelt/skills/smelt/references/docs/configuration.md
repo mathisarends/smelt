@@ -337,7 +337,8 @@ Only direct production imports count, regardless of `architecture.imports.transi
 `project.workspace: uv` also enables [SMT112](rules/SMT112.md)
 `architecture/undeclared-member-dependency`. A production import of another member
 requires a declaration in the importing member's `project.dependencies` or
-`project.optional-dependencies`. Distribution names come from `[project].name`,
+`project.optional-dependencies`. If the root's member boundary forbids the import,
+SMT112 advises removing or moving it. Distribution names come from `[project].name`,
 independently of Python package names; for example package `core` can belong to
 distribution `core-lib`:
 
