@@ -411,7 +411,8 @@
     "category": "visibility",
     "default_severity": "warning",
     "requires": [
-      "member_usage"
+      "member_usage",
+      "model"
     ],
     "enabled_by_default": false,
     "file_local": false,
@@ -476,6 +477,7 @@
     "default_severity": "warning",
     "requires": [
       "member_usage",
+      "model",
       "syntax"
     ],
     "enabled_by_default": false,

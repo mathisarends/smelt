@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import textwrap
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 from smelt.analysis.coverage import is_governed
@@ -90,6 +90,7 @@ class Briefing:
     test_policy: dict[str, Any] = field(default_factory=dict)
     type_dispatch_policy: dict[str, Any] | None = None
     rules: dict[str, str] = field(default_factory=dict)
+    workspace_policy: _WorkspacePolicy | None = None
 
     @property
     def feature_planned(self) -> bool:
@@ -126,6 +127,13 @@ class Briefing:
             "test_policy": self.test_policy,
             "type_dispatch_policy": self.type_dispatch_policy,
             "rules": self.rules,
+            "member": self.workspace_policy.member if self.workspace_policy else None,
+            "architecture_source": self.workspace_policy.architecture
+            if self.workspace_policy
+            else None,
+            "rule_sources": list(self.workspace_policy.rules)
+            if self.workspace_policy
+            else [],
             "policy_hash": self.policy_hash,
             "imports": {
                 "transitive": self.transitive,
@@ -212,6 +220,7 @@ def build_briefing(
     report: Report | None,
     *,
     analysis_error: str | None = None,
+    loaded: LoadedConfig | None = None,
 ) -> Briefing:
     ctx = _governing_view(ctx, target)
     model = ctx.model
@@ -240,6 +249,9 @@ def build_briefing(
     cross_feature = _cross_feature(model) if model.has_features else None
     coverage = _coverage_brief(ctx, target, info=info)
     target_path = target.path or ctx.files.path_for_module(package or "")
+    workspace_policy = _workspace_sources(
+        ctx, target_path, loaded=loaded, module=target.module or package
+    )
     if info and (info.central or info.kind is ModuleKind.SHARED):
         cross_feature = "none (must not import features)"
     elif exempt:
@@ -288,6 +300,7 @@ def build_briefing(
         test_policy=ctx.config.tests.model_dump(mode="json"),
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
         rules=_rule_brief(ctx, target.module or package, target_path),
+        workspace_policy=workspace_policy,
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
         ).to_json(),
@@ -357,6 +370,64 @@ def _governing_view(ctx: AnalysisContext, target: Target) -> AnalysisContext:
         return ctx
     index = model.parts.index(model.part_for(module))
     return ctx.architecture_view(ctx.architecture_scopes[index])
+
+
+@dataclass(frozen=True, slots=True)
+class _WorkspacePolicy:
+    member: str
+    architecture: str
+    rules: tuple[str, ...]
+
+
+def _workspace_sources(
+    ctx: AnalysisContext,
+    path: str | None,
+    *,
+    loaded: LoadedConfig | None,
+    module: str | None,
+) -> _WorkspacePolicy | None:
+    if loaded is None:
+        return None
+    if path is None and module is not None and module in ctx.files.packages:
+        path = ctx.files.packages[module].path
+    member = ctx.workspace.member_for_path(path)
+    if member is None:
+        return None
+    root_config = loaded.path.name
+    inputs = (
+        list(loaded.inputs[: loaded.inputs.index(loaded.path) + 1])
+        if loaded.path in loaded.inputs
+        else [loaded.path]
+    )
+    member_file = loaded.origins.get(f"members.{member}")
+    if member_file is not None:
+        inputs.append(Path(member_file))
+    config = loaded.config.members.get(member)
+    architecture = (
+        _config_source(Path(member_file), root=loaded.root)
+        if member_file is not None
+        and config is not None
+        and config.governs_architecture
+        else root_config
+    )
+    sources = [_config_source(path, root=loaded.root) for path in inputs]
+    if module is not None:
+        sources.extend(
+            f"contract {contract.name}"
+            for contract in sorted(
+                ctx.contracts.resolved, key=lambda item: len(item.package)
+            )
+            if contract.spec.rules and is_within(module, contract.package)
+        )
+    return _WorkspacePolicy(member, architecture, tuple(sources))
+
+
+def _config_source(path: Path, *, root: Path) -> str:
+    return (
+        path.relative_to(root).as_posix()
+        if path.is_relative_to(root)
+        else path.as_posix()
+    )
 
 
 def _rule_brief(
@@ -650,6 +721,12 @@ def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
             planned = " [planned]" if target.planned else ""
             lines.append(f"Module: {target.module}   ({target.path}){planned}")
             lines.append(_placement(briefing))
+    if (policy := briefing.workspace_policy) is not None:
+        lines.append(f"Member: {policy.member}")
+        source = policy.architecture
+        label = "member" if "/" in source else "root"
+        lines.append(f"Architecture: {source} ({label})")
+        lines.append(f"Rules: {' < '.join(policy.rules)}")
     return lines
 
 

@@ -29,6 +29,7 @@ def render_json(report: Report, *, show_coverage: bool = False) -> str:
                 "architecture_configured",
                 "discovery_errors",
                 "omitted_workspace_members",
+                "scope",
             }
         }
     violations = [v.to_json() for v in report.violations]
@@ -49,6 +50,7 @@ def render_json(report: Report, *, show_coverage: bool = False) -> str:
             "paths": list(report.scope),
             "files": report.checked_files,
             "rules": [rule.code for rule in report.rules],
+            **({"totals": "workspace"} if report.workspace_totals else {}),
         },
         "comparison": dict(report.comparison) if report.comparison else None,
         "coverage": coverage,

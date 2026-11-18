@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.model import ModuleKind
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.member_names import private_name, rename_advice
 
@@ -17,7 +18,7 @@ class InternalPublicMember(Rule):
     name = "visibility/internal-public-member"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
-    requires = frozenset({Index.MEMBERS})
+    requires = frozenset({Index.MEMBERS, Index.MODEL})
     doc = RuleDoc(
         summary="A public module function or instance method has no observed use outside its module or class.",
         rationale=(
@@ -25,15 +26,25 @@ class InternalPublicMember(Rule):
             " Excluded files, unselected packages and external consumers are unassessed; findings expose usage_scope so absence of observed callers is not mistaken for a whole-project proof."
             " Classes explicitly exported through __all__ or public package-facade bindings preserve their public methods, including aliased re-export chains. Export evidence participates in incremental cache invalidation."
             " Literal lazy-export tables are recognized only with a matching guarded importlib.import_module/getattr forwarder and optional globals cache. The table may supply __all__ through sorted/list/tuple. Arbitrary __getattr__, mutated/escaped tables and stubs alone do not verify runtime exports."
+            " Declared composition roots can expose entry points to a runtime and are skipped."
         ),
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
         fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[SMT316] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
-        config=("rules", "style.overrides", "project.test_roots"),
+        config=(
+            "rules",
+            "style.overrides",
+            "project.test_roots",
+            "architecture.composition_root",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for member in ctx.member_usage.members:
+            if (
+                info := ctx.model.info(member.module)
+            ) and info.kind is ModuleKind.COMPOSITION_ROOT:
+                continue
             node = member.node
             if (
                 node.name.startswith("_")

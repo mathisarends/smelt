@@ -214,7 +214,7 @@ class RuleSettings:
 
             root_ctx = AnalysisContext(ctx.root, root.config, store=ctx.store)
             root_ctx.files = replace(ctx.files, config=root.config)
-        issues: dict[str, ConfigIssue] = {}
+        issues: list[ConfigIssue] = []
         members = self.config.members
         for member_path, member in members.items():
             maps: list[tuple[str, Mapping[str, RuleSetting], str | None]] = [
@@ -229,7 +229,11 @@ class RuleSettings:
                 for name, contract in member.structure.contracts.items()
             )
             for location, raw, pattern in maps:
-                entries = self._entries(raw, location, excluded=self._strict_guard())
+                selectors: dict[str, str] = {}
+                lowered: dict[str, list[RuleContract]] = {}
+                entries = self._entries(
+                    raw, location, excluded=self._strict_guard(), selectors=selectors
+                )
                 for code, setting in entries.items():
                     if code in self._strict_guard() or isinstance(
                         setting, RuleOverride
@@ -277,13 +281,34 @@ class RuleSettings:
                     if rank[self._value(code, setting)] < max(
                         rank[value] for value in values
                     ):
-                        key = f"{location}.{code}"
-                        issues[key] = ConfigIssue(
-                            key,
-                            f"lowering {code} below the inherited root severity requires {{severity: {setting}, reason: '...'}}",
-                        )
+                        lowered.setdefault(selectors[code], []).append(rule)
+                issues.extend(
+                    ConfigIssue(
+                        f"{location}.{selector}",
+                        self._weakening_message(selector, affected, raw[selector]),
+                    )
+                    for selector, affected in lowered.items()
+                )
         if issues:
-            raise ConfigError(list(issues.values()), self.source)
+            raise ConfigError(issues, self.source)
+
+    def _weakening_message(
+        self, selector: str, affected: list[RuleContract], setting: RuleSetting
+    ) -> str:
+        if self._broad_selection(selector) is None:
+            rule = affected[0]
+            label = f"{rule.name} ({rule.code})"
+        else:
+            kind = (
+                "group "
+                if selector in RULE_GROUPS
+                else "family "
+                if selector != ALL_RULES
+                else ""
+            )
+            count = len(affected)
+            label = f"{kind}{selector} ({count} {'rule' if count == 1 else 'rules'})"
+        return f"lowering {label} below the inherited root severity requires {{severity: {setting}, reason: '...'}}"
 
     def _member_for(
         self, ctx: AnalysisContext, module: str | None, path: str | None
@@ -344,6 +369,7 @@ class RuleSettings:
         location: str,
         *,
         excluded: frozenset[str] = frozenset(),
+        selectors: dict[str, str] | None = None,
     ) -> dict[str, RuleSetting]:
         """Resolve selectors to their winning settings, retaining reasons.
 
@@ -362,6 +388,8 @@ class RuleSettings:
             for code in codes:
                 if code not in excluded:
                     result[code] = raw[key]
+                    if selectors is not None:
+                        selectors[code] = key
         individual: set[str] = set()
         for key, value in raw.items():
             if self._broad_selection(key) is not None:
@@ -381,6 +409,8 @@ class RuleSettings:
             else:
                 individual.add(named)
                 result[named] = value
+                if selectors is not None:
+                    selectors[named] = key
         if issues:
             raise ConfigError(issues, self.source)
         return result

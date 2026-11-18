@@ -38,6 +38,43 @@ def test_exported_class_keeps_public_api_but_still_reviews_private_static_helper
     assert finding.expected["method"] == "_prepare"
 
 
+def test_composition_root_preserves_runtime_entry_points(tmp_path: Path) -> None:
+    config = (
+        "version: 1\nproject: {workspace: uv}\n"
+        "rules: {visibility/internal-public-member: on, visibility/internal-public-module-symbol: on}\n"
+    )
+    member = "services/api/smelt.yml"
+    entry = "services/api/src/api/main.py"
+    helper = "services/api/src/api/impl.py"
+    source = "ENTRY_SETTINGS = 1\ndef create_app(): return ENTRY_SETTINGS\n"
+    root = write_project(
+        tmp_path,
+        {
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+            "smelt.yml": config,
+            member: "architecture: {composition_root: [api.main]}\n",
+            "services/api/src/api/__init__.py": "",
+            entry: source,
+            helper: source,
+        },
+    )
+
+    found = violations(root)
+    assert {(v.path, v.code) for v in found} == {
+        (helper, "SMT316"),
+        (helper, "SMT320"),
+    }
+    assert found == violations(root, CheckOptions(use_cache=False))
+
+    write_project(root, {member: "architecture: {wiring: [api.main]}\n"})
+    assert {(v.path, v.code) for v in violations(root)} == {
+        (helper, "SMT316"),
+        (helper, "SMT320"),
+        (entry, "SMT316"),
+        (entry, "SMT320"),
+    }
+
+
 def test_internal_async_public_method_including_callback_reference(
     tmp_path: Path,
 ) -> None:

@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT316 and SMT320 preserve public runtime entry points in declared composition roots.
+
 ### Breaking configuration layout
 
 - `style` sets project-wide conventions and `style.overrides` sets package style
@@ -17,6 +19,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   names. See the [0.13 migration guide](docs/upgrading.md#012-to-013).
 
 ### Context
+
+- Workspace context names the owner, governing configuration and rules layers.
+  Scoped workspace checks label whole-workspace totals and policy coverage.
 
 - `smelt context` now identifies the feature and layer of a planned path inside
   a new feature, including in workspace members. JSON marks these targets
@@ -43,6 +48,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   The debt CLI records per-member baselines at the root, or only the selected
   member. `--prune` does not create new member scopes; multi-file JSON inspection
   uses a `files` map. See [workspace debt](docs/adoption.md#workspace-debt).
+- Member weakening errors identify the YAML selector as written and show
+  the declaring configuration file relative to the project root.
 - Member-directory invocations also select the member when it has no local
   config, including staged checks. The bundled skill documents the canonical
   root-style/member-architecture/root-boundary workflow. A portable uv fixture
