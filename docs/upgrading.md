@@ -12,14 +12,17 @@ debt keeps its identity for rules that retain their SMT code.
    in the root, every local `extends` base and each member file. Move
    project-wide conventions to `style`. Keep package-specific conventions
    and source rule settings under `style.overrides`. Move required/public modules
-   and facade thresholds to `architecture.packages`. Keep each `match` selector.
+   and facade thresholds to `architecture.packages`.
 2. **Review workspace ownership.** Keep `project.workspace: uv`, shared
    style and rules, graph options, canonical exports and `architecture.members`
    in the root. Move each member's feature, layer, package API and style
-   override entries to that member's file. Copy any root layout that previously
-   covered member packages into the members that still need it. A root project
-   may continue to declare a layout for its own packages. Review cross-member
-   allowances independently of local layers.
+   override entries to that member's file. A member's `match` must start with
+   one of its own top-level package names. Split a pattern such as `*.domain`
+   into one entry per matching package, for example `api.domain` in the member
+   that owns `api`. Copy any root layout that previously covered member
+   packages into the members that still need it. A root project may continue to
+   declare a layout for its own packages. Review cross-member allowances
+   independently of local layers.
 3. **Update rule selectors.** Use canonical `family/finding` names or stable
    SMT codes in root/member rules, style overrides, CI and hooks. Replace broad
    enabling selectors with individual entries. Use the
