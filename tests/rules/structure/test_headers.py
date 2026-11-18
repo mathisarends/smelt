@@ -6,12 +6,117 @@ import pytest
 
 from smelt.config import ConfigError
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, violations, write_project
+from tests.helpers import check, codes_at, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311"))
+_LOGGER_OPTIONS = CheckOptions(select=("SMT370",))
+_LOGGER_CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
+
+
+def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) -> None:
+    source = (
+        '"""Preview frames."""\n'
+        "from __future__ import annotations\n"
+        "import logging\n"
+        "from .state import Session\n\n"
+        "_FRAME_RETRY_DELAY_SECONDS = 0.05\n"
+        "_logger = logging.getLogger(__name__)\n"
+    )
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": _LOGGER_CONFIG,
+            "app/frames.py": source,
+            "app/state.py": "class Session: pass\n",
+            "tests/test_frames.py": source,
+        },
+    )
+    assert violations(tmp_path) == []
+
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": _LOGGER_CONFIG
+            + "rules: {layout/misplaced-module-logger: warning}\n"
+        },
+    )
+    [finding] = violations(tmp_path)
+
+    assert (finding.code, finding.path, finding.line) == ("SMT370", "app/frames.py", 7)
+    assert finding.column == 1
+    assert finding.expected == {"logger": "_logger", "placement": "after-imports"}
+    assert finding.severity.value == "warning"
+    assert (tmp_path / "app/frames.py").read_text(encoding="utf-8") == source
+
+
+@pytest.mark.parametrize(
+    ("source", "lines"),
+    [
+        (
+            "import logging as log\n"
+            "_logger = log.getLogger(__name__)\n"
+            "from .state import Session\n"
+            "_TIMEOUT = 5\n",
+            [2],
+        ),
+        (
+            "from logging import Logger, getLogger as get_logger\n"
+            "_TIMEOUT = 5\n"
+            "logger: Logger = get_logger(name=__name__)\n",
+            [3],
+        ),
+        (
+            "import logging\n"
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n    from .state import Session\n"
+            "try:\n    import fast_codec\nexcept ImportError:\n    pass\n\n"
+            "# The module logger.\n"
+            "_logger = logging.getLogger(__name__)\n"
+            "logger: logging.Logger = logging.getLogger(__name__)\n"
+            "_TIMEOUT = 5\n",
+            [],
+        ),
+        (
+            "import logging\n"
+            "_logger = logging.getLogger(__name__)\n"
+            "_TIMEOUT = 5\n"
+            "secondary_logger = logging.getLogger(__name__)\n",
+            [4],
+        ),
+        (
+            "import logging\n"
+            "_TIMEOUT = 5\n"
+            "logger = logging.getLogger('workers')\n"
+            "if enabled:\n    logger = logging.getLogger(__name__)\n"
+            "def get_logger():\n    local = logging.getLogger(__name__)\n"
+            "class Worker:\n    local = logging.getLogger(__name__)\n",
+            [],
+        ),
+        (
+            "import logging\nlogging = factory()\nlogger = logging.getLogger(__name__)\n",
+            [],
+        ),
+        (
+            "from . import logging\n_TIMEOUT = 5\nlogger = logging.getLogger(__name__)\n",
+            [],
+        ),
+        ("import logging\n_TIMEOUT = 5\n", []),
+    ],
+)
+def test_module_logger_order_respects_imports_and_known_bindings(
+    tmp_path: Path, source: str, lines: list[int]
+) -> None:
+    write_project(
+        tmp_path,
+        {"smelt.yml": _LOGGER_CONFIG, "app/frames.py": source},
+    )
+
+    assert codes_at(violations(tmp_path, _LOGGER_OPTIONS)) == [
+        ("SMT370", "app/frames.py", line) for line in lines
+    ]
 
 
 def _project(

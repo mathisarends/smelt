@@ -74,6 +74,7 @@
 | [SMT367](SMT367.md) | visibility/excess-private-definitions | visibility | policy | hint |
 | [SMT368](SMT368.md) | layout/reexport-only-module | layout | explicit | hint |
 | [SMT369](SMT369.md) | visibility/reexport-convention | visibility | policy | warning |
+| [SMT370](SMT370.md) | layout/misplaced-module-logger | layout | explicit | warning |
 | [SMT401](SMT401.md) | tests/misplaced-test | tests | policy | error |
 | [SMT420](SMT420.md) | tests/private-access | tests | explicit | error |
 | [SMT421](SMT421.md) | tests/forbidden-mock | tests | policy | error |

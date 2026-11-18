@@ -7,6 +7,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Enable [SMT370](docs/rules/SMT370.md) with `layout/misplaced-module-logger: warning`
+  to keep module loggers immediately after imports and before constants.
 - Set `style.reexports` to `all` or `alias` to have [SMT369](docs/rules/SMT369.md)
   check explicit re-export spelling in package initializers. Package overrides
   can select another spelling or allow an intentional runtime export list.

@@ -4,6 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.annotations import has_postponement_evidence
+from smelt.analysis.bindings import qualified_name, unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -11,6 +12,53 @@ from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+
+class MisplacedModuleLogger(Rule):
+    file_local = True
+    code = "SMT370"
+    name = "layout/misplaced-module-logger"
+    category = Category.LAYOUT
+    default_severity = Severity.WARNING
+    requires = frozenset({Index.SYNTAX})
+    doc = RuleDoc(
+        summary="A module logger is declared outside the block immediately after imports.",
+        rationale=(
+            "Keeping module loggers together after imports makes logging easy to find "
+            "before constants and other module declarations. This opt-in convention "
+            "checks direct module-level assignments of logging.getLogger(__name__) "
+            "in analyzed source files, including annotated assignments and unshadowed "
+            "import aliases. The import section can include future imports, import-only "
+            "if blocks and optional imports in try blocks. Comments and blank lines "
+            "do not affect placement. Other logger names passed to getLogger, custom "
+            "factories, guarded or local assignments and uncertain bindings are outside scope."
+        ),
+        bad="import logging\n\n_TIMEOUT_SECONDS = 5\n_logger = logging.getLogger(__name__)",
+        good="import logging\n\n_logger = logging.getLogger(__name__)\n_TIMEOUT_SECONDS = 5",
+        fix=(
+            "Place the module logger immediately after the import section and before "
+            "constants and other code. Review initialization dependencies before moving "
+            "it, and use a reasoned suppression for intentional exceptions. "
+            "Enable rules: {layout/misplaced-module-logger: warning} to check the convention. "
+            "No automatic move is performed."
+        ),
+        config=("rules", "style.overrides"),
+    )
+
+    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        for source in ctx.files.sources.values():
+            for target in _misplaced_loggers(ctx.asts.parse(source.path)):
+                yield self.violation(
+                    f"place module logger {target.id} immediately after imports",
+                    path=source.path,
+                    line=target.lineno,
+                    column=target.col_offset + 1,
+                    end_line=target.end_lineno,
+                    end_column=(target.end_col_offset or 0) + 1,
+                    source_module=source.module,
+                    expected={"logger": target.id, "placement": "after-imports"},
+                    hint="Group module loggers after imports and before constants. Review initialization dependencies before moving them.",
+                )
 
 
 class ModuleDocstringConvention(Rule):
@@ -168,3 +216,68 @@ def _future_findings(
                 },
                 hint="Follow the package convention and verify forward references, runtime annotation consumers and tests before removing the import.",
             )
+
+
+def _misplaced_loggers(tree: ast.Module) -> Iterator[ast.Name]:
+    bindings = unshadowed_bindings(tree)
+    if not {"logging", "logging.getLogger"}.intersection(bindings.values()):
+        return
+
+    body = (
+        tree.body[1:] if ast.get_docstring(tree, clean=False) is not None else tree.body
+    )
+    in_header = True
+    pending: list[ast.Name] = []
+    for statement in body:
+        if in_header and _is_header_import(statement):
+            yield from pending
+            pending.clear()
+        elif (target := _module_logger_target(statement, bindings)) is None:
+            in_header = False
+        elif in_header:
+            pending.append(target)
+        else:
+            yield target
+
+
+def _module_logger_target(
+    statement: ast.stmt, bindings: dict[str, str]
+) -> ast.Name | None:
+    match statement:
+        case (
+            ast.Assign(targets=[ast.Name() as target], value=value)
+            | ast.AnnAssign(target=ast.Name() as target, value=value)
+        ):
+            pass
+        case _:
+            return None
+    match value:
+        case (
+            ast.Call(func=func, args=[ast.Name(id="__name__")], keywords=[])
+            | ast.Call(
+                func=func,
+                args=[],
+                keywords=[ast.keyword(arg="name", value=ast.Name(id="__name__"))],
+            )
+        ) if qualified_name(func, bindings) == "logging.getLogger":
+            return target
+        case _:
+            return None
+
+
+def _is_header_import(statement: ast.stmt) -> bool:
+    match statement:
+        case ast.Import() | ast.ImportFrom():
+            return True
+        case ast.If(body=body, orelse=otherwise):
+            return all(_is_header_import(node) for node in (*body, *otherwise))
+        case ast.Try(body=body, handlers=handlers, orelse=otherwise, finalbody=final):
+            return all(
+                _is_header_import(node) for node in (*body, *otherwise, *final)
+            ) and all(
+                _is_header_import(node) or isinstance(node, ast.Pass)
+                for handler in handlers
+                for node in handler.body
+            )
+        case _:
+            return False
