@@ -2,6 +2,56 @@
 
 ## 0.12 to 0.13
 
+0.13 changes configuration keys, rule names and uv workspace policy ownership.
+YAML version 1, check report schema 2 and CLI exit codes carry forward. Existing
+debt keeps its identity for rules that retain their SMT code.
+
+### Upgrade checklist
+
+1. **Migrate configuration.** Use the [key mapping](#split-style-from-package-architecture)
+   in the root, every local `extends` base and each member file. Move
+   project-wide conventions to `style`. Keep package-specific conventions
+   and source rule settings under `style.overrides`. Move required/public modules
+   and facade thresholds to `architecture.packages`. Keep each `match` selector.
+2. **Review workspace ownership.** Keep `project.workspace: uv`, shared
+   style and rules, graph options, canonical exports and `architecture.members`
+   in the root. Move each member's feature, layer, package API and style
+   override entries to that member's file. Copy any root layout that previously
+   covered member packages into the members that still need it. A root project
+   may continue to declare a layout for its own packages. Review cross-member
+   allowances independently of local layers.
+3. **Update rule selectors.** Use canonical `family/finding` names or stable
+   SMT codes in root/member rules, style overrides, CI and hooks. Replace broad
+   enabling selectors with individual entries. Use the
+   [renames](#renamed-rules) and [merged codes](#merged-rules) below.
+4. **Review activation and exceptions.** Source conventions tied to a rule now
+   enable it where the option applies. Review the new findings from values such
+   as `private_attribute_boundary`, `call_argument_kinds`, `str_enum_values`
+   and the `max_*` limits. Explicit SMT345 and SMT110 use limits of 5 and 20
+   where the project sets none. Give each member exception its justification
+   with `{severity: ..., reason: ...}` or `{value: ..., reason: ...}`. Move any
+   legacy `reasons` entries beside their corresponding values. Equally specific
+   style overrides for the same package must agree on values they both set.
+5. **Migrate suppressions and debt.** Update inline comments to the surviving
+   SMT codes. For merged-code debt, run `smelt debt --prune`, review the
+   findings under the surviving rules, then record the debt you intend to
+   keep. Member debt files may take precedence over workspace root debt.
+6. **Update report consumers.** JSON check findings and `smelt rules --format json`
+   use canonical families and rule names. Merged checks may provide an
+   `expected.kind`. `smelt config show --sources` exposes member settings under
+   `workspace_members` alongside `config`. `smelt context TARGET --format json`
+   includes `style` and `rule_details` for resolved values and reasons.
+7. **Refresh tools and verify.** Update dependency, hook and CI pins together
+   after adopting 0.13. Regenerate the editor schema with
+   `smelt config schema > .smelt.schema.json` and refresh the installed skill
+   with `smelt skill install --force`. Inspect a source or planned path with
+   `smelt context`. Run a full `smelt check --fail-on warning` and review changes
+   in behavior before using changed or staged comparisons.
+
+A config error for a retired selector names its replacement, for example
+`private-symbol-import` becomes `visibility/foreign-private-access` and
+`SMT366` becomes SMT340 `complexity/inline-call-argument`.
+
 ### Split style from package architecture
 
 Move project-wide conventions from `structure` to `style`. Split each old
@@ -50,29 +100,15 @@ outside the selected check, and exemptions describe an exception within a rule.
 Architecture uses `allow` and `deny` for access. Style uses `forbid` for syntax
 conventions.
 
-Apply the same moves in local `extends` files and member configurations. A
-member can declare its package API and still inherit the root layer architecture.
-Keep `architecture.import_graph` and `architecture.canonical_exports` at the root.
-Retain member style reasons beside the corresponding values. Verify the result
-with `smelt config show --sources` and a full `smelt check`.
-
-Refresh the editor schema with `smelt config schema`. The policy hash reflects
-the new configuration layout. Existing SMT codes still identify accepted debt.
-
-### Removed rule group
-
-Replace the old `information-hiding` selector with SMT316, SMT320, SMT335,
-SMT429 and SMT430 using the former severity for each entry. Use these same
-codes as a comma-separated CLI selection when you want the exact old scope.
-The `visibility` family also includes other rules. Catalog metadata no longer
-includes rule groups.
-
 ### Explicit rule activation
 
-Replace enabling family and `ALL` settings with the individual names or
-SMT codes you intend to run. Broad settings can disable or cap active rules.
-Replace the unreleased `smelt:recommended` preset with named entries from
-`smelt init --maintainability` or a local `extends` file.
+Replace the former `information-hiding` selector with SMT316, SMT320, SMT335,
+SMT429 and SMT430 at the former severity. These five codes also form the
+equivalent comma-separated CLI selection. The `visibility` family covers
+additional rules. Use named entries from `smelt init --maintainability` or a
+local `extends` file to replace the unreleased `smelt:recommended` preset.
+Families and `ALL` in YAML can disable or cap active rules. Named `on` uses
+the catalog severity.
 
 ### Renamed rules
 
@@ -93,116 +129,21 @@ version 1, report schema 2, exit codes, the default rule set and every unmerged
 SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
 complete mapping.
 
-Workspace member rules that lower root severity now require
-`{severity: warning, reason: "..."}` (or the intended severity), including member
-style overrides. `on` uses the catalog severity, and strict coverage cannot be
-lowered. Review existing exceptions and add their actual justification.
-Workspace `init` now generates a root plus per-member architecture drafts;
-review all targets before using `--force`. Member debt files are supported;
-existing root debt remains usable for members without their own file. See
-[workspace configuration](configuration.md#uv-workspaces).
+### Merged rules
 
-### Upgrade checklist
+| Retired | Use instead | Notes |
+| --- | --- | --- |
+| SMT325 | SMT309 `layout/module-docstring-convention` | `module_docstrings: require` and `forbid` both enable it. |
+| SMT326 | SMT323 `modeling/forbidden-base-class-affix` | It reports both prefix and suffix. |
+| SMT332 | SMT331 `layout/file-name-convention` | There is one finding per file. |
+| SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `style.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
+| SMT358 | SMT357 `modeling/implicit-duration-unit` | It also reports unitless duration names. |
+| SMT365 | SMT339 `visibility/foreign-private-access` | It also reports private module symbols. |
+| SMT366 | SMT340 `complexity/inline-call-argument` | Set `style.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
 
-1. Run `smelt check` once. Every 0.12 rule name and retired code in `smelt.yml`
-   is reported as unknown, and the error names the replacement:
-
-   ```text
-   rules.private-symbol-import: unknown rule "private-symbol-import"; renamed to "visibility/foreign-private-access" in 0.13.0 (see docs/upgrading.md)
-   rules.SMT366: unknown rule "SMT366"; merged into SMT340 "complexity/inline-call-argument" in 0.13.0 (see docs/upgrading.md)
-   ```
-
-   Replace names in top-level `rules`, `style.overrides.<name>.rules`, CI `--select` and
-   `--ignore` arguments, and hook configuration. SMT codes outside the merged set
-   keep working, so `rules: {SMT101: error}` needs no change.
-
-2. Resolve merged pairs. Where a project configured both halves of a pair, keep
-   a single entry for the surviving rule:
-
-   | Retired | Use instead | Notes |
-   | --- | --- | --- |
-   | SMT325 | SMT309 `layout/module-docstring-convention` | `module_docstrings: require` and `forbid` both enable it. |
-   | SMT326 | SMT323 `modeling/forbidden-base-class-affix` | It reports both prefix and suffix. |
-   | SMT332 | SMT331 `layout/file-name-convention` | There is one finding per file. |
-   | SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `style.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
-   | SMT358 | SMT357 `modeling/implicit-duration-unit` | It also reports unitless duration names. |
-   | SMT365 | SMT339 `visibility/foreign-private-access` | It also reports private module symbols. |
-   | SMT366 | SMT340 `complexity/inline-call-argument` | Set `style.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
-
-   The SMT326, SMT357/358 and SMT339/365 merges can report more findings when
-   only one half was enabled before. Review them, or narrow the scope where an
-   option exists. Do not disable the rule just to keep the old count.
-
-3. Update inline suppressions. A comment such as `# smelt: ignore[SMT366]` now
-   names an unknown code, which SMT901 reports. Replace it with the surviving
-   code from the table above.
-
-4. Re-record debt for merged codes. Baseline entries under SMT325, SMT326,
-   SMT332, SMT342, SMT358, SMT365 or SMT366 no longer match. Run
-   `smelt debt --prune`, review the remaining findings, then run `smelt debt`.
-   Entries under every other code are unaffected.
-
-5. Update report consumers. The JSON `category` field and `smelt rules --format
-   json` now carry the family (`architecture`, `layout`, `tests`, ...) instead of
-   `dependencies`, `structure` and `tests`. The `rule` field carries the new
-   name. Merged rules add a `kind` field to `expected`.
-
-6. Refresh the editor schema with `smelt config schema > .smelt.schema.json` and
-   the agent skill with `smelt skill install --force`.
-
-Use `--select modeling` to explore a whole family. YAML family settings can
-disable or cap active rules, and individual entries take precedence.
-
-### Configuration model
-
-Source-convention options can now be set directly under `style` for the whole
-project. An option that belongs to one rule now enables that rule.
-
-1. Move project-wide style contracts to `style`. Use direct `style` keys for
-   options that applied to the entire project. Move rule settings to top-level
-   `rules` when they should also apply project-wide:
-
-   ```yaml
-   # 0.12
-   structure:
-     contracts:
-       maintainability:
-         match: app
-         max_positional_parameters: 3
-         future_annotations: when-needed
-       strict:
-         match: app
-         rules: {idioms/bundled-instance-assignment: error}
-
-   # 0.13
-   rules:
-     idioms/bundled-instance-assignment: error
-   style:
-     max_positional_parameters: 3
-     future_annotations: when-needed
-   ```
-
-   To preserve a policy scoped to `app`, migrate the entries to
-   `style.overrides` and keep their `match: app` selectors.
-
-2. Review options that now enable their rule. If `smelt.yml` sets
-   `private_attribute_boundary`, `call_argument_kinds`, `str_enum_values`,
-   `max_comprehension_loops`, `max_constructor_decisions` or
-   `max_private_definitions` without selecting the matching rule, that rule now
-   runs. Keep the option and review the findings. To stay with the 0.12
-   behavior, remove the option, or set the rule to `off` in `rules`.
-
-3. Review rules selected without a threshold. `rules:
-   {complexity/excess-positional-parameters: ...}` now checks a limit of 5, and
-   `rules: {imports/excess-module-imports: ...}` a limit of 20, where no option
-   is set. Set the option to choose a different limit.
-
-4. Check for new conflicts. Equally specific overrides that set different values
-   of the same option for one package are now a configuration error for every
-   shared option.
-
-5. Update tooling that reads `smelt config show`. Unset project-wide options are
-   now `null`, and their defaults are documented in the schema.
+The SMT326, SMT357/358 and SMT339/365 merges can report more findings when the
+old config enabled only one half. Review them or narrow the scope wherever
+the surviving rule offers an option.
 
 ## 0.11.1 to 0.12.0
 

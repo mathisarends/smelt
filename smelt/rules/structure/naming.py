@@ -179,7 +179,7 @@ class ForbiddenBaseClassAffix(Rule):
             "can preserve a published name. No symbols are renamed "
             "automatically. Enable with rules: "
             "{modeling/forbidden-base-class-affix: error}, globally or in a "
-            "package contract, or --select SMT323."
+            "style override, or --select SMT323."
         ),
         config=("rules", "style.overrides"),
     )
@@ -239,7 +239,7 @@ class RedundantModuleName(Rule):
             "Review the shorter filename and update imports and facade exports "
             "when renaming. An occupied module/package name is not suggested. "
             "No files are renamed automatically. Enable with rules: "
-            "{layout/redundant-module-name: hint}, globally or in a package contract, "
+            "{layout/redundant-module-name: hint}, globally or in a style override, "
             "or --select SMT336. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),

@@ -1,7 +1,7 @@
 """Typed, declarative activation metadata for configuration-driven rules.
 
 An option that belongs to a single rule enables that rule wherever it applies:
-set under style it covers the project, set in a package contract it covers
+set under style it covers the project, set in a style override it covers
 that package. Selecting the rule in rules or with --select enables it everywhere
 with the built-in defaults, and an explicit off always wins.
 """
@@ -35,7 +35,7 @@ def _option(
     description: str,
     accept: Callable[[Any], bool] = lambda value: value is not None,
 ) -> PolicyActivation:
-    """Activation by an option set under style or in any package contract."""
+    """Activation by an option set under style or in any style override."""
     return PolicyActivation(
         description,
         lambda config: any(
@@ -79,21 +79,21 @@ POLICIES = {
         ),
     ),
     "SMT107": PolicyActivation(
-        "A package contract declares public entry points, including an explicitly empty public list.",
+        "A package API declares public entry points, including an explicitly empty public list.",
         lambda config: any(
             contract.public is not None
             for contract in config.structure.contracts.values()
         ),
     ),
     "SMT108": PolicyActivation(
-        "A package contract sets min_imports_to_bundle.",
+        "A package API sets min_imports_to_bundle.",
         lambda config: any(
             contract.min_imports_to_bundle is not None
             for contract in config.structure.contracts.values()
         ),
     ),
     "SMT109": PolicyActivation(
-        "A package contract sets min_importers_to_export.",
+        "A package API sets min_importers_to_export.",
         lambda config: any(
             contract.min_importers_to_export is not None
             for contract in config.structure.contracts.values()
@@ -120,7 +120,7 @@ POLICIES = {
         lambda config: config.project.coverage == "strict",
     ),
     "SMT307": PolicyActivation(
-        "A package contract requires modules or named public entry points.",
+        "A package API requires modules or named public entry points.",
         lambda config: any(
             contract.required or contract.public
             for contract in config.structure.contracts.values()

@@ -93,7 +93,7 @@ class InlineCallArgument(Rule):
             "eagerly materialize generator expressions. No automatic rewrite is "
             "performed. Enable rules: {complexity/inline-call-argument: hint}, "
             "select SMT340, or set call_argument_kinds under style or in a "
-            "package contract, which also narrows the review to that scope. "
+            "style override, which also narrows the review to that scope. "
             "Reasoned inline suppressions are supported."
         ),
         config=("rules", "style.call_argument_kinds", "style.overrides"),

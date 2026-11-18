@@ -61,7 +61,7 @@ class ExcessPrivateDefinitions(Rule):
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
             "{visibility/excess-private-definitions: hint}, select SMT367, or set "
-            "max_private_definitions under style or in a package contract. "
+            "max_private_definitions under style or in a style override. "
             "The limit defaults to 12; zero is supported."
         ),
         config=("rules", "style.max_private_definitions", "style.overrides"),

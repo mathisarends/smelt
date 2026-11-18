@@ -89,7 +89,13 @@ root files, or `null` outside a workspace or for findings without a file locatio
 In text and concise output, `--statistics --by member` counts every finding,
 including hints, under its member. Unattributed findings use `<project>`.
 `--by member` requires `--statistics`; the default is `--by rule`.
-`smelt context --format json` carries the same import settings, allowances and hash.
+`smelt context TARGET --format json` carries the same import settings,
+allowances and hash. `style` describes effective source conventions for the
+target. `rule_details` describes resolved rules, including their severity,
+activation source and any exception reason. For production targets, the text
+view focuses on the source policy. It presents package APIs separately from
+style settings. Use `smelt config show --sources` to trace inheritance and
+review the root and member files together.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 2, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)

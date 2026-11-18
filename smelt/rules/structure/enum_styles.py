@@ -61,7 +61,7 @@ class StrEnumValueConvention(Rule):
             "members of a class with custom values explicitly. No automatic "
             "rewrite is performed. Enable rules: "
             "{modeling/str-enum-value-convention: hint}, select SMT341, or set "
-            "str_enum_values under style or in a package contract. Reasoned "
+            "str_enum_values under style or in a style override. Reasoned "
             "inline suppressions are supported."
         ),
         config=("rules", "style.str_enum_values", "style.overrides"),

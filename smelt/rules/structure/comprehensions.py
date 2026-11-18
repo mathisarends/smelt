@@ -43,7 +43,7 @@ class ComplexComprehension(Rule):
             "laziness, iteration/filter order and conditional evaluation. No automatic "
             "rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or "
             "select SMT363, or set max_comprehension_loops under style or in a "
-            "package contract. The limit defaults to 1; a package contract can "
+            "style override. The limit defaults to 1; a style override can "
             "permit intentional flattening."
         ),
         config=("rules", "style.max_comprehension_loops", "style.overrides"),

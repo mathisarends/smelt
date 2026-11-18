@@ -62,7 +62,7 @@ class PreferDomainException(Rule):
             "apart from a programming error. Code that keeps raising "
             "ValueError or RuntimeError for domain failures, or converts "
             "every error into one, forces callers to catch broad builtins and "
-            "guess what went wrong. A package contract names the project "
+            "guess what went wrong. A style override names the project "
             "base, e.g. errors: {base: app.errors.AppError}, and production "
             "code in the package that raises a builtin exception class, with "
             "or without arguments and with or without from, is reported. "
@@ -96,7 +96,7 @@ class PreferDomainException(Rule):
             "deliberately raises builtins. No automatic rewrite is performed. "
             "Enable it for the project with style: {errors: {base: "
             "app.errors.AppError}}, or for one package with the same option in a "
-            "package contract."
+            "style override."
         ),
         config=("style.errors", "style.overrides"),
     )

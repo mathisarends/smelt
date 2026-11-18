@@ -19,9 +19,9 @@ class MissingRequiredModule(Rule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
-        summary="A package contract is missing a required module or public entry point.",
+        summary="A package is missing a required module or public entry point.",
         rationale=(
-            "Explicit package contracts let contributors and agents follow the same "
+            "Explicit package APIs let contributors and agents follow the same "
             "structure. They apply only to matching packages and require no particular "
             "framework, feature layout or layer names. Excluded code does not fulfill "
             "a contract. This checks presence, not implementation quality."

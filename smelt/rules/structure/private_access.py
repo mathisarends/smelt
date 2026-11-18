@@ -84,7 +84,7 @@ class ForeignPrivateAccess(Rule):
             "Preserve evaluation order, exceptions and side effects. No automatic "
             "rewrite is performed. Enable rules: {visibility/foreign-private-access: "
             "warning}, select SMT339, or set private_attribute_boundary under "
-            "structure or in a package contract. The boundary defaults to module; "
+            "style or in a style override. The boundary defaults to module; "
             "package permits attribute cooperation between modules of the same "
             "immediate Python package and does not relax private symbols. "
             "Reasoned suppressions on the imported name, read or attribute are "
