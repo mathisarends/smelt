@@ -115,7 +115,7 @@
   {
     "target": "smelt.rules.dependencies.fanout:PackageImportFanout",
     "code": "SMT108",
-    "name": "imports/package-import-fanout",
+    "name": "imports/excess-package-imports",
     "category": "imports",
     "default_severity": "hint",
     "requires": [
@@ -504,7 +504,7 @@
   {
     "target": "smelt.rules.structure.navigation:DeepObjectNavigation",
     "code": "SMT322",
-    "name": "complexity/deep-object-navigation",
+    "name": "complexity/excess-attribute-depth",
     "category": "complexity",
     "default_severity": "hint",
     "requires": [
@@ -872,7 +872,7 @@
   {
     "target": "smelt.rules.structure.stateful_dataclasses:StatefulDataclass",
     "code": "SMT349",
-    "name": "modeling/stateful-dataclass",
+    "name": "modeling/dataclass-field-mutation",
     "category": "modeling",
     "default_severity": "hint",
     "requires": [
@@ -1016,7 +1016,7 @@
   {
     "target": "smelt.rules.structure.conditional_expressions:NestedConditionalExpression",
     "code": "SMT359",
-    "name": "complexity/nested-conditional-expression",
+    "name": "complexity/forbidden-nested-conditional",
     "category": "complexity",
     "default_severity": "hint",
     "requires": [
@@ -1080,7 +1080,7 @@
   {
     "target": "smelt.rules.structure.comprehensions:ComplexComprehension",
     "code": "SMT363",
-    "name": "complexity/complex-comprehension",
+    "name": "complexity/excess-comprehension-loops",
     "category": "complexity",
     "default_severity": "hint",
     "requires": [
@@ -1096,7 +1096,7 @@
   {
     "target": "smelt.rules.structure.constructors:ConstructorLogic",
     "code": "SMT364",
-    "name": "complexity/constructor-logic",
+    "name": "complexity/excess-constructor-decisions",
     "category": "complexity",
     "default_severity": "hint",
     "requires": [

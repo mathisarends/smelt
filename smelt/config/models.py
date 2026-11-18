@@ -625,12 +625,12 @@ class PackagePolicy(_Model):
     max_comprehension_loops: int | None = Field(
         default=None,
         ge=1,
-        description="Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/complex-comprehension. Omitted means 1.",
+        description="Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
     )
     max_constructor_decisions: int | None = Field(
         default=None,
         ge=0,
-        description="Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/constructor-logic. Omitted means 2.",
+        description="Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
     )
     max_private_definitions: int | None = Field(
         default=None,

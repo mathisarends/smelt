@@ -2,6 +2,18 @@
 
 ## 0.12 to 0.13
 
+The following reviews use more precise names. Their SMT codes still identify the
+same checks and debt entries.
+
+| Code | Previous name | Canonical name |
+| --- | --- | --- |
+| SMT108 | `package-import-fanout` | `imports/excess-package-imports` |
+| SMT322 | `deep-object-navigation` | `complexity/excess-attribute-depth` |
+| SMT349 | `stateful-dataclass` | `modeling/dataclass-field-mutation` |
+| SMT359 | `nested-conditional-expression` | `complexity/forbidden-nested-conditional` |
+| SMT363 | `complex-comprehension` | `complexity/excess-comprehension-loops` |
+| SMT364 | `constructor-logic` | `complexity/excess-constructor-decisions` |
+
 0.13 renames every rule to `family/finding` and merges seven pairs of rules. YAML
 version 1, report schema 2, exit codes, the default rule set and every unmerged
 SMT code stay the same. See the [changelog](../CHANGELOG.md#unreleased) for the
