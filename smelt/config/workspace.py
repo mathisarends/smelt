@@ -226,7 +226,10 @@ def expand_workspace(
     if "source_roots" in project.model_fields_set:
         sources = _existing(root, bases, project.source_roots, store=store)
     else:
-        sources = [_default_root(root, base, store=store) for base in bases]
+        sources = [
+            _default_root(root, base, selected=project.root_packages, store=store)
+            for base in bases
+        ]
     if not sources:
         where = ", ".join(project.source_roots)
         raise ConfigError(
@@ -239,13 +242,9 @@ def expand_workspace(
         )
     # Workspace-level integration tests are common even when the root is no project.
     tests = _existing(root, ["", *members], project.test_roots, store=store)
-    packages = _member_packages(root, members, sources, store=store)
-    explicit = set(project.root_packages)
-    if explicit:
-        packages = {
-            member: [name for name in names if name in explicit]
-            for member, names in packages.items()
-        }
+    packages = _member_packages(
+        root, members, sources, selected=project.root_packages, store=store
+    )
     root_packages = project.root_packages or list(
         dict.fromkeys(name for names in packages.values() for name in names)
     )
@@ -328,10 +327,16 @@ def _declares_project(root: Path, *, store: SourceStore) -> bool:
     return isinstance(_pyproject(root, store=store).get("project"), dict)
 
 
-def _default_root(root: Path, base: str, *, store: SourceStore) -> str:
+def _default_root(
+    root: Path, base: str, *, selected: list[str], store: SourceStore
+) -> str:
     """``src/`` when it holds a package, else the member directory itself."""
     src = posixpath.join(base, "src") if base else "src"
-    return src if packages_in(root / src, store=store) else base or "."
+    if packages_in(root / src, store=store) or (
+        selected and _package_directories(root / src, selected, store=store)
+    ):
+        return src
+    return base or "."
 
 
 def _existing(
@@ -346,15 +351,34 @@ def _existing(
 
 
 def _member_packages(
-    root: Path, members: list[str], sources: list[str], *, store: SourceStore
+    root: Path,
+    members: list[str],
+    sources: list[str],
+    *,
+    selected: list[str],
+    store: SourceStore,
 ) -> dict[str, list[str]]:
     """Top-level package names per member; ``""`` holds the root's own packages."""
     owners: dict[str, str] = {}
     packages: dict[str, list[str]] = {}
     member_dirs = {store.resolve(root / path) for path in members}
-    for source in sources:
+    candidates = {
+        source: _package_directories(root / source, selected, store=store)
+        for source in sources
+    }
+    regular = {
+        package
+        for directories in candidates.values()
+        for package in directories
+        if selected and store.is_file(package / "__init__.py")
+    }
+    regular_names = {package.name for package in regular}
+    for source, directories in candidates.items():
         member = _owner(source, members)
-        for package in packages_in(root / source, store=store):
+        for package in directories:
+            # Explicit package selection follows Python's regular-package precedence.
+            if package.name in regular_names and package not in regular:
+                continue
             resolved = store.resolve(package)
             if member == "" and any(
                 resolved == directory or resolved.is_relative_to(directory)
@@ -377,6 +401,15 @@ def _member_packages(
             if package.name not in packages[member]:
                 packages[member].append(package.name)
     return packages
+
+
+def _package_directories(
+    source: Path, selected: list[str], *, store: SourceStore
+) -> list[Path]:
+    """Honor explicit packages, including namespaces that discovery would omit."""
+    if selected:
+        return [source / name for name in selected if store.is_dir(source / name)]
+    return packages_in(source, store=store)
 
 
 def _owner(path: str, members: list[str]) -> str:
