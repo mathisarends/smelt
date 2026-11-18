@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Enable [SMT368](docs/rules/SMT368.md) with `layout/reexport-only-module: hint`
+  to review ordinary modules made entirely of explicit re-exports.
+- The `smelt.engine.workspace` import path was removed. Import `WorkspaceMember`,
+  `import_root` and `workspace_members` from `smelt.analysis.workspace`.
 - Full checks warn with [SMT904](docs/rules/SMT904.md) when explicitly enabled
   SMT107, SMT108, SMT109 or SMT308 has no required policy in the setting's scope.
   Follow the reported configuration entry to supply the policy or turn off the rule.

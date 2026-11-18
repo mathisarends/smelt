@@ -91,6 +91,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.parallel_fields:ParallelRecordFields",
     "smelt.rules.structure.loop_collections:LoopInvariantCollection",
     "smelt.rules.structure.private_definitions:ExcessPrivateDefinitions",
+    "smelt.rules.structure.exports:ReexportOnlyModule",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",
