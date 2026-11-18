@@ -91,11 +91,20 @@ class Briefing:
     type_dispatch_policy: dict[str, Any] | None = None
     rules: dict[str, str] = field(default_factory=dict)
 
+    @property
+    def feature_planned(self) -> bool:
+        return (
+            self.target.planned
+            and self.target.feature is not None
+            and self.target.feature not in self.features
+        )
+
     def to_json(self) -> dict[str, Any]:
         return {
             "schema_version": 1,
             "scope": self.target.kind,
             "feature": self.target.feature,
+            "feature_planned": self.feature_planned,
             "module": self.target.module,
             "path": self.target.path,
             "package": self.package,
@@ -172,7 +181,7 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
     if inventory is not None:
         return Target("module", module=inventory.module, path=inventory.path)
     planned = PurePosixPath(path)
-    if not (ctx.root / path).exists() and planned.suffix == ".py":
+    if not ctx.store.exists(ctx.root / path) and planned.suffix == ".py":
         for parent in planned.parents:
             ancestor = next(
                 (p for p in files.packages.values() if p.path == str(parent)), None
@@ -181,8 +190,10 @@ def resolve_target(ctx: AnalysisContext, raw: str | None) -> Target:
                 continue
             segments = planned.relative_to(parent).with_suffix("").parts
             if all(segment.isidentifier() for segment in segments):
-                module = ".".join((ancestor.module, *segments))
-                info = model.info(module)
+                is_package = planned.name == "__init__.py"
+                relative = segments[:-1] if is_package else segments
+                module = ".".join((ancestor.module, *relative))
+                info = model.planned_info(module, is_package=is_package)
                 return Target(
                     "module", info.feature if info else None, module, path, planned=True
                 )
@@ -205,7 +216,7 @@ def build_briefing(
     ctx = _governing_view(ctx, target)
     model = ctx.model
     arch = ctx.config.architecture
-    info = model.info(target.module) if target.module else None
+    info = _target_info(model, target)
     package = None
     if target.feature is not None:
         package = model.feature_package_for(target.feature)
@@ -227,7 +238,7 @@ def build_briefing(
     )
     exempt = bool(info and (info.wiring or info.kind is ModuleKind.COMPOSITION_ROOT))
     cross_feature = _cross_feature(model) if model.has_features else None
-    coverage = _coverage_brief(ctx, target)
+    coverage = _coverage_brief(ctx, target, info=info)
     target_path = target.path or ctx.files.path_for_module(package or "")
     if info and (info.central or info.kind is ModuleKind.SHARED):
         cross_feature = "none (must not import features)"
@@ -361,12 +372,22 @@ def _rule_brief(
     }
 
 
-def _coverage_brief(ctx: AnalysisContext, target: Target) -> dict[str, Any]:
+def _target_info(model: ArchitectureModel, target: Target) -> ModuleInfo | None:
+    if target.module is None:
+        return None
+    if target.planned and target.path is not None:
+        return model.planned_info(
+            target.module, is_package=PurePosixPath(target.path).name == "__init__.py"
+        )
+    return model.info(target.module)
+
+
+def _coverage_brief(
+    ctx: AnalysisContext, target: Target, *, info: ModuleInfo | None
+) -> dict[str, Any]:
     mode = ctx.config.project.coverage
     if target.planned:
-        governed = is_governed(
-            ctx.model.info(target.module or ""), layers_declared=bool(ctx.model.layers)
-        )
+        governed = is_governed(info, layers_declared=bool(ctx.model.layers))
         return {
             "mode": mode,
             "status": "planned",
@@ -633,6 +654,9 @@ def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
 
 
 def _placement(briefing: Briefing) -> str:
+    feature = briefing.target.feature
+    if briefing.feature_planned:
+        feature = f"{feature} (planned)"
     match briefing.module_kind:
         case ModuleKind.SHARED:
             return "Kind: shared (importable by all features, must not import features)"
@@ -644,11 +668,10 @@ def _placement(briefing: Briefing) -> str:
                 "(outside the features, must not import them)"
             )
         case ModuleKind.FEATURE if briefing.layer is not None:
-            feature = briefing.target.feature
             where = f"feature {feature}, " if feature else ""
             return f"Kind: {where}layer {briefing.layer}"
         case ModuleKind.FEATURE:
-            return f"Kind: feature {briefing.target.feature}, outside any layer"
+            return f"Kind: feature {feature}, outside any layer"
         case _:
             return "Kind: unclassified (outside features, layers, shared and composition root)"
 

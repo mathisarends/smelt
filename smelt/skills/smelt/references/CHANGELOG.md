@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+### Context
+
+- `smelt context` now identifies the feature and layer of a planned path inside
+  a new feature, including in workspace members. JSON marks these targets
+  with `feature_planned`.
+
 ### Workspace policy and initialization
 
 - **Member weakening requires a reason.** Lowering inherited rule severity or

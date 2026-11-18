@@ -101,7 +101,9 @@ that dependency between **every** feature.
 `smelt context` describes the policy that applies to its target, including wiring and
 composition-root exceptions, third-party defaults and direct/transitive coverage. It
 accepts feature names, dotted module names and source paths, including planned `.py`
-files under existing source packages. If a syntax error prevents analysis, the briefing
+files under existing source packages. For a new feature, context projects the feature
+and layer from the declared architecture and sets `feature_planned` in JSON. If a
+syntax error prevents analysis, the briefing
 is still available and its violation counts are marked unavailable (`violations: null`
 and `analysis_error` in JSON). Central and wiring modules have explicit JSON flags.
 
