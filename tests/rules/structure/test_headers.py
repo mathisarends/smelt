@@ -21,7 +21,7 @@ def _project(
     write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstructure:\n  contracts:\n    source:\n      match: app\n      {policy}\n",
+            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstyle:\n  overrides:\n    source:\n      match: app\n      {policy}\n",
             "app/module.py": source,
         },
     )
@@ -329,10 +329,14 @@ def test_nested_allow_overrides_outer_policy(tmp_path: Path) -> None:
     "source", ["", '"""Introduction."""\nfrom __future__ import annotations']
 )
 def test_absent_policy_preserves_existing_behavior(tmp_path: Path, source: str) -> None:
-    _project(
+    write_project(
         tmp_path,
-        source,
-        policy="required: [module]",
+        {
+            "app/__init__.py": "",
+            "app/module.py": source,
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
+            "architecture: {packages: {api: {match: app, required: [module]}}}\n",
+        },
     )
 
     assert violations(tmp_path, OPTIONS) == []

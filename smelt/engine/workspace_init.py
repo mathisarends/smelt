@@ -58,7 +58,7 @@ def workspace_drafts(
             continue
         data = yaml.safe_load(render_config(inferred))
         architecture = data.get("architecture", {})
-        architecture.pop("imports", None)
+        architecture.pop("import_graph", None)
         filename = next(
             (name for name in CONFIG_FILENAMES if (root / path / name).exists()),
             CONFIG_FILENAMES[0],

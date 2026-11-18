@@ -362,6 +362,9 @@ def _rule_setting_location(
 
 
 def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...]) -> str:
+    path = tuple(str(item) for item in loc[-2:])
+    if retired := _RETIRED_POLICY_KEYS.get(path) or _RETIRED_POLICY_KEYS.get((key,)):
+        return f"{retired}; see docs/upgrading.md"
     message = f'unknown key "{key}"{did_you_mean(key, known)}'
     if key in _REMOVED_SWITCHES:
         return (
@@ -373,6 +376,30 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
     if key == "preset":
         return message + "; use extends: smelt:recommended for the built-in base"
     return message
+
+
+_RETIRED_POLICY_KEYS = {
+    ("structure",): "structure was replaced by style and architecture.packages",
+    (
+        "architecture",
+        "imports",
+    ): "architecture.imports was renamed to architecture.import_graph",
+    (
+        "style",
+        "contracts",
+    ): "use style.overrides for conventions and architecture.packages for package APIs",
+    (
+        "style",
+        "canonical_exports",
+    ): "canonical_exports moved to architecture.canonical_exports",
+    ("bundle_imports_at",): "bundle_imports_at was renamed to min_imports_to_bundle",
+    ("export_at",): "export_at was renamed to min_importers_to_export",
+    (
+        "module_import_exempt",
+    ): "module_import_exempt was renamed to module_import_exemptions",
+    ("unmirrored",): "unmirrored was renamed to mirror_exclude",
+    ("forbid_mocks_in",): "forbid_mocks_in was renamed to forbidden_mock_paths",
+}
 
 
 def _known_fields(model: type[BaseModel], loc: Sequence[str | int]) -> list[str]:

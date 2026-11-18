@@ -29,7 +29,7 @@ def test_changed_checks_find_new_deep_test_imports(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, public: ['.'], bundle_imports_at: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "from .impl import Item\n",
             "app/api/impl.py": "class Item: pass\n",
@@ -101,7 +101,7 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_module_imports: 1}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_module_imports: 1}\n",
             "app/__init__.py": "",
             "app/client.py": source,
             "app/first.py": "First = 1\n",
@@ -135,7 +135,7 @@ def test_changed_private_definitions_detect_new_names(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_private_definitions: 0}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -206,7 +206,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_constructor_decisions: 0}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -261,7 +261,7 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
             "deploy/docker-compose.yaml": "",
         },
@@ -289,7 +289,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",
@@ -487,7 +487,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + f"\nstructure:\n  contracts:\n    members: {{match: app, {policy}}}\n",
+            + f"\nstyle:\n  overrides:\n    members: {{match: app, {policy}}}\n",
             encoding="utf-8",
         )
         source = f"class Original:\n{decorator}    def emit(self): pass\n"
@@ -509,7 +509,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    members:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n",
+            + "\nstyle:\n  overrides:\n    members:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n",
             encoding="utf-8",
         )
         write_project(
@@ -656,7 +656,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
+            + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -684,7 +684,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
+            + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -714,7 +714,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
+            + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
         write_project(
@@ -738,7 +738,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    names: {match: app, private_modules: forbid}\n",
+            + "\nstyle:\n  overrides:\n    names: {match: app, private_modules: forbid}\n",
             encoding="utf-8",
         )
         write_project(repo, {"app/domain/_legacy.py": ""})
@@ -756,7 +756,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    api: {match: app.domain, bundle_imports_at: 2}\n    style: {match: app, imports: {style: absolute}}\n",
+            + "\n  packages:\n    api: {match: app.domain, min_imports_to_bundle: 2}\nstyle:\n  overrides:\n    style: {match: app, imports: {style: absolute}}\n",
             encoding="utf-8",
         )
         write_project(
@@ -783,7 +783,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    core: {match: app.domain, required: [api]}\n",
+            + "\n  packages:\n    core: {match: app.domain, required: [api]}\n",
             encoding="utf-8",
         )
         write_project(repo, {"app/domain/api.py": ""})
@@ -803,7 +803,7 @@ class TestChangedMode:
         config = repo / "smelt.yml"
         config.write_text(
             config.read_text()
-            + "\nstructure:\n  contracts:\n    data: {match: app.infra, public: ['.']}\n",
+            + "\n  packages:\n    data: {match: app.infra, public: ['.']}\n",
             encoding="utf-8",
         )
         _git(repo, "add", "-A")
@@ -872,7 +872,7 @@ class TestChangedMode:
             repo,
             {
                 "smelt.yml": LAYERED_CONFIG
-                + "    presentation: {path: presentation}\n  imports: {transitive: true}\n",
+                + "    presentation: {path: presentation}\n  import_graph: {transitive: true}\n",
                 "app/__init__.py": "from app.infra.db import Db\n",
                 "app/infra/db.py": "class Db: pass\n",
                 "app/presentation/api.py": "class Api: pass\n",

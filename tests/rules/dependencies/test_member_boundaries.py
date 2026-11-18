@@ -84,7 +84,7 @@ def test_type_checking_imports_follow_root_policy(tmp_path: Path, mode: str) -> 
         {
             "packages/core/src/core/model.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from api.http import Order\n",
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + f"  imports: {{type_checking: {mode}}}\n",
+            + f"  import_graph: {{type_checking: {mode}}}\n",
         },
     )
 
@@ -207,7 +207,7 @@ def test_indirect_imports_do_not_require_direct_dependency_declarations(
         tmp_path,
         {
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + "  imports: {transitive: true}\n",
+            + "  import_graph: {transitive: true}\n",
             "packages/core/pyproject.toml": '[project]\nname = "core-lib"\ndependencies = ["storage"]\n',
             "packages/core/src/core/model.py": "from storage.db import Order\n",
             "packages/storage/pyproject.toml": '[project]\nname = "storage"\n',

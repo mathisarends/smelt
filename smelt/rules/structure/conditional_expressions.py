@@ -46,7 +46,7 @@ class NestedConditionalExpression(Rule):
             "rules: {complexity/nested-conditional-expression: hint}, or select SMT359. "
             "Package overrides and reasoned suppressions are supported."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

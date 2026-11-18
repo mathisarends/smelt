@@ -67,7 +67,7 @@ def test_rule_is_opt_in_and_closest_off_wins(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": CONFIG
-            + "structure:\n  contracts:\n    legacy: {match: app, rules: {visibility/misplaced-dunder-all: off}}\n"
+            + "style:\n  overrides:\n    legacy: {match: app, rules: {visibility/misplaced-dunder-all: off}}\n"
         },
     )
     assert violations(tmp_path, OPTIONS) == []

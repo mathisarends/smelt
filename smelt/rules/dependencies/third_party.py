@@ -41,7 +41,7 @@ class ThirdPartyDenied(Rule):
         rationale=(
             "Inner layers should not know about frameworks, drivers or SDKs. Keeping them "
             "out makes the core portable and cheap to test. With "
-            "architecture.imports.transitive, the importing layer's policy also "
+            "architecture.import_graph.transitive, the importing layer's policy also "
             "applies to packages reached through project modules, such as "
             "domain -> shared.utils -> sqlalchemy. A shortest chain includes each "
             "import's source line. External packages are leaves: their own source "
@@ -57,8 +57,8 @@ class ThirdPartyDenied(Rule):
             "architecture.layers.<layer>.third_party.default",
             "architecture.layers.<layer>.third_party.allow",
             "architecture.layers.<layer>.third_party.deny",
-            "architecture.imports.transitive",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.transitive",
+            "architecture.import_graph.type_checking",
         ),
     )
 

@@ -73,7 +73,7 @@ def test_opt_in_override_and_reasoned_suppression(tmp_path: Path) -> None:
         tmp_path,
         source,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {layout/callee-before-caller: off}}\n",
+        + "style:\n  overrides:\n    legacy: {match: app, rules: {layout/callee-before-caller: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

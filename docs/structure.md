@@ -2,17 +2,17 @@
 
 ## Project-wide options and package overrides
 
-Source conventions are defined once. Set an option directly under `structure`
+Source conventions are defined once. Set an option directly under `style`
 to apply it to the whole project, and in a package contract to apply or override
 it for matching packages. The closest contract that sets an option wins, then
-`structure`, then the built-in default:
+`style`, then the built-in default:
 
 ```yaml
-structure:
+style:
   future_annotations: when-needed
   max_positional_parameters: 3
   dataclass_options: [slots]
-  contracts:
+  overrides:
     legacy:
       match: app.legacy
       max_positional_parameters: 6
@@ -22,7 +22,7 @@ structure:
 Every option has one activation rule:
 
 - An option that belongs to a single rule enables that rule where it applies.
-  Under `structure` that is the whole project; in a contract it is the matching
+  Under `style` that is the whole project; in a contract it is the matching
   packages. `max_positional_parameters: 3` therefore enables SMT345 and
   `max_comprehension_loops: 2` enables SMT363.
 - Selecting the rule in `rules` or with `--select` enables it everywhere. Where
@@ -35,7 +35,7 @@ Every option has one activation rule:
 | --- | --- | --- |
 | `imports` | SMT308 | none; nothing is checked without a style |
 | `max_module_imports` | SMT110 | 20 |
-| `module_import_exempt` | SMT110 | `[facades, composition_root]`; does not enable the rule |
+| `module_import_exemptions` | SMT110 | `[facades, composition_root]`; does not enable the rule |
 | `module_docstrings` | SMT309 | none |
 | `future_annotations` | SMT310, SMT311 | none |
 | `private_modules` | SMT312 | none |
@@ -51,11 +51,10 @@ Every option has one activation rule:
 | `bases` | SMT353 | none |
 | `errors` | SMT354 | none |
 
-`required`, `public`, `bundle_imports_at`, `export_at`, `count_tests` and `rules`
-describe a concrete package and exist only in contracts. Use top-level `rules`
-for project-wide severities rather than a contract that matches the root
-package. `smelt context` shows each effective option with the contract that set
-it, or `structure` for a project-wide value.
+`architecture.packages` sets `required`, `public`, `min_imports_to_bundle`,
+`min_importers_to_export` and `count_tests`. Use `style.overrides` for
+conventions and package-level `rules`. Top-level `rules` set project-wide
+severities. `smelt context` shows the source of each effective option.
 
 ## Source conventions
 
@@ -68,7 +67,7 @@ values before construction or consumption. Setting `call_argument_kinds` (all
 three by default) both enables the review and narrows it:
 
 ```yaml
-structure:
+style:
   call_argument_kinds: [await]
 ```
 
@@ -91,7 +90,7 @@ responsibility of SMT420. Unresolved receivers are skipped.
 `private_attribute_boundary` defaults to `module`; `package` permits
 attribute cooperation within the same immediate Python package, including its
 initializer. Private module symbols always use the module boundary.
-Subpackages remain separate boundaries. Setting the option under `structure` or
+Subpackages remain separate boundaries. Setting the option under `style` or
 in a package contract enables the rule for that scope, and `smelt context` shows
 the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
@@ -100,7 +99,7 @@ depending on the review as an error gate.
 Opt-in `complexity/complex-comprehension` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
 `rules: {complexity/complex-comprehension: hint}`, or set
-`max_comprehension_loops` (default 1) under `structure` or in a package contract
+`max_comprehension_loops` (default 1) under `style` or in a package contract
 to enable it with a limit, for example to permit intentional flattening in one
 package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
@@ -108,14 +107,14 @@ exact triggers and repairs that preserve generator laziness.
 
 Opt-in `complexity/constructor-logic` (SMT364) reviews decision nodes in `__init__` and
 `__post_init__`. Enable `rules: {complexity/constructor-logic: hint}`, or set
-`max_constructor_decisions` (default 2) under `structure` or in a package
+`max_constructor_decisions` (default 2) under `style` or in a package
 contract. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
 Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
 many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
-Setting `max_private_definitions` (default 12, zero allowed) under `structure`
+Setting `max_private_definitions` (default 12, zero allowed) under `style`
 or in a package contract enables the rule for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
@@ -130,7 +129,7 @@ there is no automatic rewrite or required `models.py` filename.
 Choose canonical configuration filenames once per project:
 
 ```yaml
-structure:
+style:
   file_naming:
     yaml_extension: yaml        # yaml or yml, without a dot
     compose_basename: compose   # compose or docker-compose
@@ -179,11 +178,11 @@ To bundle a facade import with its implementation imports, set a package API
 threshold explicitly:
 
 ```yaml
-structure:
-  contracts:
+architecture:
+  packages:
     application-api:
       match: backend.features.*.application
-      bundle_imports_at: 2
+      min_imports_to_bundle: 2
 ```
 
 SMT108 reviews `from ...application import PasswordHasher` alongside
@@ -200,8 +199,8 @@ Python packages matched by a dotted pattern, independently of feature or layer
 names. A whole-segment `*` in `match` selects one package segment.
 
 ```yaml
-structure:
-  contracts:
+architecture:
+  packages:
     feature-shape:
       match: app.features.*
       required: [application.api, domain]
@@ -249,9 +248,9 @@ Make later arguments keyword-only for the whole project, or for one package
 with a contract:
 
 ```yaml
-structure:
+style:
   max_positional_parameters: 3
-  contracts:
+  overrides:
     named-arguments:
       match: app.api
       max_positional_parameters: 2
@@ -308,8 +307,8 @@ Require descriptive module/package names while keeping private helpers inside
 them:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     module-names:
       match: app
       private_modules: forbid
@@ -343,8 +342,8 @@ update imports and facade exports; Smelt never renames files or symbols itself.
 To keep field initialization readable, opt into `SMT314`:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     instance-fields:
       match: app
       rules:
@@ -380,8 +379,8 @@ then assigning each field while preserving evaluation timing.
 `isinstance`/`elif` chains over the same simple name:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     event-dispatch:
       match: app
       type_dispatch:
@@ -441,8 +440,8 @@ packages. This example uses absolute imports by default and relative imports
 within infrastructure packages where at most one leading dot is needed:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     default-style:
       match: app
       imports: {style: absolute}
@@ -463,7 +462,7 @@ The most specific enclosing package with an `imports` policy wins. Conflicting
 styles for the same concrete package are config errors. Initializers and namespace
 packages use their logical package, independently of filesystem source roots.
 SMT308 reports the expected form without rewriting bindings or aliases. As with
-other import rules, `architecture.imports.type_checking` controls guarded imports.
+other import rules, `architecture.import_graph.type_checking` controls guarded imports.
 Ruff's [TID252](https://docs.astral.sh/ruff/rules/relative-imports/) already covers
 forbidding parent-relative imports; Smelt additionally checks the preferred form
 under these package contracts.
@@ -474,10 +473,10 @@ For total coupling across all project packages, configure
 [SMT110 `imports/excess-module-imports`](rules/SMT110.md):
 
 ```yaml
-structure:
+style:
   max_module_imports: 20
-  module_import_exempt: [facades, composition_root]  # default; [] checks both
-  contracts:
+  module_import_exemptions: [facades, composition_root]  # default; [] checks both
+  overrides:
     core:
       match: app.core
       max_module_imports: 12
@@ -487,10 +486,10 @@ Setting `max_module_imports` activates this hint for its scope, and the closest
 package threshold overrides the project-wide limit. Selecting the rule in `rules`
 or with `--select` without a threshold uses a limit of 20.
 Counts include direct internal imports across every root package, follow
-`architecture.imports.type_checking`, and retain facade paths without following
+`architecture.import_graph.type_checking`, and retain facade paths without following
 re-exports to definitions. Repeated imports count once. Standard-library and
 third-party imports never count. Package initializers and declared composition
-roots are exempt unless `module_import_exempt` removes that exemption globally
+roots are exempt unless `module_import_exemptions` removes that exemption globally
 or in a package contract. `[]` disables both exemptions. This design review has no
 automatic rewrite: split cohesive responsibilities or review deliberate facades
 and their import cycles.
@@ -506,11 +505,11 @@ from app.features.users.application.delete_user import DeleteUser
 Enable an advisory threshold on the package that would own the common API:
 
 ```yaml
-structure:
-  contracts:
+architecture:
+  packages:
     application-api:
       match: app.features.*.application
-      bundle_imports_at: 3
+      min_imports_to_bundle: 3
 ```
 
 SMT108 suggests the matching `application` package facade once one outside file
@@ -519,7 +518,7 @@ multiple symbols from one module, and imports in separate callers do not inflate
 the count. Imports from inside the package and symbols already exported by its
 facade do not count. The threshold is configurable and disabled when omitted.
 
-For overlapping `bundle_imports_at` and `export_at` contracts matching the same
+For overlapping `min_imports_to_bundle` and `min_importers_to_export` contracts matching the same
 concrete package, the pattern with more literal segments wins. An exact package
 match overrides a wildcard. Identical equally specific settings produce one
 decision; conflicting equally specific settings are configuration errors.
@@ -536,7 +535,7 @@ These package API checks also cover discovered tests and `conftest.py` under
 `project.test_roots`, for example `backend/tests`. Tests are outside callers even
 when their configured test root is inside the contracted package. Thus
 `public: ['.']` rejects deep test imports with [SMT107](rules/SMT107.md), and
-`bundle_imports_at` reviews per-test-file fanout with [SMT108](rules/SMT108.md).
+`min_imports_to_bundle` reviews per-test-file fanout with [SMT108](rules/SMT108.md).
 Production implementation imports inside the package remain allowed.
 `tests.quality_exclude` only affects test-quality reviews; use ordinary reasoned
 suppressions for deliberate API exceptions. Project exclusions still apply.
@@ -555,11 +554,11 @@ To find names that are widely imported but missing from a facade, configure
 [SMT109 `architecture/missing-facade-export`](rules/SMT109.md):
 
 ```yaml
-structure:
-  contracts:
+architecture:
+  packages:
     browser-api:
       match: app.browser
-      export_at: 3
+      min_importers_to_export: 3
       count_tests: false  # default; true also counts discovered test files
 ```
 
@@ -582,7 +581,7 @@ inspection calls are skipped. Arbitrary runtime mutation is not inferred.
 Static `__all__` is respected; an existing binding excluded
 from it needs only an `__all__` change. A contract that forbids access to its own
 facade does not receive export suggestions. `count_tests: true` requires
-`export_at`, whose minimum is two importers.
+`min_importers_to_export`, whose minimum is two importers.
 
 The cycle check tests the proposed facade-to-definition dependency against the
 analyzed explicit runtime import graph and reports a deterministic return path.
@@ -603,8 +602,8 @@ Module docstrings and future imports can be governed independently:
 project:
   python_version: "3.14"
 
-structure:
-  contracts:
+style:
+  overrides:
     source-conventions:
       match: app
       module_docstrings: forbid
@@ -674,8 +673,8 @@ Enable `SMT313 layout/definition-order` to put the public interface first while 
 prerequisites, binding versions and runtime boundaries intact:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     definition-order:
       match: app
       ordering:
@@ -784,8 +783,8 @@ rename fixer is implied by this option.
 Adopt visibility and helper-placement conventions per package:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     internal-helpers:
       match: app
       rules:

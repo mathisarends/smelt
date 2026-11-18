@@ -26,7 +26,7 @@ class CrossFeatureImport(Rule):
         rationale=(
             "Features are independent slices. Direct imports between them couple release "
             "cycles and make it impossible to reason about one feature in isolation. "
-            "With architecture.imports.transitive, allowed pairs also apply to all "
+            "With architecture.import_graph.transitive, allowed pairs also apply to all "
             "reachable feature modules, with a shortest import chain as evidence."
         ),
         bad="# billing/infra/charges.py\nfrom gateway.features.voice.infra.sql import CallLog",
@@ -42,8 +42,8 @@ class CrossFeatureImport(Rule):
         config=(
             "architecture.cross_feature.default",
             "architecture.cross_feature.allow",
-            "architecture.imports.transitive",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.transitive",
+            "architecture.import_graph.type_checking",
         ),
     )
 
@@ -127,7 +127,7 @@ class SharedImportsFeature(Rule):
             "Shared code and central layers such as a platform package are importable by "
             "every feature. If they depend on a feature, every feature transitively "
             "depends on that feature and the slices collapse. With "
-            "architecture.imports.transitive, paths through arbitrary project helpers "
+            "architecture.import_graph.transitive, paths through arbitrary project helpers "
             "and facades are checked and reported with a shortest import chain."
         ),
         bad="# gateway/shared/money.py\nfrom gateway.features.billing.domain import Currency",
@@ -136,8 +136,8 @@ class SharedImportsFeature(Rule):
         config=(
             "architecture.shared",
             "architecture.modules",
-            "architecture.imports.transitive",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.transitive",
+            "architecture.import_graph.type_checking",
         ),
     )
 

@@ -25,8 +25,8 @@ def test_contracts_follow_arbitrary_packages_and_namespace_portions(
             project:
               root_packages: [acme]
               source_roots: {source_roots}
-            structure:
-              contracts:
+            architecture:
+              packages:
                 library:
                   match: acme
                   required: [commands, records]
@@ -62,8 +62,8 @@ def test_overlapping_contracts_remain_visible_in_context(tmp_path: Path) -> None
             "smelt.yml": """
             version: 1
             project: {root_packages: [lib]}
-            structure:
-              contracts:
+            architecture:
+              packages:
                 whole: {match: lib, public: [api.**]}
                 nested: {match: lib.api, public: ['.']}
         """,
@@ -92,9 +92,9 @@ def test_policy_for_prefers_the_closest_contract_then_structure(
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
+            style:
               max_positional_parameters: 3
-              contracts:
+              overrides:
                 api:
                   match: app.api
                   max_positional_parameters: 2
@@ -116,8 +116,8 @@ def test_policy_for_prefers_the_closest_contract_then_structure(
     assert (nested.name, nested.origin) == ("api", 'contract "api"')
     assert outer is not None
     assert (outer.name, outer.origin, outer.project_wide) == (
-        "structure",
-        "structure",
+        "style",
+        "style",
         True,
     )
     assert contracts.policy_for("app.core", "dataclass_options") is None

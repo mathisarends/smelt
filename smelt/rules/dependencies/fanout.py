@@ -53,16 +53,16 @@ class PackageImportFanout(Rule):
             "advisory threshold. Declare public: ['.'] to enforce facade-only imports."
         ),
         config=(
-            "structure.contracts",
-            "architecture.imports.type_checking",
+            "architecture.packages",
+            "architecture.import_graph.type_checking",
             "project.test_roots",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         usage: FacadeUsage | None = None
-        for contract in ctx.contracts.facade_policies("bundle_imports_at"):
-            threshold = contract.spec.bundle_imports_at
+        for contract in ctx.contracts.facade_policies("min_imports_to_bundle"):
+            threshold = contract.spec.min_imports_to_bundle
             if threshold is None:
                 continue
             callers: dict[str, dict[str, ImportDetail]] = defaultdict(dict)
@@ -106,7 +106,7 @@ class PackageImportFanout(Rule):
                     expected={
                         "contract": contract.name,
                         "package": contract.package,
-                        "bundle_imports_at": threshold,
+                        "min_imports_to_bundle": threshold,
                         "modules": sorted(targets),
                         "count": len(targets),
                         **evidence,

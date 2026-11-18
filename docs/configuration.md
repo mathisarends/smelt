@@ -169,10 +169,11 @@ Each member may add its own `smelt.yml`, which inherits the root implicitly:
 rules:
   complexity: {severity: off, reason: Migrating legacy handlers to the shared style.}
   visibility/internal-public-member: error
-structure:
+style:
   max_positional_parameters: 2
   reasons: {max_positional_parameters: Prefer named arguments in service handlers.}
-  contracts:
+architecture:
+  packages:
     http: {match: api.http, public: ['.']}
 ignore:
   - {rule: tests/excess-patches, paths: [tests/legacy/**], reason: Migrating.}
@@ -180,8 +181,9 @@ project:
   exclude: [{path: src/api/generated/**, reason: Generated client.}]
 ```
 
-- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`, `debt`,
-  `ignore` and `architecture` (except `architecture.imports` and `architecture.members`). A member cannot
+- **Allowed keys:** `version`, `project.exclude`, `style`, `rules`, `debt`,
+  `ignore` and `architecture`. The graph policy, member boundaries and canonical
+  exports are configured at the root. A member cannot
   set `extends`, `tests`, `suppressions` or other `project` keys. Smelt
   reports each of these as an error that names the member file.
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
@@ -189,7 +191,7 @@ project:
 - **`rules` apply by path** to the member's sources and tests. The root's
   setting comes first, then the member's, then the closest package contract.
   See [rule precedence](rule-selection.md#workspace-members).
-- **`structure` options become a contract** for each of the member's packages.
+- **`style` options become a contract** for each of the member's packages.
   The contract is named after the member path, or `member:package` when the
   member has several packages. A root contract on a nested package, or a member
   contract, still overrides it.
@@ -218,8 +220,8 @@ architecture:
 
 - It **replaces** the root `architecture` for the member's packages. It is not
   merged with it. The root architecture still governs the root project and
-  every member without its own. An omitted or empty mapping (`architecture: {}`)
-  inherits the root architecture. If the root names a package governed by a member,
+  every member without its own. A member that only supplies `architecture.packages`
+  also inherits the root architecture. If the root names a package governed by a member,
   move the entry to that member's config or remove the member architecture.
 - Every module it names (`features`, `shared`, `composition_root`, `modules`,
   `wiring`) must lie inside the member's own packages. Layers without features
@@ -227,7 +229,7 @@ architecture:
 - It judges only imports **inside** the member: layers, features, shared code,
   composition roots, third-party policy and cycles. Imports from one member
   into another are not judged by either member's architecture.
-- `architecture.imports` (which imports count) and `architecture.members`
+- `architecture.import_graph` (which imports count) and `architecture.members`
   (boundaries between members) are set once in the workspace root.
 - `smelt context` for a member feature or path shows the member's layers. In
   strict coverage mode, SMT306 and SMT305 use the architecture that governs each
@@ -262,9 +264,9 @@ cannot be lowered even with a reason. Root rules and contracts may also use the
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
-A member that changes a source convention set in root `structure` must give a
+A member that changes a source convention set in root `style` must give a
 nonempty reason under `reasons` in the same mapping. This applies to thresholds,
-lists and other package-level options, in member `structure` and in individual
+lists and other package-level options, in member `style` and in individual
 member contracts. A member contract also needs a reason if it changes a root
 contract's value and its match can replace that contract. Both tighter and looser
 values require a reason. Copying a root value or setting an option that the root
@@ -273,11 +275,11 @@ leaves open needs no reason. Reasons appear under the member's settings in
 
 ```yaml
 # packages/legacy/smelt.yml
-structure:
+style:
   max_positional_parameters: 8
   reasons:
     max_positional_parameters: Keep positional calls supported by the legacy API.
-  contracts:
+  overrides:
     generated:
       match: legacy.generated
       dataclass_options: []
@@ -285,7 +287,8 @@ structure:
         dataclass_options: The generator owns dataclass decorators in this package.
 ```
 
-`forbidden_names`, `file_naming` and `canonical_exports` are root-only.
+`style.forbidden_names`, `style.file_naming` and
+`architecture.canonical_exports` are root-only.
 
 ### Workspace initialization
 
@@ -331,8 +334,8 @@ is a configuration error rather than a boundary that silently checks nothing.
 A source member matching no key is unrestricted.
 If several keys match, their allowances combine. Imports inside the same member
 always pass. Member-local wiring or shared roles do not bypass these boundaries.
-Only direct production imports count, regardless of `architecture.imports.transitive`;
-`TYPE_CHECKING` imports follow the root `architecture.imports.type_checking` setting.
+Only direct production imports count, regardless of `architecture.import_graph.transitive`;
+`TYPE_CHECKING` imports follow the root `architecture.import_graph.type_checking` setting.
 
 `project.workspace: uv` also enables [SMT112](rules/SMT112.md)
 `architecture/undeclared-member-dependency`. A production import of another member
@@ -377,13 +380,13 @@ the default grouping remains per rule. `--show-coverage` includes
 API ownership can be stated separately from export-frequency review:
 
 ```yaml
-structure:
+architecture:
   canonical_exports:
     app.error.types.FeatureError: app.FeatureError
-  contracts:
+  packages:
     errors:
       match: app.error
-      export_at: 3
+      min_importers_to_export: 3
 ```
 
 Both names must resolve to the same analyzed symbol through bounded static
@@ -399,7 +402,7 @@ Cycle analysis can separately select exact module edges and annotation participa
 
 ```yaml
 architecture:
-  imports:
+  import_graph:
     cycles: [modules]
     type_checking: include
     type_checking_cycles: ignore
@@ -416,8 +419,8 @@ eager import-time failure.
 Fixed patterns need no additional policy. Real parameters stay with their concept:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     ordering-options:
       match: harnessed
       ordering:
@@ -461,10 +464,10 @@ retain their policy activation. Declaring such a policy is enough to check it.
 The catalog distinguishes those checks from explicitly selected fixed patterns.
 
 Source-convention options such as `max_positional_parameters`,
-`future_annotations` or `dataclass_options` can be set directly under `structure`
+`future_annotations` or `dataclass_options` can be set directly under `style`
 for the whole project and overridden in package contracts. Setting an option that
 belongs to one rule enables that rule for its scope; see
-[project-wide options](structure.md#project-wide-options-and-package-overrides).
+[project-wide options](style.md#project-wide-options-and-package-overrides).
 
 ```bash
 smelt check --select visibility/internal-public-member,tests/unbounded-wait

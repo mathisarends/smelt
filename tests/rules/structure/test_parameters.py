@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 POLICY = """\
 version: 1
 project: {root_packages: [app]}
-structure:
-  contracts:
+style:
+  overrides:
     signatures:
       match: app
       max_positional_parameters: {limit}
@@ -176,7 +176,7 @@ def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure: {max_positional_parameters: 1}
+            style: {max_positional_parameters: 1}
             """,
             "app/__init__.py": "",
             "app/browser.py": "def connect(user, run):\n    return 1\n",
@@ -184,10 +184,10 @@ def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
     )
     [finding] = violations(root)
     assert finding.message == (
-        "connect accepts 2 positional parameters; structure allows 1"
+        "connect accepts 2 positional parameters; style allows 1"
     )
     assert finding.expected is not None
-    assert finding.expected["contract"] == "structure"
+    assert finding.expected["contract"] == "style"
 
 
 def test_rule_selection_without_a_limit_uses_the_default(tmp_path: Path) -> None:
@@ -219,8 +219,8 @@ def test_contract_activation_is_limited_to_its_package(tmp_path: Path) -> None:
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 api: {match: app.api, max_positional_parameters: 1}
             """,
             "app/__init__.py": "",

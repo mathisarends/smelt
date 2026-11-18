@@ -31,7 +31,7 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
         assert settings["patternProperties"][f"^{rule.code}$"] == entry
-    for contract in ("PackageContract", "MemberPackageContract"):
+    for contract in ("StyleOverride", "MemberStyleOverride"):
         assert schema["$defs"][contract]["properties"]["rules"] == {
             "$ref": "#/$defs/SourceRuleSettings"
         }
@@ -49,11 +49,11 @@ def test_editor_schema_accepts_member_style_reasons() -> None:
     schema = config_json_schema()
     definitions = schema["$defs"]
 
-    assert {"$ref": "#/$defs/MemberStructureConfig"} in schema["properties"][
-        "structure"
-    ]["anyOf"]
-    assert "reasons" in definitions["MemberStructureConfig"]["properties"]
-    assert "reasons" in definitions["MemberPackageContract"]["properties"]
+    assert {"$ref": "#/$defs/MemberStyleConfig"} in schema["properties"]["style"][
+        "anyOf"
+    ]
+    assert "reasons" in definitions["MemberStyleConfig"]["properties"]
+    assert "reasons" in definitions["MemberStyleOverride"]["properties"]
 
 
 def test_editor_schema_does_not_advertise_removed_switches() -> None:
@@ -65,7 +65,7 @@ def test_editor_schema_does_not_advertise_removed_switches() -> None:
         key.startswith("review_") or key.startswith("require_") for key in tests
     )
     assert "enabled" not in schema["$defs"]["OrderingConfig"]["properties"]
-    contract = schema["$defs"]["PackageContract"]["properties"]
+    contract = schema["$defs"]["StyleOverride"]["properties"]
     assert (
         not {"member_visibility", "static_methods", "instance_assignments"}
         & contract.keys()

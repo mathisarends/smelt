@@ -553,7 +553,7 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
         [
             "",
             "# Optional naming convention:",
-            "# structure:",
+            "# style:",
             "#   forbidden_names: [utils, helpers]",
             "",
             "tests:",
@@ -777,7 +777,7 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         out.extend(["  cross_feature:", "    default: deny", *_allow_lines(inferred)])
     out.extend(
         [
-            "  imports:",
+            "  import_graph:",
             "    transitive: false  # direct imports only; true checks all reachable architectural and third-party dependencies",
             "    type_checking: include",
         ]

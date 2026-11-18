@@ -26,7 +26,7 @@ class DuplicateLiteralType(Rule):
         bad='from typing import Annotated, Literal\nfrom pydantic import Field\n\ntype ClickButton = Annotated[Literal["left", "right"], Field(description="Mouse button")]\n\ndef click_message(button: Literal["left", "right"]) -> str:\n    return button',
         good='from typing import Annotated, Literal\nfrom pydantic import Field\n\ntype MouseButton = Literal["left", "right"]\ntype ClickButton = Annotated[MouseButton, Field(description="Mouse button")]\n\ndef click_message(button: MouseButton) -> str:\n    return button',
         fix="Define or reuse a shared plain type alias when the occurrences describe the same concept. Keep Field descriptions and constraints on the Annotated wrappers that need them. Choose an owning module that respects architecture boundaries and avoids import cycles. Review Python-version, runtime annotation and schema behavior before changing aliases; use TypeAlias syntax where the supported Python version requires it. Suppress intentional independent contracts with a reason. No automatic rewrite is performed; analyzed code is never executed.",
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

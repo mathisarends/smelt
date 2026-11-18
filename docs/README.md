@@ -7,7 +7,7 @@ guide for the decision or task at hand:
 | --- | --- |
 | See new features and migrate from an earlier release | [Upgrading Smelt](upgrading.md) and the [changelog](../CHANGELOG.md) |
 | Describe boundaries, features, layers or strict policy coverage | [Architecture as code](architecture.md) |
-| Define package interfaces and source conventions | [Package contracts and source conventions](structure.md) |
+| Define package interfaces and source conventions | [Package contracts and source conventions](style.md) |
 | Configure test layout and quality checks | [Test policies](testing.md) |
 | Understand configuration, overrides and editor support | [Configuration](configuration.md) |
 | Choose checks and understand what enables them | [Rule activation](rule-selection.md) and the [rule catalog](rules/README.md) |

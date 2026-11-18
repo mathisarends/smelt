@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+### Breaking configuration layout
+
+- `style` sets project-wide conventions and `style.overrides` sets package style
+  and rule choices. `architecture.packages` defines public and required modules
+  with facade thresholds. Canonical exports now belong to `architecture`.
+- `architecture.import_graph` configures dependency analysis, while `style.imports`
+  configures Python import syntax. Threshold and exemption keys have clearer
+  names. See the [0.13 migration guide](docs/upgrading.md#012-to-013).
+
 ### Context
 
 - `smelt context` now identifies the feature and layer of a planned path inside
@@ -16,9 +25,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 ### Workspace policy and initialization
 
 - **Member weakening requires a reason.** Lowering inherited rule severity or
-  setting `off` in member rules or package contracts now requires
+  setting `off` in member rules or style overrides now requires
   `{severity: ..., reason: "..."}`. The guard resolves selectors, catalog
-  defaults and root policy activation/contracts before comparing. A winning
+  defaults and root policy activation and overrides before comparing. A winning
   individual entry needs its own reason. Strict coverage still cannot be
   lowered. Root settings also accept the object form; short values remain valid.
 - `smelt init` in a uv workspace writes shared root policy and member config
@@ -39,7 +48,7 @@ current configuration and complete rule contracts, see the [README](README.md),
   root-style/member-architecture/root-boundary workflow. A portable uv fixture
   covers inheritance, different architectures, cross-member imports and debt.
 - Member source conventions that change a root setting now require a nonempty
-  reason under `reasons`, in member `structure` or the relevant member contract.
+  reason under `reasons`, in member `style` or the relevant style override.
   Add reasons to existing overrides when upgrading.
 
 ### Workspace member boundaries
@@ -79,7 +88,7 @@ the [upgrade checklist](docs/upgrading.md#012-to-013).
   `visibility`, `modeling`, `typing`, `complexity`, `idioms`, `frameworks`,
   `tests` and `meta`. The family is the first segment of the name.
 - A family name selects all of its rules wherever rule names are accepted:
-  `rules: {modeling: warning}`, package-contract `rules`, `--select typing` and
+  `rules: {modeling: warning}`, style-override `rules`, `--select typing` and
   `--ignore complexity`. Precedence is family, then rule group, then individual
   rule, so `{typing: warning, typing/anonymous-tuple-type: off}` works as
   expected. `smelt explain <family>` lists a family's rules.
@@ -99,11 +108,11 @@ accepted in `rules`, `--select`, `--ignore` or inline suppressions:
 | --- | --- | --- | --- |
 | SMT325 | SMT309 | `layout/module-docstring-convention` | One rule follows `module_docstrings: require` or `forbid`. Activation is unchanged: either policy enables it. |
 | SMT326 | SMT323 | `modeling/forbidden-base-class-affix` | Reports both a `Base` prefix and a `Base` suffix. The payload names the `position`. Projects that enabled only one of the two now see both. |
-| SMT332 | SMT331 | `layout/file-name-convention` | `structure.file_naming.yaml_extension` and `compose_basename` produce one finding per file. That finding lists every correction, for example `filename must use .yml and compose: ...`. The payload holds one key per violated option plus the corrected `path`. |
-| SMT342 | SMT341 | `modeling/str-enum-value-convention` | New option `structure.str_enum_values: explicit` (default) or `auto`. The single rule enforces whichever is chosen. The payload adds `str_enum_values`. |
+| SMT332 | SMT331 | `layout/file-name-convention` | `style.file_naming.yaml_extension` and `compose_basename` produce one finding per file. That finding lists every correction, for example `filename must use .yml and compose: ...`. The payload holds one key per violated option plus the corrected `path`. |
+| SMT342 | SMT341 | `modeling/str-enum-value-convention` | New option `style.str_enum_values: explicit` (default) or `auto`. The single rule enforces whichever is chosen. The payload adds `str_enum_values`. |
 | SMT358 | SMT357 | `modeling/implicit-duration-unit` | Reports duration names without a unit and inline duration literals. The payload `kind` is `constant`, `field`, `parameter` or the new `literal`. Projects that enabled only one form now see both. |
-| SMT365 | SMT339 | `visibility/foreign-private-access` | Reports imports and reads of another module's private symbols, plus accesses to private attributes owned by another module. The payload `kind` is `symbol` or `attribute`. `structure.private_attribute_boundary` still applies only to attributes. Projects that enabled only one form now see both. |
-| SMT366 | SMT340 | `complexity/inline-call-argument` | Reports awaited results, eager comprehensions and builtin reductions passed directly as call arguments. New option `structure.call_argument_kinds` (default `[await, comprehension, aggregate]`) narrows the review. The payload `kind` is `await`, `comprehension` or `aggregate`. |
+| SMT365 | SMT339 | `visibility/foreign-private-access` | Reports imports and reads of another module's private symbols, plus accesses to private attributes owned by another module. The payload `kind` is `symbol` or `attribute`. `style.private_attribute_boundary` still applies only to attributes. Projects that enabled only one form now see both. |
+| SMT366 | SMT340 | `complexity/inline-call-argument` | Reports awaited results, eager comprehensions and builtin reductions passed directly as call arguments. New option `style.call_argument_kinds` (default `[await, comprehension, aggregate]`) narrows the review. The payload `kind` is `await`, `comprehension` or `aggregate`. |
 
 SMT310 `typing/forbidden-future-annotations` and SMT311
 `typing/redundant-future-annotations` deliberately stay separate. SMT310 is a
@@ -232,21 +241,21 @@ conventions were split between options under `structure` and package contracts.
 Some options existed at both levels, and some enabled their rule while others did
 not.
 
-- **Shared options.** `structure` and package contracts now share one set of
+- **Shared options.** `style` and package overrides now share one set of
   source-convention options: `imports`, `max_module_imports`,
-  `module_import_exempt`, `module_docstrings`, `future_annotations`,
+  `module_import_exemptions`, `module_docstrings`, `future_annotations`,
   `private_modules`, `private_attribute_boundary`, `ordering`, `type_dispatch`,
   `max_positional_parameters`, `max_comprehension_loops`,
   `max_constructor_decisions`, `max_private_definitions`,
   `call_argument_kinds`, `str_enum_values`, `dataclass_options`, `bases` and
-  `errors`. A value under `structure` applies to the whole project. The closest
-  contract that sets the same option overrides it.
-- **Contract-only options.** `required`, `public`, `bundle_imports_at`,
-  `export_at`, `count_tests` and `rules` stay contract-only. Project-wide
-  settings no longer need a contract that matches the root package.
+  `errors`. A value under `style` applies to the whole project. The closest
+  package override that sets the same option takes precedence.
+- **Package-only options.** Set `required`, `public`, `min_imports_to_bundle`,
+  `min_importers_to_export` and `count_tests` in `architecture.packages`.
+  Set package-specific `rules` in `style.overrides`.
 - **Uniform activation.** An option that belongs to a single rule now enables
-  that rule wherever the option applies: the whole project under `structure`,
-  the matching packages in a contract. This is new for:
+  that rule wherever the option applies. Direct `style` options apply to the
+  whole project and override options apply to matching packages. This is new for:
   - `private_attribute_boundary` (SMT339)
   - `call_argument_kinds` (SMT340)
   - `str_enum_values` (SMT341)
@@ -255,9 +264,9 @@ not.
   - `max_private_definitions` (SMT367)
 
   Each of these previously only configured its rule. `ordering` still only
-  configures `layout/definition-order`, and `module_import_exempt` only modifies
+  configures `layout/definition-order`, and `module_import_exemptions` only modifies
   SMT110.
-- **Activation scope.** An activation that comes from a package contract option
+- **Activation scope.** An activation that comes from a package override option
   now applies only to that package. Before, for example, a contract's
   `max_module_imports` enabled SMT110 and the rule then fell back to the global
   limit elsewhere.
@@ -270,15 +279,15 @@ not.
   `explicit` and the full kind and exemption lists). The defaults are unchanged
   and documented in the schema and in
   [structure.md](docs/structure.md#project-wide-options-and-package-overrides).
-- **Conflict detection.** Two equally specific contracts that set different
+- **Conflict detection.** Two equally specific overrides that set different
   values of any shared option for the same package are now a configuration
   error. Before, only import style, docstring, future-annotation, private-module,
   private-attribute, ordering and type-dispatch policies were checked.
-- **Message wording.** Findings name a project-wide setting as `structure`, for
-  example `structure forbids module docstrings`, and a contract as
+- **Message wording.** Findings name a project-wide setting as `style`, for
+  example `style forbids module docstrings`, and a named package policy as
   `contract "name"`. The SMT345 message now reads `...; contract "api" allows 2`,
-  `structure allows 3` or `default allows 5`, and its payload `contract` is
-  `structure` for a project-wide limit and `null` for the built-in default.
+  `style allows 3` or `default allows 5`, and its payload `contract` is
+  `style` for a project-wide limit and `null` for the built-in default.
 
 ### Rule selection and presets
 
@@ -311,10 +320,10 @@ files that extend it.
   now enables it. Naming one rule by code in the base and by name in the
   project is no longer a duplicate-alias error: the project wins. Within one
   file, duplicates remain errors and the most specific entry still wins.
-- **Broad selections in package contracts.** `ALL` and families in a package
-  contract's `rules` select only source rules. Before, a family that contained
+- **Broad selections in package overrides.** `ALL` and families in a package
+  override's `rules` select only source rules. Before, a family that contained
   test-file or project-level rules (`tests`, `architecture`, `meta`) was
-  rejected in a contract. Naming one of those rules individually is still an
+  rejected in a package override. Naming one of those rules individually is still an
   error.
 - **Broad selections under strict coverage.** `ALL`, families and groups in
   project `rules` no longer touch SMT306 `architecture/uncovered-source` when
@@ -328,7 +337,7 @@ files that extend it.
   hint rows without `--show-hints`. The automatic statistics after a long text
   listing still follow `--show-hints`.
 - **Schema.** The editor schema completes `ALL` and every family at project
-  level, `ALL` and the families with source rules in package contracts, and
+  level, `ALL` and the families with source rules in package overrides, and
   offers `on` everywhere. `smelt init` comments show
   `extends: smelt:recommended` and a family example.
 
@@ -347,13 +356,13 @@ unaffected until they set `project.workspace`. See
   `[project]` table. `root_packages` defaults to every member's packages, and
   two members with the same top-level package name are a configuration error.
 - **Member configs.** A member's `smelt.yml` or `smelt.yaml` inherits the root
-  implicitly and may set `rules`, `structure` (options and `contracts`),
+  implicitly and may set `rules`, `style` (options and `overrides`),
   `ignore`, `project.exclude`, `debt` and `architecture`. Its paths are member-relative. `rules` apply
   by path to the member's sources and tests, after the root layers and before
-  the closest package contract. `structure` options compile into one contract per
-  member package, named after the member. Member contracts are named
-  `member:name` and must match the member's own packages. A member cannot set
-  `extends`, `architecture.imports`, `architecture.members`, `tests`, `suppressions` or other
+  the closest package override. Direct member `style` options apply to each
+  of its packages. Named overrides and package API declarations must match
+  the member's own packages. A member cannot set `extends`,
+  `architecture.import_graph`, `architecture.canonical_exports`, `architecture.members`, `tests`, `suppressions` or other
   `project` keys, and cannot lower SMT306 under strict coverage. Errors name the member
   file and its own key.
 - **Member checks.** `smelt check` in a member directory, or
@@ -361,9 +370,9 @@ unaffected until they set `project.workspace`. See
   member. `smelt config show --sources` lists member files, and `origins` map
   `members.<path>.*` keys to them. The policy hash covers member configs.
   Reports without a workspace keep their previous policy hash.
-- **Member architecture.** A member's `architecture` replaces the root
-  architecture for the member's packages; the root architecture keeps governing
-  the root project and members without their own. Every module it names must lie
+- **Member architecture.** A member's architecture layout governs the member's
+  packages. The root layout governs the root project and members without their
+  own layout, including members with only package API policy. Every module it names must lie
   inside the member's packages, and layers without features span only those
   packages. It judges imports inside the member: SMT101-SMT106, SMT301 and
   SMT305 run once per architecture and report only the files it governs. Imports from one member into

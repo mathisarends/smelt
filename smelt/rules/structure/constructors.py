@@ -71,11 +71,11 @@ class ConstructorLogic(Rule):
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
             "{complexity/constructor-logic: hint}, select SMT364, or set "
-            "max_constructor_decisions under structure or in a package contract. "
+            "max_constructor_decisions under style or in a package contract. "
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."
         ),
-        config=("rules", "structure.max_constructor_decisions", "structure.contracts"),
+        config=("rules", "style.max_constructor_decisions", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

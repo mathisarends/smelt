@@ -142,7 +142,7 @@ def test_verified_lazy_export_can_establish_canonical_ownership(tmp_path: Path) 
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Public}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {canonical_exports: {app.api.Service: app.Public}}\n",
             "app/__init__.py": LAZY,
             "app/api.py": "class Service: pass\n",
         },

@@ -59,7 +59,7 @@ class PreferCallableInstance(Rule):
             "{idioms/prefer-callable-instance: hint}, globally or in a package contract, or --select SMT333. "
             "Keep an intentional named API with a package rules override set to off or a reasoned SMT333 suppression."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

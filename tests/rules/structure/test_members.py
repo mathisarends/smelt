@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    helpers:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n        layout/misplaced-static-helper: hint\n"
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    helpers:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n        layout/misplaced-static-helper: hint\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:

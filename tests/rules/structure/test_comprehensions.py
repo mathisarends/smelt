@@ -113,9 +113,9 @@ def test_global_limit_and_closest_package_override(tmp_path: Path) -> None:
             "smelt.yml": CONFIG
             + """\
 rules: {complexity/complex-comprehension: warning}
-structure:
+style:
   max_comprehension_loops: 3
-  contracts:
+  overrides:
     outer: {match: app, max_comprehension_loops: 2}
     inner: {match: app.quiet, max_comprehension_loops: 3}
 """,
@@ -129,7 +129,7 @@ structure:
     assert finding.expected["max_comprehension_loops"] == 2
     (root / "smelt.yml").write_text(
         CONFIG
-        + "rules: {complexity/complex-comprehension: hint}\nstructure: {max_comprehension_loops: 3}\n",
+        + "rules: {complexity/complex-comprehension: hint}\nstyle: {max_comprehension_loops: 3}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
@@ -142,13 +142,13 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
     root = _project(tmp_path, source)
     (root / "smelt.yml").write_text(
         CONFIG
-        + "structure: {max_comprehension_loops: 1}\n"
+        + "style: {max_comprehension_loops: 1}\n"
         + "rules: {complexity/complex-comprehension: off}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
     (root / "smelt.yml").write_text(
-        CONFIG + "structure: {max_comprehension_loops: 1}\n", encoding="utf-8"
+        CONFIG + "style: {max_comprehension_loops: 1}\n", encoding="utf-8"
     )
     assert [v.code for v in violations(root)] == ["SMT363"]
     write_project(
@@ -157,8 +157,8 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
             "smelt.yml": CONFIG
             + """\
 rules: {complexity/complex-comprehension: warning}
-structure:
-  contracts:
+style:
+  overrides:
     quiet: {match: app.quiet, rules: {complexity/complex-comprehension: off}}
 """,
             "app/quiet/__init__.py": source,
@@ -175,8 +175,8 @@ structure:
 @pytest.mark.parametrize(
     "setting",
     [
-        "structure: {max_comprehension_loops: 0}",
-        "structure: {contracts: {bad: {match: app, max_comprehension_loops: 0}}}",
+        "style: {max_comprehension_loops: 0}",
+        "style: {overrides: {bad: {match: app, max_comprehension_loops: 0}}}",
     ],
 )
 def test_rejects_limits_below_one(tmp_path: Path, setting: str) -> None:

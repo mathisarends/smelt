@@ -344,7 +344,7 @@ def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
     if issues:
         raise ConfigError(
             [
-                ConfigIssue(f"structure.canonical_exports.{symbol}", message)
+                ConfigIssue(f"architecture.canonical_exports.{symbol}", message)
                 for symbol, message in issues
             ],
             loaded.path.name,

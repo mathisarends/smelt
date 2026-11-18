@@ -19,10 +19,10 @@ def config_json_schema() -> dict[str, Any]:
     for name in ("MemberConfig", "MemberProjectConfig"):
         schema.get("$defs", {}).pop(name, None)
     # Root and member files share the editor schema.
-    schema["properties"]["structure"] = {
+    schema["properties"]["style"] = {
         "anyOf": [
-            schema["properties"]["structure"],
-            {"$ref": "#/$defs/MemberStructureConfig"},
+            schema["properties"]["style"],
+            {"$ref": "#/$defs/MemberStyleConfig"},
         ],
     }
     schema["properties"]["extends"] = {

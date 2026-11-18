@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 CONFIG = """version: 1
 project: {root_packages: [app]}
-structure:
-  contracts:
+style:
+  overrides:
     api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
 

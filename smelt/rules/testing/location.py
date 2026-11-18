@@ -350,8 +350,8 @@ class MisplacedTestFile(Rule):
         good="tests/billing/test_invoice.py",
         fix=(
             "Move or rename the file so its path mirrors the module it tests, merge it "
-            "into that module's test, or list deliberately unmirrored tests "
-            "(behaviour, integration, e2e) in tests.unmirrored. A missing mirrored "
+            "into that module's test, or list deliberately mirror_exclude tests "
+            "(behaviour, integration, e2e) in tests.mirror_exclude. A missing mirrored "
             "source says nothing about whether the tested behaviour exists. Imports "
             "through package facades count as imports of the defining module. A move "
             "is suggested only when the test imports its subject (or is named exactly "
@@ -362,7 +362,7 @@ class MisplacedTestFile(Rule):
         config=(
             "tests.layout",
             "tests.mirror",
-            "tests.unmirrored",
+            "tests.mirror_exclude",
             "tests.mirror_suffixes",
             "project.test_roots",
         ),
@@ -375,7 +375,7 @@ class MisplacedTestFile(Rule):
         for path, test in sorted(ctx.files.tests.items()):
             if test.is_conftest:
                 continue
-            if not any(path_matches(p, path) for p in tests.unmirrored):
+            if not any(path_matches(p, path) for p in tests.mirror_exclude):
                 yield from self._check_mirror(ctx, test)
 
     def _check_mirror(
@@ -430,7 +430,7 @@ class MisplacedTestFile(Rule):
             message += f"; it imports {len(named)} modules named {subject}"
             hint = (
                 f"It imports {_listing(ctx, ranked)}. Move it next to the one it tests, "
-                "split it, or list it in tests.unmirrored if it tests how they work "
+                "split it, or list it in tests.mirror_exclude if it tests how they work "
                 "together."
             )
             details |= {"subject": "ambiguous", "candidates": candidates}
@@ -438,7 +438,7 @@ class MisplacedTestFile(Rule):
             hint = (
                 f"{_NO_SOURCE} It imports {_listing(ctx, ranked)}: rename or move it "
                 "to the test of the module it covers, merge it into that test, or list "
-                "it in tests.unmirrored if it tests behaviour across them."
+                "it in tests.mirror_exclude if it tests behaviour across them."
             )
             details |= {"subject": "unknown", "candidates": candidates}
         else:
@@ -525,7 +525,7 @@ _NO_SOURCE = (
 _GENERIC_HINT = (
     f"{_NO_SOURCE} Move or rename the test to mirror the module it covers, merge it "
     "into that module's test, delete it if the module is gone, or list a deliberate "
-    "behaviour or integration test in tests.unmirrored."
+    "behaviour or integration test in tests.mirror_exclude."
 )
 # Enough to choose from; the JSON says how many there are.
 _MAX_CANDIDATES = 5

@@ -40,7 +40,9 @@ def _project(
 def test_domain_mock_policy_covers_construction_and_patching(
     tmp_path: Path, source: str
 ) -> None:
-    root = _project(tmp_path, source, "  forbid_mocks_in: ['tests/**/domain/**']\n")
+    root = _project(
+        tmp_path, source, "  forbidden_mock_paths: ['tests/**/domain/**']\n"
+    )
     [finding] = violations(root, CheckOptions(select=("SMT421",)))
     assert finding.path == "tests/domain/test_service.py"
     assert finding.expected is not None
@@ -53,7 +55,7 @@ def test_fixture_file_is_covered_but_integration_path_is_allowed(
     root = _project(
         tmp_path,
         "from unittest.mock import Mock\ndef fixture(): return Mock()",
-        "  forbid_mocks_in: ['tests/**/domain/**']\n",
+        "  forbidden_mock_paths: ['tests/**/domain/**']\n",
         "tests/domain/conftest.py",
     )
     write_project(
@@ -210,7 +212,7 @@ def test_monkeypatch_aliases_types_and_context_are_counted(
     root = _project(
         tmp_path,
         source,
-        "  forbid_mocks_in: ['tests/domain/**']\n  max_patches_per_test: 0\nrules: {tests/string-patch-target: error}\n",
+        "  forbidden_mock_paths: ['tests/domain/**']\n  max_patches_per_test: 0\nrules: {tests/string-patch-target: error}\n",
     )
     found = violations(root)
     assert {finding.code for finding in found} == {"SMT421", "SMT422", "SMT423"}
@@ -232,6 +234,6 @@ def test_unrelated_monkeypatch_and_environment_setup_are_not_mocks(
     root = _project(
         tmp_path,
         source,
-        "  forbid_mocks_in: ['tests/domain/**']\n  max_patches_per_test: 0\n",
+        "  forbidden_mock_paths: ['tests/domain/**']\n  max_patches_per_test: 0\n",
     )
     assert violations(root) == []

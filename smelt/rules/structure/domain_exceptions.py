@@ -94,11 +94,11 @@ class PreferDomainException(Rule):
             "builtin, for example TypeError for wrong argument types, add it "
             "to errors.allow, or set errors: {} in a nested package that "
             "deliberately raises builtins. No automatic rewrite is performed. "
-            "Enable it for the project with structure: {errors: {base: "
+            "Enable it for the project with style: {errors: {base: "
             "app.errors.AppError}}, or for one package with the same option in a "
             "package contract."
         ),
-        config=("structure.errors", "structure.contracts"),
+        config=("style.errors", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

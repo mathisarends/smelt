@@ -31,7 +31,7 @@ class ImportStyle(Rule):
             "style and max_relative_level: 1, local imports use one dot; parent and "
             "cross-root imports stay absolute. Deeper relative imports can be explicitly "
             "allowed. The closest package contract supplies the style, else "
-            "structure.imports. No style is enforced without one, and this rule "
+            "style.imports. No style is enforced without one, and this rule "
             "never changes bindings."
         ),
         bad="# app/storage/service.py, relative style with maximum 1\nfrom app.storage.models import Record\nfrom ..domain import Entity",
@@ -42,9 +42,9 @@ class ImportStyle(Rule):
             "an import statement changes its binding. There is no automatic rewrite."
         ),
         config=(
-            "structure.imports",
-            "structure.contracts",
-            "architecture.imports.type_checking",
+            "style.imports",
+            "style.overrides",
+            "architecture.import_graph.type_checking",
         ),
     )
 
@@ -60,7 +60,7 @@ class ImportStyle(Rule):
                     continue
                 if (
                     node.lineno in guarded
-                    and ctx.config.architecture.imports.type_checking == "ignore"
+                    and ctx.config.architecture.import_graph.type_checking == "ignore"
                 ):
                     continue
                 yield from self._statement(

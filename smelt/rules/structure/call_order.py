@@ -24,7 +24,7 @@ class CallerBeforeCallee(Rule):
         bad="def parse():\n    return 1\n\ndef load():\n    return parse()",
         good="def load():\n    return parse()\n\ndef parse():\n    return 1",
         fix="Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; SMT313 independently handles public-first ordering and its bounded fixer. Enable rules: {layout/callee-before-caller: hint} or select SMT329; package overrides and reasoned suppressions apply.",
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

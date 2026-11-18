@@ -21,7 +21,7 @@ version: 1
 project:
   root_packages: [app]
 architecture:
-  imports: {{transitive: {str(transitive).lower()}}}
+  import_graph: {{transitive: {str(transitive).lower()}}}
   layers:
     domain:
       path: domain

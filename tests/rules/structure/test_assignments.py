@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT314",))
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
+CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:

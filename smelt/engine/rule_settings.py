@@ -51,7 +51,7 @@ class RuleSettings:
         self.packages = {
             name: self._normalize(
                 contract.rules,
-                f"structure.contracts.{name}.rules",
+                f"style.overrides.{name}.rules",
                 excluded=frozenset(project_rules),
             )
             for name, contract in loaded.config.structure.contracts.items()
@@ -103,7 +103,7 @@ class RuleSettings:
                 raise ConfigError(
                     [
                         ConfigIssue(
-                            f"structure.contracts.{name}.rules",
+                            f"style.overrides.{name}.rules",
                             "test-file and project rules must be configured at project level; use ignore.paths for individual test files",
                         )
                     ],
@@ -119,7 +119,7 @@ class RuleSettings:
                 if previous != value:
                     issues.append(
                         ConfigIssue(
-                            f"structure.contracts.{contract.name}.rules",
+                            f"style.overrides.{contract.name}.rules",
                             f"conflicting {code} settings for {contract.package}",
                         )
                     )
@@ -222,7 +222,7 @@ class RuleSettings:
             ]
             maps.extend(
                 (
-                    f"members.{member_path}.structure.contracts.{name}.rules",
+                    f"members.{member_path}.style.overrides.{name}.rules",
                     contract.rules,
                     contract.match,
                 )

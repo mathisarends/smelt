@@ -16,8 +16,8 @@ CONFIG = """
 version: 1
 project:
   root_packages: [app]
-structure:
-  contracts:
+architecture:
+  packages:
     component:
       match: app.parts.*
       required: [api, core.models]

@@ -200,7 +200,7 @@ class TestMirrorLayout:
                 "tests/integration/test_checkout.py": "",
                 "tests/e2e/flows/test_signup.py": "",
             },
-            '  unmirrored: ["tests/integration/**", "tests/e2e"]\n',
+            '  mirror_exclude: ["tests/integration/**", "tests/e2e"]\n',
         )
 
         assert violations(root, ONLY_SMT401) == []

@@ -294,8 +294,8 @@ def test_closest_package_override_and_severity_are_respected(tmp_path: Path) -> 
     source = "class Controller:\n    def run(self):\n        self.browser.input.motor()"
     config = (
         BASE_CONFIG
-        + """structure:
-  contracts:
+        + """style:
+  overrides:
     navigation: {match: app, rules: {complexity/deep-object-navigation: warning}}
     external: {match: app.external, rules: {complexity/deep-object-navigation: 'off'}}
 """

@@ -200,7 +200,7 @@ def test_closest_package_override_can_disable_the_rule(tmp_path: Path) -> None:
         {
             "smelt.yml": CONFIG
             + "rules: {layout/misplaced-private-constant: error}\n"
-            + "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n"
+            + "style:\n  overrides:\n    legacy:\n      match: app.legacy\n"
             + "      rules: {layout/misplaced-private-constant: off}\n",
             "app/legacy/__init__.py": "",
             "app/legacy/download.py": DOWNLOADS,

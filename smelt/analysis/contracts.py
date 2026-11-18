@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
     from smelt.config.models import StructureConfig
 
-_PROJECT_POLICY = "structure"
+_PROJECT_POLICY = "style"
 
 type PolicyOption = Literal[
     "imports",
@@ -26,7 +26,7 @@ type PolicyOption = Literal[
     "type_dispatch",
     "max_positional_parameters",
     "max_module_imports",
-    "module_import_exempt",
+    "module_import_exemptions",
     "max_comprehension_loops",
     "max_constructor_decisions",
     "max_private_definitions",
@@ -83,7 +83,7 @@ class ContractIndex:
         self.project = _project_policy(files.config.structure)
 
     def facade_policies(
-        self, policy: Literal["bundle_imports_at", "export_at"]
+        self, policy: Literal["min_imports_to_bundle", "min_importers_to_export"]
     ) -> tuple[ResolvedContract, ...]:
         """One threshold per concrete package; more literal match segments win."""
         candidates: dict[str, list[ResolvedContract]] = {}
@@ -97,13 +97,13 @@ class ContractIndex:
             first = winners[0]
             for other in winners[1:]:
                 if getattr(first.spec, policy) != getattr(other.spec, policy) or (
-                    policy == "export_at"
+                    policy == "min_importers_to_export"
                     and first.spec.count_tests != other.spec.count_tests
                 ):
                     raise ConfigError(
                         [
                             ConfigIssue(
-                                f"structure.contracts.{other.name}.{policy}",
+                                f"architecture.packages.{other.name}.{policy}",
                                 f"conflicting {policy} policies for {package} with equally specific matches",
                             )
                         ],
@@ -273,16 +273,16 @@ class ContractIndex:
                     else {}
                 ),
                 **(
-                    {"bundle_imports_at": contract.spec.bundle_imports_at}
-                    if contract.spec.bundle_imports_at is not None
+                    {"min_imports_to_bundle": contract.spec.min_imports_to_bundle}
+                    if contract.spec.min_imports_to_bundle is not None
                     else {}
                 ),
                 **(
                     {
-                        "export_at": contract.spec.export_at,
+                        "min_importers_to_export": contract.spec.min_importers_to_export,
                         "count_tests": contract.spec.count_tests,
                     }
-                    if contract.spec.export_at is not None
+                    if contract.spec.min_importers_to_export is not None
                     else {}
                 ),
                 **(
@@ -295,7 +295,7 @@ class ContractIndex:
                             "private_attribute_boundary",
                             "max_positional_parameters",
                             "max_module_imports",
-                            "module_import_exempt",
+                            "module_import_exemptions",
                             "max_comprehension_loops",
                             "max_constructor_decisions",
                             "max_private_definitions",

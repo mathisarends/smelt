@@ -24,8 +24,8 @@ pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 CONFIG = """version: 1
 project: {root_packages: [app]}
-structure:
-  contracts:
+style:
+  overrides:
     api: {match: app, rules: {visibility/internal-public-member: warning}}
 """
 
@@ -114,7 +114,7 @@ def test_staged_member_scope_uses_workspace_paths_and_metadata(
 ) -> None:
     files = {
         **MEMBER_BOUNDARIES,
-        "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nstructure: {max_positional_parameters: 1}\n",
+        "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nstyle: {max_positional_parameters: 1}\n",
         "services/api/src/api/http.py": "def helper(first, second):\n    return first\n",
         "packages/core/src/core/model.py": "def helper(first, second):\n    return first\n",
     }
@@ -305,9 +305,7 @@ rules: {layout/redundant-module-name: warning}
 def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    policy = (
-        "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
-    )
+    policy = "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
     write_project(
         repo,
         {
@@ -442,7 +440,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     write_project(
         repo,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",
             "app/first.py": caller,
@@ -475,7 +473,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
 def test_staged_test_imports_use_index_callers_policy_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str], code: str, *, count: int
 ) -> None:
-    config = "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    api: {match: app.api, public: ['.'], bundle_imports_at: 2}\n"
+    config = "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
     write_project(
         repo,
         {

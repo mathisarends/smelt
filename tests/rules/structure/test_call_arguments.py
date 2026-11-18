@@ -394,8 +394,8 @@ def test_package_overrides_suppression_and_uncached_results(tmp_path: Path) -> N
             "smelt.yml": CONFIG
             + """\
 rules: {complexity/inline-call-argument: hint}
-structure:
-  contracts:
+style:
+  overrides:
     quiet: {match: app.quiet, rules: {complexity/inline-call-argument: off}}
     strict: {match: app.strict, rules: {complexity/inline-call-argument: warning}}
 """,
@@ -446,7 +446,7 @@ def test_call_argument_kinds_narrow_the_review(
     root = _project(tmp_path, source)
     write_project(
         root,
-        {"smelt.yml": CONFIG + f"structure: {{call_argument_kinds: {kinds}}}\n"},
+        {"smelt.yml": CONFIG + f"style: {{call_argument_kinds: {kinds}}}\n"},
     )
     found = violations(root, SELECT)
     assert [(v.expected or {})["kind"] for v in found] == expected
@@ -454,8 +454,6 @@ def test_call_argument_kinds_narrow_the_review(
 
 def test_empty_call_argument_kinds_are_rejected(tmp_path: Path) -> None:
     root = _project(tmp_path, "consume(values=[x for x in items])\n")
-    write_project(
-        root, {"smelt.yml": CONFIG + "structure: {call_argument_kinds: []}\n"}
-    )
+    write_project(root, {"smelt.yml": CONFIG + "style: {call_argument_kinds: []}\n"})
     with pytest.raises(ConfigError, match="call_argument_kinds"):
         violations(root, SELECT)

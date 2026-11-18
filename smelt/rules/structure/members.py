@@ -29,7 +29,7 @@ class InternalPublicMember(Rule):
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
         fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[SMT316] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
-        config=("rules", "structure.contracts", "project.test_roots"),
+        config=("rules", "style.overrides", "project.test_roots"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -84,7 +84,7 @@ class InternalStaticHelper(Rule):
         bad="class Browser:\n    @staticmethod\n    def _normalize(value):\n        return value.strip()\n    def send(self, value):\n        return self._normalize(value)",
         good="def _normalize(value):\n    return value.strip()\n\nclass Browser:\n    def send(self, value):\n        return _normalize(value)",
         fix="Move the helper to module scope with a leading underscore, remove @staticmethod, and update class/instance-qualified calls and callback references. Preserve annotations, defaults, evaluation order and dependencies; choose a distinct name if the module already binds it. Keep deliberate static APIs with a closest package rule set to off or reasoned suppression. No automatic extraction is performed.",
-        config=("rules", "structure.contracts", "project.test_roots"),
+        config=("rules", "style.overrides", "project.test_roots"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

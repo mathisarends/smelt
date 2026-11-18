@@ -33,7 +33,7 @@ def effective_coverage(
     report = {
         "mode": project.coverage,
         "architecture_configured": bool(
-            architecture.model_fields_set or ctx.architecture_scopes
+            architecture.has_layout or ctx.architecture_scopes
         ),
         **inventory.summary(),
         "policy_hash": policy_hash(config),
@@ -63,7 +63,7 @@ def effective_coverage(
             name: layer.third_party.model_dump(mode="json")
             for name, layer in architecture.layers.items()
         },
-        "imports": architecture.imports.model_dump(mode="json"),
+        "imports": architecture.import_graph.model_dump(mode="json"),
         "cross_feature": {
             "default": architecture.cross_feature.default,
             "allow": architecture.cross_feature.entries(),
@@ -74,7 +74,7 @@ def effective_coverage(
             **config.tests.model_dump(mode="json"),
             "layout": config.tests.layout,
             "mirror": config.tests.mirror,
-            "unmirrored": list(config.tests.unmirrored),
+            "mirror_exclude": list(config.tests.mirror_exclude),
         },
     }
     if include_inventory:
@@ -109,9 +109,9 @@ def policy_hash(config: SmeltConfig) -> str:
     policy = config.model_dump(mode="json")
     # Neutral additive settings preserve policy hashes in released reports.
     if not config.structure.canonical_exports:
-        policy["structure"].pop("canonical_exports", None)
-    if config.architecture.imports.type_checking_cycles == "include":
-        policy["architecture"]["imports"].pop("type_checking_cycles", None)
+        policy["architecture"].pop("canonical_exports", None)
+    if config.architecture.import_graph.type_checking_cycles == "include":
+        policy["architecture"]["import_graph"].pop("type_checking_cycles", None)
     if not config.members:
         policy.pop("members", None)
     if not config.architecture.members:

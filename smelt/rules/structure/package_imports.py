@@ -50,7 +50,11 @@ class PreferPackageImport(Rule):
             "effects and dependency cycles. No exports are created and no automatic "
             "rewrite is performed; analyzed code is never executed."
         ),
-        config=("rules", "architecture.imports.type_checking", "project.test_roots"),
+        config=(
+            "rules",
+            "architecture.import_graph.type_checking",
+            "project.test_roots",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -74,7 +78,7 @@ class PreferPackageImport(Rule):
                     continue
                 if (
                     node.lineno in guarded
-                    and ctx.config.architecture.imports.type_checking == "ignore"
+                    and ctx.config.architecture.import_graph.type_checking == "ignore"
                 ):
                     continue
                 base = resolve_relative(

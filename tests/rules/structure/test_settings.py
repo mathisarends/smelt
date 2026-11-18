@@ -95,7 +95,7 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
         tmp_path,
         source,
         CONFIG
-        + "structure:\n  contracts:\n    legacy: {match: app, rules: {frameworks/prefer-secret-type: off}}\n",
+        + "style:\n  overrides:\n    legacy: {match: app, rules: {frameworks/prefer-secret-type: off}}\n",
     )
     assert violations(root, OPTIONS) == []
     _project(

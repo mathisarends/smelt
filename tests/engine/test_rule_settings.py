@@ -40,7 +40,7 @@ def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
     "policy",
     [
         "rules: {complexity: {severity: off, reason: Legacy API migration.}}\n",
-        "structure:\n  contracts:\n    api: {match: api, rules: {complexity/excess-positional-parameters: {severity: warning, reason: Legacy API migration.}}}\n",
+        "style:\n  overrides:\n    api: {match: api, rules: {complexity/excess-positional-parameters: {severity: warning, reason: Legacy API migration.}}}\n",
     ],
 )
 def test_reasoned_member_and_contract_exceptions_are_accepted(
@@ -82,7 +82,7 @@ def test_root_contract_activation_is_included_in_the_member_guard(
         {
             **MEMBER_BOUNDARIES,
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + "structure:\n          contracts:\n            api: {match: api, max_positional_parameters: 2}\n",
+            + "style:\n          overrides:\n            api: {match: api, max_positional_parameters: 2}\n",
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: off}\n",
         },
     )
@@ -143,8 +143,8 @@ def test_package_only_activation_and_closest_off_and_severity(tmp_path: Path) ->
     root = _project(
         tmp_path,
         """
-structure:
-  contracts:
+style:
+  overrides:
     legacy:
       match: app.legacy
       rules: {visibility/internal-public-member: warning}
@@ -175,8 +175,8 @@ def test_closest_package_override_can_reenable_a_globally_disabled_rule(
         tmp_path,
         """
 rules: {visibility/internal-public-member: off}
-structure:
-  contracts:
+style:
+  overrides:
     legacy:
       match: app.legacy
       rules: {visibility/internal-public-member: warning}
@@ -227,7 +227,7 @@ def test_duplicate_aliases_and_typos_are_config_errors(
     tmp_path: Path, settings: str, scoped: bool
 ) -> None:
     policy = (
-        f"structure:\n  contracts:\n    api:\n      match: app\n      rules: {{{settings}}}\n"
+        f"style:\n  overrides:\n    api:\n      match: app\n      rules: {{{settings}}}\n"
         if scoped
         else f"rules: {{{settings}}}\n"
     )
@@ -243,7 +243,7 @@ def test_scoped_off_does_not_report_old_debt_as_fixed(tmp_path: Path) -> None:
     ).write(root / "debt.json")
     with (root / "smelt.yml").open("a", encoding="utf-8") as target:
         target.write(
-            "debt: debt.json\nstructure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
+            "debt: debt.json\nstyle:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
         )
 
     outcome = check(root)
@@ -261,8 +261,8 @@ def test_removed_switches_are_rejected_instead_of_silently_ignored(key: str) -> 
     if key == "preset":
         raw[key] = "maintainability"
     elif key == "member_visibility":
-        raw["structure"] = {
-            "contracts": {"api": {"match": "app", key: "private-when-internal"}}
+        raw["style"] = {
+            "overrides": {"api": {"match": "app", key: "private-when-internal"}}
         }
     else:
         raw["tests"] = {key: True}
@@ -283,7 +283,7 @@ def test_test_file_and_project_rules_cannot_silently_become_package_overrides(
 ) -> None:
     root = _project(
         tmp_path,
-        f"structure:\n  contracts:\n    api:\n      match: app\n      rules: {{{name}: off}}\n",
+        f"style:\n  overrides:\n    api:\n      match: app\n      rules: {{{name}: off}}\n",
     )
 
     with pytest.raises(ConfigError, match="configured at project level"):
@@ -458,7 +458,7 @@ def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
     )
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {information-hiding: warning}\n    new:\n      match: app.legacy.new\n      rules: {SMT316: error}\n"
+            "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {information-hiding: warning}\n    new:\n      match: app.legacy.new\n      rules: {SMT316: error}\n"
         )
     assert [(v.path, v.severity) for v in violations(root)] == [
         ("app/legacy/api.py", Severity.WARNING),
@@ -470,7 +470,7 @@ def test_closest_group_overrides_parent_individual_setting(tmp_path: Path) -> No
     root = _group_project(tmp_path, "information-hiding: warning, SMT335: error")
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "structure:\n  contracts:\n    api:\n      match: app\n      rules: {information-hiding: off}\n"
+            "style:\n  overrides:\n    api:\n      match: app\n      rules: {information-hiding: off}\n"
         )
     assert violations(root) == []
 
@@ -536,7 +536,7 @@ def test_group_conflicts_with_an_individual_in_another_same_package_contract(
     root = _group_project(tmp_path, "")
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "structure:\n  contracts:\n    policy:\n      match: app\n      rules: {information-hiding: warning}\n    exception:\n      match: app\n      rules: {SMT335: off}\n"
+            "style:\n  overrides:\n    policy:\n      match: app\n      rules: {information-hiding: warning}\n    exception:\n      match: app\n      rules: {SMT335: off}\n"
         )
     with pytest.raises(ConfigError, match="conflicting SMT335"):
         check(root)
@@ -624,7 +624,7 @@ def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None
 def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
-        "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n"
+        "style:\n  overrides:\n    legacy:\n      match: app.legacy\n"
         "      rules: {ALL: off, tests: on, visibility/internal-public-member: warning}\n",
     )
 
@@ -704,7 +704,7 @@ def test_a_package_contract_beats_the_member_setting(tmp_path: Path) -> None:
         tmp_path,
         {
             "services/api/smelt.yml": "rules: {visibility/internal-public-member: warning}\n"
-            "structure:\n  contracts:\n    legacy:\n      match: api.legacy\n"
+            "style:\n  overrides:\n    legacy:\n      match: api.legacy\n"
             "      rules: {visibility/internal-public-member: off}\n"
         },
     )

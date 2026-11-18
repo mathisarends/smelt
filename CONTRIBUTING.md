@@ -145,7 +145,7 @@ codes preserve diagnostic and debt identities across a documented name migration
   inspect source files or infer architecture. Per-file checks still resolve closest
   package overrides normally.
 - A source-convention option belongs on `PackagePolicy` in
-  `smelt/config/models.py`, which `structure` and package contracts share. Define
+  `smelt/config/models.py`, which `style` and package contracts share. Define
   it once, with `None` as its default, and put a built-in default in
   `PolicyDefaults` when selecting the rule without the option should still check
   something. If the option belongs to a single rule, activate the rule with
@@ -224,7 +224,7 @@ policy option selects (require/forbid, auto/explicit, prefix/suffix), write one
 `-convention` or `forbidden-` rule that reads the option. When they share a
 remedy but report different syntactic forms, write one rule and put the form in
 the payload as `kind`, optionally narrowed by a list option such as
-`structure.call_argument_kinds`. Keep rules separate when their certainty differs,
+`style.call_argument_kinds`. Keep rules separate when their certainty differs,
 for example a policy error and a heuristic hint, so severities stay meaningful.
 
 Run `uv run smelt rules --format json` before allocating. Gaps are not promises

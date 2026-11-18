@@ -10,7 +10,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
+CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
 OPTIONS = CheckOptions(select=("SMT313",))
 
 

@@ -259,10 +259,10 @@ def build_briefing(
         tests=_tests(ctx, target),
         is_wiring=bool(info and info.wiring),
         boundary_policy=_covered_policy(info, coverage),
-        transitive=arch.imports.transitive,
-        type_checking=arch.imports.type_checking,
-        cycles=tuple(arch.imports.cycles),
-        type_checking_cycles=arch.imports.type_checking_cycles,
+        transitive=arch.import_graph.transitive,
+        type_checking=arch.import_graph.type_checking,
+        cycles=tuple(arch.import_graph.cycles),
+        type_checking_cycles=arch.import_graph.type_checking_cycles,
         canonical_exports=dict(ctx.config.structure.canonical_exports),
         file_naming=ctx.config.structure.file_naming.model_dump(exclude_none=True),
         cross_feature_policy={
@@ -320,7 +320,7 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     lines.append(
         "Imports: direct and transitive dependencies checked (layers, features, shared, composition roots, third-party)"
         if briefing.transitive
-        else "Imports: direct only (indirect chains require architecture.imports.transitive: true)"
+        else "Imports: direct only (indirect chains require architecture.import_graph.transitive: true)"
     )
     lines.extend(_contract_lines(briefing))
     if briefing.type_checking_cycles != "include":
@@ -537,11 +537,11 @@ def _contract_lines(briefing: Briefing) -> list[str]:
     if briefing.test_policy:
         policy = briefing.test_policy
         if (
-            policy.get("forbid_mocks_in")
+            policy.get("forbidden_mock_paths")
             or policy.get("max_patches_per_test") is not None
         ):
             lines.append(
-                f"Test quality: path/patch policies; mocks forbidden in {policy['forbid_mocks_in']}; maximum patches {policy['max_patches_per_test']}; excluded {policy['quality_exclude']}"
+                f"Test quality: path/patch policies; mocks forbidden in {policy['forbidden_mock_paths']}; maximum patches {policy['max_patches_per_test']}; excluded {policy['quality_exclude']}"
             )
     if briefing.ordering_policy:
         policy = briefing.ordering_policy
@@ -575,13 +575,13 @@ def _contract_lines(briefing: Briefing) -> list[str]:
         missing = sorted(set(contract["missing"] + contract["missing_public"]))
         if missing:
             lines.append(f"  Missing: {', '.join(missing)}")
-        if "bundle_imports_at" in contract:
+        if "min_imports_to_bundle" in contract:
             lines.append(
-                f"  Bundling hint: from {contract['bundle_imports_at']} distinct modules per outside caller"
+                f"  Bundling hint: from {contract['min_imports_to_bundle']} distinct modules per outside caller"
             )
-        if "export_at" in contract:
+        if "min_importers_to_export" in contract:
             lines.append(
-                f"  Export hint: from {contract['export_at']} outside importers per name; count tests: {contract['count_tests']}"
+                f"  Export hint: from {contract['min_importers_to_export']} outside importers per name; count tests: {contract['count_tests']}"
             )
         lines.extend(
             f"  {key}: {_policy_value(key, contract[key])}"
@@ -592,7 +592,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
                 "private_attribute_boundary",
                 "max_positional_parameters",
                 "max_module_imports",
-                "module_import_exempt",
+                "module_import_exemptions",
                 "max_comprehension_loops",
                 "max_constructor_decisions",
                 "max_private_definitions",
@@ -613,7 +613,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
 
 
 def _policy_value(key: str, value: object) -> str:
-    if key in {"module_import_exempt", "call_argument_kinds"} and isinstance(
+    if key in {"module_import_exemptions", "call_argument_kinds"} and isinstance(
         value, list
     ):
         return ", ".join(str(item) for item in value) or "none"

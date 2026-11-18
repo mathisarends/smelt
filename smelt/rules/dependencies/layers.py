@@ -34,7 +34,7 @@ class LayerBoundary(Rule):
             "Layers only stay replaceable and testable when dependencies point in one "
             "direction. An application service that imports infrastructure cannot be "
             "used without the database, HTTP client or framework behind it. With "
-            "architecture.imports.transitive, the allowlist also applies to every "
+            "architecture.import_graph.transitive, the allowlist also applies to every "
             "reachable layer, including paths through allowed layers and helpers. "
             "Indirect findings include a shortest import chain."
         ),
@@ -54,8 +54,8 @@ class LayerBoundary(Rule):
         config=(
             "architecture.layers.<layer>.may_depend_on",
             "architecture.modules",
-            "architecture.imports.transitive",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.transitive",
+            "architecture.import_graph.type_checking",
         ),
     )
 

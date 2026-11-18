@@ -365,6 +365,79 @@ class MemberBoundaryConfig(_Model):
         return list(dict.fromkeys(_member_pattern(value) for value in values))
 
 
+class _PackageTarget(_Model):
+    match: str = Field(
+        description="Dotted package pattern; a whole-segment * matches one package segment."
+    )
+
+    @field_validator("match")
+    @classmethod
+    def _package_pattern(cls, value: str) -> str:
+        if any(
+            segment != "*" and not _DOTTED_NAME.fullmatch(segment)
+            for segment in value.split(".")
+        ):
+            raise ValueError(
+                "must be a dotted package pattern with whole-segment * wildcards"
+            )
+        return value
+
+
+class PackageBoundary(_PackageTarget):
+    """Public package entry points, required modules and facade thresholds."""
+
+    required: list[str] = Field(
+        default_factory=list,
+        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
+    )
+    public: list[str] | None = Field(
+        default=None,
+        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+    )
+    min_imports_to_bundle: int | None = Field(
+        default=None,
+        ge=2,
+        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
+    )
+    min_importers_to_export: int | None = Field(
+        default=None,
+        ge=2,
+        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+    )
+    count_tests: bool = Field(
+        default=False,
+        description="Include discovered test files in min_importers_to_export counts. Requires min_importers_to_export; TYPE_CHECKING-only imports never count.",
+    )
+
+    @field_validator("required")
+    @classmethod
+    def _required_modules(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(_check_dotted(values)))
+
+    @field_validator("public")
+    @classmethod
+    def _public_modules(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        for value in values:
+            if value == ".":
+                continue
+            if any(
+                segment not in ("*", "**") and not _DOTTED_NAME.fullmatch(segment)
+                for segment in value.split(".")
+            ):
+                raise ValueError(
+                    "public entries must be relative dotted module patterns or '.'"
+                )
+        return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def _has_export_threshold(self) -> Self:
+        if self.count_tests and self.min_importers_to_export is None:
+            raise ValueError("count_tests requires min_importers_to_export")
+        return self
+
+
 class ArchitectureConfig(_Model):
     """Features, layers and the modules around them."""
 
@@ -393,13 +466,37 @@ class ArchitectureConfig(_Model):
     cross_feature: CrossFeatureConfig = Field(
         default_factory=CrossFeatureConfig, description="Imports between features."
     )
-    imports: ImportsConfig = Field(
-        default_factory=ImportsConfig, description="Which imports count."
+    import_graph: ImportsConfig = Field(
+        default_factory=ImportsConfig,
+        description="Which imports count in the architecture graph.",
     )
     members: dict[str, MemberBoundaryConfig] = Field(
         default_factory=dict,
         description="Root-only uv workspace boundaries: source member path glob -> {may_depend_on: [target member globs]}. Unmatched source members are unrestricted; '.' names the root project. SMT111 checks direct imports.",
     )
+
+    packages: dict[str, PackageBoundary] = Field(
+        default_factory=dict,
+        description="Public interfaces and required modules for matching packages.",
+    )
+    canonical_exports: dict[str, str] = Field(
+        default_factory=dict,
+        description="Definition or alias to its canonical public export.",
+    )
+
+    @property
+    def has_layout(self) -> bool:
+        """Whether the file configures architecture beyond package APIs."""
+        return bool(self.model_fields_set - {"packages", "canonical_exports"})
+
+    @field_validator("canonical_exports")
+    @classmethod
+    def _canonical_names(cls, values: dict[str, str]) -> dict[str, str]:
+        names = [*values, *values.values()]
+        _check_dotted(names)
+        if any("." not in name for name in names):
+            raise ValueError("canonical exports require qualified module.symbol names")
+        return values
 
     @field_validator("members")
     @classmethod
@@ -575,7 +672,7 @@ class ErrorPolicy(_Model):
 class PackagePolicy(_Model):
     """Source conventions set for the whole project or for matching packages.
 
-    Each option is defined once. structure sets the project-wide value and the
+    Each option is defined once. style sets the project-wide value and the
     closest package contract that sets an option overrides it. Setting an option
     that belongs to a single rule enables that rule.
     """
@@ -589,7 +686,7 @@ class PackagePolicy(_Model):
         ge=0,
         description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
     )
-    module_import_exempt: list[ModuleImportExemption] | None = Field(
+    module_import_exemptions: list[ModuleImportExemption] | None = Field(
         default=None,
         description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
     )
@@ -666,7 +763,7 @@ class PackagePolicy(_Model):
     ) -> list[DataclassOption] | None:
         return None if values is None else list(dict.fromkeys(values))
 
-    @field_validator("module_import_exempt", "call_argument_kinds")
+    @field_validator("module_import_exemptions", "call_argument_kinds")
     @classmethod
     def _unique(cls, values: list[str] | None) -> list[str] | None:
         return None if values is None else list(dict.fromkeys(values))
@@ -700,7 +797,7 @@ class PolicyDefaults:
     """Values used when neither structure nor a package contract sets an option."""
 
     max_module_imports: int = 20
-    module_import_exempt: tuple[ModuleImportExemption, ...] = (
+    module_import_exemptions: tuple[ModuleImportExemption, ...] = (
         "facades",
         "composition_root",
     )
@@ -720,87 +817,19 @@ class PolicyDefaults:
 POLICY_DEFAULTS = PolicyDefaults()
 
 
-class PackageContract(PackagePolicy):
-    """Package-specific entry points and overrides for matching packages."""
+class StyleOverride(PackagePolicy, _PackageTarget):
+    """Conventions and rule severity choices for matching packages."""
 
-    match: str = Field(
-        description="Dotted package pattern; a whole-segment * matches one package segment."
-    )
-    required: list[str] = Field(
-        default_factory=list,
-        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
-    )
-    public: list[str] | None = Field(
-        default=None,
-        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
-    )
-    bundle_imports_at: int | None = Field(
-        default=None,
-        ge=2,
-        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
-    )
-    export_at: int | None = Field(
-        default=None,
-        ge=2,
-        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
-    )
-    count_tests: bool = Field(
-        default=False,
-        description="Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
-    )
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
         description="Rule severities for production findings in this package. Use the same problem names, families, rule groups, SMT codes, ALL and values as top-level rules; ALL, families and groups select only the source rules among their members, individual entries override them in the same map, and the closest package override wins. Prefer top-level rules for project-wide severities.",
     )
 
-    @field_validator("match")
-    @classmethod
-    def _package_pattern(cls, value: str) -> str:
-        if any(
-            segment != "*" and not _DOTTED_NAME.fullmatch(segment)
-            for segment in value.split(".")
-        ):
-            raise ValueError(
-                "must be a dotted package pattern with whole-segment * wildcards"
-            )
-        return value
 
-    @field_validator("required")
-    @classmethod
-    def _required_modules(cls, values: list[str]) -> list[str]:
-        return list(dict.fromkeys(_check_dotted(values)))
+class PackageContract(PackageBoundary, StyleOverride):
+    """Compiled package policy for rules that consume style and API together."""
 
-    @field_validator("public")
-    @classmethod
-    def _public_modules(cls, values: list[str] | None) -> list[str] | None:
-        if values is None:
-            return None
-        for value in values:
-            if value == ".":
-                continue
-            if any(
-                segment not in ("*", "**") and not _DOTTED_NAME.fullmatch(segment)
-                for segment in value.split(".")
-            ):
-                raise ValueError(
-                    "public entries must be relative dotted module patterns or '.'"
-                )
-        return list(dict.fromkeys(values))
-
-    @model_validator(mode="after")
-    def _has_contract(self) -> Self:
-        if self.count_tests and self.export_at is None:
-            raise ValueError("count_tests requires export_at")
-        if not (
-            self.required
-            or self.rules
-            or self.public is not None
-            or self.bundle_imports_at is not None
-            or self.export_at is not None
-            or self.configured()
-        ):
-            raise ValueError("set at least one package contract policy")
-        return self
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
 
 class FileNamingConfig(_Model):
@@ -816,43 +845,24 @@ class FileNamingConfig(_Model):
     )
 
 
-class StructureConfig(PackagePolicy):
-    """Project-wide source conventions, naming rules and package contracts.
-
-    Policy options set here apply to every package; the closest package contract
-    that sets the same option overrides them.
-    """
-
+class _ProjectStyle(PackagePolicy):
     forbidden_names: list[str] = Field(
         default_factory=list, description="Package and module names to avoid (SMT302)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
-    contracts: dict[str, PackageContract] = Field(
-        default_factory=dict,
-        description="Named package contracts: required modules, public entry points and package-specific overrides of the project-wide options above.",
-    )
-    canonical_exports: dict[str, str] = Field(
-        default_factory=dict,
-        description="Optional API ownership: qualified definition/static alias -> canonical qualified public export. Both must resolve to the same analyzed symbol. Does not relax dependency or package-public boundaries.",
-    )
 
-    @field_validator("canonical_exports")
-    @classmethod
-    def _canonical_names(cls, values: dict[str, str]) -> dict[str, str]:
-        names = [*values, *values.values()]
-        _check_dotted(names)
-        if any("." not in name for name in names):
-            raise ValueError("canonical exports require qualified module.symbol names")
-        return values
 
-    @field_validator("contracts")
-    @classmethod
-    def _contract_names(
-        cls, values: dict[str, PackageContract]
-    ) -> dict[str, PackageContract]:
-        if any(not name.strip() for name in values):
-            raise ValueError("contract names must not be empty")
-        return values
+class StyleConfig(_ProjectStyle):
+    """Project conventions and source-rule settings for matching packages."""
+
+    overrides: dict[str, StyleOverride] = Field(default_factory=dict)
+
+
+class StructureConfig(_ProjectStyle):
+    """Effective style, plus architecture and style contracts compiled for analysis."""
+
+    contracts: dict[str, PackageContract] = Field(default_factory=dict)
+    canonical_exports: dict[str, str] = Field(default_factory=dict)
 
 
 class TestsConfig(_Model):
@@ -866,7 +876,7 @@ class TestsConfig(_Model):
         default="{path}/test_{module}.py",
         description="Test path relative to the test root; placeholders {root}, {path}, {module}.",
     )
-    unmirrored: list[str] = Field(
+    mirror_exclude: list[str] = Field(
         default_factory=list,
         description='Test path globs exempt from mirroring, e.g. ["tests/e2e/**"].',
     )
@@ -877,7 +887,7 @@ class TestsConfig(_Model):
         default_factory=list,
         description="Project-relative globs excluded from test-quality checks, independently of test mirroring.",
     )
-    forbid_mocks_in: list[str] = Field(
+    forbidden_mock_paths: list[str] = Field(
         default_factory=list,
         description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
     )
@@ -895,7 +905,7 @@ class TestsConfig(_Model):
         description="Qualified context/wrapper helpers known to bound async waits, e.g. tests.timing.deadline. They do not supply assertion evidence or bound synchronous subprocess calls.",
     )
 
-    @field_validator("quality_exclude", "forbid_mocks_in")
+    @field_validator("quality_exclude", "forbidden_mock_paths")
     @classmethod
     def _quality_patterns(cls, values: list[str]) -> list[str]:
         result: list[str] = []
@@ -976,23 +986,26 @@ class MemberProjectConfig(_Model):
     )
 
 
-class MemberPackageContract(PackageContract):
-    """A member contract can justify its changes to inherited source conventions."""
+class MemberStyleOverride(StyleOverride):
+    """A member can justify changes to inherited source conventions."""
 
     reasons: _PolicyReasons = Field(default_factory=dict)
 
 
-class MemberStructureConfig(PackagePolicy):
-    """Source conventions and contracts for one workspace member's packages."""
+class MemberStyleConfig(PackagePolicy):
+    """Conventions and package overrides for one workspace member."""
 
-    reasons: _PolicyReasons = Field(
-        default_factory=dict,
-        description="Nonempty reasons keyed by the source-convention options changed in this mapping.",
-    )
-    contracts: dict[str, MemberPackageContract] = Field(
-        default_factory=dict,
-        description="Package contracts inside this member; each match must name one of its packages.",
-    )
+    reasons: _PolicyReasons = Field(default_factory=dict)
+    overrides: dict[str, MemberStyleOverride] = Field(default_factory=dict)
+
+
+class MemberPackageContract(PackageContract):
+    reasons: _PolicyReasons = Field(default_factory=dict)
+
+
+class MemberStructureConfig(PackagePolicy):
+    reasons: _PolicyReasons = Field(default_factory=dict)
+    contracts: dict[str, MemberPackageContract] = Field(default_factory=dict)
 
 
 class MemberConfig(_Model):
@@ -1000,7 +1013,7 @@ class MemberConfig(_Model):
 
     version: Literal[1] | None = None
     project: MemberProjectConfig = Field(default_factory=MemberProjectConfig)
-    structure: MemberStructureConfig = Field(default_factory=MemberStructureConfig)
+    style: MemberStyleConfig = Field(default_factory=MemberStyleConfig)
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
         description="Rule settings for this member's source and test files. They replace the root settings for the same rules; package contracts still win.",
@@ -1011,12 +1024,39 @@ class MemberConfig(_Model):
     )
     architecture: ArchitectureConfig | None = Field(
         default=None,
-        description="The member's own features, layers and boundaries. They replace the root architecture for the member's packages and govern imports inside the member.",
+        description="A member can supply package interfaces while inheriting the root architecture. Features, layers and other internal architecture replace the root architecture for this member.",
     )
     debt: str | None = Field(
         default=None,
         description="Member-relative debt file. It may accept findings only inside this member; stored finding paths remain workspace-relative.",
     )
+    _structure: MemberStructureConfig = PrivateAttr(
+        default_factory=MemberStructureConfig
+    )
+
+    @property
+    def structure(self) -> MemberStructureConfig:
+        """Combined settings for the analysis and workspace policy compiler."""
+        return self._structure
+
+    @property
+    def governs_architecture(self) -> bool:
+        """Whether this member replaces the root's internal architecture."""
+        return bool(self.architecture and self.architecture.has_layout)
+
+    @model_validator(mode="after")
+    def _compile_policy(self) -> Self:
+        packages = self.architecture.packages if self.architecture else {}
+        style = self.style
+        contracts = _combine_packages(
+            packages, style.overrides, model=MemberPackageContract
+        )
+        self._structure = MemberStructureConfig(
+            **style.model_dump(exclude={"overrides"}, by_alias=True),
+            contracts=contracts,
+        )
+        return self
+
     _packages: tuple[str, ...] = PrivateAttr(default=())
 
     @property
@@ -1062,7 +1102,7 @@ class SmeltConfig(_Model):
     version: Literal[1]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
-    structure: StructureConfig = Field(default_factory=StructureConfig)
+    style: StyleConfig = Field(default_factory=StyleConfig)
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
@@ -1083,6 +1123,31 @@ class SmeltConfig(_Model):
         default_factory=dict,
         description="Workspace member configs by member path, read from each member's own smelt.yml; never written in the root file.",
     )
+    _structure: StructureConfig = PrivateAttr(default_factory=StructureConfig)
+
+    @property
+    def structure(self) -> StructureConfig:
+        """Combined style and package policy for the analysis."""
+        return self._structure
+
+    def with_compiled_structure(self, structure: StructureConfig) -> Self:
+        scoped = self.model_copy()
+        scoped._structure = structure
+        return scoped
+
+    @model_validator(mode="after")
+    def _compile_policy(self) -> Self:
+        style = self.style
+        architecture = self.architecture
+        self._structure = StructureConfig(
+            **style.model_dump(exclude={"overrides"}, by_alias=True),
+            contracts=_combine_packages(
+                architecture.packages, style.overrides, model=PackageContract
+            ),
+            canonical_exports=architecture.canonical_exports,
+        )
+        return self
+
     _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
     _workspace_base: Self | None = PrivateAttr(default=None)
 
@@ -1119,6 +1184,41 @@ class SmeltConfig(_Model):
         cls, values: dict[str, RuleSetting]
     ) -> dict[str, RuleSetting]:
         return _check_rule_keys(values)
+
+
+def _combine_packages[C: PackageContract](
+    boundaries: Mapping[str, PackageBoundary],
+    overrides: Mapping[str, StyleOverride],
+    *,
+    model: type[C],
+) -> dict[str, C]:
+    contracts = {}
+    for name in dict.fromkeys((*boundaries, *overrides)):
+        if not name.strip():
+            raise ValueError("package policy names must not be empty")
+        boundary = boundaries.get(name)
+        override = overrides.get(name)
+        api = boundary.model_dump(by_alias=True) if boundary else {}
+        style = override.model_dump(by_alias=True) if override else {}
+        if (
+            boundary is not None
+            and override is not None
+            and boundary.match != override.match
+        ):
+            raise ValueError(
+                f'package policy "{name}" must use the same match in architecture.packages and style.overrides'
+            )
+        if boundary is not None and not (
+            boundary.required
+            or boundary.public is not None
+            or boundary.min_imports_to_bundle is not None
+            or boundary.min_importers_to_export is not None
+        ):
+            raise ValueError(f"architecture.packages.{name} has no package policy")
+        if override is not None and not (override.configured() or override.rules):
+            raise ValueError(f"style.overrides.{name} has no style policy")
+        contracts[name] = model.model_validate(api | style)
+    return contracts
 
 
 def _check_rule_keys(values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:

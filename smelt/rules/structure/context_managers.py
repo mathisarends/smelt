@@ -26,7 +26,7 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
         bad="from collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield",
         good="from collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield",
         fix="Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {typing/deprecated-async-contextmanager-return: warning}, or select SMT337. Package overrides and reasoned inline suppressions are supported.",
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

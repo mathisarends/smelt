@@ -109,7 +109,7 @@ def test_package_override_and_reasoned_suppression_are_respected(
         tmp_path,
         "MIN_LENGTH = 8  # smelt: ignore[SMT320] -- Supported external constant.\n",
         config=CONFIG
-        + "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-module-symbol: off}\n",
+        + "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-module-symbol: off}\n",
     )
     write_project(root, {"app/legacy/models.py": SOURCE})
     assert violations(root) == []

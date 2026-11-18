@@ -111,7 +111,7 @@ one more rules layer. It applies by path to the member's sources and tests:
 1. the root rules layers, presets and bases first;
 2. the member's `rules`, from the innermost member that contains the file;
 3. the closest package contract, including the contract the member's
-   `structure` options compile into.
+   `style` options compile into.
 
 ```yaml
 # smelt.yml at the workspace root
@@ -155,11 +155,11 @@ SMT401. An empty public list still declares a private API, and a patch limit of
 zero still forbids patches. Mere ordering options do not activate SMT313.
 
 A source-convention option enables its rule only where it applies. Set under
-`structure`, it covers the project; set in a package contract, it covers the
+`style`, it covers the project; set in a package contract, it covers the
 matching packages, and the rule reports nothing elsewhere. Selecting the same
 rule in `rules` or with `--select` enables it everywhere and uses built-in
 defaults where no option is set, for example a limit of 5 for SMT345. See
-[project-wide options](structure.md#project-wide-options-and-package-overrides)
+[project-wide options](https://github.com/mathisarends/smelt/blob/main/docs/style.md#project-wide-options-and-package-overrides)
 for the defaults.
 
 ```bash

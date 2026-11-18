@@ -86,7 +86,7 @@ class TestTypeChecking:
         assert [v.line for v in violations(root, ONLY_SMT101)] == [4]
 
     def test_type_checking_imports_can_be_ignored(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "  imports:\n    type_checking: ignore\n"
+        config = LAYERED_CONFIG + "  import_graph:\n    type_checking: ignore\n"
         root = _project(tmp_path, {"app/application/service.py": self.source}, config)
 
         assert violations(root, ONLY_SMT101) == []
@@ -105,7 +105,7 @@ class TestTransitive:
         assert violations(root, ONLY_SMT101) == []
 
     def test_indirect_chain_reports_full_path(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "  imports:\n    transitive: true\n"
+        config = LAYERED_CONFIG + "  import_graph:\n    transitive: true\n"
         root = _project(tmp_path, INDIRECT_FILES, config)
 
         [found] = violations(root, ONLY_SMT101)
@@ -128,7 +128,7 @@ class TestTransitive:
                 "app/application/service.py": "from app.domain import user\n",
                 "app/domain/user.py": "from app.infra import db\n",
             },
-            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+            LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
         found = violations(root, ONLY_SMT101)
@@ -150,7 +150,7 @@ class TestTransitive:
                 "app/z.py": "from app import a\nfrom app.infra import db\n",
                 "app/long.py": "from app import a\n",
             },
-            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+            LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
         [found] = violations(root, ONLY_SMT101)
@@ -180,7 +180,7 @@ class TestTransitive:
             tmp_path,
             files,
             LAYERED_CONFIG
-            + f"  imports: {{transitive: true, type_checking: {type_checking}}}\n",
+            + f"  import_graph: {{transitive: true, type_checking: {type_checking}}}\n",
         )
 
         found = violations(root, ONLY_SMT101)
@@ -200,7 +200,7 @@ class TestTransitive:
                 **INDIRECT_FILES,
                 "app/application/service.py": "from app import helpers\nfrom app.infra import db\n",
             },
-            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+            LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
         [found] = violations(root, ONLY_SMT101)
@@ -215,7 +215,7 @@ class TestTransitive:
                 "app/application/service.py": "from app import helpers\n",
                 "app/helpers.py": "from app.domain import user\n",
             },
-            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+            LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
         assert violations(root, ONLY_SMT101) == []
@@ -231,7 +231,7 @@ class TestTransitive:
         root = _project(
             tmp_path,
             {"app/application/service.py": "import app.bridge0\n", **files},
-            LAYERED_CONFIG + "  imports: {transitive: true}\n",
+            LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
         [found] = violations(root, ONLY_SMT101)

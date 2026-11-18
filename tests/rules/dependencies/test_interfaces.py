@@ -15,8 +15,8 @@ CONFIG = """
 version: 1
 project:
   root_packages: [app]
-structure:
-  contracts:
+architecture:
+  packages:
     orders:
       match: app.orders
       public: [api]
@@ -76,7 +76,7 @@ def test_guarded_test_imports_follow_policy_despite_quality_exclusions(
         tmp_path,
         "",
         config=CONFIG
-        + f"\narchitecture: {{imports: {{type_checking: {policy}}}}}\ntests: {{quality_exclude: ['tests/**']}}\n",
+        + f"\n  import_graph: {{type_checking: {policy}}}\ntests: {{quality_exclude: ['tests/**']}}\n",
     )
     write_project(
         tmp_path,
@@ -172,10 +172,7 @@ def test_direct_private_import_forms_are_rejected(
 def test_public_facade_symbol_reexports_are_allowed(
     tmp_path: Path, statement: str, transitive: bool
 ) -> None:
-    config = (
-        CONFIG
-        + f"\narchitecture:\n  imports: {{transitive: {str(transitive).lower()}}}\n"
-    )
+    config = CONFIG + f"\n  import_graph: {{transitive: {str(transitive).lower()}}}\n"
     _project(tmp_path, statement, config=config)
 
     assert violations(tmp_path, OPTIONS) == []
@@ -272,7 +269,7 @@ def test_wiring_has_no_implicit_private_access(tmp_path: Path, role: str) -> Non
     _project(
         tmp_path,
         "from app.orders.storage import OrderStore",
-        config=CONFIG + f"\narchitecture:\n  {role}\n",
+        config=CONFIG + f"\n  {role}\n",
     )
 
     assert len(violations(tmp_path, OPTIONS)) == 1
@@ -285,7 +282,7 @@ def test_type_checking_follows_existing_policy(
     _project(
         tmp_path,
         "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.orders.storage import OrderStore\n",
-        config=CONFIG + f"\narchitecture:\n  imports: {{type_checking: {policy}}}\n",
+        config=CONFIG + f"\n  import_graph: {{type_checking: {policy}}}\n",
     )
 
     assert len(violations(tmp_path, OPTIONS)) == count
@@ -296,7 +293,7 @@ def test_layer_boundaries_still_reject_public_but_illegal_import(
 ) -> None:
     config = (
         CONFIG
-        + "\narchitecture:\n  layers:\n    domain: {path: domain}\n    implementation: {path: orders}\n"
+        + "\n  layers:\n    domain: {path: domain}\n    implementation: {path: orders}\n"
     )
     _project(tmp_path, "", config=config)
     write_project(

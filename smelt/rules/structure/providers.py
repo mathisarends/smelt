@@ -24,7 +24,7 @@ class RedundantDishkaProvider(Rule):
         bad="from dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)",
         good="from dishka import Provider, Scope, provide\n\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    query = provide(SqlAdminUserQuery, provides=AdminUserQuery)",
         fix="Review registering the constructor directly. Verify its type hints and Dishka dependency/component markers supply the same inputs. Preserve class-level scope and explicit scope/cache/provides/override options. Keep factories with initialization logic or finalization. Suggested registrations use the canonical provide spelling; preserve the actual import alias when editing. No automatic rewrite is performed. Enable rules: {frameworks/redundant-dishka-provider: hint}.",
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

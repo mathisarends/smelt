@@ -22,7 +22,7 @@ class FileNameConvention(Rule):
     doc = RuleDoc(
         summary="A YAML or Compose filename differs from the project's canonical spelling.",
         rationale=(
-            "Choose spellings once in structure.file_naming to keep configuration "
+            "Choose spellings once in style.file_naming to keep configuration "
             "filenames consistent. yaml_extension (yaml or yml) checks lowercase "
             ".yaml and .yml filenames below the directory containing smelt.yml, "
             "including the Smelt configuration itself, Compose files and hidden "
@@ -40,8 +40,8 @@ class FileNameConvention(Rule):
         good="# With yaml_extension: yaml, compose_basename: compose\n# settings.yaml\n# compose.override.yaml",
         fix="Rename the file to the expected path and update references to its old name, including CI, scripts, docker compose -f arguments and extends entries. Check for existing destination files before renaming. No file or reference is changed automatically. Use a reasoned project.exclude or ignore.paths entry for filenames required by another tool.",
         config=(
-            "structure.file_naming.yaml_extension",
-            "structure.file_naming.compose_basename",
+            "style.file_naming.yaml_extension",
+            "style.file_naming.compose_basename",
             "project.exclude",
             "ignore",
         ),

@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 OPTIONS = CheckOptions(select=("SMT315",))
 CONFIG = """version: 1
 project: {root_packages: [app], python_version: '3.12'}
-structure:
-  contracts:
+style:
+  overrides:
     dispatch: {match: app, type_dispatch: {style: match, min_branches: 3}}
 """
 SOURCE = "if isinstance(event, Started): start(event)\nelif isinstance(event, Progress): update(event)\nelif isinstance(event, Finished): finish(event)\n"

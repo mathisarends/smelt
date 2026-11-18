@@ -28,11 +28,11 @@ class ForbiddenTestMock(Rule):
         bad="from unittest.mock import Mock\ndef test_rule():\n    service = Mock()",
         good="def test_rule():\n    result = calculate_total([10, 20])\n    assert result == 30",
         fix="Use real domain objects or a small fake implementing the port. Keep boundary mocking in explicitly permitted test paths; use a reasoned suppression for an intentional exception.",
-        config=("tests.forbid_mocks_in", "tests.quality_exclude"),
+        config=("tests.forbidden_mock_paths", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        patterns = ctx.config.tests.forbid_mocks_in
+        patterns = ctx.config.tests.forbidden_mock_paths
         for module in ctx.test_syntax.modules.values():
             if not any(path_matches(pattern, module.path) for pattern in patterns):
                 continue
@@ -44,7 +44,7 @@ class ForbiddenTestMock(Rule):
                         line=call.node.lineno,
                         column=call.node.col_offset + 1,
                         expected={
-                            "forbid_mocks_in": patterns,
+                            "forbidden_mock_paths": patterns,
                             "operation": call.qualified,
                             "family": call.family,
                             "provenance": call.provenance,

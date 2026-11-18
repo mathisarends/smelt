@@ -25,7 +25,7 @@ ISSUE_EXAMPLE = (
 
 def _config(*, version: str = "3.12", policy: str | None = None) -> str:
     contracts = (
-        f"structure:\n  contracts:\n    headers: {{match: app, future_annotations: {policy}}}\n"
+        f"style:\n  overrides:\n    headers: {{match: app, future_annotations: {policy}}}\n"
         if policy
         else ""
     )

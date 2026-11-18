@@ -42,11 +42,11 @@ class ComplexComprehension(Rule):
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
             "rewrite is performed. Enable rules: {complexity/complex-comprehension: hint} or "
-            "select SMT363, or set max_comprehension_loops under structure or in a "
+            "select SMT363, or set max_comprehension_loops under style or in a "
             "package contract. The limit defaults to 1; a package contract can "
             "permit intentional flattening."
         ),
-        config=("rules", "structure.max_comprehension_loops", "structure.contracts"),
+        config=("rules", "style.max_comprehension_loops", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
