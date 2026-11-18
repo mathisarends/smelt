@@ -58,6 +58,12 @@ def test_init_writes_shared_root_and_independent_member_drafts(
     assert "independent drafts" in output.out
     config = load_config(root / "smelt.yml").config
     assert config.project.workspace == "uv"
+    draft = (root / "smelt.yml").read_text(encoding="utf-8")
+    assert "#   members:" in draft
+    assert "#     packages/*:" in draft
+    assert "#     services/*:" in draft
+    assert "#   services/api -> packages/core" in draft
+    assert config.architecture.members == {}
     assert set(config.architecture.layers) == set()
     api = config.members["services/api"].architecture
     core = config.members["packages/core"].architecture
