@@ -100,8 +100,10 @@ class LoadedConfig:
     def explain_error(self, error: ConfigError) -> ConfigError:
         """Attribute effective-policy errors to the file declaring each value."""
         if len(self.inputs) + len(self.presets) <= 1:
-            return error
-        return _with_origins(error, ConfigComposition(origins=self.origins))
+            return error.relative_to(self.root)
+        return _with_origins(
+            error, ConfigComposition(origins=self.origins)
+        ).relative_to(self.root)
 
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
@@ -123,6 +125,53 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
     member: str | None = None
     if (workspace := _workspace_of(path, view)) is not None:
         path, member = workspace
+    try:
+        return _load_selected(path, view, member=member, store=store)
+    except ConfigError as exc:
+        shown = exc.relative_to(path.parent)
+        if shown is exc:
+            raise
+        raise shown from exc
+
+
+def parse_config(
+    raw: object,
+    *,
+    source: str | None = None,
+    root: Path | None = None,
+    store: SourceStore | None = None,
+) -> tuple[SmeltConfig, tuple[ConfigIssue, ...]]:
+    """Validate a raw config; ``root`` lets omitted root_packages be discovered."""
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise ConfigError([ConfigIssue("", "the top level must be a mapping")], source)
+    if "version" not in raw:
+        raise ConfigError([ConfigIssue("version", "`version: 1` is required")], source)
+    try:
+        config = SmeltConfig.model_validate(raw)
+    except ValidationError as exc:
+        raise ConfigError(_issues_from_validation(exc), source) from exc
+    if config.members and config.project.workspace is None:
+        raise ConfigError(
+            [ConfigIssue("members", "member configs require project.workspace: uv")],
+            source,
+        )
+    if config.project.workspace is not None and root is not None:
+        try:
+            config = expand_workspace(config, root, store=store)
+        except ConfigError as exc:
+            raise ConfigError(exc.issues, source) from exc
+    config = _with_root_packages(config, root, source, store=store)
+    errors, warnings = validate_semantics(config)
+    if errors:
+        raise ConfigError(errors, source)
+    return config, tuple(warnings)
+
+
+def _load_selected(
+    path: Path, view: SourceStore, *, member: str | None, store: SourceStore | None
+) -> LoadedConfig:
     composed = compose_config(path, view, _load_yaml)
     if composed.raw.get("members"):
         raise ConfigError(
@@ -169,41 +218,6 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
     )
 
 
-def parse_config(
-    raw: object,
-    *,
-    source: str | None = None,
-    root: Path | None = None,
-    store: SourceStore | None = None,
-) -> tuple[SmeltConfig, tuple[ConfigIssue, ...]]:
-    """Validate a raw config; ``root`` lets omitted root_packages be discovered."""
-    if raw is None:
-        raw = {}
-    if not isinstance(raw, dict):
-        raise ConfigError([ConfigIssue("", "the top level must be a mapping")], source)
-    if "version" not in raw:
-        raise ConfigError([ConfigIssue("version", "`version: 1` is required")], source)
-    try:
-        config = SmeltConfig.model_validate(raw)
-    except ValidationError as exc:
-        raise ConfigError(_issues_from_validation(exc), source) from exc
-    if config.members and config.project.workspace is None:
-        raise ConfigError(
-            [ConfigIssue("members", "member configs require project.workspace: uv")],
-            source,
-        )
-    if config.project.workspace is not None and root is not None:
-        try:
-            config = expand_workspace(config, root, store=store)
-        except ConfigError as exc:
-            raise ConfigError(exc.issues, source) from exc
-    config = _with_root_packages(config, root, source, store=store)
-    errors, warnings = validate_semantics(config)
-    if errors:
-        raise ConfigError(errors, source)
-    return config, tuple(warnings)
-
-
 def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str] | None:
     """The nearest enclosing config and member path, if it declares ``path`` a member."""
     directory = path.parent
@@ -218,7 +232,11 @@ def _workspace_of(path: Path, store: SourceStore) -> tuple[Path, str] | None:
         )
         if candidate is None:
             continue
-        if not _declares_workspace(compose_config(candidate, store, _load_yaml).raw):
+        try:
+            composed = compose_config(candidate, store, _load_yaml)
+        except ConfigError as exc:
+            raise exc.relative_to(candidate.parent) from exc
+        if not _declares_workspace(composed.raw):
             return None
         member = directory.relative_to(parent).as_posix()
         if member_config_files(parent, store=store).get(member) == path:
