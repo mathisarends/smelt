@@ -8,13 +8,17 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import AnalysisError
-from smelt.config.loader import CONFIG_FILENAMES
+from smelt.config.errors import ConfigError
+from smelt.config.loader import CONFIG_FILENAMES, parse_config
+from smelt.config.patterns import path_matches
 from smelt.engine.inference import InferredConfig, infer_config, render_config
 from smelt.engine.workspace import workspace_members
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Any
 
 
 def workspace_drafts(
@@ -50,6 +54,30 @@ def workspace_drafts(
             "# Member rules that lower inherited severity need {severity: ..., reason: '...'}.\n"
             + yaml.safe_dump(data, sort_keys=False)
         )
+        patterns = (
+            project.get("tool", {})
+            .get("uv", {})
+            .get("workspace", {})
+            .get("members", [])
+        )
+        draft_patterns = [
+            pattern
+            for pattern in patterns
+            if any(path_matches(pattern, path) for path in members)
+        ]
+        if draft_patterns:
+            example = _boundary_draft(root, data, draft_patterns)
+            if data.get("architecture"):
+                comment = "\n".join(
+                    "  # " + line.removeprefix("#   ").removeprefix("# ")
+                    for line in example.splitlines()
+                    if line and line != "# architecture:"
+                )
+                drafts[root_filename] = drafts[root_filename].replace(
+                    "\narchitecture:\n", f"\narchitecture:\n{comment}\n", 1
+                )
+            else:
+                drafts[root_filename] += example
     for path in members:
         if selected is not None and path != selected:
             continue
@@ -74,3 +102,46 @@ def workspace_drafts(
             f"# yaml-language-server: $schema={schema}\n" + policy
         )
     return drafts
+
+
+def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> str:
+    try:
+        config, _ = parse_config(data, root=root)
+        edges = _observed_edges(AnalysisContext(root, config))
+    except (AnalysisError, ConfigError):
+        # A draft remains useful when imports could not be analyzed.
+        observations = ["# Observed imports are unavailable."]
+    else:
+        observations = [f"#   {source} -> {target}" for source, target in edges]
+        if observations:
+            observations.insert(0, "# Observed cross-member imports:")
+    example = yaml.safe_dump(
+        {
+            "architecture": {
+                "members": {pattern: {"may_depend_on": []} for pattern in patterns}
+            }
+        },
+        sort_keys=False,
+    )
+    return "\n".join(
+        [
+            "",
+            "# Review which members may depend on each other before enabling this example.",
+            *observations,
+            *[f"# {line}" for line in example.splitlines()],
+            "",
+        ]
+    )
+
+
+def _observed_edges(ctx: AnalysisContext) -> list[tuple[str, str]]:
+    return sorted(
+        {
+            (source, target)
+            for detail in ctx.imports.all_imports()
+            if not detail.external
+            and (source := ctx.workspace.member_for_module(detail.importer)) is not None
+            and (target := ctx.workspace.member_for_module(detail.imported)) is not None
+            and source != target
+        }
+    )

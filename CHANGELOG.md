@@ -44,6 +44,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ### Workspace member boundaries
 
+- Workspace init includes a commented member allowlist draft with observed
+  cross-member imports for review.
+
 - SMT112 recommends removing or moving imports that the workspace member
   allowlist forbids. Allowed imports still get the dependency declaration hint.
 
