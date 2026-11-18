@@ -87,6 +87,24 @@ def test_a_root_project_contributes_its_packages_but_not_member_folders(
     assert project.root_packages == ["gateway", "core", "api"]
 
 
+def test_regular_member_package_shadows_workspace_namespace_scaffolding(
+    tmp_path: Path,
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "pyproject.toml": '[project]\nname = "gateway"\n' + PYPROJECT,
+            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: ['.'], root_packages: [packages]}\n",
+            "services/api/packages/__init__.py": "",
+        },
+    )
+
+    config = load_config(root / "smelt.yml").config
+
+    assert config.workspace_packages[""] == ()
+    assert config.workspace_packages["services/api"] == ("packages",)
+
+
 def test_member_directories_report_why_a_member_is_skipped(tmp_path: Path) -> None:
     root = _workspace(
         tmp_path,

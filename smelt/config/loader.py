@@ -94,6 +94,7 @@ class LoadedConfig:
     inputs: tuple[Path, ...] = ()
     origins: dict[str, str] = field(default_factory=dict)
     member: str | None = None  # the workspace member whose config was selected
+    rule_sources: tuple[str, ...] = ()
 
     @property
     def root(self) -> Path:
@@ -227,6 +228,7 @@ def _load_selected(
         inputs=tuple(composed.files),
         origins=composed.origins,
         member=member,
+        rule_sources=tuple(composed.rule_sources),
     )
 
 

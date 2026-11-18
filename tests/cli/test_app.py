@@ -93,6 +93,7 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     assert config["project"]["root_packages"] == ["app"]
     assert config["project"]["source_roots"] == ["src"]
     assert config["debt"] == ".smelt/debt.json"
+    assert config["style"]["max_positional_parameters"] is None
     assert config["rules"] == {
         "architecture/import-cycle": "warning",
         "tests/unbounded-wait": "error",
@@ -163,6 +164,52 @@ def test_a_workspace_rule_replaces_its_base_under_another_alias(
     )
     assert code == 0
     assert error == ""
+
+
+def test_context_attributes_rules_to_the_layer_that_supplied_the_severity(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "base.yml": """
+                rules:
+                  architecture/import-cycle: {severity: error, reason: Base cycle policy.}
+                  complexity: hint
+                """,
+            "smelt.yml": """
+                version: 1
+                extends: base.yml
+                project: {root_packages: [app]}
+                style: {max_positional_parameters: 3}
+                rules:
+                  architecture/import-cycle: {severity: warning, reason: Local cycle policy.}
+                  complexity: warning
+                """,
+            "app/__init__.py": "",
+            "app/main.py": "",
+        },
+    )
+    code, output, error = _run(
+        capsys,
+        "context",
+        "app/main.py",
+        "--config",
+        str(root / "smelt.yml"),
+        "--format",
+        "json",
+    )
+
+    assert (code, error) == (0, "")
+    rules = json.loads(output)["rule_details"]
+    cycle = rules["architecture/import-cycle"]
+    assert (cycle["severity"], cycle["source"], cycle["reason"]) == (
+        "warning",
+        "smelt.yml",
+        "Local cycle policy.",
+    )
+    complexity = rules["complexity/excess-positional-parameters"]
+    assert (complexity["severity"], complexity["source"]) == ("hint", "base.yml")
 
 
 def test_an_explicit_base_path_widens_the_check_to_its_workspace(

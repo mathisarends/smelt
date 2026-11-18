@@ -56,15 +56,11 @@ def boundary_imports(
             if not skip_import(ctx, detail)
         }
         for path in ctx.imports.shortest_chains_from(
-            module, include_type_checking=include_tc
+            module, include_type_checking=include_tc, first_party_roots=model.scope
         ):
             target = path[-1]
             key = (target.imported, target.names)
-            if (
-                len(path) == 1
-                or key in seen
-                or (not target.external and not model.owns(target.imported))
-            ):
+            if len(path) == 1 or key in seen:
                 continue
             seen.add(key)
             yield (

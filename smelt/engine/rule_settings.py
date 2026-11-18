@@ -31,6 +31,7 @@ class _Setting:
     broad: bool
     location: str
     reason: str | None
+    source: str | None
 
     def apply(self, inherited: str | None) -> str | None:
         if not self.broad or self.value == "off":
@@ -45,6 +46,7 @@ class RuleDecision:
     severity: Severity | None
     location: str | None = None
     reason: str | None = None
+    source: str | None = None
 
 
 class RuleSettings:
@@ -70,8 +72,13 @@ class RuleSettings:
         # A later layer replaces what an earlier one set: the level wins over specificity.
         self._layers: list[dict[str, _Setting]] = []
         self.selector_rules: dict[str, list[str]] = {}
-        for layer in loaded.config.rule_layers:
-            entries = self._entries(layer, "rules", excluded=self._strict_guard())
+        for index, layer in enumerate(loaded.config.rule_layers):
+            source = (
+                loaded.rule_sources[index] if index < len(loaded.rule_sources) else None
+            )
+            entries = self._entries(
+                layer, "rules", excluded=self._strict_guard(), source=source
+            )
             if validate_selectors:
                 self._validate_broad(layer, "rules", entries)
             self._layers.append(entries)
@@ -224,7 +231,7 @@ class RuleSettings:
             value = rule.default_severity.value
         severity = Severity(value) if value not in (None, "off") else None
         return (
-            RuleDecision(severity, winner.location, winner.reason)
+            RuleDecision(severity, winner.location, winner.reason, source=winner.source)
             if winner
             else RuleDecision(severity)
         )
@@ -435,6 +442,7 @@ class RuleSettings:
         location: str,
         *,
         excluded: frozenset[str] = frozenset(),
+        source: str | None = None,
     ) -> dict[str, _Setting]:
         """Resolve selectors to their winning settings, retaining reasons.
 
@@ -464,6 +472,7 @@ class RuleSettings:
                         reason=value.reason
                         if isinstance(value, RuleOverride)
                         else None,
+                        source=source,
                     )
         individual: set[str] = set()
         for key, value in raw.items():
@@ -490,6 +499,7 @@ class RuleSettings:
                     broad=False,
                     location=f"{location}.{key}",
                     reason=value.reason if isinstance(value, RuleOverride) else None,
+                    source=source,
                 )
         if issues:
             raise ConfigError(issues, self.source)
