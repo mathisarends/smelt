@@ -25,6 +25,7 @@ type ModuleImportExemption = Literal["facades", "composition_root"]
 type PublicAttributeBoundary = Literal["class", "module"]
 type PrivateAttributeBoundary = Literal["module", "package"]
 type CallArgumentKind = Literal["await", "comprehension", "aggregate"]
+type ReexportStyle = Literal["all", "alias", "allow"]
 
 _DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 ALL_RULES = "ALL"
@@ -688,6 +689,10 @@ class PackagePolicy(_Model):
         default=None,
         description="Import style (SMT308). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style.",
     )
+    reexports: ReexportStyle | None = Field(
+        default=None,
+        description="Package initializer re-export convention (SMT369). all uses __all__; alias uses same-name import aliases. allow permits either spelling. Selecting the rule alone uses all.",
+    )
     max_module_imports: int | None = Field(
         default=None,
         ge=0,
@@ -824,6 +829,7 @@ class PolicyDefaults:
         "aggregate",
     )
     str_enum_values: Literal["auto", "explicit"] = "explicit"
+    reexports: ReexportStyle = "all"
 
 
 POLICY_DEFAULTS = PolicyDefaults()

@@ -192,6 +192,11 @@ POLICIES = {
         "max_private_definitions",
         "style or a package override sets max_private_definitions, including zero.",
     ),
+    "SMT369": _option(
+        "reexports",
+        "style or a package override sets reexports to all or alias.",
+        lambda value: value in {"all", "alias"},
+    ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"
     ),
