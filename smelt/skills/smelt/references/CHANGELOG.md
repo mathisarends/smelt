@@ -15,6 +15,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ### Workspace policy and initialization
 
+- Workspace init defers incomplete layer drafts and configures mirror tests
+  when every existing test matches. If pytest module names collide, init
+  lists the clashing files and leaves mirroring disabled.
+
 - **Member weakening requires a reason.** Lowering inherited rule severity or
   setting `off` in member rules or package contracts now requires
   `{severity: ..., reason: "..."}`. The guard resolves selectors, catalog

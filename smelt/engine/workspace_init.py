@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import posixpath
 import tomllib
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import yaml
@@ -23,6 +24,7 @@ def workspace_drafts(
     root_filename: str,
     maintainability: bool = False,
     member: str | None = None,
+    workspace: InferredConfig | None = None,
 ) -> dict[str, str]:
     """Render first; callers validate every output before writing any of them."""
     members = {
@@ -38,6 +40,8 @@ def workspace_drafts(
             infer_config(root, include_members=False) if "project" in project else None
         )
         base = inferred or InferredConfig([], [], ["tests"])
+        if workspace is not None:
+            base = replace(base, mirror=workspace.mirror)
         data = yaml.safe_load(render_config(base, maintainability=maintainability))
         data["project"].pop("source_roots", None)
         data["project"]["workspace"] = "uv"
@@ -59,6 +63,9 @@ def workspace_drafts(
         data = yaml.safe_load(render_config(inferred))
         architecture = data.get("architecture", {})
         architecture.pop("imports", None)
+        if inferred.layer_gaps:
+            for key in ("layers", "features", "modules", "cross_feature"):
+                architecture.pop(key, None)
         filename = next(
             (name for name in CONFIG_FILENAMES if (root / path / name).exists()),
             CONFIG_FILENAMES[0],
@@ -73,4 +80,9 @@ def workspace_drafts(
         drafts[posixpath.join(path, filename)] = (
             f"# yaml-language-server: $schema={schema}\n" + policy
         )
+        if inferred.layer_gaps:
+            missing = ", ".join(inferred.layer_gaps)
+            drafts[posixpath.join(path, filename)] += (
+                f"# Layer draft omitted. Review unclassified placements: {missing}.\n"
+            )
     return drafts
