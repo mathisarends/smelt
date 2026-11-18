@@ -294,47 +294,18 @@ not.
   `structure allows 3` or `default allows 5`, and its payload `contract` is
   `structure` for a project-wide limit and `null` for the built-in default.
 
-### Rule selection and presets
+### Explicit rule selection
 
-**Breaking: rules files are layers, and output names the rule.** One root
-configuration can now enable the whole catalog and leave exceptions to the
-files that extend it.
-
-- **`ALL` and `on`.** `rules` accepts `ALL` next to families, groups and
-  individual rules, and every entry accepts `on` in addition to `error`,
-  `warning`, `hint` and `off`. `on` uses the rule's catalog severity, so
-  `{ALL: on}` enables every rule as `smelt rules` lists it and
-  `{complexity: on}` enables one family without choosing one severity for
-  heuristics and certain findings alike. Precedence within one map is `ALL`,
-  then family, then group, then individual rule, regardless of key order.
-- **`extends: smelt:recommended`.** A built-in base that ships with the
-  installed Smelt version. It sets `ALL: on` and turns off the style conventions
-  where either spelling is valid (definition order, callee placement, static
-  helpers, private constants, module names, bundled assignments, callable
-  instances, base-class affixes, StrEnum values, `__all__` placement and
-  deferred annotations). Upgrading Smelt can enable newly cataloged rules
-  through it. An unknown `smelt:` name is a configuration error that lists the
-  built-in presets. `smelt config show --sources` lists the preset first and
-  names it as the origin of its entries.
-- **Breaking: a later file replaces earlier rule settings.** Each file in an
-  `extends` chain is now a separate rules layer, and a file's setting for a rule
-  replaces the setting of every file it extends, whether the entry is broader or
-  narrower. Before, all `rules` maps were merged into one and the most specific
-  entry won. A base `{visibility/internal-public-attribute: off}` stayed off
-  under a project `{information-hiding: warning}`; the project's group setting
-  now enables it. Naming one rule by code in the base and by name in the
-  project is no longer a duplicate-alias error: the project wins. Within one
-  file, duplicates remain errors and the most specific entry still wins.
-- **Broad selections in package contracts.** `ALL` and families in a package
-  contract's `rules` select only source rules. Before, a family that contained
-  test-file or project-level rules (`tests`, `architecture`, `meta`) was
-  rejected in a contract. Naming one of those rules individually is still an
-  error.
-- **Broad selections under strict coverage.** `ALL`, families and groups in
-  project `rules` no longer touch SMT306 `architecture/uncovered-source` when
-  strict coverage is on. Before, `{architecture: warning}` under
-  `project.coverage: strict` was a configuration error because it lowered
-  SMT306. Lowering SMT306 by name is still rejected.
+- Enable each rule by name or SMT code. A named `on` uses the catalog severity.
+  Families, groups and `ALL` can disable or cap already-active rules. A broad
+  severity with no active matching rules gives a migration error. CLI
+  exploration accepts all selectors.
+- Local `extends` files apply as ordered rules layers. The built-in
+  `smelt:recommended` preset was removed before release. Use
+  `smelt init --maintainability` for explicit choices and commented optional
+  hints. Discover unconfigured rules with `smelt rules --unconfigured`.
+- Broad selections leave SMT306 at error in strict coverage. In package
+  contracts, broad settings only apply to source rules.
 - **Breaking: concise lines name the rule.** `--format concise` prints
   `path:line:col CODE family/finding message -> repair`. Scripts that parse
   the message after the code must skip the rule name.
@@ -343,8 +314,7 @@ files that extend it.
   listing still follow `--show-hints`.
 - **Schema.** The editor schema completes `ALL` and every family at project
   level, `ALL` and the families with source rules in package contracts, and
-  offers `on` everywhere. `smelt init` comments show
-  `extends: smelt:recommended` and a family example.
+  offers `on` for individual names and codes.
 
 ### uv workspaces
 
@@ -406,8 +376,6 @@ unaffected until they set `project.workspace`. See
 - `smelt.config.models.SeverityName` became `RuleSetting` and includes `on`.
   `SmeltConfig.rule_layers` holds the rules map of every composed file, base
   first; `SmeltConfig.rules` remains the merged view for display.
-- Built-in presets live in `smelt/config/presets/*.yml`, are packaged in the
-  wheel and sdist, and are listed in `LoadedConfig.presets`.
 - uv member discovery moved to `smelt.config.workspace.member_directories`.
   `smelt.analysis.workspace.workspace_members` builds on it. Member configs are
   `SmeltConfig.members` (`MemberConfig`), filled by the loader and never read

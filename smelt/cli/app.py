@@ -190,6 +190,11 @@ def _add_discovery(sub: _Subparsers) -> None:
 
     rules = sub.add_parser("rules", help="list all rules")
     rules.add_argument("--format", choices=["text", "json"], default="text")
+    rules.add_argument(
+        "--unconfigured",
+        action="store_true",
+        help="list rules without an explicit setting or policy activation",
+    )
     rules.set_defaults(handler=commands.handler("rules"))
 
     context = sub.add_parser(
@@ -220,7 +225,7 @@ def _add_maintenance(sub: _Subparsers) -> None:
     init.add_argument(
         "--maintainability",
         action="store_true",
-        help="write explicit source/test review rules into the starter (no runtime preset)",
+        help="write explicit source and test review rules into the starter",
     )
     init.set_defaults(handler=commands.handler("init"))
 

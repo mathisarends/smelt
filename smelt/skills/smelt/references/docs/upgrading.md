@@ -2,6 +2,15 @@
 
 ## 0.12 to 0.13
 
+### Explicit rule activation
+
+Replace enabling family, group and `ALL` settings with the individual names or
+SMT codes you intend to run. Broad settings can disable or cap active rules.
+Replace the unreleased `smelt:recommended` preset with named entries from
+`smelt init --maintainability` or a local `extends` file.
+
+### Renamed rules
+
 The following reviews use more precise names. Their SMT codes still identify the
 same checks and debt entries.
 

@@ -14,7 +14,12 @@ from smelt.analysis.errors import AnalysisError
 from smelt.config.errors import ConfigError
 from smelt.config.loader import CONFIG_FILENAMES, parse_config
 from smelt.config.patterns import path_matches
-from smelt.engine.inference import InferredConfig, infer_config, render_config
+from smelt.engine.inference import (
+    InferredConfig,
+    infer_config,
+    maintainability_rules,
+    render_config,
+)
 from smelt.engine.workspace import workspace_members
 
 if TYPE_CHECKING:
@@ -46,7 +51,7 @@ def workspace_drafts(
         base = inferred or InferredConfig([], [], ["tests"])
         if workspace is not None:
             base = replace(base, mirror=workspace.mirror)
-        data = yaml.safe_load(render_config(base, maintainability=maintainability))
+        data = yaml.safe_load(render_config(base))
         data["project"].pop("source_roots", None)
         data["project"]["workspace"] = "uv"
         data["project"]["test_roots"] = ["tests", "test"]
@@ -69,19 +74,11 @@ def workspace_drafts(
             for pattern in patterns
             if any(path_matches(pattern, path) for path in members)
         ]
-        if draft_patterns:
-            example = _boundary_draft(root, data, draft_patterns)
-            if data.get("architecture"):
-                comment = "\n".join(
-                    "  # " + line.removeprefix("#   ").removeprefix("# ")
-                    for line in example.splitlines()
-                    if line and line != "# architecture:"
-                )
-                drafts[root_filename] = drafts[root_filename].replace(
-                    "\narchitecture:\n", f"\narchitecture:\n{comment}\n", 1
-                )
-            else:
-                drafts[root_filename] += example
+        drafts[root_filename] = _with_boundary_draft(
+            root, drafts[root_filename], data=data, patterns=draft_patterns
+        )
+        if maintainability:
+            drafts[root_filename] += "\n" + "\n".join(maintainability_rules()) + "\n"
     for path in members:
         if selected is not None and path != selected:
             continue
@@ -114,6 +111,22 @@ def workspace_drafts(
                 f"# Layer draft omitted. Review unclassified placements: {missing}.\n"
             )
     return drafts
+
+
+def _with_boundary_draft(
+    root: Path, document: str, *, data: dict[str, Any], patterns: list[str]
+) -> str:
+    if not patterns:
+        return document
+    example = _boundary_draft(root, data, patterns)
+    if not data.get("architecture"):
+        return document + example
+    comment = "\n".join(
+        "  # " + line.removeprefix("#   ").removeprefix("# ")
+        for line in example.splitlines()
+        if line and line != "# architecture:"
+    )
+    return document.replace("\narchitecture:\n", f"\narchitecture:\n{comment}\n", 1)
 
 
 def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> str:

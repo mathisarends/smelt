@@ -180,8 +180,8 @@ is evaluated; the family, not the code, groups rules for users:
 ### Rule names
 
 A rule name is `<family>/<finding>`. The family groups related findings for
-selection, configuration and output; `rules: {modeling: warning}` or
-`--select modeling` enables a whole family. The `category` attribute must equal
+selection, configuration and output. `--select modeling` explores a whole family.
+YAML enables individual rules by name or code. The `category` attribute must equal
 the family, and the catalog test enforces it:
 
 | Family | Findings about |

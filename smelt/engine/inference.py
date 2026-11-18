@@ -9,17 +9,34 @@ from typing import TYPE_CHECKING
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.patterns import module_matches
+from smelt.diagnostics.violation import Category, Severity
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 from smelt.engine.workspace import (
     WorkspaceMember,
     import_root,
     workspace_members,
 )
+from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.analysis.exports import Loader
+_STARTER_RULES = {
+    "SMT313",
+    "SMT314",
+    "SMT316",
+    "SMT320",
+    "SMT335",
+    "SMT424",
+    "SMT425",
+    "SMT426",
+    "SMT428",
+    "SMT429",
+    "SMT430",
+}
+
+
 # layer -> directory names, most conventional first
 _LAYER_ALIASES: dict[str, tuple[str, ...]] = {
     "domain": ("domain", "entities"),
@@ -563,7 +580,6 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
         "# Python guardrails for smelt. Reference: `smelt config schema`,",
         "# rule details: `smelt explain <rule>`.",
         "version: 1",
-        "# extends: smelt:recommended  # every catalog rule except style conventions",
     ]
     out.extend(
         [
@@ -602,36 +618,44 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
             f"  # {guess.mirrored} of {guess.total} test files match this mirror pattern; review before enforcing it."
         )
     if maintainability:
-        out.extend(
-            [
-                "",
-                "# Each named check is explicit; hover for examples and analysis limits.",
-                "rules:",
-                "  layout/definition-order: error",
-                "  idioms/bundled-instance-assignment: error",
-                "  information-hiding: warning",
-                "  layout/misplaced-static-helper: hint",
-                "  tests/missing-outcome-check: warning",
-                "  tests/vacuous-assertion: warning",
-                "  tests/unbounded-wait: warning",
-                "  tests/independent-case-loop: hint",
-                "  tests/missing-await-assertion: warning",
-            ]
-        )
+        out.extend(["", *maintainability_rules()])
     out.extend(
         [
             "",
-            "# Rule settings by name, family, group or ALL: error | warning | hint | on | off",
+            "# Enable individual checks by name: error | warning | hint | on | off",
             "# rules:",
             "#   architecture/import-cycle: error  # opt in to import-cycle detection",
             "#   architecture/unclassified-module: warning  # opt in to unclassified-module hints",
-            "#   complexity: on  # the whole family with its catalog severities",
             "",
             "# Adopt incrementally: `smelt debt` records today's violations.",
             "# debt: .smelt/debt.json",
         ]
     )
     return "\n".join(out) + "\n"
+
+
+def maintainability_rules() -> list[str]:
+    """Render a fixed list of named starter choices using current catalog metadata."""
+    catalog = build_rule_set(lazy=True).rules
+    lines = [
+        "# Each named check is explicit; review optional hints before enabling.",
+        "rules:",
+    ]
+    for family in Category:
+        family_lines = []
+        for rule in catalog:
+            if rule.category is not family:
+                continue
+            severity = rule.default_severity
+            if rule.code in _STARTER_RULES:
+                family_lines.append(f"  {rule.name}: {severity.value}")
+            elif (
+                severity is Severity.HINT and getattr(rule, "activation", None) is None
+            ):
+                family_lines.append(f"  # {rule.name}: hint")
+        if family_lines:
+            lines.extend([f"  # {family.value}", *family_lines])
+    return lines
 
 
 def _loader(packages: list[Path]) -> Loader:

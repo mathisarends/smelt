@@ -1,13 +1,12 @@
 # Rule activation and migration
 
-Configure a fixed pattern or a named group in `rules`, with its severity as the
-single activation setting:
+Enable fixed patterns individually in `rules`. Each named setting records a
+policy decision:
 
 ```yaml
 rules:
   layout/definition-order: error
-  information-hiding: warning
-  layout/misplaced-static-helper: hint
+  visibility/internal-public-member: warning
   tests/missing-outcome-check: warning
   tests/unbounded-wait: warning
   tests/missing-await-assertion: warning
@@ -15,61 +14,35 @@ rules:
 
 ## Families
 
-Every rule name starts with its family: `architecture`, `imports`, `layout`,
-`visibility`, `modeling`, `typing`, `complexity`, `idioms`, `frameworks`, `tests`
-or `meta`. A family name selects all of its rules wherever rule names are
-accepted, including package-contract `rules`, `--select` and `--ignore`.
-`smelt explain <family>` lists the family's rules.
+Every rule name starts with its family. Enable an individual rule by canonical
+name or stable SMT code. The value `on` uses its catalog severity.
+
+Use `smelt check --select typing` or `smelt check --select ALL` to explore the
+catalog. In YAML, families, groups and `ALL` can turn rules `off` or cap the
+severity of rules already active through an individual entry or applicable
+policy. A broad severity with no active matching rule is a configuration error.
 
 ```yaml
 rules:
-  typing: warning
-  typing/anonymous-tuple-type: off  # A more specific entry wins.
+  architecture: warning          # Cap rules activated by architecture policy.
+  architecture/import-cycle: on  # Enable this named rule at its catalog severity.
 ```
 
-A family entry enables every rule in it, including heuristic hints, so prefer it
-for exploration or for families whose findings the project has already reviewed.
-`ALL` selects the whole catalog. The value `on` keeps each rule's catalog
-severity instead of forcing one severity onto certain errors and heuristic hints:
+Precedence within a map is `ALL`, then family, then group, then individual rule.
+Package contracts restrict broad settings to source rules. Strict coverage protects
+SMT306 from broad settings.
 
-```yaml
-rules:
-  ALL: on
-  tests: off
-  complexity/inline-call-argument: error
-```
+## Layered files
 
-Precedence within one map is `ALL`, then family, then group, then individual
-rule, regardless of YAML key order. In a package contract, `ALL` and families
-select only source rules; test-file and project-level rules stay at project
-level. Under strict coverage, broad selections leave SMT306 at `error`.
-
-## Built-in base and layered files
-
-`extends: smelt:recommended` starts from `ALL: on` with the style conventions
-turned off where either spelling is valid, so the project chooses them
-deliberately. The preset ships with the installed Smelt version; upgrading can
-enable newly cataloged rules.
-
-```yaml
-extends: smelt:recommended
-version: 1
-project: {root_packages: [app]}
-rules:
-  layout/definition-order: error  # adopt one convention
-  complexity: warning             # tighten a family
-```
-
-Every file in an `extends` chain is its own rules layer. A file's setting for a
-rule replaces the setting of the files it extends, even when it is broader: a
-project `layout: on` re-enables a convention the preset turned off. Within one
-file, the most specific entry wins. `smelt config show --sources` names the file
-or preset behind each entry.
+Use `extends: ../smelt.base.yml` for shared, versioned policy. Each file in an
+`extends` chain is its own rules layer. A later named setting can replace an
+earlier setting. A broad setting can disable or cap matching rules. Use
+`smelt config show --sources` for the policy origins and `rule_selectors` matches.
 
 ## Information hiding
 
-`information-hiding` reviews unnecessarily public implementation details with one
-setting. It includes functions and methods (SMT316), module constants and type
+`smelt check --select information-hiding` explores five visibility rules.
+It includes functions and methods (SMT316), module constants and type
 aliases (SMT320), data attributes (SMT335), and functions/attributes whose only
 external consumers are tests (SMT429/SMT430). Test access alone does not justify
 a public API. Each check retains its conservative exclusions, evidence, stable
@@ -82,7 +55,7 @@ expand the underlying checks' evidence or coverage.
 
 ```yaml
 rules:
-  information-hiding: warning
+  visibility/internal-public-member: warning
   visibility/internal-public-attribute: off  # Keep this specific review disabled.
 ```
 
@@ -95,9 +68,7 @@ name/code entries for an individual rule remain configuration errors.
 The same group works in package `rules`, `--select`, `--ignore` and scoped
 `ignore` entries. Inline suppressions continue to use stable SMT codes or
 prefixes. Inspect the membership with `smelt explain information-hiding`; catalog
-JSON exposes a `groups` list on every rule. Existing individual configurations
-remain valid. Migrating a narrower selection to the group also enables any of
-the five checks it previously omitted.
+JSON exposes a `groups` list on every rule.
 
 Private instance state is valid. Moving private class constants to module scope
 (SMT334) and extracting static helpers (SMT317) concern placement and stay
@@ -108,14 +79,14 @@ independent. They are not members of this group.
 In a [uv workspace](configuration.md#uv-workspaces), a member's `smelt.yml` is
 one more rules layer. It applies by path to the member's sources and tests:
 
-1. the root rules layers, presets and bases first;
+1. the root rules layers, bases first;
 2. the member's `rules`, from the innermost member that contains the file;
 3. the closest package contract, including the contract the member's
    `structure` options compile into.
 
 ```yaml
 # smelt.yml at the workspace root
-rules: {complexity: warning}
+rules: {complexity/duplicate-function: warning}
 ```
 
 ```yaml
@@ -126,7 +97,7 @@ rules:
 ```
 
 Here `packages/legacy` reports only `complexity/duplicate-function`, as a hint.
-Every other member keeps `complexity: warning`. Within a member file, the most
+Every other member keeps `complexity/duplicate-function: warning`. Within a member file, the most
 specific selector wins, as in any other layer. A rule that only a member enables
 stays off in the other members.
 
@@ -192,7 +163,8 @@ debt is also retained by the debt command. Changed checks compare source under
 the current explicit policy on both sides.
 
 Use `smelt init --maintainability` to write a visible selection of source/test
-reviews, including `information-hiding: warning`. Plain `init` infers architecture
+reviews by individual name, with optional hints commented out. Use
+`smelt rules --unconfigured` to discover rules to review. Plain `init` infers architecture
 and leaves those conventions opt-in;
 both commands write an editor schema beside the YAML. The complete small-project
 API, package exceptions, editor setup and removed-field/name mapping are in

@@ -170,11 +170,6 @@ def relative_scope(
         return Path(raw).as_posix()
 
 
-def _settings_by_code(rules: RuleSet, loaded: LoadedConfig) -> dict[str, str]:
-    """Key ``rules:`` overrides by code; the config may name a rule by code or name."""
-    return RuleSettings(rules, loaded).global_rules
-
-
 def _run_check(
     loaded: LoadedConfig,
     options: CheckOptions,
@@ -480,7 +475,6 @@ def _resolve_active_rules(
     rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
 ) -> list[tuple[RuleContract, Severity]]:
     policy = RuleSettings(rules, loaded)
-    settings = policy.global_rules
     known = {rule.code for rule in rules.rules}
     normalized: dict[str, tuple[str, ...]] = {}
     for key in ("select", "ignore"):
@@ -499,7 +493,7 @@ def _resolve_active_rules(
 
     active: list[tuple[RuleContract, Severity]] = []
     for rule in rules.rules:
-        setting = settings.get(rule.code)
+        setting = policy.global_value(rule)
         if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
             _validate_strict_coverage(loaded, options, setting)
             active.append((rule, Severity.ERROR))
@@ -512,10 +506,7 @@ def _resolve_active_rules(
             continue
         if setting is not None and setting != "off":
             severity = Severity(setting)
-        elif (
-            policy.globally_enabled(rule, selected=explicitly_selected)
-            or package_enabled
-        ):
+        elif explicitly_selected or package_enabled:
             severity = rule.default_severity
         else:
             continue
