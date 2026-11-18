@@ -207,7 +207,7 @@ def test_is_opt_in_and_supports_package_overrides_and_suppression(
     (root / "smelt.yml").write_text(
         CONFIG
         + "rules: {idioms/loop-invariant-collection: hint}\n"
-        + "structure:\n  contracts:\n    quiet:\n      match: app.quiet\n"
+        + "style:\n  overrides:\n    quiet:\n      match: app.quiet\n"
         + "      rules: {idioms/loop-invariant-collection: off}\n",
         encoding="utf-8",
     )

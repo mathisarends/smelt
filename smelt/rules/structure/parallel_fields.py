@@ -97,7 +97,7 @@ class ParallelRecordFields(Rule):
             "or correctness claim is made. Enable rules: {modeling/parallel-record-fields: hint}, "
             "or select SMT361."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

@@ -43,11 +43,11 @@ class ForeignPrivateAccess(Rule):
             "in another analyzed production module, including sibling modules of "
             "the same package. Public aliases remain public, and a package "
             "initializer may re-export its own submodule's private symbol under a "
-            "public alias. TYPE_CHECKING follows architecture.imports.type_checking. "
+            "public alias. TYPE_CHECKING follows architecture.import_graph.type_checking. "
             "attribute: reads, writes, calls, updates and deletes of a private "
             "member, such as self.log._images, whose receiver and defining project "
             "class are statically known and live in another module, or another "
-            "package under structure.private_attribute_boundary: package. Direct "
+            "package under style.private_attribute_boundary: package. Direct "
             "accesses on the method receiver to its own or inherited members are "
             "allowed. Receiver evidence comes from parameter/variable annotations, "
             "direct constructor assignments, stable local aliases, class/instance "
@@ -92,9 +92,9 @@ class ForeignPrivateAccess(Rule):
         ),
         config=(
             "rules",
-            "structure.private_attribute_boundary",
-            "structure.contracts",
-            "architecture.imports.type_checking",
+            "style.private_attribute_boundary",
+            "style.overrides",
+            "architecture.import_graph.type_checking",
         ),
     )
 
@@ -112,7 +112,7 @@ class ForeignPrivateAccess(Rule):
     ) -> Iterator[Violation]:
         ignored = (
             type_checking_lines(module.tree)
-            if ctx.config.architecture.imports.type_checking == "ignore"
+            if ctx.config.architecture.import_graph.type_checking == "ignore"
             else frozenset()
         )
         reexports = set(_module_imports(module.tree)) if source.is_package else set()

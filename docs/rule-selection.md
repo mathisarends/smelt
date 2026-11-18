@@ -18,7 +18,7 @@ Every rule name starts with its family. Enable an individual rule by canonical
 name or stable SMT code. The value `on` uses its catalog severity.
 
 Use `smelt check --select typing` or `smelt check --select ALL` to explore the
-catalog. In YAML, families, groups and `ALL` can turn rules `off` or cap the
+catalog. In YAML, families and `ALL` can turn rules `off` or cap the
 severity of rules already active through an individual entry or applicable
 policy. A broad severity with no active matching rule is a configuration error.
 
@@ -28,7 +28,7 @@ rules:
   architecture/import-cycle: on  # Enable this named rule at its catalog severity.
 ```
 
-Precedence within a map is `ALL`, then family, then group, then individual rule.
+Precedence within a map is `ALL`, then family, then individual rule.
 Package contracts restrict broad settings to source rules. Strict coverage protects
 SMT306 from broad settings.
 
@@ -41,38 +41,17 @@ earlier setting. A broad setting can disable or cap matching rules. Use
 
 ## Information hiding
 
-`smelt check --select information-hiding` explores five visibility rules.
-It includes functions and methods (SMT316), module constants and type
-aliases (SMT320), data attributes (SMT335), and functions/attributes whose only
-external consumers are tests (SMT429/SMT430). Test access alone does not justify
-a public API. Each check retains its conservative exclusions, evidence, stable
-code, suppression and debt identity. It asks for review; it cannot prove a rename
-is safe or observe consumers outside the configured analysis scope.
+The visibility reviews cover functions and methods (SMT316), module constants
+and type aliases (SMT320), data attributes (SMT335) and APIs whose only observed
+consumers are tests (SMT429 and SMT430). Enable the ones your project uses by
+individual name. Explore these five together with:
 
-The current test-only checks cover module functions and data attributes. Methods
-with observed test users retain SMT316's external-use exclusion. Grouping does not
-expand the underlying checks' evidence or coverage.
-
-```yaml
-rules:
-  visibility/internal-public-member: warning
-  visibility/internal-public-attribute: off  # Keep this specific review disabled.
+```sh
+smelt check --select SMT316,SMT320,SMT335,SMT429,SMT430
 ```
 
-An individual rule entry overrides its group's severity in the same map,
-regardless of YAML key order. A closer package setting overrides an enclosing
-setting, including an individual parent setting. Group `off` disables all five
-members unless an individual entry or closer package re-enables one. Duplicate
-name/code entries for an individual rule remain configuration errors.
-
-The same group works in package `rules`, `--select`, `--ignore` and scoped
-`ignore` entries. Inline suppressions continue to use stable SMT codes or
-prefixes. Inspect the membership with `smelt explain information-hiding`; catalog
-JSON exposes a `groups` list on every rule.
-
-Private instance state is valid. Moving private class constants to module scope
-(SMT334) and extracting static helpers (SMT317) concern placement and stay
-independent. They are not members of this group.
+The static checker cannot prove a rename is safe. Preserve deliberate public
+interfaces and review external consumers before editing them.
 
 ## Workspace members
 
@@ -81,8 +60,8 @@ one more rules layer. It applies by path to the member's sources and tests:
 
 1. the root rules layers, bases first;
 2. the member's `rules`, from the innermost member that contains the file;
-3. the closest package contract, including the contract the member's
-   `structure` options compile into.
+3. the closest style override, including the member's `style` options for its
+   packages.
 
 ```yaml
 # smelt.yml at the workspace root
@@ -102,7 +81,7 @@ specific selector wins, as in any other layer. A rule that only a member enables
 stays off in the other members.
 
 A lower member severity needs `{severity: ..., reason: "..."}`, including in
-member package contracts. The winning selector supplies the reason; `on` is
+member style overrides. The winning selector supplies the reason. `on` is
 compared using the catalog severity. See [reasoned member exceptions](configuration.md#reasoned-member-exceptions).
 
 A member's `architecture` activates the architecture rules the same way the root
@@ -126,7 +105,7 @@ SMT401. An empty public list still declares a private API, and a patch limit of
 zero still forbids patches. Mere ordering options do not activate SMT313.
 
 A source-convention option enables its rule only where it applies. Set under
-`structure`, it covers the project; set in a package contract, it covers the
+`style`, it covers the project. A style override covers the
 matching packages, and the rule reports nothing elsewhere. Selecting the same
 rule in `rules` or with `--select` enables it everywhere and uses built-in
 defaults where no option is set, for example a limit of 5 for SMT345. See
@@ -136,12 +115,12 @@ for the defaults.
 ```bash
 smelt rules --format json
 smelt explain visibility/internal-public-member
-smelt check --select information-hiding,tests/unbounded-wait
+smelt check --select visibility,tests/unbounded-wait
 smelt check --select SMT3
 smelt check --select ALL --ignore architecture/import-cycle
 ```
 
-`--select` replaces normal selection and accepts canonical names, rule groups,
+`--select` replaces normal selection and accepts canonical names, families,
 stable code prefixes and `ALL`. `--ignore` accepts the same selectors. A selection enables
 fixed patterns without additional policy switches. Architecture/style checks
 still require their actual model or parameters where the catalog says so.

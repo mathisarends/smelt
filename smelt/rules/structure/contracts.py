@@ -26,14 +26,14 @@ class MissingRequiredModule(Rule):
             "framework, feature layout or layer names. Excluded code does not fulfill "
             "a contract. This checks presence, not implementation quality."
         ),
-        bad="structure:\n  contracts:\n    slices:\n      match: app.slices.*\n      required: [api]   # app.slices.orders.api is absent",
-        good="structure:\n  contracts:\n    slices:\n      match: app.slices.*\n      required: [api]   # every matching package has an api module or package",
+        bad="architecture:\n  packages:\n    slices:\n      match: app.slices.*\n      required: [api]   # app.slices.orders.api is absent",
+        good="architecture:\n  packages:\n    slices:\n      match: app.slices.*\n      required: [api]   # every matching package has an api module or package",
         fix=(
             "Implement the missing module in the matching package. If that package "
             "should follow a different structure, narrow or split the contract. Do "
             "not add empty implementation stubs solely to satisfy the check."
         ),
-        config=("structure.contracts",),
+        config=("architecture.packages",),
         example_language="yaml",
     )
 
@@ -66,6 +66,6 @@ class MissingRequiredModule(Rule):
                     },
                     hint=(
                         f"Implement {module} under {contract.package}, or narrow "
-                        f"structure.contracts.{contract.name} to packages sharing that structure."
+                        f"architecture.packages.{contract.name} to packages sharing that structure."
                     ),
                 )

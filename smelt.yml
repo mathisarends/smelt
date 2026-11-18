@@ -40,11 +40,18 @@ architecture:
       path: cli
       may_depend_on: [analysis, config, diagnostics, engine, model, rules]
 
-  imports:
+  import_graph:
     type_checking: include
     transitive: true
 
-structure:
+  packages:
+    model-api:
+      match: smelt.model
+      required: [architecture]
+      public: ['.']
+      min_imports_to_bundle: 2
+
+style:
   forbidden_names: [utils, helpers]
   private_modules: forbid
   future_annotations: when-needed
@@ -52,15 +59,10 @@ structure:
   max_positional_parameters: 3
   dataclass_options: [slots]
   call_argument_kinds: [await]
-  contracts:
+  overrides:
     type-dispatch:
       match: smelt.rules.structure
       type_dispatch: {style: match, min_branches: 3}
-    model-api:
-      match: smelt.model
-      required: [architecture]
-      public: ['.']
-      bundle_imports_at: 2
 
 tests:
   layout: mirror

@@ -267,7 +267,8 @@ def test_type_checking_policy_is_respected(tmp_path: Path, setting: str) -> None
             "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
             "    from app.observation.models import Snapshot\n"
         ),
-        config=CONFIG + f"architecture: {{imports: {{type_checking: {setting}}}}}\n",
+        config=CONFIG
+        + f"architecture: {{import_graph: {{type_checking: {setting}}}}}\n",
     )
     found = violations(root, OPTIONS)
     assert [finding.code for finding in found] == (
@@ -292,7 +293,7 @@ def test_closest_package_can_disable_the_rule(tmp_path: Path) -> None:
         tmp_path,
         config=CONFIG
         + "rules: {imports/prefer-package-import: error}\n"
-        + "structure:\n  contracts:\n    local:\n      match: app\n"
+        + "style:\n  overrides:\n    local:\n      match: app\n"
         + "      rules: {imports/prefer-package-import: off}\n",
     )
     assert violations(root, OPTIONS) == []

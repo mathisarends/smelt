@@ -249,6 +249,11 @@ def test_a_member_check_runs_the_workspace_scoped_to_that_member(
             "smelt.yml",
             ["smelt.yml", "services/api/smelt.yaml"],
         ),
+        (
+            "architecture:\n  packages:\n    api: {match: api, public: ['.']}\n",
+            "smelt.yml",
+            ["smelt.yml", "services/api/smelt.yaml"],
+        ),
         (None, "smelt.yml", ["smelt.yml"]),
     ],
 )
@@ -482,7 +487,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {}}",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {}}",
                 "app/__init__.py": "",
                 "app/events.py": source,
             },
@@ -511,7 +516,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
+                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
                 "app/__init__.py": "",
                 "app/service.py": source,
             },
@@ -566,7 +571,7 @@ class TestCheckCommand:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
+                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
                 "app/service.py": "def _helper(): return 7\n\ndef api(): return _helper()\n",
             },
         )
@@ -607,8 +612,8 @@ class TestCheckCommand:
                 "smelt.yml": """
                 version: 1
                 project: {root_packages: [app]}
-                structure:
-                  contracts:
+                style:
+                  overrides:
                     names: {match: app, private_modules: forbid}
             """,
                 "app/_service.py": "__all__ = ['run']\ndef run(): pass\n",
@@ -643,8 +648,8 @@ class TestCheckCommand:
                 "smelt.yml": """
                 version: 1
                 project: {root_packages: [app], python_version: "3.14"}
-                structure:
-                  contracts:
+                style:
+                  overrides:
                     headers: {match: app, module_docstrings: forbid, future_annotations: when-needed}
             """,
                 "app/source.py": '"""Module introduction."""\nfrom __future__ import annotations\n',
@@ -692,8 +697,8 @@ class TestCheckCommand:
                 "smelt.yml": """
                 version: 1
                 project: {root_packages: [library]}
-                structure:
-                  contracts:
+                architecture:
+                  packages:
                     public-api: {match: library, required: [api], public: [api]}
             """,
                 "library/__init__.py": "",
@@ -1258,7 +1263,7 @@ class TestInfoCommands:
         assert code == 0
         entry = next(rule for rule in json.loads(out) if rule["code"] == "SMT308")
         assert entry["requires"] == ["syntax"]
-        assert "structure.contracts" in entry["config"]
+        assert "style.overrides" in entry["config"]
 
         code, out, _ = _run(capsys, "explain", "SMT308", "--format", "json")
         assert code == 0
@@ -1332,7 +1337,7 @@ class TestInfoCommands:
 
         data = json.loads(out)
         assert code == 0
-        assert data["architecture"]["imports"] == {
+        assert data["architecture"]["import_graph"] == {
             "type_checking": "include",
             "transitive": False,
             "cycles": ["features", "layers", "siblings"],
@@ -1702,7 +1707,7 @@ class TestDebtCommand:
         config = tmp_path / "smelt.yml"
         with config.open("a", encoding="utf-8") as target:
             target.write(
-                "structure:\n  contracts:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
+                "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-member: off}\n"
             )
 
         code, _, err = _run(capsys, "debt", "--prune")
@@ -1911,7 +1916,7 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering: {}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n",
             "app/__init__.py": "",
             "app/service.py": "def _default():\n    return 7\ndef create(options: int | None = None):\n    return options or _default()\n",
         },

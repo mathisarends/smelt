@@ -44,7 +44,7 @@ class StrEnumValueConvention(Rule):
             "every member and its auto() members are reported instead. " + _SCOPE
         ),
         bad=(
-            "# structure: {str_enum_values: explicit}\n"
+            "# style: {str_enum_values: explicit}\n"
             "class SignalingMessageType(StrEnum):\n"
             "    DESCRIPTION = auto()\n"
             "    READY = auto()"
@@ -61,10 +61,10 @@ class StrEnumValueConvention(Rule):
             "members of a class with custom values explicitly. No automatic "
             "rewrite is performed. Enable rules: "
             "{modeling/str-enum-value-convention: hint}, select SMT341, or set "
-            "str_enum_values under structure or in a package contract. Reasoned "
+            "str_enum_values under style or in a package contract. Reasoned "
             "inline suppressions are supported."
         ),
-        config=("rules", "structure.str_enum_values", "structure.contracts"),
+        config=("rules", "style.str_enum_values", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

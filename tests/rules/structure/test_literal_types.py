@@ -165,7 +165,7 @@ def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> N
     (root / "smelt.yml").write_text(config, encoding="utf-8")
     assert violations(root)[0].severity is Severity.WARNING
     (root / "smelt.yml").write_text(
-        config + "structure:\n  contracts:\n"
+        config + "style:\n  overrides:\n"
         "    local: {match: app, rules: {SMT338: off}}\n",
         encoding="utf-8",
     )

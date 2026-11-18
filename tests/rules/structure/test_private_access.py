@@ -175,7 +175,7 @@ def test_type_checking_policy_applies_to_imports_and_reads(
         "import app.service as runtime\n"
         "if TYPE_CHECKING:\n"
         "    runtime._helper()\n",
-        config=CONFIG + f"architecture:\n  imports: {{type_checking: {policy}}}\n",
+        config=CONFIG + f"architecture:\n  import_graph: {{type_checking: {policy}}}\n",
     )
     found = violations(root, SELECT)
     assert [v.line for v in found] == ([3, 5, 6, 9] if policy == "include" else [])
@@ -256,7 +256,7 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
         {
             "smelt.yml": CONFIG
             + "rules: {visibility/foreign-private-access: error}\n"
-            + "structure:\n  contracts:\n    caller:\n      match: app\n"
+            + "style:\n  overrides:\n    caller:\n      match: app\n"
             + "      rules: {visibility/foreign-private-access: off}\n"
         },
     )
@@ -521,7 +521,7 @@ def test_unknown_class_decorators_do_not_establish_receiver_types(
 def test_global_package_boundary_keeps_subpackages_separate(tmp_path: Path) -> None:
     source = "from app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images\n"
     root = _attribute_project(
-        tmp_path, source, settings="structure: {private_attribute_boundary: package}\n"
+        tmp_path, source, settings="style: {private_attribute_boundary: package}\n"
     )
     write_project(root, {"app/runtime/__init__.py": "", "app/runtime/inbox.py": source})
     [finding] = violations(root, SELECT)
@@ -534,9 +534,9 @@ def test_closest_package_boundary_overrides_the_global_default(tmp_path: Path) -
         tmp_path,
         source,
         settings="""\
-structure:
+style:
   private_attribute_boundary: package
-  contracts:
+  overrides:
     strict: {match: app, private_attribute_boundary: module}
     inner: {match: app.runtime, private_attribute_boundary: package}
 """,
@@ -557,7 +557,7 @@ def test_package_initializer_shares_its_package_boundary(tmp_path: Path) -> None
     root = _attribute_project(
         tmp_path,
         "from app import SessionLog\ndef persist(log: SessionLog):\n    return log._images\n",
-        settings="structure: {private_attribute_boundary: package}\n",
+        settings="style: {private_attribute_boundary: package}\n",
     )
     write_project(root, {"app/__init__.py": OWNER})
     assert violations(root, SELECT) == []
@@ -566,7 +566,7 @@ def test_package_initializer_shares_its_package_boundary(tmp_path: Path) -> None
 def test_opt_in_package_off_suppression_and_test_exclusion(tmp_path: Path) -> None:
     source = "from app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images\n"
     root = _attribute_project(
-        tmp_path, source, settings="structure: {private_attribute_boundary: module}\n"
+        tmp_path, source, settings="style: {private_attribute_boundary: module}\n"
     )
     assert [v.code for v in violations(root)] == ["SMT339"]
     write_project(
@@ -575,8 +575,8 @@ def test_opt_in_package_off_suppression_and_test_exclusion(tmp_path: Path) -> No
             "smelt.yml": CONFIG
             + """\
 rules: {visibility/foreign-private-access: error}
-structure:
-  contracts:
+style:
+  overrides:
     quiet: {match: app.quiet, rules: {visibility/foreign-private-access: off}}
 """,
             "app/quiet/__init__.py": "",
@@ -634,9 +634,9 @@ def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -
 @pytest.mark.parametrize(
     "settings",
     [
-        "structure: {private_attribute_boundary: tree}",
-        "structure: {contracts: {bad: {match: app, private_attribute_boundary: tree}}}",
-        "structure:\n  contracts:\n    a: {match: app, private_attribute_boundary: module}\n    b: {match: app, private_attribute_boundary: package}\n",
+        "style: {private_attribute_boundary: tree}",
+        "style: {overrides: {bad: {match: app, private_attribute_boundary: tree}}}",
+        "style:\n  overrides:\n    a: {match: app, private_attribute_boundary: module}\n    b: {match: app, private_attribute_boundary: package}\n",
     ],
 )
 def test_rejects_invalid_or_conflicting_boundaries(
@@ -671,7 +671,7 @@ def test_attribute_package_boundary_does_not_relax_private_symbols(
     root = _attribute_project(
         tmp_path,
         source,
-        settings="structure: {private_attribute_boundary: package}\n",
+        settings="style: {private_attribute_boundary: package}\n",
         owner=OWNER + "def _helper(value):\n    return value\n",
     )
     found = violations(root, SELECT)

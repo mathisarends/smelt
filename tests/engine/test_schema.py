@@ -1,6 +1,5 @@
 from smelt.diagnostics.violation import Category
 from smelt.engine.schema import config_json_schema
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 
 
@@ -19,7 +18,6 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
 
     assert set(settings["properties"]) == (
         {rule.name for rule in build_rule_set().rules}
-        | RULE_GROUPS.keys()
         | {family.value for family in Category}
         | {"ALL"}
     )
@@ -31,7 +29,7 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
         assert settings["patternProperties"][f"^{rule.code}$"] == entry
-    for contract in ("PackageContract", "MemberPackageContract"):
+    for contract in ("StyleOverride", "MemberStyleOverride"):
         assert schema["$defs"][contract]["properties"]["rules"] == {
             "$ref": "#/$defs/SourceRuleSettings"
         }
@@ -49,11 +47,11 @@ def test_editor_schema_accepts_member_style_reasons() -> None:
     schema = config_json_schema()
     definitions = schema["$defs"]
 
-    assert {"$ref": "#/$defs/MemberStructureConfig"} in schema["properties"][
-        "structure"
-    ]["anyOf"]
-    assert "reasons" in definitions["MemberStructureConfig"]["properties"]
-    assert "reasons" in definitions["MemberPackageContract"]["properties"]
+    assert {"$ref": "#/$defs/MemberStyleConfig"} in schema["properties"]["style"][
+        "anyOf"
+    ]
+    assert "reasons" in definitions["MemberStyleConfig"]["properties"]
+    assert "reasons" in definitions["MemberStyleOverride"]["properties"]
 
 
 def test_editor_schema_does_not_advertise_removed_switches() -> None:
@@ -65,7 +63,7 @@ def test_editor_schema_does_not_advertise_removed_switches() -> None:
         key.startswith("review_") or key.startswith("require_") for key in tests
     )
     assert "enabled" not in schema["$defs"]["OrderingConfig"]["properties"]
-    contract = schema["$defs"]["PackageContract"]["properties"]
+    contract = schema["$defs"]["StyleOverride"]["properties"]
     assert (
         not {"member_visibility", "static_methods", "instance_assignments"}
         & contract.keys()
@@ -83,19 +81,12 @@ def test_package_completion_and_runtime_rule_scope_agree() -> None:
     ]
     assert set(source) == (
         {rule.name for rule in source_rules}
-        | RULE_GROUPS.keys()
         | {rule.category.value for rule in source_rules}
         | {"ALL"}
     )
     assert "tests" not in source
     assert "tests/unbounded-wait" not in source["ALL"]["description"]
     assert "architecture/uncovered-source" not in source["architecture"]["description"]
-    for group in RULE_GROUPS.values():
-        assert all(
-            getattr(rule, "scope", "source") == "source"
-            for rule in build_rule_set().rules
-            if rule.code in group.codes
-        )
     assert "visibility/test-only-public-attribute" in source
     assert "tests/unbounded-wait" not in source
     assert "architecture/uncovered-source" not in source

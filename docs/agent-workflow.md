@@ -14,8 +14,8 @@ For example:
 version: 1
 project:
   root_packages: [app]
-structure:
-  contracts:
+style:
+  overrides:
     internal-helpers:
       match: app
       rules:

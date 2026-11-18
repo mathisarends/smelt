@@ -45,7 +45,7 @@ class PublicDefinitionsFirst(Rule):
             "public-first order. On Python 3.12/3.13, keep a needed annotations future "
             "import when the chosen order uses forward references; SMT311 retains it."
         ),
-        config=("rules", "structure.contracts", "project.python_version"),
+        config=("rules", "style.overrides", "project.python_version"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

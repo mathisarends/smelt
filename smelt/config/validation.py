@@ -24,7 +24,7 @@ def validate_semantics(
         member_owners={
             package: path
             for path, member in config.members.items()
-            if member.architecture is not None
+            if member.governs_architecture
             for package in member.packages
         },
     )
@@ -84,18 +84,25 @@ class _Validator:
 
     def contracts(self) -> None:
 
-        roots = self.config.project.root_packages
-        for symbol, export in self.config.structure.canonical_exports.items():
+        config = self.config
+        roots = config.project.root_packages
+        structure = config.structure
+        for symbol, export in structure.canonical_exports.items():
             if any(name.split(".")[0] not in roots for name in (symbol, export)):
                 self._error(
-                    f"structure.canonical_exports.{symbol}",
+                    f"architecture.canonical_exports.{symbol}",
                     "definition and public export must be inside project.root_packages",
                 )
-        for name, contract in self.config.structure.contracts.items():
+        for name, contract in structure.contracts.items():
             first = contract.match.split(".")[0]
             if first != "*" and first not in roots:
+                policy = (
+                    "style.overrides"
+                    if name in config.style.overrides
+                    else "architecture.packages"
+                )
                 self._error(
-                    f"structure.contracts.{name}.match",
+                    f"{policy}.{name}.match",
                     f'"{contract.match}" is not inside project.root_packages ({", ".join(roots)})',
                 )
 

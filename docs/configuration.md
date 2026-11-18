@@ -4,9 +4,9 @@ Use `smelt.yml` for project configuration; `smelt init` creates it by default.
 Existing `smelt.yaml` files remain supported. When both filenames exist in the
 same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
 
-Configure a fixed check, a coherent rule group or a whole family (such as
-`typing`) once, by name. Rule names have the form `family/finding`. The value
-enables the rule and sets its severity. No separate `review_*` switch is needed.
+Configure each fixed check by its individual name or SMT code. Rule names have
+the form `family/finding`. The value activates that check and sets its severity.
+A family selector can disable or cap rules that are already active.
 See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Stable SMT codes remain valid aliases and keep existing debt identities.
@@ -42,10 +42,8 @@ rules:
 
 Generate this explicit starting selection with `smelt init --maintainability`.
 The flag chooses what `init` writes; later checks read the configured entries.
-`information-hiding` covers SMT316/SMT320/SMT335/SMT429/SMT430, including public APIs
-used only by tests. Individual entries override a group in the same map regardless
-of key order; closest-package overrides still win. Existing individual selections
-remain supported. See [group scope and migration](rule-selection.md#information-hiding).
+The visibility reviews cover APIs used only by tests. See
+[visibility reviews](rule-selection.md#information-hiding).
 Plain `init` retains its conservative architecture starter. Neither command
 overwrites an existing config without `--force`.
 
@@ -111,7 +109,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   written in the repository-level base. Only the `extends` reference itself uses
   its declaring file as the anchor. Dotted module patterns are unchanged.
 - `rules` do not merge key by key: every file is its own rules layer, and a
-  named setting can replace an earlier setting. Families, groups and `ALL` can
+  named setting can replace an earlier setting. Families and `ALL` can
   cap or disable active rules. The base may spell a rule by code and the child by name.
   Within one file, a rule name and its SMT code together remain a
   duplicate-alias error. Unknown rules, invalid severities and strict-coverage
@@ -171,10 +169,11 @@ Each member may add its own `smelt.yml`, which inherits the root implicitly:
 rules:
   complexity: {severity: off, reason: Migrating legacy handlers to the shared style.}
   visibility/internal-public-member: error
-structure:
+style:
   max_positional_parameters: 2
   reasons: {max_positional_parameters: Prefer named arguments in service handlers.}
-  contracts:
+architecture:
+  packages:
     http: {match: api.http, public: ['.']}
 ignore:
   - {rule: tests/excess-patches, paths: [tests/legacy/**], reason: Migrating.}
@@ -182,8 +181,9 @@ project:
   exclude: [{path: src/api/generated/**, reason: Generated client.}]
 ```
 
-- **Allowed keys:** `version`, `project.exclude`, `structure`, `rules`, `debt`,
-  `ignore` and `architecture` (except `architecture.imports` and `architecture.members`). A member cannot
+- **Allowed keys:** `version`, `project.exclude`, `style`, `rules`, `debt`,
+  `ignore` and `architecture`. The graph policy, member boundaries and canonical
+  exports are configured at the root. A member cannot
   set `extends`, `tests`, `suppressions` or other `project` keys. Smelt
   reports each of these as an error that names the member file.
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
@@ -191,7 +191,7 @@ project:
 - **`rules` apply by path** to the member's sources and tests. The root's
   setting comes first, then the member's, then the closest package contract.
   See [rule precedence](rule-selection.md#workspace-members).
-- **`structure` options become a contract** for each of the member's packages.
+- **`style` options become a contract** for each of the member's packages.
   The contract is named after the member path, or `member:package` when the
   member has several packages. A root contract on a nested package, or a member
   contract, still overrides it.
@@ -220,8 +220,8 @@ architecture:
 
 - It **replaces** the root `architecture` for the member's packages. It is not
   merged with it. The root architecture still governs the root project and
-  every member without its own. An omitted or empty mapping (`architecture: {}`)
-  inherits the root architecture. If the root names a package governed by a member,
+  every member without its own. A member that only supplies `architecture.packages`
+  also inherits the root architecture. If the root names a package governed by a member,
   move the entry to that member's config or remove the member architecture.
 - Every module it names (`features`, `shared`, `composition_root`, `modules`,
   `wiring`) must lie inside the member's own packages. Layers without features
@@ -229,7 +229,7 @@ architecture:
 - It judges only imports **inside** the member: layers, features, shared code,
   composition roots, third-party policy and cycles. Imports from one member
   into another are not judged by either member's architecture.
-- `architecture.imports` (which imports count) and `architecture.members`
+- `architecture.import_graph` (which imports count) and `architecture.members`
   (boundaries between members) are set once in the workspace root.
 - `smelt context` for a member feature or path shows the member's layers. In
   strict coverage mode, SMT306 and SMT305 use the architecture that governs each
@@ -255,18 +255,18 @@ rules:
 ```
 
 The guard compares effective selectors with the root policy, including rule
-activation and applicable root package contracts. It applies to member `rules`
-and rules in member package contracts. `on` resolves to each rule's catalog
+activation and applicable root style overrides. It applies to member `rules`
+and rules in member style overrides. `on` resolves to each rule's catalog
 severity before comparison. A more specific entry must carry its own reason if
-it weakens the policy; it cannot borrow the reason of an overridden family or
-group. Empty or whitespace-only reasons are config errors. Strict coverage
-cannot be lowered even with a reason. Root rules and contracts may also use the
+it weakens the policy. The reason of an overridden family does not carry over.
+Empty or whitespace-only reasons are config errors. Strict coverage
+cannot be lowered even with a reason. Root rules and style overrides may also use the
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
-A member that changes a source convention set in root `structure` must give a
+A member that changes a source convention set in root `style` must give a
 nonempty reason under `reasons` in the same mapping. This applies to thresholds,
-lists and other package-level options, in member `structure` and in individual
+lists and other package-level options, in member `style` and in individual
 member contracts. A member contract also needs a reason if it changes a root
 contract's value and its match can replace that contract. Both tighter and looser
 values require a reason. Copying a root value or setting an option that the root
@@ -275,11 +275,11 @@ leaves open needs no reason. Reasons appear under the member's settings in
 
 ```yaml
 # packages/legacy/smelt.yml
-structure:
+style:
   max_positional_parameters: 8
   reasons:
     max_positional_parameters: Keep positional calls supported by the legacy API.
-  contracts:
+  overrides:
     generated:
       match: legacy.generated
       dataclass_options: []
@@ -287,7 +287,8 @@ structure:
         dataclass_options: The generator owns dataclass decorators in this package.
 ```
 
-`forbidden_names`, `file_naming` and `canonical_exports` are root-only.
+`style.forbidden_names`, `style.file_naming` and
+`architecture.canonical_exports` are root-only.
 
 ### Workspace initialization
 
@@ -334,8 +335,8 @@ is a configuration error rather than a boundary that silently checks nothing.
 A source member matching no key is unrestricted.
 If several keys match, their allowances combine. Imports inside the same member
 always pass. Member-local wiring or shared roles do not bypass these boundaries.
-Only direct production imports count, regardless of `architecture.imports.transitive`;
-`TYPE_CHECKING` imports follow the root `architecture.imports.type_checking` setting.
+Only direct production imports count, regardless of `architecture.import_graph.transitive`;
+`TYPE_CHECKING` imports follow the root `architecture.import_graph.type_checking` setting.
 
 `project.workspace: uv` also enables [SMT112](rules/SMT112.md)
 `architecture/undeclared-member-dependency`. A production import of another member
@@ -380,13 +381,13 @@ the default grouping remains per rule. `--show-coverage` includes
 API ownership can be stated separately from export-frequency review:
 
 ```yaml
-structure:
+architecture:
   canonical_exports:
     app.error.types.FeatureError: app.FeatureError
-  contracts:
+  packages:
     errors:
       match: app.error
-      export_at: 3
+      min_importers_to_export: 3
 ```
 
 Both names must resolve to the same analyzed symbol through bounded static
@@ -402,7 +403,7 @@ Cycle analysis can separately select exact module edges and annotation participa
 
 ```yaml
 architecture:
-  imports:
+  import_graph:
     cycles: [modules]
     type_checking: include
     type_checking_cycles: ignore
@@ -419,8 +420,8 @@ eager import-time failure.
 Fixed patterns need no additional policy. Real parameters stay with their concept:
 
 ```yaml
-structure:
-  contracts:
+style:
+  overrides:
     ordering-options:
       match: harnessed
       ordering:
@@ -429,12 +430,12 @@ structure:
     supported-integrations:
       match: harnessed.integrations
       rules:
-        information-hiding: off
+        visibility: off
         layout/misplaced-static-helper: off
     strict-core:
       match: harnessed.core
       rules:
-        information-hiding: error
+        visibility/internal-public-member: error
 
 tests:
   assertion_helpers: [tests.assertions.assert_response]
@@ -447,7 +448,7 @@ tests:
 Dependencies and execution barriers still take precedence over category order.
 `fix: off` disables ordering writes; plain checks are always read-only.
 
-Package `rules` use the same names, groups, codes and values as the project map. They apply
+Package `rules` use the same selectors and values as the project map. They apply
 to findings originating in production modules of the matching package, including
 test-only API findings located in production code. The closest enclosing package
 entry wins for each rule. It can change severity, disable a global check, or
@@ -464,8 +465,8 @@ retain their policy activation. Declaring such a policy is enough to check it.
 The catalog distinguishes those checks from explicitly selected fixed patterns.
 
 Source-convention options such as `max_positional_parameters`,
-`future_annotations` or `dataclass_options` can be set directly under `structure`
-for the whole project and overridden in package contracts. Setting an option that
+`future_annotations` or `dataclass_options` can be set directly under `style`
+for the whole project and overridden in `style.overrides`. Setting an option that
 belongs to one rule enables that rule for its scope; see
 [project-wide options](structure.md#project-wide-options-and-package-overrides).
 

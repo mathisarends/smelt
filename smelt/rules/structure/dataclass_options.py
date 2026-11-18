@@ -58,10 +58,10 @@ class MissingDataclassOption(Rule):
             "stay mutable or unslotted keeps a reasoned suppression, or lives "
             "in a package whose contract sets its own dataclass_options. No "
             "automatic rewrite is performed. Enable it for the project with "
-            "structure: {dataclass_options: [frozen, slots]}, or for one package "
+            "style: {dataclass_options: [frozen, slots]}, or for one package "
             "with the same option in a package contract."
         ),
-        config=("structure.dataclass_options", "structure.contracts"),
+        config=("style.dataclass_options", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

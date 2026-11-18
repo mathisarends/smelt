@@ -81,7 +81,7 @@ class TestJson:
             "policy_hash": "sha256:policy",
             "complete": False,
             "counts": {"uncovered": 2},
-            "contracts": [{"expected_order": list(range(1000))}],
+            "overrides": [{"expected_order": list(range(1000))}],
             "inventory": [{"path": "app/a.py"}],
         }
         scope = {"unassessed_consumers": ["external consumers"]}

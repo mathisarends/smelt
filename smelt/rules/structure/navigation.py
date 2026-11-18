@@ -41,8 +41,8 @@ class DeepObjectNavigation(Rule):
         ),
         bad="class Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)",
         good="class Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)",
-        fix="Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {complexity/excess-attribute-depth: hint}, globally or in a package contract, or --select SMT322.",
-        config=("rules", "structure.contracts"),
+        fix="Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned SMT322 suppression. No automatic rewrite is performed. Enable with rules: {complexity/excess-attribute-depth: hint}, globally or in a package override, or --select SMT322.",
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

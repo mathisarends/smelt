@@ -39,7 +39,7 @@ class ModuleDocstringConvention(Rule):
         bad="# module_docstrings: require\nVALUE = 1",
         good='"""Constants for the calculation service."""\nVALUE = 1',
         fix="Add a useful module docstring before imports and other statements under require; remove or move the module introduction under forbid. Mark an intentional file exception with # smelt: ignore-file[SMT309] -- reason. No documentation is generated or deleted automatically.",
-        config=("structure.module_docstrings", "structure.contracts"),
+        config=("style.module_docstrings", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -92,7 +92,7 @@ class ForbiddenFutureAnnotations(Rule):
         bad="from __future__ import annotations\n\nVALUE = 1",
         good="VALUE = 1",
         fix="Follow the declared convention while preserving forward references and runtime behavior. When-needed mode gives review hints on earlier or unknown targets and rejects the import on declared Python 3.14+ targets. An explicit allow exception can retain a runtime compatibility contract. No automatic rewrite is performed.",
-        config=("structure.future_annotations", "structure.contracts"),
+        config=("style.future_annotations", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -113,7 +113,7 @@ class RedundantFutureAnnotations(Rule):
         bad="from __future__ import annotations\n\ndef count(value: int) -> int:\n    return value",
         good="def count(value: int) -> int:\n    return value",
         fix="Review whether postponement is part of the module's runtime contract, then remove unnecessary boilerplate and verify types and behavior. On Python 3.12/3.13, an annotations future import is appropriate when the chosen public-first order uses forward references; SMT313 preserves eager dependencies when the import is absent. Keep the import if it serves a real purpose; annotate a justified exception if required. Self is only an alternative for methods whose return contract follows the receiver's subclass, such as returning self or constructing cls; a matching class-name annotation alone is insufficient. No Self rewrite is suggested automatically.",
-        config=("structure.future_annotations", "structure.contracts"),
+        config=("style.future_annotations", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

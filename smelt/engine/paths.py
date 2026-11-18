@@ -74,7 +74,7 @@ def missing_paths(ctx: AnalysisContext) -> list[ConfigIssue]:
     matched_contracts = {contract.name for contract in ctx.contracts.resolved}
     issues.extend(
         ConfigIssue(
-            f"structure.contracts.{name}.match",
+            f"{'style.overrides' if contract.configured() or contract.rules else 'architecture.packages'}.{name}.match",
             f'"{contract.match}" matches no analyzed package',
         )
         for name, contract in ctx.config.structure.contracts.items()
@@ -107,7 +107,7 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
             if previous != policy:
                 issues.append(
                     ConfigIssue(
-                        f"structure.contracts.{contract.name}.{key}",
+                        f"style.overrides.{contract.name}.{key}",
                         f"conflicting {label} for {contract.package}; use one policy per package",
                     )
                 )

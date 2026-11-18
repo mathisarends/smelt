@@ -56,7 +56,7 @@ class PreferDeferredAnnotations(Rule):
             "No automatic rewrite is performed. Enable rules: "
             "{typing/prefer-deferred-annotations: hint}, or select SMT346."
         ),
-        config=("rules", "structure.contracts", "project.python_version"),
+        config=("rules", "style.overrides", "project.python_version"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

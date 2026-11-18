@@ -35,7 +35,7 @@ class ModuleImportFanout(Rule):
             "from one module count once. Facade re-exports count at the facade path "
             "used by the caller, not at their defining modules. Standard-library and "
             "third-party imports never count; TYPE_CHECKING imports follow the existing "
-            "architecture.imports.type_checking policy. Initializers and declared "
+            "architecture.import_graph.type_checking policy. Initializers and declared "
             "composition roots are exempt by default. This is a design hint, not proof "
             "of excessive coupling; reducing imports alone does not simplify a design."
         ),
@@ -45,18 +45,18 @@ class ModuleImportFanout(Rule):
             "Split a cohesive responsibility into its own module or depend on deliberate "
             "package facades. Review import cycles and initializer side effects before "
             "adding re-exports. No automatic rewrite is performed. Set "
-            "max_module_imports under structure or in a package contract to enable "
+            "max_module_imports under style or in a package contract to enable "
             "this opt-in hint for that scope (zero is supported). Selecting the rule "
-            "in rules or with --select uses a limit of 20. module_import_exempt "
+            "in rules or with --select uses a limit of 20. module_import_exemptions "
             "defaults to [facades, composition_root]; [] checks both."
         ),
         config=(
-            "structure.max_module_imports",
-            "structure.module_import_exempt",
-            "structure.contracts",
+            "style.max_module_imports",
+            "style.module_import_exemptions",
+            "style.overrides",
             "rules",
             "architecture.composition_root",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.type_checking",
         ),
     )
 
@@ -64,16 +64,16 @@ class ModuleImportFanout(Rule):
         for source in ctx.files.sources.values():
             limit, _ = ctx.contracts.threshold(source.module, "max_module_imports")
             exempt: Collection[ModuleImportExemption] = (
-                POLICY_DEFAULTS.module_import_exempt
+                POLICY_DEFAULTS.module_import_exemptions
             )
             exemption_contract = ctx.contracts.policy_for(
-                source.module, "module_import_exempt"
+                source.module, "module_import_exemptions"
             )
             if (
                 exemption_contract is not None
-                and exemption_contract.spec.module_import_exempt is not None
+                and exemption_contract.spec.module_import_exemptions is not None
             ):
-                exempt = exemption_contract.spec.module_import_exempt
+                exempt = exemption_contract.spec.module_import_exemptions
             info = ctx.model.info(source.module)
             if (source.is_package and "facades" in exempt) or (
                 "composition_root" in exempt

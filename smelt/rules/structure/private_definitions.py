@@ -40,7 +40,7 @@ class ExcessPrivateDefinitions(Rule):
             "metric does not infer cohesion, separable groups or safe extraction."
         ),
         bad=(
-            "# With structure.max_private_definitions: 2\n"
+            "# With style.max_private_definitions: 2\n"
             "class _Cookie: pass\n"
             "class _StorageItem: pass\n"
             "def _merge(existing, incoming): ...\n"
@@ -61,10 +61,10 @@ class ExcessPrivateDefinitions(Rule):
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
             "{visibility/excess-private-definitions: hint}, select SMT367, or set "
-            "max_private_definitions under structure or in a package contract. "
+            "max_private_definitions under style or in a package contract. "
             "The limit defaults to 12; zero is supported."
         ),
-        config=("rules", "structure.max_private_definitions", "structure.contracts"),
+        config=("rules", "style.max_private_definitions", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

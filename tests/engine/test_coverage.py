@@ -29,7 +29,7 @@ architecture:
     allow:
       - "application -> application"
       - {from: billing.application, to: users.domain}
-  imports: {transitive: true, cycles: [features]}
+  import_graph: {transitive: true, cycles: [features]}
 """
 
 
@@ -45,8 +45,8 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     )
     config = load_config(tmp_path / "smelt.yml").config
     legacy = config.model_dump(mode="json")
-    legacy["structure"].pop("canonical_exports")
-    legacy["architecture"]["imports"].pop("type_checking_cycles")
+    legacy["architecture"].pop("canonical_exports")
+    legacy["architecture"]["import_graph"].pop("type_checking_cycles")
     legacy["architecture"].pop("members")
     legacy.pop("members")
     legacy["project"].pop("workspace")

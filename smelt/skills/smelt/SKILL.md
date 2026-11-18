@@ -33,34 +33,34 @@ installed skill records the CLI version that installed it.
 ## Policy and repair rules
 
 - Enable rules individually by name or stable SMT code. A named `on` uses the
-  catalog severity. Families, groups and `ALL` in YAML can only disable or cap
+  catalog severity. Families and `ALL` in YAML can only disable or cap
   active rules. Use local `extends` files to share explicit policy.
   Architecture, package and test options activate their associated rules.
   Use `smelt rules --unconfigured` to find named checks to review after upgrades.
-- `--select` replaces normal selection and accepts names, families, groups,
+- `--select` replaces normal selection and accepts names, families,
   SMT prefixes and `ALL`. Explicit `off` entries still apply. Strict coverage
   takes precedence over selection and severity settings.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;
   behavior-changing SMT321 repairs also need `--unsafe-fixes` and review of falsy
   values. `--unsafe-fixes` alone writes nothing. `--staged` rejects `--fix`.
 - Review new style policies before adopting them. SMT341 `modeling/str-enum-value-convention`
-  follows `structure.str_enum_values` (`explicit` or `auto`); choose the project's
+  follows `style.str_enum_values` (`explicit` or `auto`); choose the project's
   convention once and preserve serialized values. SMT343/SMT344 review forwarding
   methods and name aliases. SMT346 prefers deferred annotations; verify runtime
   annotation consumers before removing quotes or adding a future import.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
   concepts, so name records where field meaning benefits callers rather than
-  merging unrelated types. `max_positional_parameters`, set under `structure` or
+  merging unrelated types. `max_positional_parameters`, set under `style` or
   in a package contract, activates SMT345 for that scope; after adding
   keyword-only parameters, update all callers, including tests and callbacks.
   These rules have no automatic rewrite.
-- Source-convention options are defined once: set them under `structure` for the
+- Source-convention options are defined once: set them under `style` for the
   project and override them in the closest package contract. An option that
   belongs to one rule enables that rule where it applies; `smelt context` names
-  the contract or `structure` that set each effective value.
+  the contract or `style` that set each effective value.
 - In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
   the shared policy, and put member exceptions in that member's own `smelt.yml`
-  (`rules`, `structure`, `ignore`, `project.exclude`; paths member-relative).
+  (`rules`, `style`, `ignore`, `project.exclude`; paths member-relative).
   A member with its own boundaries declares `architecture` there; it replaces
   the root architecture for that member's packages and judges only imports
   inside the member. Run `smelt context <member feature or path>` to see the

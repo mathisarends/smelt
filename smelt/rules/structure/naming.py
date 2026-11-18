@@ -26,7 +26,7 @@ class ForbiddenPackageName(Rule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
-        summary="A package or module name is listed in structure.forbidden_names.",
+        summary="A package or module name is listed in style.forbidden_names.",
         rationale=(
             "Names like utils or helpers describe nothing, so everything fits in them. "
             "They grow into grab bags that every layer imports."
@@ -34,7 +34,7 @@ class ForbiddenPackageName(Rule):
         bad="voice/application/utils.py",
         good="voice/application/durations.py",
         fix="Name the module after what it does, or move each function next to its callers.",
-        config=("structure.forbidden_names",),
+        config=("style.forbidden_names",),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -95,7 +95,7 @@ class ForbiddenPrivateModule(Rule):
             "A more specific package can explicitly allow the convention. "
             "No files or symbols are renamed automatically."
         ),
-        config=("structure.private_modules", "structure.contracts"),
+        config=("style.private_modules", "style.overrides"),
         example_language="text",
     )
 
@@ -181,7 +181,7 @@ class ForbiddenBaseClassAffix(Rule):
             "{modeling/forbidden-base-class-affix: error}, globally or in a "
             "package contract, or --select SMT323."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -243,7 +243,7 @@ class RedundantModuleName(Rule):
             "or --select SMT336. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
         example_language="text",
     )
 

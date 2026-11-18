@@ -5,6 +5,41 @@ from smelt.config import ConfigError, parse_config
 MINIMAL = {"version": 1, "project": {"root_packages": ["gateway"]}}
 
 
+@pytest.mark.parametrize(
+    ("old", "successor"),
+    [
+        (
+            {"structure": {"private_modules": "forbid"}},
+            "style and architecture.packages",
+        ),
+        (
+            {"architecture": {"imports": {"transitive": True}}},
+            "architecture.import_graph",
+        ),
+        ({"tests": {"unmirrored": ["legacy/**"]}}, "mirror_exclude"),
+    ],
+)
+def test_retired_config_keys_point_to_migration(
+    old: dict[str, object], successor: str
+) -> None:
+    with pytest.raises(ConfigError) as caught:
+        parse_config({**MINIMAL, **old})
+
+    assert successor in str(caught.value)
+    assert "docs/upgrading.md" in str(caught.value)
+
+
+def _package_policy(spec: dict[str, object]) -> dict[str, object]:
+    if spec.keys() & {
+        "public",
+        "required",
+        "min_imports_to_bundle",
+        "min_importers_to_export",
+    }:
+        return {**MINIMAL, "architecture": {"packages": {"library": spec}}}
+    return {**MINIMAL, "style": {"overrides": {"library": spec}}}
+
+
 class TestPackageContracts:
     @pytest.mark.parametrize(
         "spec",
@@ -18,7 +53,7 @@ class TestPackageContracts:
                 "match": "gateway",
                 "imports": {"style": "relative", "max_relative_level": 2},
             },
-            {"match": "gateway", "bundle_imports_at": 3},
+            {"match": "gateway", "min_imports_to_bundle": 3},
             {"match": "gateway", "module_docstrings": "forbid"},
             {"match": "gateway", "future_annotations": "when-needed"},
             {"match": "gateway", "private_modules": "forbid"},
@@ -51,9 +86,7 @@ class TestPackageContracts:
         ],
     )
     def test_valid_contracts(self, spec: dict[str, object]) -> None:
-        config, _ = parse_config(
-            {**MINIMAL, "structure": {"contracts": {"library": spec}}}
-        )
+        config, _ = parse_config(_package_policy(spec))
 
         assert "library" in config.structure.contracts
 
@@ -78,7 +111,7 @@ class TestPackageContracts:
             {"match": "gateway", "type_dispatch": {"style": "sometimes"}},
             {"match": "gateway", "type_dispatch": {"min_branches": 1}},
             {"match": "gateway", "imports": {"max_relative_level": 0}},
-            {"match": "gateway", "bundle_imports_at": 1},
+            {"match": "gateway", "min_imports_to_bundle": 1},
             {"match": "gateway", "module_docstrings": "sometimes"},
             {"match": "gateway", "future_annotations": "always"},
             {"match": "gateway", "private_modules": "sometimes"},
@@ -108,16 +141,18 @@ class TestPackageContracts:
         ],
     )
     def test_invalid_contracts_fail_explicitly(self, spec: dict[str, object]) -> None:
-        with pytest.raises(ConfigError, match=r"structure\.contracts\.library"):
-            parse_config({**MINIMAL, "structure": {"contracts": {"library": spec}}})
+        with pytest.raises(
+            ConfigError, match=r"(?:style\.overrides|architecture\.packages)\.library"
+        ):
+            parse_config(_package_policy(spec))
 
     def test_contract_names_must_not_be_empty(self) -> None:
-        with pytest.raises(ConfigError, match="contract names must not be empty"):
+        with pytest.raises(ConfigError, match="package policy names must not be empty"):
             parse_config(
                 {
                     **MINIMAL,
-                    "structure": {
-                        "contracts": {" ": {"match": "gateway", "public": []}}
+                    "architecture": {
+                        "packages": {" ": {"match": "gateway", "public": []}}
                     },
                 }
             )
@@ -249,8 +284,8 @@ class TestCentralModules:
     [
         {"max_patches_per_test": -1},
         {"quality_exclude": [""]},
-        {"forbid_mocks_in": ["../other/tests"]},
-        {"forbid_mocks_in": ["C:/tests/**"]},
+        {"forbidden_mock_paths": ["../other/tests"]},
+        {"forbidden_mock_paths": ["C:/tests/**"]},
         {"quality_exclude": ["/tests/**"]},
         {"assertion_helpers": ["not a callable"]},
     ],
@@ -265,10 +300,13 @@ def test_test_quality_globs_are_canonical_and_zero_is_valid() -> None:
         {
             **MINIMAL,
             "tests": {
-                "forbid_mocks_in": ["./tests\\**\\domain\\**", "tests/**/domain/**"],
+                "forbidden_mock_paths": [
+                    "./tests\\**\\domain\\**",
+                    "tests/**/domain/**",
+                ],
                 "max_patches_per_test": 0,
             },
         }
     )
-    assert config.tests.forbid_mocks_in == ["tests/**/domain/**"]
+    assert config.tests.forbidden_mock_paths == ["tests/**/domain/**"]
     assert config.tests.max_patches_per_test == 0

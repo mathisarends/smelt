@@ -24,7 +24,7 @@ class PreferStrEnumDiscriminator(Rule):
         bad='from dataclasses import dataclass, field\nfrom typing import Literal\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal["checkpoint.extension"] = field(default="checkpoint.extension", kw_only=True)',
         good='from dataclasses import dataclass, field\nfrom enum import StrEnum\nfrom typing import Literal\n\nclass EventType(StrEnum):\n    CHECKPOINT_EXTENSION = "checkpoint.extension"\n\n@dataclass\nclass CheckpointExtension:\n    tag: str\n    data: dict[str, object]\n    type: Literal[EventType.CHECKPOINT_EXTENSION] = field(default=EventType.CHECKPOINT_EXTENSION, kw_only=True)',
         fix="Define or reuse a shared StrEnum for the union's wire values. Keep each variant annotated as Literal[EnumType.MEMBER], and use that same member in direct defaults, dataclasses.field(default=...) or model Field(default=...). Keep explicit string values such as checkpoint.extension; auto() may change the wire contract. Review consumers and serialization before changing defaults, since exact str checks and repr can distinguish enum members. StrEnum requires Python 3.11+. No automatic rewrite is performed; analyzed code is never executed. Suppress intentional external schema strings with a reason or disable this review for their package.",
-        config=("rules", "structure.contracts", "project.python_version"),
+        config=("rules", "style.overrides", "project.python_version"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

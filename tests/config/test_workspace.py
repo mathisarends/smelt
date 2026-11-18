@@ -112,8 +112,8 @@ def test_member_structure_becomes_a_contract_for_each_member_package(
         tmp_path,
         {
             "services/api/src/admin/__init__.py": "",
-            "services/api/smelt.yml": "structure:\n  max_positional_parameters: 2\n  contracts:\n    http: {match: api.http, public: ['.']}\n",
-            "packages/core/smelt.yml": "structure: {future_annotations: forbid}\n",
+            "services/api/smelt.yml": "style: {max_positional_parameters: 2}\narchitecture:\n  packages:\n    http: {match: api.http, public: ['.']}\n",
+            "packages/core/smelt.yml": "style: {future_annotations: forbid}\n",
         },
     )
 
@@ -146,12 +146,12 @@ def test_member_style_changes_to_root_values_require_reasons(
         {
             "smelt.yml": ROOT + "extends: base.yml\n",
             "base.yml": """
-                structure:
+                style:
                   max_positional_parameters: 3
                   dataclass_options: [slots]
                   future_annotations: when-needed
                 """,
-            "packages/core/smelt.yml": f"structure: {{{option}: {value}}}\n",
+            "packages/core/smelt.yml": f"style: {{{option}: {value}}}\n",
         },
     )
 
@@ -159,7 +159,7 @@ def test_member_style_changes_to_root_values_require_reasons(
         load_config(root / "smelt.yml")
 
     [issue] = caught.value.issues
-    assert issue.path == f"structure.{option}"
+    assert issue.path == f"style.{option}"
     assert issue.source
     assert issue.source.endswith("packages/core/smelt.yml")
 
@@ -169,9 +169,9 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": ROOT
-            + "structure: {max_positional_parameters: 3, dataclass_options: [slots]}\n",
+            + "style: {max_positional_parameters: 3, dataclass_options: [slots]}\n",
             "packages/core/smelt.yml": """
-                structure:
+                style:
                   max_positional_parameters: 0
                   dataclass_options: []
                   reasons:
@@ -179,7 +179,7 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
                     dataclass_options: Generated classes predate slots.
                 """,
             "services/api/smelt.yml": """
-                structure:
+                style:
                   max_positional_parameters: 3
                   future_annotations: when-needed
                 """,
@@ -192,7 +192,7 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
 
     assert contract.max_positional_parameters == 0
     assert contract.dataclass_options == []
-    assert data["members"]["packages/core"]["structure"]["reasons"] == {
+    assert data["members"]["packages/core"]["style"]["reasons"] == {
         "max_positional_parameters": "Prefer named arguments.",
         "dataclass_options": "Generated classes predate slots.",
     }
@@ -206,9 +206,9 @@ def test_member_style_rejects_blank_reasons(tmp_path: Path, reason: str) -> None
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": ROOT + "structure: {max_positional_parameters: 3}\n",
+            "smelt.yml": ROOT + "style: {max_positional_parameters: 3}\n",
             "packages/core/smelt.yml": (
-                "structure:\n  max_positional_parameters: 10\n"
+                "style:\n  max_positional_parameters: 10\n"
                 f"  reasons: {{max_positional_parameters: {reason}}}\n"
             ),
         },
@@ -217,7 +217,7 @@ def test_member_style_rejects_blank_reasons(tmp_path: Path, reason: str) -> None
     with pytest.raises(ConfigError) as caught:
         load_config(root / "smelt.yml")
 
-    assert caught.value.issues[0].path == "structure.reasons.max_positional_parameters"
+    assert caught.value.issues[0].path == "style.reasons.max_positional_parameters"
 
 
 def test_member_contract_style_cannot_override_root_contract_without_a_reason(
@@ -228,10 +228,10 @@ def test_member_contract_style_cannot_override_root_contract_without_a_reason(
         tmp_path,
         {
             "smelt.yml": ROOT
-            + "structure:\n  contracts:\n    domain: {match: api.*, future_annotations: forbid}\n",
+            + "style:\n  overrides:\n    domain: {match: api.*, future_annotations: forbid}\n",
             member: """
-                structure:
-                  contracts:
+                style:
+                  overrides:
                     legacy:
                       match: api.legacy
                       future_annotations: allow
@@ -242,15 +242,13 @@ def test_member_contract_style_cannot_override_root_contract_without_a_reason(
     with pytest.raises(ConfigError, match="requires a reason") as caught:
         load_config(root / "smelt.yml")
 
-    assert (
-        caught.value.issues[0].path == "structure.contracts.legacy.future_annotations"
-    )
+    assert caught.value.issues[0].path == "style.overrides.legacy.future_annotations"
     write_project(
         root,
         {
             member: """
-                structure:
-                  contracts:
+                style:
+                  overrides:
                     legacy:
                       match: api.legacy
                       future_annotations: allow
@@ -259,7 +257,7 @@ def test_member_contract_style_cannot_override_root_contract_without_a_reason(
         },
     )
     data = load_config(root / "smelt.yml").config.model_dump(mode="json")
-    assert data["members"]["services/api"]["structure"]["contracts"]["legacy"][
+    assert data["members"]["services/api"]["style"]["overrides"]["legacy"][
         "reasons"
     ] == {"future_annotations": "Legacy modules use forward references."}
 
@@ -293,8 +291,8 @@ def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:
             "not inside this member's packages",
         ),
         (
-            "architecture: {imports: {transitive: true}}\n",
-            "architecture.imports",
+            "architecture: {import_graph: {transitive: true}}\n",
+            "architecture.import_graph",
             "set once in the workspace root",
         ),
         (
@@ -306,8 +304,8 @@ def test_member_paths_are_relative_to_the_member(tmp_path: Path) -> None:
         ("debt: ../debt.json\n", "debt", "member-relative"),
         ("rules: {Nope: error}\n", "rules", "not a rule code"),
         (
-            "structure:\n  contracts:\n    x: {match: core, public: ['.']}\n",
-            "structure.contracts.x.match",
+            "architecture:\n  packages:\n    x: {match: core, public: ['.']}\n",
+            "architecture.packages.x.match",
             "outside this member",
         ),
     ],
@@ -347,6 +345,31 @@ def test_empty_member_architecture_inherits_root(tmp_path: Path) -> None:
 
     assert config.members["packages/core"].architecture is None
     assert config.architecture.shared == ["core"]
+
+
+def test_member_package_api_can_inherit_root_layers(tmp_path: Path) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": ROOT + "architecture: {layers: {domain: {path: domain}}}\n",
+            "packages/core/smelt.yml": """
+                architecture:
+                  packages:
+                    public-api: {match: core, public: ['.']}
+                style:
+                  overrides:
+                    public-api: {match: core, max_positional_parameters: 2}
+                """,
+        },
+    )
+
+    loaded = load_config(root / "smelt.yml").config
+
+    assert not loaded.members["packages/core"].governs_architecture
+    contract = loaded.structure.contracts["packages/core:public-api"]
+    assert contract.public == ["."]
+    assert contract.max_positional_parameters == 2
+    assert set(loaded.architecture.layers) == {"domain"}
 
 
 def test_root_architecture_error_names_the_governing_member(tmp_path: Path) -> None:

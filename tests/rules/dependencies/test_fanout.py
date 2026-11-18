@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 CONFIG = """
 version: 1
 project: {root_packages: [app]}
-structure:
-  contracts:
+architecture:
+  packages:
     application-api:
       match: app.user.application
-      bundle_imports_at: 3
+      min_imports_to_bundle: 3
 """
 OPTIONS = CheckOptions(select=("SMT108",))
 
@@ -68,7 +68,7 @@ def test_workspace_test_paths_do_not_merge_with_source_module_names(
     config = CONFIG.replace(
         "root_packages: [app]",
         "root_packages: [app], source_roots: [src], test_roots: [app]",
-    ).replace("at: 3", "at: 2")
+    ).replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2")
     write_project(
         tmp_path,
         {
@@ -200,7 +200,7 @@ def test_threshold_is_configurable_and_can_fail_with_explicit_hint_threshold(
     _project(
         tmp_path,
         "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
 
     outcome = check(tmp_path, CheckOptions(select=("SMT108",), fail_on=Severity.HINT))
@@ -215,7 +215,7 @@ def test_type_checking_imports_follow_existing_policy(
     _project(
         tmp_path,
         "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.user.application.delete_user import DeleteUser\n",
-        config=CONFIG + f"\narchitecture:\n  imports: {{type_checking: {policy}}}",
+        config=CONFIG + f"\n  import_graph: {{type_checking: {policy}}}",
     )
 
     assert len(violations(tmp_path, OPTIONS)) == count
@@ -225,7 +225,7 @@ def test_bundling_hints_are_disabled_without_explicit_threshold(tmp_path: Path) 
     _project(
         tmp_path,
         "from app.user.application import get_user, update_user, delete_user",
-        config=CONFIG.replace("bundle_imports_at: 3", "required: [get_user]"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "required: [get_user]"),
     )
 
     assert violations(tmp_path, OPTIONS) == []
@@ -240,7 +240,7 @@ def test_exact_contract_overrides_wildcard_without_duplicate_findings(
         + f"""
     exact:
       match: app.user.application
-      bundle_imports_at: {exact_threshold}
+      min_imports_to_bundle: {exact_threshold}
 """
     )
     _project(
@@ -253,7 +253,7 @@ def test_exact_contract_overrides_wildcard_without_duplicate_findings(
     if found:
         assert found[0].expected is not None
         assert found[0].expected["contract"] == "exact"
-        assert found[0].expected["bundle_imports_at"] == exact_threshold
+        assert found[0].expected["min_imports_to_bundle"] == exact_threshold
 
 
 def test_identical_thresholds_are_deduplicated_and_equal_rank_conflicts_are_errors(
@@ -261,7 +261,7 @@ def test_identical_thresholds_are_deduplicated_and_equal_rank_conflicts_are_erro
 ) -> None:
     config = (
         CONFIG
-        + "\n    duplicate: {match: app.user.application, bundle_imports_at: 3}\n"
+        + "\n    duplicate: {match: app.user.application, min_imports_to_bundle: 3}\n"
     )
     caller = "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom app.user.application.delete_user import DeleteUser\n"
     _project(tmp_path, caller, config=config)
@@ -269,7 +269,7 @@ def test_identical_thresholds_are_deduplicated_and_equal_rank_conflicts_are_erro
     _project(
         tmp_path,
         caller,
-        config=config.replace("bundle_imports_at: 3}", "bundle_imports_at: 4}"),
+        config=config.replace("min_imports_to_bundle: 3}", "min_imports_to_bundle: 4}"),
     )
     with pytest.raises(ConfigError, match="equally specific"):
         violations(tmp_path, OPTIONS)
@@ -282,7 +282,7 @@ def test_mixed_facade_and_error_imports_propose_one_api_without_known_cycles(
     _project(
         tmp_path,
         "from app.user.application import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
     write_project(
         tmp_path,
@@ -318,7 +318,7 @@ def test_new_caller_facade_edge_is_checked_for_cycles(tmp_path: Path) -> None:
     _project(
         tmp_path,
         "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
     write_project(tmp_path, {"app/user/application/__init__.py": "import app.caller\n"})
 
@@ -336,7 +336,7 @@ def test_other_api_packages_do_not_contribute_to_bundling(tmp_path: Path) -> Non
     _project(
         tmp_path,
         "from app.user.application import GetUser\nfrom app.user.domain.validation import validate\n",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
     write_project(tmp_path, {"app/user/domain/validation.py": "def validate(): pass\n"})
 
@@ -347,7 +347,7 @@ def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> No
     _project(
         tmp_path,
         "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
     [before] = violations(tmp_path, OPTIONS)
     assert before.expected is not None
@@ -371,7 +371,7 @@ def test_export_proposals_remain_specific_to_each_caller(tmp_path: Path) -> None
     _project(
         tmp_path,
         "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
-        config=CONFIG.replace("at: 3", "at: 2"),
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
     write_project(
         tmp_path,

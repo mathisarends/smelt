@@ -54,14 +54,14 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"architecture": {"modules": {"app.platform": "infrastructure"}}}, {"SMT105"}),
         ({"architecture": {"composition_root": ["app.main"]}}, {"SMT106"}),
         ({"architecture": {"wiring": ["app.di"]}}, {"SMT106"}),
-        ({"structure": {"forbidden_names": ["utils"]}}, {"SMT302"}),
-        ({"structure": {"max_module_imports": 0}}, {"SMT110"}),
-        ({"structure": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
-        ({"structure": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
+        ({"style": {"forbidden_names": ["utils"]}}, {"SMT302"}),
+        ({"style": {"max_module_imports": 0}}, {"SMT110"}),
+        ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
+        ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
         ({"project": {"root_packages": ["app"], "coverage": "strict"}}, {"SMT306"}),
         ({"tests": {"layout": "mirror"}}, {"SMT401"}),
         ({"rules": {"tests/private-access": "error"}}, {"SMT420"}),
-        ({"tests": {"forbid_mocks_in": ["tests/domain/**"]}}, {"SMT421"}),
+        ({"tests": {"forbidden_mock_paths": ["tests/domain/**"]}}, {"SMT421"}),
         ({"rules": {"tests/string-patch-target": "error"}}, {"SMT422"}),
         ({"tests": {"max_patches_per_test": 0}}, {"SMT423"}),
         ({"rules": {"tests/missing-outcome-check": "warning"}}, {"SMT424"}),
@@ -86,10 +86,10 @@ def test_explicit_project_policy_activates_its_checks(
         ({"public": []}, {"SMT107"}),
         ({"public": ["."]}, {"SMT107", "SMT307"}),
         ({"required": ["api"]}, {"SMT307"}),
-        ({"bundle_imports_at": 3}, {"SMT108"}),
+        ({"min_imports_to_bundle": 3}, {"SMT108"}),
         ({"max_module_imports": 0}, {"SMT110"}),
-        ({"export_at": 3}, {"SMT109"}),
-        ({"export_at": 3, "count_tests": True}, {"SMT109"}),
+        ({"min_importers_to_export": 3}, {"SMT109"}),
+        ({"min_importers_to_export": 3, "count_tests": True}, {"SMT109"}),
         ({"imports": {"style": "absolute"}}, {"SMT308"}),
         ({"module_docstrings": "forbid"}, {"SMT309"}),
         ({"module_docstrings": "require"}, {"SMT309"}),
@@ -123,10 +123,14 @@ def test_explicit_project_policy_activates_its_checks(
 def test_package_policy_activates_without_a_second_rule_switch(
     policy: dict[str, object], expected: set[str]
 ) -> None:
-    assert (
-        _active({"structure": {"contracts": {"api": {"match": "app", **policy}}}})
-        == BASELINE | expected
+    entry = {"api": {"match": "app", **policy}}
+    options: dict[str, object] = (
+        {"architecture": {"packages": entry}}
+        if policy.keys()
+        & {"public", "required", "min_imports_to_bundle", "min_importers_to_export"}
+        else {"style": {"overrides": entry}}
     )
+    assert _active(options) == BASELINE | expected
 
 
 SHARED_OPTIONS = [
@@ -150,22 +154,22 @@ SHARED_OPTIONS = [
 
 
 @pytest.mark.parametrize(("policy", "expected"), SHARED_OPTIONS)
-@pytest.mark.parametrize("level", ["structure", "contract"])
+@pytest.mark.parametrize("level", ["style", "contract"])
 def test_a_single_rule_option_activates_its_rule_at_either_level(
     policy: dict[str, object], expected: set[str], level: str
 ) -> None:
     structure = (
         policy
-        if level == "structure"
-        else {"contracts": {"api": {"match": "app", **policy}}}
+        if level == "style"
+        else {"overrides": {"api": {"match": "app", **policy}}}
     )
-    assert _active({"structure": structure}) == BASELINE | expected
+    assert _active({"style": structure}) == BASELINE | expected
 
 
 @pytest.mark.parametrize(
     "policy",
     [
-        {"module_import_exempt": []},
+        {"module_import_exemptions": []},
         {"ordering": {"fix": "off"}},
         {"module_docstrings": "allow", "type_dispatch": {"style": "allow"}},
     ],
@@ -173,14 +177,14 @@ def test_a_single_rule_option_activates_its_rule_at_either_level(
 def test_modifiers_and_allow_values_do_not_activate_a_rule(
     policy: dict[str, object],
 ) -> None:
-    assert _active({"structure": policy}) == BASELINE
+    assert _active({"style": policy}) == BASELINE
 
 
 def test_off_wins_over_an_activating_option() -> None:
     assert (
         _active(
             {
-                "structure": {"max_comprehension_loops": 2},
+                "style": {"max_comprehension_loops": 2},
                 "rules": {"complexity/excess-comprehension-loops": "off"},
             }
         )
@@ -189,7 +193,10 @@ def test_off_wins_over_an_activating_option() -> None:
 
 
 def test_scope_settings_alone_do_not_enable_explicit_heuristics() -> None:
-    assert _active({"architecture": {"imports": {"cycles": ["siblings"]}}}) == BASELINE
+    assert (
+        _active({"architecture": {"import_graph": {"cycles": ["siblings"]}}})
+        == BASELINE
+    )
     assert _active(
         {"rules": {"SMT104": "error", "architecture/unclassified-module": "warning"}}
     ) == BASELINE | {"SMT104", "SMT305"}

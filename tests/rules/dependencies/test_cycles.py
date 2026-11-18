@@ -16,7 +16,7 @@ ONLY_SMT104 = CheckOptions(select=("SMT104",))
 def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
     tmp_path: Path,
 ) -> None:
-    config = "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [siblings]}}\n"
+    config = "version: 1\nproject: {root_packages: [app]}\narchitecture: {import_graph: {cycles: [siblings]}}\n"
     write_project(
         tmp_path,
         {
@@ -44,7 +44,7 @@ def test_concrete_annotation_cycles_have_separate_selection_and_phase_witnesses(
     write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\narchitecture: {{imports: {{cycles: [modules], type_checking_cycles: {annotation_policy}}}}}\n",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\narchitecture: {{import_graph: {{cycles: [modules], type_checking_cycles: {annotation_policy}}}}}\n",
             "app/__init__.py": "",
             "app/a.py": "from app import b\n",
             "app/b.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import a\n",
@@ -68,7 +68,7 @@ def test_runtime_witness_is_preferred_over_a_shorter_annotation_cycle(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {imports: {cycles: [modules]}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {import_graph: {cycles: [modules]}}\n",
             "app/__init__.py": "",
             "app/a.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import b\n",
             "app/b.py": "from app import a, c\n",
@@ -89,7 +89,7 @@ def test_excluding_annotation_cycles_keeps_annotation_layer_checks(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    domain: {path: domain}\n    infra: {path: infra}\n  imports: {cycles: [modules], type_checking: include, type_checking_cycles: ignore}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    domain: {path: domain}\n    infra: {path: infra}\n  import_graph: {cycles: [modules], type_checking: include, type_checking_cycles: ignore}\n",
             "app/__init__.py": "",
             "app/domain/__init__.py": "",
             "app/infra/__init__.py": "",
@@ -258,7 +258,7 @@ class TestSiblingCycles:
             {
                 "smelt.yml": (
                     "version: 1\nproject:\n  root_packages: [app]\n"
-                    "architecture:\n  imports:\n    cycles: [features]\n"
+                    "architecture:\n  import_graph:\n    cycles: [features]\n"
                 ),
                 "app/__init__.py": "",
                 "app/a.py": "from app import b\n",

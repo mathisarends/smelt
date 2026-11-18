@@ -223,7 +223,7 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
         root,
         {
             "smelt.yml": _CONFIG
-            + "structure:\n  contracts:\n    api:\n      match: app\n      rules: {visibility/internal-public-attribute: off}\n"
+            + "style:\n  overrides:\n    api:\n      match: app\n      rules: {visibility/internal-public-attribute: off}\n"
         },
     )
     assert violations(root, CheckOptions(select=("SMT335",))) == []

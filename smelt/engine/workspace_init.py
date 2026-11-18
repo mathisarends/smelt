@@ -87,7 +87,7 @@ def workspace_drafts(
             continue
         data = yaml.safe_load(render_config(inferred))
         architecture = data.get("architecture", {})
-        architecture.pop("imports", None)
+        architecture.pop("import_graph", None)
         if inferred.layer_gaps:
             for key in ("layers", "features", "modules", "cross_feature"):
                 architecture.pop(key, None)

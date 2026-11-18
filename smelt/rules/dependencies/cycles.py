@@ -88,14 +88,14 @@ class ImportCycle(Rule):
             "import, invert one dependency behind an abstraction, or merge the parts."
         ),
         config=(
-            "architecture.imports.cycles",
-            "architecture.imports.type_checking",
-            "architecture.imports.type_checking_cycles",
+            "architecture.import_graph.cycles",
+            "architecture.import_graph.type_checking",
+            "architecture.import_graph.type_checking_cycles",
         ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        scopes: set[str] = set(ctx.config.architecture.imports.cycles)
+        scopes: set[str] = set(ctx.config.architecture.import_graph.cycles)
         features: _Graph[str] = _Graph()
         layers: _Graph[tuple[str | None, str]] = _Graph()
         siblings: dict[str, _Graph[str]] = defaultdict(_Graph)
@@ -108,7 +108,8 @@ class ImportCycle(Rule):
                 or skip_import(ctx, detail)
                 or (
                     detail.type_checking
-                    and ctx.config.architecture.imports.type_checking_cycles == "ignore"
+                    and ctx.config.architecture.import_graph.type_checking_cycles
+                    == "ignore"
                 )
             ):
                 continue
@@ -217,7 +218,7 @@ class ImportCycle(Rule):
                 "or invert one dependency behind an abstraction."
             )
             if scope != "concrete modules":
-                hint += " This graph aggregates architecture nodes; its witness does not prove a concrete module runtime cycle. Select architecture.imports.cycles: [modules] to review concrete module edges."
+                hint += " This graph aggregates architecture nodes; its witness does not prove a concrete module runtime cycle. Select architecture.import_graph.cycles: [modules] to review concrete module edges."
             if len(component) > len(set(cycle)):
                 hint += f" The cyclic group contains: {', '.join(members)}."
             if static:
@@ -228,7 +229,7 @@ class ImportCycle(Rule):
                     f"Only type checkers see this cycle: {', '.join(static)} {verb} "
                     "imported under `if TYPE_CHECKING:`, so it cannot fail at import "
                     "time. It still couples both sides. " + hint + " To leave such "
-                    "edges out, set architecture.imports.type_checking: ignore."
+                    "edges out, set architecture.import_graph.type_checking: ignore."
                 )
             yield import_violation(
                 self,
@@ -287,8 +288,8 @@ def _witness[T: Hashable](
     Where no path inside the node joins two hops, the gap stays visible.
     """
     include = (
-        ctx.config.architecture.imports.type_checking == "include"
-        and ctx.config.architecture.imports.type_checking_cycles == "include"
+        ctx.config.architecture.import_graph.type_checking == "include"
+        and ctx.config.architecture.import_graph.type_checking_cycles == "include"
     )
     adjacency = ctx.imports.first_party_edges(include_type_checking=include)
     links: list[ImportLink] = []

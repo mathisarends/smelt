@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
     return (
         detail.type_checking
-        and ctx.config.architecture.imports.type_checking == "ignore"
+        and ctx.config.architecture.import_graph.type_checking == "ignore"
     )
 
 
@@ -40,9 +40,9 @@ def boundary_imports(
     """
     for detail in ctx.imports.all_imports():
         yield detail, ()
-    if not ctx.config.architecture.imports.transitive:
+    if not ctx.config.architecture.import_graph.transitive:
         return
-    include_tc = ctx.config.architecture.imports.type_checking == "include"
+    include_tc = ctx.config.architecture.import_graph.type_checking == "include"
     for module in ctx.imports.modules():
         seen = {
             (detail.imported, detail.names)

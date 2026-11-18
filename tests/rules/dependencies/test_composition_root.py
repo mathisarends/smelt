@@ -39,7 +39,7 @@ class TestCompositionRootLeak:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "app/application/service.py": "from app import bridge\n",
                 "app/bridge.py": "from app import bootstrap\n",
                 "app/bootstrap.py": "container = object()\n",
@@ -61,7 +61,7 @@ class TestCompositionRootLeak:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "app/__init__.py": "from app.bootstrap import container\n",
                 "app/bootstrap.py": "container = object()\n",
                 "app/application/service.py": "from app import container\n",

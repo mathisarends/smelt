@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from smelt.diagnostics.violation import Violation
 
 CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
-AUTO_CONFIG = CONFIG + "structure: {str_enum_values: auto}\n"
+AUTO_CONFIG = CONFIG + "style: {str_enum_values: auto}\n"
 SELECT = CheckOptions(select=("SMT341",))
 HEADER = "from enum import StrEnum, auto"
 

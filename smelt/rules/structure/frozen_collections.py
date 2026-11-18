@@ -65,7 +65,7 @@ class MutableFieldInFrozenDataclass(Rule):
             "freezing may change behavior, so no automatic rewrite is performed. "
             "Enable rules: {modeling/mutable-field-in-frozen-dataclass: warning}, or select SMT360."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

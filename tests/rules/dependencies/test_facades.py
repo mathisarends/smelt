@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 CONFIG = """
 version: 1
 project: {root_packages: [app], test_roots: [tests]}
-structure:
-  contracts:
-    browser-api: {match: app.browser, export_at: 3}
+architecture:
+  packages:
+    browser-api: {match: app.browser, min_importers_to_export: 3}
 """
 OPTIONS = CheckOptions(select=("SMT109",))
 CLIENT = "from app.browser.base import Browser, BrowserEvents\n"
@@ -29,8 +29,8 @@ def test_canonical_export_uses_static_identity_and_leaves_unowned_symbols_visibl
     tmp_path: Path,
 ) -> None:
     config = CONFIG.replace(
-        "structure:\n",
-        "structure:\n  canonical_exports: {app.browser.bridge.Events: app.Events}\n",
+        "architecture:\n",
+        "architecture:\n  canonical_exports: {app.browser.bridge.Events: app.Events}\n",
     )
     root = _project(tmp_path, config=config)
     write_project(
@@ -87,7 +87,8 @@ def test_invalid_canonical_exports_are_actionable_config_errors(
     root = _project(
         tmp_path,
         config=CONFIG.replace(
-            "structure:\n", f"structure:\n  canonical_exports: {{{symbol}: {export}}}\n"
+            "architecture:\n",
+            f"architecture:\n  canonical_exports: {{{symbol}: {export}}}\n",
         ),
     )
     write_project(root, {"app/__init__.py": root_source})
@@ -99,8 +100,8 @@ def test_conflicting_ownership_through_alias_keys_is_rejected(tmp_path: Path) ->
     root = _project(
         tmp_path,
         config=CONFIG.replace(
-            "structure:\n",
-            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events, app.browser.bridge.Events: app.browser.Events}\n",
+            "architecture:\n",
+            "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events, app.browser.bridge.Events: app.browser.Events}\n",
         ),
     )
     write_project(
@@ -121,8 +122,8 @@ def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_ru
     root = _project(
         tmp_path,
         config=CONFIG.replace(
-            "structure:\n",
-            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+            "architecture:\n",
+            "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
         ),
     )
     write_project(
@@ -138,9 +139,9 @@ def test_canonical_ownership_does_not_relax_package_public_boundaries(
     tmp_path: Path,
 ) -> None:
     config = CONFIG.replace(
-        "structure:\n",
-        "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
-    ).replace("export_at: 3", "export_at: 3, public: ['.']")
+        "architecture:\n",
+        "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+    ).replace("min_importers_to_export: 3", "min_importers_to_export: 3, public: ['.']")
     root = _project(tmp_path, config=config)
     write_project(
         root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
@@ -168,10 +169,10 @@ def test_canonical_ownership_does_not_disable_concrete_cycle_checks(
 ) -> None:
     config = (
         CONFIG.replace(
-            "structure:\n",
-            "structure:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
+            "architecture:\n",
+            "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
         )
-        + "architecture: {imports: {cycles: [modules]}}\n"
+        + "  import_graph: {cycles: [modules]}\n"
     )
     root = _project(tmp_path, config=config)
     write_project(
@@ -213,7 +214,9 @@ def test_reports_one_missing_name_at_its_definition_with_mixed_imports(
     root = _project(tmp_path)
     before = (root / "app/browser/__init__.py").read_bytes()
 
-    [finding] = violations(root)  # export_at activates the rule without a second switch
+    [finding] = violations(
+        root
+    )  # min_importers_to_export activates the rule without a second switch
 
     assert finding.code == "SMT109"
     assert finding.severity is Severity.HINT
@@ -260,7 +263,8 @@ def test_tests_only_drive_the_threshold_when_explicitly_requested(
     root = _project(
         tmp_path,
         config=CONFIG.replace(
-            "export_at: 3", f"export_at: 3, count_tests: {str(count_tests).lower()}"
+            "min_importers_to_export: 3",
+            f"min_importers_to_export: 3, count_tests: {str(count_tests).lower()}",
         ),
     )
     write_project(
@@ -285,7 +289,7 @@ def test_type_checking_only_imports_never_drive_api_expansion(
 ) -> None:
     root = _project(
         tmp_path,
-        config=CONFIG + f"architecture: {{imports: {{type_checking: {policy}}}}}\n",
+        config=CONFIG + f"  import_graph: {{type_checking: {policy}}}\n",
     )
     write_project(
         root,
@@ -429,8 +433,8 @@ def test_threshold_and_rule_off_and_missing_policy_are_respected(
     tmp_path: Path,
 ) -> None:
     for config in (
-        CONFIG.replace("export_at: 3", "export_at: 4"),
-        CONFIG.replace("export_at: 3", "required: [base]"),
+        CONFIG.replace("min_importers_to_export: 3", "min_importers_to_export: 4"),
+        CONFIG.replace("min_importers_to_export: 3", "required: [base]"),
         CONFIG + "rules: {architecture/missing-facade-export: off}\n",
     ):
         _project(tmp_path, config=config)
@@ -484,11 +488,14 @@ def test_recorded_gap_does_not_hide_a_new_symbol_or_importer(tmp_path: Path) -> 
     assert debt.match([different], lambda _finding: "")[0] == [different]
 
 
-@pytest.mark.parametrize("policy", ["export_at: 1", "count_tests: true"])
+@pytest.mark.parametrize("policy", ["min_importers_to_export: 1", "count_tests: true"])
 def test_invalid_export_policies_fail_clearly(tmp_path: Path, policy: str) -> None:
-    root = _project(tmp_path, config=CONFIG.replace("export_at: 3", policy))
+    root = _project(
+        tmp_path, config=CONFIG.replace("min_importers_to_export: 3", policy)
+    )
     with pytest.raises(
-        ConfigError, match=r"greater than or equal to 2|count_tests requires export_at"
+        ConfigError,
+        match=r"greater than or equal to 2|count_tests requires min_importers_to_export",
     ):
         violations(root, OPTIONS)
 
@@ -499,7 +506,7 @@ def test_export_threshold_uses_the_exact_contract_once(
 ) -> None:
     config = (
         CONFIG.replace("match: app.browser", "match: app.*")
-        + f"\n    exact: {{match: app.browser, export_at: {threshold}}}\n"
+        + f"\n    exact: {{match: app.browser, min_importers_to_export: {threshold}}}\n"
     )
     root = _project(tmp_path, config=config)
     found = violations(root, OPTIONS)
@@ -515,7 +522,10 @@ def test_explicitly_nonpublic_facades_do_not_receive_export_suggestions(
 ) -> None:
     root = _project(
         tmp_path,
-        config=CONFIG.replace("export_at: 3", f"export_at: 3, public: {public}"),
+        config=CONFIG.replace(
+            "min_importers_to_export: 3",
+            f"min_importers_to_export: 3, public: {public}",
+        ),
     )
     assert violations(root, OPTIONS) == []
 
@@ -532,7 +542,10 @@ def test_source_test_packages_do_not_drive_exports_by_default(tmp_path: Path) ->
         {
             "smelt.yml": CONFIG.replace(
                 "test_roots: [tests]", "test_roots: [app/tests]"
-            ).replace("export_at: 3", "export_at: 3, count_tests: true")
+            ).replace(
+                "min_importers_to_export: 3",
+                "min_importers_to_export: 3, count_tests: true",
+            )
         },
     )
     [finding] = violations(root, OPTIONS)
@@ -552,8 +565,8 @@ def test_equal_specificity_export_conflicts_include_test_counting(
 ) -> None:
     config = (
         CONFIG
-        + "\n    duplicate: {match: app.browser, export_at: 3, count_tests: true}\n"
+        + "\n    duplicate: {match: app.browser, min_importers_to_export: 3, count_tests: true}\n"
     )
     root = _project(tmp_path, config=config)
-    with pytest.raises(ConfigError, match="conflicting export_at"):
+    with pytest.raises(ConfigError, match="conflicting min_importers_to_export"):
         violations(root, OPTIONS)

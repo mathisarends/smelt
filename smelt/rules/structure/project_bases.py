@@ -54,11 +54,11 @@ class PreferProjectBaseClass(Rule):
             "configuration that only repeated it. When a class deliberately "
             "needs the outside base, keep a reasoned suppression or move it "
             "into a package whose contract sets bases: {}. No automatic "
-            "rewrite is performed. Enable it for the project with structure: "
+            "rewrite is performed. Enable it for the project with style: "
             "{bases: {pydantic.BaseModel: app.core.Options}}, or for one package "
             "with the same option in a package contract."
         ),
-        config=("structure.bases", "structure.contracts"),
+        config=("style.bases", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

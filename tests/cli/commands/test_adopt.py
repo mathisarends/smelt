@@ -136,7 +136,7 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
-            "structure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n"
+            "architecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n"
             "rules: {SMT109: warning, SMT104: off}\ndebt: debt.json\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "",

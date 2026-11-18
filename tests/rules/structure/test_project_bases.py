@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 POLICY = """\
 version: 1
 project: {root_packages: [app]}
-structure:
-  contracts:
+style:
+  overrides:
     models:
       match: app
       bases: {pydantic.BaseModel: app.core.Options}

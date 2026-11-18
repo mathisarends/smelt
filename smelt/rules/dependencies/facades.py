@@ -24,7 +24,7 @@ class FacadeExportGap(Rule):
     doc = RuleDoc(
         summary="A public implementation name has many outside importers but no package export.",
         rationale=(
-            "A contract's export_at threshold counts distinct analyzed modules outside "
+            "A contract's min_importers_to_export threshold counts distinct analyzed modules outside "
             "the defining package, aggregating aliases and static re-export chains. "
             "One advisory finding per symbol and facade is anchored at the definition. "
             "Tests count only with count_tests: true; TYPE_CHECKING-only imports never "
@@ -33,7 +33,7 @@ class FacadeExportGap(Rule):
             "explicit __all__ re-exports in other modules are "
             "context, not coverage for this facade. Frequency suggests an API review, "
             "not a requirement to expand the public API. Counts cover analyzed code only."
-            " Optional structure.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before."
+            " Optional architecture.canonical_exports maps a qualified definition or static alias to its supported public export. Smelt verifies both against the same static identity, including supported literal lazy-export tables; missing, conflicting or unsupported dynamic owners are configuration errors. A verified owner prevents duplicate export advice for that symbol only. Importer context separates same-root and other-root production consumers. Ownership never relaxes layers, package-public contracts or cycle checks; without declarations existing thresholds behave as before."
         ),
         bad=(
             "# app/browser/__init__.py is empty\n"
@@ -55,11 +55,11 @@ class FacadeExportGap(Rule):
             "Dynamic imports, implicit package initialization and import order are "
             "not proven. No exports, imports or policy are rewritten automatically."
         ),
-        config=("structure.contracts", "structure.canonical_exports"),
+        config=("architecture.packages", "architecture.canonical_exports"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        contracts = ctx.contracts.facade_policies("export_at")
+        contracts = ctx.contracts.facade_policies("min_importers_to_export")
         if not contracts:
             return
         usage = FacadeUsage(
@@ -70,7 +70,7 @@ class FacadeExportGap(Rule):
         )
         ownership, _ = usage.canonical_exports(ctx.config.structure.canonical_exports)
         for contract in contracts:
-            threshold = contract.spec.export_at
+            threshold = contract.spec.min_importers_to_export
             if threshold is None or any(
                 not boundary.exposes(contract.package)
                 for boundary in ctx.contracts.resolved
@@ -113,7 +113,7 @@ class FacadeExportGap(Rule):
                         "package": contract.package,
                         "name": gap.name,
                         "definition": qualified,
-                        "export_at": threshold,
+                        "min_importers_to_export": threshold,
                         "count_tests": contract.spec.count_tests,
                         "source_importers": list(gap.source_importers),
                         "same_root_importers": [

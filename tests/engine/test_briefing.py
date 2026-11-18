@@ -24,7 +24,7 @@ def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
         },
     )
@@ -47,7 +47,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure: {canonical_exports: {app.api.Service: app.Service}}\narchitecture: {imports: {cycles: [modules], type_checking_cycles: ignore}}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  canonical_exports: {app.api.Service: app.Service}\n  import_graph: {cycles: [modules], type_checking_cycles: ignore}\n",
             "app/__init__.py": "from .api import Service\n",
             "app/api.py": "class Service: pass\n",
         },
@@ -78,7 +78,7 @@ def test_member_policy_is_available_before_writing_a_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nstructure:\n  contracts:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
+            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nstyle:\n  overrides:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
             "app/__init__.py": "",
         },
     )
@@ -97,7 +97,7 @@ def test_type_dispatch_policy_is_visible_before_writing_a_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
             "app/__init__.py": "",
         },
     )
@@ -116,7 +116,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
             "app/__init__.py": "",
         },
     )
@@ -184,7 +184,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstructure:\n  contracts:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
             "app/__init__.py": "",
         },
     )
@@ -218,8 +218,8 @@ def test_private_module_convention_is_available_before_writing_a_file(
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 names: {match: app, private_modules: forbid}
         """,
             "app/__init__.py": "",
@@ -247,8 +247,8 @@ def test_positional_parameter_limit_is_available_before_editing(
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 signatures: {match: app, max_positional_parameters: 2}
         """,
             "app/__init__.py": "",
@@ -267,7 +267,7 @@ def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> Non
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    imports: {match: app, max_module_imports: 0, module_import_exempt: []}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    imports: {match: app, max_module_imports: 0, module_import_exemptions: []}\n",
             "app/__init__.py": "",
         },
     )
@@ -275,16 +275,16 @@ def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> Non
     ctx = outcome.context
     briefing = build_briefing(ctx, resolve_target(ctx, "app"), outcome.report)
     assert briefing.to_json()["contracts"][0]["max_module_imports"] == 0
-    assert briefing.to_json()["contracts"][0]["module_import_exempt"] == []
+    assert briefing.to_json()["contracts"][0]["module_import_exemptions"] == []
     assert "max_module_imports: 0" in render_briefing(briefing, ctx)
-    assert "module_import_exempt: none" in render_briefing(briefing, ctx)
+    assert "module_import_exemptions: none" in render_briefing(briefing, ctx)
 
 
 def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    expressions: {match: app, max_comprehension_loops: 2}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    expressions: {match: app, max_comprehension_loops: 2}\n",
             "app/__init__.py": "",
         },
     )
@@ -299,7 +299,7 @@ def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    constructors: {match: app, max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    constructors: {match: app, max_constructor_decisions: 0}\n",
             "app/__init__.py": "",
         },
     )
@@ -314,7 +314,7 @@ def test_private_definition_limit_is_available_before_editing(tmp_path: Path) ->
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    definitions: {match: app, max_private_definitions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    definitions: {match: app, max_private_definitions: 0}\n",
             "app/__init__.py": "",
         },
     )
@@ -329,7 +329,7 @@ def test_private_attribute_boundary_is_available_before_editing(tmp_path: Path) 
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n    ownership: {match: app, private_attribute_boundary: package}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    ownership: {match: app, private_attribute_boundary: package}\n",
             "app/__init__.py": "",
         },
     )
@@ -347,8 +347,8 @@ def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 records: {match: app, dataclass_options: [slots, frozen, slots]}
         """,
             "app/__init__.py": "",
@@ -375,8 +375,8 @@ def test_base_class_mapping_is_available_before_editing(tmp_path: Path) -> None:
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 models: {match: app, bases: {pydantic.BaseModel: app.core.Options}}
         """,
             "app/__init__.py": "",
@@ -402,8 +402,8 @@ def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
             "smelt.yml": """
             version: 1
             project: {root_packages: [app]}
-            structure:
-              contracts:
+            style:
+              overrides:
                 errors:
                   match: app
                   errors: {base: app.errors.AppError, allow: [TypeError, TypeError]}
@@ -436,15 +436,19 @@ def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> Non
             "smelt.yml": """
             version: 1
             project: {root_packages: [library]}
-            architecture: {shared: [library]}
-            structure:
-              contracts:
+            architecture:
+              shared: [library]
+              packages:
                 surface:
                   match: library
                   required: [api]
                   public: [api]
+                  min_imports_to_bundle: 3
+            style:
+              overrides:
+                surface:
+                  match: library
                   imports: {style: absolute}
-                  bundle_imports_at: 3
         """,
             "library/__init__.py": "",
         },
@@ -620,7 +624,7 @@ class TestFeatureBriefing:
             "Policy: Layer and feature boundaries apply as configured; wiring and composition roots\n"
             "        have exceptions.\n"
             "Coverage: configured; complete policy assignment for 10 source files.\n"
-            "Imports: direct only (indirect chains require architecture.imports.transitive: true)\n"
+            "Imports: direct only (indirect chains require architecture.import_graph.transitive: true)\n"
             "\n"
             "Layers:\n"
             "  domain         → (nothing)            third-party: only pydantic\n"
@@ -656,9 +660,9 @@ class TestFeatureBriefing:
         data = briefing.to_json()
 
         assert data["imports"] == {
-            "transitive": ctx.config.architecture.imports.transitive,
+            "transitive": ctx.config.architecture.import_graph.transitive,
             "type_checking": "include",
-            "cycles": list(ctx.config.architecture.imports.cycles),
+            "cycles": list(ctx.config.architecture.import_graph.cycles),
             "type_checking_cycles": "include",
         }
         assert data["cross_feature_policy"] == {

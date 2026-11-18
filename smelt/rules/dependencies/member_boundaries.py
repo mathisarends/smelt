@@ -29,7 +29,7 @@ class MemberBoundary(Rule):
             "imports between discovered members count. Unmatched source members are "
             "unrestricted, overlapping source globs combine their allowances, and imports "
             "inside one member always pass. Wiring and shared modules retain these boundaries. "
-            "TYPE_CHECKING follows architecture.imports.type_checking; transitive does not apply."
+            "TYPE_CHECKING follows architecture.import_graph.type_checking; transitive does not apply."
         ),
         bad=(
             "# packages/core/src/core/model.py\nfrom api.http import serve\n"
@@ -43,7 +43,7 @@ class MemberBoundary(Rule):
         config=(
             "project.workspace",
             "architecture.members",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.type_checking",
         ),
     )
 
@@ -82,7 +82,7 @@ class UndeclaredMemberDependency(Rule):
             "dependencies. A member source overrides the root source, even when marked. "
             "Dependency groups and test imports are not assessed; projects with dynamic "
             "dependencies or without static metadata are skipped. "
-            "architecture.imports.transitive does not require transitive declarations."
+            "architecture.import_graph.transitive does not require transitive declarations."
         ),
         bad='[project]\nname = "api"\ndependencies = []\n# api imports core.model',
         good='[project]\nname = "api"\ndependencies = ["core-lib"]\n[tool.uv.sources]\ncore-lib = {workspace = true}',
@@ -95,7 +95,7 @@ class UndeclaredMemberDependency(Rule):
         ),
         config=(
             "project.workspace",
-            "architecture.imports.type_checking",
+            "architecture.import_graph.type_checking",
             "architecture.members",
         ),
     )

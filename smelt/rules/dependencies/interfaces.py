@@ -45,8 +45,8 @@ class PrivateModuleImport(Rule):
             "subtree is intentionally public."
         ),
         config=(
-            "structure.contracts",
-            "architecture.imports.type_checking",
+            "architecture.packages",
+            "architecture.import_graph.type_checking",
             "project.test_roots",
         ),
     )

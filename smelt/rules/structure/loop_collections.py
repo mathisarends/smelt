@@ -98,7 +98,7 @@ class LoopInvariantCollection(Rule):
             "check when necessary. No automatic hoisting is provided. Enable "
             "rules: {idioms/loop-invariant-collection: hint}, or select SMT362."
         ),
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

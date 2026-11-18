@@ -24,7 +24,7 @@ class PrivateClassConstant(Rule):
         bad='class DownloadController:\n    _DOWNLOADABLE_EXTENSIONS = {".pdf", ".zip"}\n\n    def supports(self, extension: str) -> bool:\n        return extension in self._DOWNLOADABLE_EXTENSIONS',
         good='_DOWNLOADABLE_EXTENSIONS = {".pdf", ".zip"}\n\n\nclass DownloadController:\n    def supports(self, extension: str) -> bool:\n        return extension in _DOWNLOADABLE_EXTENSIONS',
         fix="Move the constant to the same module with a leading underscore, then update class-qualified and instance-qualified reads to use the constant name directly. Check name collisions, initialization order, name mangling, mutation, subclass overrides and external consumers before moving it. Keep intentional class contracts with a reasoned suppression or package override. Enable rules: {layout/misplaced-private-constant: error} to block the convention, or --select SMT334 to review it. No automatic move or rewrite is performed.",
-        config=("rules", "structure.contracts"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

@@ -28,8 +28,8 @@ class PreferMatchTypeDispatch(Rule):
         good="match event:\n    case Started():\n        start(event)\n    case Delta() | Progress():\n        update(event)\n    case Finished() if event.ok:\n        finish(event)",
         fix="Review class patterns, guards and subclass ordering. Preserve independent if statements, and keep nested body conditions inside their case: moving them into a case guard can introduce fallthrough. Match evaluates its subject once; custom instance checks, dynamic type expressions and side effects may differ. No automatic rewrite is performed. Declared Python minima before 3.10 are excluded; unknown minima require version review.",
         config=(
-            "structure.type_dispatch",
-            "structure.contracts",
+            "style.type_dispatch",
+            "style.overrides",
             "project.python_version",
         ),
     )

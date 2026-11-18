@@ -115,14 +115,14 @@ def architecture_scopes(config: SmeltConfig) -> tuple[ArchitectureScope, ...]:
             config.model_copy(
                 update={
                     "architecture": member.architecture.model_copy(
-                        update={"imports": config.architecture.imports}
+                        update={"import_graph": config.architecture.import_graph}
                     )
                 }
             ),
             member.packages,
         )
         for path, member in sorted(config.members.items())
-        if member.architecture is not None
+        if member.governs_architecture and member.architecture is not None
     ]
     if not members:
         return ()
@@ -196,7 +196,7 @@ def member_raw_issues(raw: object) -> list[ConfigIssue]:
                 "not allowed in a workspace member config: this policy "
                 "is set once in the workspace root",
             )
-            for key in ("imports", "members")
+            for key in ("import_graph", "members", "canonical_exports")
             if key in architecture
         )
     return issues
@@ -395,7 +395,7 @@ def _compile_members(
             _style_reason_issues(
                 options,
                 member.structure.reasons,
-                f"{location}.structure",
+                f"{location}.style",
                 inherited=[
                     config.structure,
                     *(
@@ -412,7 +412,12 @@ def _compile_members(
                 contracts[name] = PackageContract(match=package, **options)
         for name, contract in member.structure.contracts.items():
             qualified = f"{path}:{name}"
-            contract_location = f"{location}.structure.contracts.{name}"
+            policy = (
+                "style.overrides"
+                if name in member.style.overrides
+                else "architecture.packages"
+            )
+            contract_location = f"{location}.{policy}.{name}"
             if contract.match.split(".")[0] not in names:
                 issues.append(
                     ConfigIssue(
@@ -446,9 +451,8 @@ def _compile_members(
         )
     if issues:
         raise ConfigError(issues)
-    return config.model_copy(
+    compiled = config.model_copy(
         update={
-            "structure": config.structure.model_copy(update={"contracts": contracts}),
             "ignore": ignore,
             "project": config.project.model_copy(update={"exclude": exclude}),
             "members": {
@@ -456,6 +460,9 @@ def _compile_members(
                 for path, member in config.members.items()
             },
         }
+    )
+    return compiled.with_compiled_structure(
+        config.structure.model_copy(update={"contracts": contracts})
     )
 
 

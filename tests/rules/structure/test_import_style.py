@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 CONFIG = """
 version: 1
 project: {root_packages: [app, library]}
-structure:
-  contracts:
+style:
+  overrides:
     local:
       match: app
       imports: {style: relative, max_relative_level: 1}
@@ -175,7 +175,7 @@ def test_type_checking_policy_is_respected(
     _project(
         tmp_path,
         "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.pkg.models import Record",
-        config=CONFIG + f"\narchitecture:\n  imports: {{type_checking: {policy}}}",
+        config=CONFIG + f"\narchitecture:\n  import_graph: {{type_checking: {policy}}}",
     )
 
     assert len(violations(tmp_path, OPTIONS)) == count

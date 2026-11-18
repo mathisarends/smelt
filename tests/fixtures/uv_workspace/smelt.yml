@@ -3,7 +3,7 @@ project:
   workspace: uv
   source_roots: [src]
   coverage: strict
-structure:
+style:
   max_positional_parameters: 3
 rules:
   tests/missing-outcome-check: warning

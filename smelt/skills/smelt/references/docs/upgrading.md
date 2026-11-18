@@ -2,9 +2,74 @@
 
 ## 0.12 to 0.13
 
+### Split style from package architecture
+
+Move project-wide conventions from `structure` to `style`. Split each old
+`structure.contracts` entry according to which fields it sets. Keep the same
+`match` in both new entries when one old contract supplied both kinds of policy.
+
+```yaml
+# 0.13 replacement for one mixed contract named "orders"
+style:
+  max_positional_parameters: 3
+  overrides:
+    orders:
+      match: app.orders
+      max_positional_parameters: 5
+      rules: {visibility/internal-public-member: warning}
+architecture:
+  import_graph: {type_checking: include, transitive: true}
+  packages:
+    orders:
+      match: app.orders
+      public: ['.']
+      required: [domain]
+      min_imports_to_bundle: 3
+      min_importers_to_export: 2
+```
+
+| Before | Use in 0.13 |
+| --- | --- |
+| `structure` project conventions | `style` |
+| `structure.contracts.<name>` style options, rule settings and reasons | `style.overrides.<name>` |
+| `structure.contracts.<name>` public, required and facade policy | `architecture.packages.<name>` |
+| `structure.canonical_exports` | `architecture.canonical_exports` |
+| `architecture.imports` | `architecture.import_graph` |
+| `structure.imports` | `style.imports` |
+| `bundle_imports_at` | `min_imports_to_bundle` |
+| `export_at` | `min_importers_to_export` |
+| `module_import_exempt` | `module_import_exemptions` |
+| `tests.unmirrored` | `tests.mirror_exclude` |
+| `tests.forbid_mocks_in` | `tests.forbidden_mock_paths` |
+
+Threshold values migrate verbatim. A `max_*` option permits up to that number
+and a `min_*` threshold starts reporting at that number. The facade bundle
+threshold counts distinct import paths inside a package. The export threshold
+counts external importing modules that use a symbol. `exclude` names paths
+outside the selected check, and exemptions describe an exception within a rule.
+Architecture uses `allow` and `deny` for access. Style uses `forbid` for syntax
+conventions.
+
+Apply the same moves in local `extends` files and member configurations. A
+member can declare its package API and still inherit the root layer architecture.
+Keep `architecture.import_graph` and `architecture.canonical_exports` at the root.
+Retain member style reasons beside the corresponding values. Verify the result
+with `smelt config show --sources` and a full `smelt check`.
+
+Refresh the editor schema with `smelt config schema`. The policy hash reflects
+the new configuration layout. Existing SMT codes still identify accepted debt.
+
+### Removed rule group
+
+Replace the old `information-hiding` selector with SMT316, SMT320, SMT335,
+SMT429 and SMT430 using the former severity for each entry. Use these same
+codes as a comma-separated CLI selection when you want the exact old scope.
+The `visibility` family also includes other rules. Catalog metadata no longer
+includes rule groups.
+
 ### Explicit rule activation
 
-Replace enabling family, group and `ALL` settings with the individual names or
+Replace enabling family and `ALL` settings with the individual names or
 SMT codes you intend to run. Broad settings can disable or cap active rules.
 Replace the unreleased `smelt:recommended` preset with named entries from
 `smelt init --maintainability` or a local `extends` file.
@@ -30,7 +95,7 @@ complete mapping.
 
 Workspace member rules that lower root severity now require
 `{severity: warning, reason: "..."}` (or the intended severity), including member
-package contracts. `on` uses the catalog severity; strict coverage cannot be
+style overrides. `on` uses the catalog severity, and strict coverage cannot be
 lowered. Review existing exceptions and add their actual justification.
 Workspace `init` now generates a root plus per-member architecture drafts;
 review all targets before using `--force`. Member debt files are supported;
@@ -47,7 +112,7 @@ existing root debt remains usable for members without their own file. See
    rules.SMT366: unknown rule "SMT366"; merged into SMT340 "complexity/inline-call-argument" in 0.13.0 (see docs/upgrading.md)
    ```
 
-   Replace names in top-level `rules`, package-contract `rules`, CI `--select` and
+   Replace names in top-level `rules`, `style.overrides.<name>.rules`, CI `--select` and
    `--ignore` arguments, and hook configuration. SMT codes outside the merged set
    keep working, so `rules: {SMT101: error}` needs no change.
 
@@ -59,10 +124,10 @@ existing root debt remains usable for members without their own file. See
    | SMT325 | SMT309 `layout/module-docstring-convention` | `module_docstrings: require` and `forbid` both enable it. |
    | SMT326 | SMT323 `modeling/forbidden-base-class-affix` | It reports both prefix and suffix. |
    | SMT332 | SMT331 `layout/file-name-convention` | There is one finding per file. |
-   | SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `structure.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
+   | SMT342 | SMT341 `modeling/str-enum-value-convention` | Set `style.str_enum_values: auto` if you used SMT341 for auto values. The default `explicit` matches the former SMT342. |
    | SMT358 | SMT357 `modeling/implicit-duration-unit` | It also reports unitless duration names. |
    | SMT365 | SMT339 `visibility/foreign-private-access` | It also reports private module symbols. |
-   | SMT366 | SMT340 `complexity/inline-call-argument` | Set `structure.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
+   | SMT366 | SMT340 `complexity/inline-call-argument` | Set `style.call_argument_kinds` to keep the former scope: `[await]` for SMT340 alone, `[comprehension, aggregate]` for SMT366 alone. |
 
    The SMT326, SMT357/358 and SMT339/365 merges can report more findings when
    only one half was enabled before. Review them, or narrow the scope where an
@@ -85,17 +150,17 @@ existing root debt remains usable for members without their own file. See
 6. Refresh the editor schema with `smelt config schema > .smelt.schema.json` and
    the agent skill with `smelt skill install --force`.
 
-Families can now be selected as a whole, for example `rules: {typing: warning}`
-or `--select modeling`. Individual entries still override a family entry.
+Use `--select modeling` to explore a whole family. YAML family settings can
+disable or cap active rules, and individual entries take precedence.
 
 ### Configuration model
 
-Source-convention options can now be set directly under `structure` for the whole
+Source-convention options can now be set directly under `style` for the whole
 project. An option that belongs to one rule now enables that rule.
 
-1. Move project-wide contracts to `structure`. A contract that only matches the
-   root package to set options becomes plain `structure` keys. A contract that
-   only sets `rules` becomes top-level `rules`:
+1. Move project-wide style contracts to `style`. Use direct `style` keys for
+   options that applied to the entire project. Move rule settings to top-level
+   `rules` when they should also apply project-wide:
 
    ```yaml
    # 0.12
@@ -112,13 +177,13 @@ project. An option that belongs to one rule now enables that rule.
    # 0.13
    rules:
      idioms/bundled-instance-assignment: error
-   structure:
+   style:
      max_positional_parameters: 3
      future_annotations: when-needed
    ```
 
-   Contracts with `match: app` keep working. The move is recommended, not
-   required.
+   To preserve a policy scoped to `app`, migrate the entries to
+   `style.overrides` and keep their `match: app` selectors.
 
 2. Review options that now enable their rule. If `smelt.yml` sets
    `private_attribute_boundary`, `call_argument_kinds`, `str_enum_values`,
@@ -132,7 +197,7 @@ project. An option that belongs to one rule now enables that rule.
    `rules: {imports/excess-module-imports: ...}` a limit of 20, where no option
    is set. Set the option to choose a different limit.
 
-4. Check for new conflicts. Equally specific contracts that set different values
+4. Check for new conflicts. Equally specific overrides that set different values
    of the same option for one package are now a configuration error for every
    shared option.
 

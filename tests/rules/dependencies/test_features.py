@@ -49,7 +49,7 @@ class TestCrossFeatureImport:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/__init__.py": "from gw.features.voice.application.calls import Calls\n",
                 "gw/features/voice/application/calls.py": "class Calls: pass\n",
                 "gw/features/billing/domain/model.py": "from gw import Calls\n",
@@ -72,7 +72,7 @@ class TestCrossFeatureImport:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/__init__.py": "from gw.features.voice.application.calls import Calls\nfrom gw.features.voice.domain.call import Call\n",
                 "gw/features/voice/application/calls.py": "class Calls: pass\n",
                 "gw/features/voice/domain/call.py": "class Call: pass\n",
@@ -89,7 +89,7 @@ class TestCrossFeatureImport:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/features/billing/domain/model.py": "from gw.shared import bridge\n",
                 "gw/shared/bridge.py": "from gw import helper\n",
                 "gw/helper.py": "from gw.features.voice.domain import call\n",
@@ -111,7 +111,7 @@ class TestCrossFeatureImport:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/features/billing/application/model.py": "from gw import helper\n",
                 "gw/helper.py": "from gw.features.voice.application import calls\n",
             },
@@ -227,7 +227,7 @@ class TestSharedImportsFeature:
             tmp_path,
             {
                 "smelt.yml": CONFIG
-                + "  imports: {transitive: true}\n  composition_root: [gw.bootstrap]\n",
+                + "  import_graph: {transitive: true}\n  composition_root: [gw.bootstrap]\n",
                 "gw/shared/clock.py": "from gw import helper\n",
                 "gw/helper.py": "from gw.features.voice.domain import call\nfrom gw import bootstrap\n",
                 "gw/bootstrap.py": "",
@@ -249,7 +249,7 @@ class TestSharedImportsFeature:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/shared/clock.py": "from gw import helper\n",
                 "gw/helper.py": "from gw.features.voice.domain import call\n",
             },
@@ -269,7 +269,7 @@ class TestSharedImportsFeature:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/__init__.py": "from gw.features.voice.domain.call import Call\n",
                 "gw/features/voice/domain/call.py": "class Call: pass\n",
                 "gw/shared/clock.py": "from gw import Call\n",
@@ -358,7 +358,7 @@ class TestCentralModules:
         root = _central(
             tmp_path,
             {
-                "smelt.yml": CENTRAL_CONFIG + "  imports: {transitive: true}\n",
+                "smelt.yml": CENTRAL_CONFIG + "  import_graph: {transitive: true}\n",
                 "gw/__init__.py": "from gw.platform.orm import Base\n",
                 "gw/platform/orm.py": "class Base: pass\n",
                 "gw/features/voice/domain/repo.py": "from gw import Base\n",

@@ -10,7 +10,6 @@ from urllib.parse import urlsplit
 from smelt.diagnostics.violation import DOCS_BASE_URL
 from smelt.engine.check import rule_meta
 from smelt.engine.schema import config_json_schema
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set, catalog_metadata
 
 if TYPE_CHECKING:
@@ -163,13 +162,6 @@ def _rule_page(rule: RuleContract) -> str:
     ]
     if doc.config:
         lines += ["", "## Config", "", *(f"- `{key}`" for key in doc.config)]
-    if meta.groups:
-        lines += [
-            "",
-            "## Rule groups",
-            "",
-            *(f"- `{name}` — `smelt explain {name}`" for name in meta.groups),
-        ]
     lines += ["", f"Explain it in the terminal with `smelt explain {rule.code}`."]
     return "\n".join(lines) + "\n"
 
@@ -187,16 +179,5 @@ def _rule_index(rules: list[RuleContract]) -> str:
             f"| [{rule.code}]({rule.code}.md) | {rule.name} | "
             f"{meta.category.value} | {meta.activation['mode']} | {meta.default_severity.value} |"
         )
-    lines += [
-        "",
-        "## Rule groups",
-        "",
-        "Enable a coherent policy with one `rules` entry. Individual settings override the group within the same map; closest-package settings still win.",
-        "",
-    ]
-    for group in RULE_GROUPS.values():
-        lines += [
-            f"- `{group.name}`: {group.summary} Includes {', '.join(group.codes)}. Use `smelt explain {group.name}` for the scope and limits."
-        ]
     lines += ["", "`smelt rules` prints the same catalog in the terminal."]
     return "\n".join(lines) + "\n"

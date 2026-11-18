@@ -113,6 +113,8 @@ _MERGED_CODES: dict[str, str] = {
 
 def retired_hint(key: str, codes: dict[str, str]) -> str:
     """Explain where a pre-0.13 rule name or merged code went, if it did."""
+    if key.lower() == "information-hiding":
+        return "; the information-hiding selector was removed in 0.13.0. List SMT316, SMT320, SMT335, SMT429 and SMT430 individually (see docs/upgrading.md)"
     if (new := _RENAMED_RULES.get(key)) is not None:
         return f'; renamed to "{new}" in 0.13.0 (see docs/upgrading.md)'
     if (code := _MERGED_CODES.get(key.upper())) is not None:

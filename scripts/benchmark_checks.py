@@ -100,9 +100,9 @@ def create_project(args: argparse.Namespace, root: Path) -> Path:
         (package / "__init__.py").write_text("", encoding="utf-8")
         architecture_config = "architecture:\n  layers:\n    application: {path: application, may_depend_on: [domain]}\n    domain: {path: domain, may_depend_on: []}\n"
         if args.policy == "transitive":
-            architecture_config += "  imports: {transitive: true}\n"
+            architecture_config += "  import_graph: {transitive: true}\n"
     (root / "smelt.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nstructure:\n  contracts:\n"
+        "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n"
         "    api: {match: app, rules: {visibility/internal-public-member: warning}}\n"
         + architecture_config,
         encoding="utf-8",

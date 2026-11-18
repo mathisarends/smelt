@@ -264,7 +264,7 @@ def test_rule_is_opt_in_and_can_be_disabled_for_a_package(tmp_path: Path) -> Non
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {typing/implicit-optional-default: warning}\nstructure:\n  contracts:\n    exception:\n      match: app\n      rules: {typing/implicit-optional-default: off}\n"
+            + "rules: {typing/implicit-optional-default: warning}\nstyle:\n  overrides:\n    exception:\n      match: app\n      rules: {typing/implicit-optional-default: off}\n"
         },
     )
     assert violations(root, OPTIONS) == []

@@ -10,7 +10,6 @@ from smelt.diagnostics.violation import (
     Violation,
     docs_url,
 )
-from smelt.rules.groups import RULE_GROUPS
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -146,13 +145,10 @@ class RuleSet:
         return tuple(rule.code for rule in self.rules if rule.category == wanted)
 
     def matching_codes(self, selector: str) -> tuple[str, ...]:
-        """Resolve a name, family, group, SMT prefix or ALL against this rule set."""
+        """Resolve a name, family, SMT prefix or ALL against this rule set."""
         wanted = selector.strip()
         if (family := self.family_codes(wanted)) is not None:
             return family
-        if group := RULE_GROUPS.get(wanted.lower()):
-            known = {rule.code for rule in self.rules}
-            return tuple(code for code in group.codes if code in known)
         if rule := self.lookup(wanted.lower()):
             return (rule.code,)
         prefix = wanted.upper()

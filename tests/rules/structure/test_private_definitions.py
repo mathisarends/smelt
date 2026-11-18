@@ -76,7 +76,7 @@ def test_allows_exactly_the_limit_and_reports_the_next_definition(
 ) -> None:
     source = "".join(f"class _Model{i}: pass\n" for i in range(limit))
     root = _project(
-        tmp_path, source, settings=f"structure: {{max_private_definitions: {limit}}}\n"
+        tmp_path, source, settings=f"style: {{max_private_definitions: {limit}}}\n"
     )
     assert violations(root, SELECT) == []
     write_project(root, {"app/state.py": source + "class _Added: pass\n"})
@@ -104,9 +104,7 @@ __VERSION__ = '1'
 _DECLARED: int
 """
     [finding] = violations(
-        _project(
-            tmp_path, source, settings="structure: {max_private_definitions: 0}\n"
-        ),
+        _project(tmp_path, source, settings="style: {max_private_definitions: 0}\n"),
         SELECT,
     )
     assert finding.expected is not None
@@ -157,7 +155,7 @@ except ImportError:
     assert (
         violations(
             _project(
-                tmp_path, source, settings="structure: {max_private_definitions: 0}\n"
+                tmp_path, source, settings="style: {max_private_definitions: 0}\n"
             ),
             SELECT,
         )
@@ -170,7 +168,7 @@ def test_constants_alone_never_exceed_the_definition_limit(tmp_path: Path) -> No
     assert (
         violations(
             _project(
-                tmp_path, source, settings="structure: {max_private_definitions: 0}\n"
+                tmp_path, source, settings="style: {max_private_definitions: 0}\n"
             ),
             SELECT,
         )
@@ -184,7 +182,7 @@ def test_checks_initializers_and_excludes_tests_and_excluded_sources(
     root = _project(
         tmp_path,
         "",
-        settings="structure: {max_private_definitions: 0}\n",
+        settings="style: {max_private_definitions: 0}\n",
     )
     write_project(
         root,
@@ -192,7 +190,7 @@ def test_checks_initializers_and_excludes_tests_and_excluded_sources(
             "app/__init__.py": "class _Model: pass\n",
             "tests/test_state.py": "class _TestModel: pass\n",
             "app/excluded.py": "class _Excluded: pass\n",
-            "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n  exclude:\n    - path: app/excluded.py\n      reason: outside this check\nstructure: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n  exclude:\n    - path: app/excluded.py\n      reason: outside this check\nstyle: {max_private_definitions: 0}\n",
         },
     )
     [finding] = violations(root, SELECT)
@@ -206,9 +204,9 @@ def test_global_and_closest_package_limits_including_zero(tmp_path: Path) -> Non
         source,
         settings="""\
 rules: {visibility/excess-private-definitions: warning}
-structure:
+style:
   max_private_definitions: 1
-  contracts:
+  overrides:
     outer: {match: app, max_private_definitions: 0}
     inherited: {match: app.legacy, module_docstrings: allow}
     inner: {match: app.legacy.models, max_private_definitions: 1}
@@ -236,7 +234,7 @@ structure:
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {visibility/excess-private-definitions: hint}\nstructure: {max_private_definitions: 1}\n"
+            + "rules: {visibility/excess-private-definitions: hint}\nstyle: {max_private_definitions: 1}\n"
         },
     )
     assert violations(root) == []
@@ -247,9 +245,7 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
     tmp_path: Path,
 ) -> None:
     source = "class _Local: pass\n"
-    root = _project(
-        tmp_path, source, settings="structure: {max_private_definitions: 0}\n"
-    )
+    root = _project(tmp_path, source, settings="style: {max_private_definitions: 0}\n")
     assert [v.code for v in violations(root)] == ["SMT367"]
     write_project(
         root,
@@ -257,9 +253,9 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
             "smelt.yml": CONFIG
             + """\
 rules: {visibility/excess-private-definitions: warning}
-structure:
+style:
   max_private_definitions: 0
-  contracts:
+  overrides:
     quiet: {match: app.quiet, rules: {visibility/excess-private-definitions: off}}
 """,
             "app/quiet/__init__.py": source,
@@ -274,8 +270,8 @@ structure:
 @pytest.mark.parametrize(
     "setting",
     [
-        "structure: {max_private_definitions: -1}",
-        "structure: {contracts: {bad: {match: app, max_private_definitions: -1}}}",
+        "style: {max_private_definitions: -1}",
+        "style: {overrides: {bad: {match: app, max_private_definitions: -1}}}",
     ],
 )
 def test_rejects_negative_limits(tmp_path: Path, setting: str) -> None:

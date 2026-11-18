@@ -83,8 +83,8 @@ def prepare(root: Path, args: argparse.Namespace, *, enabled: bool) -> Path:
     if enabled:
         config.write_text(
             config.read_text().replace(
-                "structure:\n",
-                "structure:\n  file_naming: {yaml_extension: yml, compose_basename: compose}\n",
+                "style:\n",
+                "style:\n  file_naming: {yaml_extension: yml, compose_basename: compose}\n",
             )
         )
     hook = {

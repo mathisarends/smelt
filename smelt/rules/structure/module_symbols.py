@@ -27,7 +27,7 @@ class InternalPublicModuleSymbol(Rule):
         fix="Review the intended API and callers. Make genuine implementation details private, updating references and quoted annotations. Preserve supported public names with __all__ or a reasoned suppression. A type alias used in a public signature is API evidence, not a private-name candidate; this rule does not require exporting every annotation dependency. No automatic rename is performed.",
         config=(
             "rules",
-            "structure.contracts",
+            "style.overrides",
             "project.test_roots",
             "architecture.composition_root",
         ),

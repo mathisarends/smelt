@@ -23,7 +23,7 @@ def test_yaml_extension_is_a_single_project_policy(
         tmp_path,
         {
             "smelt.yml": CONFIG
-            + f"structure: {{file_naming: {{yaml_extension: {extension}}}}}\n",
+            + f"style: {{file_naming: {{yaml_extension: {extension}}}}}\n",
             "app/__init__.py": "",
             f"settings.{extension}": "not parsed: [",
             f".github/workflows/ci.{other}": "not parsed: [",
@@ -60,7 +60,7 @@ def test_compose_basename_preserves_variants_and_does_not_choose_an_extension(
         tmp_path,
         {
             "smelt.yml": CONFIG
-            + f"structure: {{file_naming: {{compose_basename: {basename}}}}}\n",
+            + f"style: {{file_naming: {{compose_basename: {basename}}}}}\n",
             "app/__init__.py": "",
             f"{basename}.yaml": "",
             f"{basename}.override.yml": "",
@@ -85,7 +85,7 @@ def test_both_policies_combine_into_one_finding_per_file(
         tmp_path,
         {
             "smelt.yml": CONFIG
-            + "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            + "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
             "deploy/docker-compose.override.yaml": "",
             "deploy/compose.override.yml": "",
@@ -109,7 +109,7 @@ def test_both_policies_combine_into_one_finding_per_file(
     assert (tmp_path / "deploy/compose.override.yml").exists()
 
 
-@pytest.mark.parametrize("policy", ["", "structure: {file_naming: {}}\n"])
+@pytest.mark.parametrize("policy", ["", "style: {file_naming: {}}\n"])
 def test_missing_policies_allow_both_spellings_even_when_selected(
     tmp_path: Path, policy: str
 ) -> None:
@@ -133,7 +133,7 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
             "smelt.yml": CONFIG.replace(
                 "root_packages: [app]", "root_packages: [app], exclude: ['vendor/**']"
             )
-            + "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
+            + "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
             + "rules: {layout/file-name-convention: warning}\n"
             + "ignore:\n  - {rule: SMT331, paths: ['special.yaml'], reason: External contract}\n",
             "app/__init__.py": "",
@@ -157,7 +157,7 @@ def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
         tmp_path,
         {
             "smelt.yml": CONFIG
-            + "structure: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            + "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
             "compose.yml": "",
         },
@@ -180,9 +180,9 @@ def test_invalid_filename_policy_is_rejected(tmp_path: Path, policy: str) -> Non
     write_project(
         tmp_path,
         {
-            "smelt.yml": CONFIG + f"structure: {{file_naming: {{{policy}}}}}\n",
+            "smelt.yml": CONFIG + f"style: {{file_naming: {{{policy}}}}}\n",
             "app/__init__.py": "",
         },
     )
-    with pytest.raises(ConfigError, match=r"structure\.file_naming"):
+    with pytest.raises(ConfigError, match=r"style\.file_naming"):
         check(tmp_path)

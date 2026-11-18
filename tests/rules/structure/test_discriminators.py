@@ -250,7 +250,7 @@ def test_explicit_rule_settings_enable_the_hint(tmp_path: Path, name: str) -> No
         (
             CONFIG
             + "rules: {modeling/prefer-str-enum-discriminator: error}\n"
-            + "structure:\n  contracts:\n    external-schema:\n"
+            + "style:\n  overrides:\n    external-schema:\n"
             + "      match: app\n      rules: {modeling/prefer-str-enum-discriminator: off}\n",
             OPTIONS,
         ),

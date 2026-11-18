@@ -142,7 +142,7 @@ def test_native_yaml_candidates_use_the_captured_index_and_python_policy(
         {
             "version": 1,
             "project": {"root_packages": ["app"], "exclude": ["vendor/**"]},
-            "structure": {"file_naming": {"yaml_extension": "yml"}},
+            "style": {"file_naming": {"yaml_extension": "yml"}},
         }
     )
     native = FileIndex.discover(
@@ -244,7 +244,7 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
 ) -> None:
     (tmp_path / "smelt.yml").write_text(
         "version: 1\nproject: {root_packages: [app]}\n"
-        "structure:\n  contracts:\n    api:\n      match: app\n"
+        "style:\n  overrides:\n    api:\n      match: app\n"
         "      rules: {visibility/internal-public-member: warning}\n"
     )
     (tmp_path / "app").mkdir()

@@ -78,7 +78,7 @@ def test_reexports_count_at_the_facade_used_by_the_caller(tmp_path: Path) -> Non
     )
     assert violations(root, SELECT) == []
     (root / "smelt.yml").write_text(
-        CONFIG + "structure: {max_module_imports: 1}\n", encoding="utf-8"
+        CONFIG + "style: {max_module_imports: 1}\n", encoding="utf-8"
     )
     [finding] = violations(root, SELECT)
     assert finding.expected is not None
@@ -92,7 +92,7 @@ def test_type_checking_imports_follow_existing_policy(
     root = _project(
         tmp_path,
         "from app.users.read import Read\nfrom app.users.write import Write\nfrom typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from other.pay import Pay\n",
-        settings=f"structure: {{max_module_imports: 2}}\narchitecture:\n  imports: {{type_checking: {policy}}}\n",
+        settings=f"style: {{max_module_imports: 2}}\narchitecture:\n  import_graph: {{type_checking: {policy}}}\n",
     )
     assert len(violations(root, SELECT)) == count
 
@@ -101,9 +101,9 @@ def test_type_checking_imports_follow_existing_policy(
 def test_initializers_and_composition_roots_have_configurable_exemptions(
     tmp_path: Path, exempt: bool
 ) -> None:
-    settings = "structure:\n  max_module_imports: 2\n"
+    settings = "style:\n  max_module_imports: 2\n"
     if not exempt:
-        settings += "  module_import_exempt: []\n"
+        settings += "  module_import_exemptions: []\n"
     settings += "architecture: {composition_root: [app.bootstrap]}\n"
     root = _project(tmp_path, "", settings=settings)
     write_project(root, {"app/__init__.py": IMPORTS, "app/bootstrap.py": IMPORTS})
@@ -118,12 +118,12 @@ def test_closest_package_threshold_and_empty_exemption_override(tmp_path: Path) 
         tmp_path,
         IMPORTS,
         settings="""\
-structure:
+style:
   max_module_imports: 3
-  contracts:
+  overrides:
     outer: {match: app, max_module_imports: 2}
     inner: {match: app.loose, max_module_imports: 3}
-    facade: {match: app.loose, module_import_exempt: []}
+    facade: {match: app.loose, module_import_exemptions: []}
 """,
     )
     write_project(
@@ -145,7 +145,7 @@ def test_contract_threshold_activates_only_the_configured_scope(tmp_path: Path) 
     root = _project(
         tmp_path,
         IMPORTS,
-        settings="structure:\n  contracts:\n    users: {match: app.users, max_module_imports: 0}\n",
+        settings="style:\n  overrides:\n    users: {match: app.users, max_module_imports: 0}\n",
     )
     write_project(root, {"app/users/client.py": "from other.pay import Pay\n"})
     [finding] = violations(root)
@@ -156,7 +156,7 @@ def test_rule_selection_requires_a_limit_and_zero_is_supported(tmp_path: Path) -
     root = _project(tmp_path, IMPORTS, settings="")
     assert violations(root, SELECT) == []
     (root / "smelt.yml").write_text(
-        CONFIG + "structure: {max_module_imports: 0}\n", encoding="utf-8"
+        CONFIG + "style: {max_module_imports: 0}\n", encoding="utf-8"
     )
     [finding] = violations(root)
     assert finding.expected is not None
@@ -169,9 +169,9 @@ def test_off_override_suppression_and_tests_are_respected(tmp_path: Path) -> Non
         tmp_path,
         IMPORTS,
         settings="""\
-structure:
+style:
   max_module_imports: 2
-  contracts:
+  overrides:
     quiet: {match: app.quiet, rules: {imports/excess-module-imports: off}}
 rules: {imports/excess-module-imports: warning}
 """,
@@ -229,9 +229,9 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "settings",
     [
-        "structure: {max_module_imports: -1}",
-        "structure: {contracts: {bad: {match: app, max_module_imports: -1}}}",
-        "structure: {module_import_exempt: [unknown]}",
+        "style: {max_module_imports: -1}",
+        "style: {overrides: {bad: {match: app, max_module_imports: -1}}}",
+        "style: {module_import_exemptions: [unknown]}",
     ],
 )
 def test_rejects_invalid_policy(tmp_path: Path, settings: str) -> None:
@@ -243,7 +243,7 @@ def _project(
     tmp_path: Path,
     caller: str,
     *,
-    settings: str = "structure: {max_module_imports: 2}\n",
+    settings: str = "style: {max_module_imports: 2}\n",
 ) -> Path:
     return write_project(
         tmp_path,

@@ -30,7 +30,7 @@ class ExcessPositionalParameters(Rule):
         rationale=(
             "Call sites such as connect(user, run, tab, True) do not say which "
             "value is which, and swapping two arguments of the same type still "
-            "type-checks. max_positional_parameters, set under structure or in a "
+            "type-checks. max_positional_parameters, set under style or in a "
             "package contract, is the limit; "
             "parameters after that limit must be keyword-only so every call names "
             "them. self and cls are not counted, nor are *args and **kwargs. "
@@ -51,13 +51,13 @@ class ExcessPositionalParameters(Rule):
             "remaining arguments by keyword at every call site. Callbacks whose "
             "positional signature is fixed by a framework keep it with a reasoned "
             "suppression. No automatic rewrite is performed. Enable it for the "
-            "project with structure: {max_positional_parameters: 3}, for one "
+            "project with style: {max_positional_parameters: 3}, for one "
             "package with a contract, or with rules, which uses a limit of 5."
         ),
         config=(
             "rules",
-            "structure.max_positional_parameters",
-            "structure.contracts",
+            "style.max_positional_parameters",
+            "style.overrides",
         ),
     )
 

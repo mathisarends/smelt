@@ -71,7 +71,7 @@ def test_supports_opt_in_package_overrides_and_suppression(tmp_path: Path) -> No
     (root / "smelt.yml").write_text(
         CONFIG
         + "rules: {complexity/forbidden-nested-conditional: warning}\n"
-        + "structure:\n  contracts:\n    quiet:\n      match: app.quiet\n"
+        + "style:\n  overrides:\n    quiet:\n      match: app.quiet\n"
         + "      rules: {complexity/forbidden-nested-conditional: off}\n",
         encoding="utf-8",
     )

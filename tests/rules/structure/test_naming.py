@@ -15,7 +15,7 @@ CONFIG = """
 version: 1
 project:
   root_packages: [app]
-structure:
+style:
   forbidden_names: [utils, helpers]
 """
 
@@ -60,8 +60,8 @@ MODULE_CONFIG = """
 version: 1
 project:
   root_packages: [app]
-structure:
-  contracts:
+style:
+  overrides:
     module-names:
       match: app
       private_modules: forbid
@@ -262,8 +262,8 @@ CLASS_CONFIG = """
 version: 1
 project:
   root_packages: [app]
-structure:
-  contracts:
+style:
+  overrides:
     class-names:
       match: app
       rules: {modeling/forbidden-base-class-affix: error}
@@ -656,8 +656,8 @@ class TestRedundantModuleName:
             tmp_path,
             {
                 "smelt.yml": REDUNDANT_CONFIG
-                + """structure:
-  contracts:
+                + """style:
+  overrides:
     compatibility:
       match: backend.features.cars
       rules: {layout/redundant-module-name: off}

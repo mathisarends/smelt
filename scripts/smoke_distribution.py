@@ -101,7 +101,7 @@ def smoke(directory: Path) -> None:
                 ["rules"],
                 ["explain", "SMT101"],
                 ["explain", "SMT336", "--format", "json"],
-                ["explain", "information-hiding", "--format", "json"],
+                ["explain", "visibility", "--format", "json"],
                 ["config", "schema"],
             ):
                 run([str(binary), *arguments], root)
@@ -119,8 +119,8 @@ def smoke(directory: Path) -> None:
             (project / "smelt.yml").write_text(
                 "version: 1\nproject: {root_packages: [app]}\n"
                 "architecture:\n  layers:\n    domain: {path: domain}\n"
-                "  imports: {transitive: true}\n"
-                "structure:\n  contracts:\n"
+                "  import_graph: {transitive: true}\n"
+                "style:\n  overrides:\n"
                 "    api: {match: app, rules: {visibility/internal-public-member: warning}}\n"
             )
             command = [str(binary), "check", "--format", "json"]

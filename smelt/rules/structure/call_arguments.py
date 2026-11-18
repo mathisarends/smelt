@@ -92,11 +92,11 @@ class InlineCallArgument(Rule):
             "evaluate it before earlier arguments or the callable itself. Do not "
             "eagerly materialize generator expressions. No automatic rewrite is "
             "performed. Enable rules: {complexity/inline-call-argument: hint}, "
-            "select SMT340, or set call_argument_kinds under structure or in a "
+            "select SMT340, or set call_argument_kinds under style or in a "
             "package contract, which also narrows the review to that scope. "
             "Reasoned inline suppressions are supported."
         ),
-        config=("rules", "structure.call_argument_kinds", "structure.contracts"),
+        config=("rules", "style.call_argument_kinds", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

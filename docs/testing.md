@@ -19,7 +19,7 @@ configuration:
 ```yaml
 tests:
   layout: mirror
-  forbid_mocks_in:
+  forbidden_mock_paths:
   - '**/tests/**/domain/**'
   max_patches_per_test: 2
   assertion_helpers:
@@ -243,8 +243,8 @@ A test importing two modules of its name (`application/bootstrap.py` and
 `tests.mirror` sets the convention relative to the test root: the default
 `{path}/test_{module}.py` drops the root package, `{root}/{path}/test_{module}.py` keeps it,
 and `unit/{path}/{module}_test.py` puts tests under `tests/unit/` with a suffix. In a uv
-workspace each test root mirrors the package of its own member. Deliberately unmirrored
-tests go in `tests.unmirrored` (e.g. `["tests/e2e/**"]`); `tests.mirror_suffixes: true`
+workspace each test root mirrors the package of its own member. Deliberately mirror_exclude
+tests go in `tests.mirror_exclude` (e.g. `["tests/e2e/**"]`); `tests.mirror_suffixes: true`
 also allows `test_invoice_<topic>.py`.
 
 Mirroring repeats file names: `auth/presentation/test_router.py` and

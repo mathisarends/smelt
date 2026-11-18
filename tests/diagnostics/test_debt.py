@@ -84,7 +84,7 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     tmp_path: Path, code: str
 ) -> None:
     if code == "SMT109":
-        config = "structure:\n  contracts:\n    api: {match: app.api, export_at: 2}\n"
+        config = "architecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n"
         files = {
             "app/api/__init__.py": "",
             "app/api/item.py": "class Item: pass\n",
@@ -95,7 +95,7 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
         }
         changed = {"app/b.py": "", "app/d.py": "from app.api.item import Item\n"}
     else:
-        config = "structure:\n  contracts:\n    order: {match: app, ordering: {}, rules: {SMT313: error}}\n"
+        config = "style:\n  overrides:\n    order: {match: app, ordering: {}, rules: {SMT313: error}}\n"
         files = {
             "app/item.py": "def _helper(): pass\ndef first(): pass\ndef second(): pass\n"
         }
@@ -139,7 +139,7 @@ def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_module_imports: 1}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_module_imports: 1}\n",
             "app/__init__.py": "",
             "app/client.py": source,
             "app/first.py": "First = 1\n",
@@ -200,7 +200,7 @@ def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) ->
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_constructor_decisions: 0}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -228,7 +228,7 @@ def test_private_definition_baseline_does_not_hide_new_names(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstructure: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_private_definitions: 0}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
