@@ -449,7 +449,7 @@ class TestChangedMode:
         source = "class Controller:\n    def run(self):\n        self.browser.input.motor()\n"
         config = repo / "smelt.yml"
         config.write_text(
-            config.read_text() + "\nrules: {complexity/deep-object-navigation: hint}\n",
+            config.read_text() + "\nrules: {complexity/excess-attribute-depth: hint}\n",
             encoding="utf-8",
         )
         write_project(repo, {"app/application/service.py": source})

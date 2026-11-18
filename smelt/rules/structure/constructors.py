@@ -33,7 +33,7 @@ class ConstructorLogic(Rule):
     file_local = True
     activation = POLICIES["SMT364"]
     code = "SMT364"
-    name = "complexity/constructor-logic"
+    name = "complexity/excess-constructor-decisions"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
@@ -70,8 +70,8 @@ class ConstructorLogic(Rule):
             "or classmethod and assign its result. Preserve evaluation order, exceptions "
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
-            "{complexity/constructor-logic: hint}, select SMT364, or set "
-            "max_constructor_decisions under style or in a package contract. "
+            "{complexity/excess-constructor-decisions: hint}, select SMT364, or set "
+            "max_constructor_decisions under style or in a package override. "
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."
         ),

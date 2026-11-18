@@ -107,6 +107,7 @@ class InferredConfig:
     unclassified_roots: list[str] = field(default_factory=list)
     mirror: MirrorGuess | None = None
     layers: list[InferredLayer] = field(default_factory=list)
+    layer_gaps: tuple[str, ...] = ()
     tests_layout: str = "none"
     members: list[WorkspaceMember] = field(default_factory=list)
     # composition root or wiring module -> why init put it there
@@ -170,10 +171,43 @@ def infer_config(root: Path, *, include_members: bool = True) -> InferredConfig 
     _infer_central_modules(inferred, packages)
     _infer_candidates(inferred, packages, traces)
     inferred.wiring = _wiring_patterns(inferred.wiring, _all_modules(packages))
+    if inferred.layers:
+        inferred.layer_gaps = _layer_gaps(inferred, containers, packages=packages)
     inferred.mirror = infer_mirror(root, inferred.test_roots, packages)
     if inferred.mirror is not None:
         inferred.tests_layout = "mirror"
     return inferred
+
+
+def _layer_gaps(
+    inferred: InferredConfig, containers: list[Path], *, packages: list[Path]
+) -> tuple[str, ...]:
+    paths = {layer.path for layer in inferred.layers}
+    exempt = [*inferred.shared, *inferred.composition_root, *inferred.wiring]
+    gaps: set[str] = set()
+    for container in containers:
+        root = next(
+            package for package in packages if container.is_relative_to(package)
+        )
+        children = [
+            child for child in child_packages(container) if child.name not in paths
+        ]
+        if inferred.has_features:
+            children.extend(
+                path.with_suffix("")
+                for path in container.glob("*.py")
+                if path.name != "__init__.py"
+            )
+        for child in children:
+            module = ".".join(child.relative_to(root.parent).parts)
+            if not any(
+                module == pattern
+                or module.startswith(pattern + ".")
+                or module_matches(pattern, module)
+                for pattern in exempt
+            ):
+                gaps.add(module)
+    return tuple(sorted(gaps))
 
 
 def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
@@ -557,7 +591,7 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
             "#   forbidden_names: [utils, helpers]",
             "",
             "tests:",
-            "  layout: none  # opt in to mirror after reviewing the test layout",
+            f"  layout: {inferred.mirror.draft_layout if inferred.mirror else 'none'}",
         ]
     )
     if inferred.mirror is not None and inferred.mirror.pattern != DEFAULT_MIRROR:

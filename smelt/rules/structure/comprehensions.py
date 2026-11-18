@@ -21,7 +21,7 @@ class ComplexComprehension(Rule):
     file_local = True
     activation = POLICIES["SMT363"]
     code = "SMT363"
-    name = "complexity/complex-comprehension"
+    name = "complexity/excess-comprehension-loops"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
@@ -41,7 +41,7 @@ class ComplexComprehension(Rule):
         fix=(
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
-            "rewrite is performed. Enable rules: {complexity/complex-comprehension: hint} or "
+            "rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or "
             "select SMT363, or set max_comprehension_loops under style or in a "
             "package contract. The limit defaults to 1; a package contract can "
             "permit intentional flattening."

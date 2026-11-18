@@ -8,7 +8,7 @@ from tests.helpers import check, violations, write_project
 
 OPTIONS = CheckOptions(select=("SMT322",))
 BASE_CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
-CONFIG = BASE_CONFIG + "rules: {complexity/deep-object-navigation: hint}\n"
+CONFIG = BASE_CONFIG + "rules: {complexity/excess-attribute-depth: hint}\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -276,7 +276,7 @@ def test_deeper_chains_wrappers_and_keyword_arguments(
     assert found[0].expected["stored_depth"] == depth
 
 
-@pytest.mark.parametrize("selection", ["SMT322", "complexity/deep-object-navigation"])
+@pytest.mark.parametrize("selection", ["SMT322", "complexity/excess-attribute-depth"])
 def test_explicit_selection_enables_the_opt_in_hint(
     tmp_path: Path, selection: str
 ) -> None:
@@ -296,8 +296,8 @@ def test_closest_package_override_and_severity_are_respected(tmp_path: Path) -> 
         BASE_CONFIG
         + """style:
   overrides:
-    navigation: {match: app, rules: {complexity/deep-object-navigation: warning}}
-    external: {match: app.external, rules: {complexity/deep-object-navigation: 'off'}}
+    navigation: {match: app, rules: {complexity/excess-attribute-depth: warning}}
+    external: {match: app.external, rules: {complexity/excess-attribute-depth: 'off'}}
 """
     )
     root = _project(tmp_path, source, config)

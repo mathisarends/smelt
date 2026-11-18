@@ -77,7 +77,7 @@ rules:
   idioms/redundant-name-alias: warning
   typing/prefer-deferred-annotations: warning
   idioms/missing-interface-docstring: warning
-  modeling/stateful-dataclass: warning
+  modeling/dataclass-field-mutation: warning
   complexity/duplicate-function: warning
   idioms/missing-broad-except-reason: warning
   idioms/bundled-instance-assignment: error
@@ -94,7 +94,7 @@ rules:
   visibility/misplaced-dunder-all: error
   tests/nondeterministic-data: error
   imports/prefer-package-import: warning
-  complexity/deep-object-navigation: warning
+  complexity/excess-attribute-depth: warning
   architecture/import-cycle: error
   idioms/prefer-match-type-dispatch: error
   layout/definition-order: error

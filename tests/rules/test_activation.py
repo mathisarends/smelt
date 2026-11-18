@@ -71,7 +71,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"rules": {"tests/missing-await-assertion": "warning"}}, {"SMT428"}),
         ({"rules": {"visibility/test-only-public-function": "warning"}}, {"SMT429"}),
         ({"rules": {"visibility/test-only-public-attribute": "warning"}}, {"SMT430"}),
-        ({"rules": {"complexity/deep-object-navigation": "hint"}}, {"SMT322"}),
+        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"SMT322"}),
     ],
 )
 def test_explicit_project_policy_activates_its_checks(
@@ -101,7 +101,7 @@ def test_explicit_project_policy_activates_its_checks(
         ({"type_dispatch": {}}, {"SMT315"}),
         ({"rules": {"visibility/internal-public-member": "warning"}}, {"SMT316"}),
         ({"rules": {"layout/misplaced-static-helper": "hint"}}, {"SMT317"}),
-        ({"rules": {"complexity/deep-object-navigation": "hint"}}, {"SMT322"}),
+        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"SMT322"}),
         (
             {
                 "module_docstrings": "allow",
@@ -185,7 +185,7 @@ def test_off_wins_over_an_activating_option() -> None:
         _active(
             {
                 "style": {"max_comprehension_loops": 2},
-                "rules": {"complexity/complex-comprehension": "off"},
+                "rules": {"complexity/excess-comprehension-loops": "off"},
             }
         )
         == BASELINE

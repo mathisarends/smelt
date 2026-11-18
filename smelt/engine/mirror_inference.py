@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -20,8 +21,16 @@ class MirrorGuess:
     pattern: str
     mirrored: int  # test files that already sit at their mirrored path
     total: int
-    # test roots where pytest cannot import two test_router.py side by side
+    # Test files that share pytest's default import name.
     name_clashes: tuple[str, ...] = ()
+
+    @property
+    def draft_layout(self) -> str:
+        return (
+            "mirror"
+            if self.mirrored == self.total and not self.name_clashes
+            else "none"
+        )
 
 
 def infer_mirror(
@@ -52,29 +61,36 @@ def infer_mirror(
 
 
 def _clashing_test_roots(root: Path, test_roots: list[str]) -> tuple[str, ...]:
-    """Test roots whose mirrored test files would collide under pytest's defaults.
-
-    Mirroring repeats file names (``auth/test_router.py``, ``user/test_router.py``).
-    pytest's default import mode only tells them apart inside packages, so it needs
-    ``__init__.py`` files or ``--import-mode=importlib``.
-    """
-    found: list[str] = []
+    """Actual clashing test files under pytest's default import mode."""
+    found: dict[str, set[str]] = defaultdict(set)
     for test_root in test_roots:
         directory = root / test_root
-        if not directory.is_dir() or any(directory.rglob("__init__.py")):
+        if not directory.is_dir():
             continue
         configs = [
             base / name
             for base in dict.fromkeys((root, directory.parent))
             for name in _PYTEST_CONFIGS
         ]
-        if not any(
+        if any(
             config.is_file()
             and _IMPORTLIB.search(config.read_text(encoding="utf-8", errors="replace"))
             for config in configs
         ):
-            found.append(test_root)
-    return tuple(found)
+            continue
+        for path in directory.rglob("test_*.py"):
+            names = [path.stem]
+            for parent in path.parents:
+                if (
+                    not parent.is_relative_to(root)
+                    or not (parent / "__init__.py").is_file()
+                ):
+                    break
+                names.append(parent.name)
+            found[".".join(reversed(names))].add(path.relative_to(root).as_posix())
+    return tuple(
+        sorted(path for paths in found.values() if len(paths) > 1 for path in paths)
+    )
 
 
 def _module_paths(package: Path) -> set[str]:

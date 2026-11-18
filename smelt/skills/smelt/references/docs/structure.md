@@ -96,17 +96,17 @@ the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
 
-Opt-in `complexity/complex-comprehension` (SMT363) reviews list, set, dict and generator
+Opt-in `complexity/excess-comprehension-loops` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
-`rules: {complexity/complex-comprehension: hint}`, or set
+`rules: {complexity/excess-comprehension-loops: hint}`, or set
 `max_comprehension_loops` (default 1) under `style` or in a package contract
 to enable it with a limit, for example to permit intentional flattening in one
 package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
 exact triggers and repairs that preserve generator laziness.
 
-Opt-in `complexity/constructor-logic` (SMT364) reviews decision nodes in `__init__` and
-`__post_init__`. Enable `rules: {complexity/constructor-logic: hint}`, or set
+Opt-in `complexity/excess-constructor-decisions` (SMT364) reviews decision nodes in `__init__` and
+`__post_init__`. Enable `rules: {complexity/excess-constructor-decisions: hint}`, or set
 `max_constructor_decisions` (default 2) under `style` or in a package
 contract. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact

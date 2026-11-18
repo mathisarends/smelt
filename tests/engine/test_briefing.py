@@ -68,7 +68,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     [
         ("visibility/internal-public-member", "warning"),
         ("layout/misplaced-static-helper", "hint"),
-        ("complexity/deep-object-navigation", "hint"),
+        ("complexity/excess-attribute-depth", "hint"),
         ("modeling/forbidden-base-class-affix", "error"),
     ],
 )
