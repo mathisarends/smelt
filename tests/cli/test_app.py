@@ -572,7 +572,13 @@ class TestCheckCommand:
         )
         report = json.loads(out)
         assert code == 0
-        assert set(report["scope"]["rules"]) == {"SMT301", "SMT901", "SMT902", "SMT903"}
+        assert set(report["scope"]["rules"]) == {
+            "SMT301",
+            "SMT901",
+            "SMT902",
+            "SMT903",
+            "SMT904",
+        }
         assert report["violations"] == []
 
     @pytest.mark.parametrize("prune", [False, True])

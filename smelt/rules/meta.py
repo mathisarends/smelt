@@ -73,3 +73,31 @@ class ResolvedDebt(_EngineRule):
         fix="Run `smelt debt --prune`.",
         config=("debt",),
     )
+
+
+class MissingRulePolicy(_EngineRule):
+    code = "SMT904"
+    name = "meta/missing-rule-policy"
+    default_severity = Severity.WARNING
+    doc = RuleDoc(
+        summary="An explicitly enabled rule is missing the policy it needs.",
+        rationale=(
+            "An explicitly enabled rule can appear to enforce a convention even "
+            "when its required policy is absent. On full checks, this warning "
+            "reports effective rule settings with no applicable public, "
+            "min_imports_to_bundle, min_importers_to_export or import style policy "
+            "for SMT107, SMT108, SMT109 or SMT308 respectively. It uses the declared "
+            "policy and setting scope, independent of the number of source findings. "
+            "Public and bundling contracts can govern callers across the project. "
+            "An explicit public: [] is a policy. Changed, staged, and path-scoped "
+            "checks skip this warning. CLI selection alone does not count as a setting."
+        ),
+        bad="rules: {imports/forbidden-import-style: error}",
+        good="style:\n  imports: {style: relative, max_relative_level: 1}",
+        fix=(
+            "Configure the named policy for the intended scope. Remove the explicit "
+            "rule setting or set it to off where the convention should not apply."
+        ),
+        config=("rules", "style.imports", "style.overrides", "architecture.packages"),
+        example_language="yaml",
+    )

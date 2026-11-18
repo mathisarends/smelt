@@ -36,8 +36,14 @@ from smelt.engine.coverage import effective_coverage
 from smelt.engine.file_checks import rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
+from smelt.engine.rule_policy import missing_rule_policies
 from smelt.engine.rule_settings import RuleSettings
-from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
+from smelt.rules.meta import (
+    MissingRulePolicy,
+    ResolvedDebt,
+    SuppressionWithoutReason,
+    UnusedSuppression,
+)
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
 
@@ -48,7 +54,7 @@ if TYPE_CHECKING:
     from smelt.config.source import SourceStore
     from smelt.rules.base import RuleContract, RuleSet
 
-_META = frozenset({"SMT901", "SMT902", "SMT903"})
+_META = frozenset({"SMT901", "SMT902", "SMT903", MissingRulePolicy.code})
 _COVERAGE = "SMT306"
 _BASELINE = TypeAdapter(list[DebtEntry])
 _SUPPRESSIONS = TypeAdapter(list[Suppression])
@@ -241,7 +247,13 @@ def _run_check(
         if cache and key:
             cache.write(key, analyzed, ANALYSIS)
     ctx.store.dependencies().update(analyzed.dependencies)
-    violations, suppressed = list(analyzed.violations), analyzed.suppressed
+    violations, suppressed = (
+        analyzed.violations
+        + _configured_policy_findings(
+            ctx, rules, loaded, active=active, options=options
+        ),
+        analyzed.suppressed,
+    )
     unfiltered = list(violations)
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]
     violations = [v for v in violations if v.code != _COVERAGE]
@@ -324,6 +336,36 @@ def _run_check(
         ],
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
+
+
+def _configured_policy_findings(
+    ctx: AnalysisContext,
+    rules: RuleSet,
+    loaded: LoadedConfig,
+    *,
+    active: list[tuple[RuleContract, Severity]],
+    options: CheckOptions,
+) -> list[Violation]:
+    if options.paths or options.changed or options.staged:
+        return []
+    severity = next(
+        (s for rule, s in active if rule.code == MissingRulePolicy.code), None
+    )
+    if severity is None:
+        return []
+    configured = (
+        _resolve_active_rules(rules, loaded, replace(options, select=()))
+        if options.select
+        else active
+    )
+    findings = missing_rule_policies(
+        ctx,
+        loaded,
+        RuleSettings(rules, loaded),
+        codes={rule.code for rule, _ in configured},
+        severity=severity,
+    )
+    return _apply_ignores(ctx, list(findings), rules)
 
 
 def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:

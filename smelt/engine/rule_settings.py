@@ -33,12 +33,22 @@ class _Setting:
     reason: str | None
     source: str | None
 
+    @property
+    def enables(self) -> bool:
+        return not self.broad and self.value != "off"
+
     def apply(self, inherited: str | None) -> str | None:
         if not self.broad or self.value == "off":
             return self.value
         if inherited is None:
             return None
         return min(inherited, self.value, key=_RANK.__getitem__)
+
+
+@dataclass(frozen=True, slots=True)
+class RuleSettingOrigin:
+    location: str
+    source: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,13 +174,33 @@ class RuleSettings:
         self._validate_member_overrides(ctx)
         self._validate_scoped_selectors(ctx)
 
+    def has_explicit_activation(self, code: str) -> bool:
+        """Whether a named setting anywhere can enable the rule."""
+        return self.has_package_activation(code) or any(
+            setting.enables
+            for layer in self._layers
+            if (setting := layer.get(code)) is not None
+        )
+
     def has_package_activation(self, code: str) -> bool:
         """Whether a package contract or workspace member enables the rule locally."""
         return any(
-            not setting.broad and setting.value != "off"
+            setting.enables
             for settings in (*self._packages.values(), *self._members.values())
             if (setting := settings.get(code)) is not None
         )
+
+    def explicit_activation(
+        self, code: str, ctx: AnalysisContext, *, module: str, path: str
+    ) -> RuleSettingOrigin | None:
+        """The named setting enabling this target after precedence and disables."""
+        settings = tuple(self._target_settings(code, ctx, module=module, path=path))
+        for setting in reversed(settings):
+            if setting.value == "off":
+                return None
+            if setting.enables:
+                return RuleSettingOrigin(setting.location, setting.source)
+        return None
 
     def severity_for_path(
         self,

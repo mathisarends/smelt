@@ -88,5 +88,6 @@
 | [SMT901](SMT901.md) | meta/unused-suppression | meta | default | warning |
 | [SMT902](SMT902.md) | meta/missing-suppression-reason | meta | default | error |
 | [SMT903](SMT903.md) | meta/resolved-debt | meta | default | warning |
+| [SMT904](SMT904.md) | meta/missing-rule-policy | meta | default | warning |
 
 `smelt rules` prints the same catalog in the terminal.
