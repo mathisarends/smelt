@@ -7,15 +7,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
+from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Category, Severity
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
-from smelt.engine.workspace import (
-    WorkspaceMember,
-    import_root,
-    workspace_members,
-)
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:

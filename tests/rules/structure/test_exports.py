@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
 
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 
 CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
 OPTIONS = CheckOptions(select=("SMT330",))
+_REEXPORT_OPTIONS = CheckOptions(select=("SMT368",))
 
 
 @pytest.mark.parametrize(
@@ -83,3 +85,96 @@ def test_reasoned_suppression_is_supported(tmp_path: Path) -> None:
         },
     )
     assert violations(tmp_path, OPTIONS) == []
+
+
+@pytest.mark.parametrize(
+    ("source", "names", "line"),
+    [
+        (
+            "from .models import Event as Event\nfrom .service import open_events as open_events\n",
+            ["Event", "open_events"],
+            1,
+        ),
+        (
+            '"""Published events."""\nfrom __future__ import annotations\n'
+            'from .models import OldEvent as Event, Snapshot\n__all__ = ("Snapshot", "Event")\n',
+            ["Event", "Snapshot"],
+            3,
+        ),
+        ('import events\n__all__ = ["events"]\n', ["events"], 1),
+        ("import events as events\n", ["events"], 1),
+    ],
+)
+def test_module_with_only_explicit_reexports_is_reported_once(
+    tmp_path: Path, source: str, *, names: list[str], line: int
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": CONFIG,
+            "app/__init__.py": source,
+            "app/events_api.py": source,
+            "tests/test_events_api.py": source,
+        },
+    )
+
+    [finding] = violations(tmp_path, _REEXPORT_OPTIONS)
+
+    assert (finding.code, finding.path, finding.line) == (
+        "SMT368",
+        "app/events_api.py",
+        line,
+    )
+    assert finding.severity is Severity.HINT
+    assert finding.expected == {"reexported_names": names}
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import registrations\n",
+        "from .models import Event\n",
+        "from .models import Event as Event\nimport registrations\n",
+        'from .models import Event as Event, Snapshot as Snapshot\n__all__ = ["Event"]\n',
+        "from .models import Event as Event\n__all__ = load_exports()\n",
+        "from .models import *\n__all__ = ['Event']\n",
+        "if enabled:\n    from .models import Event as Event\n",
+        "from .models import Event as Event\nfrom .local import Event as Event\n",
+        "from .hooks import __getattr__ as __getattr__\n",
+        "from .models import Event as Event\n\ndef create_event():\n    return Event()\n",
+    ],
+)
+def test_modules_with_behavior_or_uncertain_exports_are_valid(
+    tmp_path: Path, source: str
+) -> None:
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "app/events_api.py": source},
+    )
+
+    assert violations(tmp_path, _REEXPORT_OPTIONS) == []
+
+
+def test_reexport_module_review_is_opt_in_and_accepts_a_compatibility_exception(
+    tmp_path: Path,
+) -> None:
+    source = "from .models import Event as Event\n"
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "app/events_api.py": source},
+    )
+    assert violations(tmp_path) == []
+
+    write_project(
+        tmp_path, {"smelt.yml": CONFIG + "rules: {layout/reexport-only-module: hint}\n"}
+    )
+    assert [finding.code for finding in violations(tmp_path)] == ["SMT368"]
+
+    write_project(
+        tmp_path,
+        {
+            "app/events_api.py": "# smelt: ignore-file[SMT368] -- Keep the published import path.\n"
+            + source,
+        },
+    )
+    assert violations(tmp_path) == []

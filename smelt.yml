@@ -98,6 +98,7 @@ rules:
   architecture/import-cycle: error
   idioms/prefer-match-type-dispatch: error
   layout/definition-order: error
+  layout/reexport-only-module: hint
   layout/misplaced-private-constant: error
   visibility/internal-public-member: warning
   visibility/internal-public-module-symbol: warning

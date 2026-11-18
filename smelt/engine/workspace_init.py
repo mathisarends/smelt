@@ -11,6 +11,7 @@ import yaml
 
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import AnalysisError
+from smelt.analysis.workspace import workspace_members
 from smelt.config.errors import ConfigError
 from smelt.config.loader import CONFIG_FILENAMES, parse_config
 from smelt.config.patterns import path_matches
@@ -20,7 +21,6 @@ from smelt.engine.inference import (
     maintainability_rules,
     render_config,
 )
-from smelt.engine.workspace import workspace_members
 
 if TYPE_CHECKING:
     from pathlib import Path

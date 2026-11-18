@@ -4,6 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.function_usage import explicit_exports
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -61,6 +62,57 @@ class PackageOnlyDunderAll(Rule):
                 )
 
 
+class ReexportOnlyModule(Rule):
+    file_local = True
+    code = "SMT368"
+    name = "layout/reexport-only-module"
+    category = Category.LAYOUT
+    default_severity = Severity.HINT
+    requires = frozenset({Index.SYNTAX})
+    doc = RuleDoc(
+        summary="An ordinary module consists entirely of explicit re-exports.",
+        rationale=(
+            "A module that only forwards names adds another import path to maintain. "
+            "This opt-in hint looks for direct imports marked by same-name aliases "
+            "or a single literal __all__ list or tuple covering every import binding. "
+            "A module docstring and future imports are allowed. The check is limited "
+            "to ordinary production modules with distinct, unambiguous bindings. "
+            "Package initializers, star imports, rebinding, conditional imports and "
+            "dynamic export declarations fall outside this source pattern."
+        ),
+        bad=(
+            "# app/events_api.py\nfrom .events import Event as Event\n\n"
+            "# app/client.py\nfrom .events_api import Event"
+        ),
+        good="# app/client.py\nfrom .events import Event",
+        fix=(
+            "Review moving callers to the defining module or an intentional package "
+            "API. A supported compatibility path can use a reasoned suppression. "
+            "Check published import paths, side effects and cycles before removing "
+            "a forwarding module. This is a read-only review."
+        ),
+        config=("rules", "style.overrides"),
+    )
+
+    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
+        for source in ctx.files.sources.values():
+            if source.is_package:
+                continue
+            bindings = _reexport_bindings(ctx.asts.parse(source.path))
+            if not bindings:
+                continue
+            first = next(iter(bindings.values()))
+            yield self.violation(
+                f"{source.module} only re-exports imported names",
+                path=source.path,
+                line=first.lineno,
+                column=first.col_offset + 1,
+                source_module=source.module,
+                expected={"reexported_names": sorted(bindings)},
+                hint="Review using the defining module or package API directly. Preserve supported import paths with a reasoned exception.",
+            )
+
+
 def _module_nodes(node: ast.AST) -> Iterator[ast.AST]:
     if isinstance(
         node,
@@ -77,3 +129,48 @@ def _module_nodes(node: ast.AST) -> Iterator[ast.AST]:
     yield node
     for child in ast.iter_child_nodes(node):
         yield from _module_nodes(child)
+
+
+def _reexport_bindings(tree: ast.Module) -> dict[str, ast.alias]:
+    body = (
+        tree.body[1:] if ast.get_docstring(tree, clean=False) is not None else tree.body
+    )
+    bindings: dict[str, ast.alias] = {}
+    declares_all = False
+    for node in body:
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module == "__future__"
+        ):
+            continue
+        if not declares_all and _literal_export_assignment(node):
+            declares_all = True
+            continue
+        if not isinstance(node, ast.Import | ast.ImportFrom):
+            return {}
+        for alias in node.names:
+            name = alias.asname or alias.name.partition(".")[0]
+            if (
+                alias.name == "*"
+                or name in bindings
+                or name in {"__all__", "__getattr__", "__dir__"}
+            ):
+                return {}
+            bindings[name] = alias
+    explicit = (
+        bindings.keys() == explicit_exports(tree)
+        if declares_all
+        else all(alias.asname == alias.name for alias in bindings.values())
+    )
+    return bindings if explicit else {}
+
+
+def _literal_export_assignment(node: ast.stmt) -> bool:
+    return (
+        isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == "__all__"
+        and isinstance(node.value, ast.List | ast.Tuple)
+    )

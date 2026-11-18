@@ -11,7 +11,7 @@ import json
 from collections import Counter
 from typing import TYPE_CHECKING, Any
 
-from smelt.engine.workspace import workspace_members
+from smelt.analysis.workspace import workspace_members
 from smelt.model import ModuleKind
 
 if TYPE_CHECKING:

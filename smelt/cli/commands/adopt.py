@@ -25,10 +25,10 @@ from smelt.engine.workspace_init import workspace_drafts
 if TYPE_CHECKING:
     import argparse
 
+    from smelt.analysis.workspace import WorkspaceMember
     from smelt.config import LoadedConfig
     from smelt.engine.check import CheckOutcome
     from smelt.engine.inference import InferredConfig
-    from smelt.engine.workspace import WorkspaceMember
 
 
 def init(args: argparse.Namespace, console: Console, cwd: Path) -> int:
@@ -298,7 +298,7 @@ def _debt_targets(
                 DebtScope(posixpath.join(loaded.member, _DEFAULT_DEBT), loaded.member),
             )
         return configured
-    from smelt.engine.workspace import workspace_members  # noqa: PLC0415
+    from smelt.analysis.workspace import workspace_members  # noqa: PLC0415
 
     targets = []
     for member in workspace_members(loaded.root):
