@@ -152,6 +152,10 @@ POLICIES = {
         "style or a package override sets type_dispatch.style to match.",
         lambda value: value is not None and value.style == "match",
     ),
+    "SMT335": _option(
+        "public_attribute_boundary",
+        "style or a package override sets public_attribute_boundary.",
+    ),
     "SMT339": _option(
         "private_attribute_boundary",
         "style or a package override sets private_attribute_boundary.",

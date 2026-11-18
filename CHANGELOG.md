@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Set `style.public_attribute_boundary: module` to let [SMT335](docs/rules/SMT335.md)
+  suggest private names for fields used by same-module helpers and classes.
+  The default is `class`. [SMT430](docs/rules/SMT430.md) uses the same boundary
+  when enabled and continues to cover test-only reads.
+
 ## [0.13.0] - 2026-11-18
 
 - Configuration now distinguishes shared `style` and `rules`, package APIs under

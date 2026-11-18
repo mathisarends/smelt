@@ -43,7 +43,7 @@
 | [SMT331](SMT331.md) | layout/file-name-convention | layout | policy | error |
 | [SMT333](SMT333.md) | idioms/prefer-callable-instance | idioms | explicit | hint |
 | [SMT334](SMT334.md) | layout/misplaced-private-constant | layout | explicit | warning |
-| [SMT335](SMT335.md) | visibility/internal-public-attribute | visibility | explicit | warning |
+| [SMT335](SMT335.md) | visibility/internal-public-attribute | visibility | policy | warning |
 | [SMT336](SMT336.md) | layout/redundant-module-name | layout | explicit | hint |
 | [SMT337](SMT337.md) | typing/deprecated-async-contextmanager-return | typing | explicit | warning |
 | [SMT338](SMT338.md) | typing/duplicate-literal-type | typing | explicit | hint |
