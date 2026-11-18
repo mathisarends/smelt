@@ -216,7 +216,7 @@ def test_each_member_architecture_judges_only_its_own_modules(
     ]
 
 
-def test_the_root_architecture_governs_members_without_their_own(
+def test_root_architecture_only_governs_root_packages(
     tmp_path: Path,
 ) -> None:
     write_project(
@@ -225,9 +225,14 @@ def test_the_root_architecture_governs_members_without_their_own(
             **MEMBER_ARCHITECTURES,
             "smelt.yml": MEMBER_ARCHITECTURES["smelt.yml"]
             + "architecture: {layers: {domain: {path: domain, third_party: deny}}}\n",
+            "pyproject.toml": '[project]\nname = "root-app"\n'
+            + MEMBER_ARCHITECTURES["pyproject.toml"],
+            "src/root_app/__init__.py": "",
+            "src/root_app/domain/__init__.py": "import requests\n",
             "packages/core/smelt.yml": "architecture: {layers: {domain: {path: domain}, infra: {path: infra}}}\n",
             "packages/util/src/util/__init__.py": "",
-            "packages/util/src/util/domain/__init__.py": "import requests\n",
+            "packages/util/src/util/domain/__init__.py": "",
+            "packages/util/src/util/domain/model.py": "import requests\n",
         },
     )
 
@@ -237,5 +242,6 @@ def test_the_root_architecture_governs_members_without_their_own(
         ("SMT101", "packages/core/src/core/domain/thing.py"),
         ("SMT101", "services/api/src/api/features/users/domain/model.py"),
         ("SMT102", "services/api/src/api/features/orders/domain/order.py"),
-        ("SMT103", "packages/util/src/util/domain/__init__.py"),
+        ("SMT103", "src/root_app/domain/__init__.py"),
+        ("SMT306", "packages/util/src/util/domain/model.py"),
     ]
