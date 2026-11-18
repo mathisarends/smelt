@@ -50,8 +50,8 @@ composes rules. Share a source fact through an analysis index when several rules
 need it; don't make one rule call another or hide policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yml`.
 
-The repository also enables public-first ordering, the complete
-`information-hiding` group, static-helper visibility and test-quality reviews.
+The repository also enables public-first ordering, explicit
+visibility rules, static-helper visibility and test-quality reviews.
 It checks private-symbol imports, redundant delegates/name aliases, deferred
 annotations, explicit `StrEnum` values and docstrings on abstract and
 `Protocol` methods, dataclasses that mutate their own fields after

@@ -13,7 +13,6 @@ from smelt.diagnostics.violation import Category
 from smelt.engine.check import rule_meta
 from smelt.engine.rule_settings import RuleSettings
 from smelt.engine.schema import config_json_schema
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
 
@@ -26,32 +25,6 @@ if TYPE_CHECKING:
 
 def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     rules = build_rule_set()
-    if args.rule in RULE_GROUPS:
-        group = RULE_GROUPS[args.rule]
-        members = [
-            rule_meta(rule).to_json()
-            for rule in rules.rules
-            if rule.code in group.codes
-        ]
-        if args.format == "json":
-            console.print(
-                json.dumps(
-                    {
-                        "name": group.name,
-                        "summary": group.summary,
-                        "rationale": group.rationale,
-                        "rules": members,
-                    },
-                    indent=2,
-                )
-            )
-        else:
-            console.print(
-                f"{group.name} [rule group]\n\n{group.summary}\n\n{group.rationale}\n\nExplore: smelt check --select {group.name}\n"
-            )
-            for member in members:
-                console.print(f"  {member['code']} {member['name']}")
-        return EXIT_OK
     if (family := rules.family_codes(args.rule)) is not None:
         members = [
             rule_meta(rule).to_json() for rule in rules.rules if rule.code in family
@@ -136,10 +109,6 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             console.print(
                 f"  {meta.code}  {meta.name:<{width}} {meta.activation['mode']:<8} {meta.default_severity.value}"
             )
-    if not args.unconfigured:
-        console.print("\nRule groups:")
-        for group in RULE_GROUPS.values():
-            console.print(f"{group.name}  {', '.join(group.codes)}  {group.summary}")
     return EXIT_OK
 
 
@@ -184,7 +153,7 @@ def _suggestion(raw: str, rules: RuleSet) -> str:
         return retired
     wanted = raw.strip().upper()
     if not wanted[:1].isalpha() or not wanted[-1:].isdigit():
-        return did_you_mean(raw.strip(), [*codes, *RULE_GROUPS])
+        return did_you_mean(raw.strip(), codes)
     close = [
         r.code
         for r in rules.rules

@@ -78,11 +78,9 @@ the [upgrade checklist](docs/upgrading.md#012-to-013).
 - Rules are grouped into eleven families: `architecture`, `imports`, `layout`,
   `visibility`, `modeling`, `typing`, `complexity`, `idioms`, `frameworks`,
   `tests` and `meta`. The family is the first segment of the name.
-- A family name selects all of its rules wherever rule names are accepted:
-  `rules: {modeling: warning}`, package-contract `rules`, `--select typing` and
-  `--ignore complexity`. Precedence is family, then rule group, then individual
-  rule, so `{typing: warning, typing/anonymous-tuple-type: off}` works as
-  expected. `smelt explain <family>` lists a family's rules.
+- A family name selects its rules for CLI exploration and ignores. In YAML it
+  can disable or cap active rules. An individual setting wins in the same map.
+  `smelt explain <family>` lists a family's rules.
 - The report `category` field and the `category` of `smelt rules --format json`
   now carry the family (`architecture`, `layout`, ...) instead of `dependencies`,
   `structure` and `tests`. The success line of `smelt check` lists the families
@@ -282,8 +280,11 @@ not.
 
 ### Explicit rule selection
 
+- The former `information-hiding` group has been removed. Use SMT316, SMT320,
+  SMT335, SMT429 and SMT430 individually for the same selection.
+
 - Enable each rule by name or SMT code. A named `on` uses the catalog severity.
-  Families, groups and `ALL` can disable or cap already-active rules. A broad
+  Families and `ALL` can disable or cap already-active rules. A broad
   severity with no active matching rules gives a migration error. CLI
   exploration accepts all selectors.
 - Local `extends` files apply as ordered rules layers. The built-in

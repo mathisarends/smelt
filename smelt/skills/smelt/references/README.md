@@ -89,10 +89,8 @@ The same configuration can describe [feature boundaries and third-party dependen
 [test conventions](docs/testing.md). Most checks require explicit selection or
 an applicable policy; see [rule activation](docs/rule-selection.md).
 
-Use `information-hiding` to review unnecessarily public functions, methods,
-constants, type aliases and attributes together, including APIs used only by
-tests. `smelt explain information-hiding` lists the five checks and their limits.
-Individual rule settings can override the group.
+Use the visibility rules to review unnecessarily public definitions and APIs
+whose only observed users are tests.
 
 Enable individual rules in YAML by their `family/finding` names or SMT codes.
 `on` uses the named rule's catalog severity. Families, groups and `ALL` can

@@ -9,7 +9,6 @@ from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
-from smelt.engine.schema import config_json_schema
 from smelt.rules.registry import build_rule_set
 from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_project
 
@@ -305,8 +304,8 @@ ignore:
     assert [v.path for v in check(root).report.violations] == ["app/api.py"]
 
 
-_GROUP_CODES = {"SMT316", "SMT320", "SMT335", "SMT429", "SMT430"}
-_GROUP_SOURCE = """LIMIT = 3
+_VISIBILITY_CODES = {"SMT316", "SMT320", "SMT335", "SMT429", "SMT430"}
+_VISIBILITY_SOURCE = """LIMIT = 3
 def helper(): return LIMIT
 def testing_hook(): return 0
 class Worker:
@@ -315,7 +314,7 @@ class Worker:
         self.debug = 0
     def run(self): return helper() + self.pending
 """
-_GROUP_TEST = """from app.api import Worker, testing_hook
+_VISIBILITY_TEST = """from app.api import Worker, testing_hook
 def test_api():
     worker = Worker()
     assert worker.run() == 3
@@ -324,17 +323,19 @@ def test_api():
 """
 
 
-_INDIVIDUAL_VISIBILITY = ", ".join(f"{code}: warning" for code in sorted(_GROUP_CODES))
+_INDIVIDUAL_VISIBILITY = ", ".join(
+    f"{code}: warning" for code in sorted(_VISIBILITY_CODES)
+)
 
 
-def _group_project(tmp_path: Path, policy: str = _INDIVIDUAL_VISIBILITY) -> Path:
+def _visibility_project(tmp_path: Path, policy: str = _INDIVIDUAL_VISIBILITY) -> Path:
     return write_project(
         tmp_path,
         {
             "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{policy}}}\n",
             "app/__init__.py": "",
-            "app/api.py": _GROUP_SOURCE,
-            "tests/test_api.py": _GROUP_TEST,
+            "app/api.py": _VISIBILITY_SOURCE,
+            "tests/test_api.py": _VISIBILITY_TEST,
         },
     )
 
@@ -342,17 +343,12 @@ def _group_project(tmp_path: Path, policy: str = _INDIVIDUAL_VISIBILITY) -> Path
 def test_information_hiding_includes_test_only_apis_without_duplicates(
     tmp_path: Path,
 ) -> None:
-    root = _group_project(tmp_path)
+    root = _visibility_project(tmp_path)
     outcome = check(root)
     findings = outcome.report.violations
-    assert {v.code for v in findings} == _GROUP_CODES
+    assert {v.code for v in findings} == _VISIBILITY_CODES
     assert len(findings) == 5
     assert all(v.severity == Severity.WARNING for v in findings)
-    assert all(
-        meta.groups == ("information-hiding",)
-        for meta in outcome.report.rules
-        if meta.code in _GROUP_CODES
-    )
     assert findings == violations(root, CheckOptions(use_cache=False))
     assert not {"SMT317", "SMT334"} & {rule.code for rule, _ in outcome.active}
 
@@ -360,10 +356,10 @@ def test_information_hiding_includes_test_only_apis_without_duplicates(
 def test_existing_individual_configuration_retains_identical_findings(
     tmp_path: Path,
 ) -> None:
-    root = _group_project(tmp_path)
-    grouped = violations(root, CheckOptions(select=("information-hiding",)))
-    _group_project(
-        tmp_path, ", ".join(f"{code}: warning" for code in sorted(_GROUP_CODES))
+    root = _visibility_project(tmp_path)
+    grouped = violations(root, CheckOptions(select=("visibility",)))
+    _visibility_project(
+        tmp_path, ", ".join(f"{code}: warning" for code in sorted(_VISIBILITY_CODES))
     )
     assert violations(root) == grouped
 
@@ -371,41 +367,41 @@ def test_existing_individual_configuration_retains_identical_findings(
 @pytest.mark.parametrize(
     "policy",
     [
-        "information-hiding: off, SMT316: warning",
-        "SMT316: warning, information-hiding: off",
+        "visibility: off, SMT316: warning",
+        "SMT316: warning, visibility: off",
     ],
 )
 def test_specific_rule_overrides_group_regardless_of_key_order(
     tmp_path: Path, policy: str
 ) -> None:
-    findings = violations(_group_project(tmp_path, policy))
+    findings = violations(_visibility_project(tmp_path, policy))
     assert {v.code for v in findings} == {"SMT316"}
 
 
 @pytest.mark.parametrize(
     "policy",
     [
-        "information-hiding: off, SMT335: error",
-        "SMT335: error, information-hiding: off",
+        "visibility: off, SMT335: error",
+        "SMT335: error, visibility: off",
     ],
 )
 def test_group_can_be_disabled_with_one_individual_exception(
     tmp_path: Path, policy: str
 ) -> None:
-    [finding] = violations(_group_project(tmp_path, policy))
+    [finding] = violations(_visibility_project(tmp_path, policy))
     assert (finding.code, finding.severity) == ("SMT335", Severity.ERROR)
 
 
 def test_individual_severity_override(tmp_path: Path) -> None:
     findings = violations(
-        _group_project(
+        _visibility_project(
             tmp_path,
             _INDIVIDUAL_VISIBILITY.replace(
                 "SMT335: warning", "visibility/internal-public-attribute: hint"
             ),
         )
     )
-    assert {v.code for v in findings} == _GROUP_CODES
+    assert {v.code for v in findings} == _VISIBILITY_CODES
     assert {v.severity for v in findings if v.code == "SMT335"} == {Severity.HINT}
     assert {v.severity for v in findings if v.code != "SMT335"} == {Severity.WARNING}
 
@@ -413,47 +409,47 @@ def test_individual_severity_override(tmp_path: Path) -> None:
 def test_group_does_not_allow_duplicate_individual_aliases(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="SMT335 is already configured"):
         check(
-            _group_project(
+            _visibility_project(
                 tmp_path,
-                "information-hiding: off, SMT335: off, visibility/internal-public-attribute: warning",
+                "visibility: off, SMT335: off, visibility/internal-public-attribute: warning",
             )
         )
 
 
-@pytest.mark.parametrize("selection", ["information-hiding", "INFORMATION-HIDING"])
+@pytest.mark.parametrize("selection", ["visibility", "VISIBILITY"])
 def test_cli_group_selection_needs_no_yaml_activation(
     tmp_path: Path, selection: str
 ) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
     assert violations(root) == []
     assert {
         v.code for v in violations(root, CheckOptions(select=(selection,)))
-    } == _GROUP_CODES
+    } == _VISIBILITY_CODES
 
 
 def test_cli_group_selection_respects_off_and_ignore(tmp_path: Path) -> None:
-    root = _group_project(
+    root = _visibility_project(
         tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: off")
     )
     assert {
-        v.code for v in violations(root, CheckOptions(select=("information-hiding",)))
-    } == _GROUP_CODES - {"SMT335"}
-    assert violations(root, CheckOptions(ignore=("information-hiding",))) == []
-    _group_project(tmp_path, "information-hiding: off")
-    assert violations(root, CheckOptions(select=("information-hiding",))) == []
+        v.code for v in violations(root, CheckOptions(select=("visibility",)))
+    } == _VISIBILITY_CODES - {"SMT335"}
+    assert violations(root, CheckOptions(ignore=("visibility",))) == []
+    _visibility_project(tmp_path, "visibility: off")
+    assert violations(root, CheckOptions(select=("visibility",))) == []
 
 
-def test_group_in_scoped_path_ignores(tmp_path: Path) -> None:
-    root = _group_project(tmp_path)
+def test_family_in_scoped_path_ignores(tmp_path: Path) -> None:
+    root = _visibility_project(tmp_path)
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "ignore:\n  - rule: information-hiding\n    paths: ['app/api.py']\n    reason: Supported external API\n"
+            "ignore:\n  - rule: visibility\n    paths: ['app/api.py']\n    reason: Supported external API\n"
         )
     assert violations(root) == []
 
 
 def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
-    root = _group_project(tmp_path, "information-hiding: off")
+    root = _visibility_project(tmp_path, "visibility: off")
     write_project(
         root,
         {
@@ -474,75 +470,63 @@ def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
 
 
 def test_closest_group_overrides_parent_individual_setting(tmp_path: Path) -> None:
-    root = _group_project(
+    root = _visibility_project(
         tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: error")
     )
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "structure:\n  contracts:\n    api:\n      match: app\n      rules: {information-hiding: off}\n"
+            "structure:\n  contracts:\n    api:\n      match: app\n      rules: {visibility: off}\n"
         )
     assert violations(root) == []
 
 
 def test_group_configuration_preserves_stable_suppressions(tmp_path: Path) -> None:
-    root = _group_project(tmp_path)
+    root = _visibility_project(tmp_path)
     write_project(
         root,
         {
-            "app/api.py": _GROUP_SOURCE.replace(
+            "app/api.py": _VISIBILITY_SOURCE.replace(
                 "self.pending = 0",
                 "self.pending = 0  # smelt: ignore[SMT335] -- diagnostic API",
             )
         },
     )
     outcome = check(root)
-    assert {v.code for v in outcome.report.violations} == _GROUP_CODES - {"SMT335"}
+    assert {v.code for v in outcome.report.violations} == _VISIBILITY_CODES - {"SMT335"}
     assert outcome.report.suppressed == 1
 
 
 def test_debt_survives_group_adoption_and_disable_is_unassessed(tmp_path: Path) -> None:
-    root = _group_project(
-        tmp_path, ", ".join(f"{code}: warning" for code in sorted(_GROUP_CODES))
+    root = _visibility_project(
+        tmp_path, ", ".join(f"{code}: warning" for code in sorted(_VISIBILITY_CODES))
     )
     previous = check(root)
     Debt.from_violations(
         previous.report.violations, snippet_reader(previous.context)
     ).write(root / "debt.json")
-    _group_project(tmp_path)
+    _visibility_project(tmp_path)
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write("debt: debt.json\n")
     adopted = check(root)
     assert adopted.report.violations == []
     assert adopted.report.in_debt == 5
     assert adopted.resolved_debt == []
-    _group_project(tmp_path, "information-hiding: off")
+    _visibility_project(tmp_path, "visibility: off")
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write("debt: debt.json\n")
     assert check(root).resolved_debt == []
 
 
 def test_group_selection_cannot_bypass_strict_coverage(tmp_path: Path) -> None:
-    root = _group_project(tmp_path)
-    outcome = check(
-        root, CheckOptions(select=("information-hiding",), strict_coverage=True)
-    )
+    root = _visibility_project(tmp_path)
+    outcome = check(root, CheckOptions(select=("visibility",), strict_coverage=True))
     assert "SMT306" in {rule.code for rule, _ in outcome.active}
-
-
-def test_editor_schema_exposes_the_same_group_at_project_and_package_level() -> None:
-    definitions = config_json_schema()["$defs"]
-    group = definitions["RuleSettings"]["properties"]["information-hiding"]
-    assert (
-        group == definitions["SourceRuleSettings"]["properties"]["information-hiding"]
-    )
-    assert group["$ref"] == "#/$defs/BroadRuleSetting"
-    assert all(code in group["description"] for code in _GROUP_CODES)
 
 
 def test_group_conflicts_with_an_individual_in_another_same_package_contract(
     tmp_path: Path,
 ) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
             "structure:\n  contracts:\n    policy:\n      match: app\n      rules: {SMT335: warning}\n    exception:\n      match: app\n      rules: {SMT335: off}\n"
@@ -552,7 +536,7 @@ def test_group_conflicts_with_an_individual_in_another_same_package_contract(
 
 
 def test_group_context_reports_effective_individual_settings(tmp_path: Path) -> None:
-    root = _group_project(
+    root = _visibility_project(
         tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: off")
     )
     outcome = check(root)
@@ -575,24 +559,22 @@ def _severities(root: Path, options: CheckOptions | None = None) -> dict[str, Se
     return {rule.code: severity for rule, severity in outcome.active}
 
 
-@pytest.mark.parametrize(
-    "policy", ["ALL: on", "typing: warning", "information-hiding: hint"]
-)
+@pytest.mark.parametrize("policy", ["ALL: on", "typing: warning", "visibility: hint"])
 def test_broad_yaml_entry_cannot_enable_rules(tmp_path: Path, policy: str) -> None:
-    root = _group_project(tmp_path, policy)
+    root = _visibility_project(tmp_path, policy)
 
     with pytest.raises(ConfigError, match="cannot enable rules"):
         check(root)
 
 
 def test_all_remains_available_for_cli_exploration(tmp_path: Path) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
 
     assert _severities(root, CheckOptions(select=("ALL",))) == _catalog()
 
 
 def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
     write_project(
         tmp_path,
         {
@@ -611,7 +593,7 @@ def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
 
 
 def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
     write_project(
         tmp_path,
         {
@@ -643,13 +625,13 @@ def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> No
 
 
 def test_a_broad_child_setting_does_not_reactivate_an_off_rule(tmp_path: Path) -> None:
-    root = _group_project(tmp_path, "")
+    root = _visibility_project(tmp_path, "")
     write_project(
         tmp_path,
         {
             "base.yml": "rules: {SMT316: error, visibility/internal-public-attribute: off}\n",
             "smelt.yml": "extends: base.yml\nversion: 1\n"
-            "project: {root_packages: [app]}\nrules: {information-hiding: warning}\n",
+            "project: {root_packages: [app]}\nrules: {visibility: warning}\n",
         },
     )
 

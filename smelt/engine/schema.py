@@ -7,7 +7,6 @@ from smelt.config.models import ALL_RULES
 from smelt.config.schema import config_json_schema as model_json_schema
 from smelt.diagnostics.violation import Category
 from smelt.rules.base import RuleContract
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.registry import build_rule_set
 
 SCHEMA_COMMENT = (
@@ -44,15 +43,6 @@ def config_json_schema() -> dict[str, Any]:
         if getattr(rule, "scope", "source") == "source":
             source_properties[rule.name] = definition
             source_codes[f"^{rule.code}$"] = definition
-    for group in RULE_GROUPS.values():
-        definition = {
-            "$ref": "#/$defs/BroadRuleSetting",
-            "title": f"{group.name}: {group.summary}",
-            "description": f"{group.summary} {group.rationale} Members: {', '.join(group.codes)}.",
-            "examples": ["warning"],
-        }
-        properties[group.name] = definition
-        source_properties[group.name] = definition
     for family in Category:
         members = [rule for rule in rules if rule.category == family]
         source_members = [
@@ -89,7 +79,7 @@ def config_json_schema() -> dict[str, Any]:
     }
     rule_settings = {
         "type": "object",
-        "description": "Enable individual checks by name or SMT code. Families, groups and ALL can disable or cap active rules.",
+        "description": "Enable individual checks by name or SMT code. Families and ALL can disable or cap active rules.",
         "properties": properties,
         "patternProperties": codes,
         "additionalProperties": False,
@@ -97,7 +87,7 @@ def config_json_schema() -> dict[str, Any]:
     schema["$defs"]["RuleSettings"] = rule_settings
     schema["$defs"]["SourceRuleSettings"] = {
         **rule_settings,
-        "description": "Enable source rules by name or SMT code. ALL, families and groups disable or cap active source rules. Configure test-file and project rules at project level.",
+        "description": "Enable source rules by name or SMT code. ALL and families disable or cap active source rules. Configure test-file and project rules at project level.",
         "properties": source_properties,
         "patternProperties": source_codes,
     }

@@ -38,9 +38,7 @@ def test_workspace_fixture_keeps_one_graph_with_member_architectures(
         ].imported
         == "core.domain.task"
     )
-    visibility = check(
-        root, CheckOptions(select=("information-hiding",))
-    ).report.violations
+    visibility = check(root, CheckOptions(select=("visibility",))).report.violations
     assert not any(finding.member == "packages/core" for finding in visibility)
 
 
