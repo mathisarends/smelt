@@ -36,6 +36,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   The debt CLI records per-member baselines at the root, or only the selected
   member. `--prune` does not create new member scopes; multi-file JSON inspection
   uses a `files` map. See [workspace debt](docs/adoption.md#workspace-debt).
+- Member weakening errors identify the YAML selector as written and show
+  the declaring configuration file relative to the project root.
 - Member-directory invocations also select the member when it has no local
   config, including staged checks. The bundled skill documents the canonical
   root-style/member-architecture/root-boundary workflow. A portable uv fixture
