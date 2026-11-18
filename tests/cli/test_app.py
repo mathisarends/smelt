@@ -202,7 +202,8 @@ def test_a_member_check_runs_the_workspace_scoped_to_that_member(
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
             "smelt.yml": "version: 1\nproject: {workspace: uv}\n"
             "rules: {visibility/internal-public-member: warning}\n",
-            "services/api/smelt.yml": "rules: {visibility/internal-public-member: error}\n",
+            "services/api/smelt.yml": "rules: {visibility/internal-public-member: error}\n"
+            "architecture: {shared: [api]}\n",
             "services/api/src/api/__init__.py": "",
             "services/api/src/api/views.py": "def helper(): return 1\n",
             "services/web/src/web/__init__.py": "",
@@ -224,10 +225,64 @@ def test_a_member_check_runs_the_workspace_scoped_to_that_member(
     report = json.loads(output)
     assert code == 1
     assert report["scope"]["paths"] == ["services/api"]
+    assert report["scope"]["totals"] == "workspace"
+    assert report["coverage"]["scope"] == "workspace"
     assert [(v["path"], v["severity"]) for v in report["violations"]] == [
         ("services/api/src/api/views.py", "error")
     ]
     assert explicit == (code, output, "")
+    _, output, _ = _run(capsys, "check")
+    assert "Workspace policy coverage" in output
+    assert "4 modules in workspace" in output
+
+
+@pytest.mark.parametrize(
+    ("member_config", "source", "rule_sources"),
+    [
+        (
+            "architecture: {shared: [api]}\n",
+            "services/api/smelt.yaml",
+            ["smelt.yml", "services/api/smelt.yaml"],
+        ),
+        (
+            "rules: {visibility/internal-public-member: warning}\n",
+            "smelt.yml",
+            ["smelt.yml", "services/api/smelt.yaml"],
+        ),
+        (None, "smelt.yml", ["smelt.yml"]),
+    ],
+)
+def test_context_names_the_governing_workspace_files(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    member_config: str | None,
+    source: str,
+    rule_sources: list[str],
+) -> None:
+    files = {
+        "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
+        "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
+        "services/api/src/api/__init__.py": "",
+        "services/api/src/api/views.py": "",
+    }
+    if member_config is not None:
+        files["services/api/smelt.yaml"] = member_config
+    root = write_project(tmp_path, files)
+    args = ("context", "api.views", "--config", str(root / "smelt.yml"))
+    code, output, error = _run(capsys, *args, "--format", "json")
+
+    assert (code, error) == (0, "")
+    brief = json.loads(output)
+    assert (brief["member"], brief["architecture_source"], brief["rule_sources"]) == (
+        "services/api",
+        source,
+        rule_sources,
+    )
+    _, output, _ = _run(capsys, *args)
+    assert "Member: services/api" in output
+    assert f"Architecture: {source}" in output
+    assert f"Rules: {' < '.join(rule_sources)}" in output
 
 
 def _run(capsys: pytest.CaptureFixture[str], *args: str) -> tuple[int, str, str]:

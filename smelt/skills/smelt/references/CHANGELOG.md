@@ -11,6 +11,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ### Context
 
+- Workspace context names the owner, governing configuration and rules layers.
+  Scoped workspace checks label whole-workspace totals and policy coverage.
+
 - `smelt context` now identifies the feature and layer of a planned path inside
   a new feature, including in workspace members. JSON marks these targets
   with `feature_planned`.
