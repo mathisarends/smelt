@@ -7,13 +7,22 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- SMT316 and SMT320 preserve public runtime entry points in declared composition roots.
+
 ### Context
+
+- Workspace context names the owner, governing configuration and rules layers.
+  Scoped workspace checks label whole-workspace totals and policy coverage.
 
 - `smelt context` now identifies the feature and layer of a planned path inside
   a new feature, including in workspace members. JSON marks these targets
   with `feature_planned`.
 
 ### Workspace policy and initialization
+
+- Workspace init defers incomplete layer drafts and configures mirror tests
+  when every existing test matches. If pytest module names collide, init
+  lists the clashing files and leaves mirroring disabled.
 
 - **Member weakening requires a reason.** Lowering inherited rule severity or
   setting `off` in member rules or package contracts now requires
@@ -34,6 +43,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   The debt CLI records per-member baselines at the root, or only the selected
   member. `--prune` does not create new member scopes; multi-file JSON inspection
   uses a `files` map. See [workspace debt](docs/adoption.md#workspace-debt).
+- Member weakening errors identify the YAML selector as written and show
+  the declaring configuration file relative to the project root.
 - Member-directory invocations also select the member when it has no local
   config, including staged checks. The bundled skill documents the canonical
   root-style/member-architecture/root-boundary workflow. A portable uv fixture
@@ -43,6 +54,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   Add reasons to existing overrides when upgrading.
 
 ### Workspace member boundaries
+
+- Workspace init includes a commented member allowlist draft with observed
+  cross-member imports for review.
 
 - SMT112 recommends removing or moving imports that the workspace member
   allowlist forbids. Allowed imports still get the dependency declaration hint.
@@ -138,7 +152,7 @@ The full mapping:
 | SMT105 | `shared-imports-feature` | `architecture/shared-imports-feature` | family prefix |
 | SMT106 | `composition-root-leak` | `architecture/composition-root-leak` | family prefix |
 | SMT107 | `private-module-import` | `architecture/non-public-module-import` | renamed |
-| SMT108 | `package-import-fanout` | `imports/package-import-fanout` | family prefix |
+| SMT108 | `package-import-fanout` | `imports/excess-package-imports` | family prefix |
 | SMT109 | `facade-export-gap` | `architecture/missing-facade-export` | renamed |
 | SMT110 | `module-import-fanout` | `imports/excess-module-imports` | renamed |
 | SMT301 | `unknown-layer` | `architecture/unknown-layer` | family prefix |
@@ -160,7 +174,7 @@ The full mapping:
 | SMT319 | `prefer-package-import` | `imports/prefer-package-import` | family prefix |
 | SMT320 | `internal-public-module-symbol` | `visibility/internal-public-module-symbol` | family prefix |
 | SMT321 | `implicit-optional-default` | `typing/implicit-optional-default` | family prefix |
-| SMT322 | `deep-object-navigation` | `complexity/deep-object-navigation` | family prefix |
+| SMT322 | `deep-object-navigation` | `complexity/excess-attribute-depth` | family prefix |
 | SMT323 | `no-base-class-prefix` | `modeling/forbidden-base-class-affix` | renamed |
 | SMT324 | `prefer-str-enum-discriminator` | `modeling/prefer-str-enum-discriminator` | family prefix |
 | SMT325 → SMT309 | `missing-module-docstring` | `layout/module-docstring-convention` | merged |
@@ -187,7 +201,7 @@ The full mapping:
 | SMT346 | `prefer-deferred-annotations` | `typing/prefer-deferred-annotations` | family prefix |
 | SMT347 | `anonymous-tuple-type` | `typing/anonymous-tuple-type` | family prefix |
 | SMT348 | `missing-interface-docstring` | `idioms/missing-interface-docstring` | family prefix |
-| SMT349 | `stateful-dataclass` | `modeling/stateful-dataclass` | family prefix |
+| SMT349 | `stateful-dataclass` | `modeling/dataclass-field-mutation` | family prefix |
 | SMT350 | `missing-broad-except-reason` | `idioms/missing-broad-except-reason` | family prefix |
 | SMT351 | `missing-dataclass-option` | `modeling/missing-dataclass-option` | family prefix |
 | SMT352 | `duplicate-function` | `complexity/duplicate-function` | family prefix |
@@ -197,12 +211,12 @@ The full mapping:
 | SMT356 | `duplicate-narrowing-assert` | `idioms/duplicate-narrowing-assert` | family prefix |
 | SMT357 | `missing-duration-unit` | `modeling/implicit-duration-unit` | renamed |
 | SMT358 → SMT357 | `prefer-named-duration` | `modeling/implicit-duration-unit` | merged |
-| SMT359 | `nested-conditional-expression` | `complexity/nested-conditional-expression` | family prefix |
+| SMT359 | `nested-conditional-expression` | `complexity/forbidden-nested-conditional` | family prefix |
 | SMT360 | `mutable-field-in-frozen-dataclass` | `modeling/mutable-field-in-frozen-dataclass` | family prefix |
 | SMT361 | `parallel-record-fields` | `modeling/parallel-record-fields` | family prefix |
 | SMT362 | `loop-invariant-collection` | `idioms/loop-invariant-collection` | family prefix |
-| SMT363 | `complex-comprehension` | `complexity/complex-comprehension` | family prefix |
-| SMT364 | `constructor-logic` | `complexity/constructor-logic` | family prefix |
+| SMT363 | `complex-comprehension` | `complexity/excess-comprehension-loops` | family prefix |
+| SMT364 | `constructor-logic` | `complexity/excess-constructor-decisions` | family prefix |
 | SMT365 → SMT339 | `cross-module-private-attribute` | `visibility/foreign-private-access` | merged |
 | SMT366 → SMT340 | `comprehension-in-call-argument` | `complexity/inline-call-argument` | merged |
 | SMT367 | `excess-private-definitions` | `visibility/excess-private-definitions` | family prefix |

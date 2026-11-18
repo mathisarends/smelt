@@ -293,9 +293,10 @@ Run `smelt init` in a uv workspace root to write one shared root config and an
 config in every discovered Python member. `--maintainability` writes the style
 selection in the root. A member gets its own architecture when Smelt infers layers,
 features, shared code or a composition root. Other members inherit the root
-architecture. No observed cross-member import is
-automatically blessed as a member-boundary allowance: review and add those in
-the root.
+architecture. The root draft includes a commented `architecture.members`
+example based on the workspace's member globs and lists observed cross-member
+imports as evidence. Review allowed targets before enabling the example.
+Keep packaging declarations in `pyproject.toml`; SMT112 checks those separately.
 
 Root source roots are omitted so each current or future member uses its own
 `src/` directory or flat package layout automatically. Test roots cover `tests`

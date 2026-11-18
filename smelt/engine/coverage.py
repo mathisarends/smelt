@@ -79,6 +79,8 @@ def effective_coverage(
     }
     if include_inventory:
         report["inventory"] = [entry.to_json() for entry in inventory.entries]
+    if project.workspace == "uv":
+        report["scope"] = "workspace"
     if include_ordering and ctx.ordering.files:
         report["ordering"] = ctx.ordering.summary()
     if include_test_quality and ctx.test_syntax.modules:

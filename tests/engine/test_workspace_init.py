@@ -56,6 +56,12 @@ def test_init_writes_shared_root_and_independent_member_drafts(
     assert "independent drafts" in output.out
     config = load_config(root / "smelt.yml").config
     assert config.project.workspace == "uv"
+    draft = (root / "smelt.yml").read_text(encoding="utf-8")
+    assert "#   members:" in draft
+    assert "#     packages/*:" in draft
+    assert "#     services/*:" in draft
+    assert "#   services/api -> packages/core" in draft
+    assert config.architecture.members == {}
     assert set(config.architecture.layers) == set()
     api = config.members["services/api"].architecture
     core = config.members["packages/core"].architecture
@@ -143,6 +149,43 @@ def test_init_checks_all_outputs_before_writing(
     assert not (root / "smelt.yml").exists()
     assert not (root / ".smelt.schema.json").exists()
     assert (root / "services/api/smelt.yml").read_bytes() == before
+
+
+@pytest.mark.parametrize("clash", [False, True])
+def test_workspace_init_drafts_mirror_and_defers_incomplete_layers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    clash: bool,
+) -> None:
+    second = "sync" if clash else "launch"
+    root = write_project(
+        tmp_path,
+        {
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["apps/*"]\n',
+            "apps/worker/src/worker/__init__.py": "",
+            "apps/worker/src/worker/adapters/queue.py": "",
+            "apps/worker/src/worker/jobs/sync.py": "",
+            "apps/worker/tests/jobs/test_sync.py": "",
+            "apps/runner/src/runner/__init__.py": "",
+            f"apps/runner/src/runner/adapters/{second}.py": "",
+            f"apps/runner/tests/adapters/test_{second}.py": "",
+        },
+    )
+    monkeypatch.chdir(root)
+
+    assert main(["init"]) == 0
+    output = capsys.readouterr().out
+    config = load_config(root / "smelt.yml").config
+    assert config.tests.layout == ("none" if clash else "mirror")
+    assert ("mirror not enabled because pytest" in output) is clash
+    if clash:
+        assert "apps/worker/tests/jobs/test_sync.py" in output
+        assert "apps/runner/tests/adapters/test_sync.py" in output
+    assert config.members["apps/worker"].architecture is None
+    assert "worker.jobs" in (root / "apps/worker/smelt.yml").read_text(encoding="utf-8")
+    assert "SMT301" not in {v.code for v in check(root).report.violations}
 
 
 @pytest.mark.parametrize("member", ["../outside", "services/missing", "packages"])

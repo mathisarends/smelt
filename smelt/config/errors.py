@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass
+import os.path
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,8 +30,28 @@ class ConfigError(Exception):
         header = (
             f"invalid configuration in {source}" if source else "invalid configuration"
         )
-        lines = [header, *(f"  {issue}" for issue in self.issues)]
+        lines = [
+            header,
+            *(
+                f"  {replace(issue, source=None) if issue.source == source else issue}"
+                for issue in self.issues
+            ),
+        ]
         super().__init__("\n".join(lines))
+
+    def relative_to(self, root: Path) -> ConfigError:
+        """Show declaring files relative to the project, once when all issues agree."""
+        issues = [
+            replace(issue, source=_relative_source(issue.source, root))
+            for issue in self.issues
+        ]
+        source = _relative_source(self.source, root)
+        files = {issue.source or source for issue in issues}
+        if len(files) == 1:
+            source = next(iter(files))
+        if tuple(issues) == self.issues and source == self.source:
+            return self
+        return ConfigError(issues, source)
 
 
 def format_loc(loc: Iterable[str | int]) -> str:
@@ -51,3 +73,12 @@ def did_you_mean(value: str, candidates: Iterable[str]) -> str:
     if not matches:
         matches = [option for option in options if option.startswith(value)][:1]
     return f' (did you mean "{matches[0]}"?)' if matches else ""
+
+
+def _relative_source(source: str | None, root: Path) -> str | None:
+    if source is None or not Path(source).is_absolute():
+        return source
+    try:
+        return Path(os.path.relpath(source, root)).as_posix()
+    except ValueError:
+        return source

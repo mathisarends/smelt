@@ -161,6 +161,7 @@ def _init_workspace(
             root_filename=target.name,
             maintainability=args.maintainability,
             member=args.member,
+            workspace=inferred,
         )
     except AnalysisError as exc:
         raise CliError(str(exc), option="--member", value=args.member) from exc
@@ -375,10 +376,13 @@ def _summary(inferred: InferredConfig, *, architecture: bool = True) -> list[str
         )
         if mirror.name_clashes:
             lines.append(
-                f"pytest: {', '.join(mirror.name_clashes)} "
-                f"{'has' if len(mirror.name_clashes) == 1 else 'have'} no __init__.py, so two "
-                "mirrored test_router.py files clash; add --import-mode=importlib to "
-                "the pytest addopts"
+                "mirror not enabled because pytest's default import mode would "
+                f"load these test files under duplicate names: {', '.join(mirror.name_clashes)}. "
+                "Add --import-mode=importlib to the pytest addopts or use distinct test module names."
+            )
+        elif mirror.draft_layout == "none":
+            lines.append(
+                "mirror not enabled because some discovered tests do not follow this layout"
             )
     return lines
 

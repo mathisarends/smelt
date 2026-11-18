@@ -256,7 +256,7 @@ class RuleSettings:
 
             root_ctx = AnalysisContext(ctx.root, root.config, store=ctx.store)
             root_ctx.files = replace(ctx.files, config=root.config)
-        issues: dict[str, ConfigIssue] = {}
+        issues: list[ConfigIssue] = []
         members = self.config.members
         for member_path, member in members.items():
             maps: list[tuple[str, Mapping[str, RuleSetting], str | None]] = [
@@ -271,6 +271,7 @@ class RuleSettings:
                 for name, contract in member.structure.contracts.items()
             )
             for location, raw, pattern in maps:
+                lowered: dict[str, list[RuleContract]] = {}
                 entries = self._entries(raw, location, excluded=self._strict_guard())
                 for code, setting in entries.items():
                     if code in self._strict_guard() or setting.reasoned:
@@ -311,13 +312,28 @@ class RuleSettings:
                             ]
                         )
                     if _RANK[setting.value] < max(_RANK[value] for value in values):
-                        key = f"{location}.{code}"
-                        issues[key] = ConfigIssue(
-                            key,
-                            f"lowering {code} below the inherited root severity requires {{severity: {setting.value}, reason: '...'}}",
-                        )
+                        lowered.setdefault(setting.selector, []).append(rule)
+                issues.extend(
+                    ConfigIssue(
+                        f"{location}.{selector}",
+                        self._weakening_message(selector, affected, raw[selector]),
+                    )
+                    for selector, affected in lowered.items()
+                )
         if issues:
-            raise ConfigError(list(issues.values()), self.source)
+            raise ConfigError(issues, self.source)
+
+    def _weakening_message(
+        self, selector: str, affected: list[RuleContract], setting: RuleSetting
+    ) -> str:
+        if self._broad_selection(selector) is None:
+            rule = affected[0]
+            label = f"{rule.name} ({rule.code})"
+        else:
+            kind = "family " if selector != ALL_RULES else ""
+            count = len(affected)
+            label = f"{kind}{selector} ({count} {'rule' if count == 1 else 'rules'})"
+        return f"lowering {label} below the inherited root severity requires {{severity: {setting}, reason: '...'}}"
 
     def _member_for(
         self, ctx: AnalysisContext, module: str | None, path: str | None

@@ -9,7 +9,7 @@
 | [SMT105](SMT105.md) | architecture/shared-imports-feature | architecture | policy | error |
 | [SMT106](SMT106.md) | architecture/composition-root-leak | architecture | policy | error |
 | [SMT107](SMT107.md) | architecture/non-public-module-import | architecture | policy | error |
-| [SMT108](SMT108.md) | imports/package-import-fanout | imports | policy | hint |
+| [SMT108](SMT108.md) | imports/excess-package-imports | imports | policy | hint |
 | [SMT109](SMT109.md) | architecture/missing-facade-export | architecture | policy | hint |
 | [SMT110](SMT110.md) | imports/excess-module-imports | imports | policy | hint |
 | [SMT111](SMT111.md) | architecture/member-boundary | architecture | policy | error |
@@ -33,7 +33,7 @@
 | [SMT319](SMT319.md) | imports/prefer-package-import | imports | explicit | hint |
 | [SMT320](SMT320.md) | visibility/internal-public-module-symbol | visibility | explicit | warning |
 | [SMT321](SMT321.md) | typing/implicit-optional-default | typing | explicit | warning |
-| [SMT322](SMT322.md) | complexity/deep-object-navigation | complexity | explicit | hint |
+| [SMT322](SMT322.md) | complexity/excess-attribute-depth | complexity | explicit | hint |
 | [SMT323](SMT323.md) | modeling/forbidden-base-class-affix | modeling | explicit | error |
 | [SMT324](SMT324.md) | modeling/prefer-str-enum-discriminator | modeling | explicit | hint |
 | [SMT327](SMT327.md) | frameworks/prefer-secret-type | frameworks | explicit | warning |
@@ -56,7 +56,7 @@
 | [SMT346](SMT346.md) | typing/prefer-deferred-annotations | typing | explicit | hint |
 | [SMT347](SMT347.md) | typing/anonymous-tuple-type | typing | explicit | hint |
 | [SMT348](SMT348.md) | idioms/missing-interface-docstring | idioms | explicit | hint |
-| [SMT349](SMT349.md) | modeling/stateful-dataclass | modeling | explicit | hint |
+| [SMT349](SMT349.md) | modeling/dataclass-field-mutation | modeling | explicit | hint |
 | [SMT350](SMT350.md) | idioms/missing-broad-except-reason | idioms | explicit | hint |
 | [SMT351](SMT351.md) | modeling/missing-dataclass-option | modeling | policy | warning |
 | [SMT352](SMT352.md) | complexity/duplicate-function | complexity | explicit | warning |
@@ -65,12 +65,12 @@
 | [SMT355](SMT355.md) | modeling/duplicate-class-name | modeling | explicit | warning |
 | [SMT356](SMT356.md) | idioms/duplicate-narrowing-assert | idioms | explicit | warning |
 | [SMT357](SMT357.md) | modeling/implicit-duration-unit | modeling | explicit | warning |
-| [SMT359](SMT359.md) | complexity/nested-conditional-expression | complexity | explicit | hint |
+| [SMT359](SMT359.md) | complexity/forbidden-nested-conditional | complexity | explicit | hint |
 | [SMT360](SMT360.md) | modeling/mutable-field-in-frozen-dataclass | modeling | explicit | warning |
 | [SMT361](SMT361.md) | modeling/parallel-record-fields | modeling | explicit | hint |
 | [SMT362](SMT362.md) | idioms/loop-invariant-collection | idioms | explicit | hint |
-| [SMT363](SMT363.md) | complexity/complex-comprehension | complexity | policy | hint |
-| [SMT364](SMT364.md) | complexity/constructor-logic | complexity | policy | hint |
+| [SMT363](SMT363.md) | complexity/excess-comprehension-loops | complexity | policy | hint |
+| [SMT364](SMT364.md) | complexity/excess-constructor-decisions | complexity | policy | hint |
 | [SMT367](SMT367.md) | visibility/excess-private-definitions | visibility | policy | hint |
 | [SMT401](SMT401.md) | tests/misplaced-test | tests | policy | error |
 | [SMT420](SMT420.md) | tests/private-access | tests | explicit | error |

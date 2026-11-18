@@ -35,6 +35,29 @@ def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
     assert caught.value.issues[0].source.endswith("services/api/smelt.yml")
 
 
+def test_member_weakening_names_the_yaml_selector_once(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "rules: {modeling/str-enum-value-convention: error, SMT349: warning}\n",
+            "services/api/smelt.yml": "rules: {modeling: off}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError) as caught:
+        check(root)
+
+    [issue] = caught.value.issues
+    assert issue.path == "rules.modeling"
+    assert issue.source == "services/api/smelt.yml"
+    assert str(caught.value).splitlines() == [
+        "invalid configuration in services/api/smelt.yml",
+        "  rules.modeling: lowering family modeling (2 rules) below the inherited root severity requires {severity: off, reason: '...'}",
+    ]
+
+
 @pytest.mark.parametrize(
     "policy",
     [
