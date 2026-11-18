@@ -59,6 +59,7 @@ def test_public_instance_state_is_not_justified_by_a_test_read(tmp_path: Path) -
         "attribute": "pending",
         "kind": "instance-attribute",
         "suggested_name": "_pending",
+        "boundary": "class",
         "internal_references": [3, 5],
         "test_references": [{"path": "tests/test_worker.py", "line": 5}],
         "automatic_rename": False,

@@ -39,6 +39,7 @@ Every option has one activation rule:
 | `module_docstrings` | SMT309 | none |
 | `future_annotations` | SMT310, SMT311 | none |
 | `private_modules` | SMT312 | none |
+| `public_attribute_boundary` | SMT335 | `class` |
 | `private_attribute_boundary` | SMT339 | `module` |
 | `type_dispatch` | SMT315 | none |
 | `max_positional_parameters` | SMT345 | 5 |
@@ -78,6 +79,15 @@ are excluded; a reported reduction is named as a whole so its generator stays
 lazy. Each finding carries its `kind` in the machine-readable payload. No
 automatic rewrite is performed; preserve callable lookup and argument evaluation
 order when extracting a variable.
+
+Opt-in [SMT335 `visibility/internal-public-attribute`](rules/SMT335.md) reviews
+public data attributes whose observed use stays within the owning class. Set
+`public_attribute_boundary: module` under `style` or in a style override to
+enable the rule and also treat reads and writes by same-module helpers or other
+classes as internal. Set `class` in a closer override to use the class boundary
+there. A possible access from another production module preserves visibility,
+as do explicitly exported classes. [SMT430](rules/SMT430.md) uses the same
+boundary when reviewing test-only reads.
 
 Opt-in [SMT339 `visibility/foreign-private-access`](rules/SMT339.md) complements
 Ruff SLF001 with statically resolved ownership. Enable

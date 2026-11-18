@@ -140,6 +140,7 @@ SHARED_OPTIONS = [
     ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
     ({"private_modules": "forbid"}, {"SMT312"}),
     ({"type_dispatch": {}}, {"SMT315"}),
+    ({"public_attribute_boundary": "module"}, {"SMT335"}),
     ({"private_attribute_boundary": "package"}, {"SMT339"}),
     ({"call_argument_kinds": ["await"]}, {"SMT340"}),
     ({"str_enum_values": "auto"}, {"SMT341"}),

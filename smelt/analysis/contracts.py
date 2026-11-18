@@ -12,7 +12,7 @@ from smelt.model import is_within
 
 if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
-    from smelt.config.models import StructureConfig
+    from smelt.config.models import PublicAttributeBoundary, StructureConfig
 
 _PROJECT_POLICY = "style"
 
@@ -21,6 +21,7 @@ type PolicyOption = Literal[
     "module_docstrings",
     "future_annotations",
     "private_modules",
+    "public_attribute_boundary",
     "private_attribute_boundary",
     "ordering",
     "type_dispatch",
@@ -189,6 +190,11 @@ class ContractIndex:
             return int(getattr(POLICY_DEFAULTS, policy)), None
         return value, contract
 
+    def public_attribute_boundary(self, module: str) -> PublicAttributeBoundary:
+        contract = self.policy_for(module, "public_attribute_boundary")
+        boundary = contract.spec.public_attribute_boundary if contract else None
+        return boundary or POLICY_DEFAULTS.public_attribute_boundary
+
     def policy_for(
         self,
         module: str,
@@ -294,6 +300,7 @@ class ContractIndex:
                             "module_docstrings",
                             "future_annotations",
                             "private_modules",
+                            "public_attribute_boundary",
                             "private_attribute_boundary",
                             "max_positional_parameters",
                             "max_module_imports",

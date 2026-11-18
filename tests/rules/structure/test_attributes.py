@@ -17,6 +17,7 @@ _CONFIG = """version: 1
 project: {root_packages: [app]}
 rules: {visibility/internal-public-attribute: warning}
 """
+_MODULE_BOUNDARY = "style: {public_attribute_boundary: module}\n"
 _SOURCE = """class Readiness:
     def __init__(self, initial=None, ongoing=None):
         self.initial = initial
@@ -54,6 +55,7 @@ def test_internal_state_is_reported_at_its_declaration(tmp_path: Path) -> None:
     assert first.expected["class"] == "Readiness"
     assert first.expected["kind"] == "instance-attribute"
     assert first.expected["suggested_name"] == "_initial"
+    assert first.expected["boundary"] == "class"
     assert first.expected["internal_references"] == [3, 7]
     assert first.expected["automatic_rename"] is False
     assert (
@@ -95,6 +97,8 @@ def test_any_external_access_preserves_visibility(
     )
     write_project(root, {path: consumer})
     assert violations(root) == []
+    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    assert violations(root) == []
 
 
 def test_external_access_in_the_defining_module_is_preserved(tmp_path: Path) -> None:
@@ -102,6 +106,60 @@ def test_external_access_in_the_defining_module_is_preserved(tmp_path: Path) -> 
         tmp_path, "class Readiness:\n    initial = 1\nvalue = Readiness.initial"
     )
     assert violations(root) == []
+
+
+@pytest.mark.parametrize(
+    "consumer",
+    [
+        "def read(value: Readiness): return value.initial",
+        "class Reset:\n    def run(self, value: Readiness): value.initial = 2",
+    ],
+)
+def test_module_boundary_reviews_same_module_accesses(
+    tmp_path: Path, consumer: str
+) -> None:
+    root = _project(
+        tmp_path,
+        f"class Readiness:\n    def __init__(self): self.initial = 1\n\n{consumer}",
+    )
+    assert violations(root) == []
+    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    [finding] = violations(root)
+    assert (finding.code, finding.path, finding.line) == (
+        "SMT335",
+        "app/readiness.py",
+        2,
+    )
+    assert finding.expected is not None
+    assert finding.expected["boundary"] == "module"
+    assert finding.expected["suggested_name"] == "_initial"
+    assert finding.hint is not None
+    assert "update same-module reads and writes" in finding.hint
+
+
+def test_module_boundary_can_be_overridden_by_package(tmp_path: Path) -> None:
+    root = _project(
+        tmp_path, "class Readiness:\n    initial = 1\nvalue = Readiness.initial"
+    )
+    write_project(
+        root,
+        {
+            "smelt.yml": """version: 1
+project: {root_packages: [app]}
+style:
+  public_attribute_boundary: module
+  overrides:
+    api:
+      match: app.api
+      public_attribute_boundary: class
+""",
+            "app/api/__init__.py": "",
+            "app/api/client.py": "class Client:\n    ready = True\nflag = Client.ready",
+        },
+    )
+    assert [(v.code, v.path) for v in violations(root)] == [
+        ("SMT335", "app/readiness.py")
+    ]
 
 
 @pytest.mark.parametrize(
@@ -150,6 +208,8 @@ def test_public_facades_preserve_data_contracts(tmp_path: Path, facade: str) -> 
         },
     )
     assert violations(root) == []
+    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    assert violations(root) == []
 
 
 def test_explicit_exports_preserve_data_contracts(tmp_path: Path) -> None:
@@ -175,21 +235,34 @@ def test_repeated_writes_custom_receiver_and_name_collisions(tmp_path: Path) -> 
     assert violations(root) == []
 
 
-def test_test_only_attributes_are_owned_by_smt430(tmp_path: Path) -> None:
-    root = _project(tmp_path, "class Readiness:\n    initial = 1")
+@pytest.mark.parametrize(
+    ("style", "consumer"),
+    [
+        ("", ""),
+        (_MODULE_BOUNDARY, "\ndef read(value: Readiness): return value.initial"),
+    ],
+)
+def test_test_only_attributes_are_owned_by_smt430(
+    tmp_path: Path, style: str, consumer: str
+) -> None:
+    root = _project(tmp_path, "class Readiness:\n    initial = 1" + consumer)
+    config = (
+        _CONFIG.replace(
+            "visibility/internal-public-attribute: warning",
+            "visibility/internal-public-attribute: warning, visibility/test-only-public-attribute: warning",
+        )
+        + style
+    )
     write_project(
         root,
         {
-            "smelt.yml": _CONFIG.replace(
-                "visibility/internal-public-attribute: warning",
-                "visibility/internal-public-attribute: warning, visibility/test-only-public-attribute: warning",
-            ),
+            "smelt.yml": config,
             "tests/test_readiness.py": "from app.readiness import Readiness\ndef test_initial(): assert Readiness().initial == 1",
         },
     )
     assert [v.code for v in violations(root)] == ["SMT430"]
     write_project(
-        root, {"smelt.yml": _CONFIG + "tests: {quality_exclude: ['tests/**']}\n"}
+        root, {"smelt.yml": config + "tests: {quality_exclude: ['tests/**']}\n"}
     )
     assert violations(root) == []
 
@@ -242,10 +315,13 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
     assert [v.severity for v in violations(root)] == [Severity.ERROR]
 
 
+@pytest.mark.parametrize("style", ["", _MODULE_BOUNDARY])
 def test_cached_results_follow_external_uses_exports_and_inheritance(
     tmp_path: Path,
+    style: str,
 ) -> None:
     root = _project(tmp_path, "class Readiness:\n    initial = 1")
+    write_project(root, {"smelt.yml": _CONFIG + style})
     states = [
         {"app/other.py": "def consume(value): return value.initial"},
         {

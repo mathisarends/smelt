@@ -22,6 +22,7 @@ from pydantic import (
 type Policy = Literal["allow", "deny"]
 type RuleSeverity = Literal["error", "warning", "hint", "on", "off"]
 type ModuleImportExemption = Literal["facades", "composition_root"]
+type PublicAttributeBoundary = Literal["class", "module"]
 type PrivateAttributeBoundary = Literal["module", "package"]
 type CallArgumentKind = Literal["await", "comprehension", "aggregate"]
 
@@ -708,6 +709,10 @@ class PackagePolicy(_Model):
         default=None,
         description="Naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
     )
+    public_attribute_boundary: PublicAttributeBoundary | None = Field(
+        default=None,
+        description="Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+    )
     private_attribute_boundary: PrivateAttributeBoundary | None = Field(
         default=None,
         description="Ownership boundary for private attribute access in visibility/foreign-private-access (SMT339): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module.",
@@ -807,6 +812,7 @@ class PolicyDefaults:
         "facades",
         "composition_root",
     )
+    public_attribute_boundary: PublicAttributeBoundary = "class"
     private_attribute_boundary: PrivateAttributeBoundary = "module"
     max_positional_parameters: int = 5
     max_comprehension_loops: int = 1

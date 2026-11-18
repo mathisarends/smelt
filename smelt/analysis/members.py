@@ -24,10 +24,11 @@ from smelt.analysis.member_state import (
 from smelt.analysis.retained import current
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
     from smelt.analysis.test_syntax import TestSyntaxIndex
+    from smelt.config.models import PublicAttributeBoundary
 
 type Function = ast.FunctionDef | ast.AsyncFunctionDef
 _REFLECTION_ARGUMENTS = 2
@@ -490,6 +491,37 @@ class MemberUsageIndex:
         """Include imports, re-exports, tests and escaped module values."""
         return self._function_external(module, name)
 
+    def internal_attributes(
+        self, *, boundary_for: Callable[[str], PublicAttributeBoundary]
+    ) -> Iterator[AttributeMember]:
+        """Retain only fields without any same-named external access, tests included."""
+        for member in self._attributes(boundary_for):
+            total, production = self._attribute_counts.get(member.name, (0, 0))
+            if total == production:
+                yield member
+
+    def test_only_attributes(
+        self,
+        tests: TestSyntaxIndex,
+        *,
+        boundary_for: Callable[[str], PublicAttributeBoundary],
+    ) -> Iterator[tuple[AttributeMember, tuple[tuple[str, int], ...]]]:
+        references: dict[tuple[str, str, str], set[tuple[str, int]]] = {}
+        for path, test in tests.references():
+            for line, qualified, load in [*test.attributes, *test.instance_attributes]:
+                if not load:
+                    continue
+                owner_name, _, name = qualified.rpartition(".")
+                module, _, owner = owner_name.rpartition(".")
+                target = resolve_export(module, owner, self._syntax.namespace)
+                if target and target[1]:
+                    references.setdefault((target[0], target[1], name), set()).add(
+                        (path, line)
+                    )
+        for member in self._attributes(boundary_for):
+            if uses := references.get((member.module, member.owner.name, member.name)):
+                yield member, tuple(sorted(uses))
+
     def _resolve_file(
         self, file: _FileFacts, states: list[MemberState]
     ) -> list[Member]:
@@ -558,51 +590,33 @@ class MemberUsageIndex:
             if (users := uses.get(target))
         )
 
-    @cached_property
-    def attributes(self) -> list[AttributeMember]:
-        result: list[AttributeMember] = []
+    def _attributes(
+        self, boundary_for: Callable[[str], PublicAttributeBoundary]
+    ) -> Iterator[AttributeMember]:
+        evidence = self._evidence
         for file in self._files:
+            if not file.attribute_candidates:
+                continue
+            boundary = boundary_for(file.module)
             for candidate in file.attribute_candidates:
-                if (file.module, candidate.owner.name) in self._evidence.inherited or (
-                    file.module,
-                    candidate.owner.name,
-                ) in self._evidence.public_exports:
+                owner_key = file.module, candidate.owner.name
+                if (
+                    owner_key in evidence.inherited
+                    or owner_key in evidence.public_exports
+                ):
                     continue
-                local = sum(
-                    owner == candidate.owner.lineno and internal
-                    for _, owner, internal in file.attributes.get(candidate.name, [])
+                uses = file.attributes.get(candidate.name, [])
+                local = (
+                    len(uses)
+                    if boundary == "module"
+                    else sum(
+                        owner == candidate.owner.lineno and internal
+                        for _, owner, internal in uses
+                    )
                 )
                 _, production = self._attribute_counts.get(candidate.name, (0, 0))
-                if production > local:
-                    continue
-                result.append(candidate)
-        return result
-
-    def internal_attributes(self) -> Iterator[AttributeMember]:
-        """Retain only fields without any same-named external access, tests included."""
-        for member in self.attributes:
-            total, production = self._attribute_counts.get(member.name, (0, 0))
-            if total == production:
-                yield member
-
-    def test_only_attributes(
-        self, tests: TestSyntaxIndex
-    ) -> Iterator[tuple[AttributeMember, tuple[tuple[str, int], ...]]]:
-        references: dict[tuple[str, str, str], set[tuple[str, int]]] = {}
-        for path, test in tests.references():
-            for line, qualified, load in [*test.attributes, *test.instance_attributes]:
-                if not load:
-                    continue
-                owner_name, _, name = qualified.rpartition(".")
-                module, _, owner = owner_name.rpartition(".")
-                target = resolve_export(module, owner, self._syntax.namespace)
-                if target and target[1]:
-                    references.setdefault((target[0], target[1], name), set()).add(
-                        (path, line)
-                    )
-        for member in self.attributes:
-            if uses := references.get((member.module, member.owner.name, member.name)):
-                yield member, tuple(sorted(uses))
+                if production == local:
+                    yield candidate
 
 
 def _function_targets(module: str, name: str) -> Iterator[str]:

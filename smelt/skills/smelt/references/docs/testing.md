@@ -50,7 +50,7 @@ rules:
 | SMT427 | Small literal loops containing candidate independent cases (hint) |
 | SMT428 | Call-only assertions on known async mocks without corresponding await evidence (warning) |
 | SMT429 | Public module functions accessed from tests but not from other analyzed production modules (warning) |
-| SMT430 | Public instance/class data attributes read from tests but not accessed by production code outside their class (warning) |
+| SMT430 | Public data attributes read from tests with no observed production access outside their visibility boundary (warning) |
 
 Every policy is opt-in; `0` is a valid patch limit. Globs are relative to the
 configuration root, not each test root. `quality_exclude` does not disable mirror
@@ -148,8 +148,11 @@ and arbitrary dynamic access remain review limits. Checks do not rename code.
 Enable SMT430 with `rules: {visibility/test-only-public-attribute: warning}` or
 `--select SMT430`. It reviews public attributes such as `worker.pending` when only
 tests read them outside the owning class. It shares the member-use analysis with
-SMT316, SMT317 and SMT429 and suggests an available private name. Known
-constructors, annotations, fixtures and class re-exports establish test receivers.
+SMT316, SMT317, SMT335 and SMT429 and suggests an available private name.
+With `style.public_attribute_boundary: module`, production accesses in the
+defining module count as internal for SMT335 and SMT430. Enable SMT430 separately
+to review fields read by tests. Known constructors, annotations, fixtures and
+class re-exports establish test receivers.
 Possible production accesses preserve visibility, including unresolved same-named
 receivers. Decorated/inherited classes, properties, descriptors, slots and custom
 attribute hooks are excluded. Prefer observing public behavior; keep deliberate
