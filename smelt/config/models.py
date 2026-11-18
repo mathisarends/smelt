@@ -1015,6 +1015,13 @@ class MemberConfig(_Model):
         located._packages = tuple(packages)
         return located
 
+    @field_validator("architecture")
+    @classmethod
+    def _empty_architecture_inherits(
+        cls, value: ArchitectureConfig | None
+    ) -> ArchitectureConfig | None:
+        return value if value is not None and value.model_fields_set else None
+
     @field_validator("debt")
     @classmethod
     def _debt_is_member_relative(cls, value: str | None) -> str | None:

@@ -199,6 +199,38 @@ def test_package_names_must_be_unique_across_members(tmp_path: Path) -> None:
         load_config(root / "smelt.yml")
 
 
+def test_empty_member_architecture_inherits_root(tmp_path: Path) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": ROOT + "architecture: {shared: [core]}\n",
+            "packages/core/smelt.yml": "architecture: {}\n",
+        },
+    )
+
+    config = load_config(root / "smelt.yml").config
+
+    assert config.members["packages/core"].architecture is None
+    assert config.architecture.shared == ["core"]
+
+
+def test_root_architecture_error_names_the_governing_member(tmp_path: Path) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": ROOT + "architecture: {shared: [core]}\n",
+            "packages/core/smelt.yaml": "architecture: {shared: [core.ids]}\n",
+        },
+    )
+
+    with pytest.raises(
+        ConfigError, match=r"member architecture.*packages/core"
+    ) as caught:
+        load_config(root / "smelt.yml")
+
+    assert caught.value.issues[0].path == "architecture.shared[0]"
+
+
 def test_loading_a_member_config_selects_the_workspace_root(tmp_path: Path) -> None:
     root = _workspace(tmp_path, {"services/api/smelt.yml": "rules: {complexity: on}\n"})
 

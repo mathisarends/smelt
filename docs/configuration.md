@@ -217,7 +217,9 @@ architecture:
 
 - It **replaces** the root `architecture` for the member's packages. It is not
   merged with it. The root architecture still governs the root project and
-  every member without its own.
+  every member without its own. An omitted or empty mapping (`architecture: {}`)
+  inherits the root architecture. If the root names a package governed by a member,
+  move the entry to that member's config or remove the member architecture.
 - Every module it names (`features`, `shared`, `composition_root`, `modules`,
   `wiring`) must lie inside the member's own packages. Layers without features
   span the member's packages, not the whole workspace.
@@ -265,9 +267,10 @@ ignores and replacement member architectures as policy decisions as well.
 ### Workspace initialization
 
 Run `smelt init` in a uv workspace root to write one shared root config and an
-architecture draft in every discovered Python member. `--maintainability` writes
-the style selection in the root. Each member gets its own inferred layers,
-features, shared code and composition root. No observed cross-member import is
+config in every discovered Python member. `--maintainability` writes the style
+selection in the root. A member gets its own architecture when Smelt infers layers,
+features, shared code or a composition root. Other members inherit the root
+architecture. No observed cross-member import is
 automatically blessed as a member-boundary allowance: review and add those in
 the root.
 
