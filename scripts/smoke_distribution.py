@@ -101,7 +101,7 @@ def smoke(directory: Path) -> None:
                 ["rules"],
                 ["explain", "SMT101"],
                 ["explain", "SMT336", "--format", "json"],
-                ["explain", "information-hiding", "--format", "json"],
+                ["explain", "visibility", "--format", "json"],
                 ["config", "schema"],
             ):
                 run([str(binary), *arguments], root)

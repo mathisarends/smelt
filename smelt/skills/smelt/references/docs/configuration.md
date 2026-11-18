@@ -4,9 +4,9 @@ Use `smelt.yml` for project configuration; `smelt init` creates it by default.
 Existing `smelt.yaml` files remain supported. When both filenames exist in the
 same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
 
-Configure a fixed check, a coherent rule group or a whole family (such as
-`typing`) once, by name. Rule names have the form `family/finding`. The value
-enables the rule and sets its severity. No separate `review_*` switch is needed.
+Configure each fixed check by its individual name or SMT code. Rule names have
+the form `family/finding`. The value activates that check and sets its severity.
+A family selector can disable or cap rules that are already active.
 See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Stable SMT codes remain valid aliases and keep existing debt identities.
@@ -42,10 +42,8 @@ rules:
 
 Generate this explicit starting selection with `smelt init --maintainability`.
 The flag chooses what `init` writes; later checks read the configured entries.
-`information-hiding` covers SMT316/SMT320/SMT335/SMT429/SMT430, including public APIs
-used only by tests. Individual entries override a group in the same map regardless
-of key order; closest-package overrides still win. Existing individual selections
-remain supported. See [group scope and migration](rule-selection.md#information-hiding).
+The visibility reviews cover APIs used only by tests. See
+[visibility reviews](rule-selection.md#information-hiding).
 Plain `init` retains its conservative architecture starter. Neither command
 overwrites an existing config without `--force`.
 
@@ -429,12 +427,12 @@ structure:
     supported-integrations:
       match: harnessed.integrations
       rules:
-        information-hiding: off
+        visibility: off
         layout/misplaced-static-helper: off
     strict-core:
       match: harnessed.core
       rules:
-        information-hiding: error
+        visibility/internal-public-member: error
 
 tests:
   assertion_helpers: [tests.assertions.assert_response]

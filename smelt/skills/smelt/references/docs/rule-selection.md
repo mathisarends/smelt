@@ -18,7 +18,7 @@ Every rule name starts with its family. Enable an individual rule by canonical
 name or stable SMT code. The value `on` uses its catalog severity.
 
 Use `smelt check --select typing` or `smelt check --select ALL` to explore the
-catalog. In YAML, families, groups and `ALL` can turn rules `off` or cap the
+catalog. In YAML, families and `ALL` can turn rules `off` or cap the
 severity of rules already active through an individual entry or applicable
 policy. A broad severity with no active matching rule is a configuration error.
 
@@ -28,7 +28,7 @@ rules:
   architecture/import-cycle: on  # Enable this named rule at its catalog severity.
 ```
 
-Precedence within a map is `ALL`, then family, then group, then individual rule.
+Precedence within a map is `ALL`, then family, then individual rule.
 Package contracts restrict broad settings to source rules. Strict coverage protects
 SMT306 from broad settings.
 
@@ -41,38 +41,17 @@ earlier setting. A broad setting can disable or cap matching rules. Use
 
 ## Information hiding
 
-`smelt check --select information-hiding` explores five visibility rules.
-It includes functions and methods (SMT316), module constants and type
-aliases (SMT320), data attributes (SMT335), and functions/attributes whose only
-external consumers are tests (SMT429/SMT430). Test access alone does not justify
-a public API. Each check retains its conservative exclusions, evidence, stable
-code, suppression and debt identity. It asks for review; it cannot prove a rename
-is safe or observe consumers outside the configured analysis scope.
+The visibility reviews cover functions and methods (SMT316), module constants
+and type aliases (SMT320), data attributes (SMT335) and APIs whose only observed
+consumers are tests (SMT429 and SMT430). Enable the ones your project uses by
+individual name. Explore these five together with:
 
-The current test-only checks cover module functions and data attributes. Methods
-with observed test users retain SMT316's external-use exclusion. Grouping does not
-expand the underlying checks' evidence or coverage.
-
-```yaml
-rules:
-  visibility/internal-public-member: warning
-  visibility/internal-public-attribute: off  # Keep this specific review disabled.
+```sh
+smelt check --select SMT316,SMT320,SMT335,SMT429,SMT430
 ```
 
-An individual rule entry overrides its group's severity in the same map,
-regardless of YAML key order. A closer package setting overrides an enclosing
-setting, including an individual parent setting. Group `off` disables all five
-members unless an individual entry or closer package re-enables one. Duplicate
-name/code entries for an individual rule remain configuration errors.
-
-The same group works in package `rules`, `--select`, `--ignore` and scoped
-`ignore` entries. Inline suppressions continue to use stable SMT codes or
-prefixes. Inspect the membership with `smelt explain information-hiding`; catalog
-JSON exposes a `groups` list on every rule.
-
-Private instance state is valid. Moving private class constants to module scope
-(SMT334) and extracting static helpers (SMT317) concern placement and stay
-independent. They are not members of this group.
+The static checker cannot prove a rename is safe. Preserve deliberate public
+interfaces and review external consumers before editing them.
 
 ## Workspace members
 
@@ -136,12 +115,12 @@ for the defaults.
 ```bash
 smelt rules --format json
 smelt explain visibility/internal-public-member
-smelt check --select information-hiding,tests/unbounded-wait
+smelt check --select visibility,tests/unbounded-wait
 smelt check --select SMT3
 smelt check --select ALL --ignore architecture/import-cycle
 ```
 
-`--select` replaces normal selection and accepts canonical names, rule groups,
+`--select` replaces normal selection and accepts canonical names, families,
 stable code prefixes and `ALL`. `--ignore` accepts the same selectors. A selection enables
 fixed patterns without additional policy switches. Architecture/style checks
 still require their actual model or parameters where the catalog says so.

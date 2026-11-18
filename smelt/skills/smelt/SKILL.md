@@ -33,11 +33,11 @@ installed skill records the CLI version that installed it.
 ## Policy and repair rules
 
 - Enable rules individually by name or stable SMT code. A named `on` uses the
-  catalog severity. Families, groups and `ALL` in YAML can only disable or cap
+  catalog severity. Families and `ALL` in YAML can only disable or cap
   active rules. Use local `extends` files to share explicit policy.
   Architecture, package and test options activate their associated rules.
   Use `smelt rules --unconfigured` to find named checks to review after upgrades.
-- `--select` replaces normal selection and accepts names, families, groups,
+- `--select` replaces normal selection and accepts names, families,
   SMT prefixes and `ALL`. Explicit `off` entries still apply. Strict coverage
   takes precedence over selection and severity settings.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;

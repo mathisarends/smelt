@@ -37,9 +37,9 @@ from smelt.engine.file_checks import rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_settings import RuleSettings
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.meta import ResolvedDebt, SuppressionWithoutReason, UnusedSuppression
 from smelt.rules.registry import build_rule_set
+from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -110,9 +110,6 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
             else "Enable by rule setting or --select.",
         },
         scope=getattr(rule, "scope", "source"),
-        groups=tuple(
-            group.name for group in RULE_GROUPS.values() if rule.code in group.codes
-        ),
     )
 
 
@@ -483,7 +480,7 @@ def _resolve_active_rules(
             matches = rules.matching_codes(prefix)
             if not matches:
                 msg = (
-                    f'unknown rule prefix "{prefix}" for --{key}{_prefix_suggestion(prefix, known)}; '
+                    f'unknown rule prefix "{prefix}" for --{key}{retired_hint(prefix, {}) or _prefix_suggestion(prefix, known)}; '
                     "`smelt rules` lists valid codes"
                 )
                 raise InvalidOptionError(msg, option=f"--{key}", value=prefix)

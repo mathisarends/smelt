@@ -183,8 +183,8 @@ def _add_check(sub: _Subparsers) -> None:
 
 
 def _add_discovery(sub: _Subparsers) -> None:
-    explain = sub.add_parser("explain", help="explain a rule or rule group")
-    explain.add_argument("rule", metavar="CODE|NAME|GROUP")
+    explain = sub.add_parser("explain", help="explain a rule or rule family")
+    explain.add_argument("rule", metavar="CODE|NAME|FAMILY")
     explain.add_argument("--format", choices=["text", "json"], default="text")
     explain.set_defaults(handler=commands.handler("explain"))
 

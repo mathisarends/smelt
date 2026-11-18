@@ -10,7 +10,6 @@ from smelt.config.models import ALL_RULES, RuleOverride
 from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
-from smelt.rules.groups import RULE_GROUPS
 from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
@@ -331,13 +330,7 @@ class RuleSettings:
             rule = affected[0]
             label = f"{rule.name} ({rule.code})"
         else:
-            kind = (
-                "group "
-                if selector in RULE_GROUPS
-                else "family "
-                if selector != ALL_RULES
-                else ""
-            )
+            kind = "family " if selector != ALL_RULES else ""
             count = len(affected)
             label = f"{kind}{selector} ({count} {'rule' if count == 1 else 'rules'})"
         return f"lowering {label} below the inherited root severity requires {{severity: {setting}, reason: '...'}}"
@@ -399,7 +392,7 @@ class RuleSettings:
     ) -> dict[str, _Setting]:
         """Resolve selectors to their winning settings, retaining reasons.
 
-        ALL is the broadest selection, then a family, then a group, then a single
+        ALL is the broadest selection, then a family, then a single
         rule, regardless of key order. Broad selections skip ``excluded`` codes,
         which only an individual entry can name.
         """
@@ -553,19 +546,17 @@ class RuleSettings:
         return f"a broad selector cannot enable rules in configuration; list the rules you want individually: {names}"
 
     def _broad_selection(self, key: str) -> tuple[int, tuple[str, ...]] | None:
-        """Breadth rank and codes of ALL, a family or a rule group, else None."""
+        """Breadth rank and codes of ALL or a family, else None."""
         if key == ALL_RULES:
             return 0, tuple(self.defaults)
         if (family := self.rules.family_codes(key)) is not None:
             return 1, family
-        if group := RULE_GROUPS.get(key):
-            return 2, group.codes
         return None
 
     def _suggestion(self, key: str) -> str:
         families = [category.value for category in Category]
         return retired_hint(key, self.codes) or did_you_mean(
-            key, [*self.codes, *RULE_GROUPS, *families]
+            key, [*self.codes, *families]
         )
 
 

@@ -2,9 +2,17 @@
 
 ## 0.12 to 0.13
 
+### Removed rule group
+
+Replace the old `information-hiding` selector with SMT316, SMT320, SMT335,
+SMT429 and SMT430 using the former severity for each entry. Use these same
+codes as a comma-separated CLI selection when you want the exact old scope.
+The `visibility` family also includes other rules. Catalog metadata no longer
+includes rule groups.
+
 ### Explicit rule activation
 
-Replace enabling family, group and `ALL` settings with the individual names or
+Replace enabling family and `ALL` settings with the individual names or
 SMT codes you intend to run. Broad settings can disable or cap active rules.
 Replace the unreleased `smelt:recommended` preset with named entries from
 `smelt init --maintainability` or a local `extends` file.

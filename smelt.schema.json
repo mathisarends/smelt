@@ -262,7 +262,7 @@
       "additionalProperties": false,
       "properties": {
         "rule": {
-          "description": "Rule name, group, SMT code prefix or ALL to ignore within the specified scope.",
+          "description": "Rule name, family, SMT code prefix or ALL to ignore within the specified scope.",
           "title": "Rule",
           "type": "string"
         },
@@ -2063,7 +2063,7 @@
     },
     "RuleSettings": {
       "type": "object",
-      "description": "Enable individual checks by name or SMT code. Families, groups and ALL can disable or cap active rules.",
+      "description": "Enable individual checks by name or SMT code. Families and ALL can disable or cap active rules.",
       "properties": {
         "architecture/layer-boundary": {
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -2838,14 +2838,6 @@
             "warning"
           ],
           "$ref": "#/$defs/RuleSetting"
-        },
-        "information-hiding": {
-          "$ref": "#/$defs/BroadRuleSetting",
-          "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
-          "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
-          "examples": [
-            "warning"
-          ]
         },
         "architecture": {
           "$ref": "#/$defs/BroadRuleSetting",
@@ -3724,7 +3716,7 @@
     },
     "SourceRuleSettings": {
       "type": "object",
-      "description": "Enable source rules by name or SMT code. ALL, families and groups disable or cap active source rules. Configure test-file and project rules at project level.",
+      "description": "Enable source rules by name or SMT code. ALL and families disable or cap active source rules. Configure test-file and project rules at project level.",
       "properties": {
         "architecture/layer-boundary": {
           "title": "SMT101: A layer imports a layer outside its `may_depend_on` allowlist.",
@@ -4355,14 +4347,6 @@
             "warning"
           ],
           "$ref": "#/$defs/RuleSetting"
-        },
-        "information-hiding": {
-          "$ref": "#/$defs/BroadRuleSetting",
-          "title": "information-hiding: Keep implementation details private, including APIs exposed only for tests.",
-          "description": "Keep implementation details private, including APIs exposed only for tests. Review unnecessarily public functions, methods, module constants/type aliases and data attributes. Test-only consumers do not justify public visibility; the current test-only reviews cover module functions and data attributes. Methods with observed test users retain SMT316's external-use exclusion. Each diagnostic retains its own evidence, conservative exclusions and stable SMT code. This selection does not include moving private class constants (SMT334) or extracting static helpers (SMT317): those are placement conventions. A group severity supplies the default for its members; explicit individual settings in the same map override it regardless of key order. Closest-package overrides still win. Existing individual names, suppressions and debt identities remain valid. Members: SMT316, SMT320, SMT335, SMT429, SMT430.",
-          "examples": [
-            "warning"
-          ]
         },
         "architecture": {
           "$ref": "#/$defs/BroadRuleSetting",
