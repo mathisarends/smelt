@@ -35,9 +35,7 @@ class TestInferMirror:
 
         guess = infer_mirror(tmp_path, ["tests"], [tmp_path / "app"])
 
-        assert guess == MirrorGuess(
-            DEFAULT_MIRROR, mirrored=2, total=3, name_clashes=("tests",)
-        )
+        assert guess == MirrorGuess(DEFAULT_MIRROR, mirrored=2, total=3)
 
     def test_root_pattern(self, tmp_path: Path) -> None:
         write_project(
@@ -61,14 +59,26 @@ class TestInferMirror:
 
 class TestClashingTestRoots:
     def test_without_packages_or_importlib(self, tmp_path: Path) -> None:
-        write_project(tmp_path, {"tests/billing/test_invoice.py": ""})
+        write_project(
+            tmp_path,
+            {"tests/billing/test_invoice.py": "", "tests/archive/test_invoice.py": ""},
+        )
 
-        assert _clashing_test_roots(tmp_path, ["tests"]) == ("tests",)
+        assert _clashing_test_roots(tmp_path, ["tests"]) == (
+            "tests/archive/test_invoice.py",
+            "tests/billing/test_invoice.py",
+        )
 
     def test_test_packages_tell_files_apart(self, tmp_path: Path) -> None:
         write_project(
             tmp_path,
-            {"tests/__init__.py": "", "tests/billing/test_invoice.py": ""},
+            {
+                "tests/__init__.py": "",
+                "tests/billing/__init__.py": "",
+                "tests/billing/test_invoice.py": "",
+                "tests/archive/__init__.py": "",
+                "tests/archive/test_invoice.py": "",
+            },
         )
 
         assert _clashing_test_roots(tmp_path, ["tests"]) == ()
@@ -81,10 +91,15 @@ class TestClashingTestRoots:
                     '[tool.pytest.ini_options]\naddopts = ["--import-mode=importlib"]\n'
                 ),
                 "backend/tests/users/test_router.py": "",
-                "libs/agent/tests/test_tools.py": "",
+                "backend/tests/chat/test_router.py": "",
+                "libs/agent/tests/core/test_tools.py": "",
+                "libs/agent/tests/cli/test_tools.py": "",
             },
         )
 
         roots = ["backend/tests", "libs/agent/tests"]
 
-        assert _clashing_test_roots(tmp_path, roots) == ("libs/agent/tests",)
+        assert _clashing_test_roots(tmp_path, roots) == (
+            "libs/agent/tests/cli/test_tools.py",
+            "libs/agent/tests/core/test_tools.py",
+        )
