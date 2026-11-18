@@ -23,14 +23,27 @@ def validate_semantics(
         roots=scopes[0].packages if scopes else config.project.root_packages,
         member_owners={
             package: path
-            for path, member in config.members.items()
-            if member.governs_architecture
-            for package in member.packages
+            for path, packages in config.workspace_packages.items()
+            if path
+            for package in packages
         },
     )
     validator.run()
     validator.contracts()
     errors, warnings = validator.errors, validator.warnings
+    if (
+        scopes
+        and not scopes[0].packages
+        and config.architecture.has_layout
+        and not errors
+    ):
+        errors.append(
+            ConfigIssue(
+                "architecture",
+                "the workspace root has no selected packages; move layers and features "
+                "to the member configs",
+            )
+        )
     if config.architecture.members and config.project.workspace != "uv":
         errors.append(
             ConfigIssue("architecture.members", "requires project.workspace: uv")
@@ -172,8 +185,8 @@ class _Validator:
         if owner is not None:
             self._error(
                 path,
-                f'"{module}" is governed by the member architecture in {owner}; '
-                "declare it in that member's config or remove the member architecture",
+                f'"{module}" belongs to the workspace member {owner}; '
+                "declare it in that member's config",
             )
             return
         where = (
@@ -181,12 +194,7 @@ class _Validator:
             if self.location == "architecture"
             else "this member's packages"
         )
-        roots = (
-            self.config.project.root_packages
-            if self.location == "architecture"
-            else self.roots
-        )
-        self._error(path, f'"{module}" is not inside {where} ({", ".join(roots)})')
+        self._error(path, f'"{module}" is not inside {where} ({", ".join(self.roots)})')
 
     def _check_layer(self, path: str, name: str) -> None:
         layers = self.architecture.layers

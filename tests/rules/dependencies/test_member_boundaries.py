@@ -286,3 +286,37 @@ def test_root_project_participates_as_dot(tmp_path: Path) -> None:
 
     assert [v.code for v in found] == ["SMT111", "SMT112"]
     assert all(v.member == "." for v in found)
+
+
+@pytest.mark.parametrize(
+    "api_config",
+    [
+        "",
+        "architecture: {packages: {api: {match: api, public: ['.']}}}",
+        "architecture: {layers: {infra: {path: infra}}}",
+    ],
+)
+def test_local_layer_checks_do_not_cross_member_boundaries(
+    tmp_path: Path, api_config: str
+) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
+            + "  layers: {domain: {path: domain}, infra: {path: infra}}\n",
+            "pyproject.toml": '[project]\nname = "root-app"\n'
+            + MEMBER_BOUNDARIES["pyproject.toml"],
+            "src/root_app/__init__.py": "",
+            "src/root_app/domain/__init__.py": "",
+            "src/root_app/domain/service.py": "import root_app.infra.storage\nimport api.infra.http\n",
+            "src/root_app/infra/__init__.py": "",
+            "src/root_app/infra/storage.py": "",
+            "services/api/src/api/infra/__init__.py": "",
+            "services/api/src/api/infra/http.py": "",
+            "services/api/smelt.yml": api_config,
+        },
+    )
+
+    [finding] = violations(root, CheckOptions(select=("SMT101",)))
+
+    assert finding.target_module == "root_app.infra.storage"

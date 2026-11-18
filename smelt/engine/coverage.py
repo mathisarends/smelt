@@ -33,7 +33,8 @@ def effective_coverage(
     report = {
         "mode": project.coverage,
         "architecture_configured": bool(
-            architecture.has_layout or ctx.architecture_scopes
+            architecture.has_layout
+            or any(member.governs_architecture for member in config.members.values())
         ),
         **inventory.summary(),
         "policy_hash": policy_hash(config),
@@ -48,7 +49,9 @@ def effective_coverage(
         ],
         "omitted_workspace_members": _omitted_members(ctx),
         "member_architectures": {
-            scope.member: list(scope.packages) for scope in ctx.architecture_scopes[1:]
+            path: list(member.packages)
+            for path, member in config.members.items()
+            if member.governs_architecture
         },
         "member_boundaries": {
             pattern: policy.model_dump(mode="json")

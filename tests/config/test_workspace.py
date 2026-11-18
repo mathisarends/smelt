@@ -220,7 +220,7 @@ def test_member_style_rejects_blank_reasons(tmp_path: Path, reason: str) -> None
     assert caught.value.issues[0].path == "style.reasons.max_positional_parameters"
 
 
-def test_member_contract_style_cannot_override_root_contract_without_a_reason(
+def test_root_style_override_cannot_target_a_member(
     tmp_path: Path,
 ) -> None:
     member = "services/api/smelt.yml"
@@ -239,10 +239,11 @@ def test_member_contract_style_cannot_override_root_contract_without_a_reason(
         },
     )
 
-    with pytest.raises(ConfigError, match="requires a reason") as caught:
+    with pytest.raises(ConfigError, match="owning member config") as caught:
         load_config(root / "smelt.yml")
 
-    assert caught.value.issues[0].path == "style.overrides.legacy.future_annotations"
+    assert caught.value.issues[0].path == "style.overrides.domain.match"
+    write_project(root, {"smelt.yml": ROOT + "style: {future_annotations: forbid}\n"})
     write_project(
         root,
         {
@@ -332,11 +333,10 @@ def test_package_names_must_be_unique_across_members(tmp_path: Path) -> None:
         load_config(root / "smelt.yml")
 
 
-def test_empty_member_architecture_inherits_root(tmp_path: Path) -> None:
+def test_empty_member_architecture_has_no_layout(tmp_path: Path) -> None:
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": ROOT + "architecture: {shared: [core]}\n",
             "packages/core/smelt.yml": "architecture: {}\n",
         },
     )
@@ -344,14 +344,13 @@ def test_empty_member_architecture_inherits_root(tmp_path: Path) -> None:
     config = load_config(root / "smelt.yml").config
 
     assert config.members["packages/core"].architecture is None
-    assert config.architecture.shared == ["core"]
+    assert not config.architecture.has_layout
 
 
-def test_member_package_api_can_inherit_root_layers(tmp_path: Path) -> None:
+def test_member_package_api_has_no_local_layers(tmp_path: Path) -> None:
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": ROOT + "architecture: {layers: {domain: {path: domain}}}\n",
             "packages/core/smelt.yml": """
                 architecture:
                   packages:
@@ -369,7 +368,7 @@ def test_member_package_api_can_inherit_root_layers(tmp_path: Path) -> None:
     contract = loaded.structure.contracts["packages/core:public-api"]
     assert contract.public == ["."]
     assert contract.max_positional_parameters == 2
-    assert set(loaded.architecture.layers) == {"domain"}
+    assert not loaded.architecture.has_layout
 
 
 def test_root_architecture_error_names_the_governing_member(tmp_path: Path) -> None:
@@ -381,9 +380,7 @@ def test_root_architecture_error_names_the_governing_member(tmp_path: Path) -> N
         },
     )
 
-    with pytest.raises(
-        ConfigError, match=r"member architecture.*packages/core"
-    ) as caught:
+    with pytest.raises(ConfigError, match=r"workspace member.*packages/core") as caught:
         load_config(root / "smelt.yml")
 
     assert caught.value.issues[0].path == "architecture.shared[0]"
@@ -430,3 +427,31 @@ def test_the_root_cannot_declare_members_inline(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="each workspace member keeps its own"):
         load_config(root / "smelt.yml")
+
+
+@pytest.mark.parametrize("path", ["services/api/src/api", "tools/example"])
+def test_misplaced_workspace_config_warns_and_loads_root(
+    tmp_path: Path, path: str
+) -> None:
+    misplaced = f"{path}/smelt.yaml"
+    root = _workspace(tmp_path, {misplaced: "rules: [this file is ignored]\n"})
+
+    loaded = load_config(root / misplaced)
+
+    assert loaded.root == root.resolve()
+    [warning] = loaded.warnings
+    assert warning.source == misplaced
+    assert "ignored config" in warning.message
+
+
+def test_member_without_workspace_opt_in_explains_root_setting(tmp_path: Path) -> None:
+    root = _workspace(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [api]}\n",
+            "services/api/smelt.yml": "style: {max_positional_parameters: 2}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=r"project\.workspace: uv"):
+        load_config(root / "services/api/smelt.yml")

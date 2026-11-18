@@ -486,8 +486,11 @@ class ArchitectureConfig(_Model):
 
     @property
     def has_layout(self) -> bool:
-        """Whether the file configures architecture beyond package APIs."""
-        return bool(self.model_fields_set - {"packages", "canonical_exports"})
+        """Whether the file declares local architecture."""
+        return bool(
+            self.model_fields_set
+            - {"packages", "canonical_exports", "import_graph", "members"}
+        )
 
     @field_validator("canonical_exports")
     @classmethod
@@ -1024,7 +1027,7 @@ class MemberConfig(_Model):
     )
     architecture: ArchitectureConfig | None = Field(
         default=None,
-        description="A member can supply package interfaces while inheriting the root architecture. Features, layers and other internal architecture replace the root architecture for this member.",
+        description="Features, layers and package APIs for this member. Local architecture belongs to the member and is never inherited.",
     )
     debt: str | None = Field(
         default=None,
@@ -1041,7 +1044,7 @@ class MemberConfig(_Model):
 
     @property
     def governs_architecture(self) -> bool:
-        """Whether this member replaces the root's internal architecture."""
+        """Whether this member declares its own internal architecture."""
         return bool(self.architecture and self.architecture.has_layout)
 
     @model_validator(mode="after")
@@ -1071,7 +1074,7 @@ class MemberConfig(_Model):
 
     @field_validator("architecture")
     @classmethod
-    def _empty_architecture_inherits(
+    def _omit_empty_architecture(
         cls, value: ArchitectureConfig | None
     ) -> ArchitectureConfig | None:
         return value if value is not None and value.model_fields_set else None
@@ -1150,6 +1153,19 @@ class SmeltConfig(_Model):
 
     _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
     _workspace_base: Self | None = PrivateAttr(default=None)
+    _workspace_packages: dict[str, tuple[str, ...]] = PrivateAttr(default_factory=dict)
+
+    @property
+    def workspace_packages(self) -> Mapping[str, tuple[str, ...]]:
+        """Top-level packages by workspace directory, with an empty key for root."""
+        return self._workspace_packages
+
+    def with_workspace_packages(self, packages: Mapping[str, Iterable[str]]) -> Self:
+        scoped = self.model_copy()
+        scoped._workspace_packages = {
+            path: tuple(names) for path, names in packages.items()
+        }
+        return scoped
 
     @property
     def workspace_base(self) -> Self | None:

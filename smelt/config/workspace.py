@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.config.models import (
+    ArchitectureConfig,
     IgnoreEntry,
     PackageContract,
     PackagePolicy,
@@ -108,31 +109,17 @@ def debt_scope_for_path(
 
 
 def architecture_scopes(config: SmeltConfig) -> tuple[ArchitectureScope, ...]:
-    """The root scope and one per member architecture; empty if no member has one."""
-    members = [
-        ArchitectureScope(
-            path,
-            config.model_copy(
-                update={
-                    "architecture": member.architecture.model_copy(
-                        update={"import_graph": config.architecture.import_graph}
-                    )
-                }
-            ),
-            member.packages,
-        )
-        for path, member in sorted(config.members.items())
-        if member.governs_architecture and member.architecture is not None
-    ]
-    if not members:
+    """Independent architectures for the root project and every workspace member."""
+    if not config.workspace_packages:
         return ()
-    taken = {name for scope in members for name in scope.packages}
-    root = ArchitectureScope(
-        None,
-        config,
-        tuple(name for name in config.project.root_packages if name not in taken),
+    return (
+        ArchitectureScope(None, config, config.workspace_packages.get("", ())),
+        *(
+            ArchitectureScope(path, _member_architecture(config, path), packages)
+            for path, packages in sorted(config.workspace_packages.items())
+            if path
+        ),
     )
-    return (root, *members)
 
 
 def scope_for_path(
@@ -199,6 +186,17 @@ def member_raw_issues(raw: object) -> list[ConfigIssue]:
             for key in ("import_graph", "members", "canonical_exports")
             if key in architecture
         )
+    style = raw.get("style")
+    if isinstance(style, dict):
+        issues.extend(
+            ConfigIssue(
+                f"style.{key}",
+                "not allowed in a workspace member config: this policy "
+                "is set once in the workspace root",
+            )
+            for key in ("forbidden_names", "file_naming")
+            if key in style
+        )
     return issues
 
 
@@ -262,6 +260,9 @@ def expand_workspace(
             )
         }
     )
+    expanded = expanded.with_workspace_packages(
+        {"": packages.get("", []), **{path: packages.get(path, []) for path in members}}
+    )
     base = expanded.model_copy(update={"members": {}})
     return _compile_members(expanded, packages).with_workspace_base(base)
 
@@ -309,6 +310,17 @@ def member_directories(
             else:
                 found[relative] = MemberDirectory(relative)
     return [found[key] for key in sorted(found)]
+
+
+def _member_architecture(config: SmeltConfig, path: str) -> SmeltConfig:
+    member = config.members.get(path)
+    local = (
+        member.architecture if member and member.architecture else ArchitectureConfig()
+    )
+    architecture = local.model_copy(
+        update={"import_graph": config.architecture.import_graph}
+    )
+    return config.model_copy(update={"architecture": architecture})
 
 
 def _declares_project(root: Path, *, store: SourceStore) -> bool:
@@ -380,13 +392,30 @@ def _compile_members(
 
     Member rules stay in ``config.members``: they apply by path, so they also
     reach the member's tests. Structure options become one implicit contract per
-    member package, so a member contract or a root contract closer to a module
-    still overrides them.
+    member package. More specific overrides belong to that member.
     """
     contracts = dict(config.structure.contracts)
     ignore = list(config.ignore)
     exclude = list(config.project.exclude)
-    issues: list[ConfigIssue] = []
+    issues = [
+        ConfigIssue(
+            f"{section}.{name}.match",
+            f'"{policy.match}" can match packages in {", ".join(owners)}; '
+            "move the entry to the owning member config",
+        )
+        for section, entries in (
+            ("architecture.packages", config.architecture.packages),
+            ("style.overrides", config.style.overrides),
+        )
+        for name, policy in entries.items()
+        if (
+            owners := [
+                path
+                for path, names in sorted(packages.items())
+                if path and names and policy.match.split(".")[0] in ("*", *names)
+            ]
+        )
+    ]
     for path, member in config.members.items():
         names = packages.get(path, [])
         location = f"members.{path}"

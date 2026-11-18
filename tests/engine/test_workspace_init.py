@@ -61,6 +61,7 @@ def test_init_writes_shared_root_and_independent_member_drafts(
     assert "#     packages/*:" in draft
     assert "#     services/*:" in draft
     assert "#   services/api -> packages/core" in draft
+    assert "#       - packages/core" in draft
     assert config.architecture.members == {}
     assert set(config.architecture.layers) == set()
     api = config.members["services/api"].architecture
@@ -105,7 +106,7 @@ def test_member_init_preserves_root_and_other_members(
 
 
 @pytest.mark.parametrize("member_only", [False, True])
-def test_flat_member_draft_inherits_root_architecture(
+def test_flat_member_draft_leaves_local_layout_to_the_member(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
@@ -119,10 +120,7 @@ def test_flat_member_draft_inherits_root_architecture(
             "libs/core/src/core/ids.py": "VALUE = 1\n",
         },
     )
-    shared = (
-        "version: 1\nproject: {workspace: uv, coverage: strict}\n"
-        "architecture: {shared: [core]}\n"
-    )
+    shared = "version: 1\nproject: {workspace: uv, coverage: strict}\n"
     if member_only:
         write_project(root, {"smelt.yml": shared})
     monkeypatch.chdir(root)
@@ -133,6 +131,8 @@ def test_flat_member_draft_inherits_root_architecture(
     )
     if not member_only:
         write_project(root, {"smelt.yml": shared})
+    assert {finding.code for finding in check(root).report.violations} == {"SMT306"}
+    write_project(root, {"libs/core/smelt.yml": "architecture: {shared: [core]}\n"})
     assert check(root).report.violations == []
 
 

@@ -375,7 +375,7 @@ def _governing_view(ctx: AnalysisContext, target: Target) -> AnalysisContext:
 @dataclass(frozen=True, slots=True)
 class _WorkspacePolicy:
     member: str
-    architecture: str
+    architecture: str | None
     rules: tuple[str, ...]
 
 
@@ -409,6 +409,8 @@ def _workspace_sources(
         and config is not None
         and config.governs_architecture
         else root_config
+        if member == "." and loaded.config.architecture.has_layout
+        else None
     )
     sources = [_config_source(path, root=loaded.root) for path in inputs]
     if module is not None:
@@ -724,8 +726,9 @@ def _header(briefing: Briefing, ctx: AnalysisContext) -> list[str]:
     if (policy := briefing.workspace_policy) is not None:
         lines.append(f"Member: {policy.member}")
         source = policy.architecture
-        label = "member" if "/" in source else "root"
-        lines.append(f"Architecture: {source} ({label})")
+        label = "root" if policy.member == "." else "member"
+        architecture = f"{source} ({label})" if source else "no local layout declared"
+        lines.append(f"Architecture: {architecture}")
         lines.append(f"Rules: {' < '.join(policy.rules)}")
     return lines
 

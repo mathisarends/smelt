@@ -38,12 +38,18 @@ def boundary_imports(
     resolved target/names, plus a shortest chain with source lines for each hop.
     Public facade visibility is a separate, symbol-aware contract (SMT107).
     """
+    model = ctx.model
     for detail in ctx.imports.all_imports():
-        yield detail, ()
+        if model.owns(detail.importer) and (
+            detail.external or model.owns(detail.imported)
+        ):
+            yield detail, ()
     if not ctx.config.architecture.import_graph.transitive:
         return
     include_tc = ctx.config.architecture.import_graph.type_checking == "include"
     for module in ctx.imports.modules():
+        if not model.owns(module):
+            continue
         seen = {
             (detail.imported, detail.names)
             for detail in ctx.imports.imports_of(module)
@@ -54,7 +60,11 @@ def boundary_imports(
         ):
             target = path[-1]
             key = (target.imported, target.names)
-            if len(path) == 1 or key in seen:
+            if (
+                len(path) == 1
+                or key in seen
+                or (not target.external and not model.owns(target.imported))
+            ):
                 continue
             seen.add(key)
             yield (
