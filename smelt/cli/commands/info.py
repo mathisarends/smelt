@@ -131,7 +131,7 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         mode="json",
         by_alias=True,
         exclude={"members"},
-        exclude_none=True,
+        exclude_none=base is not None,
         exclude_unset=base is not None,
     )
     if args.sources:

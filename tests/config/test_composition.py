@@ -72,6 +72,48 @@ def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) ->
     assert "project.exclude[0]" not in loaded.origins
 
 
+def test_replacing_style_options_drops_their_inherited_legacy_reasons(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": """
+                version: 1
+                project: {root_packages: [app]}
+                style:
+                  max_positional_parameters: 5
+                  max_module_imports: 10
+                  reasons: {max_positional_parameters: Old limit., max_module_imports: Keep this reason.}
+                  overrides:
+                    app:
+                      match: app
+                      max_positional_parameters: 4
+                      reasons: {max_positional_parameters: Old package limit.}
+                """,
+            "smelt.yml": """
+                extends: base.yml
+                style:
+                  max_positional_parameters: {value: 3, reason: Current limit.}
+                  overrides:
+                    app: {max_positional_parameters: 2}
+                """,
+        },
+    )
+
+    loaded = load_config(tmp_path / "smelt.yml")
+    style = loaded.config.style
+
+    assert style.max_positional_parameters == 3
+    assert style.reasons == {
+        "max_positional_parameters": "Current limit.",
+        "max_module_imports": "Keep this reason.",
+    }
+    assert style.overrides["app"].max_positional_parameters == 2
+    assert style.overrides["app"].reasons == {}
+    assert "style.overrides.app.reasons.max_positional_parameters" not in loaded.origins
+
+
 @pytest.mark.parametrize(
     "value", ["[]", "null", "''", "'https://example.com/policy.yml'", "42"]
 )

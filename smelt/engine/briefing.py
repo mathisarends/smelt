@@ -496,7 +496,9 @@ def _rule_brief(
         if decision.location:
             entry.update(
                 key=decision.location,
-                source=_policy_source(loaded, decision.location),
+                source=_policy_source(
+                    loaded, decision.location, source=decision.source
+                ),
                 reason=decision.reason,
                 activation="rules",
             )
@@ -543,8 +545,10 @@ def _activation_brief(
     return {"activation": "policy", "description": activation.description}
 
 
-def _policy_source(loaded: LoadedConfig, location: str) -> str:
-    source = loaded.source_for(location)
+def _policy_source(
+    loaded: LoadedConfig, location: str, *, source: str | None = None
+) -> str:
+    source = source or loaded.source_for(location)
     return (
         _config_source(Path(source), root=loaded.root) if source else loaded.path.name
     )
