@@ -100,6 +100,38 @@ def test_member_init_preserves_root_and_other_members(
     assert "application" in architecture.layers
 
 
+@pytest.mark.parametrize("member_only", [False, True])
+def test_flat_member_draft_inherits_root_architecture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    member_only: bool,
+) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "pyproject.toml": '[tool.uv.workspace]\nmembers = ["libs/*"]\n',
+            "libs/core/src/core/__init__.py": "",
+            "libs/core/src/core/ids.py": "VALUE = 1\n",
+        },
+    )
+    shared = (
+        "version: 1\nproject: {workspace: uv, coverage: strict}\n"
+        "architecture: {shared: [core]}\n"
+    )
+    if member_only:
+        write_project(root, {"smelt.yml": shared})
+    monkeypatch.chdir(root)
+
+    assert main(["init", *(["--member", "libs/core"] if member_only else [])]) == 0
+    assert "architecture:" not in (root / "libs/core/smelt.yml").read_text(
+        encoding="utf-8"
+    )
+    if not member_only:
+        write_project(root, {"smelt.yml": shared})
+    assert check(root).report.violations == []
+
+
 def test_init_checks_all_outputs_before_writing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

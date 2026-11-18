@@ -21,6 +21,12 @@ def validate_semantics(
         config,
         architecture=config.architecture,
         roots=scopes[0].packages if scopes else config.project.root_packages,
+        member_owners={
+            package: path
+            for path, member in config.members.items()
+            if member.architecture is not None
+            for package in member.packages
+        },
     )
     validator.run()
     validator.contracts()
@@ -61,11 +67,13 @@ class _Validator:
         architecture: ArchitectureConfig,
         roots: Sequence[str],
         location: str = "architecture",
+        member_owners: Mapping[str, str] | None = None,
     ) -> None:
         self.config = config
         self.architecture = architecture
         self.roots = list(roots)
         self.location = location
+        self._member_owners = member_owners or {}
         self.errors: list[ConfigIssue] = []
         self.warnings: list[ConfigIssue] = []
 
@@ -141,26 +149,37 @@ class _Validator:
         if arch.features and arch.features.pattern:
             prefix = arch.features.pattern.rsplit(".", 1)[0]
             named.append((f"{self.location}.features.pattern", prefix))
-        roots = self.roots
+        named.extend(
+            (f"{self.location}.wiring[{index}]", pattern)
+            for index, pattern in enumerate(arch.wiring)
+        )
+        for path, module in named:
+            self._check_scope(path, module)
+        self._overlapping_sets()
+
+    def _check_scope(self, path: str, module: str) -> None:
+        prefix = module.split("*", maxsplit=1)[0].rstrip(".")
+        if any(_within(prefix, root) for root in self.roots):
+            return
+        owner = self._member_owners.get(prefix.split(".", maxsplit=1)[0])
+        if owner is not None:
+            self._error(
+                path,
+                f'"{module}" is governed by the member architecture in {owner}; '
+                "declare it in that member's config or remove the member architecture",
+            )
+            return
         where = (
             "project.root_packages"
             if self.location == "architecture"
             else "this member's packages"
         )
-        for path, module in named:
-            if not any(_within(module, root) for root in roots):
-                self._error(
-                    path,
-                    f'"{module}" is not inside {where} ({", ".join(roots)})',
-                )
-        for index, pattern in enumerate(arch.wiring):
-            prefix = pattern.split("*")[0].rstrip(".")
-            if not any(_within(prefix, root) for root in roots):
-                self._error(
-                    f"{self.location}.wiring[{index}]",
-                    f'"{pattern}" is not inside {where} ({", ".join(roots)})',
-                )
-        self._overlapping_sets()
+        roots = (
+            self.config.project.root_packages
+            if self.location == "architecture"
+            else self.roots
+        )
+        self._error(path, f'"{module}" is not inside {where} ({", ".join(roots)})')
 
     def _check_layer(self, path: str, name: str) -> None:
         layers = self.architecture.layers

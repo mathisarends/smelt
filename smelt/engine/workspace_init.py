@@ -64,9 +64,13 @@ def workspace_drafts(
             CONFIG_FILENAMES[0],
         )
         schema = posixpath.relpath(".smelt.schema.json", path)
-        drafts[posixpath.join(path, filename)] = (
-            f"# yaml-language-server: $schema={schema}\n"
-            "# Inherits shared policy from the workspace root. Review these inferred boundaries.\n"
+        policy = (
+            "# This architecture replaces the root architecture for this member. Review the inferred boundaries.\n"
             + yaml.safe_dump({"architecture": architecture}, sort_keys=False)
+            if architecture
+            else "# No member architecture was inferred. This member inherits the root architecture.\n{}\n"
+        )
+        drafts[posixpath.join(path, filename)] = (
+            f"# yaml-language-server: $schema={schema}\n" + policy
         )
     return drafts
