@@ -15,7 +15,7 @@ from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import Rule
 from smelt.rules.registry import build_rule_set
 
-BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903"}
+BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903", "SMT904"}
 
 
 def _active(extra: dict[str, object], options: CheckOptions | None = None) -> set[str]:

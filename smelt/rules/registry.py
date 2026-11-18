@@ -107,6 +107,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.meta:UnusedSuppression",
     "smelt.rules.meta:SuppressionWithoutReason",
     "smelt.rules.meta:ResolvedDebt",
+    "smelt.rules.meta:MissingRulePolicy",
 )
 
 

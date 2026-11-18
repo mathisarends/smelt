@@ -94,7 +94,7 @@ The catalog distinguishes three modes, independently of severity:
 
 | Mode | Activation |
 | --- | --- |
-| `default` | SMT301 and suppression/debt hygiene SMT901–SMT903 |
+| `default` | SMT301, suppression/debt hygiene SMT901–SMT903, and missing required rule policy SMT904 |
 | `policy` | Explicit architecture/interface policies or real parameters such as import style, mirror layout, mock paths and patch limits |
 | `explicit` | Fixed source/test patterns, import cycles and architecture/unclassified-module hints; enable with `rules` or CLI selection |
 

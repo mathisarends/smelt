@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Full checks warn with [SMT904](docs/rules/SMT904.md) when explicitly enabled
+  SMT107, SMT108, SMT109 or SMT308 has no required policy in the setting's scope.
+  Follow the reported configuration entry to supply the policy or turn off the rule.
 - Set `style.public_attribute_boundary: module` to let [SMT335](docs/rules/SMT335.md)
   suggest private names for fields used by same-module helpers and classes.
   The default is `class`. [SMT430](docs/rules/SMT430.md) uses the same boundary

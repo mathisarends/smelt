@@ -1379,5 +1379,19 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "project"
+  },
+  {
+    "target": "smelt.rules.meta:MissingRulePolicy",
+    "code": "SMT904",
+    "name": "meta/missing-rule-policy",
+    "category": "meta",
+    "default_severity": "warning",
+    "requires": [],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "project"
   }
 ]
