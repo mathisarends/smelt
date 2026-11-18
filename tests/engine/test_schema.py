@@ -29,10 +29,9 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
         assert settings["patternProperties"][f"^{rule.code}$"] == entry
-    for contract in ("StyleOverride", "MemberStyleOverride"):
-        assert schema["$defs"][contract]["properties"]["rules"] == {
-            "$ref": "#/$defs/SourceRuleSettings"
-        }
+    assert schema["$defs"]["StyleOverride"]["properties"]["rules"] == {
+        "$ref": "#/$defs/SourceRuleSettings"
+    }
     assert schema["$defs"]["RuleSeverity"]["enum"] == [
         "error",
         "warning",
@@ -43,15 +42,19 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
     assert schema["$defs"]["RuleOverride"]["required"] == ["severity", "reason"]
 
 
-def test_editor_schema_accepts_member_style_reasons() -> None:
+def test_editor_schema_accepts_inline_style_reasons() -> None:
     schema = config_json_schema()
     definitions = schema["$defs"]
 
     assert {"$ref": "#/$defs/MemberStyleConfig"} in schema["properties"]["style"][
         "anyOf"
     ]
-    assert "reasons" in definitions["MemberStyleConfig"]["properties"]
-    assert "reasons" in definitions["MemberStyleOverride"]["properties"]
+    for name in ("StyleConfig", "MemberStyleConfig", "StyleOverride"):
+        properties = definitions[name]["properties"]
+        assert properties["reasons"]["deprecated"] is True
+        _, reasoned = properties["max_positional_parameters"]["anyOf"]
+        assert reasoned["required"] == ["value", "reason"]
+        assert reasoned["additionalProperties"] is False
 
 
 def test_editor_schema_does_not_advertise_removed_switches() -> None:

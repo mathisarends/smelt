@@ -98,6 +98,8 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
     policies: dict[tuple[str, str], object] = {}
     issues: list[ConfigIssue] = []
     for contract in ctx.contracts.resolved:
+        if not contract.spec.style_override:
+            continue
         for key in PackagePolicy.model_fields:
             label = _POLICY_LABELS.get(key, f"{key} settings")
             policy = getattr(contract.spec, key)

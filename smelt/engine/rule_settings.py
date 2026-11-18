@@ -13,7 +13,7 @@ from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
 
     from smelt.analysis.context import AnalysisContext
     from smelt.config.loader import LoadedConfig
@@ -29,7 +29,9 @@ class _Setting:
     selector: str
     value: str
     broad: bool
-    reasoned: bool
+    location: str
+    reason: str | None
+    source: str | None
 
     def apply(self, inherited: str | None) -> str | None:
         if not self.broad or self.value == "off":
@@ -37,6 +39,14 @@ class _Setting:
         if inherited is None:
             return None
         return min(inherited, self.value, key=_RANK.__getitem__)
+
+
+@dataclass(frozen=True, slots=True)
+class RuleDecision:
+    severity: Severity | None
+    location: str | None = None
+    reason: str | None = None
+    source: str | None = None
 
 
 class RuleSettings:
@@ -62,15 +72,20 @@ class RuleSettings:
         # A later layer replaces what an earlier one set: the level wins over specificity.
         self._layers: list[dict[str, _Setting]] = []
         self.selector_rules: dict[str, list[str]] = {}
-        for layer in loaded.config.rule_layers:
-            entries = self._entries(layer, "rules", excluded=self._strict_guard())
+        for index, layer in enumerate(loaded.config.rule_layers):
+            source = (
+                loaded.rule_sources[index] if index < len(loaded.rule_sources) else None
+            )
+            entries = self._entries(
+                layer, "rules", excluded=self._strict_guard(), source=source
+            )
             if validate_selectors:
                 self._validate_broad(layer, "rules", entries)
             self._layers.append(entries)
         self._packages = {
             name: self._entries(
                 contract.rules,
-                f"style.overrides.{name}.rules",
+                f"{contract.style_location or f'style.overrides.{name}'}.rules",
                 excluded=frozenset(project_rules),
             )
             for name, contract in self.config.structure.contracts.items()
@@ -189,35 +204,37 @@ class RuleSettings:
         path: str | None = None,
         selected: bool = False,
     ) -> Severity | None:
-        """Root setting, then the member's, then the closest package contract."""
-        default = (
+        return self.decision(rule, ctx, module, path=path, selected=selected).severity
+
+    def decision(
+        self,
+        rule: RuleContract,
+        ctx: AnalysisContext,
+        module: str | None,
+        *,
+        path: str | None = None,
+        selected: bool = False,
+    ) -> RuleDecision:
+        """Resolve a target's severity and the setting that supplied it."""
+        value = (
             rule.default_severity.value
             if self._enabled_for(rule, ctx, module)
             else None
         )
-        value = self._apply_layers(rule.code, default)
-        if (member := self._member_for(ctx, module, path)) is not None and (
-            setting := self._members[member].get(rule.code)
-        ) is not None:
-            value = setting.apply(value)
-        if module:
-            applicable = sorted(
-                (
-                    contract
-                    for contract in ctx.contracts.resolved
-                    if module == contract.package
-                    or module.startswith(contract.package + ".")
-                ),
-                key=lambda contract: len(contract.package),
-            )
-            for contract in applicable:
-                if (
-                    setting := self._packages[contract.name].get(rule.code)
-                ) is not None:
-                    value = setting.apply(value)
+        winner = None
+        for setting in self._target_settings(rule.code, ctx, module=module, path=path):
+            updated = setting.apply(value)
+            if not setting.broad or setting.value == "off" or updated != value:
+                winner = setting
+            value = updated
         if value is None and selected:
-            return rule.default_severity
-        return Severity(value) if value not in (None, "off") else None
+            value = rule.default_severity.value
+        severity = Severity(value) if value not in (None, "off") else None
+        return (
+            RuleDecision(severity, winner.location, winner.reason, source=winner.source)
+            if winner
+            else RuleDecision(severity)
+        )
 
     def global_value(self, rule: RuleContract) -> str | None:
         default = rule.default_severity.value if self._default_enabled(rule) else None
@@ -239,6 +256,35 @@ class RuleSettings:
             for rule in self.rules.rules
             if rule.code not in named and not self._default_enabled(rule)
         }
+
+    def _target_settings(
+        self,
+        code: str,
+        ctx: AnalysisContext,
+        *,
+        module: str | None,
+        path: str | None,
+    ) -> Iterator[_Setting]:
+        for layer in self._layers:
+            if (setting := layer.get(code)) is not None:
+                yield setting
+        if (member := self._member_for(ctx, module, path)) is not None and (
+            setting := self._members[member].get(code)
+        ) is not None:
+            yield setting
+        if module:
+            candidates = sorted(
+                (
+                    contract
+                    for contract in ctx.contracts.resolved
+                    if module == contract.package
+                    or module.startswith(contract.package + ".")
+                ),
+                key=lambda contract: len(contract.package),
+            )
+            for contract in candidates:
+                if (setting := self._packages[contract.name].get(code)) is not None:
+                    yield setting
 
     def _apply_layers(self, code: str, value: str | None) -> str | None:
         for layer in self._layers:
@@ -274,7 +320,7 @@ class RuleSettings:
                 lowered: dict[str, list[RuleContract]] = {}
                 entries = self._entries(raw, location, excluded=self._strict_guard())
                 for code, setting in entries.items():
-                    if code in self._strict_guard() or setting.reasoned:
+                    if code in self._strict_guard() or setting.reason is not None:
                         continue
                     rule = self.rules.by_code(code)
                     if rule is None:
@@ -362,6 +408,13 @@ class RuleSettings:
         """An option-scoped activation applies only where structure or a contract sets it."""
         activation = getattr(rule, "activation", None)
         if (
+            activation is not None
+            and getattr(rule, "architecture_scoped", False)
+            and module is not None
+            and self.config.project.workspace == "uv"
+        ):
+            return bool(activation.matches(ctx.model.part_for(module).config))
+        if (
             activation is None
             or activation.option is None
             or getattr(rule, "enabled_by_default", False)
@@ -389,6 +442,7 @@ class RuleSettings:
         location: str,
         *,
         excluded: frozenset[str] = frozenset(),
+        source: str | None = None,
     ) -> dict[str, _Setting]:
         """Resolve selectors to their winning settings, retaining reasons.
 
@@ -407,13 +461,18 @@ class RuleSettings:
             if _raw_value(raw[key]) == "on":
                 issues.append(ConfigIssue(f"{location}.{key}", self._broad_help(key)))
                 continue
+            value = raw[key]
             for code in codes:
                 if code not in excluded:
                     result[code] = _Setting(
                         key,
-                        _raw_value(raw[key]),
-                        True,
-                        isinstance(raw[key], RuleOverride),
+                        _raw_value(value),
+                        broad=True,
+                        location=f"{location}.{key}",
+                        reason=value.reason
+                        if isinstance(value, RuleOverride)
+                        else None,
+                        source=source,
                     )
         individual: set[str] = set()
         for key, value in raw.items():
@@ -437,8 +496,10 @@ class RuleSettings:
                 result[named] = _Setting(
                     key,
                     self.defaults[named] if severity == "on" else severity,
-                    False,
-                    isinstance(value, RuleOverride),
+                    broad=False,
+                    location=f"{location}.{key}",
+                    reason=value.reason if isinstance(value, RuleOverride) else None,
+                    source=source,
                 )
         if issues:
             raise ConfigError(issues, self.source)

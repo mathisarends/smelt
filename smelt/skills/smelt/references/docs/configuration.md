@@ -118,7 +118,8 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
 `smelt config show` prints the complete effective policy. Add `--sources` to wrap
 it with `config`, `sources` (bases first, then the project and members),
 `rule_selectors` (active matches for broad selectors) and `origins` (explicit
-YAML key locations mapped to absolute declaring-file paths). This works with
+YAML key locations mapped to absolute declaring-file paths). In a workspace,
+member settings appear in a separate `workspace_members` field. This works with
 `--format json` or the default YAML; defaults and discovered package names have
 no explicit origin. Inherited validation errors include the declaring file.
 
@@ -170,8 +171,7 @@ rules:
   complexity: {severity: off, reason: Migrating legacy handlers to the shared style.}
   visibility/internal-public-member: error
 style:
-  max_positional_parameters: 2
-  reasons: {max_positional_parameters: Prefer named arguments in service handlers.}
+  max_positional_parameters: {value: 2, reason: Prefer named arguments in service handlers.}
 architecture:
   packages:
     http: {match: api.http, public: ['.']}
@@ -263,25 +263,25 @@ cannot be lowered even with a reason. Root rules and style overrides may also us
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
-A member that changes a source convention set in root `style` must give a
-nonempty reason under `reasons` in the same mapping. This applies to thresholds,
-lists and other package-level options, in member `style` and in individual
-member style overrides. Both tighter and looser values require a reason. Copying a root value or setting an option that the root
-leaves open needs no reason. Reasons appear under the member's settings in
-`smelt config show --sources`.
+A member that changes a source convention set in root `style` must use a
+nonempty inline reason beside `value`. This applies to thresholds, lists
+and mapping-valued options in member `style` and in member style overrides.
+Copying a root value or setting an option the root leaves open needs no reason.
+Root style also accepts the inline form. Existing `reasons` maps can still
+be read. `smelt context` shows the effective value, source and reason.
 
 ```yaml
 # packages/legacy/smelt.yml
 style:
-  max_positional_parameters: 8
-  reasons:
-    max_positional_parameters: Keep positional calls supported by the legacy API.
+  max_positional_parameters:
+    value: 8
+    reason: Keep positional calls supported by the legacy API.
   overrides:
     generated:
       match: legacy.generated
-      dataclass_options: []
-      reasons:
-        dataclass_options: The generator owns dataclass decorators in this package.
+      dataclass_options:
+        value: []
+        reason: The generator owns dataclass decorators in this package.
 ```
 
 `style.forbidden_names`, `style.file_naming` and

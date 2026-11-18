@@ -1,6 +1,6 @@
 from typing import Any
 
-from smelt.config.models import SmeltConfig
+from smelt.config.models import PackagePolicy, SmeltConfig
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/mathisarends/smelt/main/smelt.schema.json"
@@ -14,6 +14,7 @@ def config_json_schema() -> dict[str, Any]:
     for definition in schema.get("$defs", {}).values():
         definition.pop("required", None)
     schema["$defs"]["RuleOverride"]["required"] = ["severity", "reason"]
+    _describe_style_values(schema["$defs"])
     # Member configs are separate files; the root never writes them inline.
     schema["properties"].pop("members", None)
     for name in ("MemberConfig", "MemberProjectConfig"):
@@ -42,3 +43,30 @@ def config_json_schema() -> dict[str, Any]:
         **schema,
         "title": "smelt.yml",
     }
+
+
+def _describe_style_values(definitions: dict[str, Any]) -> None:
+    for model in ("StyleConfig", "StyleOverride", "MemberStyleConfig"):
+        properties = definitions[model]["properties"]
+        properties["reasons"]["deprecated"] = True
+        for name in PackagePolicy.model_fields:
+            option = properties[name]
+            properties[name] = {
+                "description": option.get("description", ""),
+                "anyOf": [
+                    option,
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["value", "reason"],
+                        "properties": {
+                            "value": {"allOf": [option, {"not": {"type": "null"}}]},
+                            "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"\S",
+                            },
+                        },
+                    },
+                ],
+            }

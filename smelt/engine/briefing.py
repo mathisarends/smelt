@@ -3,13 +3,14 @@ from __future__ import annotations
 import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from smelt.analysis.coverage import is_governed
 from smelt.config.errors import did_you_mean
 from smelt.config.loader import LoadedConfig
+from smelt.config.models import PackagePolicy
 from smelt.config.patterns import module_matches
-from smelt.diagnostics.violation import Severity
+from smelt.diagnostics.violation import Category, Severity
 from smelt.engine.coverage import policy_hash
 from smelt.engine.rule_settings import RuleSettings
 from smelt.model import ModuleKind, is_within
@@ -18,9 +19,11 @@ from smelt.rules.testing.location import mirror_path
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
+    from smelt.analysis.contracts import PolicyOption
     from smelt.config.models import ThirdPartyPolicy
     from smelt.diagnostics.report import Report
     from smelt.model import ArchitectureModel, ModuleInfo
+    from smelt.rules.base import RuleContract
 
 
 class TargetError(ValueError):
@@ -90,6 +93,9 @@ class Briefing:
     test_policy: dict[str, Any] = field(default_factory=dict)
     type_dispatch_policy: dict[str, Any] | None = None
     rules: dict[str, str] = field(default_factory=dict)
+    rule_details: dict[str, dict[str, Any]] = field(default_factory=dict)
+    style: dict[str, dict[str, Any]] = field(default_factory=dict)
+    configuration_warnings: tuple[str, ...] = ()
     workspace_policy: _WorkspacePolicy | None = None
 
     @property
@@ -127,6 +133,9 @@ class Briefing:
             "test_policy": self.test_policy,
             "type_dispatch_policy": self.type_dispatch_policy,
             "rules": self.rules,
+            "rule_details": self.rule_details,
+            "style": self.style,
+            "configuration_warnings": list(self.configuration_warnings),
             "member": self.workspace_policy.member if self.workspace_policy else None,
             "architecture_source": self.workspace_policy.architecture
             if self.workspace_policy
@@ -249,8 +258,14 @@ def build_briefing(
     cross_feature = _cross_feature(model) if model.has_features else None
     coverage = _coverage_brief(ctx, target, info=info)
     target_path = target.path or ctx.files.path_for_module(package or "")
+    module = target.module or package
+    policy_file = loaded or LoadedConfig(ctx.config, ctx.root / "smelt.yml")
     workspace_policy = _workspace_sources(
-        ctx, target_path, loaded=loaded, module=target.module or package
+        ctx, target_path, loaded=loaded, module=module
+    )
+    style = _style_brief(ctx, module, policy_file)
+    rules, rule_details = _rule_brief(
+        ctx, policy_file, module=module, path=target_path, style=style
     )
     if info and (info.central or info.kind is ModuleKind.SHARED):
         cross_feature = "none (must not import features)"
@@ -299,7 +314,10 @@ def build_briefing(
         ordering_policy=ctx.contracts.ordering_brief(target.module or package),
         test_policy=ctx.config.tests.model_dump(mode="json"),
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
-        rules=_rule_brief(ctx, target.module or package, target_path),
+        rules=rules,
+        rule_details=rule_details,
+        style=style,
+        configuration_warnings=tuple(str(issue) for issue in policy_file.warnings),
         workspace_policy=workspace_policy,
         python_target=ctx.python_targets.for_path(
             ctx.root / target_path if target_path else None
@@ -309,6 +327,10 @@ def build_briefing(
 
 def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     lines = _header(briefing, ctx)
+    lines.extend(
+        f"Configuration warning: {warning}"
+        for warning in briefing.configuration_warnings
+    )
     lines.append("")
     lines.append(
         textwrap.fill(
@@ -418,7 +440,7 @@ def _workspace_sources(
     sources = [_config_source(path, root=loaded.root) for path in inputs]
     if module is not None:
         sources.extend(
-            f"contract {contract.name}"
+            f"style.overrides ({contract.name})"
             for contract in sorted(
                 ctx.contracts.resolved, key=lambda item: len(item.package)
             )
@@ -427,25 +449,117 @@ def _workspace_sources(
     return _WorkspacePolicy(member, architecture, tuple(sources))
 
 
+def _style_brief(
+    ctx: AnalysisContext, module: str | None, loaded: LoadedConfig
+) -> dict[str, dict[str, Any]]:
+    settings: dict[str, dict[str, Any]] = {}
+    for name in PackagePolicy.model_fields:
+        contract = ctx.contracts.policy_for(module or "", cast("PolicyOption", name))
+        if contract is None:
+            continue
+        spec = contract.spec
+        location = f"{spec.style_location or 'style'}.{name}"
+        value = spec.model_dump(mode="json", include={name}, by_alias=True)[name]
+        reason = spec.reasons.get(name)
+        settings[name] = {
+            "value": value["value"] if reason is not None else value,
+            "key": location,
+            "source": _policy_source(loaded, location),
+            "reason": reason,
+        }
+    return settings
+
+
+def _rule_brief(
+    ctx: AnalysisContext,
+    loaded: LoadedConfig,
+    *,
+    module: str | None,
+    path: str | None,
+    style: dict[str, dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
+    rules = build_rule_set()
+    policy = RuleSettings(rules, loaded)
+    severities: dict[str, str] = {}
+    details: dict[str, dict[str, Any]] = {}
+    for rule in rules.rules:
+        decision = policy.decision(rule, ctx, module, path=path)
+        severity = decision.severity.value if decision.severity else "off"
+        severities[rule.name] = severity
+        if decision.severity is None and decision.location is None:
+            continue
+        entry: dict[str, Any] = {
+            "severity": severity,
+            "scope": getattr(rule, "scope", "source"),
+            "family": rule.category.value,
+        }
+        if decision.location:
+            entry.update(
+                key=decision.location,
+                source=_policy_source(
+                    loaded, decision.location, source=decision.source
+                ),
+                reason=decision.reason,
+                activation="rules",
+            )
+        else:
+            entry.update(
+                _activation_brief(
+                    rule,
+                    loaded,
+                    style=style,
+                    member=ctx.workspace.member_for_path(path),
+                )
+            )
+        details[rule.name] = entry
+    return severities, details
+
+
+def _activation_brief(
+    rule: RuleContract,
+    loaded: LoadedConfig,
+    *,
+    style: dict[str, dict[str, Any]],
+    member: str | None,
+) -> dict[str, Any]:
+    activation = getattr(rule, "activation", None)
+    if getattr(rule, "enabled_by_default", False) or activation is None:
+        return {"activation": "baseline"}
+    if (option := style.get(activation.option)) is not None:
+        return {
+            "activation": "policy",
+            "key": option["key"],
+            "source": option["source"],
+            "reason": option["reason"],
+        }
+    for pattern in rule.explain().config:
+        key = pattern.split("<", maxsplit=1)[0].rstrip(".")
+        if member and member != "." and getattr(rule, "architecture_scoped", False):
+            key = f"members.{member}.{key}"
+        if key in loaded.origins:
+            return {
+                "activation": "policy",
+                "key": key,
+                "source": _policy_source(loaded, key),
+            }
+    return {"activation": "policy", "description": activation.description}
+
+
+def _policy_source(
+    loaded: LoadedConfig, location: str, *, source: str | None = None
+) -> str:
+    source = source or loaded.source_for(location)
+    return (
+        _config_source(Path(source), root=loaded.root) if source else loaded.path.name
+    )
+
+
 def _config_source(path: Path, *, root: Path) -> str:
     return (
         path.relative_to(root).as_posix()
         if path.is_relative_to(root)
         else path.as_posix()
     )
-
-
-def _rule_brief(
-    ctx: AnalysisContext, module: str | None, path: str | None
-) -> dict[str, str]:
-    rules = build_rule_set()
-    policy = RuleSettings(rules, LoadedConfig(ctx.config, ctx.root / "smelt.yml"))
-    return {
-        rule.name: severity.value
-        if (severity := policy.severity(rule, ctx, module, path=path))
-        else "off"
-        for rule in rules.rules
-    }
 
 
 def _target_info(model: ArchitectureModel, target: Target) -> ModuleInfo | None:
@@ -592,11 +706,7 @@ def _tests(ctx: AnalysisContext, target: Target) -> tuple[str, ...]:
 
 
 def _contract_lines(briefing: Briefing) -> list[str]:
-    lines = [
-        f"Rule: {name}: {severity}"
-        for name, severity in briefing.rules.items()
-        if severity != "off"
-    ]
+    lines = _rule_lines(briefing)
     lines.extend(
         f"File naming: {key}: {value}"
         for key, value in sorted(briefing.file_naming.items())
@@ -608,7 +718,7 @@ def _contract_lines(briefing: Briefing) -> list[str]:
     if briefing.type_dispatch_policy:
         policy = briefing.type_dispatch_policy
         lines.append(
-            f"Type dispatch: {policy['style']} from {policy['min_branches']} branches ({policy['contract']})"
+            f"Type dispatch: {policy['style']} from {policy['min_branches']} branches {_source_label(briefing.style['type_dispatch'])}"
         )
     if briefing.test_policy:
         policy = briefing.test_policy
@@ -622,12 +732,14 @@ def _contract_lines(briefing: Briefing) -> list[str]:
     if briefing.ordering_policy:
         policy = briefing.ordering_policy
         lines.append(
-            f"Definition ordering options ({policy['contract']}); module: {', '.join(policy['module'])}; class: {', '.join(policy['class'])}"
+            f"Definition ordering options {_source_label(briefing.style['ordering'])}; module: {', '.join(policy['module'])}; class: {', '.join(policy['class'])}"
         )
     minimum = briefing.python_target.get("minimum")
     if minimum:
         lines.append(f"Minimum Python: {minimum} ({briefing.python_target['source']})")
     for contract in briefing.contracts:
+        if not _describes_package_api(contract):
+            continue
         required = ", ".join(contract["required"]) or "none"
         public = contract["public"]
         entry_points = (
@@ -635,14 +747,9 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             if public is None
             else ", ".join(public) or "none (private package)"
         )
-        lines.append(f"Contract {contract['name']} ({contract['package']}):")
+        lines.append(f"Package API {contract['name']} ({contract['package']}):")
         lines.append(f"  Required: {required}")
         lines.append(f"  Public: {entry_points}")
-        if "imports" in contract:
-            style = contract["imports"]
-            lines.append(
-                f"  Import style: {style['style']}; maximum relative level {style['max_relative_level']}"
-            )
         if contract["target_public"] is not None:
             visibility = "public" if contract["target_public"] else "private"
             lines.append(
@@ -659,33 +766,50 @@ def _contract_lines(briefing: Briefing) -> list[str]:
             lines.append(
                 f"  Export hint: from {contract['min_importers_to_export']} outside importers per name; count tests: {contract['count_tests']}"
             )
-        lines.extend(
-            f"  {key}: {_policy_value(key, contract[key])}"
-            for key in (
-                "module_docstrings",
-                "future_annotations",
-                "private_modules",
-                "private_attribute_boundary",
-                "max_positional_parameters",
-                "max_module_imports",
-                "module_import_exemptions",
-                "max_comprehension_loops",
-                "max_constructor_decisions",
-                "max_private_definitions",
-                "call_argument_kinds",
-                "str_enum_values",
-                "dataclass_options",
-                "bases",
-                "errors",
-            )
-            if key in contract
-        )
+    lines.extend(
+        f"Style {name}: {_policy_value(name, entry['value'])} {_source_label(entry)}"
+        for name, entry in briefing.style.items()
+        if name not in {"imports", "ordering", "type_dispatch"}
+    )
+
     if briefing.import_style:
         style = briefing.import_style
         lines.append(
-            f"Import style: {style['style']}, maximum relative level {style['max_relative_level']} ({style['contract']})"
+            f"Import style: {style['style']}, maximum relative level {style['max_relative_level']} {_source_label(briefing.style['imports'])}"
         )
     return lines
+
+
+def _rule_lines(briefing: Briefing) -> list[str]:
+    return [
+        f"Rule: {name}: {detail['severity']} {_source_label(detail)}".rstrip()
+        for name, detail in briefing.rule_details.items()
+        if (detail["severity"] != "off" or detail.get("reason"))
+        and (
+            briefing.target.kind == "project"
+            or (detail["scope"] != "test" and detail["family"] != Category.META.value)
+        )
+    ]
+
+
+def _source_label(entry: dict[str, Any]) -> str:
+    source = entry.get("source")
+    key = entry.get("key")
+    reason = entry.get("reason")
+    description = entry.get("description")
+    origin = (
+        f"({source} ? {key})" if source else f"({description})" if description else ""
+    )
+    return f"{origin} ? {reason}" if reason else origin
+
+
+def _describes_package_api(contract: dict[str, Any]) -> bool:
+    return bool(
+        contract["required"]
+        or contract["public"] is not None
+        or "min_imports_to_bundle" in contract
+        or "min_importers_to_export" in contract
+    )
 
 
 def _policy_value(key: str, value: object) -> str:

@@ -158,7 +158,9 @@ def test_test_quality_policy_is_available_for_planned_placement(
         ctx, resolve_target(ctx, "app/planned.py"), outcome.report
     )
     assert briefing.to_json()["rules"][flag] == "warning"
-    assert f"Rule: {flag}: warning" in render_briefing(briefing, ctx)
+    assert briefing.to_json()["rule_details"][flag]["severity"] == "warning"
+    visible = f"Rule: {flag}: warning" in render_briefing(briefing, ctx)
+    assert visible == flag.startswith("visibility/")
 
 
 def test_zero_patch_limit_is_visible_without_other_test_quality_flags(

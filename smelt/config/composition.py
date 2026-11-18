@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
+from smelt.config.models import PackagePolicy
 from smelt.config.workspace import member_raw_issues
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ class ConfigComposition:
     files: list[Path] = field(default_factory=list)
     origins: dict[str, str] = field(default_factory=dict)
     rule_layers: list[dict[str, Any]] = field(default_factory=list)
+    rule_sources: list[str] = field(default_factory=list)
 
     @property
     def composite(self) -> bool:
@@ -72,8 +74,13 @@ def add_member(
     if issues:
         raise ConfigError(issues, source)
     _check_tree(raw, (), frozenset(), source=source)
-    composed.raw.setdefault("members", {})[member] = raw
-    composed.origins[f"members.{member}"] = source
+    _merge(
+        composed.raw.setdefault("members", {}),
+        {member: raw},
+        ("members",),
+        source=source,
+        origins=composed.origins,
+    )
     composed.files.append(path)
 
 
@@ -157,15 +164,18 @@ def _visit(
         source=source,
         origins=composed.origins,
     )
-    _collect_rules(raw, composed)
+    _collect_rules(raw, composed, source=source)
     composed.files.append(path)
 
 
-def _collect_rules(raw: dict[str, Any], composed: ConfigComposition) -> None:
+def _collect_rules(
+    raw: dict[str, Any], composed: ConfigComposition, *, source: str
+) -> None:
     """Keep each file's rules map so a later file's selection can replace it."""
     rules = raw.get("rules")
     if isinstance(rules, dict) and rules:
         composed.rule_layers.append(dict(rules))
+        composed.rule_sources.append(source)
 
 
 def _check_tree(
@@ -196,11 +206,18 @@ def _merge(
     source: str,
     origins: dict[str, str],
 ) -> None:
+    match prefix:
+        case ("style",) | ("style", "overrides", _):
+            _drop_replaced_style_reasons(target, incoming, prefix, origins=origins)
     for key, value in incoming.items():
         location = (*prefix, key)
         shown = format_loc(location)
         previous = target.get(key)
-        if isinstance(value, dict) and isinstance(previous, dict):
+        if (
+            isinstance(value, dict)
+            and isinstance(previous, dict)
+            and not _replace_style_value(location, value, previous)
+        ):
             _merge(previous, value, location, source=source, origins=origins)
         else:
             for old in list(origins):
@@ -214,6 +231,37 @@ def _merge(
             origins[shown] = source
         if isinstance(value, list):
             _list_origins(value, location, source, origins=origins)
+
+
+def _drop_replaced_style_reasons(
+    target: dict[str, Any],
+    incoming: dict[str, Any],
+    prefix: tuple[str | int, ...],
+    *,
+    origins: dict[str, str],
+) -> None:
+    """Keep legacy reasons attached to the option value they originally explained."""
+    previous = target.get("reasons")
+    declared = incoming.get("reasons", {})
+    if not isinstance(previous, dict) or not isinstance(declared, dict):
+        return
+    replaced = previous.keys() & incoming.keys() & PackagePolicy.model_fields.keys()
+    for name in replaced - declared.keys():
+        del previous[name]
+        del origins[format_loc((*prefix, "reasons", name))]
+
+
+def _replace_style_value(
+    location: tuple[str | int, ...], value: dict[Any, Any], previous: dict[Any, Any]
+) -> bool:
+    """A reason belongs to the whole style option written by one file."""
+    match location:
+        case ("style", name) | ("style", "overrides", _, name) if (
+            name in PackagePolicy.model_fields
+        ):
+            return bool({"value", "reason"} & (previous.keys() | value.keys()))
+        case _:
+            return False
 
 
 def _list_origins(

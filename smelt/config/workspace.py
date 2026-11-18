@@ -25,10 +25,10 @@ from smelt.config.models import (
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Mapping
     from pathlib import Path
 
-    from smelt.config.models import SmeltConfig, StructureConfig
+    from smelt.config.models import SmeltConfig
 
 _MEMBER_CONFIG_NAMES = ("smelt.yml", "smelt.yaml")
 _UNSUPPORTED_MEMBER_KEYS = {
@@ -458,20 +458,16 @@ def _compile_members(
                 options,
                 member.structure.reasons,
                 f"{location}.style",
-                inherited=[
-                    config.structure,
-                    *(
-                        contract
-                        for package in names
-                        for contract in _overridden_contracts(config.structure, package)
-                    ),
-                ],
+                inherited=config.style,
             )
         )
         if options:
             for package in names:
                 name = path if len(names) == 1 else f"{path}:{package}"
-                contracts[name] = PackageContract(match=package, **options)
+                contracts[name] = PackageContract(
+                    match=package, reasons=member.style.reasons, **options
+                ).with_style_location(f"{location}.style")
+        inherited_style = config.style.model_copy(update=options)
         for name, contract in member.structure.contracts.items():
             qualified = f"{path}:{name}"
             policy = (
@@ -500,13 +496,14 @@ def _compile_members(
                     _policy_options(contract),
                     contract.reasons,
                     contract_location,
-                    inherited=[
-                        config.structure,
-                        *_overridden_contracts(config.structure, contract.match),
-                    ],
+                    inherited=inherited_style,
                 )
             )
-            contracts[qualified] = contract
+            contracts[qualified] = (
+                contract.with_style_location(contract_location, override=True)
+                if contract.style_override
+                else contract
+            )
         ignore.extend(_member_ignore(path, entry) for entry in member.ignore)
         exclude.extend(
             _member_exclusion(path, entry) for entry in member.project.exclude
@@ -536,50 +533,23 @@ def _policy_options(policy: PackagePolicy) -> dict[str, Any]:
     }
 
 
-def _overridden_contracts(
-    structure: StructureConfig, match: str
-) -> list[PackageContract]:
-    """Root contracts a member contract could replace in a matching package."""
-    segments = match.split(".")
-    return [
-        contract
-        for contract in structure.contracts.values()
-        if len(parts := contract.match.split(".")) <= len(segments)
-        and all(
-            root == member or "*" in (root, member)
-            for root, member in zip(parts, segments, strict=False)
-        )
-    ]
-
-
 def _style_reason_issues(
     options: Mapping[str, Any],
     reasons: Mapping[str, str],
     location: str,
     *,
-    inherited: Sequence[PackagePolicy],
+    inherited: PackagePolicy,
 ) -> list[ConfigIssue]:
-    issues = [
+    return [
         ConfigIssue(
             f"{location}.{name}",
-            f"changing the root value requires a reason in reasons.{name}",
+            "changing the inherited value requires a reason; use {value: ..., reason: ...}",
         )
         for name, value in options.items()
         if name not in reasons
-        and any(
-            (other := getattr(policy, name)) is not None and other != value
-            for policy in inherited
-        )
+        and (other := getattr(inherited, name)) is not None
+        and other != value
     ]
-    issues.extend(
-        ConfigIssue(
-            f"{location}.reasons.{name}",
-            "must name a source-convention option set in the same mapping",
-        )
-        for name in reasons
-        if name not in options
-    )
-    return issues
 
 
 def _member_ignore(path: str, entry: IgnoreEntry) -> IgnoreEntry:
