@@ -394,6 +394,633 @@
       "title": "MemberBoundaryConfig",
       "type": "object"
     },
+    "MemberPackageContract": {
+      "additionalProperties": false,
+      "description": "A member contract can justify its changes to inherited source conventions.",
+      "properties": {
+        "imports": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImportStyleConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Import style (SMT308). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style."
+        },
+        "max_module_imports": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
+          "title": "Max Module Imports"
+        },
+        "module_import_exempt": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ModuleImportExemption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+          "title": "Module Import Exempt"
+        },
+        "module_docstrings": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "require"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected.",
+          "title": "Module Docstrings"
+        },
+        "future_annotations": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "when-needed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+          "title": "Future Annotations"
+        },
+        "private_modules": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
+          "title": "Private Modules"
+        },
+        "private_attribute_boundary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrivateAttributeBoundary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Ownership boundary for private attribute access in visibility/foreign-private-access (SMT339): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module."
+        },
+        "ordering": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderingConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority. Configures layout/definition-order, which is enabled through rules."
+        },
+        "type_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeDispatchConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite."
+        },
+        "max_positional_parameters": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
+          "title": "Max Positional Parameters"
+        },
+        "max_comprehension_loops": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/complex-comprehension. Omitted means 1.",
+          "title": "Max Comprehension Loops"
+        },
+        "max_constructor_decisions": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/constructor-logic. Omitted means 2.",
+          "title": "Max Constructor Decisions"
+        },
+        "max_private_definitions": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
+          "title": "Max Private Definitions"
+        },
+        "call_argument_kinds": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/CallArgumentKind"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Argument kinds complexity/inline-call-argument (SMT340) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
+          "title": "Call Argument Kinds"
+        },
+        "str_enum_values": {
+          "anyOf": [
+            {
+              "enum": [
+                "auto",
+                "explicit"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "StrEnum value convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. Setting it enables modeling/str-enum-value-convention. Omitted means explicit.",
+          "title": "Str Enum Values"
+        },
+        "dataclass_options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DataclassOption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataclass options every production @dataclass must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. No automatic rewrite.",
+          "title": "Dataclass Options"
+        },
+        "bases": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Map a base class from outside the project to the project base that classes must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
+          "title": "Bases"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite."
+        },
+        "match": {
+          "description": "Dotted package pattern; a whole-segment * matches one package segment.",
+          "title": "Match",
+          "type": "string"
+        },
+        "required": {
+          "description": "Relative dotted modules or packages that must exist in every matching package (SMT307).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Required",
+          "type": "array"
+        },
+        "public": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+          "title": "Public"
+        },
+        "bundle_imports_at": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
+          "title": "Bundle Imports At"
+        },
+        "export_at": {
+          "anyOf": [
+            {
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+          "title": "Export At"
+        },
+        "count_tests": {
+          "default": false,
+          "description": "Include discovered test files in export_at counts. Requires export_at; TYPE_CHECKING-only imports never count.",
+          "title": "Count Tests",
+          "type": "boolean"
+        },
+        "rules": {
+          "$ref": "#/$defs/SourceRuleSettings"
+        },
+        "reasons": {
+          "$ref": "#/$defs/_PolicyReasons"
+        }
+      },
+      "title": "MemberPackageContract",
+      "type": "object"
+    },
+    "MemberStructureConfig": {
+      "additionalProperties": false,
+      "description": "Source conventions and contracts for one workspace member's packages.",
+      "properties": {
+        "imports": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImportStyleConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Import style (SMT308). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style."
+        },
+        "max_module_imports": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
+          "title": "Max Module Imports"
+        },
+        "module_import_exempt": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ModuleImportExemption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+          "title": "Module Import Exempt"
+        },
+        "module_docstrings": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "require"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected.",
+          "title": "Module Docstrings"
+        },
+        "future_annotations": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid",
+                "when-needed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+          "title": "Future Annotations"
+        },
+        "private_modules": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "forbid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
+          "title": "Private Modules"
+        },
+        "private_attribute_boundary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrivateAttributeBoundary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Ownership boundary for private attribute access in visibility/foreign-private-access (SMT339): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module."
+        },
+        "ordering": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderingConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Definition order for modules and classes. Dependencies and execution barriers take precedence over category priority. Configures layout/definition-order, which is enabled through rules."
+        },
+        "type_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeDispatchConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite."
+        },
+        "max_positional_parameters": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
+          "title": "Max Positional Parameters"
+        },
+        "max_comprehension_loops": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/complex-comprehension. Omitted means 1.",
+          "title": "Max Comprehension Loops"
+        },
+        "max_constructor_decisions": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/constructor-logic. Omitted means 2.",
+          "title": "Max Constructor Decisions"
+        },
+        "max_private_definitions": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
+          "title": "Max Private Definitions"
+        },
+        "call_argument_kinds": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/CallArgumentKind"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Argument kinds complexity/inline-call-argument (SMT340) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
+          "title": "Call Argument Kinds"
+        },
+        "str_enum_values": {
+          "anyOf": [
+            {
+              "enum": [
+                "auto",
+                "explicit"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "StrEnum value convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. Setting it enables modeling/str-enum-value-convention. Omitted means explicit.",
+          "title": "Str Enum Values"
+        },
+        "dataclass_options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DataclassOption"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataclass options every production @dataclass must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. No automatic rewrite.",
+          "title": "Dataclass Options"
+        },
+        "bases": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Map a base class from outside the project to the project base that classes must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
+          "title": "Bases"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite."
+        },
+        "reasons": {
+          "$ref": "#/$defs/_PolicyReasons",
+          "description": "Nonempty reasons keyed by the source-convention options changed in this mapping."
+        },
+        "contracts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MemberPackageContract"
+          },
+          "description": "Package contracts inside this member; each match must name one of its packages.",
+          "title": "Contracts",
+          "type": "object"
+        }
+      },
+      "title": "MemberStructureConfig",
+      "type": "object"
+    },
     "ModuleImportExemption": {
       "enum": [
         "facades",
@@ -1400,6 +2027,13 @@
         }
       },
       "title": "TypeDispatchConfig",
+      "type": "object"
+    },
+    "_PolicyReasons": {
+      "additionalProperties": {
+        "minLength": 1,
+        "type": "string"
+      },
       "type": "object"
     },
     "RuleSettings": {
@@ -4435,7 +5069,14 @@
       "$ref": "#/$defs/ArchitectureConfig"
     },
     "structure": {
-      "$ref": "#/$defs/StructureConfig"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StructureConfig"
+        },
+        {
+          "$ref": "#/$defs/MemberStructureConfig"
+        }
+      ]
     },
     "tests": {
       "$ref": "#/$defs/TestsConfig"

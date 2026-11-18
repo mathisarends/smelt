@@ -93,9 +93,10 @@ def config_json_schema() -> dict[str, Any]:
         "patternProperties": source_codes,
     }
     schema["properties"]["rules"] = {"$ref": "#/$defs/RuleSettings"}
-    schema["$defs"]["PackageContract"]["properties"]["rules"] = {
-        "$ref": "#/$defs/SourceRuleSettings"
-    }
+    for contract in ("PackageContract", "MemberPackageContract"):
+        schema["$defs"][contract]["properties"]["rules"] = {
+            "$ref": "#/$defs/SourceRuleSettings"
+        }
     return schema
 
 

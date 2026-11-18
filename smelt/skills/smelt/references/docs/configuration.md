@@ -171,6 +171,7 @@ rules:
   visibility/internal-public-member: error
 structure:
   max_positional_parameters: 2
+  reasons: {max_positional_parameters: Prefer named arguments in service handlers.}
   contracts:
     http: {match: api.http, public: ['.']}
 ignore:
@@ -259,8 +260,30 @@ cannot be lowered even with a reason. Root rules and contracts may also use the
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
-This guard checks rule severities. Review changes to thresholds, exclusions,
-ignores and replacement member architectures as policy decisions as well.
+A member that changes a source convention set in root `structure` must give a
+nonempty reason under `reasons` in the same mapping. This applies to thresholds,
+lists and other package-level options, in member `structure` and in individual
+member contracts. A member contract also needs a reason if it changes a root
+contract's value and its match can replace that contract. Both tighter and looser
+values require a reason. Copying a root value or setting an option that the root
+leaves open needs no reason. Reasons appear under the member's settings in
+`smelt config show --sources`.
+
+```yaml
+# packages/legacy/smelt.yml
+structure:
+  max_positional_parameters: 8
+  reasons:
+    max_positional_parameters: Keep positional calls supported by the legacy API.
+  contracts:
+    generated:
+      match: legacy.generated
+      dataclass_options: []
+      reasons:
+        dataclass_options: The generator owns dataclass decorators in this package.
+```
+
+`forbidden_names`, `file_naming` and `canonical_exports` are root-only.
 
 ### Workspace initialization
 

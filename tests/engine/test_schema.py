@@ -31,9 +31,10 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         assert rule.explain().bad in entry["markdownDescription"]
         assert rule.explain().good in entry["markdownDescription"]
         assert settings["patternProperties"][f"^{rule.code}$"] == entry
-    assert schema["$defs"]["PackageContract"]["properties"]["rules"] == {
-        "$ref": "#/$defs/SourceRuleSettings"
-    }
+    for contract in ("PackageContract", "MemberPackageContract"):
+        assert schema["$defs"][contract]["properties"]["rules"] == {
+            "$ref": "#/$defs/SourceRuleSettings"
+        }
     assert schema["$defs"]["RuleSeverity"]["enum"] == [
         "error",
         "warning",
@@ -42,6 +43,17 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         "off",
     ]
     assert schema["$defs"]["RuleOverride"]["required"] == ["severity", "reason"]
+
+
+def test_editor_schema_accepts_member_style_reasons() -> None:
+    schema = config_json_schema()
+    definitions = schema["$defs"]
+
+    assert {"$ref": "#/$defs/MemberStructureConfig"} in schema["properties"][
+        "structure"
+    ]["anyOf"]
+    assert "reasons" in definitions["MemberStructureConfig"]["properties"]
+    assert "reasons" in definitions["MemberPackageContract"]["properties"]
 
 
 def test_editor_schema_does_not_advertise_removed_switches() -> None:

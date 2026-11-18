@@ -24,9 +24,10 @@ from smelt.config.models import (
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
-    from smelt.config.models import MemberConfig, SmeltConfig
+    from smelt.config.models import SmeltConfig, StructureConfig
 
 _MEMBER_CONFIG_NAMES = ("smelt.yml", "smelt.yaml")
 _UNSUPPORTED_MEMBER_KEYS = {
@@ -389,17 +390,33 @@ def _compile_members(
     for path, member in config.members.items():
         names = packages.get(path, [])
         location = f"members.{path}"
-        options = _policy_options(member)
+        options = _policy_options(member.structure)
+        issues.extend(
+            _style_reason_issues(
+                options,
+                member.structure.reasons,
+                f"{location}.structure",
+                inherited=[
+                    config.structure,
+                    *(
+                        contract
+                        for package in names
+                        for contract in _overridden_contracts(config.structure, package)
+                    ),
+                ],
+            )
+        )
         if options:
             for package in names:
                 name = path if len(names) == 1 else f"{path}:{package}"
                 contracts[name] = PackageContract(match=package, **options)
         for name, contract in member.structure.contracts.items():
             qualified = f"{path}:{name}"
+            contract_location = f"{location}.structure.contracts.{name}"
             if contract.match.split(".")[0] not in names:
                 issues.append(
                     ConfigIssue(
-                        f"{location}.structure.contracts.{name}.match",
+                        f"{contract_location}.match",
                         f'"{contract.match}" is outside this member; its packages '
                         f"are {', '.join(names) or 'none'}",
                     )
@@ -407,10 +424,21 @@ def _compile_members(
             if qualified in contracts:
                 issues.append(
                     ConfigIssue(
-                        f"{location}.structure.contracts.{name}",
+                        contract_location,
                         f'contract name "{qualified}" is already used',
                     )
                 )
+            issues.extend(
+                _style_reason_issues(
+                    _policy_options(contract),
+                    contract.reasons,
+                    contract_location,
+                    inherited=[
+                        config.structure,
+                        *_overridden_contracts(config.structure, contract.match),
+                    ],
+                )
+            )
             contracts[qualified] = contract
         ignore.extend(_member_ignore(path, entry) for entry in member.ignore)
         exclude.extend(
@@ -431,13 +459,58 @@ def _compile_members(
     )
 
 
-def _policy_options(member: MemberConfig) -> dict[str, Any]:
-    structure = member.structure
+def _policy_options(policy: PackagePolicy) -> dict[str, Any]:
     return {
-        name: getattr(structure, name)
+        name: getattr(policy, name)
         for name in PackagePolicy.model_fields
-        if getattr(structure, name) is not None
+        if getattr(policy, name) is not None
     }
+
+
+def _overridden_contracts(
+    structure: StructureConfig, match: str
+) -> list[PackageContract]:
+    """Root contracts a member contract could replace in a matching package."""
+    segments = match.split(".")
+    return [
+        contract
+        for contract in structure.contracts.values()
+        if len(parts := contract.match.split(".")) <= len(segments)
+        and all(
+            root == member or "*" in (root, member)
+            for root, member in zip(parts, segments, strict=False)
+        )
+    ]
+
+
+def _style_reason_issues(
+    options: Mapping[str, Any],
+    reasons: Mapping[str, str],
+    location: str,
+    *,
+    inherited: Sequence[PackagePolicy],
+) -> list[ConfigIssue]:
+    issues = [
+        ConfigIssue(
+            f"{location}.{name}",
+            f"changing the root value requires a reason in reasons.{name}",
+        )
+        for name, value in options.items()
+        if name not in reasons
+        and any(
+            (other := getattr(policy, name)) is not None and other != value
+            for policy in inherited
+        )
+    ]
+    issues.extend(
+        ConfigIssue(
+            f"{location}.reasons.{name}",
+            "must name a source-convention option set in the same mapping",
+        )
+        for name in reasons
+        if name not in options
+    )
+    return issues
 
 
 def _member_ignore(path: str, entry: IgnoreEntry) -> IgnoreEntry:

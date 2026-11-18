@@ -16,8 +16,15 @@ def config_json_schema() -> dict[str, Any]:
     schema["$defs"]["RuleOverride"]["required"] = ["severity", "reason"]
     # Member configs are separate files; the root never writes them inline.
     schema["properties"].pop("members", None)
-    for name in ("MemberConfig", "MemberProjectConfig", "MemberStructureConfig"):
+    for name in ("MemberConfig", "MemberProjectConfig"):
         schema.get("$defs", {}).pop(name, None)
+    # Root and member files share the editor schema.
+    schema["properties"]["structure"] = {
+        "anyOf": [
+            schema["properties"]["structure"],
+            {"$ref": "#/$defs/MemberStructureConfig"},
+        ],
+    }
     schema["properties"]["extends"] = {
         "type": "string",
         "minLength": 1,
