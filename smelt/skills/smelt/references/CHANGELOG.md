@@ -32,6 +32,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   config, including staged checks. The bundled skill documents the canonical
   root-style/member-architecture/root-boundary workflow. A portable uv fixture
   covers inheritance, different architectures, cross-member imports and debt.
+- Member source conventions that change a root setting now require a nonempty
+  reason under `reasons`, in member `structure` or the relevant member contract.
+  Add reasons to existing overrides when upgrading.
 
 ### Workspace member boundaries
 

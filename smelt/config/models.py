@@ -10,6 +10,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PrivateAttr,
+    StringConstraints,
     TypeAdapter,
     field_validator,
     model_validator,
@@ -50,6 +51,9 @@ class RuleOverride(_Model):
 
 
 type RuleSetting = RuleSeverity | RuleOverride
+type _PolicyReasons = dict[
+    str, Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+]
 
 
 def _check_dotted(values: list[str]) -> list[str]:
@@ -972,10 +976,20 @@ class MemberProjectConfig(_Model):
     )
 
 
+class MemberPackageContract(PackageContract):
+    """A member contract can justify its changes to inherited source conventions."""
+
+    reasons: _PolicyReasons = Field(default_factory=dict)
+
+
 class MemberStructureConfig(PackagePolicy):
     """Source conventions and contracts for one workspace member's packages."""
 
-    contracts: dict[str, PackageContract] = Field(
+    reasons: _PolicyReasons = Field(
+        default_factory=dict,
+        description="Nonempty reasons keyed by the source-convention options changed in this mapping.",
+    )
+    contracts: dict[str, MemberPackageContract] = Field(
         default_factory=dict,
         description="Package contracts inside this member; each match must name one of its packages.",
     )
