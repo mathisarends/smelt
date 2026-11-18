@@ -1,6 +1,8 @@
 # Proposal: config structure v2
 
-Status: draft, not implemented.
+Status: superseded. See the [configuration guide](../configuration.md) for the
+current keys and inheritance rules and the [upgrade guide](../upgrading.md#012-to-013)
+for migration.
 
 ## Problem
 

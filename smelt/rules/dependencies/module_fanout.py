@@ -45,7 +45,7 @@ class ModuleImportFanout(Rule):
             "Split a cohesive responsibility into its own module or depend on deliberate "
             "package facades. Review import cycles and initializer side effects before "
             "adding re-exports. No automatic rewrite is performed. Set "
-            "max_module_imports under style or in a package contract to enable "
+            "max_module_imports under style or in a style override to enable "
             "this opt-in hint for that scope (zero is supported). Selecting the rule "
             "in rules or with --select uses a limit of 20. module_import_exemptions "
             "defaults to [facades, composition_root]; [] checks both."

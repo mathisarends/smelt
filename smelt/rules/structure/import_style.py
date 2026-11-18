@@ -30,7 +30,7 @@ class ImportStyle(Rule):
             "A predictable import style makes ownership easier to read. With relative "
             "style and max_relative_level: 1, local imports use one dot; parent and "
             "cross-root imports stay absolute. Deeper relative imports can be explicitly "
-            "allowed. The closest package contract supplies the style, else "
+            "allowed. The closest style override supplies the style, else "
             "style.imports. No style is enforced without one, and this rule "
             "never changes bindings."
         ),

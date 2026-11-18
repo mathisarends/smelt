@@ -7,6 +7,16 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Configuration now distinguishes shared `style` and `rules`, package APIs under
+  `architecture.packages`, and independent member architectures. See
+  [configuration and inheritance](docs/configuration.md).
+- The catalog uses individual `family/finding` names. The
+  [0.13 upgrade checklist](docs/upgrading.md#012-to-013) covers renamed and
+  merged rules, moved YAML keys, workspace ownership and report consumers.
+- `smelt context` explains the effective policy and exception reasons for a
+  target. Workspace initialization drafts one shared root config and local
+  member configs.
+
 - SMT316 and SMT320 preserve public runtime entry points in declared composition roots.
 
 ### Breaking configuration layout

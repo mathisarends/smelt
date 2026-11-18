@@ -51,21 +51,25 @@ installed skill records the CLI version that installed it.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
   concepts, so name records where field meaning benefits callers rather than
   merging unrelated types. `max_positional_parameters`, set under `style` or
-  in a package contract, activates SMT345 for that scope; after adding
+  in a style override, activates SMT345 for that scope; after adding
   keyword-only parameters, update all callers, including tests and callbacks.
   These rules have no automatic rewrite.
-- Source-convention options are defined once: set them under `style` for the
-  project and override them in the closest package contract. An option that
-  belongs to one rule enables that rule where it applies; `smelt context` names
-  the contract or `style` that set each effective value.
-- In a uv workspace, keep one root `smelt.yml` with `project.workspace: uv` and
-  the shared policy, and put member exceptions in that member's own `smelt.yml`
-  (`rules`, `style`, `ignore`, `project.exclude`; paths member-relative).
-  Declare local features, layers and package APIs under `architecture` in the
-  config of the project or member that owns them. A member inherits shared
-  style and rule settings from the root. Run `smelt context <member feature or path>` to see the
-  layers that govern it.
-  Keep boundaries between members in root `architecture.members` (SMT111).
+- Keep shared conventions in `style` and package-specific choices in
+  `style.overrides`. An option tied to a rule enables it wherever the option
+  applies. `smelt context TARGET --format json` shows effective `style` and
+  `rule_details`, with sources and exception reasons.
+- In a uv workspace, keep `project.workspace: uv` in the root `smelt.yml`.
+  Check the owning file before adding a local policy.
+
+  | File | Policy |
+  | --- | --- |
+  | Root `smelt.yml` | Project setup, shared `style` and `rules`, tests, import graph and `architecture.members` |
+  | Local `extends` base | Optional root defaults. Mappings merge, lists replace and rules apply in layers. |
+  | Member `smelt.yml` | Local layers, features and package APIs. Root style and rules are inherited. Add local style/rule exceptions, ignores, exclusions or debt here. |
+
+  Keep package APIs and `style.overrides` with their owning project or member.
+  A member without local layers still inherits shared style. Boundaries between
+  members live in root `architecture.members` (SMT111).
   Declare imported member distributions in `project.dependencies` or
   `project.optional-dependencies` and configure their uv sources (SMT112);
   a source entry alone is not a dependency declaration. Both checks use direct
@@ -76,7 +80,9 @@ installed skill records the CLI version that installed it.
   Run the root check before finishing work that changes shared packages. A
   member override that lowers root severity must use
   `{severity: warning, reason: "specific justification"}` (or `off`/`hint`).
-  This also applies inside member package contracts. `on` uses the catalog
+  Use the same rule syntax in `style.overrides.<name>.rules`.
+  For member style changes, use `{value: ..., reason: "specific justification"}`.
+  `on` uses the catalog
   severity, and a winning individual entry needs its own reason. Strict coverage
   cannot be lowered even with a reason. Review thresholds and architecture
   replacements separately as policy decisions.

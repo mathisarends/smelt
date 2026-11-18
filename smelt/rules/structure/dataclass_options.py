@@ -34,7 +34,7 @@ class MissingDataclassOption(Rule):
             "arguments changes how callers may use it, yet codebases drift "
             "between @dataclass, @dataclass(frozen=True) and "
             "@dataclass(frozen=True, slots=True) without anyone being able to "
-            "tell which deviations are deliberate. A package contract lists "
+            "tell which deviations are deliberate. A style override lists "
             "dataclass_options, any of frozen, slots and kw_only, and every "
             "production @dataclass in the package must set each of them to "
             "True. An option that is missing or explicitly False is reported; "
@@ -59,7 +59,7 @@ class MissingDataclassOption(Rule):
             "in a package whose contract sets its own dataclass_options. No "
             "automatic rewrite is performed. Enable it for the project with "
             "style: {dataclass_options: [frozen, slots]}, or for one package "
-            "with the same option in a package contract."
+            "with the same option in a style override."
         ),
         config=("style.dataclass_options", "style.overrides"),
     )

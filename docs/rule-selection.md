@@ -29,7 +29,7 @@ rules:
 ```
 
 Precedence within a map is `ALL`, then family, then individual rule.
-Package contracts restrict broad settings to source rules. Strict coverage protects
+Style overrides restrict broad settings to source rules. Strict coverage protects
 SMT306 from broad settings.
 
 ## Layered files
@@ -60,8 +60,7 @@ one more rules layer. It applies by path to the member's sources and tests:
 
 1. the root rules layers, bases first;
 2. the member's `rules`, from the innermost member that contains the file;
-3. the closest style override, including the member's `style` options for its
-   packages.
+3. the closest `style.overrides` entry that sets the rule.
 
 ```yaml
 # smelt.yml at the workspace root
@@ -86,8 +85,7 @@ compared using the catalog severity. See [reasoned member exceptions](configurat
 
 A member's `architecture` activates the architecture rules the same way the root
 architecture does, for example `layers` turns on `architecture/layer-boundary`.
-Each such rule then judges every module against the architecture that governs
-it, the member's or the root's. See
+Each local architecture rule uses the architecture of the project that owns its target. See
 [member architecture](configuration.md#member-architecture).
 
 ## Activation and precedence
@@ -110,7 +108,10 @@ matching packages, and the rule reports nothing elsewhere. Selecting the same
 rule in `rules` or with `--select` enables it everywhere and uses built-in
 defaults where no option is set, for example a limit of 5 for SMT345. See
 [project-wide options](structure.md#project-wide-options-and-package-overrides)
-for the defaults.
+for the defaults. Use `smelt context MODULE --format json` to inspect the target's
+`rule_details`. Entries show the effective severity and whether it came from
+`rules`, a policy option or the catalog baseline, along with the source and
+reason when available.
 
 ```bash
 smelt rules --format json

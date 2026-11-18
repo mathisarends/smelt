@@ -56,7 +56,7 @@ class PreferCallableInstance(Rule):
             "and async behavior; do not move constructor dependencies into __call__. Review callers, "
             "dependency injection registrations and public compatibility before changing either name. "
             "No names, arguments or callers are rewritten automatically. Enable rules: "
-            "{idioms/prefer-callable-instance: hint}, globally or in a package contract, or --select SMT333. "
+            "{idioms/prefer-callable-instance: hint}, globally or in a style override, or --select SMT333. "
             "Keep an intentional named API with a package rules override set to off or a reasoned SMT333 suppression."
         ),
         config=("rules", "style.overrides"),

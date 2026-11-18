@@ -1,10 +1,10 @@
-# Package contracts and source conventions
+# Package APIs and source conventions
 
 ## Project-wide options and package overrides
 
 Source conventions are defined once. Set an option directly under `style`
-to apply it to the whole project, and in a package contract to apply or override
-it for matching packages. The closest contract that sets an option wins, then
+to apply it to the whole project, and in a style override to apply or override
+it for matching packages. The closest style override that sets an option wins, then
 `style`, then the built-in default:
 
 ```yaml
@@ -22,12 +22,12 @@ style:
 Every option has one activation rule:
 
 - An option that belongs to a single rule enables that rule where it applies.
-  Under `style` that is the whole project; in a contract it is the matching
+  Under `style` that is the whole project; under `style.overrides` it is the matching
   packages. `max_positional_parameters: 3` therefore enables SMT345 and
   `max_comprehension_loops: 2` enables SMT363.
 - Selecting the rule in `rules` or with `--select` enables it everywhere. Where
   no option is set, the built-in default applies.
-- `off` in `rules` always wins, including in a package contract's `rules`.
+- `off` in `rules` always wins, including in a style override's `rules`.
 - `ordering` configures `layout/definition-order`, but the rule is enabled
   through `rules` like any other fixed pattern.
 
@@ -91,7 +91,7 @@ responsibility of SMT420. Unresolved receivers are skipped.
 attribute cooperation within the same immediate Python package, including its
 initializer. Private module symbols always use the module boundary.
 Subpackages remain separate boundaries. Setting the option under `style` or
-in a package contract enables the rule for that scope, and `smelt context` shows
+in a style override enables the rule for that scope, and `smelt context` shows
 the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
@@ -99,7 +99,7 @@ depending on the review as an error gate.
 Opt-in `complexity/excess-comprehension-loops` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
 `rules: {complexity/excess-comprehension-loops: hint}`, or set
-`max_comprehension_loops` (default 1) under `style` or in a package contract
+`max_comprehension_loops` (default 1) under `style` or in a style override
 to enable it with a limit, for example to permit intentional flattening in one
 package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
@@ -108,14 +108,14 @@ exact triggers and repairs that preserve generator laziness.
 Opt-in `complexity/excess-constructor-decisions` (SMT364) reviews decision nodes in `__init__` and
 `__post_init__`. Enable `rules: {complexity/excess-constructor-decisions: hint}`, or set
 `max_constructor_decisions` (default 2) under `style` or in a package
-contract. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
+style override. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
 Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
 many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
 Setting `max_private_definitions` (default 12, zero allowed) under `style`
-or in a package contract enables the rule for that scope.
+or in a style override enables the rule for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
 are listed separately and never contribute to the limit. Imports, methods,
@@ -194,8 +194,8 @@ Other APIs such as `auth.domain.validation` do not contribute to this threshold.
 No source is rewritten. `no-cycle-found` describes the explicit runtime import
 graph and does not prove package initialization or dynamic imports safe.
 
-Declare a repeated structure or public interface explicitly. Contracts apply to
-Python packages matched by a dotted pattern, independently of feature or layer
+Declare a repeated structure or public interface under `architecture.packages`.
+Package APIs apply to Python packages matched by a dotted pattern, independently of feature or layer
 names. A whole-segment `*` in `match` selects one package segment.
 
 ```yaml
@@ -218,12 +218,12 @@ only `application.api`. Internal code may use its own implementation modules.
 callers, while the facade can deliberately re-export symbols from it.
 
 - `required` contains exact relative dotted module names. Namespace packages and
-  split source roots work too. Excluded files do not fulfill a contract.
+  split source roots work too. Excluded files do not fulfill a package requirement.
 - `public` entries are relative module patterns. `'.'` means the matching package
   itself; `api` exposes exactly that module/package, and `api.**` deliberately
   exposes that subtree. Each pattern must match analyzed code. Omit `public` to
   check structure only; `public: []` closes the package to outside imports.
-- Structure and interface contracts are additive: an import must satisfy every applicable contract.
+- Package APIs are additive. An import must satisfy every applicable interface.
   Wiring and composition roots follow the same interface rules. Existing layer
   and feature restrictions still apply, and public entries do not classify code
   into architecture roles or grant cross-feature access.
@@ -231,21 +231,20 @@ callers, while the facade can deliberately re-export symbols from it.
   pattern selecting no analyzed package is a configuration error. SMT107 reports
   private imports, including explicit module-valued aliases through facades;
   intentional symbol re-exports through a public entry point are permitted.
-- These are static module contracts. They do not check `__all__`, arbitrary
+- These are static module policies. They do not check `__all__`, arbitrary
   attribute access, dynamic loading, symbol-level visibility, or behavior. Module
-  presence alone does not establish a useful implementation; choose contracts
+  presence alone does not establish a useful implementation; choose required modules
   that reflect an intentional design, rather than creating empty template files.
 
-`smelt context` includes applicable contracts, required/public modules, missing
-entries and the visibility of an existing or planned module. Check JSON includes
-resolved contracts under `coverage.contracts`. `smelt explain SMT107` and
-`smelt explain SMT307` describe the rules. No contract is inferred automatically
-or enabled by default for consumer projects.
+`smelt context` shows the applicable package APIs, including required/public
+modules, missing entries and the visibility of the target module. Check JSON includes
+resolved package policies under `coverage.contracts`. `smelt explain SMT107`
+and `smelt explain SMT307` describe the rules.
 
 ## Positional parameter limits
 
 Make later arguments keyword-only for the whole project, or for one package
-with a contract:
+with a style override.
 
 ```yaml
 style:
@@ -324,7 +323,7 @@ Use `service.py` with public entry functions and `_helper` functions instead.
 The rule checks names independently of exports: a private-prefixed module is
 still a finding when it declares `__all__` or its symbols are re-exported. Function,
 method, class and attribute names are unaffected. This naming convention does
-not change the public entry points declared by architecture API contracts.
+not change the public entry points declared under `architecture.packages`.
 
 Omitting `private_modules` adds no naming policy. A more specific package can set
 `private_modules: allow`; contradictory policies on the same concrete package
@@ -465,7 +464,7 @@ SMT308 reports the expected form without rewriting bindings or aliases. As with
 other import rules, `architecture.import_graph.type_checking` controls guarded imports.
 Ruff's [TID252](https://docs.astral.sh/ruff/rules/relative-imports/) already covers
 forbidding parent-relative imports; Smelt additionally checks the preferred form
-under these package contracts.
+under these style overrides.
 
 ## Suggestions to bundle implementation imports
 
@@ -490,7 +489,7 @@ Counts include direct internal imports across every root package, follow
 re-exports to definitions. Repeated imports count once. Standard-library and
 third-party imports never count. Package initializers and declared composition
 roots are exempt unless `module_import_exemptions` removes that exemption globally
-or in a package contract. `[]` disables both exemptions. This design review has no
+or in a style override. `[]` disables both exemptions. This design review has no
 automatic rewrite: split cohesive responsibilities or review deliberate facades
 and their import cycles.
 
@@ -518,7 +517,7 @@ multiple symbols from one module, and imports in separate callers do not inflate
 the count. Imports from inside the package and symbols already exported by its
 facade do not count. The threshold is configurable and disabled when omitted.
 
-For overlapping `min_imports_to_bundle` and `min_importers_to_export` contracts matching the same
+For overlapping `min_imports_to_bundle` and `min_importers_to_export` declarations matching the same
 concrete package, the pattern with more literal segments wins. An exact package
 match overrides a wildcard. Identical equally specific settings produce one
 decision; conflicting equally specific settings are configuration errors.
@@ -533,7 +532,7 @@ rewritten automatically.
 
 These package API checks also cover discovered tests and `conftest.py` under
 `project.test_roots`, for example `backend/tests`. Tests are outside callers even
-when their configured test root is inside the contracted package. Thus
+when their configured test root is inside the package matched by the policy. Thus
 `public: ['.']` rejects deep test imports with [SMT107](rules/SMT107.md), and
 `min_imports_to_bundle` reviews per-test-file fanout with [SMT108](rules/SMT108.md).
 Production implementation imports inside the package remain allowed.
@@ -579,7 +578,7 @@ initializer, conflicting or uncertain bindings, star exports and dynamic facade
 exports recognized through `__getattr__`, dynamic `__all__`, `exec` or namespace
 inspection calls are skipped. Arbitrary runtime mutation is not inferred.
 Static `__all__` is respected; an existing binding excluded
-from it needs only an `__all__` change. A contract that forbids access to its own
+from it needs only an `__all__` change. A package API that restricts access to its own
 facade does not receive export suggestions. `count_tests: true` requires
 `min_importers_to_export`, whose minimum is two importers.
 
@@ -702,8 +701,8 @@ style:
 The defaults are shown above. Each list must contain its categories exactly once;
 module docstrings, future imports and imports form the fixed prefix, and the
 main guard belongs last. Use package `rules: {layout/definition-order: off}` to exempt a package.
-The closest explicit rule setting wins; ordering options alone do not activate the check. This extends `smelt.yml` package contracts rather than adding
-a second `[tool.smelt.ordering]` configuration source.
+The closest explicit rule setting wins. Enable the check in `rules` and
+configure ordering in `style` or the matching `style.overrides` entry.
 
 The analyzer partitions module and directly nested class bodies into sections.
 Within each section it computes a stable topological order: configured priority,

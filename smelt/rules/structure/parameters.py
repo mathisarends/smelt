@@ -31,7 +31,7 @@ class ExcessPositionalParameters(Rule):
             "Call sites such as connect(user, run, tab, True) do not say which "
             "value is which, and swapping two arguments of the same type still "
             "type-checks. max_positional_parameters, set under style or in a "
-            "package contract, is the limit; "
+            "style override, is the limit; "
             "parameters after that limit must be keyword-only so every call names "
             "them. self and cls are not counted, nor are *args and **kwargs. "
             "Dunder methods, @overload and @override definitions are exempt "

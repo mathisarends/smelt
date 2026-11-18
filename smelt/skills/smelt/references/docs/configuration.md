@@ -1,8 +1,28 @@
-# Explicit rules and editor support
+# Configuration and inheritance
 
-Use `smelt.yml` for project configuration; `smelt init` creates it by default.
-Existing `smelt.yaml` files remain supported. When both filenames exist in the
-same directory, Smelt selects `smelt.yml`; `--config` selects a file explicitly.
+Use `smelt.yml` for project configuration. `smelt init` creates it by default.
+`smelt.yaml` is also supported. With both names in one directory, automatic
+discovery picks `smelt.yml`.
+
+| Key | Root | `extends` base | uv member | How policy resolves |
+| --- | --- | --- | --- | --- |
+| `version` | Required after composition | Optional | Optional | The effective root uses `version: 1`. |
+| `extends` | One local file | One local file | ? | Bases apply first. The path is relative to the file declaring it. |
+| `project` | Roots, package selection, workspace, coverage, exclusions | Optional defaults | `exclude` only | Root source/test roots apply inside each member. Member exclusions add to the root exclusions. |
+| `rules` | Shared rule settings | Optional layer | Member settings | Base, root, member, then closest applicable `style.overrides` entry. A member needs a reason to lower inherited severity. |
+| `style` | Shared source conventions | Optional defaults | Member conventions | A member inherits root values option by option. Changing an inherited value requires a reason. |
+| `style.overrides` | Root-owned packages | Optional entries | Member-owned packages | The closest matching package that sets an option wins. |
+| `style.forbidden_names`, `style.file_naming` | Workspace-wide | Optional defaults | ? | Apply from the root throughout the workspace. |
+| `architecture.features`, `layers`, `modules`, `shared`, `composition_root`, `wiring`, `cross_feature` | Root-owned packages | Optional defaults for the root | Member-owned packages | Each project declares its own local layout. |
+| `architecture.packages` | Package APIs of root-owned packages | Optional entries for the root | Package APIs of member-owned packages | Each applicable package API constrains its callers. |
+| `architecture.members`, `architecture.import_graph`, `architecture.canonical_exports` | Workspace-wide | Optional defaults | ? | The root governs member boundaries, graph options and canonical exports. |
+| `tests`, `suppressions` | Workspace-wide | Optional defaults | ? | Apply from the root throughout the workspace. |
+| `ignore`, `debt` | Shared ignores and fallback debt | Optional defaults | Member-relative paths | Member ignores add to root ignores. A member debt file takes precedence for that member. |
+
+In the `extends` chain, mappings usually merge and lists replace. Each `rules`
+map is a layer. A reasoned style option replaces the entire inherited option,
+including any previous reason. Workspace members inherit root policy directly.
+The root and each member own their internal architecture.
 
 Configure each fixed check by its individual name or SMT code. Rule names have
 the form `family/finding`. The value activates that check and sets its severity.
@@ -114,14 +134,17 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   Within one file, a rule name and its SMT code together remain a
   duplicate-alias error. Unknown rules, invalid severities and strict-coverage
   restrictions still fail.
+- An inline style setting with `{value, reason}` replaces the whole option.
+  Update the reason when replacing the option in a later file.
 
-`smelt config show` prints the complete effective policy. Add `--sources` to wrap
-it with `config`, `sources` (bases first, then the project and members),
-`rule_selectors` (active matches for broad selectors) and `origins` (explicit
-YAML key locations mapped to absolute declaring-file paths). In a workspace,
-member settings appear in a separate `workspace_members` field. This works with
-`--format json` or the default YAML; defaults and discovered package names have
-no explicit origin. Inherited validation errors include the declaring file.
+`smelt config show` prints the resolved root policy. Add `--sources` to see
+`config`, `sources` (bases first, then the root and member files), `origins`
+(explicit YAML key locations and their declaring files) and `rule_selectors`
+(matches for broad selectors). A workspace adds `workspace_members` containing
+the settings from each member file. Use `--format json` for structured output.
+Defaults and discovered package names have no declared origin. Use
+`smelt context PATH` to see which values, rules and reasons govern a particular
+module, including a planned path.
 
 Every check reloads policy inputs before analysis reuse. Staged checks read every
 base from the captured Git index, never from unstaged working files; bases must
@@ -147,8 +170,15 @@ version: 1
 project:
   workspace: uv
   test_roots: [tests]
+style:
+  future_annotations: when-needed
+  max_positional_parameters: 3
 rules:
   tests/missing-outcome-check: warning
+architecture:
+  members:
+    "services/*": {may_depend_on: ["packages/*"]}
+    "packages/*": {may_depend_on: []}
 ```
 
 - `tool.uv.workspace.members` and `exclude` in `pyproject.toml` select the
@@ -163,12 +193,13 @@ rules:
 - Top-level package names must be unique across members. `root_packages`
   defaults to every member's packages; an explicit list narrows them.
 
-Each member may add its own `smelt.yml`, which inherits the root implicitly:
+Keep each member's architecture and exceptions in its own `smelt.yml`. A member
+without this file still inherits the shared root settings.
 
 ```yaml
 # services/api/smelt.yml
 rules:
-  complexity: {severity: off, reason: Migrating legacy handlers to the shared style.}
+  typing/redundant-future-annotations: {severity: hint, reason: Review legacy forward references first.}
   visibility/internal-public-member: error
 style:
   max_positional_parameters: {value: 2, reason: Prefer named arguments in service handlers.}
@@ -189,18 +220,20 @@ project:
 - **Paths are member-relative.** `ignore.paths` and `project.exclude` paths are
   resolved from the member directory.
 - **`rules` apply by path** to the member's sources and tests. The root's
-  setting comes first, then the member's, then the closest package contract.
+  setting comes first, then the member's, then the closest style override.
   See [rule precedence](rule-selection.md#workspace-members).
-- **`style` options become a contract** for each of the member's packages.
-  A more specific style override lives in the same member file.
-- **Member contracts** are named `member:name` in reports and `smelt context`.
-  Their `match` must be one of the member's own packages.
+- **`style` options apply to the member's source packages.** A more specific
+  `style.overrides` entry lives in the same member file.
+- **Package API and style matches stay with their owner.** Write
+  `architecture.packages` and `style.overrides` in the config of the project
+  that owns the matching packages. Anchor member patterns to an owned top-level
+  package, such as `api.*`.
 
 `smelt check` from a member directory, or with `--config services/api/smelt.yml`,
 loads the workspace root and checks only that member. Run `smelt check` at the
-workspace root to check every member. `smelt config show --sources` lists every member file, and `origins`
-map `members.<path>.*` keys to them. In strict coverage mode, a member cannot
-lower SMT306.
+workspace root to include every member. A `smelt.yml` or `smelt.yaml` in a
+subdirectory of a member or in an undeclared directory is ignored with a
+configuration warning. In strict coverage mode, a member cannot lower SMT306.
 
 ### Member architecture
 
@@ -220,14 +253,13 @@ architecture:
   declares its own architecture, including when it shares a layer layout with
   another member. An empty or omitted architecture leaves the member without local
   layers. Strict coverage still checks its sources.
-- An entry under `architecture.packages` or `style.overrides` belongs in the config of
-  the project that owns the matched packages.
 - Every module it names (`features`, `shared`, `composition_root`, `modules`,
   `wiring`) must lie inside the member's own packages. Layers without features
   span the member's packages, not the whole workspace.
-- It judges only imports **inside** the member: layers, features, shared code,
-  composition roots, third-party policy and cycles. Imports from one member
-  into another are not judged by either member's architecture.
+- Local layer, feature, shared and wiring rules judge dependencies between
+  packages of the same owner. Third-party policies apply to imports by that
+  owner's layers. Between owners, use `architecture.members` for dependency
+  allowlists. Package APIs and import graph checks can use the workspace graph.
 - `architecture.import_graph` (which imports count) and `architecture.members`
   (boundaries between members) are set once in the workspace root.
 - `smelt context` for a member feature or path shows the member's layers. In
@@ -263,10 +295,11 @@ cannot be lowered even with a reason. Root rules and style overrides may also us
 object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
-A member that changes a source convention set in root `style` must use a
-nonempty inline reason beside `value`. This applies to thresholds, lists
-and mapping-valued options in member `style` and in member style overrides.
-Copying a root value or setting an option the root leaves open needs no reason.
+A member that changes an inherited source convention must use a nonempty inline
+reason beside `value`. This applies to thresholds, lists and mapping-valued
+options. Member `style` inherits root conventions, and `style.overrides` inherits
+any matching member value before falling back to the root. A matching value or
+an option left open by the surrounding policy needs no reason.
 Root style also accepts the inline form. Existing `reasons` maps can still
 be read. `smelt context` shows the effective value, source and reason.
 
@@ -289,13 +322,12 @@ style:
 
 ### Workspace initialization
 
-Run `smelt init` in a uv workspace root to write one shared root config and an
-config in every discovered Python member. `--maintainability` writes the style
-selection in the root. A member gets its own architecture when Smelt infers layers,
-features, shared code or a composition root. Other members inherit the root
-architecture. The root draft includes a commented `architecture.members`
-example based on the workspace's member globs and lists observed cross-member
-imports as evidence. Review allowed targets before enabling the example.
+Run `smelt init` in a uv workspace root to write a root config and a config in
+each discovered Python member. `--maintainability` adds named `rules` entries
+to the root. Smelt drafts a local layout when it can infer layers, features,
+shared code or a composition root. The commented `architecture.members`
+example uses the workspace's member globs and pre-fills the observed target
+members. Review the allowed targets before enabling it.
 Keep packaging declarations in `pyproject.toml`; SMT112 checks those separately.
 
 Root source roots are omitted so each current or future member uses its own
@@ -393,7 +425,7 @@ declared. Missing, conflicting and unverifiable ownership is a config error,
 even when SMT109 is not selected. Without an ownership declaration, existing
 SMT109 behavior is retained. Declaring one owner prevents duplicate facade advice
 for that symbol; it does not make other internal aliases public or exempt imports
-from layers, package-public contracts or cycle checks. No callers or exports are
+from layers, package APIs or cycle checks. No callers or exports are
 rewritten. Review the existing export paths before adding another API declaration.
 
 Cycle analysis can separately select exact module edges and annotation participation:

@@ -22,8 +22,7 @@ uv tool install smelt-cli
 smelt init --maintainability
 ```
 
-Upgrading to 0.12.0? Follow the [upgrade checklist](docs/upgrading.md#0111-to-0120)
-for pins and the two new optional source reviews.
+Updating an existing configuration? Follow the [upgrade guide](docs/upgrading.md).
 
 Review the generated `smelt.yml`: it proposes a starting policy from your layout
 and selects source and test checks. You decide which conventions to adopt.
@@ -93,7 +92,7 @@ Use the visibility rules to review unnecessarily public definitions and APIs
 whose only observed users are tests.
 
 Enable individual rules in YAML by their `family/finding` names or SMT codes.
-`on` uses the named rule's catalog severity. Families, groups and `ALL` can
+`on` uses the named rule's catalog severity. Families and `ALL` can
 disable or cap already-active rules in YAML. Use `smelt check --select modeling`
 to explore a family and `smelt rules --unconfigured` to discover rules to review.
 

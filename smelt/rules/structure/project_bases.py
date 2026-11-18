@@ -29,7 +29,7 @@ class PreferProjectBaseClass(Rule):
             "share configuration, for example a pydantic BaseModel subclass "
             "that sets extra='forbid' and frozen=True. A class that inherits "
             "the framework base directly silently misses that configuration, "
-            "and nothing in the class tells a reviewer. A package contract "
+            "and nothing in the class tells a reviewer. A style override "
             "maps each outside base to the project base, e.g. bases: "
             "{pydantic.BaseModel: app.core.Options}, and production classes in "
             "the package that list the outside base among their direct bases "
@@ -56,7 +56,7 @@ class PreferProjectBaseClass(Rule):
             "into a package whose contract sets bases: {}. No automatic "
             "rewrite is performed. Enable it for the project with style: "
             "{bases: {pydantic.BaseModel: app.core.Options}}, or for one package "
-            "with the same option in a package contract."
+            "with the same option in a style override."
         ),
         config=("style.bases", "style.overrides"),
     )
