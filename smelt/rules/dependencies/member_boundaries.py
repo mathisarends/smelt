@@ -49,17 +49,7 @@ class MemberBoundary(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for detail, source, target in _member_imports(ctx):
-            policies = [
-                policy
-                for pattern, policy in ctx.config.architecture.members.items()
-                if path_matches(pattern, source)
-            ]
-            allowed = sorted(
-                {pattern for policy in policies for pattern in policy.may_depend_on}
-            )
-            if policies and not any(
-                path_matches(pattern, target) for pattern in allowed
-            ):
+            if (allowed := _boundary_restriction(ctx, source, target)) is not None:
                 yield import_violation(
                     self,
                     ctx,
@@ -97,8 +87,17 @@ class UndeclaredMemberDependency(Rule):
         bad='[project]\nname = "api"\ndependencies = []\n# api imports core.model',
         good='[project]\nname = "api"\ndependencies = ["core-lib"]\n[tool.uv.sources]\ncore-lib = {workspace = true}',
         example_language="toml",
-        fix="Declare the imported member's distribution in the importing member's project.dependencies and configure its uv workspace source; remove the import if the dependency is unintended.",
-        config=("project.workspace", "architecture.imports.type_checking"),
+        fix=(
+            "For an allowed dependency, declare the imported member's distribution "
+            "in project.dependencies and configure its uv workspace source. "
+            "If architecture.members forbids the dependency, remove the import "
+            "or move the dependency behind an allowed member boundary."
+        ),
+        config=(
+            "project.workspace",
+            "architecture.imports.type_checking",
+            "architecture.members",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
@@ -113,6 +112,12 @@ class UndeclaredMemberDependency(Rule):
             ):
                 continue
             name = target_project["name"]
+            hint = (
+                "Remove this import or move the dependency behind an allowed member boundary. "
+                "The root architecture.members policy forbids this dependency (SMT111)."
+                if _boundary_restriction(ctx, source, target) is not None
+                else f"Declare {name} in {source}/pyproject.toml project.dependencies and configure its tool.uv.sources workspace source."
+            )
             yield import_violation(
                 self,
                 ctx,
@@ -124,9 +129,28 @@ class UndeclaredMemberDependency(Rule):
                     "dependency": name,
                     "declared_members": sorted(declared[source]),
                 },
-                hint=f"Declare {name} in {source}/pyproject.toml project.dependencies and configure its tool.uv.sources workspace source.",
+                hint=hint,
                 edge=f"{source} -> {target}",
             )
+
+
+def _boundary_restriction(
+    ctx: AnalysisContext, source: str, target: str
+) -> list[str] | None:
+    """Return the applicable allowlist when it rejects the dependency."""
+    policies = [
+        policy
+        for pattern, policy in ctx.config.architecture.members.items()
+        if path_matches(pattern, source)
+    ]
+    if not policies:
+        return None
+    allowed = sorted(
+        {pattern for policy in policies for pattern in policy.may_depend_on}
+    )
+    return (
+        None if any(path_matches(pattern, target) for pattern in allowed) else allowed
+    )
 
 
 def _member_imports(ctx: AnalysisContext) -> Iterator[tuple[ImportDetail, str, str]]:

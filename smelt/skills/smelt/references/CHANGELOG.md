@@ -33,6 +33,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ### Workspace member boundaries
 
+- SMT112 recommends removing or moving imports that the workspace member
+  allowlist forbids. Allowed imports still get the dependency declaration hint.
+
 - Root `architecture.members` maps workspace-relative source globs to
   `may_depend_on` target globs and enables SMT111 `architecture/member-boundary`.
   Unmatched members are unrestricted; overlapping source entries combine their
