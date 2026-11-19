@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from contextlib import closing
 from typing import TYPE_CHECKING
 
+from smelt.analysis.cache import FactCache
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
@@ -23,31 +25,34 @@ if TYPE_CHECKING:
 
 def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    ctx = AnalysisContext(loaded.root, loaded.config)
-    issues = missing_paths(ctx)
-    if issues:
-        raise loaded.explain_error(ConfigError(issues, loaded.path.name))
-    raw = args.target
-    if (
-        raw is not None
-        and raw not in ctx.model.features
-        and ctx.files.path_for_module(raw) is None
-    ):
-        raw = relative_scope(loaded.root, cwd, raw)
-    try:
-        target = resolve_target(ctx, raw)
-    except TargetError as exc:
-        raise CliError(str(exc), option="target", value=args.target) from exc
-    try:
-        outcome = run_check(loaded, CheckOptions(), context=ctx)
-    except (AnalysisError, ConfigError) as exc:
-        briefing = build_briefing(
-            ctx, target, None, analysis_error=str(exc), loaded=loaded
+    with closing(FactCache(loaded.root / ".smelt_cache")) as cache:
+        ctx = AnalysisContext(
+            loaded.root, loaded.config, store=loaded.source, cache=cache
         )
-    else:
-        briefing = build_briefing(ctx, target, outcome.report, loaded=loaded)
-    if args.format == "json":
-        console.print(json.dumps(briefing.to_json(), indent=2))
-    else:
-        console.print(render_briefing(briefing, ctx), end="")
+        issues = missing_paths(ctx)
+        if issues:
+            raise loaded.explain_error(ConfigError(issues, loaded.path.name))
+        raw = args.target
+        if (
+            raw is not None
+            and raw not in ctx.model.features
+            and ctx.files.path_for_module(raw) is None
+        ):
+            raw = relative_scope(loaded.root, cwd, raw)
+        try:
+            target = resolve_target(ctx, raw)
+        except TargetError as exc:
+            raise CliError(str(exc), option="target", value=args.target) from exc
+        try:
+            outcome = run_check(loaded, CheckOptions(), context=ctx)
+        except (AnalysisError, ConfigError) as exc:
+            briefing = build_briefing(
+                ctx, target, None, analysis_error=str(exc), loaded=loaded
+            )
+        else:
+            briefing = build_briefing(ctx, target, outcome.report, loaded=loaded)
+        if args.format == "json":
+            console.print(json.dumps(briefing.to_json(), indent=2))
+        else:
+            console.print(render_briefing(briefing, ctx), end="")
     return EXIT_OK
