@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError, parse_config
+from smelt.config.errors import UPGRADE_GUIDE_URL
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
+from smelt.engine.rule_settings import unknown_selectors
 from smelt.rules.registry import build_rule_set
 from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_project
 
@@ -771,3 +773,47 @@ def test_a_member_cannot_relax_strict_coverage(tmp_path: Path) -> None:
         check(root)
 
     assert caught.value.issues[0].path == "rules.SMT306"
+
+
+def test_rule_and_ignore_selector_mistakes_are_reported_together(
+    tmp_path: Path,
+) -> None:
+    policy = (
+        "rules: {import-cycle: error, typing/no-such-rule: hint}\n"
+        "ignore:\n"
+        "  - {rule: private-test-access, paths: [app/api.py], reason: legacy}\n"
+        "  - {rule: yaml-file-extension, paths: [app/api.py], reason: legacy}\n"
+    )
+
+    with pytest.raises(ConfigError) as caught:
+        check(_project(tmp_path, policy))
+
+    assert [issue.path for issue in caught.value.issues] == [
+        "rules.import-cycle",
+        "rules.typing/no-such-rule",
+        "ignore[0].rule",
+        "ignore[1].rule",
+    ]
+
+
+def test_unknown_selectors_of_an_unvalidated_config() -> None:
+    raw = {
+        "rules": {"ALL": "off", "imports": "hint", "import-cycle": "error"},
+        "ignore": [{"rule": "SMT1"}, {"rule": "private-test-access"}, "broken"],
+        "structure": {},
+    }
+
+    found = unknown_selectors(raw, build_rule_set())
+
+    assert [(issue.path, issue.message) for issue in found] == [
+        (
+            "rules.import-cycle",
+            'unknown rule "import-cycle"; renamed to "architecture/import-cycle" '
+            f"in 0.13.0 (see {UPGRADE_GUIDE_URL})",
+        ),
+        (
+            "ignore[1].rule",
+            'unknown rule "private-test-access"; renamed to "tests/private-access" '
+            f"in 0.13.0 (see {UPGRADE_GUIDE_URL})",
+        ),
+    ]

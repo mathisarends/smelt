@@ -71,8 +71,7 @@ class RuleSettings:
         )
         self.source = loaded.path.name
         self.rules = rules
-        self.codes = {rule.code: rule.code for rule in rules.rules}
-        self.codes.update({rule.name: rule.code for rule in rules.rules})
+        self.codes = _rule_codes(rules)
         self.defaults = {rule.code: rule.default_severity.value for rule in rules.rules}
         project_rules = {
             rule.code
@@ -82,31 +81,54 @@ class RuleSettings:
         # A later layer replaces what an earlier one set: the level wins over specificity.
         self._layers: list[dict[str, _Setting]] = []
         self.selector_rules: dict[str, list[str]] = {}
+        # Selector mistakes are reported together, so a migration needs one pass.
+        pending: list[ConfigIssue] = []
         for index, layer in enumerate(loaded.config.rule_layers):
             source = (
                 loaded.rule_sources[index] if index < len(loaded.rule_sources) else None
             )
             entries = self._entries(
-                layer, "rules", excluded=self._strict_guard(), source=source
+                layer,
+                "rules",
+                excluded=self._strict_guard(),
+                source=source,
+                pending=pending,
             )
             if validate_selectors:
-                self._validate_broad(layer, "rules", entries)
+                try:
+                    self._validate_broad(layer, "rules", entries)
+                except ConfigError as exc:
+                    pending.extend(exc.issues)
             self._layers.append(entries)
         self._packages = {
             name: self._entries(
                 contract.rules,
                 f"{contract.style_location or f'style.overrides.{name}'}.rules",
                 excluded=frozenset(project_rules),
+                pending=pending,
             )
             for name, contract in self.config.structure.contracts.items()
         }
         # Workspace members refine the root by path, so their tests are covered too.
         self._members = {
             path: self._entries(
-                member.rules, f"members.{path}.rules", excluded=self._strict_guard()
+                member.rules,
+                f"members.{path}.rules",
+                excluded=self._strict_guard(),
+                pending=pending,
             )
             for path, member in loaded.config.members.items()
         }
+        pending.extend(
+            ConfigIssue(
+                f"ignore[{index}].rule",
+                f'unknown rule "{entry.rule}"{self._suggestion(entry.rule)}',
+            )
+            for index, entry in enumerate(loaded.config.ignore)
+            if not rules.matching_codes(entry.rule)
+        )
+        if pending:
+            raise ConfigError(pending, self.source)
         self._member_paths = sorted(self._members, key=len, reverse=True)
         self._base_loaded = (
             replace(loaded, config=base)
@@ -132,17 +154,6 @@ class RuleSettings:
                 ],
                 self.source,
             )
-        for index, entry in enumerate(loaded.config.ignore):
-            if not rules.matching_codes(entry.rule):
-                raise ConfigError(
-                    [
-                        ConfigIssue(
-                            f"ignore[{index}].rule",
-                            f'unknown rule "{entry.rule}"{self._suggestion(entry.rule)}',
-                        )
-                    ],
-                    self.source,
-                )
         for name, settings in self._packages.items():
             if project_rules & settings.keys():
                 raise ConfigError(
@@ -473,6 +484,7 @@ class RuleSettings:
         *,
         excluded: frozenset[str] = frozenset(),
         source: str | None = None,
+        pending: list[ConfigIssue] | None = None,
     ) -> dict[str, _Setting]:
         """Resolve selectors to their winning settings, retaining reasons.
 
@@ -531,7 +543,9 @@ class RuleSettings:
                     reason=value.reason if isinstance(value, RuleOverride) else None,
                     source=source,
                 )
-        if issues:
+        if pending is not None:
+            pending.extend(issues)
+        elif issues:
             raise ConfigError(issues, self.source)
         return result
 
@@ -645,10 +659,40 @@ class RuleSettings:
         return None
 
     def _suggestion(self, key: str) -> str:
-        families = [category.value for category in Category]
-        return retired_hint(key, self.codes) or did_you_mean(
-            key, [*self.codes, *families]
-        )
+        return _suggestion(key, self.codes)
+
+
+def unknown_selectors(raw: Mapping[str, object], rules: RuleSet) -> list[ConfigIssue]:
+    """Unknown rule selectors of an unvalidated config, to report with schema errors."""
+    selectors = raw.get("rules")
+    ignore = raw.get("ignore")
+    found = [
+        (f"rules.{key}", key)
+        for key in (selectors if isinstance(selectors, dict) else {})
+        if isinstance(key, str)
+    ]
+    found.extend(
+        (f"ignore[{index}].rule", entry["rule"])
+        for index, entry in enumerate(ignore if isinstance(ignore, list) else [])
+        if isinstance(entry, dict) and isinstance(entry.get("rule"), str)
+    )
+    codes = _rule_codes(rules)
+    return [
+        ConfigIssue(location, f'unknown rule "{name}"{_suggestion(name, codes)}')
+        for location, name in found
+        if not rules.matching_codes(name)
+    ]
+
+
+def _rule_codes(rules: RuleSet) -> dict[str, str]:
+    codes = {rule.code: rule.code for rule in rules.rules}
+    codes.update({rule.name: rule.code for rule in rules.rules})
+    return codes
+
+
+def _suggestion(key: str, codes: dict[str, str]) -> str:
+    families = [category.value for category in Category]
+    return retired_hint(key, codes) or did_you_mean(key, [*codes, *families])
 
 
 def _raw_value(setting: RuleSetting) -> str:

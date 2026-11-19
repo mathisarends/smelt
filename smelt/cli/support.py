@@ -63,7 +63,6 @@ def use_color(stream: TextIO, *, disabled: bool) -> bool:
 def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
     from smelt.config.loader import (  # noqa: PLC0415 - keep schemas out of CLI startup
         discover_config,
-        load_config,
     )
 
     if config_path:
@@ -74,12 +73,12 @@ def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
             raise ConfigError(
                 [ConfigIssue("", f"config file not found: {config_path}")]
             )
-        return load_config(path)
+        return _load_reporting_selectors(path)
     found = discover_config(cwd)
     if found is None:
         msg = "no smelt.yml found in this directory or its parents (run `smelt init`)"
         raise CliError(msg, kind="config")
-    loaded = load_config(found)
+    loaded = _load_reporting_selectors(found)
     if loaded.config.project.workspace == "uv":
         from smelt.config.workspace import member_directories  # noqa: PLC0415
 
@@ -100,3 +99,23 @@ def configure_streams() -> None:
         if reconfigure is not None:
             with contextlib.suppress(ValueError, OSError):
                 reconfigure(encoding="utf-8", errors="replace")
+
+
+def _load_reporting_selectors(path: Path) -> LoadedConfig:
+    """Load a config; schema errors also list unknown rule selectors at once."""
+    from smelt.config.loader import load_config, raw_config  # noqa: PLC0415
+    from smelt.engine.rule_settings import unknown_selectors  # noqa: PLC0415
+    from smelt.rules.registry import build_rule_set  # noqa: PLC0415
+
+    try:
+        return load_config(path)
+    except ConfigError as exc:
+        reported = {issue.path for issue in exc.issues}
+        missing = [
+            issue
+            for issue in unknown_selectors(raw_config(path), build_rule_set(lazy=True))
+            if issue.path not in reported
+        ]
+        if not missing:
+            raise
+        raise ConfigError([*exc.issues, *missing], exc.source) from exc

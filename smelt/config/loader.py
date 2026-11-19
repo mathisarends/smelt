@@ -29,7 +29,7 @@ from smelt.config.workspace import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path
 
 CONFIG_FILENAME = "smelt.yml"
@@ -184,6 +184,15 @@ def parse_config(
     if errors:
         raise ConfigError(errors, source)
     return config, tuple(warnings)
+
+
+def raw_config(path: Path, *, store: SourceStore | None = None) -> Mapping[str, object]:
+    """The composed YAML before validation; empty when it cannot be read."""
+    try:
+        raw = compose_config(path, store or SourceStore(), _load_yaml).raw
+    except ConfigError:
+        return {}
+    return raw if isinstance(raw, dict) else {}
 
 
 def _load_selected(
