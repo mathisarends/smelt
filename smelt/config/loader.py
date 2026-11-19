@@ -12,7 +12,13 @@ from pydantic import BaseModel, ValidationError
 
 from smelt.config.composition import ConfigComposition, add_member, compose_config
 from smelt.config.discovery import packages_in
-from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean, format_loc
+from smelt.config.errors import (
+    UPGRADE_GUIDE_URL,
+    ConfigError,
+    ConfigIssue,
+    did_you_mean,
+    format_loc,
+)
 from smelt.config.models import SmeltConfig
 from smelt.config.source import SourceStore
 from smelt.config.validation import validate_semantics
@@ -465,7 +471,7 @@ def _rule_setting_location(
 def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...]) -> str:
     path = tuple(str(item) for item in loc[-2:])
     if retired := _RETIRED_POLICY_KEYS.get(path) or _RETIRED_POLICY_KEYS.get((key,)):
-        return f"{retired}; see docs/upgrading.md"
+        return f"{retired}; see {UPGRADE_GUIDE_URL}"
     message = f'unknown key "{key}"{did_you_mean(key, known)}'
     if key in _REMOVED_SWITCHES:
         return (

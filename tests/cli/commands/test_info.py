@@ -19,8 +19,11 @@ def test_removed_information_hiding_selector_has_a_migration_hint(
 ) -> None:
     assert main(["explain", "information-hiding"]) == 2
     assert (
-        "List SMT316, SMT320, SMT335, SMT429 and SMT430 individually"
-        in capsys.readouterr().err
+        "List visibility/internal-public-member, "
+        "visibility/internal-public-module-symbol, "
+        "visibility/internal-public-attribute, "
+        "visibility/test-only-public-function, "
+        "visibility/test-only-public-attribute individually" in capsys.readouterr().err
     )
 
 

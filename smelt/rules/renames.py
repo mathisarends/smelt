@@ -1,5 +1,7 @@
 """Rule names and codes retired by the 0.13.0 taxonomy, for actionable config errors."""
 
+from smelt.config.errors import UPGRADE_GUIDE_URL
+
 _RENAMED_RULES: dict[str, str] = {
     "complexity/constructor-logic": "complexity/excess-constructor-decisions",
     "complexity/complex-comprehension": "complexity/excess-comprehension-loops",
@@ -111,16 +113,26 @@ _MERGED_CODES: dict[str, str] = {
 }
 
 
+_INFORMATION_HIDING_RULES = (
+    "visibility/internal-public-member",
+    "visibility/internal-public-module-symbol",
+    "visibility/internal-public-attribute",
+    "visibility/test-only-public-function",
+    "visibility/test-only-public-attribute",
+)
+
+
 def retired_hint(key: str, codes: dict[str, str]) -> str:
     """Explain where a pre-0.13 rule name or merged code went, if it did."""
     if key.lower() == "information-hiding":
-        return "; the information-hiding selector was removed in 0.13.0. List SMT316, SMT320, SMT335, SMT429 and SMT430 individually (see docs/upgrading.md)"
+        names = ", ".join(_INFORMATION_HIDING_RULES)
+        return f"; the information-hiding selector was removed in 0.13.0. List {names} individually with the same severity (see {UPGRADE_GUIDE_URL})"
     if (new := _RENAMED_RULES.get(key)) is not None:
-        return f'; renamed to "{new}" in 0.13.0 (see docs/upgrading.md)'
+        return f'; renamed to "{new}" in 0.13.0 (see {UPGRADE_GUIDE_URL})'
     if (code := _MERGED_CODES.get(key.upper())) is not None:
         name = next(
             (name for name, value in codes.items() if value == code and name != code),
             code,
         )
-        return f'; merged into {code} "{name}" in 0.13.0 (see docs/upgrading.md)'
+        return f'; merged into {code} "{name}" in 0.13.0 (see {UPGRADE_GUIDE_URL})'
     return ""

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
+from smelt.config.errors import UPGRADE_GUIDE_URL
 from smelt.rules.renames import retired_hint
 from tests.helpers import check, write_project
 
@@ -20,17 +21,27 @@ CODES = {"SMT323": "SMT323", "modeling/forbidden-base-class-affix": "SMT323"}
         (
             "no-base-class-prefix",
             '; renamed to "modeling/forbidden-base-class-affix" in 0.13.0 '
-            "(see docs/upgrading.md)",
+            f"(see {UPGRADE_GUIDE_URL})",
         ),
         (
             "SMT326",
             '; merged into SMT323 "modeling/forbidden-base-class-affix" in 0.13.0 '
-            "(see docs/upgrading.md)",
+            f"(see {UPGRADE_GUIDE_URL})",
         ),
         (
             "smt326",
             '; merged into SMT323 "modeling/forbidden-base-class-affix" in 0.13.0 '
-            "(see docs/upgrading.md)",
+            f"(see {UPGRADE_GUIDE_URL})",
+        ),
+        (
+            "information-hiding",
+            "; the information-hiding selector was removed in 0.13.0. List "
+            "visibility/internal-public-member, "
+            "visibility/internal-public-module-symbol, "
+            "visibility/internal-public-attribute, "
+            "visibility/test-only-public-function, "
+            "visibility/test-only-public-attribute individually with the same "
+            f"severity (see {UPGRADE_GUIDE_URL})",
         ),
         ("modeling/forbidden-base-class-affix", ""),
         ("unknown-rule", ""),

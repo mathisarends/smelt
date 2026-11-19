@@ -1,6 +1,7 @@
 import pytest
 
 from smelt.config import ConfigError, parse_config
+from smelt.config.errors import UPGRADE_GUIDE_URL
 
 MINIMAL = {"version": 1, "project": {"root_packages": ["gateway"]}}
 
@@ -26,7 +27,7 @@ def test_retired_config_keys_point_to_migration(
         parse_config({**MINIMAL, **old})
 
     assert successor in str(caught.value)
-    assert "docs/upgrading.md" in str(caught.value)
+    assert f"see {UPGRADE_GUIDE_URL}" in str(caught.value)
 
 
 def _package_policy(spec: dict[str, object]) -> dict[str, object]:
