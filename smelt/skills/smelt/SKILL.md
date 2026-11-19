@@ -102,8 +102,9 @@ installed skill records the CLI version that installed it.
   When intentionally adopting a baseline, `smelt debt` records current findings
   and changes configuration. `smelt debt --prune` removes resolved debt without
   accepting new findings; `smelt debt --show` inspects stored debt read-only.
-- For an intentional local exception, use a specific code and reason, for example
-  `# smelt: ignore[SMT101] -- migration tracked in #123`. Statement comments do not
+- For an intentional local exception, name the specific rule and a reason, for example
+  `# smelt: ignore[architecture/layer-boundary] -- migration tracked in #123`.
+  Stable SMT codes also work. Statement comments do not
   suppress a whole function body. Keep exceptions narrow and address unused ones.
 - Exit codes are `0` for passing, `1` for findings at the failure threshold, `2`
   for usage/configuration/analysis errors. Hints do not fail a check. JSON check

@@ -27,7 +27,6 @@ _MACHINE_ONLY = frozenset(
         "usage_scope",
         "fix_blocker",
         "affected_lines",
-        "automatic_rename",
     }
 )
 _COLORS = {
@@ -437,8 +436,11 @@ def _expected(violation: Violation, expected: Mapping[str, Any]) -> list[str]:
         if key == "may_depend_on" and violation.layer:
             targets = ", ".join(value) if value else "(nothing)"
             lines.append(f"  Allowed: {violation.layer} → {targets}")
-        elif key in _MACHINE_ONLY or (
-            key == "fix_reason" and violation.hint and str(value) in violation.hint
+        # automatic_* flags state a constant fact for machine consumers.
+        elif (
+            key in _MACHINE_ONLY
+            or key.startswith("automatic_")
+            or (key == "fix_reason" and violation.hint and str(value) in violation.hint)
         ):
             continue
         elif key == "candidates":
@@ -467,6 +469,8 @@ def _candidate_lines(candidates: list[Mapping[str, Any]]) -> list[str]:
 
 
 def _format_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
     if isinstance(value, list | tuple):
         return ", ".join(str(v) for v in value) if value else "(none)"
     if isinstance(value, Mapping):

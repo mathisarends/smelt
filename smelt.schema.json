@@ -848,7 +848,7 @@
           ]
         },
         "public_attribute_boundary": {
-          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
           "anyOf": [
             {
               "anyOf": [
@@ -860,7 +860,7 @@
                 }
               ],
               "default": null,
-              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
             },
             {
               "type": "object",
@@ -882,7 +882,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
                     },
                     {
                       "not": {
@@ -2328,7 +2328,7 @@
           ]
         },
         "public_attribute_boundary": {
-          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
           "anyOf": [
             {
               "anyOf": [
@@ -2340,7 +2340,7 @@
                 }
               ],
               "default": null,
-              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
             },
             {
               "type": "object",
@@ -2362,7 +2362,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
                     },
                     {
                       "not": {
@@ -3525,7 +3525,7 @@
           ]
         },
         "public_attribute_boundary": {
-          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+          "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
           "anyOf": [
             {
               "anyOf": [
@@ -3537,7 +3537,7 @@
                 }
               ],
               "default": null,
-              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+              "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
             },
             {
               "type": "object",
@@ -3559,7 +3559,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
+                      "description": "Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class."
                     },
                     {
                       "not": {
@@ -5245,8 +5245,8 @@
         },
         "meta/unused-suppression": {
           "title": "SMT901: An inline suppression is unused or names an unknown identifier.",
-          "description": "An inline suppression is unused or names an unknown identifier. Stale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Unknown identifiers, including rule names instead of SMT codes, are diagnosed even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Inline comments continue to accept stable SMT codes and prefixes; YAML and CLI also accept rule names. Repair: Remove the comment, or the unused codes from it.",
-          "markdownDescription": "**SMT901 \u2014 meta/unused-suppression**\n\nAn inline suppression is unused or names an unknown identifier.\n\nStale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Unknown identifiers, including rule names instead of SMT codes, are diagnosed even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Inline comments continue to accept stable SMT codes and prefixes; YAML and CLI also accept rule names.\n\n**Problem**\n```python\nimport os  # smelt: ignore[SMT101] -- legacy\n```\n\n**Preferred**\n```python\nimport os\n```\n\nRemove the comment, or the unused codes from it.\n\nRun `smelt explain meta/unused-suppression` for details.",
+          "description": "An inline suppression is unused or names an unknown identifier. Stale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Inline comments accept rule names, stable SMT codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Repair: Remove the comment, or the unused codes from it.",
+          "markdownDescription": "**SMT901 \u2014 meta/unused-suppression**\n\nAn inline suppression is unused or names an unknown identifier.\n\nStale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Inline comments accept rule names, stable SMT codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown.\n\n**Problem**\n```python\nimport os  # smelt: ignore[architecture/layer-boundary] -- legacy\n```\n\n**Preferred**\n```python\nimport os\n```\n\nRemove the comment, or the unused codes from it.\n\nRun `smelt explain meta/unused-suppression` for details.",
           "examples": [
             "warning"
           ],
@@ -6153,8 +6153,8 @@
         },
         "^SMT901$": {
           "title": "SMT901: An inline suppression is unused or names an unknown identifier.",
-          "description": "An inline suppression is unused or names an unknown identifier. Stale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Unknown identifiers, including rule names instead of SMT codes, are diagnosed even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Inline comments continue to accept stable SMT codes and prefixes; YAML and CLI also accept rule names. Repair: Remove the comment, or the unused codes from it.",
-          "markdownDescription": "**SMT901 \u2014 meta/unused-suppression**\n\nAn inline suppression is unused or names an unknown identifier.\n\nStale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Unknown identifiers, including rule names instead of SMT codes, are diagnosed even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Inline comments continue to accept stable SMT codes and prefixes; YAML and CLI also accept rule names.\n\n**Problem**\n```python\nimport os  # smelt: ignore[SMT101] -- legacy\n```\n\n**Preferred**\n```python\nimport os\n```\n\nRemove the comment, or the unused codes from it.\n\nRun `smelt explain meta/unused-suppression` for details.",
+          "description": "An inline suppression is unused or names an unknown identifier. Stale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Inline comments accept rule names, stable SMT codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown. Repair: Remove the comment, or the unused codes from it.",
+          "markdownDescription": "**SMT901 \u2014 meta/unused-suppression**\n\nAn inline suppression is unused or names an unknown identifier.\n\nStale suppressions hide future violations on the same line and make readers believe there is an exception where there is none. Inline comments accept rule names, stable SMT codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown.\n\n**Problem**\n```python\nimport os  # smelt: ignore[architecture/layer-boundary] -- legacy\n```\n\n**Preferred**\n```python\nimport os\n```\n\nRemove the comment, or the unused codes from it.\n\nRun `smelt explain meta/unused-suppression` for details.",
           "examples": [
             "warning"
           ],

@@ -117,9 +117,19 @@ conventions.
 
 ### Explicit rule activation
 
-Replace the former `information-hiding` selector with SMT316, SMT320, SMT335,
-SMT429 and SMT430 at the former severity. These five codes also form the
-equivalent comma-separated CLI selection. The `visibility` family covers
+Replace the former `information-hiding` selector with its five rules at the
+former severity:
+
+```yaml
+rules:
+  visibility/internal-public-member: warning          # SMT316
+  visibility/internal-public-module-symbol: warning   # SMT320
+  visibility/internal-public-attribute: warning       # SMT335
+  visibility/test-only-public-function: warning       # SMT429
+  visibility/test-only-public-attribute: warning      # SMT430
+```
+
+These five codes also form the equivalent comma-separated CLI selection. The `visibility` family covers
 additional rules. Use named entries from `smelt init --maintainability` or a
 local `extends` file to replace the unreleased `smelt:recommended` preset.
 Families and `ALL` in YAML can disable or cap active rules. Named `on` uses

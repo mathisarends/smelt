@@ -762,7 +762,7 @@ class PackagePolicy(_Model):
     )
     public_attribute_boundary: PublicAttributeBoundary | None = Field(
         default=None,
-        description="Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+        description="Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
     )
     private_attribute_boundary: PrivateAttributeBoundary | None = Field(
         default=None,

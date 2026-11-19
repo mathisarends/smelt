@@ -129,7 +129,7 @@ def _add_check(sub: _Subparsers) -> None:
     check.add_argument(
         "--select",
         metavar="CODES",
-        help="run rule names, groups, code prefixes or ALL; architecture/style parameters are still required",
+        help="run only these rule names, families, code prefixes or ALL; rules that need configuration (layers, style options) still need it in smelt.yml",
     )
     check.add_argument(
         "--ignore",

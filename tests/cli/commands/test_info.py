@@ -19,8 +19,11 @@ def test_removed_information_hiding_selector_has_a_migration_hint(
 ) -> None:
     assert main(["explain", "information-hiding"]) == 2
     assert (
-        "List SMT316, SMT320, SMT335, SMT429 and SMT430 individually"
-        in capsys.readouterr().err
+        "List visibility/internal-public-member, "
+        "visibility/internal-public-module-symbol, "
+        "visibility/internal-public-attribute, "
+        "visibility/test-only-public-function, "
+        "visibility/test-only-public-attribute individually" in capsys.readouterr().err
     )
 
 
@@ -70,3 +73,12 @@ def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
     assert "SMT316" not in found
     assert "SMT345" not in found
     assert "SMT347" in found
+
+
+def test_rule_listing_explains_its_columns(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["rules"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[0].split() == ["code", "rule", "enabled", "severity"]
+    assert "policy: runs once its smelt.yml option is set" in out
+    assert "explicit: runs only when listed under rules: in smelt.yml" in out

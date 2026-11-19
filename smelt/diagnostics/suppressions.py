@@ -3,11 +3,11 @@ from __future__ import annotations
 import io
 import re
 import tokenize
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Collection, Mapping
 
     from smelt.diagnostics.violation import Violation
 
@@ -28,6 +28,24 @@ class Suppression:
     reason: str | None
     start_line: int | None = None
     end_line: int | None = None
+    # Identifiers as written, parallel to codes, once rule names are resolved.
+    written: tuple[str, ...] = ()
+
+    def resolve_names(self, codes_by_name: Mapping[str, str]) -> Suppression:
+        """Replace rule names with their codes; unknown names stay as written."""
+        if not any(is_rule_name(identifier) for identifier in self.codes):
+            return self
+        return replace(
+            self,
+            codes=tuple(codes_by_name.get(item, item) for item in self.codes),
+            written=self.codes,
+        )
+
+    def label(self, code: str) -> str:
+        """The identifier as the comment spells it."""
+        if not self.written:
+            return code
+        return dict(zip(self.codes, self.written, strict=True)).get(code, code)
 
     def covers(self, code: str) -> bool:
         return not self.codes or any(code.startswith(prefix) for prefix in self.codes)
@@ -89,7 +107,7 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
         if match is None:
             continue
         codes = tuple(
-            code.strip().upper()
+            _identifier(code)
             for code in (match.group("codes") or "").split(",")
             if code.strip()
         )
@@ -127,3 +145,14 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
             )
         )
     return found
+
+
+def is_rule_name(identifier: str) -> bool:
+    """Rule names (``family/finding``, retired ``kebab-case``); codes have neither."""
+    return "/" in identifier or "-" in identifier
+
+
+def _identifier(raw: str) -> str:
+    """Rule names keep their spelling; codes and code prefixes ignore case."""
+    value = raw.strip()
+    return value if is_rule_name(value) else value.upper()

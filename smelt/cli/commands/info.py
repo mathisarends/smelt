@@ -100,6 +100,7 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         console.print(json.dumps([m.to_json() for m in metas], indent=2))
         return EXIT_OK
     width = max((len(meta.name) for meta in metas), default=0)
+    console.print(f"  {'code':<6}  {'rule':<{width}} {'enabled':<8} severity")
     for family in Category:
         members = [meta for meta in metas if meta.category is family]
         if not members:
@@ -109,6 +110,10 @@ def rules(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             console.print(
                 f"  {meta.code}  {meta.name:<{width}} {meta.activation['mode']:<8} {meta.default_severity.value}"
             )
+    modes = {meta.activation["mode"] for meta in metas}
+    legend = [text for mode, text in _ACTIVATION_LEGEND if mode in modes]
+    if legend:
+        console.print("\n" + "\n".join(legend))
     return EXIT_OK
 
 
@@ -161,6 +166,16 @@ def config_show(args: argparse.Namespace, console: Console, cwd: Path) -> int:
 def config_schema(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     console.print(json.dumps(config_json_schema(), indent=2))
     return EXIT_OK
+
+
+_ACTIVATION_LEGEND = (
+    ("default", "default: runs without configuration"),
+    (
+        "policy",
+        "policy: runs once its smelt.yml option is set; `smelt explain` names it",
+    ),
+    ("explicit", "explicit: runs only when listed under rules: in smelt.yml"),
+)
 
 
 def _suggestion(raw: str, rules: RuleSet) -> str:

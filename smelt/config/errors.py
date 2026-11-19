@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+# Absolute, so installed users without a source checkout can follow it.
+UPGRADE_GUIDE_URL = (
+    "https://github.com/mathisarends/smelt/blob/main/docs/upgrading.md#012-to-013"
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ConfigIssue:
