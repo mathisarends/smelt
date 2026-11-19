@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from smelt.analysis.imports import ImportIndex
 from smelt.cli import main
 from smelt.config import load_config
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
@@ -1494,6 +1495,37 @@ class TestDiscoveryCommands:
         )
         assert (code, err) == (0, "")
         assert json.loads(out)["module"] == "app.application.service"
+
+    def test_context_reuses_check_after_a_layer_violation(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        module = clean_project / "app/domain/order.py"
+        module.write_text("from app.application import service\n", encoding="utf-8")
+        monkeypatch.chdir(clean_project)
+        code, report, err = _run(capsys, "check", "--format", "json")
+        assert (code, err) == (1, "")
+        assert "SMT101" in {v["code"] for v in json.loads(report)["violations"]}
+
+        def unexpected_build(*args: object, **kwargs: object) -> None:
+            pytest.fail("context rebuilt the import graph after an unchanged check")
+
+        with monkeypatch.context() as warm:
+            warm.setattr(ImportIndex, "build", unexpected_build)
+            code, output, err = _run(
+                capsys, "context", "app.domain.order", "--format", "json"
+            )
+        assert (code, err) == (0, "")
+        assert "SMT101" in json.loads(output)["violations"]["codes"]
+
+        module.write_text("", encoding="utf-8")
+        code, output, err = _run(
+            capsys, "context", "app.domain.order", "--format", "json"
+        )
+        assert (code, err) == (0, "")
+        assert "SMT101" not in json.loads(output)["violations"]["codes"]
 
     def test_context_survives_unrelated_syntax_error(
         self,

@@ -127,11 +127,14 @@ def run_check(
     rules: RuleSet | None = None,
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
-    cache = (
+    owned_cache = (
         FactCache(options.cache_dir or loaded.root / ".smelt_cache")
         if options.use_cache and rules is None and context is None
         else None
     )
+    cache = owned_cache
+    if context is not None and options.use_cache and rules is None:
+        cache = context.cache
     try:
         return _run_check(loaded, options, rules=rules, context=context, cache=cache)
     except ConfigError as exc:
@@ -140,8 +143,8 @@ def run_check(
             raise
         raise explained from exc
     finally:
-        if cache is not None:
-            cache.close()
+        if owned_cache is not None:
+            owned_cache.close()
 
 
 def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
