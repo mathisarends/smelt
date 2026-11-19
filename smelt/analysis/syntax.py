@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
 from smelt.analysis.exports import Namespace, namespace_of
-from smelt.analysis.parsing import AstCache, resolve_relative
+from smelt.analysis.parsing import AstCache, resolve_relative, type_checking_lines
 
 if TYPE_CHECKING:
     from smelt.analysis.cache import FactCache
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 _NAMESPACE = TypeAdapter(Namespace)
 
 
-@dataclass(slots=True)
+@dataclass
 class ModuleSyntax:
     module: str
     path: str
@@ -24,6 +25,18 @@ class ModuleSyntax:
     is_package: bool
     # local name -> qualified name it was imported as
     bindings: dict[str, str] = field(default_factory=dict)
+
+    @cached_property
+    def imports(self) -> tuple[ast.Import | ast.ImportFrom, ...]:
+        return tuple(
+            node
+            for node in ast.walk(self.tree)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+        )
+
+    @cached_property
+    def guarded_lines(self) -> frozenset[int]:
+        return type_checking_lines(self.tree)
 
 
 class SyntaxIndex:
@@ -88,7 +101,7 @@ class SyntaxIndex:
 
 
 def _collect_bindings(syntax: ModuleSyntax) -> None:
-    for node in ast.walk(syntax.tree):
+    for node in syntax.imports:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.asname:

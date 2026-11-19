@@ -182,6 +182,7 @@ class ImportIndex:
         self.first_party = frozenset(
             m for m in graph.modules if any(is_within(m, r) for r in roots)
         )
+        self._test_imports: dict[str, list[ImportDetail]] = {}
         self._outgoing: dict[str, list[ImportDetail]] = {}
         self._chains: dict[
             tuple[str, bool, tuple[str, ...] | None],
@@ -268,36 +269,25 @@ class ImportIndex:
         """
         modules = self.files.sources.keys() | self.files.packages.keys()
         for path in sorted(self.files.tests):
-            module = syntax.for_path(path)
-            if module is None:
-                continue
-            guarded = type_checking_lines(module.tree)
-            for node in ast.walk(module.tree):
-                if not isinstance(node, ast.Import | ast.ImportFrom):
-                    continue
-                contents = self.files.line(path, node.lineno)
-                for imported in _project_targets(node, module, modules=modules):
-                    description = _describe(
-                        node,
-                        module.module,
-                        module.is_package,
-                        imported=imported,
-                        line_contents=contents,
+            details = self._test_imports.get(path)
+            if details is None:
+                cache = self._cache
+                key = (
+                    cache.key(
+                        "test-import-details",
+                        [path, self.files.content_id(path), self._inventory],
                     )
-                    yield (
-                        path,
-                        ImportDetail(
-                            importer=module.module,
-                            imported=imported,
-                            line=node.lineno,
-                            line_contents=contents,
-                            names=description.names,
-                            type_checking=node.lineno in guarded,
-                            external=False,
-                            column=description.column,
-                            end_column=description.end_column,
-                        ),
-                    )
+                    if cache
+                    else None
+                )
+                details = cache.read(key, _DETAILS) if cache and key else None
+                if details is None:
+                    details = list(self._test_details(path, syntax, modules=modules))
+                    if cache and key:
+                        cache.write(key, details, _DETAILS)
+                self._test_imports[path] = details
+            for detail in details:
+                yield path, detail
 
     def modules(self) -> list[str]:
         return sorted(m for m in self.first_party if m in self.files.sources)
@@ -394,6 +384,34 @@ class ImportIndex:
                 while path[-1].importer != module:
                     path.append(previous[path[-1].importer])
                 yield tuple(reversed(path))
+
+    def _test_details(
+        self, path: str, syntax: SyntaxIndex, *, modules: set[str]
+    ) -> Iterator[ImportDetail]:
+        module = syntax.for_path(path)
+        if module is None:
+            return
+        for node in module.imports:
+            contents = self.files.line(path, node.lineno)
+            for imported in _project_targets(node, module, modules=modules):
+                description = _describe(
+                    node,
+                    module.module,
+                    module.is_package,
+                    imported=imported,
+                    line_contents=contents,
+                )
+                yield ImportDetail(
+                    importer=module.module,
+                    imported=imported,
+                    line=node.lineno,
+                    line_contents=contents,
+                    names=description.names,
+                    type_checking=node.lineno in module.guarded_lines,
+                    external=False,
+                    column=description.column,
+                    end_column=description.end_column,
+                )
 
     def _details_for(self, module: str) -> list[ImportDetail]:
         source = self.files.sources.get(module)

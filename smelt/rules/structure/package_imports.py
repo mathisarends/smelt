@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.package_exports import direct_package_exports
-from smelt.analysis.parsing import resolve_relative, type_checking_lines
+from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.base import Rule, RuleDoc
@@ -68,17 +68,15 @@ class PreferPackageImport(Rule):
             source = ctx.syntax.for_path(path)
             if source is None or source.is_package:
                 continue
-            tree = source.tree
-            guarded = type_checking_lines(tree)
-            for node in ast.walk(tree):
+            for node in source.imports:
                 if not isinstance(node, ast.ImportFrom) or any(
                     alias.name.startswith("_") or alias.name == "*"
                     for alias in node.names
                 ):
                     continue
                 if (
-                    node.lineno in guarded
-                    and ctx.config.architecture.import_graph.type_checking == "ignore"
+                    ctx.config.architecture.import_graph.type_checking == "ignore"
+                    and node.lineno in source.guarded_lines
                 ):
                     continue
                 base = resolve_relative(

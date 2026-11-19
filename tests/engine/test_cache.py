@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from contextlib import closing
 from typing import TYPE_CHECKING
 
 import pytest
@@ -142,6 +143,58 @@ def test_warm_check_reuses_rule_execution(
 
     monkeypatch.setattr(InternalPublicMember, "check", unexpected)
     assert render_json(check(tmp_path).report) == expected
+
+
+def test_test_import_facts_follow_inventory_changes(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n",
+            "app/__init__.py": "",
+            "tests/test_api.py": "from app import api\n",
+        },
+    )
+    config = load_config(tmp_path / "smelt.yml").config
+    with closing(FactCache(tmp_path / ".smelt_cache")) as cache:
+        ctx = AnalysisContext(tmp_path, config, cache=cache)
+        [(path, detail)] = ctx.imports.imports_in_tests(ctx.syntax)
+    assert (path, detail.imported) == ("tests/test_api.py", "app")
+
+    (tmp_path / "app/api.py").write_text("", encoding="utf-8")
+    with closing(FactCache(tmp_path / ".smelt_cache")) as cache:
+        ctx = AnalysisContext(tmp_path, config, cache=cache)
+        [(path, detail)] = ctx.imports.imports_in_tests(ctx.syntax)
+    assert (path, detail.imported) == ("tests/test_api.py", "app.api")
+
+
+def test_warm_test_imports_do_not_parse_unchanged_tests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n",
+            "app/__init__.py": "",
+            "tests/test_api.py": "if TYPE_CHECKING:\n    import app\n",
+        },
+    )
+    config = load_config(tmp_path / "smelt.yml").config
+    with closing(FactCache(tmp_path / ".smelt_cache")) as cache:
+        ctx = AnalysisContext(tmp_path, config, cache=cache)
+        [(_, expected)] = ctx.imports.imports_in_tests(ctx.syntax)
+    assert expected.type_checking
+
+    with closing(FactCache(tmp_path / ".smelt_cache")) as cache:
+        ctx = AnalysisContext(tmp_path, config, cache=cache)
+        index = ctx.imports
+
+        def unexpected(*args: object) -> None:
+            pytest.fail("an unchanged test was parsed for its cached imports")
+
+        monkeypatch.setattr(AstCache, "parse", unexpected)
+        assert list(index.imports_in_tests(ctx.syntax)) == [
+            ("tests/test_api.py", expected)
+        ]
 
 
 def test_corrupt_cache_falls_back_to_full_analysis(tmp_path: Path) -> None:

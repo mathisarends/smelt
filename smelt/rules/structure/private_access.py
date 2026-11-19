@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.exports import resolve_dotted, resolve_export
 from smelt.analysis.module_access import module_attributes
-from smelt.analysis.parsing import resolve_relative, type_checking_lines
+from smelt.analysis.parsing import resolve_relative
 from smelt.analysis.private_attributes import PrivateAttributeIndex
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -111,13 +111,13 @@ class ForeignPrivateAccess(Rule):
         self, ctx: AnalysisContext, source: SourceFile, module: ModuleSyntax
     ) -> Iterator[Violation]:
         ignored = (
-            type_checking_lines(module.tree)
+            module.guarded_lines
             if ctx.config.architecture.import_graph.type_checking == "ignore"
             else frozenset()
         )
         reexports = set(_module_imports(module.tree)) if source.is_package else set()
         accesses: list[tuple[ast.alias | ast.Attribute, str, str, str]] = []
-        for node in ast.walk(module.tree):
+        for node in module.imports:
             if not isinstance(node, ast.ImportFrom) or node.lineno in ignored:
                 continue
             base = resolve_relative(
