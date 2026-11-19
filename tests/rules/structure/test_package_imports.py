@@ -99,6 +99,32 @@ def test_cached_test_findings_follow_import_and_export_edits(tmp_path: Path) -> 
     assert violations(root, OPTIONS) == []
 
 
+@pytest.mark.parametrize(
+    ("exports", "expected"),
+    [
+        ("", 0),
+        ("from .models import Snapshot\n", 0),
+        ("from .models import Snapshot, Result\n", 3),
+    ],
+)
+def test_mixed_deep_import_requires_one_complete_facade(
+    tmp_path: Path, exports: str, expected: int
+) -> None:
+    root = _project(tmp_path, exports=exports, client="")
+    statement = "from app.observation.models import Snapshot, Result\n"
+    callers = ["app/first.py", "app/second.py", "app/third.py"]
+    write_project(
+        root,
+        {
+            "app/observation/models.py": "class Snapshot: pass\nclass Result: pass\n",
+            **dict.fromkeys(callers, statement),
+        },
+    )
+    found = violations(root, OPTIONS)
+    assert len(found) == expected
+    assert {finding.path for finding in found} == (set(callers) if expected else set())
+
+
 def _project(
     tmp_path: Path,
     *,
