@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from smelt.analysis.exports import MAX_HOPS
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
 from smelt.analysis.lazy_exports import static_lazy_exports
-from smelt.analysis.parsing import resolve_relative, type_checking_lines
+from smelt.analysis.parsing import resolve_relative
 from smelt.model import is_within
 
 if TYPE_CHECKING:
@@ -198,8 +198,8 @@ class FacadeUsage:
             syntax = self._syntax.for_path(path)
             if syntax is None:
                 continue
-            guarded = type_checking_lines(syntax.tree)
-            for node in ast.walk(syntax.tree):
+            guarded = syntax.guarded_lines
+            for node in syntax.imports:
                 if not isinstance(node, ast.ImportFrom) or node.lineno in guarded:
                     continue
                 base = resolve_relative(

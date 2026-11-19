@@ -31,13 +31,13 @@ def internal_module_symbols(
 ) -> Iterator[ModuleSymbol]:
     for source in sorted(syntax.files.sources.values(), key=lambda item: item.path):
         module = syntax.for_path(source.path)
-        if module is None or module.is_package or _reflective(module.tree):
+        if module is None or module.is_package:
+            continue
+        candidates = list(_candidates(module.tree))
+        if not candidates or _reflective(module.tree):
             continue
         exports = explicit_exports(module.tree)
         if exports is None:
-            continue
-        candidates = list(_candidates(module.tree))
-        if not candidates:
             continue
         bindings = _bindings(module.tree)
         loads: dict[str, set[int]] = {}
