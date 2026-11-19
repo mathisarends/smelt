@@ -177,7 +177,11 @@ class AnalysisContext:
         from smelt.analysis.ordering import DefinitionOrderIndex  # noqa: PLC0415
 
         return DefinitionOrderIndex(
-            self.files, self.contracts, self.asts, self.python_targets
+            self.files,
+            self.contracts,
+            self.asts,
+            python_targets=self.python_targets,
+            cache=self.cache,
         )
 
     def ensure(self, indexes: frozenset[Index]) -> None:

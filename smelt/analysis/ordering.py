@@ -6,7 +6,10 @@ import ast
 import heapq
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any
+from functools import cached_property
+from typing import TYPE_CHECKING, Any, TypedDict
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.definition_blocks import (
     DefinitionBlock,
@@ -19,10 +22,11 @@ from smelt.analysis.function_usage import definition_bindings
 from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
+    from smelt.analysis.cache import FactCache
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.files import FileIndex, SourceFile
     from smelt.analysis.parsing import AstCache
-    from smelt.analysis.python_version import PythonTargetIndex
+    from smelt.analysis.python_version import PythonTarget, PythonTargetIndex
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,40 +90,171 @@ class FileOrder:
         }
 
 
+class _OrderEvidence(TypedDict):
+    contract: str
+    scope: str
+    ordering_edges: list[str]
+    section: str | None
+    original: list[str] | None
+    order: list[str] | None
+    fixable: bool
+    fix_reason: str | None
+    fix_blocker: dict[str, Any] | None
+    deferred_annotations: bool
+
+
+@dataclass(frozen=True, slots=True)
+class OrderFinding:
+    message: str
+    line: int
+    expected: _OrderEvidence
+
+
+@dataclass(frozen=True, slots=True)
+class OrderFacts:
+    module: str
+    path: str
+    summary: dict[str, Any]
+    findings: list[OrderFinding]
+
+
+_ORDER_FACTS = TypeAdapter(OrderFacts)
+
+
+@dataclass(frozen=True, slots=True)
+class _OrderInput:
+    source: SourceFile
+    config: OrderingConfig
+    contract: str
+    target: PythonTarget
+
+    def analyze(self, asts: AstCache) -> FileOrder:
+        tree = asts.parse(self.source.path)
+        future = any(
+            isinstance(node, ast.ImportFrom)
+            and node.module == "__future__"
+            and node.level == 0
+            and any(alias.name == "annotations" for alias in node.names)
+            for node in tree.body
+        )
+        return _analyze_order(
+            tree,
+            self.config,
+            source=self.source,
+            contract=self.contract,
+            deferred=future or self.target.deferred_annotations,
+            builtin_unions=self.target.minimum is not None
+            and self.target.minimum >= (3, 10),
+        )
+
+
 class DefinitionOrderIndex:
     def __init__(
         self,
         files: FileIndex,
         contracts: ContractIndex,
         asts: AstCache,
+        *,
         python_targets: PythonTargetIndex,
+        cache: FactCache | None = None,
     ) -> None:
-        self.files: dict[str, FileOrder] = {}
-        for source in files.sources.values():
-            contract = contracts.policy_for(source.module, "ordering")
-            tree = asts.parse(source.path)
-            future = any(
-                isinstance(node, ast.ImportFrom)
-                and node.module == "__future__"
-                and node.level == 0
-                and any(alias.name == "annotations" for alias in node.names)
-                for node in tree.body
+        self._asts = asts
+        self._files = files
+        self._contracts = contracts
+        self._targets = python_targets
+        self._cache = cache
+
+    @cached_property
+    def files(self) -> dict[str, OrderFacts]:
+        cache = self._cache
+        facts_by_path = {}
+        for source in self._files.sources.values():
+            inputs = self._inputs(source)
+            key = (
+                cache.key(
+                    "ordering",
+                    [
+                        source.path,
+                        source.module,
+                        self._files.content_id(source.path),
+                        inputs.config.model_dump(mode="json"),
+                        inputs.contract,
+                        inputs.target.to_json(),
+                    ],
+                )
+                if cache
+                else None
             )
-            target = python_targets.for_path(source.absolute)
-            deferred = future or target.deferred_annotations
-            self.files[source.path] = _analyze_order(
-                tree,
-                contract.spec.ordering
-                if contract and contract.spec.ordering
-                else OrderingConfig(),
-                source=source,
-                contract=contract.name if contract else "rules.layout/definition-order",
-                deferred=deferred,
-                builtin_unions=target.minimum is not None and target.minimum >= (3, 10),
-            )
+            facts = cache.read(key, _ORDER_FACTS) if cache and key else None
+            if facts is None:
+                result = inputs.analyze(self._asts)
+                facts = OrderFacts(
+                    source.module,
+                    source.path,
+                    result.summary(),
+                    [_finding(result, issue) for issue in result.issues],
+                )
+                if cache and key:
+                    cache.write(key, facts, _ORDER_FACTS)
+            facts_by_path[source.path] = facts
+        return facts_by_path
+
+    def for_rewrite(self, path: str) -> FileOrder:
+        """Reconstruct AST-backed ordering sections only for a requested fix."""
+        source = self._files.source_for_path(path)
+        if source is None:
+            raise KeyError(path)
+        return self._inputs(source).analyze(self._asts)
 
     def summary(self) -> list[dict[str, Any]]:
-        return [result.summary() for _, result in sorted(self.files.items())]
+        return [result.summary for _, result in sorted(self.files.items())]
+
+    def _inputs(self, source: SourceFile) -> _OrderInput:
+        contract = self._contracts.policy_for(source.module, "ordering")
+        return _OrderInput(
+            source,
+            contract.spec.ordering
+            if contract and contract.spec.ordering
+            else OrderingConfig(),
+            contract.name if contract else "rules.layout/definition-order",
+            self._targets.for_path(source.absolute),
+        )
+
+
+def _finding(result: FileOrder, issue: OrderIssue) -> OrderFinding:
+    section = issue.section
+    reason = issue.reason or (section.fix_reason if section else None)
+    blocker = issue.fix_node or (
+        section.fix_blocker.node if section and section.fix_blocker else None
+    )
+    location = (
+        {
+            "path": result.path,
+            "line": blocker.lineno,
+            "column": blocker.col_offset + 1,
+            "expression": ast.unparse(blocker).splitlines()[0],
+        }
+        if blocker is not None
+        else None
+    )
+    if reason and location:
+        reason += f" ({result.path}:{location['line']}:{location['column']}: {location['expression']})"
+    return OrderFinding(
+        issue.message,
+        issue.line,
+        {
+            "contract": result.contract,
+            "scope": issue.scope,
+            "ordering_edges": list(issue.edges),
+            "section": section.key if section else None,
+            "original": section.original if section else None,
+            "order": section.expected if section else None,
+            "fixable": section is not None and reason is None,
+            "fix_reason": reason,
+            "fix_blocker": location,
+            "deferred_annotations": result.deferred,
+        },
+    )
 
 
 @dataclass(frozen=True, slots=True)
