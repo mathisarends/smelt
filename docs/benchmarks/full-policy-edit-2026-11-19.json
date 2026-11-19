@@ -1,0 +1,912 @@
+{
+  "base": "ff34741b1491d6dcc22a673e462c7ed130fe2f49",
+  "head": "ff34741b1491d6dcc22a673e462c7ed130fe2f49",
+  "dirty_status": "?? scripts/benchmark_client.py\n?? scripts/benchmark_performance.py\n?? scripts/profile_checks.py\n",
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.0 (main, Oct 10 2025, 12:48:29) [MSC v.1944 64 bit (AMD64)]",
+    "processor": "Intel64 Family 6 Model 197 Stepping 2, GenuineIntel"
+  },
+  "native_sha256": "9ab874f08ffa2e16d99b7b861811ccd8195b2076c7b01324a617523eb367e881",
+  "repeats": 7,
+  "method": "The full-policy edit measures seven distinct staged API renames with the candidate analyzer and an independent final uncached check. Other cases use alternating fresh client processes; isolated source snapshots, repositories and caches; shared unchanged native binary and Python dependencies. First calls are individual observations, not statistical cold-start estimates. --no-cache correctness checks use foreground execution. No OS page-cache eviction.",
+  "cases": {},
+  "full_policy_edit": {
+    "first_seconds": 61.529787199920975,
+    "samples_seconds": [
+      25.221487500006333,
+      22.61344480002299,
+      17.74061889993027,
+      16.134597999975085,
+      16.339943400002085,
+      17.263407799997367,
+      14.811870499979705
+    ],
+    "distribution_seconds": {
+      "median": 17.263407799997367,
+      "p95": 25.221487500006333,
+      "max": 25.221487500006333,
+      "min": 14.811870499979705
+    },
+    "independent_no_cache_seconds": 36.46463509998284,
+    "final_report_matches_uncached": true,
+    "incremental_profile": {
+      "profiled_seconds": 31.91219510009978,
+      "rule_seconds_including_shared_lazy_indexes": {
+        "SMT339": 10.065962100052275,
+        "SMT320": 3.0676247000228614,
+        "SMT319": 3.0625108999665827,
+        "SMT357": 1.9932659000623971,
+        "SMT107": 1.3739269999787211,
+        "SMT322": 1.16924169997219,
+        "SMT356": 1.1351187999825925,
+        "SMT352": 0.9268483000341803,
+        "SMT108": 0.8015210999874398,
+        "SMT101": 0.21159089996945113,
+        "SMT105": 0.19057019997853786,
+        "SMT106": 0.18431619997136295,
+        "SMT429": 0.05806439998559654,
+        "SMT316": 0.05015969998203218,
+        "SMT306": 0.03760859998874366,
+        "SMT343": 0.021543200011365116,
+        "SMT341": 0.0210549000184983,
+        "SMT340": 0.021007300005294383,
+        "SMT368": 0.020979799912311137,
+        "SMT347": 0.02075000002514571,
+        "SMT334": 0.019980299985036254,
+        "SMT351": 0.019730899948626757,
+        "SMT330": 0.01937630004249513,
+        "SMT346": 0.018908100086264312,
+        "SMT349": 0.018065699958242476,
+        "SMT350": 0.0179996999213472,
+        "SMT345": 0.01751110004261136,
+        "SMT348": 0.01744419999886304,
+        "SMT337": 0.017295600031502545,
+        "SMT328": 0.01691229990683496,
+        "SMT344": 0.016477900091558695,
+        "SMT369": 0.01621319993864745,
+        "SMT327": 0.015923900064080954,
+        "SMT329": 0.015199600020423532,
+        "SMT323": 0.014918399974703789,
+        "SMT314": 0.012815200025215745,
+        "SMT311": 0.010555400047451258,
+        "SMT430": 0.010512099950574338,
+        "SMT310": 0.009152599959634244,
+        "SMT104": 0.00910119991749525,
+        "SMT315": 0.009087400045245886,
+        "SMT335": 0.008649300085380673,
+        "SMT338": 0.0056449000257998705,
+        "SMT420": 0.004703200072981417,
+        "SMT424": 0.0030472000362351537,
+        "SMT431": 0.0029611000791192055,
+        "SMT425": 0.00294379994738847,
+        "SMT428": 0.0029134999494999647,
+        "SMT427": 0.002881399937905371,
+        "SMT426": 0.0028457000153139234,
+        "SMT317": 0.0026261000894010067,
+        "SMT401": 0.0023010000586509705,
+        "SMT355": 0.002095300005748868,
+        "SMT312": 0.0004113999893888831,
+        "SMT302": 0.00023319991305470467,
+        "SMT313": 0.0002272999845445156,
+        "SMT301": 0.0001922999508678913,
+        "SMT307": 0.0001218999968841672
+      },
+      "top_cumulative": [
+        {
+          "file": "scripts/profile_checks.py",
+          "line": 30,
+          "function": "request",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 6.83e-05,
+          "cumulative_seconds": 31.9122041
+        },
+        {
+          "file": "smelt/cli/app.py",
+          "line": 48,
+          "function": "main",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 4.4200000000000004e-05,
+          "cumulative_seconds": 31.870688800000003
+        },
+        {
+          "file": "smelt/cli/app.py",
+          "line": 287,
+          "function": "_run",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 7.24e-05,
+          "cumulative_seconds": 31.863194900000003
+        },
+        {
+          "file": "smelt/cli/commands/__init__.py",
+          "line": 48,
+          "function": "dispatch",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 1.62e-05,
+          "cumulative_seconds": 31.788774600000004
+        },
+        {
+          "file": "smelt/cli/commands/check.py",
+          "line": 32,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0101131,
+          "cumulative_seconds": 31.788738300000002
+        },
+        {
+          "file": "smelt/cli/commands/check.py",
+          "line": 63,
+          "function": "_check_loaded",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 8.060000000000001e-05,
+          "cumulative_seconds": 31.697389500000003
+        },
+        {
+          "file": "smelt/engine/check.py",
+          "line": 123,
+          "function": "run_check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 6.08e-05,
+          "cumulative_seconds": 31.696534600000003
+        },
+        {
+          "file": "smelt/engine/check.py",
+          "line": 177,
+          "function": "_run_check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.00040510000000000003,
+          "cumulative_seconds": 31.611025800000004
+        },
+        {
+          "file": "smelt/engine/check.py",
+          "line": 462,
+          "function": "_collect",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0005885,
+          "cumulative_seconds": 31.5101781
+        },
+        {
+          "file": "scripts/profile_checks.py",
+          "line": 50,
+          "function": "timed",
+          "calls": 153,
+          "primitive_calls": 153,
+          "own_seconds": 0.0006762000000000001,
+          "cumulative_seconds": 24.7988931
+        },
+        {
+          "file": "smelt/engine/file_checks.py",
+          "line": 22,
+          "function": "rule_findings",
+          "calls": 153,
+          "primitive_calls": 153,
+          "own_seconds": 0.014843700000000001,
+          "cumulative_seconds": 24.7981403
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 386,
+          "function": "walk",
+          "calls": 6104484,
+          "primitive_calls": 6104484,
+          "own_seconds": 2.6622523,
+          "cumulative_seconds": 15.987447000000001
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 280,
+          "function": "iter_child_nodes",
+          "calls": 14074158,
+          "primitive_calls": 14074158,
+          "own_seconds": 6.3915221,
+          "cumulative_seconds": 12.7417517
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'extend' of 'collections.deque' objects>",
+          "calls": 6061535,
+          "primitive_calls": 6061535,
+          "own_seconds": 1.9922412,
+          "cumulative_seconds": 12.733705800000001
+        },
+        {
+          "file": "smelt/rules/structure/private_access.py",
+          "line": 101,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.002202,
+          "cumulative_seconds": 10.065581
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.getattr>",
+          "calls": 12646251,
+          "primitive_calls": 9561964,
+          "own_seconds": 1.4874652000000002,
+          "cumulative_seconds": 7.8737772
+        },
+        {
+          "file": "smelt/rules/structure/private_access.py",
+          "line": 170,
+          "function": "_attributes",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.0009907,
+          "cumulative_seconds": 7.7544218
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 51,
+          "function": "accesses",
+          "calls": 197,
+          "primitive_calls": 197,
+          "own_seconds": 0.0007908,
+          "cumulative_seconds": 7.7513136000000005
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 54,
+          "function": "_scope",
+          "calls": 2012,
+          "primitive_calls": 197,
+          "own_seconds": 0.0441591,
+          "cumulative_seconds": 7.750522800000001
+        },
+        {
+          "file": "Lib/functools.py",
+          "line": 1111,
+          "function": "__get__",
+          "calls": 82,
+          "primitive_calls": 77,
+          "own_seconds": 0.00033590000000000003,
+          "cumulative_seconds": 7.0147187
+        },
+        {
+          "file": "smelt/analysis/context.py",
+          "line": 183,
+          "function": "ensure",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 1.63e-05,
+          "cumulative_seconds": 6.656698100000001
+        },
+        {
+          "file": "smelt/analysis/context.py",
+          "line": 175,
+          "function": "ordering",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 9.600000000000001e-06,
+          "cumulative_seconds": 6.165144700000001
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 90,
+          "function": "__init__",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0456205,
+          "cumulative_seconds": 6.1651286
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 131,
+          "function": "_analyze_order",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.0025917,
+          "cumulative_seconds": 5.9401639
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 268,
+          "function": "iter_fields",
+          "calls": 19165527,
+          "primitive_calls": 19165527,
+          "own_seconds": 3.5469866000000003,
+          "cumulative_seconds": 4.8870255
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 157,
+          "function": "_reflective",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.0968991,
+          "cumulative_seconds": 4.301732
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 187,
+          "function": "_local_function_namespaces",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.15296700000000002,
+          "cumulative_seconds": 3.6748427
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.isinstance>",
+          "calls": 36016620,
+          "primitive_calls": 36016620,
+          "own_seconds": 3.5790601000000004,
+          "cumulative_seconds": 3.5850535000000003
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 377,
+          "function": "_scope_nodes",
+          "calls": 528021,
+          "primitive_calls": 528021,
+          "own_seconds": 1.5882046,
+          "cumulative_seconds": 3.1594401000000003
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 396,
+          "function": "_writes",
+          "calls": 3758,
+          "primitive_calls": 3758,
+          "own_seconds": 0.8333104,
+          "cumulative_seconds": 3.0965509
+        },
+        {
+          "file": "smelt/rules/structure/module_symbols.py",
+          "line": 36,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 1.22e-05,
+          "cumulative_seconds": 3.0675689000000004
+        },
+        {
+          "file": "smelt/analysis/module_symbols.py",
+          "line": 29,
+          "function": "internal_module_symbols",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0699762,
+          "cumulative_seconds": 3.0675567000000004
+        },
+        {
+          "file": "smelt/rules/structure/package_imports.py",
+          "line": 60,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.10897000000000001,
+          "cumulative_seconds": 3.0624103000000003
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 110,
+          "function": "_statement_accesses",
+          "calls": 9088,
+          "primitive_calls": 9088,
+          "own_seconds": 0.2175968,
+          "cumulative_seconds": 2.4470217
+        },
+        {
+          "file": "smelt/rules/structure/private_access.py",
+          "line": 110,
+          "function": "_symbols",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.0815082,
+          "cumulative_seconds": 2.3085655000000003
+        },
+        {
+          "file": "smelt/rules/common.py",
+          "line": 25,
+          "function": "package_api_imports",
+          "calls": 4138,
+          "primitive_calls": 4138,
+          "own_seconds": 0.0010908,
+          "cumulative_seconds": 2.1599827
+        },
+        {
+          "file": "smelt/analysis/imports.py",
+          "line": 261,
+          "function": "imports_in_tests",
+          "calls": 646,
+          "primitive_calls": 646,
+          "own_seconds": 0.1062386,
+          "cumulative_seconds": 2.1581982
+        },
+        {
+          "file": "smelt/rules/structure/durations.py",
+          "line": 106,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.12662320000000002,
+          "cumulative_seconds": 1.9931992
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'extend' of 'list' objects>",
+          "calls": 813010,
+          "primitive_calls": 813010,
+          "own_seconds": 0.3797263,
+          "cumulative_seconds": 1.9521508
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 346,
+          "function": "_bindings",
+          "calls": 7828,
+          "primitive_calls": 7828,
+          "own_seconds": 0.0082136,
+          "cumulative_seconds": 1.9068176000000001
+        },
+        {
+          "file": "smelt/analysis/bindings.py",
+          "line": 43,
+          "function": "binding_counts",
+          "calls": 197,
+          "primitive_calls": 197,
+          "own_seconds": 0.8663383,
+          "cumulative_seconds": 1.9047984000000002
+        },
+        {
+          "file": "smelt/analysis/parsing.py",
+          "line": 67,
+          "function": "type_checking_lines",
+          "calls": 609,
+          "primitive_calls": 609,
+          "own_seconds": 0.15960470000000002,
+          "cumulative_seconds": 1.8819471
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 88,
+          "function": "_function_env",
+          "calls": 1493,
+          "primitive_calls": 1493,
+          "own_seconds": 0.007525800000000001,
+          "cumulative_seconds": 1.7043748
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 502,
+          "function": "visit",
+          "calls": 414764,
+          "primitive_calls": 5912,
+          "own_seconds": 0.2535935,
+          "cumulative_seconds": 1.5040662
+        },
+        {
+          "file": "smelt/analysis/module_access.py",
+          "line": 17,
+          "function": "module_attributes",
+          "calls": 3561,
+          "primitive_calls": 3561,
+          "own_seconds": 0.001897,
+          "cumulative_seconds": 1.4411817
+        },
+        {
+          "file": "smelt/analysis/module_access.py",
+          "line": 34,
+          "function": "visit_Module",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.000871,
+          "cumulative_seconds": 1.4378206
+        },
+        {
+          "file": "smelt/analysis/module_access.py",
+          "line": 103,
+          "function": "_scope",
+          "calls": 2094,
+          "primitive_calls": 195,
+          "own_seconds": 0.024099000000000002,
+          "cumulative_seconds": 1.4369496000000002
+        },
+        {
+          "file": "smelt/rules/dependencies/interfaces.py",
+          "line": 54,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0020356000000000003,
+          "cumulative_seconds": 1.3738675
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 508,
+          "function": "generic_visit",
+          "calls": 348261,
+          "primitive_calls": 26161,
+          "own_seconds": 0.47421080000000004,
+          "cumulative_seconds": 1.3062267
+        },
+        {
+          "file": "smelt/analysis/syntax.py",
+          "line": 39,
+          "function": "for_path",
+          "calls": 2091,
+          "primitive_calls": 2091,
+          "own_seconds": 0.0899907,
+          "cumulative_seconds": 1.3045797000000001
+        },
+        {
+          "file": "smelt/analysis/module_access.py",
+          "line": 44,
+          "function": "visit_FunctionDef",
+          "calls": 1493,
+          "primitive_calls": 1463,
+          "own_seconds": 0.0137622,
+          "cumulative_seconds": 1.1986035000000002
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 500,
+          "function": "_mutates_builtins",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.0681158,
+          "cumulative_seconds": 1.1751785000000001
+        },
+        {
+          "file": "smelt/rules/structure/navigation.py",
+          "line": 48,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.0016031,
+          "cumulative_seconds": 1.169175
+        },
+        {
+          "file": "smelt/rules/structure/narrowing_asserts.py",
+          "line": 81,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.07487780000000001,
+          "cumulative_seconds": 1.1350779
+        },
+        {
+          "file": "smelt/analysis/syntax.py",
+          "line": 90,
+          "function": "_collect_bindings",
+          "calls": 337,
+          "primitive_calls": 337,
+          "own_seconds": 0.1312645,
+          "cumulative_seconds": 1.0974111
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'update' of 'set' objects>",
+          "calls": 24520,
+          "primitive_calls": 24520,
+          "own_seconds": 0.006543,
+          "cumulative_seconds": 1.0413888
+        },
+        {
+          "file": "smelt/rules/structure/durations.py",
+          "line": 210,
+          "function": "_durations",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.1126033,
+          "cumulative_seconds": 0.9924253000000001
+        },
+        {
+          "file": "smelt/analysis/module_symbols.py",
+          "line": 135,
+          "function": "_reflective",
+          "calls": 182,
+          "primitive_calls": 182,
+          "own_seconds": 0.025787900000000002,
+          "cumulative_seconds": 0.9415744
+        },
+        {
+          "file": "smelt/rules/structure/duplicate_functions.py",
+          "line": 76,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.004891,
+          "cumulative_seconds": 0.9266923
+        },
+        {
+          "file": "smelt/rules/structure/duplicate_functions.py",
+          "line": 138,
+          "function": "_fingerprint",
+          "calls": 774,
+          "primitive_calls": 774,
+          "own_seconds": 0.006046800000000001,
+          "cumulative_seconds": 0.9197511
+        }
+      ],
+      "top_own": [
+        {
+          "file": "Lib/ast.py",
+          "line": 280,
+          "function": "iter_child_nodes",
+          "calls": 14074158,
+          "primitive_calls": 14074158,
+          "own_seconds": 6.3915221,
+          "cumulative_seconds": 12.7417517
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.isinstance>",
+          "calls": 36016620,
+          "primitive_calls": 36016620,
+          "own_seconds": 3.5790601000000004,
+          "cumulative_seconds": 3.5850535000000003
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 268,
+          "function": "iter_fields",
+          "calls": 19165527,
+          "primitive_calls": 19165527,
+          "own_seconds": 3.5469866000000003,
+          "cumulative_seconds": 4.8870255
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 386,
+          "function": "walk",
+          "calls": 6104484,
+          "primitive_calls": 6104484,
+          "own_seconds": 2.6622523,
+          "cumulative_seconds": 15.987447000000001
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'extend' of 'collections.deque' objects>",
+          "calls": 6061535,
+          "primitive_calls": 6061535,
+          "own_seconds": 1.9922412,
+          "cumulative_seconds": 12.733705800000001
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 377,
+          "function": "_scope_nodes",
+          "calls": 528021,
+          "primitive_calls": 528021,
+          "own_seconds": 1.5882046,
+          "cumulative_seconds": 3.1594401000000003
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.getattr>",
+          "calls": 12646251,
+          "primitive_calls": 9561964,
+          "own_seconds": 1.4874652000000002,
+          "cumulative_seconds": 7.8737772
+        },
+        {
+          "file": "smelt/analysis/bindings.py",
+          "line": 43,
+          "function": "binding_counts",
+          "calls": 197,
+          "primitive_calls": 197,
+          "own_seconds": 0.8663383,
+          "cumulative_seconds": 1.9047984000000002
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 396,
+          "function": "_writes",
+          "calls": 3758,
+          "primitive_calls": 3758,
+          "own_seconds": 0.8333104,
+          "cumulative_seconds": 3.0965509
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'popleft' of 'collections.deque' objects>",
+          "calls": 6077622,
+          "primitive_calls": 6077622,
+          "own_seconds": 0.5549199,
+          "cumulative_seconds": 0.5549199
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 508,
+          "function": "generic_visit",
+          "calls": 348261,
+          "primitive_calls": 26161,
+          "own_seconds": 0.47421080000000004,
+          "cumulative_seconds": 1.3062267
+        },
+        {
+          "file": "smelt/analysis/cache.py",
+          "line": 131,
+          "function": "read",
+          "calls": 8810,
+          "primitive_calls": 8810,
+          "own_seconds": 0.386946,
+          "cumulative_seconds": 0.5449419
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'extend' of 'list' objects>",
+          "calls": 813010,
+          "primitive_calls": 813010,
+          "own_seconds": 0.3797263,
+          "cumulative_seconds": 1.9521508
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 127,
+          "function": "_format",
+          "calls": 181954,
+          "primitive_calls": 647,
+          "own_seconds": 0.31878080000000003,
+          "cumulative_seconds": 0.4785748
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.compile>",
+          "calls": 1140,
+          "primitive_calls": 1140,
+          "own_seconds": 0.26686770000000004,
+          "cumulative_seconds": 0.26686770000000004
+        },
+        {
+          "file": "Lib/ast.py",
+          "line": 502,
+          "function": "visit",
+          "calls": 414764,
+          "primitive_calls": 5912,
+          "own_seconds": 0.2535935,
+          "cumulative_seconds": 1.5040662
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 190,
+          "function": "<genexpr>",
+          "calls": 226944,
+          "primitive_calls": 226944,
+          "own_seconds": 0.2510693,
+          "cumulative_seconds": 0.8377859000000001
+        },
+        {
+          "file": "smelt/analysis/private_attributes.py",
+          "line": 110,
+          "function": "_statement_accesses",
+          "calls": 9088,
+          "primitive_calls": 9088,
+          "own_seconds": 0.2175968,
+          "cumulative_seconds": 2.4470217
+        },
+        {
+          "file": "smelt/analysis/module_symbols.py",
+          "line": 136,
+          "function": "<genexpr>",
+          "calls": 225905,
+          "primitive_calls": 225905,
+          "own_seconds": 0.210701,
+          "cumulative_seconds": 0.9157865000000001
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 260,
+          "function": "_deferred_body_nodes",
+          "calls": 1493,
+          "primitive_calls": 1493,
+          "own_seconds": 0.1812033,
+          "cumulative_seconds": 0.5372738
+        },
+        {
+          "file": "smelt/analysis/parsing.py",
+          "line": 67,
+          "function": "type_checking_lines",
+          "calls": 609,
+          "primitive_calls": 609,
+          "own_seconds": 0.15960470000000002,
+          "cumulative_seconds": 1.8819471
+        },
+        {
+          "file": "smelt/analysis/ordering.py",
+          "line": 187,
+          "function": "_local_function_namespaces",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.15296700000000002,
+          "cumulative_seconds": 3.6748427
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'execute' of 'sqlite3.Connection' objects>",
+          "calls": 8938,
+          "primitive_calls": 8938,
+          "own_seconds": 0.1358756,
+          "cumulative_seconds": 0.1358756
+        },
+        {
+          "file": "smelt/rules/structure/navigation.py",
+          "line": 134,
+          "function": "_calls",
+          "calls": 46912,
+          "primitive_calls": 1845,
+          "own_seconds": 0.1313049,
+          "cumulative_seconds": 0.21383410000000003
+        },
+        {
+          "file": "smelt/analysis/syntax.py",
+          "line": 90,
+          "function": "_collect_bindings",
+          "calls": 337,
+          "primitive_calls": 337,
+          "own_seconds": 0.1312645,
+          "cumulative_seconds": 1.0974111
+        },
+        {
+          "file": "smelt/analysis/function_usage.py",
+          "line": 16,
+          "function": "definition_bindings",
+          "calls": 1513,
+          "primitive_calls": 1513,
+          "own_seconds": 0.1266568,
+          "cumulative_seconds": 0.5496782
+        },
+        {
+          "file": "smelt/rules/structure/durations.py",
+          "line": 106,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.12662320000000002,
+          "cumulative_seconds": 1.9931992
+        },
+        {
+          "file": "smelt/rules/structure/durations.py",
+          "line": 210,
+          "function": "_durations",
+          "calls": 195,
+          "primitive_calls": 195,
+          "own_seconds": 0.1126033,
+          "cumulative_seconds": 0.9924253000000001
+        },
+        {
+          "file": "smelt/rules/structure/package_imports.py",
+          "line": 60,
+          "function": "check",
+          "calls": 1,
+          "primitive_calls": 1,
+          "own_seconds": 0.10897000000000001,
+          "cumulative_seconds": 3.0624103000000003
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'pop' of 'list' objects>",
+          "calls": 783527,
+          "primitive_calls": 783527,
+          "own_seconds": 0.1070389,
+          "cumulative_seconds": 0.1070389
+        }
+      ]
+    }
+  }
+}
