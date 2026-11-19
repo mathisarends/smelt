@@ -4,7 +4,7 @@ import re
 import types
 import typing
 from collections.abc import Hashable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import yaml
@@ -21,7 +21,7 @@ from smelt.config.errors import (
 )
 from smelt.config.models import SmeltConfig
 from smelt.config.source import SourceStore
-from smelt.config.validation import validate_semantics
+from smelt.config.validation import partial_layer_issues, validate_semantics
 from smelt.config.workspace import (
     expand_workspace,
     member_config_files,
@@ -168,7 +168,13 @@ def parse_config(
     try:
         config = SmeltConfig.model_validate(raw)
     except ValidationError as exc:
-        raise ConfigError(_issues_from_validation(exc), source) from exc
+        issues = _issues_from_validation(exc)
+        reported = {issue.path for issue in issues}
+        for issue in partial_layer_issues(raw):
+            if issue.path not in reported:
+                issues.append(replace(issue, semantic=True))
+                reported.add(issue.path)
+        raise ConfigError(issues, source) from exc
     if config.members and config.project.workspace is None:
         raise ConfigError(
             [ConfigIssue("members", "member configs require project.workspace: uv")],
@@ -349,10 +355,10 @@ def _declares_workspace(raw: dict[str, Any]) -> bool:
 def _with_origins(error: ConfigError, composed: ConfigComposition) -> ConfigError:
     return ConfigError(
         [
-            ConfigIssue(
-                _member_relative(issue.path, composed),
-                issue.message,
-                composed.source_for(issue.path),
+            replace(
+                issue,
+                path=_member_relative(issue.path, composed),
+                source=composed.source_for(issue.path),
             )
             for issue in error.issues
         ],

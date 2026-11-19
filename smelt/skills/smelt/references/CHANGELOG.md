@@ -21,7 +21,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   [cache behavior](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#cache-behavior).
 - Configuration errors arrive in one report. Schema errors such as retired
   keys now list unknown or retired rule names from `rules` and `ignore`
-  alongside them, and every unknown `ignore[].rule` is reported at once.
+  alongside them. A valid layer declaration also reports unknown layer references
+  alongside unrelated schema errors. Every unknown `ignore[].rule` is reported at once.
 - Inline suppressions accept rule names, such as
   `# smelt: ignore[architecture/layer-boundary] -- reason`, alongside SMT codes
   and prefixes. [SMT901](docs/rules/SMT901.md) reports unknown or unused
