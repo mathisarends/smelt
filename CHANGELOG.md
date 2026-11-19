@@ -9,6 +9,8 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 - `smelt context` reuses the persistent analysis cache populated by `smelt check`.
 
+- Migration errors link to the installed release's upgrade guide once per text
+  report. Structured JSON issues retain their individual links.
 - Enable [SMT371](docs/rules/SMT371.md) with `typing/prefer-inline-type-parameters: hint`
   to review explicit `Generic[...]` bases for PEP 695 class syntax on Python 3.12+.
 - `architecture.modules` is deprecated and will be removed in 0.15.0. List each

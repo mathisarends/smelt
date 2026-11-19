@@ -60,6 +60,21 @@ def test_statistics_by_member_includes_source_findings_and_test_hints(
     ]
 
 
+def test_upgrade_guide_is_printed_once_and_retained_in_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    policy = tmp_path / "smelt.yml"
+    policy.write_text(
+        "version: 1\nstructure: {}\nrules: {import-cycle: error}\n", encoding="utf-8"
+    )
+    code, _, err = _run(capsys, "--config", str(policy), "check")
+    assert code == 2
+    assert err.count("docs/upgrading.md") == 1
+    code, out, _ = _run(capsys, "--config", str(policy), "check", "--format", "json")
+    assert code == 2
+    assert out.count("docs/upgrading.md") == 2
+
+
 def test_statistics_grouping_requires_statistics(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
