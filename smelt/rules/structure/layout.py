@@ -56,7 +56,6 @@ class UnknownLayer(Rule):
         config=(
             "architecture.layers",
             "architecture.layers.<layer>.modules",
-            "architecture.modules",
         ),
     )
 
@@ -170,7 +169,6 @@ class UnclassifiedModule(Rule):
             "architecture.shared or composition_root, or move it into a feature."
         ),
         config=(
-            "architecture.modules",
             "architecture.layers.<layer>.modules",
             "architecture.shared",
             "architecture.composition_root",

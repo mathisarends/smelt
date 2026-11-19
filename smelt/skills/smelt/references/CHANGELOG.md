@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `architecture.modules` is deprecated and will be removed in 0.15.0. List each
+  assignment under `architecture.layers.<layer>.modules` instead. Checks report
+  a non-failing hint containing the equivalent YAML, and the schema marks the
+  key as deprecated. See the [upgrade guide](docs/upgrading.md#013-to-014).
 - `.smelt_cache/` no longer grows without bound. Facts unused for 14 days are
   pruned once a day, and caches of other Smelt versions unused for 7 days are
   removed. Existing caches are upgraded in place. See

@@ -47,7 +47,6 @@ class IncompleteCoverage(Rule):
             "project.root_packages",
             "project.source_roots",
             "project.exclude",
-            "architecture.modules",
             "architecture.layers.<layer>.modules",
         ),
         example_language="yaml",
