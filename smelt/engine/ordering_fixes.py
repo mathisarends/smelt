@@ -69,7 +69,7 @@ def apply_ordering_fixes(outcome: CheckOutcome) -> OrderingFixes:
 
 def _prepare(outcome: CheckOutcome, path: str, keys: set[str]) -> _Prepared:
     ctx = outcome.context
-    result = ctx.ordering.files[path]
+    result = ctx.ordering.for_rewrite(path)
     sections = [
         section for section in result.sections if section.key in keys and section.edges
     ]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from contextlib import closing
 from typing import TYPE_CHECKING
 
 import pytest
@@ -248,6 +249,75 @@ def test_new_uncovered_source_cannot_hide_in_a_warm_cache(tmp_path: Path) -> Non
     assert [(v.code, v.path) for v in check(tmp_path, options).report.violations] == [
         ("SMT306", "forgotten.py")
     ]
+
+
+def test_ordering_reuses_facts_for_unchanged_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {layout/definition-order: error}\n",
+            "app/__init__.py": "",
+            "app/edited.py": "def _first(): pass\ndef public(): pass\n",
+            "app/unchanged.py": "def _load(): pass\ndef run(): return _load()\n",
+        },
+    )
+    assert len(check(tmp_path).report.violations) == 2
+    (tmp_path / "app/edited.py").write_text("def public(): pass\n", encoding="utf-8")
+    config = load_config(tmp_path / "smelt.yml").config
+    parsed = []
+    original = AstCache.parse
+
+    def parse(self: AstCache, path: str) -> object:
+        parsed.append(path)
+        return original(self, path)
+
+    with (
+        monkeypatch.context() as patch,
+        closing(FactCache(tmp_path / ".smelt_cache")) as cache,
+    ):
+        patch.setattr(AstCache, "parse", parse)
+        facts = AnalysisContext(tmp_path, config, cache=cache).ordering.files
+    assert parsed == ["app/edited.py"]
+    assert facts["app/unchanged.py"].findings
+    assert not facts["app/edited.py"].findings
+    assert render_json(check(tmp_path).report) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "initial", "changed"),
+    [
+        (
+            "_T = int\ndef api(x: _T): pass\n",
+            'python_version: "3.13"',
+            'python_version: "3.14"',
+        ),
+        (
+            "_PRIVATE = 1\nPUBLIC = 2\n",
+            "constants_exempt: false",
+            "constants_exempt: true",
+        ),
+    ],
+)
+def test_ordering_invalidates_policy_and_target(
+    tmp_path: Path, source: str, initial: str, *, changed: str
+) -> None:
+    policy = 'version: 1\nproject: {root_packages: [app], python_version: "3.13"}\nstyle:\n  overrides:\n    api: {match: app, ordering: {constants_exempt: false}, rules: {layout/definition-order: error}}\n'
+    write_project(
+        tmp_path, {"smelt.yml": policy, "app/__init__.py": "", "app/service.py": source}
+    )
+    before = check(tmp_path).report.violations
+    (tmp_path / "smelt.yml").write_text(
+        policy.replace(initial, changed), encoding="utf-8"
+    )
+    after = check(tmp_path).report
+    assert before != after.violations
+    assert render_json(after) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
 
 
 def test_cached_member_facts_only_parse_the_changed_file(

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -50,42 +49,13 @@ class PublicDefinitionsFirst(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for result in ctx.ordering.files.values():
-            for issue in result.issues:
-                section = issue.section
-                reason = issue.reason or (section.fix_reason if section else None)
-                blocker = issue.fix_node or (
-                    section.fix_blocker.node
-                    if section and section.fix_blocker
-                    else None
-                )
-                location = (
-                    {
-                        "path": result.path,
-                        "line": blocker.lineno,
-                        "column": blocker.col_offset + 1,
-                        "expression": ast.unparse(blocker).splitlines()[0],
-                    }
-                    if blocker is not None
-                    else None
-                )
-                if reason and location:
-                    reason += f" ({result.path}:{location['line']}:{location['column']}: {location['expression']})"
+            for finding in result.findings:
+                reason = finding.expected["fix_reason"]
                 yield self.violation(
-                    issue.message,
+                    finding.message,
                     path=result.path,
-                    line=issue.line,
+                    line=finding.line,
                     source_module=result.module,
-                    expected={
-                        "contract": result.contract,
-                        "scope": issue.scope,
-                        "ordering_edges": list(issue.edges),
-                        "section": section.key if section else None,
-                        "original": section.original if section else None,
-                        "order": section.expected if section else None,
-                        "fixable": section is not None and reason is None,
-                        "fix_reason": reason,
-                        "fix_blocker": location,
-                        "deferred_annotations": result.deferred,
-                    },
+                    expected=finding.expected,
                     hint=f"Keep execution boundaries and prerequisite definitions in place. {reason or 'Use the expected order; bounded fixes require explicit --fix.'}",
                 )
