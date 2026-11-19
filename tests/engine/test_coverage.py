@@ -39,7 +39,7 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {layers: {domain: {path: domain}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -48,6 +48,7 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     legacy["architecture"].pop("canonical_exports")
     legacy["architecture"]["import_graph"].pop("type_checking_cycles")
     legacy["architecture"].pop("members")
+    legacy["architecture"]["layers"]["domain"].pop("modules")
     legacy.pop("members")
     legacy["project"].pop("workspace")
     expected = (

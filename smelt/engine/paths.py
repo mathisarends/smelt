@@ -192,11 +192,11 @@ def _missing_modules(ctx: AnalysisContext, location: str) -> list[ConfigIssue]:
                 )
     issues.extend(
         ConfigIssue(
-            f"{location}.modules.{module}",
-            f'module "{module}" does not exist{did_you_mean(module, known)}',
+            f"{location}.{binding.key}",
+            f'module "{binding.prefix}" does not exist{did_you_mean(binding.prefix, known)}',
         )
-        for module in arch.modules
-        if module not in known
+        for binding in arch.module_bindings()
+        if binding.prefix not in known
     )
     for index, pattern in enumerate(arch.wiring):
         if not any(module_matches(pattern, module) for module in known):

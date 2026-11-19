@@ -20,6 +20,41 @@ if TYPE_CHECKING:
 GATEWAY = FIXTURES / "gateway"
 
 
+def test_planned_module_explains_its_inherited_layer(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": "extends: layer-policy.yml\n",
+            "layer-policy.yml": """\
+version: 1
+project: {root_packages: [app]}
+architecture:
+  layers:
+    adapters: {modules: [app.api]}
+    values: {modules: [app.api.types]}
+""",
+            "app/__init__.py": "",
+            "app/api/__init__.py": "",
+            "app/api/types/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    target = resolve_target(ctx, "app/api/types/new_model.py")
+    briefing = build_briefing(
+        ctx, target, outcome.report, loaded=load_config(root / "smelt.yml")
+    )
+
+    result = briefing.to_json()
+    assert result["layer"] == "values"
+    assert result["layer_assignment"] == {
+        "key": "architecture.layers.values.modules[0]",
+        "source": "layer-policy.yml",
+        "prefix": "app.api.types",
+        "inherited": True,
+    }
+
+
 def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
     write_project(
         tmp_path,

@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Declare explicit package prefixes or module names in each layer's `modules`
+  list. Legacy `architecture.modules` assignments continue to work. Smelt warns
+  about redundant descendants, `smelt init` writes grouped assignments, and
+  `smelt context` reports which assignment a planned module inherits. SMT301
+  now respects explicit assignments when checking layout. See the
+  [library layout guide](docs/architecture.md#libraries-and-mixed-package-layouts).
 - Enable [SMT370](docs/rules/SMT370.md) with `layout/misplaced-module-logger: warning`
   to keep module loggers immediately after imports and before constants.
 - Set `style.reexports` to `all` or `alias` to have [SMT369](docs/rules/SMT369.md)

@@ -69,8 +69,10 @@ POLICIES = {
         ),
     ),
     "SMT105": PolicyActivation(
-        "architecture.shared or architecture.modules declares shared/central modules.",
-        lambda config: bool(config.architecture.shared or config.architecture.modules),
+        "architecture.shared or a layer module binding declares shared/central modules.",
+        lambda config: bool(
+            config.architecture.shared or config.architecture.has_module_bindings
+        ),
     ),
     "SMT106": PolicyActivation(
         "architecture.composition_root or architecture.wiring declares assembly boundaries.",

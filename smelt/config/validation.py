@@ -4,12 +4,18 @@ from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
 from smelt.config.models import CrossFeatureAllowance
+from smelt.config.patterns import module_prefixes
 from smelt.config.workspace import architecture_scopes
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-    from smelt.config.models import ArchitectureConfig, LayerConfig, SmeltConfig
+    from smelt.config.models import (
+        ArchitectureConfig,
+        LayerBinding,
+        LayerConfig,
+        SmeltConfig,
+    )
 
 
 def validate_semantics(
@@ -125,6 +131,8 @@ class _Validator:
             base = f"{self.location}.layers.{name}"
             for index, dep in enumerate(layer.may_depend_on):
                 self._check_layer(f"{base}.may_depend_on[{index}]", dep)
+            if layer.path is None:
+                continue
             if layer.path in seen_paths:
                 self._error(
                     f"{base}.path",
@@ -159,11 +167,12 @@ class _Validator:
             for key in ("shared", "composition_root")
             for index, module in enumerate(getattr(arch, key))
         ]
-        named.extend(
-            (f"{self.location}.modules.{module}", module) for module in arch.modules
-        )
         for module, layer in arch.modules.items():
             self._check_layer(f"{self.location}.modules.{module}", layer)
+        bindings = arch.module_bindings()
+        named.extend(
+            (f"{self.location}.{binding.key}", binding.prefix) for binding in bindings
+        )
         if arch.features and arch.features.root:
             named.append((f"{self.location}.features.root", arch.features.root))
         if arch.features and arch.features.pattern:
@@ -175,7 +184,44 @@ class _Validator:
         )
         for path, module in named:
             self._check_scope(path, module)
-        self._overlapping_sets()
+        self._overlapping_sets(bindings)
+        self._check_bindings(bindings)
+
+    def _check_bindings(self, bindings: list[LayerBinding]) -> None:
+        by_prefix: dict[str, LayerBinding] = {}
+        for binding in bindings:
+            existing = by_prefix.get(binding.prefix)
+            if existing is not None:
+                path = f"{self.location}.{existing.key}"
+                if existing.layer != binding.layer:
+                    self._error(
+                        path,
+                        f'"{binding.prefix}" also maps to layer "{binding.layer}" at {self.location}.{binding.key}',
+                    )
+                else:
+                    self.warnings.append(
+                        ConfigIssue(
+                            path,
+                            f'"{binding.prefix}" is also declared at {self.location}.{binding.key}',
+                        )
+                    )
+            by_prefix[binding.prefix] = binding
+        for binding in by_prefix.values():
+            parent = next(
+                (
+                    by_prefix[prefix]
+                    for prefix in module_prefixes(binding.prefix.rpartition(".")[0])
+                    if prefix in by_prefix
+                ),
+                None,
+            )
+            if parent is not None and parent.layer == binding.layer:
+                self.warnings.append(
+                    ConfigIssue(
+                        f"{self.location}.{binding.key}",
+                        f'redundant layer assignment: "{binding.prefix}" inherits "{parent.layer}" from "{parent.prefix}" ({self.location}.{parent.key})',
+                    )
+                )
 
     def _check_scope(self, path: str, module: str) -> None:
         prefix = module.split("*", maxsplit=1)[0].rstrip(".")
@@ -201,7 +247,7 @@ class _Validator:
         if name not in layers:
             self._error(path, f'unknown layer "{name}"{did_you_mean(name, layers)}')
 
-    def _overlapping_sets(self) -> None:
+    def _overlapping_sets(self, bindings: list[LayerBinding]) -> None:
         arch = self.architecture
         features_root = arch.features.root if arch.features else None
         for key in ("shared", "composition_root"):
@@ -211,19 +257,20 @@ class _Validator:
                         f"{self.location}.{key}[{index}]",
                         f'"{module}" is inside the features root "{features_root}"',
                     )
-        for module in arch.modules:
+        for binding in bindings:
+            module = binding.prefix
             if features_root and (
                 _within(module, features_root) or _within(features_root, module)
             ):
                 self._error(
-                    f"{self.location}.modules.{module}",
+                    f"{self.location}.{binding.key}",
                     f'"{module}" overlaps the features root "{features_root}"; '
                     "modules are for code outside the features",
                 )
             for other in (*arch.shared, *arch.composition_root):
                 if _within(module, other):
                     self._error(
-                        f"{self.location}.modules.{module}",
+                        f"{self.location}.{binding.key}",
                         f'"{module}" is already covered by "{other}" '
                         "(shared or composition_root)",
                     )

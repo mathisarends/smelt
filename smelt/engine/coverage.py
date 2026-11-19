@@ -123,6 +123,15 @@ def policy_hash(config: SmeltConfig) -> str:
         policy["architecture"].pop("members", None)
     if config.project.workspace is None:
         policy["project"].pop("workspace", None)
+    architectures = [
+        policy["architecture"],
+        *(member["architecture"] for member in policy.get("members", {}).values()),
+    ]
+    for architecture in architectures:
+        if architecture is not None:
+            for layer in architecture["layers"].values():
+                if not layer["modules"]:
+                    layer.pop("modules")
     if len(config.rule_layers) > 1:
         policy["rule_layers"] = [
             {

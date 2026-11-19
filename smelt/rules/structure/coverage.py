@@ -48,6 +48,7 @@ class IncompleteCoverage(Rule):
             "project.source_roots",
             "project.exclude",
             "architecture.modules",
+            "architecture.layers.<layer>.modules",
         ),
         example_language="yaml",
     )
@@ -78,7 +79,7 @@ class IncompleteCoverage(Rule):
                 f"{entry.source_root or 'its import root'} under project.source_roots, then declare its architecture role."
                 if entry.status == "uncovered"
                 else "Move the implementation into a declared layer, or assign its intended "
-                "role under architecture.modules. Reserve wiring for actual assembly."
+                "role in the intended layer's modules list. Reserve wiring for actual assembly."
             )
             if entry.status == "uncovered" and standalone:
                 package = None

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
 from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
-from smelt.config.patterns import module_matches
+from smelt.config.patterns import module_matches, module_prefixes
 from smelt.diagnostics.violation import Category, Severity
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 from smelt.rules.registry import build_rule_set
@@ -798,7 +798,10 @@ def _architecture(inferred: InferredConfig) -> list[str]:
         out.append("  # shared: [myapp.shared]")
     out.extend(_composition_lines(inferred))
     out.extend(_wiring_lines(inferred.wiring, inferred.evidence))
-    out.extend(_module_lines(inferred))
+    out.extend(
+        f"  # Assign {package} to the modules list of its intended layer."
+        for package in inferred.unclassified_roots
+    )
     out.append("")
     if inferred.layers:
         out.append("  layers:")
@@ -811,6 +814,9 @@ def _architecture(inferred: InferredConfig) -> list[str]:
                     "      third_party: allow  # review which frameworks this layer may use",
                 ]
             )
+            modules = _layer_modules(inferred.modules, layer.name)
+            if modules:
+                out.append(f"      modules: {_list(modules)}")
             if layer.name in ("domain", "application"):
                 out.append(
                     "      # For a framework-free core: third_party: {default: deny, allow: [pydantic]}"
@@ -893,19 +899,18 @@ def _wiring_lines(modules: list[str], evidence: dict[str, str]) -> list[str]:
     return out
 
 
-def _module_lines(inferred: InferredConfig) -> list[str]:
-    if not inferred.has_features:
-        return []
-    if not inferred.modules and not inferred.unclassified_roots:
-        return []
-    header = "modules:  # packages outside the features and their layer"
-    out = [f"  {header}" if inferred.modules else f"  # {header}"]
-    out.extend(f"    {module}: {layer}" for module, layer in inferred.modules.items())
-    out.extend(
-        f"    # {package}: infrastructure  # pick the layer that may use it"
-        for package in inferred.unclassified_roots
-    )
-    return out
+def _layer_modules(bindings: dict[str, str], layer: str) -> list[str]:
+    modules: list[str] = []
+    for module, assigned in bindings.items():
+        if assigned != layer:
+            continue
+        parents = module_prefixes(module.rpartition(".")[0])
+        inherited = next(
+            (bindings[parent] for parent in parents if parent in bindings), None
+        )
+        if inherited != assigned:
+            modules.append(module)
+    return modules
 
 
 def _list(values: list[str]) -> str:

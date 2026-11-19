@@ -413,7 +413,7 @@ def _architecture_summary(inferred: InferredConfig) -> list[str]:
     if inferred.unclassified_roots:
         lines.append(
             f"no layer yet: {', '.join(inferred.unclassified_roots)} "
-            "(see architecture.modules)"
+            "(use the intended layer's modules list)"
         )
     return lines
 

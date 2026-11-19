@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.engine.check import CheckOptions
 from tests.helpers import violations, write_project
 
@@ -403,10 +405,22 @@ class TestCentralModules:
 
         assert violations(root) == []
 
-    def test_central_module_must_not_import_a_feature(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("grouped", [False, True])
+    def test_central_module_must_not_import_a_feature(
+        self, tmp_path: Path, grouped: bool
+    ) -> None:
+        config = CENTRAL_CONFIG
+        if grouped:
+            config = config.replace("  modules:\n    gw.platform: infrastructure\n", "")
+            config = config.replace(
+                "path: infrastructure,", "path: infrastructure, modules: [gw.platform],"
+            )
         root = _central(
             tmp_path,
-            {"gw/platform/settings.py": "from gw.features.voice.domain import call\n"},
+            {
+                "smelt.yml": config,
+                "gw/platform/settings.py": "from gw.features.voice.domain import call\n",
+            },
         )
 
         [found] = violations(root)

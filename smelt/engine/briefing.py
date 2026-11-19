@@ -97,6 +97,7 @@ class Briefing:
     style: dict[str, dict[str, Any]] = field(default_factory=dict)
     configuration_warnings: tuple[str, ...] = ()
     workspace_policy: _WorkspacePolicy | None = None
+    layer_assignment: dict[str, str | bool] | None = None
 
     @property
     def feature_planned(self) -> bool:
@@ -117,6 +118,7 @@ class Briefing:
             "package": self.package,
             "module_kind": self.module_kind.value if self.module_kind else None,
             "layer": self.layer,
+            "layer_assignment": self.layer_assignment,
             "central": self.central,
             "is_wiring": self.is_wiring,
             "planned": self.target.planned,
@@ -231,7 +233,7 @@ def build_briefing(
     analysis_error: str | None = None,
     loaded: LoadedConfig | None = None,
 ) -> Briefing:
-    ctx = _governing_view(ctx, target)
+    ctx, architecture_key = _governing_view(ctx, target)
     model = ctx.model
     arch = ctx.config.architecture
     info = _target_info(model, target)
@@ -276,6 +278,7 @@ def build_briefing(
         package=package,
         module_kind=info.kind if info else None,
         layer=info.layer if info else None,
+        layer_assignment=_layer_assignment(info, policy_file, architecture_key),
         features=tuple(sorted(model.features)),
         layers=layers,
         cross_feature=cross_feature,
@@ -341,6 +344,11 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
         )
     )
     coverage = briefing.coverage
+    if (assignment := briefing.layer_assignment) is not None:
+        lines.append(
+            f"Layer assignment: {assignment['source']} {assignment['key']} "
+            f"(matches {assignment['prefix']})"
+        )
     lines.append(
         textwrap.fill(
             f"Coverage: {coverage.get('mode', 'configured')}; "
@@ -380,21 +388,24 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _governing_view(ctx: AnalysisContext, target: Target) -> AnalysisContext:
-    """The view of the architecture that governs ``target``, root or member."""
+def _governing_view(
+    ctx: AnalysisContext, target: Target
+) -> tuple[AnalysisContext, str]:
+    """The governing architecture view and its config key."""
     model = ctx.model
     if not model.parts:
-        return ctx
+        return ctx, "architecture"
     module = target.module
     if module is None and target.feature is not None:
         module = model.feature_package_for(target.feature)
     if module is None:
-        return ctx
+        return ctx, "architecture"
     part = model.part_for(module)
     if part is model:
-        return ctx
+        return ctx, "architecture"
     index = model.parts.index(part)
-    return ctx.architecture_view(ctx.architecture_scopes[index])
+    scope = ctx.architecture_scopes[index]
+    return ctx.architecture_view(scope), scope.location
 
 
 @dataclass(frozen=True, slots=True)
@@ -545,6 +556,21 @@ def _activation_brief(
     return {"activation": "policy", "description": activation.description}
 
 
+def _layer_assignment(
+    info: ModuleInfo | None, loaded: LoadedConfig, architecture_key: str
+) -> dict[str, str | bool] | None:
+    if info is None or info.layer_binding is None:
+        return None
+    binding = info.layer_binding
+    key = f"{architecture_key}.{binding.key}"
+    return {
+        "key": key,
+        "source": _policy_source(loaded, key),
+        "prefix": binding.prefix,
+        "inherited": binding.prefix != info.name,
+    }
+
+
 def _policy_source(
     loaded: LoadedConfig, location: str, *, source: str | None = None
 ) -> str:
@@ -657,7 +683,7 @@ def _boundary_policy(info: ModuleInfo | None) -> str:  # noqa: PLR0911
         return (
             "Layer and feature boundaries are not enforced for this module. "
             "Composition-root/wiring import restrictions (SMT106) and configured cycle checks (SMT104) still apply. "
-            "Give its package a layer under architecture.modules, or list it in shared or composition_root."
+            "Add its package to the intended layer's modules list, or list it in shared or composition_root."
         )
     if info.central:
         return "The assigned layer's boundaries apply; central modules must not import features."

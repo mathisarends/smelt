@@ -249,7 +249,13 @@ def _policies(info: ModuleInfo | None) -> tuple[str, ...]:
     if info.layer:
         policies.append(f"architecture.layers.{info.layer}")
     if info.central:
-        policies.append("architecture.modules")
+        binding = info.layer_binding
+        key = (
+            binding.key.partition("[")[0]
+            if binding and binding.key.startswith("layers.")
+            else "modules"
+        )
+        policies.append(f"architecture.{key}")
     if info.feature:
         policies.append("architecture.features")
     if info.wiring:

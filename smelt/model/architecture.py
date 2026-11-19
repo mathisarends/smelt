@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from smelt.config.patterns import module_matches
+from smelt.config.models import LayerBinding
+from smelt.config.patterns import module_matches, module_prefixes
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -26,7 +27,7 @@ class ModuleInfo:
     ``kind`` is ``FEATURE`` for every module in the feature/layer grid. When no
     features are configured, the grid spans the root packages and ``feature`` is None.
     A ``central`` module sits outside the features but in a layer
-    (``architecture.modules``), so layer rules apply to it as well.
+    through an explicit module binding, so layer rules apply to it as well.
     """
 
     name: str
@@ -35,6 +36,9 @@ class ModuleInfo:
     layer: str | None = None
     wiring: bool = False
     central: bool = False
+    layer_binding: LayerBinding | None = field(
+        default=None, kw_only=True, compare=False
+    )
 
     @property
     def in_grid(self) -> bool:
@@ -171,6 +175,8 @@ class ArchitectureModel:
     def layer_package(self, feature: str | None, layer: str) -> str | None:
         """The dotted package of ``layer`` inside ``feature`` (or the root package)."""
         path = self.layers[layer].path
+        if path is None:
+            return None
         if feature is not None:
             info = self.features.get(feature)
             if info is not None:
@@ -226,11 +232,14 @@ class _Classifier:
         self._shared = arch.shared
         self._composition_root = arch.composition_root
         self._wiring = arch.wiring
-        # longest package first, so backend.platform.storage wins over backend.platform
-        self._central = sorted(arch.modules.items(), key=lambda item: -len(item[0]))
+        self._central = {binding.prefix: binding for binding in arch.module_bindings()}
         self._packages = packages
         self._layer_paths = sorted(
-            ((layer.path.split("."), name) for name, layer in arch.layers.items()),
+            (
+                (layer.path.split("."), name)
+                for name, layer in arch.layers.items()
+                if layer.path is not None
+            ),
             key=lambda item: -len(item[0]),
         )
         self._features = arch.features
@@ -263,34 +272,51 @@ class _Classifier:
         if any(is_within(module, shared) for shared in self._shared):
             return ModuleInfo(module, ModuleKind.SHARED, wiring=wiring)
         central = next(
-            (layer for package, layer in self._central if is_within(module, package)),
+            (
+                self._central[prefix]
+                for prefix in module_prefixes(module)
+                if prefix in self._central
+            ),
             None,
         )
         if central is not None:
             return ModuleInfo(
-                module, ModuleKind.FEATURE, None, central, wiring, central=True
+                module,
+                ModuleKind.FEATURE,
+                layer=central.layer,
+                wiring=wiring,
+                central=True,
+                layer_binding=central,
             )
         if self._features is None:
-            layer = self._root_layer(module)
-            kind = ModuleKind.UNCLASSIFIED if layer is None else ModuleKind.FEATURE
-            return ModuleInfo(module, kind, None, layer, wiring)
+            binding = self._root_layer(module)
+            kind = ModuleKind.FEATURE if binding else ModuleKind.UNCLASSIFIED
+            return ModuleInfo(
+                module,
+                kind,
+                layer=binding.layer if binding else None,
+                wiring=wiring,
+                layer_binding=binding,
+            )
         match = self._match_feature(module)
         if match is None:
             return ModuleInfo(module, ModuleKind.UNCLASSIFIED, wiring=wiring)
         feature, rest = match
+        binding = self._match_layer(module, rest)
         return ModuleInfo(
             module,
             ModuleKind.FEATURE,
             feature,
-            self._match_layer(rest),
-            wiring,
+            layer=binding.layer if binding else None,
+            wiring=wiring,
+            layer_binding=binding,
         )
 
-    def _root_layer(self, module: str) -> str | None:
+    def _root_layer(self, module: str) -> LayerBinding | None:
         """Without features, layers sit directly in a root package."""
         for root in self._roots:
             if module.startswith(f"{root}."):
-                return self._match_layer(module[len(root) + 1 :].split("."))
+                return self._match_layer(module, module[len(root) + 1 :].split("."))
         return None
 
     def _match_feature(self, module: str) -> tuple[str, list[str]] | None:
@@ -305,8 +331,10 @@ class _Classifier:
             return None
         return segments[index], segments[index + 1 :]
 
-    def _match_layer(self, rest: list[str]) -> str | None:
+    def _match_layer(self, module: str, rest: list[str]) -> LayerBinding | None:
         for path, name in self._layer_paths:
             if rest[: len(path)] == path:
-                return name
+                suffix = ".".join(rest[len(path) :])
+                prefix = module.removesuffix(f".{suffix}") if suffix else module
+                return LayerBinding(prefix, name, f"layers.{name}.path")
         return None
