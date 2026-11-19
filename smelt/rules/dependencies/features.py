@@ -132,7 +132,6 @@ class SharedImportsFeature(Rule):
         fix="Move the needed concept into shared, or move the shared code into the feature.",
         config=(
             "architecture.shared",
-            "architecture.modules",
             "architecture.layers.<layer>.modules",
             "architecture.import_graph.transitive",
             "architecture.import_graph.type_checking",

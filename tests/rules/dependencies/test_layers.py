@@ -240,3 +240,29 @@ class TestTransitive:
             *bridges,
             "app.infra.db",
         ]
+
+
+def test_edges_group_modules_by_their_layer_assignment(tmp_path: Path) -> None:
+    config = """
+version: 1
+project: {root_packages: [app]}
+architecture:
+  layers:
+    values: {modules: [app.core]}
+    adapters: {modules: [app.api], may_depend_on: [values]}
+"""
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": config,
+            "app/__init__.py": "",
+            "app/api/__init__.py": "",
+            "app/api/routes.py": "",
+            "app/core/__init__.py": "",
+            "app/core/model.py": "from app.api import routes\n",
+        },
+    )
+
+    [found] = violations(root, ONLY_SMT101)
+
+    assert found.edge == "values -> adapters"

@@ -84,7 +84,7 @@ def _render(
         if show_hints or violation.severity is not Severity.HINT
     ]
     blocks: list[str] = [
-        f"warning: {diagnostic.path}: {diagnostic.key}: {diagnostic.message}"
+        f"{diagnostic.severity.value}: {diagnostic.path}: {diagnostic.key}: {diagnostic.message}"
         for diagnostic in report.configuration_diagnostics
     ]
     shared: dict[tuple[str, str], int] = {}
@@ -494,7 +494,8 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     warnings = report.count(Severity.WARNING)
     hints = report.count(Severity.HINT)
     hint_text = _plural(hints, "hint")
-    if hints and not show_hints:
+    # Configuration hints are always listed; only finding hints are hidden.
+    if not show_hints and any(v.severity is Severity.HINT for v in report.violations):
         hint_text += " (use --show-hints)"
     tail: list[str] = []
     scope = " in workspace" if report.workspace_totals else ""

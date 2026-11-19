@@ -1,5 +1,30 @@
 # Upgrading Smelt
 
+## 0.13 to 0.14
+
+### Move layer assignments into layers
+
+`architecture.modules` is deprecated and will be removed in 0.15.0. List each
+module or package prefix under the layer it belongs to:
+
+```yaml
+# before
+architecture:
+  modules: {app.api: adapters, app.core: domain}
+
+# after
+architecture:
+  layers:
+    adapters:
+      modules: [app.api]
+    domain:
+      modules: [app.core]
+```
+
+Keep a layer's `path` when it also matches packages inside features. Until you
+migrate, checks report a `hint` on `architecture.modules` that contains this
+snippet for your configuration. The hint does not fail `--fail-on warning`.
+
 ## 0.12 to 0.13
 
 0.13.0 changes configuration keys, rule names and uv workspace policy ownership.

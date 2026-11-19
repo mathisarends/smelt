@@ -4,7 +4,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt.diagnostics.render.text import render_concise, render_text
-from smelt.diagnostics.violation import ImportLink
+from smelt.diagnostics.report import ConfigurationDiagnostic
+from smelt.diagnostics.violation import ImportLink, Severity
 from tests.diagnostics.render.conftest import read_line
 
 if TYPE_CHECKING:
@@ -314,3 +315,19 @@ class TestSummary:
         assert render_text(clean_report, read_line, color=True) == (
             "\x1b[32m✓ architecture\x1b[0m \x1b[32m✓ layout\x1b[0m · 4 modules\n"
         )
+
+
+class TestConfigurationDiagnostics:
+    def test_deprecation_hints_are_listed_without_show_hints(
+        self, clean_report: Report
+    ) -> None:
+        clean_report.configuration_diagnostics = [
+            ConfigurationDiagnostic(
+                "smelt.yml", "architecture.modules", "deprecated", Severity.HINT
+            )
+        ]
+
+        out = render_text(clean_report, read_line)
+
+        assert "hint: smelt.yml: architecture.modules: deprecated\n" in out
+        assert "--show-hints" not in out

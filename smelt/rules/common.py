@@ -175,6 +175,11 @@ def _architecture_node(ctx: AnalysisContext, module: str) -> str:
     entries = {
         ModuleKind.SHARED: architecture.shared,
         ModuleKind.COMPOSITION_ROOT: architecture.composition_root,
-    }.get(info.kind, list(architecture.modules) if info.central else [])
+    }.get(
+        info.kind,
+        [binding.prefix for binding in architecture.module_bindings()]
+        if info.central
+        else [],
+    )
     matching = [entry for entry in entries if is_within(module, entry)]
     return max(matching, key=len) if matching else module

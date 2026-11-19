@@ -128,10 +128,13 @@ Here `sdk.error.registry` inherits `adapters` from `sdk.error`, and
 `sdk.error.types` belongs to `values`. `path` is optional for layers assigned this
 way. You can set both keys when a layer also has a repeated path inside features.
 Explicit module bindings cover central code outside the feature grid and take
-precedence over relative `path` matching. Existing `architecture.modules` maps
-still work. Smelt resolves both forms together, using the most specific prefix,
-and rejects conflicting layers for the same prefix. A child assignment that
+precedence over relative `path` matching. The most specific prefix wins, and
+conflicting layers for the same prefix are rejected. A child assignment that
 repeats its nearest parent's layer produces an advisory configuration warning.
+
+The legacy `architecture.modules` map is deprecated and will be removed in
+0.15.0. It still resolves together with layer `modules`, and Smelt reports a
+non-failing hint with the equivalent `layers` snippet to paste.
 
 Before adding a file, run `smelt context sdk/error/registry.py --format json`.
 `layer_assignment` identifies the matching prefix, declaring file, config key

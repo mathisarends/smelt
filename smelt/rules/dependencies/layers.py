@@ -53,7 +53,6 @@ class LayerBoundary(Rule):
         ),
         config=(
             "architecture.layers.<layer>.may_depend_on",
-            "architecture.modules",
             "architecture.layers.<layer>.modules",
             "architecture.import_graph.transitive",
             "architecture.import_graph.type_checking",
