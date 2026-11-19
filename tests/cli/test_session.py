@@ -407,6 +407,75 @@ def test_worker_cap_falls_back_and_releases_capacity(
     _endpoint(project)
 
 
+def test_worker_drops_unconfirmed_dispatch(project: Path, native: Path) -> None:
+    _invoke([str(native)], project)
+    endpoint = _endpoint(project)
+    metadata = json.loads(endpoint.read_text())
+    with (
+        socket.create_connection(("127.0.0.1", metadata["port"]), timeout=5) as stream,
+        stream.makefile("rb") as incoming,
+    ):
+        stream.sendall(
+            json.dumps(
+                {
+                    "token": metadata["token"],
+                    "cwd": str(project),
+                    "arguments": ["check"],
+                    "ack": True,
+                }
+            ).encode()
+            + b"\n"
+        )
+        assert json.loads(incoming.readline())["accepted"]
+        stream.shutdown(socket.SHUT_WR)
+        response = json.loads(incoming.readline())
+    assert response["restart"]
+    assert response["out"] == ""
+
+
+def test_busy_worker_completes_one_request_beyond_idle_deadline(
+    project: Path, native: Path
+) -> None:
+    _invoke([str(native)], project)
+    endpoint = _endpoint(project)
+    _request(endpoint, project, ["shutdown"])
+    deadline = time.monotonic() + 5
+    while endpoint.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not endpoint.exists()
+    script = """
+import hashlib, sys, time
+from pathlib import Path
+from smelt.cli import session
+
+def slow_report(*args, **kwargs):
+    end = time.monotonic() + 6
+    while time.monotonic() < end:
+        hashlib.sha256(bytes(65536)).digest()
+    return {"code": 0, "out": '{"completed_by_worker": true}', "err": ""}
+
+session._dispatch = slow_report
+session._serve_internal(Path(sys.argv[1]), root=sys.argv[2])
+"""
+    process = subprocess.Popen(  # noqa: S603 - the owned worker simulates expensive analysis
+        [sys.executable, "-P", "-c", script, str(endpoint), str(project)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 5
+        while not endpoint.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert endpoint.exists()
+        assert _invoke([str(native)], project) == (0, {"completed_by_worker": True})
+        _request(endpoint, project, ["shutdown"])
+        assert process.wait(timeout=5) == 0
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)
+
+
 def test_worker_watchdog_exits_a_hung_dispatch(project: Path) -> None:
     endpoint = project.parent / "watchdog.json"
     script = (

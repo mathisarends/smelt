@@ -169,16 +169,18 @@ frames before sending. CI defaults to foreground execution; `SMELT_DAEMON=0` dis
 workers and `SMELT_DAEMON=1` explicitly enables them. `python -m smelt` always takes
 the direct Python path. Fixes and other commands run directly.
 
-Worker transport has bounded waits: an existing worker must acknowledge a request
-within 250 ms; an acknowledged request has a five-second absolute response budget.
-Partial output cannot reset that budget. Failure after acknowledgement falls
-directly back to foreground checking, without a second worker attempt. A busy
-worker also uses foreground checking. Initial worker startup remains bounded to
-five seconds. These limits bound worker overhead, not the complete check: normal
-foreground analysis and hook-runner time are additional.
+An existing worker has 250 ms to acknowledge a request. A newly started worker
+has two seconds. The client confirms dispatch before analysis begins. A worker
+reports progress while consuming CPU. The first response frame is due within
+five seconds. After progress, the client allows up to twenty seconds between
+complete frames so native calls can release the Python interpreter. Partial
+frames keep their original deadline. Both processes cap the request at five
+minutes. A failed request falls back to foreground checking, and startup is
+bounded to five seconds.
 
-An in-worker watchdog exits a stuck dispatch after five seconds when Python can
-schedule it; the native client's absolute deadline also applies when it cannot.
+The worker watchdog uses the same five-second initial and twenty-second
+progress deadlines when Python can schedule it. The longer interval also covers
+work delegated to a native Git subprocess. A complete, CPU-bound stall is bounded by the five-minute limit.
 The client never kills a PID from endpoint metadata. It only queries liveness to
 distinguish a terminated worker from a live busy one. Four OS-owned slots limit
 background worker sessions per cache directory across invocation directories and

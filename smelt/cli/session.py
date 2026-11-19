@@ -10,8 +10,13 @@ import secrets
 import socket
 import sys
 import threading
+import time
+from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from smelt.analysis.identity import analyzer_identity
 from smelt.analysis.retained import RetainedAnalysis, retain
@@ -19,8 +24,10 @@ from smelt.cli.app import main
 from smelt.cli.session_slots import worker_slot
 
 _LIMIT = 1024 * 1024
-_PROTOCOL = 2
+_PROTOCOL = 3
 _REQUEST_SECONDS = 5
+_MAX_ANALYSIS_SECONDS = 300
+_MIN_CPU_PROGRESS = 0.05
 
 
 class Capture(io.StringIO):
@@ -70,18 +77,25 @@ def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
                 with stream:
                     stream.settimeout(0.25)
                     stream.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                    # This process owns the timeout. No PID from a stale endpoint
-                    # is killed by a client, and OS locks/SQLite recover on exit.
-                    watchdog = threading.Timer(_REQUEST_SECONDS, os._exit, args=(2,))
-                    watchdog.daemon = True
+                    acknowledged = threading.Event()
+                    done = threading.Event()
+                    watchdog = threading.Thread(
+                        target=_watch_request,
+                        args=(stream, acknowledged, done),
+                        daemon=True,
+                    )
                     watchdog.start()
                     try:
                         try:
                             response = _respond(
-                                stream, token, root, identity=identity, state=state
+                                stream,
+                                token,
+                                dispatch=partial(
+                                    _dispatch, root=root, identity=identity, state=state
+                                ),
+                                acknowledged=acknowledged,
                             )
                         except (ValueError, KeyError, TypeError, OSError):
-                            # Transport failure is never the check's verdict.
                             response = {
                                 "code": 2,
                                 "out": "",
@@ -89,11 +103,12 @@ def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
                                 "restart": True,
                             }
                         response["pid"] = os.getpid()
-                        with contextlib.suppress(OSError):
-                            stream.sendall(json.dumps(response).encode() + b"\n")
+                        frame = json.dumps(response).encode() + b"\n"
                     finally:
-                        watchdog.cancel()
+                        done.set()
                         watchdog.join()
+                    with contextlib.suppress(OSError):
+                        stream.sendall(frame)
                     if response.get("restart"):
                         break
         finally:
@@ -102,13 +117,38 @@ def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
                     endpoint.unlink()
 
 
+def _watch_request(
+    stream: socket.socket, acknowledged: threading.Event, done: threading.Event
+) -> None:
+    """Extend an accepted CPU-bound request while retaining idle and total deadlines."""
+    started = last_progress = time.monotonic()
+    previous_cpu = time.process_time()
+    idle_budget = _REQUEST_SECONDS
+    while not done.wait(1):
+        now = time.monotonic()
+        if now - started >= _MAX_ANALYSIS_SECONDS:
+            os._exit(2)
+        cpu = time.process_time()
+        if acknowledged.is_set() and cpu - previous_cpu >= _MIN_CPU_PROGRESS:
+            try:
+                stream.sendall(b'{"progress":true}\n')
+            except OSError:
+                os._exit(2)
+            last_progress = now
+            previous_cpu = cpu
+            # Native Git subprocesses can do the next phase of a cold check.
+            # Their CPU time is charged to the child process.
+            idle_budget = 20
+        elif now - last_progress >= idle_budget:
+            os._exit(2)
+
+
 def _respond(
     stream: socket.socket,
     token: str,
-    root: str,
     *,
-    identity: str,
-    state: RetainedAnalysis,
+    dispatch: Callable[[dict[str, Any]], dict[str, Any]],
+    acknowledged: threading.Event,
 ) -> dict[str, Any]:
     with stream.makefile("rb") as incoming:
         line = incoming.readline(_LIMIT)
@@ -120,9 +160,13 @@ def _respond(
         stream.sendall(
             json.dumps({"accepted": True, "pid": os.getpid()}).encode() + b"\n"
         )
+        with stream.makefile("rb") as incoming:
+            if incoming.readline(6) != b"start\n":
+                raise ValueError("client did not confirm dispatch")
+        acknowledged.set()
     if message.get("arguments") == ["shutdown"]:
         return {"code": 0, "out": "", "err": "", "restart": True}
-    return _dispatch(message, root, identity, state=state)
+    return dispatch(message)
 
 
 def _dispatch(
