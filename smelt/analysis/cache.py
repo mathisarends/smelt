@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import sqlite3
+import time
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
@@ -17,22 +20,34 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _SHA1_LENGTH = 40
+_DAY = 86400
+# Entries no run has read or written for this many days are dropped.
+_RETENTION_DAYS = 14
+# Caches of other analyzer versions no run has opened for this many days.
+_STALE_VERSION_DAYS = 7
+_INCREMENTAL_VACUUM = 2
 
 
 class FactCache:
     def __init__(self, directory: Path) -> None:
         self._root = directory
-        self.directory = directory / "v1" / analyzer_identity()
+        self._versions = directory / "v1"
+        self.directory = self._versions / analyzer_identity()
         self._hits = 0
         self._misses = 0
         self._connection: sqlite3.Connection | None = None
         self._disabled = False
+        self._today = int(time.time() // _DAY)
+        self._used_keys: set[str] = set()
+        self._used_objects: set[str] = set()
 
     def close(self) -> None:
         self._disabled = True
         if self._connection is not None:
             try:
+                self._mark_used(self._connection)
                 self._connection.commit()
+                self._prune(self._connection)
                 self._connection.close()
                 self._connection = None
             except sqlite3.Error:
@@ -78,6 +93,7 @@ class FactCache:
                     digest.update(data)
                     if digest.hexdigest() == oid:
                         result[oid] = data
+                        self._used_objects.add(oid)
         except (ValueError, TypeError, sqlite3.Error):
             return {}
         return result
@@ -87,7 +103,8 @@ class FactCache:
         if connection is not None:
             try:
                 connection.executemany(
-                    "INSERT OR REPLACE INTO objects VALUES (?, ?)", contents.items()
+                    "INSERT OR REPLACE INTO objects (oid, payload, used) VALUES (?, ?, ?)",
+                    [(oid, data, self._today) for oid, data in contents.items()],
                 )
             except sqlite3.Error:
                 self._disable()
@@ -128,6 +145,7 @@ class FactCache:
             self._misses += 1
             return None
         self._hits += 1
+        self._used_keys.add(key)
         return result
 
     def write[T](self, key: str, value: T, adapter: TypeAdapter[T]) -> None:
@@ -136,8 +154,8 @@ class FactCache:
             return
         try:
             connection.execute(
-                "INSERT OR REPLACE INTO facts (key, payload) VALUES (?, ?)",
-                (key, adapter.dump_json(value)),
+                "INSERT OR REPLACE INTO facts (key, payload, used) VALUES (?, ?, ?)",
+                (key, adapter.dump_json(value), self._today),
             )
         except sqlite3.Error:
             # A read-only checkout, concurrent cleaner or full disk cannot make
@@ -155,21 +173,74 @@ class FactCache:
                     (self._root / ".gitignore").open("x", encoding="utf-8") as ignore,
                 ):
                     ignore.write("*\n")
+                self._prune_versions()
                 self._connection = sqlite3.connect(
                     self.directory / "facts.sqlite3", timeout=0.02
                 )
+                # Only takes effect for a new database, before its first table.
+                self._connection.execute("PRAGMA auto_vacuum=INCREMENTAL")
                 self._connection.execute("PRAGMA journal_mode=WAL")
                 self._connection.execute("PRAGMA synchronous=NORMAL")
+                for table, column in (("facts", "key"), ("objects", "oid")):
+                    self._connection.execute(
+                        f"CREATE TABLE IF NOT EXISTS {table} ({column} TEXT PRIMARY KEY, "
+                        "payload BLOB NOT NULL, used INTEGER NOT NULL DEFAULT 0)"
+                    )
+                    _add_used_column(self._connection, table, self._today)
                 self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS facts (key TEXT PRIMARY KEY, payload BLOB NOT NULL)"
-                )
-                self._connection.execute(
-                    "CREATE TABLE IF NOT EXISTS objects (oid TEXT PRIMARY KEY, payload BLOB NOT NULL)"
+                    "CREATE TABLE IF NOT EXISTS meta (name TEXT PRIMARY KEY, value INTEGER NOT NULL)"
                 )
                 self._connection.commit()
             except (OSError, sqlite3.Error):
                 self._disable()
         return self._connection
+
+    def _prune_versions(self) -> None:
+        """Mark this version's cache as used and drop versions left unused."""
+        cutoff = time.time() - _STALE_VERSION_DAYS * _DAY
+        with suppress(OSError):
+            os.utime(self.directory)
+            for sibling in self._versions.iterdir():
+                if (
+                    sibling != self.directory
+                    and sibling.is_dir()
+                    and sibling.stat().st_mtime < cutoff
+                ):
+                    # A version still open elsewhere keeps its locked files.
+                    shutil.rmtree(sibling, ignore_errors=True)
+
+    def _mark_used(self, connection: sqlite3.Connection) -> None:
+        for table, column, used in (
+            ("facts", "key", sorted(self._used_keys)),
+            ("objects", "oid", sorted(self._used_objects)),
+        ):
+            for start in range(0, len(used), 500):
+                batch = used[start : start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                connection.execute(
+                    f"UPDATE {table} SET used = ? WHERE used < ? AND {column} IN ({placeholders})",  # noqa: S608 - constant names; values are bound
+                    [self._today, self._today, *batch],
+                )
+
+    def _prune(self, connection: sqlite3.Connection) -> None:
+        """Once a day, drop entries no run has used within the retention window."""
+        row = connection.execute(
+            "SELECT value FROM meta WHERE name = 'pruned'"
+        ).fetchone()
+        if row is not None and row[0] >= self._today:
+            return
+        cutoff = self._today - _RETENTION_DAYS
+        connection.execute("DELETE FROM facts WHERE used < ?", (cutoff,))
+        connection.execute("DELETE FROM objects WHERE used < ?", (cutoff,))
+        connection.execute(
+            "INSERT OR REPLACE INTO meta VALUES ('pruned', ?)", (self._today,)
+        )
+        connection.commit()
+        if (
+            connection.execute("PRAGMA auto_vacuum").fetchone()[0]
+            == _INCREMENTAL_VACUUM
+        ):
+            connection.execute("PRAGMA incremental_vacuum")
 
     def _disable(self) -> None:
         self._disabled = True
@@ -177,3 +248,12 @@ class FactCache:
             with suppress(sqlite3.Error):
                 self._connection.close()
             self._connection = None
+
+
+def _add_used_column(connection: sqlite3.Connection, table: str, today: int) -> None:
+    """Upgrade an older cache in place; its entries count as used today."""
+    columns = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+    if "used" not in columns:
+        connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN used INTEGER NOT NULL DEFAULT {today:d}"
+        )
