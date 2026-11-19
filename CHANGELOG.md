@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Configuration errors arrive in one report. Schema errors such as retired
+  keys now list unknown or retired rule names from `rules` and `ignore`
+  alongside them, and every unknown `ignore[].rule` is reported at once.
 - Inline suppressions accept rule names, such as
   `# smelt: ignore[architecture/layer-boundary] -- reason`, alongside SMT codes
   and prefixes. [SMT901](docs/rules/SMT901.md) reports unknown or unused
