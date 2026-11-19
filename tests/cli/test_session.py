@@ -429,8 +429,10 @@ def test_worker_drops_unconfirmed_dispatch(project: Path, native: Path) -> None:
         assert json.loads(incoming.readline())["accepted"]
         stream.shutdown(socket.SHUT_WR)
         response = json.loads(incoming.readline())
-    assert response["restart"]
+    assert not response["restart"]
     assert response["out"] == ""
+    assert _invoke([str(native)], project) == _fresh(project)
+    assert _pid(project) == metadata["pid"]
 
 
 def test_busy_worker_completes_one_request_beyond_idle_deadline(

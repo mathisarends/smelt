@@ -155,15 +155,26 @@ def _respond(
     message = json.loads(line)
     if not isinstance(message, dict) or message.get("token") != token:
         raise ValueError("invalid worker token")
-    stream.settimeout(_REQUEST_SECONDS)
     if message.get("ack") is True:
-        stream.sendall(
-            json.dumps({"accepted": True, "pid": os.getpid()}).encode() + b"\n"
-        )
-        with stream.makefile("rb") as incoming:
-            if incoming.readline(6) != b"start\n":
-                raise ValueError("client did not confirm dispatch")
+        # A queued client can time out before the worker reaches its request.
+        # Only this connection is abandoned, the worker can serve the next one.
+        try:
+            stream.sendall(
+                json.dumps({"accepted": True, "pid": os.getpid()}).encode() + b"\n"
+            )
+            with stream.makefile("rb") as incoming:
+                confirmed = incoming.readline(6) == b"start\n"
+        except OSError:
+            confirmed = False
+        if not confirmed:
+            return {
+                "code": 2,
+                "out": "",
+                "err": "unconfirmed dispatch",
+                "restart": False,
+            }
         acknowledged.set()
+    stream.settimeout(_REQUEST_SECONDS)
     if message.get("arguments") == ["shutdown"]:
         return {"code": 0, "out": "", "err": "", "restart": True}
     return dispatch(message)
