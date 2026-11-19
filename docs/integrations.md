@@ -77,7 +77,7 @@ block each commit, use the published `id: smelt` with `args: [--fail-on, warning
 or change the local hook entry above to `smelt check --fail-on warning`. Keep
 `pass_filenames: false` and `always_run: true` for both policies. To estimate
 latency for your project, measure a full check after an API edit as well as an
-identical retry. The [full-policy edit benchmark](benchmarks/full-policy-edit-2026-11-19.json)
+identical retry. The [full-policy edit benchmark](https://github.com/mathisarends/smelt/blob/ceadc918696dbe4b11c9e9f0d1d6240977161c6a/docs/benchmarks/full-policy-edit-2026-11-19.json)
 records these workloads on the Smelt corpus.
 
 Projects already depending on Smelt can instead use a local `language: system`
