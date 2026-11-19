@@ -824,9 +824,9 @@ def _source_label(entry: dict[str, Any]) -> str:
     reason = entry.get("reason")
     description = entry.get("description")
     origin = (
-        f"({source} ? {key})" if source else f"({description})" if description else ""
+        f"({source}: {key})" if source else f"({description})" if description else ""
     )
-    return f"{origin} ? {reason}" if reason else origin
+    return f"{origin}; reason: {reason}" if reason else origin
 
 
 def _describes_package_api(contract: dict[str, Any]) -> bool:

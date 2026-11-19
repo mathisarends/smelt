@@ -317,6 +317,34 @@ def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> Non
     assert "module_import_exemptions: none" in render_briefing(briefing, ctx)
 
 
+def test_rule_origins_name_their_declaring_key_and_reason(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": (
+                "version: 1\nproject: {root_packages: [app]}\nrules:\n"
+                "  layout/definition-order: error\n"
+                "  architecture/import-cycle: {severity: hint, reason: Legacy plugins.}\n"
+            ),
+            "app/__init__.py": "",
+        },
+    )
+    outcome = check(root)
+    ctx = outcome.context
+    text = render_briefing(
+        build_briefing(ctx, resolve_target(ctx, "app"), outcome.report), ctx
+    )
+    assert (
+        "Rule: layout/definition-order: error (smelt.yml: rules.layout/definition-order)"
+        in text.splitlines()
+    )
+    assert (
+        "Rule: architecture/import-cycle: hint "
+        "(smelt.yml: rules.architecture/import-cycle); reason: Legacy plugins."
+        in text.splitlines()
+    )
+
+
 def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
