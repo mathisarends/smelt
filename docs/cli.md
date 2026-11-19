@@ -174,3 +174,5 @@ same destination. Package upgrades do not silently rewrite installed skills.
 Successful installation exits `0`; destination and filesystem errors exit `2`.
 Use `smelt config schema` to print the complete editor schema from the installed
 release, or `smelt init` to write it alongside a new policy.
+
+See the [upgrade guide](upgrading.md#012-to-013) for `smelt config migrate`.

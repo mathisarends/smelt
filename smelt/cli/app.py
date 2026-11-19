@@ -261,6 +261,13 @@ def _add_config(sub: _Subparsers) -> None:
         help="include inherited input files and the origin of explicit settings",
     )
     show.set_defaults(handler=commands.handler("config_show"))
+    migrate = config_sub.add_parser(
+        "migrate", help="preview a 0.12 configuration migration"
+    )
+    migrate.add_argument(
+        "--write", action="store_true", help="apply the validated migration"
+    )
+    migrate.set_defaults(handler=commands.handler("config_migrate"))
     schema = config_sub.add_parser("schema", help="print the JSON schema")
     schema.set_defaults(handler=commands.handler("config_schema"))
 

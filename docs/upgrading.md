@@ -27,6 +27,12 @@ snippet for your configuration. The hint does not fail `--fail-on warning`.
 
 ## 0.12 to 0.13
 
+Preview the mechanical changes with `smelt config migrate`. Review the diff,
+then use `smelt config migrate --write` to apply it. Use `--config PATH` to
+choose the declaring YAML file. Comments and rule severities carry forward.
+Conflicts require manual review before writing. Review workspace ownership and
+migrate inherited files separately.
+
 0.13.0 changes configuration keys, rule names and uv workspace policy ownership.
 YAML version 1, check report schema 2 and CLI exit codes carry forward. Existing
 debt keeps its identity for rules that retain their SMT code.

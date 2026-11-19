@@ -122,6 +122,14 @@ _INFORMATION_HIDING_RULES = (
 )
 
 
+def replacement_selectors(key: str) -> tuple[str, ...]:
+    """Canonical replacements for a legacy selector; merged codes stay codes."""
+    if key.lower() == "information-hiding":
+        return _INFORMATION_HIDING_RULES
+    replacement = _RENAMED_RULES.get(key) or _MERGED_CODES.get(key.upper())
+    return (replacement,) if replacement else ()
+
+
 def retired_hint(key: str, codes: dict[str, str]) -> str:
     """Explain where a pre-0.13 rule name or merged code went, if it did."""
     if key.lower() == "information-hiding":

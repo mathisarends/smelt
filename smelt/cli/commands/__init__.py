@@ -14,12 +14,14 @@ if TYPE_CHECKING:
     from smelt.cli.commands.check import check
     from smelt.cli.commands.discover import context
     from smelt.cli.commands.info import config_schema, config_show, explain, rules
+    from smelt.cli.commands.migrate import config_migrate
     from smelt.cli.commands.skill import skill_install
     from smelt.cli.support import Console
 
 
 __all__ = [
     "check",
+    "config_migrate",
     "config_schema",
     "config_show",
     "context",
@@ -54,6 +56,7 @@ def handler(name: str) -> Callable[[argparse.Namespace, Console, Path], int]:
 
 _MODULES = {
     "check": "check",
+    "config_migrate": "migrate",
     "config_schema": "info",
     "config_show": "info",
     "context": "discover",
