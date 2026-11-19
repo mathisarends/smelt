@@ -15,6 +15,22 @@ class TestParseSuppressions:
         )
         assert found.column == source.index("#")
 
+    def test_rule_names_keep_their_spelling(self) -> None:
+        source = "x = 1  # smelt: ignore[modeling/Field-Mutation, smt3] -- y\n"
+
+        [found] = parse_suppressions("a.py", source)
+
+        assert found.codes == ("modeling/Field-Mutation", "SMT3")
+
+    def test_resolved_names_keep_their_written_label(self) -> None:
+        source = "x = 1  # smelt: ignore[modeling/dataclass-field-mutation] -- y\n"
+        [parsed] = parse_suppressions("a.py", source)
+
+        found = parsed.resolve_names({"modeling/dataclass-field-mutation": "SMT349"})
+
+        assert found.covers("SMT349") is True
+        assert found.label("SMT349") == "modeling/dataclass-field-mutation"
+
     def test_file_level_without_codes(self) -> None:
         [found] = parse_suppressions("a.py", "# smelt: ignore-file -- generated\n")
 

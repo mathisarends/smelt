@@ -22,6 +22,7 @@ from smelt.diagnostics.dedupe import deduplicate
 from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
 from smelt.diagnostics.suppressions import (
     Suppression,
+    is_rule_name,
     parse_suppressions,
 )
 from smelt.diagnostics.violation import (
@@ -488,9 +489,12 @@ def _collect(
 
     active_codes = {rule.code for rule, _ in active}
     severity_of = {rule.code: severity for rule, severity in active}
-    suppressions = _collect_suppressions(ctx)
+    codes_by_name = {rule.name: rule.code for rule in rules.rules}
+    suppressions = [
+        suppression.resolve_names(codes_by_name)
+        for suppression in _collect_suppressions(ctx)
+    ]
     violations, usage = _apply_suppressions(violations, suppressions)
-    known_codes = {rule.code for rule in rules.rules}
     # The rules a full run with this config would execute; the others are off and
     # cannot need a suppression.
     enabled = _resolve_active_rules(rules, loaded, CheckOptions())
@@ -500,7 +504,7 @@ def _collect(
             ctx,
             usage,
             active_codes,
-            codes=(known_codes, enabled_codes),
+            codes=(codes_by_name, enabled_codes),
             severity_of=severity_of,
         )
     )
@@ -639,7 +643,7 @@ def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
     found: list[Suppression] = []
     keys = (
         {
-            path: ctx.cache.key("suppressions", [path, ctx.files.content_id(path)])
+            path: ctx.cache.key("suppressions-v2", [path, ctx.files.content_id(path)])
             for path in ctx.files.all_python_paths()
         }
         if ctx.cache
@@ -691,9 +695,12 @@ def _suppression_violations(
     usage: dict[Suppression, list[str]],
     active_codes: set[str],
     *,
-    codes: tuple[set[str], set[str]],
+    codes: tuple[dict[str, str], set[str]],
     severity_of: dict[str, Severity],
 ) -> list[Violation]:
+    """SMT901/SMT902 findings; ``codes`` holds the catalog by name and the enabled codes."""
+    names, enabled = codes
+    known = set(names.values())
     results: list[Violation] = []
     unused_rule = UnusedSuppression()
     reason_rule = SuppressionWithoutReason()
@@ -716,9 +723,9 @@ def _suppression_violations(
         if "SMT901" not in active_codes:
             continue
         unknown = [
-            prefix
+            suppression.label(prefix)
             for prefix in suppression.codes
-            if not any(code.startswith(prefix) for code in codes[0])
+            if not any(code.startswith(prefix) for code in known)
         ]
         if unknown:
             results.append(
@@ -728,19 +735,23 @@ def _suppression_violations(
                     line=suppression.line,
                     column=suppression.column + 1,
                     expected={"unknown_identifiers": unknown},
-                    hint="Inline suppressions require stable SMT codes or code prefixes; use `smelt rules` to find the code for a rule name.",
+                    hint=_unknown_identifier_hint(unknown, names),
                 ).with_severity(severity_of["SMT901"])
             )
         unused = _unused_codes(
             suppression,
             used,
             checked=checked,
-            known=codes[0],
-            enabled=codes[1],
+            known=known,
+            enabled=enabled,
         )
         if unused is None:
             continue
-        label = ", ".join(unused) if unused else "all codes"
+        label = (
+            ", ".join(suppression.label(code) for code in unused)
+            if unused
+            else "all codes"
+        )
         results.append(
             unused_rule.violation(
                 f"unused suppression ({label})",
@@ -751,6 +762,22 @@ def _suppression_violations(
             ).with_severity(severity_of["SMT901"])
         )
     return results
+
+
+def _unknown_identifier_hint(unknown: list[str], names: dict[str, str]) -> str:
+    """Point retired or misspelled identifiers to their replacement."""
+    suggestions = [
+        retired_hint(identifier, names)
+        or (did_you_mean(identifier, names) if is_rule_name(identifier) else "")
+        for identifier in unknown
+    ]
+    if not any(suggestions):
+        return "Use a rule name or a stable SMT code; `smelt rules` lists both."
+    return " ".join(
+        f"{identifier}{suggestion}."
+        for identifier, suggestion in zip(unknown, suggestions, strict=True)
+        if suggestion
+    )
 
 
 def _unused_codes(

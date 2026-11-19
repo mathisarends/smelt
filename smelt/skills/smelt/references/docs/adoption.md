@@ -110,8 +110,11 @@ Override severities by rule name or code, e.g. `rules: {architecture/unclassifie
 Silence a single finding inline, always with a reason:
 
 ```python
-from gateway.infra.sql import Repo  # smelt: ignore[SMT101] -- migration tracked in #123
+from gateway.infra.sql import Repo  # smelt: ignore[architecture/layer-boundary] -- migration tracked in #123
 ```
+
+Rule names keep the exception readable in review; stable codes such as `SMT101`
+and code prefixes work too.
 
 Comments within a logical statement cover that statement,
 including its continuation lines, so formatting a long call or signature does

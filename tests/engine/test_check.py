@@ -314,6 +314,31 @@ class TestSuppressions:
 
         assert found.message == "unused suppression (SMT103)"
 
+    def test_rule_name_suppresses_its_finding(self, tmp_path: Path) -> None:
+        root = _layered(
+            tmp_path,
+            "from app.infra import db  "
+            "# smelt: ignore[architecture/layer-boundary] -- migration\n",
+        )
+
+        outcome = check(root)
+
+        assert outcome.report.suppressed == 1
+        assert outcome.report.violations == []
+
+    def test_unused_rule_name_is_reported_as_written(self, tmp_path: Path) -> None:
+        root = _layered(
+            tmp_path,
+            "from app.infra import db  # smelt: ignore[SMT101, "
+            "architecture/forbidden-third-party-import] -- x\n",
+        )
+
+        [found] = violations(root)
+
+        assert found.message == (
+            "unused suppression (architecture/forbidden-third-party-import)"
+        )
+
     def test_suppression_for_unselected_rule_is_not_unused(
         self, tmp_path: Path
     ) -> None:
@@ -353,17 +378,56 @@ class TestSuppressions:
 
 
 @pytest.mark.parametrize(
-    "identifier", ["SMT999", "tests/private-access", "SMTX", "SMT1010"]
+    ("identifier", "reported"),
+    [
+        ("SMT999", "SMT999"),
+        ("smtx", "SMTX"),
+        ("SMT1010", "SMT1010"),
+        ("tests/no-such-finding", "tests/no-such-finding"),
+    ],
 )
 def test_unknown_suppression_identifiers_are_diagnosed_in_narrowed_checks(
-    tmp_path: Path, identifier: str
+    tmp_path: Path, identifier: str, reported: str
 ) -> None:
     root = _layered(tmp_path, f"import os  # smelt: ignore[{identifier}] -- reviewed\n")
     [finding] = violations(root, CheckOptions(select=("SMT101", "SMT901")))
     assert finding.code == "SMT901"
-    assert finding.expected == {"unknown_identifiers": [identifier.upper()]}
+    assert finding.expected == {"unknown_identifiers": [reported]}
     assert finding.line == 1
-    assert "stable SMT codes" in (finding.hint or "")
+    assert finding.hint == (
+        "Use a rule name or a stable SMT code; `smelt rules` lists both."
+    )
+
+
+def test_retired_rule_name_in_a_suppression_names_its_replacement(
+    tmp_path: Path,
+) -> None:
+    root = _layered(
+        tmp_path, "from app.infra import db  # smelt: ignore[layer-boundary] -- x\n"
+    )
+
+    unknown = next(
+        finding
+        for finding in violations(root)
+        if finding.message.startswith("unknown suppression")
+    )
+
+    assert unknown.expected == {"unknown_identifiers": ["layer-boundary"]}
+    assert 'renamed to "architecture/layer-boundary"' in (unknown.hint or "")
+
+
+def test_misspelled_rule_name_in_a_suppression_suggests_the_rule(
+    tmp_path: Path,
+) -> None:
+    root = _layered(
+        tmp_path, "import os  # smelt: ignore[architecture/layer-boundry] -- x\n"
+    )
+
+    [finding] = violations(root, CheckOptions(select=("SMT101", "SMT901")))
+
+    assert finding.hint == (
+        'architecture/layer-boundry (did you mean "architecture/layer-boundary"?).'
+    )
 
 
 def test_unknown_identifier_does_not_hide_a_valid_suppression(tmp_path: Path) -> None:
