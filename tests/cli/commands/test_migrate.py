@@ -29,8 +29,8 @@ structure:
       export_at: 3
       max_positional_parameters: 3
 rules:
-  no-base-class-prefix: warning
-  no-base-class-suffix: error
+  no-base-class-prefix: warning  # legacy prefix policy
+  no-base-class-suffix: error  # keep the suffix rationale
   information-hiding: warning
 ignore:
   - rule: prefer-package-import
@@ -50,6 +50,8 @@ ignore:
     assert main([*args, "--write"]) == 0
     after = path.read_text(encoding="utf-8")
     assert "# policy note" in after
+    assert "# legacy prefix policy" in after
+    assert "# keep the suffix rationale" in after
     assert "# closed API" in after
     data = yaml.safe_load(after)
     assert data["architecture"]["packages"]["api"] == {

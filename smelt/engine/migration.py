@@ -164,6 +164,19 @@ def _rules(settings: Any, catalog: RuleSet, notes: list[str]) -> None:
                     key=lambda v: _severity(v, rule.default_severity.value),
                 )
                 settings[new] = winner
+                # ruamel attaches inline and following comment lines to the value.
+                if (
+                    key == replacements[0]
+                    and (comments := settings.ca.items.get(old))
+                    and (token := comments[2])
+                ):
+                    lines = [
+                        line.strip().removeprefix("#").lstrip()
+                        for line in token.value.splitlines()
+                    ]
+                    settings.yaml_set_comment_before_after_key(
+                        new, before="\n".join(lines), indent=settings.lc.col
+                    )
                 notes.append(f"Merged {old} into {new}, retaining severity {winner}.")
             elif key == replacements[0]:
                 _move(settings, old, settings, new=new)
