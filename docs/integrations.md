@@ -70,6 +70,16 @@ new warnings and errors. It also runs with `--all-files`, but still checks the
 index; run `smelt check` separately for a full working-tree check. Other hooks
 can modify files; inspect their changes, rerun and stage the result.
 
+For most projects, run the staged hook on each commit and the full check in CI.
+A staged policy or API edit can introduce a finding in an unchanged caller, so
+the hook compares findings across the project. If every existing warning must
+block each commit, use the published `id: smelt` with `args: [--fail-on, warning]`
+or change the local hook entry above to `smelt check --fail-on warning`. Keep
+`pass_filenames: false` and `always_run: true` for both policies. To estimate
+latency for your project, measure a full check after an API edit as well as an
+identical retry. The [full-policy edit benchmark](benchmarks/full-policy-edit-2026-11-19.json)
+records these workloads on the Smelt corpus.
+
 Projects already depending on Smelt can instead use a local `language: system`
 hook with `entry: uv run --locked smelt check --staged --fail-on warning`.
 To install from source, use `repo: https://github.com/mathisarends/smelt`,
