@@ -177,14 +177,27 @@ class TestViolations:
         report.violations = [
             replace(
                 report.violations[1],
-                expected={"suggested_name": "_hits", "automatic_rename": False},
+                expected={
+                    "suggested_name": "_hits",
+                    "automatic_rename": False,
+                    "automatic_rewrite": False,
+                },
             )
         ]
 
         out = render_text(report, read_line)
 
         assert "  Suggested name: _hits\n" in out
-        assert "Automatic rename" not in out
+        assert "Automatic" not in out
+
+    def test_boolean_details_read_as_yes_or_no(self, report: Report) -> None:
+        report.violations = [
+            replace(report.violations[1], expected={"owner_known": True})
+        ]
+
+        out = render_text(report, read_line)
+
+        assert "  Owner known: yes\n" in out
 
 
 class TestRepeatedEdges:
