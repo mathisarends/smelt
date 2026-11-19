@@ -72,6 +72,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.aliases:RedundantNameAlias",
     "smelt.rules.structure.parameters:ExcessPositionalParameters",
     "smelt.rules.structure.annotation_quotes:PreferDeferredAnnotations",
+    "smelt.rules.structure.generic_syntax:PreferInlineTypeParameters",
     "smelt.rules.structure.tuples:AnonymousTupleType",
     "smelt.rules.structure.delegates:RedundantPrivateDelegate",
     "smelt.rules.structure.interface_docstrings:MissingInterfaceDocstring",

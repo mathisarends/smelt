@@ -75,6 +75,7 @@
 | [SMT368](SMT368.md) | layout/reexport-only-module | layout | explicit | hint |
 | [SMT369](SMT369.md) | visibility/reexport-convention | visibility | policy | warning |
 | [SMT370](SMT370.md) | layout/misplaced-module-logger | layout | explicit | warning |
+| [SMT371](SMT371.md) | typing/prefer-inline-type-parameters | typing | explicit | hint |
 | [SMT401](SMT401.md) | tests/misplaced-test | tests | policy | error |
 | [SMT420](SMT420.md) | tests/private-access | tests | explicit | error |
 | [SMT421](SMT421.md) | tests/forbidden-mock | tests | policy | error |
