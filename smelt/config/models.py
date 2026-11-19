@@ -201,7 +201,14 @@ class ThirdPartyPolicy(_Model):
 
 
 class LayerConfig(_Model):
-    path: str = Field(description="Dotted path of the layer package inside a feature.")
+    path: str | None = Field(
+        default=None,
+        description="Dotted layer path relative to a feature or root package.",
+    )
+    modules: list[str] = Field(
+        default_factory=list,
+        description="Qualified module names or package prefixes outside the feature grid assigned to this layer.",
+    )
     may_depend_on: list[str] = Field(
         default_factory=list, description="Layers this layer may import."
     )
@@ -212,9 +219,21 @@ class LayerConfig(_Model):
 
     @field_validator("path")
     @classmethod
-    def _path_is_dotted(cls, value: str) -> str:
-        _check_dotted([value])
+    def _path_is_dotted(cls, value: str | None) -> str | None:
+        if value is not None:
+            _check_dotted([value])
         return value
+
+    @field_validator("modules")
+    @classmethod
+    def _modules_are_dotted(cls, values: list[str]) -> list[str]:
+        return _check_dotted(values)
+
+    @model_validator(mode="after")
+    def _has_placement(self) -> Self:
+        if self.path is None and not self.modules:
+            raise ValueError("a layer requires path or modules")
+        return self
 
 
 class CrossFeatureAllowance(_Model):
@@ -443,6 +462,13 @@ class PackageBoundary(_PackageTarget):
         return self
 
 
+@dataclass(frozen=True, slots=True)
+class LayerBinding:
+    prefix: str
+    layer: str
+    key: str
+
+
 class ArchitectureConfig(_Model):
     """Features, layers and the modules around them."""
 
@@ -463,7 +489,7 @@ class ArchitectureConfig(_Model):
     )
     modules: dict[str, str] = Field(
         default_factory=dict,
-        description="Packages outside the features mapped to a layer, e.g. {backend.platform: infrastructure}.",
+        description="Legacy module-to-layer map. Prefer modules in each layer's definition.",
     )
     layers: dict[str, LayerConfig] = Field(
         default_factory=dict, description="The layers and what each may import."
@@ -496,6 +522,26 @@ class ArchitectureConfig(_Model):
             self.model_fields_set
             - {"packages", "canonical_exports", "import_graph", "members"}
         )
+
+    @property
+    def has_module_bindings(self) -> bool:
+        return bool(
+            self.modules or any(layer.modules for layer in self.layers.values())
+        )
+
+    def module_bindings(self) -> list[LayerBinding]:
+        """The explicit bindings and their keys relative to the architecture."""
+        return [
+            *(
+                LayerBinding(prefix, layer, f"modules.{prefix}")
+                for prefix, layer in self.modules.items()
+            ),
+            *(
+                LayerBinding(prefix, layer, f"layers.{layer}.modules[{index}]")
+                for layer, spec in self.layers.items()
+                for index, prefix in enumerate(spec.modules)
+            ),
+        ]
 
     @field_validator("canonical_exports")
     @classmethod

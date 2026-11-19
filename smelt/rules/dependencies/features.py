@@ -119,10 +119,7 @@ class SharedImportsFeature(Rule):
     default_severity = Severity.ERROR
     requires = frozenset({Index.IMPORTS})
     doc = RuleDoc(
-        summary=(
-            "A `shared` module or a central module (`architecture.modules`) imports a "
-            "feature module."
-        ),
+        summary=("A shared or central module imports a feature module."),
         rationale=(
             "Shared code and central layers such as a platform package are importable by "
             "every feature. If they depend on a feature, every feature transitively "
@@ -136,6 +133,7 @@ class SharedImportsFeature(Rule):
         config=(
             "architecture.shared",
             "architecture.modules",
+            "architecture.layers.<layer>.modules",
             "architecture.import_graph.transitive",
             "architecture.import_graph.type_checking",
         ),

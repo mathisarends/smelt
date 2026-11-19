@@ -48,6 +48,41 @@ class TestDiscovery:
 
 
 class TestParsing:
+    def test_redundant_layer_bindings_point_to_the_nearest_parent(self) -> None:
+        _, warnings = parse_config(
+            _with(
+                architecture={
+                    "modules": {"app.api": "adapters"},
+                    "layers": {
+                        "adapters": {
+                            "modules": ["app.api.routes", "app.api.types.codec"]
+                        },
+                        "values": {"modules": ["app.api.types"]},
+                    },
+                }
+            )
+        )
+
+        [warning] = warnings
+        assert warning.path == "architecture.layers.adapters.modules[0]"
+        assert 'inherits "adapters" from "app.api"' in warning.message
+
+    def test_conflicting_layer_bindings_are_config_errors(self) -> None:
+        with pytest.raises(ConfigError, match='also maps to layer "values"') as caught:
+            parse_config(
+                _with(
+                    architecture={
+                        "modules": {"app.api": "adapters"},
+                        "layers": {
+                            "adapters": {"path": "adapters"},
+                            "values": {"modules": ["app.api"]},
+                        },
+                    }
+                )
+            )
+
+        assert "architecture.layers.values.modules[0]" in str(caught.value)
+
     def test_reasoned_exclusions_reject_empty_reasons_at_public_locations(self) -> None:
         with pytest.raises(ConfigError) as caught:
             parse_config(

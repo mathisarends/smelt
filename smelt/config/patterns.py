@@ -1,5 +1,13 @@
 import re
+from collections.abc import Iterator
 from functools import cache
+
+
+def module_prefixes(module: str) -> Iterator[str]:
+    """Yield a module and its ancestors in most-specific order."""
+    while module:
+        yield module
+        module = module.rpartition(".")[0]
 
 
 @cache

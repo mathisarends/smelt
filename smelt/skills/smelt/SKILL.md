@@ -18,6 +18,10 @@ installed skill records the CLI version that installed it.
    `VERSION`. After upgrading Smelt, refresh with `smelt skill install --force`
    using the same `--destination` if installed outside the default directory.
 2. Before creating or moving code, run `smelt context <feature-or-module-or-path>`.
+   For architecture placement, inspect `layer_assignment` in `--format json`.
+   A matching parent already covers the planned file. For a deliberate layer
+   change in central code, add the narrowest qualified prefix to the intended
+   layer's `modules` list. Existing `architecture.modules` maps also work.
    For inherited policy, inspect `smelt config show --sources --format json`.
    A planned path is valid for `context`; explicit `check` paths must already exist.
 3. After editing, run `smelt check --changed --fail-on warning --format concise`

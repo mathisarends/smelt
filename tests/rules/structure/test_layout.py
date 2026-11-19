@@ -41,6 +41,33 @@ def _features(tmp_path: Path, files: dict[str, str]) -> Path:
 
 
 class TestUnknownLayer:
+    def test_central_bindings_cover_packages_and_their_descendants(
+        self, tmp_path: Path
+    ) -> None:
+        root = write_project(
+            tmp_path,
+            {
+                "smelt.yml": """\
+version: 1
+project: {root_packages: [app, scripts]}
+architecture:
+  modules: {scripts: tooling}
+  layers:
+    tooling: {path: tooling}
+    values: {modules: [app.error.values]}
+""",
+                "scripts/__init__.py": "",
+                "scripts/build/__init__.py": "",
+                "app/__init__.py": "",
+                "app/error/__init__.py": "",
+                "app/error/values/__init__.py": "",
+                "app/error/unknown/__init__.py": "",
+            },
+        )
+
+        found = violations(root, CheckOptions(select=("SMT301",)))
+        assert [v.source_module for v in found] == ["app.error.unknown"]
+
     @pytest.mark.parametrize(
         "wiring_path", ["feature.py", "assembly/__init__.py", "infra/feature.py"]
     )

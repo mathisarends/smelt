@@ -50,17 +50,34 @@ class UnknownLayer(Rule):
         ),
         good="voice/\n  domain/\n    models.py\n  application/",
         fix=(
-            "Move the code into a declared layer, or declare its package as a layer "
-            "if the architecture has a distinct responsibility for it."
+            "Move the code into a declared layer, or assign its package to the "
+            "intended layer. Use the layer's modules list for packages outside features."
         ),
-        config=("architecture.layers",),
+        config=(
+            "architecture.layers",
+            "architecture.layers.<layer>.modules",
+            "architecture.modules",
+        ),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model
-        paths = [layer.path.split(".") for layer in model.layers.values()]
+        paths = [
+            layer.path.split(".")
+            for layer in model.layers.values()
+            if layer.path is not None
+        ]
+        bindings = model.config.architecture.module_bindings()
         for container in model.grid_containers():
-            yield from self._check_children(ctx, container, container, paths=paths)
+            prefix = f"{container}."
+            explicit = [
+                binding.prefix[len(prefix) :].split(".")
+                for binding in bindings
+                if binding.prefix.startswith(prefix)
+            ]
+            yield from self._check_children(
+                ctx, container, container, paths=[*paths, *explicit]
+            )
 
     def _check_children(
         self,
@@ -77,6 +94,7 @@ class UnknownLayer(Rule):
             info = model.info(package.module)
             if info is not None and (
                 info.wiring
+                or info.central
                 or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
             ):
                 continue
@@ -100,7 +118,7 @@ class UnknownLayer(Rule):
                 expected={"layers": layers},
                 hint=(
                     f"Move the modules of {display_module_path(model, package.module, package=True)} "
-                    "into a layer, or declare the package under architecture.layers."
+                    "into a layer, or assign the package to the intended layer."
                 ),
             )
 
@@ -142,17 +160,18 @@ class UnclassifiedModule(Rule):
         rationale=(
             "Unclassified modules are exempt from layer and feature boundary checks: a domain module "
             "may import them. Composition-root/wiring restrictions and configured cycle checks still apply. Central code such as a "
-            "database or storage package belongs to a layer via architecture.modules. "
+            "database or storage package can be assigned to a layer's modules list. "
             "Root packages with no classified module at all (libraries) are skipped."
         ),
         bad="gateway/\n  platform/db.py    # neither shared, a layer nor a feature",
         good="# smelt.yml\narchitecture:\n  modules:\n    gateway.platform: infrastructure",
         fix=(
-            "Give the package a layer under architecture.modules, list it in "
+            "Add the package to the intended layer's modules list, list it in "
             "architecture.shared or composition_root, or move it into a feature."
         ),
         config=(
             "architecture.modules",
+            "architecture.layers.<layer>.modules",
             "architecture.shared",
             "architecture.composition_root",
         ),
@@ -184,8 +203,7 @@ class UnclassifiedModule(Rule):
                 path=source.path,
                 source_module=name,
                 hint=(
-                    f"Give {package} a layer under architecture.modules "
-                    f"(e.g. {package}: infrastructure), or list it in shared or "
+                    f"Give {package} a layer by adding it to that layer's modules list, or list it in shared or "
                     "composition_root."
                 ),
             )

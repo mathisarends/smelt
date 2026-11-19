@@ -610,4 +610,7 @@ class TestDddWorkspace:
         assert config.tests.mirror == "{root}/{path}/test_{module}.py"
         assert config.tests.layout == "none"
         assert config.structure.forbidden_names == []
-        assert config.architecture.modules == inferred.modules
+        assert not config.architecture.modules
+        assert config.architecture.layers["infrastructure"].modules == [
+            "backend.platform"
+        ]
