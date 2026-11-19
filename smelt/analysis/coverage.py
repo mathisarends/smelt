@@ -5,12 +5,12 @@ from __future__ import annotations
 import ast
 from collections import Counter
 from dataclasses import dataclass
+from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import TypeAdapter
 
 from smelt.analysis.errors import AnalysisError
-from smelt.analysis.files import python_files
 from smelt.analysis.workspace import import_root, workspace_members
 from smelt.config.models import SourceExclusion
 from smelt.config.patterns import path_matches
@@ -108,14 +108,21 @@ class CoverageIndex:
         }
         # The most specific import root names a module in nested workspaces.
         ordered = sorted(roots, key=lambda value: (-len(value.parts), value.as_posix()))
+
+        @cache
+        def under_test_root(directory: Path) -> bool:
+            return any(directory.is_relative_to(root) for root in test_roots)
+
         for directory in ordered:
             if not files.store.is_dir(directory):
                 continue
-            for path in python_files(directory, store=files.store):
+            for path in files.python_files(directory):
                 absolute = files.resolve_path(path)
                 relative = files.relative(path)
-                if relative in inventory or any(
-                    absolute.is_relative_to(root) for root in test_roots
+                if (
+                    relative in inventory
+                    or absolute in test_roots
+                    or under_test_root(absolute.parent)
                 ):
                     continue
                 exclusion = next(

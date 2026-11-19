@@ -10,8 +10,6 @@ from grimp.application.ports.caching import Cache, CacheMiss
 from grimp.domain.valueobjects import DirectImport, Module
 from pydantic import TypeAdapter
 
-from smelt.analysis.files import python_files
-
 if TYPE_CHECKING:
     from grimp.application.ports.modulefinder import ModuleFile
 
@@ -31,7 +29,7 @@ def resolution_identity(files: FileIndex) -> str:
             path
             for roots in files.package_roots.values()
             for root in roots
-            for path in python_files(root, store=files.store)
+            for path in files.python_files(root)
         )
     )
     inputs = [
