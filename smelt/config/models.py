@@ -489,7 +489,8 @@ class ArchitectureConfig(_Model):
     )
     modules: dict[str, str] = Field(
         default_factory=dict,
-        description="Legacy module-to-layer map. Prefer modules in each layer's definition.",
+        description="Deprecated module-to-layer map, removed in 0.15.0. List each module under its layer's modules instead.",
+        json_schema_extra={"deprecated": True},
     )
     layers: dict[str, LayerConfig] = Field(
         default_factory=dict, description="The layers and what each may import."

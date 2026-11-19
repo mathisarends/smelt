@@ -84,6 +84,21 @@ class TestRuleSelection:
 
         assert check(root, CheckOptions(fail_on=Severity.WARNING)).report.failed is True
 
+    def test_legacy_module_map_is_a_deprecation_hint(self, tmp_path: Path) -> None:
+        config = LAYERED_CONFIG.replace(
+            "architecture:\n",
+            "architecture:\n  modules: {app.infra.db: infrastructure}\n",
+        )
+        root = _layered(tmp_path, "", config)
+
+        report = check(root, CheckOptions(fail_on=Severity.WARNING)).report
+
+        assert [
+            (diagnostic.key, diagnostic.severity)
+            for diagnostic in report.configuration_diagnostics
+        ] == [("architecture.modules", Severity.HINT)]
+        assert report.failed is False
+
     def test_rule_turned_off(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path,

@@ -78,6 +78,20 @@ def validate_semantics(
     return errors, warnings
 
 
+def _legacy_modules_message(modules: Mapping[str, str]) -> str:
+    by_layer: dict[str, list[str]] = {}
+    for module, layer in modules.items():
+        by_layer.setdefault(layer, []).append(module)
+    snippet = "\n".join(
+        f"    {layer}:\n      modules: [{', '.join(names)}]"
+        for layer, names in by_layer.items()
+    )
+    return (
+        "deprecated and removed in 0.15.0; list each assignment under its "
+        f"layer instead:\n  layers:\n{snippet}"
+    )
+
+
 class _Validator:
     def __init__(
         self,
@@ -169,6 +183,14 @@ class _Validator:
         ]
         for module, layer in arch.modules.items():
             self._check_layer(f"{self.location}.modules.{module}", layer)
+        if arch.modules:
+            self.warnings.append(
+                ConfigIssue(
+                    f"{self.location}.modules",
+                    _legacy_modules_message(arch.modules),
+                    deprecated=True,
+                )
+            )
         bindings = arch.module_bindings()
         named.extend(
             (f"{self.location}.{binding.key}", binding.prefix) for binding in bindings

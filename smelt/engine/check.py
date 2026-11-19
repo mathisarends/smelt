@@ -331,7 +331,10 @@ def _run_check(
         project=project_metadata(loaded),
         configuration_diagnostics=[
             ConfigurationDiagnostic(
-                issue.source or loaded.path.name, issue.path, issue.message
+                issue.source or loaded.path.name,
+                issue.path,
+                issue.message,
+                Severity.HINT if issue.deprecated else Severity.WARNING,
             )
             for issue in loaded.warnings
         ],
