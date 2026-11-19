@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `.smelt_cache/` no longer grows without bound. Facts unused for 14 days are
+  pruned once a day, and caches of other Smelt versions unused for 7 days are
+  removed. Existing caches are upgraded in place. See
+  [cache behavior](docs/agent-workflow.md#cache-behavior).
 - Configuration errors arrive in one report. Schema errors such as retired
   keys now list unknown or retired rule names from `rules` and `ignore`
   alongside them, and every unknown `ignore[].rule` is reported at once.

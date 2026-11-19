@@ -78,6 +78,11 @@ Add `.smelt_cache/` to `.gitignore`. A SQLite database batches validated JSON fa
 no pickle or executable project objects are deserialized. Removing it is safe. An
 unreadable, truncated, locked or unwritable cache falls back to analysis.
 
+The cache prunes itself. Once a day, a check drops facts that no run has read or
+written for 14 days. Caches of other Smelt versions that no run has opened for 7
+days are deleted, so a pinned pre-commit version and a newer local version can
+share one checkout.
+
 Staged checks read source and metadata directly from the captured Git blobs,
 including the historical comparison. They do not create temporary source trees.
 Cached blob bytes are checked against Git's object ID before use. File discovery,
