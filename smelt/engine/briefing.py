@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 from smelt.analysis.coverage import is_governed
 from smelt.config.errors import did_you_mean
 from smelt.config.loader import LoadedConfig
-from smelt.config.models import PackagePolicy
+from smelt.config.models import LIMIT_RULES, POLICY_OPTIONS
 from smelt.config.patterns import module_matches
 from smelt.diagnostics.violation import Category, Severity
 from smelt.engine.coverage import policy_hash
@@ -315,7 +315,10 @@ def build_briefing(
         header_policy=ctx.contracts.header_brief(target.module or package),
         naming_policy=ctx.contracts.naming_brief(target.module or package),
         ordering_policy=ctx.contracts.ordering_brief(target.module or package),
-        test_policy=ctx.config.tests.model_dump(mode="json"),
+        test_policy={
+            **ctx.config.tests.model_dump(mode="json"),
+            "max_patches_per_test": ctx.config.max_patches_per_test,
+        },
         type_dispatch_policy=ctx.contracts.dispatch_brief(target.module or package),
         rules=rules,
         rule_details=rule_details,
@@ -464,12 +467,12 @@ def _style_brief(
     ctx: AnalysisContext, module: str | None, loaded: LoadedConfig
 ) -> dict[str, dict[str, Any]]:
     settings: dict[str, dict[str, Any]] = {}
-    for name in PackagePolicy.model_fields:
+    for name in POLICY_OPTIONS:
         contract = ctx.contracts.policy_for(module or "", cast("PolicyOption", name))
         if contract is None:
             continue
         spec = contract.spec
-        location = f"{spec.style_location or 'style'}.{name}"
+        location = _option_location(spec.style_location or "style", name)
         value = spec.model_dump(mode="json", include={name}, by_alias=True)[name]
         reason = spec.reasons.get(name)
         settings[name] = {
@@ -479,6 +482,18 @@ def _style_brief(
             "reason": reason,
         }
     return settings
+
+
+def _option_location(style: str, option: str) -> str:
+    """The key that sets ``option`` for a style location: the option or a rule's max."""
+    if option not in LIMIT_RULES:
+        return f"{style}.{option}"
+    entry = f"rules.{LIMIT_RULES[option][1]}.max"
+    if style == "style":
+        return entry
+    if style.startswith("members.") and style.endswith(".style"):
+        return f"{style.removesuffix('.style')}.{entry}"
+    return f"{style}.{entry}"
 
 
 def _rule_brief(

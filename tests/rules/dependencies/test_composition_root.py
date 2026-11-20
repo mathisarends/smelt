@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 architecture:
@@ -93,7 +93,7 @@ class TestCompositionRootLeak:
             tmp_path,
             {
                 "smelt.yml": """
-                    version: 1
+                    version: 2
                     project: {root_packages: [app]}
                     architecture:
                       features: {root: app.features}
@@ -142,7 +142,7 @@ class TestCompositionRootLeak:
             tmp_path,
             {
                 "smelt.yml": """
-                    version: 1
+                    version: 2
                     project: {root_packages: [app]}
                     architecture:
                       features: {root: app.features}

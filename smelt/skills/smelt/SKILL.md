@@ -56,8 +56,8 @@ installed skill records the CLI version that installed it.
   annotation consumers before removing quotes or adding a future import.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
   concepts, so name records where field meaning benefits callers rather than
-  merging unrelated types. `max_positional_parameters`, set under `style` or
-  in a style override, sets the SMT345 limit for that scope; after adding
+  merging unrelated types. The `max` of the SMT345 rule entry, in `rules` or
+  in a style override's `rules`, sets the limit for that scope; after adding
   keyword-only parameters, update all callers, including tests and callbacks.
   These rules have no automatic rewrite.
 - Keep shared conventions in `style` and package-specific choices in

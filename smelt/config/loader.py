@@ -19,7 +19,7 @@ from smelt.config.errors import (
     did_you_mean,
     format_loc,
 )
-from smelt.config.models import SmeltConfig
+from smelt.config.models import LIMIT_RULES, SmeltConfig
 from smelt.config.source import SourceStore
 from smelt.config.validation import partial_layer_issues, validate_semantics
 from smelt.config.workspace import (
@@ -151,6 +151,22 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
         raise shown from exc
 
 
+def config_files(path: Path, *, store: SourceStore | None = None) -> tuple[Path, ...]:
+    """Every file a load of ``path`` reads: the root config, its bases and member configs.
+
+    Only the YAML is read, so a version 1 workspace can be migrated as a whole.
+    """
+    view = store or SourceStore()
+    path = view.resolve(path)
+    if (workspace := _workspace_of(path, view)) is not None:
+        path = workspace[0]
+    composed = compose_config(path, view, _load_yaml)
+    files = list(composed.files)
+    if _declares_workspace(composed.raw):
+        files.extend(member_config_files(path.parent, store=view).values())
+    return tuple(dict.fromkeys(files))
+
+
 def parse_config(
     raw: object,
     *,
@@ -164,7 +180,9 @@ def parse_config(
     if not isinstance(raw, dict):
         raise ConfigError([ConfigIssue("", "the top level must be a mapping")], source)
     if "version" not in raw:
-        raise ConfigError([ConfigIssue("version", "`version: 1` is required")], source)
+        raise ConfigError([ConfigIssue("version", "`version: 2` is required")], source)
+    if outdated := _outdated_versions(raw):
+        raise ConfigError(outdated, source)
     try:
         config = SmeltConfig.model_validate(raw)
     except ValidationError as exc:
@@ -199,6 +217,31 @@ def raw_config(path: Path, *, store: SourceStore | None = None) -> Mapping[str, 
     except ConfigError:
         return {}
     return raw if isinstance(raw, dict) else {}
+
+
+def _outdated_versions(raw: Mapping[str, object]) -> list[ConfigIssue]:
+    """Version 1 files are not read; the migration converts them."""
+    members = raw.get("members")
+    files = [("", raw)] + (
+        [
+            (f"members.{name}.", member)
+            for name, member in members.items()
+            if isinstance(member, dict)
+        ]
+        if isinstance(members, dict)
+        else []
+    )
+    return [
+        ConfigIssue(f"{prefix}version", _VERSION_1)
+        for prefix, file in files
+        if file.get("version") == 1
+    ]
+
+
+_VERSION_1 = (
+    "version 1 is no longer read; run `smelt config migrate --write` "
+    "to convert this file to version 2"
+)
 
 
 def _load_selected(
@@ -472,7 +515,10 @@ def _rule_setting_location(
     for index, branch in enumerate(loc):
         if index < 2 or loc[index - 2] != "rules":  # noqa: PLR2004 - map key and union branch follow rules
             continue
-        if branch == "RuleOverride":
+        if branch == "RuleOverride" or (
+            str(branch).startswith("function-after[")
+            and str(branch).endswith(", RuleOverride]")
+        ):
             if len(loc) == index + 1 and not isinstance(value, dict):
                 return None
             return (*loc[:index], *loc[index + 1 :])
@@ -500,7 +546,7 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
     return message
 
 
-_RETIRED_POLICY_KEYS = {
+_RETIRED_POLICY_KEYS: dict[tuple[str, ...], str] = {
     ("structure",): "structure was replaced by style and architecture.packages",
     (
         "architecture",
@@ -525,6 +571,12 @@ _RETIRED_POLICY_KEYS = {
         "project",
         "coverage",
     ): "project.coverage was replaced by the rule; set rules.architecture/uncovered-source to error (smelt config migrate does this)",
+    **{
+        (option,): f"{option} moved into the rule entry; write "
+        f"rules: {{{name}: {{severity: ..., max: ...}}}} in the same scope "
+        "(smelt config migrate does this)"
+        for option, (_, name) in LIMIT_RULES.items()
+    },
 }
 
 

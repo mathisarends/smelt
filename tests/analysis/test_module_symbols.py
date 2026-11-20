@@ -19,7 +19,7 @@ def _symbols(
     write_project(
         root,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/models.py": source,
             **(extra or {}),

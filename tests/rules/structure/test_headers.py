@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311"))
 _LOGGER_OPTIONS = CheckOptions(select=("SMT370",))
-_LOGGER_CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
+_LOGGER_CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 
 
 def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) -> None:
@@ -131,7 +131,7 @@ def _project(
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstyle:\n  overrides:\n    source:\n      match: app\n      {policy}\n{extra}",
+            "smelt.yml": f"version: 2\nproject:\n  root_packages: [app]{minimum}\nstyle:\n  overrides:\n    source:\n      match: app\n      {policy}\n{extra}",
             "app/module.py": source,
         },
     )
@@ -287,7 +287,7 @@ def test_required_docstrings_respect_source_inventory_and_exclusions(
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\n"
+            "smelt.yml": "version: 2\n"
             "project:\n"
             "  root_packages: [app]\n"
             "  exclude:\n"
@@ -437,7 +437,7 @@ def test_absent_policy_preserves_existing_behavior(tmp_path: Path, source: str) 
         {
             "app/__init__.py": "",
             "app/module.py": source,
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
             "architecture: {packages: {api: {match: app, required: [module]}}}\n",
         },
     )

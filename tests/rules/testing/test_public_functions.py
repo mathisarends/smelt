@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nrules:\n  visibility/test-only-public-function: warning\n"
+CONFIG = "\nversion: 2\nproject:\n  root_packages:\n  - app\nrules:\n  visibility/test-only-public-function: warning\n"
 
 
 def test_excluded_script_callers_are_explicitly_unassessed(tmp_path: Path) -> None:
@@ -307,7 +307,7 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\n  exclude:\n  - app/generated/**\nrules:\n  visibility/test-only-public-function: warning\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\n  exclude:\n  - app/generated/**\nrules:\n  visibility/test-only-public-function: warning\n",
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "app/generated/consumer.py": "from app.mouse import helper",
@@ -346,7 +346,7 @@ def test_rule_selection_and_test_evidence_exclusions(
     write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{policy}",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\n{policy}",
             "app/__init__.py": "",
             "app/mouse.py": "def helper(): pass",
             "tests/test_mouse.py": "from app.mouse import helper",
@@ -361,7 +361,7 @@ def test_custom_roots_and_deterministic_evidence(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\n  source_roots:\n  - src\n  test_roots:\n  - spec\nrules:\n  visibility/test-only-public-function: warning\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\n  source_roots:\n  - src\n  test_roots:\n  - spec\nrules:\n  visibility/test-only-public-function: warning\n",
             "src/app/__init__.py": "",
             "src/app/mouse.py": "def helper(): pass",
             "spec/test_b.py": "from app.mouse import helper",

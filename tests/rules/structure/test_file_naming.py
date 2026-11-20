@@ -11,7 +11,7 @@ from tests.helpers import check, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 
 
 @pytest.mark.parametrize("extension", ["yaml", "yml"])

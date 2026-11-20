@@ -37,7 +37,7 @@ defaults should distinguish `None` from valid falsy values.
 
 ```yaml
 # smelt.yml
-version: 1
+version: 2
 
 project:
   root_packages: [app]

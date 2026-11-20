@@ -21,7 +21,7 @@ def test_contracts_follow_arbitrary_packages_and_namespace_portions(
         tmp_path,
         {
             "smelt.yml": f"""
-            version: 1
+            version: 2
             project:
               root_packages: [acme]
               source_roots: {source_roots}
@@ -60,7 +60,7 @@ def test_overlapping_contracts_remain_visible_in_context(tmp_path: Path) -> None
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [lib]}
             architecture:
               packages:
@@ -90,14 +90,16 @@ def test_policy_for_prefers_the_closest_contract_then_structure(
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
+            rules:
+              complexity/excess-positional-parameters: {severity: warning, max: 3}
             style:
-              max_positional_parameters: 3
               overrides:
                 api:
                   match: app.api
-                  max_positional_parameters: 2
+                  rules:
+                    complexity/excess-positional-parameters: {max: 2}
         """,
             "app/__init__.py": "",
             "app/core.py": "",

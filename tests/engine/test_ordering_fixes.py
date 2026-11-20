@@ -10,7 +10,7 @@ from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.ordering_fixes import apply_ordering_fixes
 from tests.helpers import check, write_project
 
-CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
+CONFIG = "\nversion: 2\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
 SOURCE = "def _helper():\n    return 7\n\ndef api():\n    return _helper()\n"
 OPTIONS = CheckOptions(select=("SMT313",))
 

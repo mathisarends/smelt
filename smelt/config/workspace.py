@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from smelt.config.discovery import packages_in
 from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.config.models import (
+    POLICY_OPTIONS,
     ArchitectureConfig,
     IgnoreEntry,
     PackageContract,
@@ -465,9 +466,9 @@ def _compile_members(
             for package in names:
                 name = path if len(names) == 1 else f"{path}:{package}"
                 contracts[name] = PackageContract(
-                    match=package, reasons=member.style.reasons, **options
+                    match=package, reasons=member.structure.reasons, **options
                 ).with_style_location(f"{location}.style")
-        inherited_style = config.style.model_copy(update=options)
+        inherited_style = config.structure.model_copy(update=options)
         for name, contract in member.structure.contracts.items():
             qualified = f"{path}:{name}"
             policy = (
@@ -528,8 +529,8 @@ def _compile_members(
 def _policy_options(policy: PackagePolicy) -> dict[str, Any]:
     return {
         name: getattr(policy, name)
-        for name in PackagePolicy.model_fields
-        if getattr(policy, name) is not None
+        for name in POLICY_OPTIONS
+        if getattr(policy, name, None) is not None
     }
 
 
@@ -546,7 +547,9 @@ def _style_reason_issues(
             "changing the inherited value requires a reason; use {value: ..., reason: ...}",
         )
         for name, value in options.items()
-        if name not in reasons
+        # A rule entry's max needs no reason; its location already names the rule.
+        if name in PackagePolicy.model_fields
+        and name not in reasons
         and (other := getattr(inherited, name)) is not None
         and other != value
     ]

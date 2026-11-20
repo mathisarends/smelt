@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from smelt.config.errors import ConfigError, ConfigIssue
-from smelt.config.models import POLICY_DEFAULTS, PackageContract, PackagePolicy
+from smelt.config.models import POLICY_DEFAULTS, POLICY_OPTIONS, PackageContract
 from smelt.config.patterns import module_matches
 from smelt.model import is_within
 
@@ -328,7 +328,7 @@ class ContractIndex:
 
 def _project_policy(structure: StructureConfig) -> ResolvedContract:
     """structure-level options as a contract that every package inherits."""
-    options = {name: getattr(structure, name) for name in PackagePolicy.model_fields}
+    options = {name: getattr(structure, name) for name in POLICY_OPTIONS}
     spec = PackageContract.model_construct(
         match="*", reasons=structure.reasons, **options
     ).with_style_location(_PROJECT_POLICY)

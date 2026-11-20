@@ -117,7 +117,7 @@ def test_member_check_does_not_import_inactive_test_rules(tmp_path: Path) -> Non
     (tmp_path / "app").mkdir()
     (tmp_path / "app/__init__.py").write_text("def helper(): pass\n")
     (tmp_path / "smelt.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n"
+        "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n"
     )
     script = """
 import sys

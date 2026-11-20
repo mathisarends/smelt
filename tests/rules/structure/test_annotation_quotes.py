@@ -30,7 +30,7 @@ def _config(*, version: str = "3.12", policy: str | None = None) -> str:
         else ""
     )
     return (
-        "version: 1\nproject:\n  root_packages: [app]\n"
+        "version: 2\nproject:\n  root_packages: [app]\n"
         f'  python_version: "{version}"\n{contracts}'
     )
 

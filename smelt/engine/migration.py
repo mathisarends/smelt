@@ -1,18 +1,19 @@
-"""Round-trip a legacy policy through the 0.14 key and rule taxonomy."""
+"""Round-trip a legacy policy into a version 2 file with the 0.14 keys and rules."""
 
 from __future__ import annotations
 
 import io
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.error import YAMLError
+from ruamel.yaml.tokens import CommentToken
 
 from smelt.config.errors import ConfigError, ConfigIssue
-from smelt.config.models import UNCOVERED_SOURCE, PackageBoundary
+from smelt.config.models import LIMIT_RULES, UNCOVERED_SOURCE, PackageBoundary
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import replacement_selectors
 
@@ -45,6 +46,10 @@ def migrate_policy(text: str) -> Migration:
         for policy in overrides.values():
             if isinstance(policy, dict):
                 _rules(policy.get("rules"), catalog, notes)
+    _limits(root, catalog, notes)
+    if root.get("version") == 1:
+        root["version"] = 2
+        notes.append("Updated version 1 to version 2.")
     ignore = root.get("ignore")
     if isinstance(ignore, list):
         for index in reversed(range(len(ignore))):
@@ -126,6 +131,81 @@ def _coverage(root: CommentedMap, notes: list[str]) -> None:
     notes.append(
         f"Replaced project.coverage: strict with rules.{UNCOVERED_SOURCE[1]}: error."
     )
+
+
+class _LimitScope(NamedTuple):
+    """Where limit options are read and the mapping whose rules receive them."""
+
+    location: str
+    options: Any
+    owner: CommentedMap
+    refines: bool
+
+
+def _limits(root: CommentedMap, catalog: RuleSet, notes: list[str]) -> None:
+    """Move each max_* option into the max of its rule entry in the same scope."""
+    style = root.get("style")
+    scopes = [
+        _LimitScope("style", style, root, refines=False),
+        _LimitScope("tests", root.get("tests"), root, refines=False),
+    ]
+    enabled = _enabled(root.get("rules"))
+    if isinstance(style, CommentedMap) and isinstance(
+        overrides := style.get("overrides"), CommentedMap
+    ):
+        scopes.extend(
+            _LimitScope(f"style.overrides.{name}", policy, policy, refines=True)
+            for name, policy in overrides.items()
+            if isinstance(policy, CommentedMap)
+        )
+    for location, options, owner, refines in scopes:
+        if not isinstance(options, CommentedMap):
+            continue
+        for option, (code, name) in LIMIT_RULES.items():
+            if option not in options:
+                continue
+            value = options.pop(option)
+            reason = None
+            if isinstance(value, dict) and "value" in value:
+                value, reason = value["value"], value.get("reason")
+            rules = _mapping(owner, "rules")
+            key = next((k for k in (name, code) if k in rules), None)
+            if key is None:
+                entry = CommentedMap()
+                # An override refines a rule the root enables; otherwise the
+                # option enabled the rule in its own scope.
+                if not (refines and (name in enabled or code in enabled)):
+                    rule = catalog.lookup(code)
+                    entry["severity"] = (
+                        rule.default_severity.value if rule else "warning"
+                    )
+                entry["max"] = value
+                if reason is not None:
+                    entry["reason"] = reason
+                entry.fa.set_flow_style()
+                _append(rules, name, entry)
+                key = name
+            elif isinstance(current := rules[key], dict):
+                current["max"] = value
+            else:
+                entry = CommentedMap([("severity", current), ("max", value)])
+                entry.fa.set_flow_style()
+                rules[key] = entry
+            prefix = "" if owner is root else f"{location}."
+            notes.append(f"Moved {location}.{option} to {prefix}rules.{key}.max.")
+        if not options and owner is root:
+            del root[location]
+
+
+def _enabled(settings: Any) -> set[str]:
+    if not isinstance(settings, dict):
+        return set()
+    return {
+        key
+        for key, value in settings.items()
+        if (value.get("severity") if isinstance(value, dict) else value)
+        not in (None, "off")
+    }
 
 
 def _structure(root: CommentedMap) -> None:
@@ -251,13 +331,28 @@ def _severity(setting: Any, default: str) -> int:
     return _LEVELS.index(value)
 
 
-def _append(mapping: CommentedMap, key: str, value: str) -> None:
+def _append(mapping: CommentedMap, key: str, value: object) -> None:
     """Append a key, keeping the blank lines and comments that close the mapping after it."""
     last = next(reversed(mapping), None) if mapping else None
-    trailing = mapping.ca.items.pop(last, None) if last is not None else None
+    comments = mapping.ca.items.get(last) if last is not None else None
+    token = comments[2] if comments and len(comments) > 2 else None  # noqa: PLR2004 - ruamel keeps the value comment third
     mapping[key] = value
-    if trailing is not None:
-        mapping.ca.items[key] = trailing
+    if token is None:
+        return
+    # An inline comment stays with its entry; the lines after it close the mapping.
+    inline, newline, closing = token.value.partition("\n")
+    if not inline.strip():
+        mapping.ca.items[key] = mapping.ca.items.pop(last)
+        return
+    if not closing:
+        return
+    token.value = inline + newline
+    mapping.ca.items[key] = [
+        None,
+        None,
+        CommentToken(newline + closing, token.start_mark),
+        None,
+    ]
 
 
 def _mapping(parent: CommentedMap, name: str) -> CommentedMap:

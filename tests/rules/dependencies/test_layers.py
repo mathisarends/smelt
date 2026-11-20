@@ -244,7 +244,7 @@ class TestTransitive:
 
 def test_edges_group_modules_by_their_layer_assignment(tmp_path: Path) -> None:
     config = """
-version: 1
+version: 2
 project: {root_packages: [app]}
 architecture:
   layers:

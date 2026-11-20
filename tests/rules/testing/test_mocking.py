@@ -19,7 +19,7 @@ def _project(
     return write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{section}{policy}",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\n{section}{policy}",
             "app/__init__.py": "",
             path: source,
         },
@@ -96,7 +96,7 @@ def test_patch_count_includes_decorators_and_object_patching(tmp_path: Path) -> 
     root = _project(
         tmp_path,
         "from unittest.mock import patch\n@patch('app.first')\ndef test_run(mock):\n    patch.object(module, 'second')\n",
-        "  max_patches_per_test: 1\n",
+        "rules: {tests/excess-patches: {severity: error, max: 1}}\n",
     )
     [finding] = violations(root, CheckOptions(select=("SMT423",)))
     assert finding.expected is not None
@@ -107,7 +107,8 @@ def test_patch_limit_zero_and_quality_exclusion(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
         "def test_run(mocker): mocker.patch('app.repo')",
-        "  max_patches_per_test: 0\n  quality_exclude: ['tests/domain/**']\n",
+        "  quality_exclude: ['tests/domain/**']\n"
+        "rules: {tests/excess-patches: {severity: error, max: 0}}\n",
     )
     assert violations(root, CheckOptions(select=("SMT423",))) == []
 
@@ -133,7 +134,7 @@ def test_an_extra_patch_cannot_hide_behind_existing_debt(tmp_path: Path) -> None
     root = _project(
         tmp_path,
         "def test_run(mocker):\n    mocker.patch('app.one')\n    mocker.patch('app.two')\n",
-        "  max_patches_per_test: 1\n",
+        "rules: {tests/excess-patches: {severity: error, max: 1}}\n",
     )
     options = CheckOptions(select=("SMT423",))
     initial = check(root, options)
@@ -154,7 +155,7 @@ def test_duplicate_patch_calls_keep_separate_baseline_tokens(tmp_path: Path) -> 
     root = _project(
         tmp_path,
         "def test_run(mocker):\n    mocker.patch('app.one')\n    mocker.patch('app.one')\n",
-        "  max_patches_per_test: 0\n",
+        "rules: {tests/excess-patches: {severity: error, max: 0}}\n",
     )
     outcome = check(root, CheckOptions(select=("SMT423",)))
     debt = Debt.from_violations(
@@ -212,7 +213,8 @@ def test_monkeypatch_aliases_types_and_context_are_counted(
     root = _project(
         tmp_path,
         source,
-        "  forbidden_mock_paths: ['tests/domain/**']\n  max_patches_per_test: 0\nrules: {tests/string-patch-target: error}\n",
+        "  forbidden_mock_paths: ['tests/domain/**']\n"
+        "rules: {tests/string-patch-target: error, tests/excess-patches: {severity: error, max: 0}}\n",
     )
     found = violations(root)
     assert {finding.code for finding in found} == {"SMT421", "SMT422", "SMT423"}
@@ -234,6 +236,7 @@ def test_unrelated_monkeypatch_and_environment_setup_are_not_mocks(
     root = _project(
         tmp_path,
         source,
-        "  forbidden_mock_paths: ['tests/domain/**']\n  max_patches_per_test: 0\n",
+        "  forbidden_mock_paths: ['tests/domain/**']\n"
+        "rules: {tests/excess-patches: {severity: error, max: 0}}\n",
     )
     assert violations(root) == []

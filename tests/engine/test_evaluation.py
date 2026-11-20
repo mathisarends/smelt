@@ -62,7 +62,7 @@ def test_real_comparison_and_explicit_pytest_targets(
     project = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/missing-outcome-check: warning\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nrules:\n  tests/missing-outcome-check: warning\n",
             "app/__init__.py": "",
             "tests/test_run.py": test_source,
         },
@@ -94,7 +94,7 @@ def test_invalid_baseline_still_runs_candidate_and_never_executes_tests(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
             "broken/smelt/__init__.py": "",
             "broken/smelt/cli.py": "def main(args):\n    print('invalid json')\n    return 0",
@@ -123,7 +123,7 @@ def test_missing_baseline_cannot_fall_back_to_the_installed_candidate(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
         },
     )
@@ -148,7 +148,7 @@ def test_comparison_rejects_changes_to_an_inherited_policy(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {architecture/import-cycle: warning}\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {architecture/import-cycle: warning}\n",
             "smelt.yml": "extends: base.yml\n",
             "app/__init__.py": "",
             "baseline/smelt/__init__.py": "",

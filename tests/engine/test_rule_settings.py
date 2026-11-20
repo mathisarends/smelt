@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -106,8 +107,7 @@ def test_an_inherited_root_rule_is_included_in_the_member_guard(
         {
             **MEMBER_BOUNDARIES,
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"] + "extends: policy.yml\n",
-            "policy.yml": "style: {max_positional_parameters: 2}\n"
-            "rules: {complexity/excess-positional-parameters: warning}\n",
+            "policy.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, max: 2}}\n",
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: off}\n",
         },
     )
@@ -147,7 +147,7 @@ def _project(tmp_path: Path, policy: str) -> Path:
     return write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n" + policy,
             "app/__init__.py": "",
             "app/api.py": "def helper(): return 1\n",
             "app/exported.py": "__all__ = ['supported']\ndef supported(): return 1\n",
@@ -295,7 +295,7 @@ def test_scoped_off_does_not_report_old_debt_as_fixed(tmp_path: Path) -> None:
     ["preset", "review_test_deadlines", "require_assertions", "member_visibility"],
 )
 def test_removed_switches_are_rejected_instead_of_silently_ignored(key: str) -> None:
-    raw: dict[str, object] = {"version": 1, "project": {"root_packages": ["app"]}}
+    raw: dict[str, object] = {"version": 2, "project": {"root_packages": ["app"]}}
     if key == "preset":
         raw[key] = "maintainability"
     elif key == "member_visibility":
@@ -371,7 +371,7 @@ def _visibility_project(tmp_path: Path, policy: str = _INDIVIDUAL_VISIBILITY) ->
     return write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{policy}}}\n",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\nrules: {{{policy}}}\n",
             "app/__init__.py": "",
             "app/api.py": _VISIBILITY_SOURCE,
             "tests/test_api.py": _VISIBILITY_TEST,
@@ -618,7 +618,7 @@ def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
         tmp_path,
         {
             "base.yml": "rules: {SMT316: error, SMT335: hint}\n",
-            "smelt.yml": "extends: base.yml\nversion: 1\n"
+            "smelt.yml": "extends: base.yml\nversion: 2\n"
             "project: {root_packages: [app]}\nrules: {visibility: warning, SMT320: error}\n",
         },
     )
@@ -636,7 +636,7 @@ def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
             "architecture: {layers: {domain: {path: domain}}}\n"
             "rules:\n"
             "  architecture/uncovered-source: error\n"
@@ -687,7 +687,7 @@ def test_a_broad_child_setting_does_not_reactivate_an_off_rule(tmp_path: Path) -
         tmp_path,
         {
             "base.yml": "rules: {SMT316: error, visibility/internal-public-attribute: off}\n",
-            "smelt.yml": "extends: base.yml\nversion: 1\n"
+            "smelt.yml": "extends: base.yml\nversion: 2\n"
             "project: {root_packages: [app]}\nrules: {visibility: warning}\n",
         },
     )
@@ -697,7 +697,7 @@ def test_a_broad_child_setting_does_not_reactivate_an_off_rule(tmp_path: Path) -
 
 _WORKSPACE = {
     "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
-    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n",
+    "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n",
     "services/api/src/api/__init__.py": "",
     "services/api/src/api/views.py": "def helper(): return 1\n",
     "services/api/src/api/legacy/__init__.py": "def helper(): return 1\n",
@@ -719,8 +719,7 @@ def test_a_member_rule_setting_refines_a_broad_root_cap(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": _WORKSPACE["smelt.yml"] + "rules: {complexity: hint}\n",
-            "services/api/smelt.yml": "style: {max_positional_parameters: 3}\n"
-            "rules: {complexity/excess-positional-parameters: warning}\n",
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}\n",
             "services/api/src/api/views.py": source,
             "packages/core/src/core/views.py": source,
         },
@@ -837,4 +836,81 @@ def test_unknown_selectors_of_an_unvalidated_config() -> None:
             'unknown rule "private-test-access"; renamed to "tests/private-access" '
             f"in 0.13.0 (see {UPGRADE_GUIDE_URL})",
         ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("policy", "location", "message"),
+    [
+        (
+            "rules: {complexity: {severity: hint, max: 3}}",
+            "rules.complexity.max",
+            "max belongs to an individual rule",
+        ),
+        (
+            "rules: {architecture/import-cycle: {severity: error, max: 3}}",
+            "rules.architecture/import-cycle.max",
+            "this rule takes no max",
+        ),
+        (
+            "rules: {complexity/excess-comprehension-loops: {severity: hint, max: 0}}",
+            "rules.complexity/excess-comprehension-loops.max",
+            "max must be at least 1",
+        ),
+        (
+            "rules: {complexity/excess-positional-parameters: {max: 3}}",
+            "rules.complexity/excess-positional-parameters",
+            "is not enabled; add its severity, e.g. {severity: warning, max: 3}",
+        ),
+        (
+            "rules: {tests/excess-patches: error}\nstyle:\n  overrides:\n"
+            "    api: {match: app, rules: {tests/excess-patches: {max: 1}}}",
+            "style.overrides.api.rules.tests/excess-patches.max",
+            "the patch limit applies to the whole project",
+        ),
+    ],
+)
+def test_a_max_is_validated_where_it_is_written(
+    tmp_path: Path, policy: str, location: str, message: str
+) -> None:
+    root = write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\n{policy}\n",
+            "app/__init__.py": "",
+        },
+    )
+
+    with pytest.raises(ConfigError, match=re.escape(message)) as caught:
+        check(root)
+
+    assert location in {issue.path for issue in caught.value.issues}
+
+
+def test_a_package_max_refines_the_root_limit_and_keeps_its_severity(
+    tmp_path: Path,
+) -> None:
+    source = "def wide(a, b, c):\n    return a\n"
+    root = write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": """\
+version: 2
+project: {root_packages: [app]}
+rules: {complexity/excess-positional-parameters: {severity: error, max: 2}}
+style:
+  overrides:
+    legacy:
+      match: app.legacy
+      rules: {complexity/excess-positional-parameters: {max: 3}}
+""",
+            "app/__init__.py": "",
+            "app/core.py": source,
+            "app/legacy/__init__.py": "",
+            "app/legacy/core.py": source,
+        },
+    )
+
+    assert [(v.path, v.severity) for v in violations(root)] == [
+        ("app/core.py", Severity.ERROR)
     ]

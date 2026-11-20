@@ -24,7 +24,7 @@ from tests.helpers import write_project
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app]}
 style:
   overrides:

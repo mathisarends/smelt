@@ -537,65 +537,8 @@
             }
           ]
         },
-        "max_module_imports": {
-          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-              "title": "Max Module Imports"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-                      "title": "Max Module Imports"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
         "module_import_exemptions": {
-          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
           "anyOf": [
             {
               "anyOf": [
@@ -610,7 +553,7 @@
                 }
               ],
               "default": null,
-              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
               "title": "Module Import Exemptions"
             },
             {
@@ -636,7 +579,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
                       "title": "Module Import Exemptions"
                     },
                     {
@@ -1043,234 +986,6 @@
                       ],
                       "default": null,
                       "description": "SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite."
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_positional_parameters": {
-          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-              "title": "Max Positional Parameters"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-                      "title": "Max Positional Parameters"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_comprehension_loops": {
-          "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-              "title": "Max Comprehension Loops"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-                      "title": "Max Comprehension Loops"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_constructor_decisions": {
-          "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-              "title": "Max Constructor Decisions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-                      "title": "Max Constructor Decisions"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_private_definitions": {
-          "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-              "title": "Max Private Definitions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-                      "title": "Max Private Definitions"
                     },
                     {
                       "not": {
@@ -1842,22 +1557,62 @@
     },
     "RuleOverride": {
       "additionalProperties": false,
-      "description": "An explicit severity with the reason for a policy exception.",
+      "description": "A rule entry: its severity, its limit and the reason for an exception.",
       "properties": {
         "severity": {
-          "$ref": "#/$defs/RuleSeverity"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleSeverity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Severity of the rule here. Omitted keeps the inherited severity, so a package or member entry can set only max."
+        },
+        "max": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The rule's limit, for rules that count something, e.g. complexity/excess-positional-parameters. Package and member entries refine the root limit for their files.",
+          "title": "Max"
         },
         "reason": {
-          "minLength": 1,
-          "title": "Reason",
-          "type": "string"
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
         }
       },
       "title": "RuleOverride",
       "type": "object",
-      "required": [
-        "severity",
-        "reason"
+      "anyOf": [
+        {
+          "required": [
+            "max"
+          ]
+        },
+        {
+          "required": [
+            "severity",
+            "reason"
+          ]
+        }
       ]
     },
     "RuleSetting": {
@@ -2007,65 +1762,8 @@
             }
           ]
         },
-        "max_module_imports": {
-          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-              "title": "Max Module Imports"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-                      "title": "Max Module Imports"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
         "module_import_exemptions": {
-          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
           "anyOf": [
             {
               "anyOf": [
@@ -2080,7 +1778,7 @@
                 }
               ],
               "default": null,
-              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
               "title": "Module Import Exemptions"
             },
             {
@@ -2106,7 +1804,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
                       "title": "Module Import Exemptions"
                     },
                     {
@@ -2513,234 +2211,6 @@
                       ],
                       "default": null,
                       "description": "SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite."
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_positional_parameters": {
-          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-              "title": "Max Positional Parameters"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-                      "title": "Max Positional Parameters"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_comprehension_loops": {
-          "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-              "title": "Max Comprehension Loops"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-                      "title": "Max Comprehension Loops"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_constructor_decisions": {
-          "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-              "title": "Max Constructor Decisions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-                      "title": "Max Constructor Decisions"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_private_definitions": {
-          "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-              "title": "Max Private Definitions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-                      "title": "Max Private Definitions"
                     },
                     {
                       "not": {
@@ -3204,65 +2674,8 @@
             }
           ]
         },
-        "max_module_imports": {
-          "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-              "title": "Max Module Imports"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-                      "title": "Max Module Imports"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
         "module_import_exemptions": {
-          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+          "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
           "anyOf": [
             {
               "anyOf": [
@@ -3277,7 +2690,7 @@
                 }
               ],
               "default": null,
-              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+              "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
               "title": "Module Import Exemptions"
             },
             {
@@ -3303,7 +2716,7 @@
                         }
                       ],
                       "default": null,
-                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+                      "description": "SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
                       "title": "Module Import Exemptions"
                     },
                     {
@@ -3727,234 +3140,6 @@
             }
           ]
         },
-        "max_positional_parameters": {
-          "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-              "title": "Max Positional Parameters"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-                      "title": "Max Positional Parameters"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_comprehension_loops": {
-          "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-              "title": "Max Comprehension Loops"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-                      "title": "Max Comprehension Loops"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_constructor_decisions": {
-          "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-              "title": "Max Constructor Decisions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-                      "title": "Max Constructor Decisions"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
-        "max_private_definitions": {
-          "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-              "title": "Max Private Definitions"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "value",
-                "reason"
-              ],
-              "properties": {
-                "value": {
-                  "allOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "description": "Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
-                      "title": "Max Private Definitions"
-                    },
-                    {
-                      "not": {
-                        "type": "null"
-                      }
-                    }
-                  ]
-                },
-                "reason": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
-                }
-              }
-            }
-          ]
-        },
         "call_argument_kinds": {
           "description": "Argument kinds complexity/inline-call-argument (SMT340) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
           "anyOf": [
@@ -4334,20 +3519,6 @@
           "title": "Forbidden Mock Paths",
           "type": "array"
         },
-        "max_patches_per_test": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Maximum recognized patch calls per collected test, including decorators (SMT423). Nested helpers and fixtures are not attributed to callers.",
-          "title": "Max Patches Per Test"
-        },
         "assertion_helpers": {
           "description": "Qualified callable names accepted as assertion evidence, e.g. tests.assertions.assert_user.",
           "items": {
@@ -4543,8 +3714,8 @@
         },
         "imports/excess-module-imports": {
           "title": "SMT110: A module imports more project modules than its policy allows.",
-          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
-          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
+          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
           ],
@@ -4912,8 +4083,8 @@
         },
         "complexity/excess-positional-parameters": {
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
-          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.",
-          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.",
+          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
           "examples": [
             "warning"
           ],
@@ -5065,8 +4236,8 @@
         },
         "complexity/excess-comprehension-loops": {
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
-          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.",
-          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.",
+          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
           "examples": [
             "hint"
           ],
@@ -5074,8 +4245,8 @@
         },
         "complexity/excess-constructor-decisions": {
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
-          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
-          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
           "examples": [
             "hint"
           ],
@@ -5083,8 +4254,8 @@
         },
         "visibility/excess-private-definitions": {
           "title": "SMT367: A module contains more private definitions than the configured limit.",
-          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.",
-          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With style.max_private_definitions: 2\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
+          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.",
+          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With rules: {visibility/excess-private-definitions: {severity: hint, max: 2}}\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
           "examples": [
             "hint"
           ],
@@ -5460,8 +4631,8 @@
         },
         "^SMT110$": {
           "title": "SMT110: A module imports more project modules than its policy allows.",
-          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
-          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
+          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
           ],
@@ -5829,8 +5000,8 @@
         },
         "^SMT345$": {
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
-          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.",
-          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.",
+          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
           "examples": [
             "warning"
           ],
@@ -5982,8 +5153,8 @@
         },
         "^SMT363$": {
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
-          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.",
-          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.",
+          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
           "examples": [
             "hint"
           ],
@@ -5991,8 +5162,8 @@
         },
         "^SMT364$": {
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
-          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
-          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
           "examples": [
             "hint"
           ],
@@ -6000,8 +5171,8 @@
         },
         "^SMT367$": {
           "title": "SMT367: A module contains more private definitions than the configured limit.",
-          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.",
-          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With style.max_private_definitions: 2\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
+          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.",
+          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With rules: {visibility/excess-private-definitions: {severity: hint, max: 2}}\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
           "examples": [
             "hint"
           ],
@@ -6286,8 +5457,8 @@
         },
         "imports/excess-module-imports": {
           "title": "SMT110: A module imports more project modules than its policy allows.",
-          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
-          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
+          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
           ],
@@ -6637,8 +5808,8 @@
         },
         "complexity/excess-positional-parameters": {
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
-          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.",
-          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.",
+          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
           "examples": [
             "warning"
           ],
@@ -6790,8 +5961,8 @@
         },
         "complexity/excess-comprehension-loops": {
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
-          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.",
-          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.",
+          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
           "examples": [
             "hint"
           ],
@@ -6799,8 +5970,8 @@
         },
         "complexity/excess-constructor-decisions": {
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
-          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
-          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
           "examples": [
             "hint"
           ],
@@ -6808,8 +5979,8 @@
         },
         "visibility/excess-private-definitions": {
           "title": "SMT367: A module contains more private definitions than the configured limit.",
-          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.",
-          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With style.max_private_definitions: 2\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
+          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.",
+          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With rules: {visibility/excess-private-definitions: {severity: hint, max: 2}}\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
           "examples": [
             "hint"
           ],
@@ -7034,8 +6205,8 @@
         },
         "^SMT110$": {
           "title": "SMT110: A module imports more project modules than its policy allows.",
-          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
-          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Set max_module_imports under style or in a style override to enable this opt-in hint for that scope (zero is supported). Selecting the rule in rules or with --select uses a limit of 20. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
+          "description": "A module imports more project modules than its policy allows. Many independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design. Repair: Split a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.",
+          "markdownDescription": "**SMT110 \u2014 imports/excess-module-imports**\n\nA module imports more project modules than its policy allows.\n\nMany independent project dependencies can signal that a module coordinates too many responsibilities. Unlike SMT108, this review counts distinct direct target modules across every project root package, without requiring a contract on each target package. Repeated imports and multiple symbols from one module count once. Facade re-exports count at the facade path used by the caller, not at their defining modules. Standard-library and third-party imports never count; TYPE_CHECKING imports follow the existing architecture.import_graph.type_checking policy. Initializers and declared composition roots are exempt by default. This is a design hint, not proof of excessive coupling; reducing imports alone does not simplify a design.\n\n**Problem**\n```python\n# app/client.py\nfrom app.users.read import Read\nfrom app.users.write import Write\nfrom app.billing.pay import Pay\n```\n\n**Preferred**\n```python\n# app/client.py, after deliberate facade review\nfrom app.users import Read, Write\nfrom app.billing import Pay\n```\n\nSplit a cohesive responsibility into its own module or depend on deliberate package facades. Review import cycles and initializer side effects before adding re-exports. No automatic rewrite is performed. Enable it with rules: {imports/excess-module-imports: {severity: hint, max: 15}}; max defaults to 20, zero is supported, and an entry in a style override's rules refines it for that package. module_import_exemptions defaults to [facades, composition_root]; [] checks both.\n\nRun `smelt explain imports/excess-module-imports` for details.",
           "examples": [
             "hint"
           ],
@@ -7385,8 +6556,8 @@
         },
         "^SMT345$": {
           "title": "SMT345: A function accepts more positional parameters than its package allows.",
-          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.",
-          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. max_positional_parameters, set under style or in a style override, is the limit; parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it for the project with style: {max_positional_parameters: 3}, for one package with a contract, or with rules, which uses a limit of 5.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
+          "description": "A function accepts more positional parameters than its package allows. Call sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter. Repair: Insert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.",
+          "markdownDescription": "**SMT345 \u2014 complexity/excess-positional-parameters**\n\nA function accepts more positional parameters than its package allows.\n\nCall sites such as connect(user, run, tab, True) do not say which value is which, and swapping two arguments of the same type still type-checks. The max of the rule entry is the limit (5 when omitted); parameters after that limit must be keyword-only so every call names them. self and cls are not counted, nor are *args and **kwargs. Dunder methods, @overload and @override definitions are exempt because their signatures are dictated elsewhere, and tests are not checked. Positional-only parameters count like any other positional parameter.\n\n**Problem**\n```python\ndef connect(user_id: UUID, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\n**Preferred**\n```python\ndef connect(user_id: UUID, *, run_id: UUID, tab_id: UUID) -> None:\n    ...\n```\n\nInsert * after the last allowed positional parameter, then pass the remaining arguments by keyword at every call site. Callbacks whose positional signature is fixed by a framework keep it with a reasoned suppression. No automatic rewrite is performed. Enable it with rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}; an entry in a style override's rules refines the limit for that package.\n\nRun `smelt explain complexity/excess-positional-parameters` for details.",
           "examples": [
             "warning"
           ],
@@ -7538,8 +6709,8 @@
         },
         "^SMT363$": {
           "title": "SMT363: A comprehension combines too many iteration or decision steps.",
-          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.",
-          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363, or set max_comprehension_loops under style or in a style override. The limit defaults to 1; a style override can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
+          "description": "A comprehension combines too many iteration or decision steps. This opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred. Repair: Name the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.",
+          "markdownDescription": "**SMT363 \u2014 complexity/excess-comprehension-loops**\n\nA comprehension combines too many iteration or decision steps.\n\nThis opt-in syntax review reports comprehensions with too many for clauses, a conditional element/value with a nontrivial branch, or multiple filters (including a boolean filter with more than two operands). Names, attribute reads and constants are trivial branches. Nested comprehension triggers are grouped at the outermost comprehension. Simple mapping, a single filter and trivial fallbacks remain valid. Only production source is checked; no types or runtime costs are inferred.\n\n**Problem**\n```python\nvalues = [convert(x) if x.ready else fallback(x) for x in items]\n```\n\n**Preferred**\n```python\nvalues = [resolve_item(x) for x in items]\n```\n\nName the per-item decision or use an explicit loop. Preserve generator laziness, iteration/filter order and conditional evaluation. No automatic rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. The limit defaults to 1; an entry in a style override's rules can permit intentional flattening.\n\nRun `smelt explain complexity/excess-comprehension-loops` for details.",
           "examples": [
             "hint"
           ],
@@ -7547,8 +6718,8 @@
         },
         "^SMT364$": {
           "title": "SMT364: A constructor contains more decisions than the configured limit.",
-          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
-          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint}, select SMT364, or set max_constructor_decisions under style or in a package override. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
+          "description": "A constructor contains more decisions than the configured limit. Normalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring. Repair: Move a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.",
+          "markdownDescription": "**SMT364 \u2014 complexity/excess-constructor-decisions**\n\nA constructor contains more decisions than the configured limit.\n\nNormalization, validation and derivation become easier to understand when named separately from object initialization. This opt-in review counts if, for/async for, while, try/try-star, match, raise, comprehension and conditional-expression nodes in __init__ and __post_init__ methods. Each comprehension counts once, in addition to any conditional expressions inside it; its generator clauses are not counted separately. Nested function, lambda and class definitions are skipped. Helper calls count zero. A single guard with raise counts two, so it remains valid at the default limit of 2. Only production source is checked. __new__ and other validation methods are outside the scope. This metric is advice, not proof that a constructor needs refactoring.\n\n**Problem**\n```python\nclass Client:\n    def __init__(self, values):\n        for value in values:\n            if not value.ready:\n                raise ValueError('not ready')\n        self.values = values\n```\n\n**Preferred**\n```python\nclass Client:\n    def __init__(self, values):\n        self.values = validate_values(values)\n```\n\nMove a cohesive normalization or validation step into a named function or classmethod and assign its result. Preserve evaluation order, exceptions and initialization side effects. Do not extract arbitrary fragments merely to lower a count. No automatic rewrite is performed. Enable rules: {complexity/excess-constructor-decisions: hint} or select SMT364; set max on the entry, in the root or a style override's rules. The limit defaults to 2; 0 forbids any counted decision. Reasoned suppressions and package off overrides are supported.\n\nRun `smelt explain complexity/excess-constructor-decisions` for details.",
           "examples": [
             "hint"
           ],
@@ -7556,8 +6727,8 @@
         },
         "^SMT367$": {
           "title": "SMT367: A module contains more private definitions than the configured limit.",
-          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.",
-          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With style.max_private_definitions: 2\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint}, select SMT367, or set max_private_definitions under style or in a style override. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
+          "description": "A module contains more private definitions than the configured limit. A growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction. Repair: Review the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.",
+          "markdownDescription": "**SMT367 \u2014 visibility/excess-private-definitions**\n\nA module contains more private definitions than the configured limit.\n\nA growing collection of private models and helpers can make a module's responsibility harder to understand. This opt-in review counts private classes, sync/async functions and PEP 695 type aliases directly in a production module body. A leading underscore marks privacy; dunders are excluded. Repeated declarations of the same name and kind, including overloads, count once at their first declaration. Private uppercase assignments with values are listed separately as constants and never contribute to the limit. Imports, ordinary assignment-style type aliases, methods, nested/local definitions and definitions inside control-flow statements are excluded. Package initializers are checked too. A few models beside their consumer remain valid at the default limit of 12. Even a larger cohesive model tree or parser may be intentional: this metric does not infer cohesion, separable groups or safe extraction.\n\n**Problem**\n```python\n# With rules: {visibility/excess-private-definitions: {severity: hint, max: 2}}\nclass _Cookie: pass\nclass _StorageItem: pass\ndef _merge(existing, incoming): ...\nclass AuthenticationState: ...\n```\n\n**Preferred**\n```python\n# A small local model stays beside its consumer.\nclass _Cookie: pass\nclass AuthenticationState: ...\n```\n\nReview the listed definitions for a cohesive group that deserves its own module, carrying its constants and validators with it. Choose a name describing that responsibility; models.py is only one possibility. Preserve import direction, initialization, framework registration and module visibility when moving code. Do not make helpers public or extract arbitrary fragments merely to lower the count. Keep deliberate cohesive implementations with a reasoned suppression or package override. No automatic rewrite is performed. Enable rules: {visibility/excess-private-definitions: hint} or select SMT367; set max on the entry, in the root or a style override's rules. The limit defaults to 12; zero is supported.\n\nRun `smelt explain visibility/excess-private-definitions` for details.",
           "examples": [
             "hint"
           ],
@@ -7624,7 +6795,7 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "const": 1,
+      "const": 2,
       "title": "Version",
       "type": "integer"
     },

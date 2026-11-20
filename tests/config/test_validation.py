@@ -9,7 +9,7 @@ import pytest
 from smelt.config import ConfigError, errors, parse_config
 from smelt.config.errors import UPGRADE_GUIDE_URL
 
-MINIMAL = {"version": 1, "project": {"root_packages": ["gateway"]}}
+MINIMAL = {"version": 2, "project": {"root_packages": ["gateway"]}}
 
 
 @pytest.mark.parametrize(
@@ -289,7 +289,6 @@ class TestCentralModules:
 @pytest.mark.parametrize(
     "policy",
     [
-        {"max_patches_per_test": -1},
         {"quality_exclude": [""]},
         {"forbidden_mock_paths": ["../other/tests"]},
         {"forbidden_mock_paths": ["C:/tests/**"]},
@@ -302,7 +301,7 @@ def test_invalid_test_quality_policy_is_rejected(policy: dict[str, object]) -> N
         parse_config({**MINIMAL, "tests": policy})
 
 
-def test_test_quality_globs_are_canonical_and_zero_is_valid() -> None:
+def test_test_quality_globs_are_canonical() -> None:
     config, _ = parse_config(
         {
             **MINIMAL,
@@ -311,12 +310,10 @@ def test_test_quality_globs_are_canonical_and_zero_is_valid() -> None:
                     "./tests\\**\\domain\\**",
                     "tests/**/domain/**",
                 ],
-                "max_patches_per_test": 0,
             },
         }
     )
     assert config.tests.forbidden_mock_paths == ["tests/**/domain/**"]
-    assert config.tests.max_patches_per_test == 0
 
 
 @pytest.mark.parametrize(

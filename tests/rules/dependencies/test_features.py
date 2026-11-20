@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [gw]
 architecture:
@@ -325,7 +325,7 @@ class TestSharedImportsFeature:
 
 
 CENTRAL_CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [gw]
 architecture:

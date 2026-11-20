@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
-from smelt.config.models import ALL_RULES, RuleOverride
+from smelt.config.models import ALL_RULES, LIMIT_RULES, RuleOverride
 from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
@@ -23,6 +23,10 @@ if TYPE_CHECKING:
 
 _STRICT_COVERAGE = "SMT306"
 _RANK = {"off": 0, "hint": 1, "warning": 2, "error": 3}
+_LIMIT_CODES = dict(LIMIT_RULES.values())
+# The comprehension limit counts for clauses, so a comprehension has at least one.
+_MINIMUM_MAX = {"SMT363": 1}
+_PATCH_LIMIT = LIMIT_RULES["max_patches_per_test"][0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +119,24 @@ class RuleSettings:
             )
             for path, member in loaded.config.members.items()
         }
+        pending.extend(self._root_limit_issues(loaded))
+        pending.extend(
+            ConfigIssue(f"{location}.{key}.max", _PATCH_SCOPE)
+            for location, settings in (
+                *(
+                    (f"style.overrides.{name}.rules", contract.rules)
+                    for name, contract in self.config.style.overrides.items()
+                ),
+                *(
+                    (f"members.{path}.rules", member.rules)
+                    for path, member in loaded.config.members.items()
+                ),
+            )
+            for key, value in settings.items()
+            if self.codes.get(key) == _PATCH_LIMIT
+            and isinstance(value, RuleOverride)
+            and value.max is not None
+        )
         if validate:
             self._validate_root_broad(loaded, pending)
         pending.extend(
@@ -585,7 +607,9 @@ class RuleSettings:
         which only an individual entry can name.
         """
         result: dict[str, _Setting] = {}
-        issues: list[ConfigIssue] = []
+        issues = self._limit_entry_issues(raw, location)
+        # An entry that sets only max keeps the severity it inherits.
+        raw = {key: value for key, value in raw.items() if _raw_value(value)}
         broad = sorted(
             (selection[0], key, selection[1])
             for key in raw
@@ -600,7 +624,7 @@ class RuleSettings:
                 if code not in excluded:
                     result[code] = _Setting(
                         key,
-                        _raw_value(value),
+                        _raw_value(value) or "on",
                         broad=True,
                         location=f"{location}.{key}",
                         reason=value.reason
@@ -626,7 +650,7 @@ class RuleSettings:
                 )
             else:
                 individual.add(named)
-                severity = _raw_value(value)
+                severity = _raw_value(value) or "on"
                 result[named] = _Setting(
                     key,
                     self.defaults[named] if severity == "on" else severity,
@@ -640,6 +664,49 @@ class RuleSettings:
         elif issues:
             raise ConfigError(issues, self.source)
         return result
+
+    def _limit_entry_issues(
+        self, raw: Mapping[str, RuleSetting], location: str
+    ) -> list[ConfigIssue]:
+        issues = []
+        for key, value in raw.items():
+            if not isinstance(value, RuleOverride) or value.max is None:
+                continue
+            where = f"{location}.{key}.max"
+            if self._broad_selection(key) is not None:
+                issues.append(
+                    ConfigIssue(
+                        where,
+                        "max belongs to an individual rule; families and ALL can only disable or cap",
+                    )
+                )
+            elif (code := self.codes.get(key)) is not None:
+                issues.extend(_limit_issues(code, value.max, where))
+            elif value.severity is None:
+                issues.append(
+                    ConfigIssue(
+                        f"{location}.{key}",
+                        f'unknown rule "{key}"{self._suggestion(key)}',
+                    )
+                )
+        return issues
+
+    def _root_limit_issues(self, loaded: LoadedConfig) -> list[ConfigIssue]:
+        """A root entry that sets only max leaves its rule disabled."""
+        named = {code for layer in self._layers for code in layer}
+        return [
+            ConfigIssue(
+                f"rules.{key}",
+                f"{key} is not enabled; add its severity, e.g. "
+                f"{{severity: {self.defaults[code]}, max: {value.max}}}",
+            )
+            for layer in loaded.config.rule_layers
+            for key, value in layer.items()
+            if isinstance(value, RuleOverride)
+            and value.severity is None
+            and (code := self.codes.get(key)) is not None
+            and code not in named
+        ]
 
     def _strict_guard(self) -> frozenset[str]:
         """Strict coverage stays an error, so broad selections leave it alone."""
@@ -815,5 +882,21 @@ def _suggestion(key: str, codes: dict[str, str]) -> str:
     return retired_hint(key, codes) or did_you_mean(key, [*codes, *families])
 
 
-def _raw_value(setting: RuleSetting) -> str:
+def _limit_issues(code: str, value: int, location: str) -> list[ConfigIssue]:
+    if code not in _LIMIT_CODES:
+        names = ", ".join(_LIMIT_CODES.values())
+        return [
+            ConfigIssue(location, f"this rule takes no max; max applies to {names}")
+        ]
+    minimum = _MINIMUM_MAX.get(code, 0)
+    if value < minimum:
+        return [ConfigIssue(location, f"max must be at least {minimum}")]
+    return []
+
+
+_PATCH_SCOPE = "the patch limit applies to the whole project; set it in the root rules"
+
+
+def _raw_value(setting: RuleSetting) -> str | None:
+    """The severity an entry sets; None when it only sets the rule's max."""
     return setting.severity if isinstance(setting, RuleOverride) else setting

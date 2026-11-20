@@ -11,13 +11,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 POLICY = """\
-version: 1
+version: 2
 project: {root_packages: [app]}
 style:
   overrides:
     signatures:
       match: app
-      max_positional_parameters: {limit}
+      rules:
+        complexity/excess-positional-parameters: {severity: warning, max: {limit}}
 """
 SELECT = CheckOptions(select=("SMT345",))
 
@@ -132,7 +133,7 @@ def test_inactive_without_policy(tmp_path: Path) -> None:
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/browser.py": "def connect(a, b, c):\n    return 1\n",
         },
@@ -142,7 +143,8 @@ def test_inactive_without_policy(tmp_path: Path) -> None:
 
 def test_closest_package_policy_wins(tmp_path: Path) -> None:
     config = POLICY.replace("{limit}", "2") + (
-        "    legacy:\n      match: app.legacy\n      max_positional_parameters: 4\n"
+        "    legacy:\n      match: app.legacy\n      rules:\n"
+        "        complexity/excess-positional-parameters: {max: 4}\n"
     )
     root = write_policy_project(
         tmp_path,
@@ -174,9 +176,9 @@ def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
-            style: {max_positional_parameters: 1}
+            rules: {complexity/excess-positional-parameters: {severity: warning, max: 1}}
             """,
             "app/__init__.py": "",
             "app/browser.py": "def connect(user, run):\n    return 1\n",
@@ -195,7 +197,7 @@ def test_rule_selection_without_a_limit_uses_the_default(tmp_path: Path) -> None
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             rules: {complexity/excess-positional-parameters: warning}
             """,
@@ -217,11 +219,11 @@ def test_contract_activation_is_limited_to_its_package(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
-                api: {match: app.api, max_positional_parameters: 1}
+                api: {match: app.api, rules: {complexity/excess-positional-parameters: {severity: warning, max: 1}}}
             """,
             "app/__init__.py": "",
             "app/core.py": "def wide(a, b, c, d, e, f):\n    return 1\n",

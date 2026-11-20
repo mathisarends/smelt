@@ -12,7 +12,7 @@ from tests.helpers import violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT364",))
 SOURCE = """\
 class Client:
@@ -108,7 +108,9 @@ def test_zero_limit_counts_each_documented_decision(
         f"class Client:\n    {method} __init__(self, values):\n        {statement}\n"
     )
     root = _project(
-        tmp_path, source, settings="style: {max_constructor_decisions: 0}\n"
+        tmp_path,
+        source,
+        settings="rules: {complexity/excess-constructor-decisions: {severity: hint, max: 0}}\n",
     )
     [finding] = violations(root, SELECT)
     assert finding.expected is not None
@@ -134,12 +136,11 @@ def test_global_and_closest_package_limits_including_zero(tmp_path: Path) -> Non
         tmp_path,
         SOURCE,
         settings="""\
-rules: {complexity/excess-constructor-decisions: warning}
+rules: {complexity/excess-constructor-decisions: {severity: warning, max: 3}}
 style:
-  max_constructor_decisions: 3
   overrides:
-    outer: {match: app, max_constructor_decisions: 0}
-    inner: {match: app.legacy, max_constructor_decisions: 3}
+    outer: {match: app, rules: {complexity/excess-constructor-decisions: {max: 0}}}
+    inner: {match: app.legacy, rules: {complexity/excess-constructor-decisions: {max: 3}}}
 """,
     )
     write_policy_project(
@@ -151,7 +152,7 @@ style:
     assert finding.expected["max_constructor_decisions"] == 0
     (root / "smelt.yml").write_text(
         CONFIG
-        + "rules: {complexity/excess-constructor-decisions: hint}\nstyle: {max_constructor_decisions: 3}\n",
+        + "rules: {complexity/excess-constructor-decisions: {severity: hint, max: 3}}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
@@ -160,7 +161,9 @@ style:
 
 def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
     root = _project(
-        tmp_path, SOURCE, settings="style: {max_constructor_decisions: 0}\n"
+        tmp_path,
+        SOURCE,
+        settings="rules: {complexity/excess-constructor-decisions: {severity: hint, max: 0}}\n",
     )
     assert [v.code for v in violations(root)] == ["SMT364"]
     write_policy_project(
@@ -188,12 +191,12 @@ style:
 @pytest.mark.parametrize(
     "setting",
     [
-        "style: {max_constructor_decisions: -1}",
-        "style: {overrides: {bad: {match: app, max_constructor_decisions: -1}}}",
+        "rules: {complexity/excess-constructor-decisions: {severity: hint, max: -1}}",
+        "style: {overrides: {bad: {match: app, rules: {complexity/excess-constructor-decisions: {max: -1}}}}}",
     ],
 )
 def test_rejects_negative_limits(tmp_path: Path, setting: str) -> None:
-    with pytest.raises(ConfigError, match="max_constructor_decisions"):
+    with pytest.raises(ConfigError, match="max"):
         violations(_project(tmp_path, "", settings=setting))
 
 

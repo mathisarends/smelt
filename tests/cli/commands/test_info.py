@@ -50,8 +50,8 @@ def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
         tmp_path,
         {
             "app/__init__.py": "",
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
-            "style: {max_positional_parameters: 3}\n"
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
+            "style: {module_import_exemptions: []}\n"
             "rules: {visibility/internal-public-member: off}\n",
         },
     )
@@ -71,7 +71,7 @@ def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
     )
     found = {rule["code"] for rule in json.loads(capsys.readouterr().out)}
     assert "SMT316" not in found
-    assert "SMT345" not in found
+    assert "SMT110" not in found
     assert "SMT347" in found
 
 

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project: {root_packages: [app, library]}
 style:
   overrides:
@@ -162,7 +162,7 @@ def test_omitted_policy_preserves_all_styles(tmp_path: Path) -> None:
     _project(
         tmp_path,
         "from ..domain import Entity\nfrom app.pkg import models",
-        config="version: 1\nproject: {root_packages: [app, library]}\n",
+        config="version: 2\nproject: {root_packages: [app, library]}\n",
     )
 
     assert violations(tmp_path, OPTIONS) == []

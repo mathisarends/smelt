@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT315",))
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app], python_version: '3.12'}
 style:
   overrides:
@@ -43,7 +43,7 @@ def test_type_dispatch_reports_a_structured_review_hint(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "config",
     [
-        "version: 1\nproject: {root_packages: [app]}",
+        "version: 2\nproject: {root_packages: [app]}",
         CONFIG.replace("style: match", "style: allow"),
         CONFIG.replace("min_branches: 3", "min_branches: 4"),
         CONFIG.replace("'3.12'", "'3.9'"),

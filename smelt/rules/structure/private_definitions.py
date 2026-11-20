@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Literal
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -16,7 +15,6 @@ if TYPE_CHECKING:
 
 class ExcessPrivateDefinitions(Rule):
     file_local = True
-    activation = POLICIES["SMT367"]
     code = "SMT367"
     name = "visibility/excess-private-definitions"
     category = Category.VISIBILITY
@@ -40,7 +38,7 @@ class ExcessPrivateDefinitions(Rule):
             "metric does not infer cohesion, separable groups or safe extraction."
         ),
         bad=(
-            "# With style.max_private_definitions: 2\n"
+            "# With rules: {visibility/excess-private-definitions: {severity: hint, max: 2}}\n"
             "class _Cookie: pass\n"
             "class _StorageItem: pass\n"
             "def _merge(existing, incoming): ...\n"
@@ -60,11 +58,11 @@ class ExcessPrivateDefinitions(Rule):
             "extract arbitrary fragments merely to lower the count. Keep deliberate "
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
-            "{visibility/excess-private-definitions: hint}, select SMT367, or set "
-            "max_private_definitions under style or in a style override. "
+            "{visibility/excess-private-definitions: hint} or select SMT367; "
+            "set max on the entry, in the root or a style override's rules. "
             "The limit defaults to 12; zero is supported."
         ),
-        config=("rules", "style.max_private_definitions", "style.overrides"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

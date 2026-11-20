@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 architecture:
@@ -154,7 +154,7 @@ def test_no_contract_keeps_existing_behavior(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}",
             "app/__init__.py": "",
         },
     )

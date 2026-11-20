@@ -17,7 +17,7 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     write_policy_project(
         tmp_path,
         {
-            "policy/base.yml": "version: 1\nrules: {architecture/import-cycle: error, tests/unbounded-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
+            "policy/base.yml": "version: 2\nrules: {architecture/import-cycle: error, tests/unbounded-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
             "first/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/uncovered-source: error}\narchitecture: {modules: {first: domain}, layers: {domain: {path: domain}}}\n",
             "second/smelt.yml": "extends: ../policy/base.yml\nrules: {tests/unbounded-wait: error}\narchitecture: {modules: {second: domain}, layers: {domain: {path: domain}}}\n",
             "first/src/first/__init__.py": "",
@@ -54,7 +54,7 @@ def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) ->
     write_policy_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app], exclude: [generated/**]}\narchitecture:\n  layers:\n    domain: {path: domain, may_depend_on: [application]}\n    application: {path: application}\ntests: {quality_exclude: [tests/generated/**]}\nignore: [{rule: SMT101, paths: ['**']}]\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app], exclude: [generated/**]}\narchitecture:\n  layers:\n    domain: {path: domain, may_depend_on: [application]}\n    application: {path: application}\ntests: {quality_exclude: [tests/generated/**]}\nignore: [{rule: SMT101, paths: ['**']}]\n",
             "policy/team.yml": "extends: ../base.yml\narchitecture: {layers: {domain: {may_depend_on: []}}}\n",
             "smelt.yml": "extends: policy/team.yml\nproject: {exclude: []}\ntests: {quality_exclude: []}\nignore: []\n",
         },
@@ -80,24 +80,24 @@ def test_replacing_style_options_drops_their_inherited_legacy_reasons(
         tmp_path,
         {
             "base.yml": """
-                version: 1
+                version: 2
                 project: {root_packages: [app]}
                 style:
-                  max_positional_parameters: 5
-                  max_module_imports: 10
-                  reasons: {max_positional_parameters: Old limit., max_module_imports: Keep this reason.}
+                  future_annotations: forbid
+                  module_docstrings: require
+                  reasons: {future_annotations: Old policy., module_docstrings: Keep this reason.}
                   overrides:
                     app:
                       match: app
-                      max_positional_parameters: 4
-                      reasons: {max_positional_parameters: Old package limit.}
+                      future_annotations: allow
+                      reasons: {future_annotations: Old package policy.}
                 """,
             "smelt.yml": """
                 extends: base.yml
                 style:
-                  max_positional_parameters: {value: 3, reason: Current limit.}
+                  future_annotations: {value: when-needed, reason: Current policy.}
                   overrides:
-                    app: {max_positional_parameters: 2}
+                    app: {future_annotations: forbid}
                 """,
         },
     )
@@ -105,14 +105,14 @@ def test_replacing_style_options_drops_their_inherited_legacy_reasons(
     loaded = load_config(tmp_path / "smelt.yml")
     style = loaded.config.style
 
-    assert style.max_positional_parameters == 3
+    assert style.future_annotations == "when-needed"
     assert style.reasons == {
-        "max_positional_parameters": "Current limit.",
-        "max_module_imports": "Keep this reason.",
+        "future_annotations": "Current policy.",
+        "module_docstrings": "Keep this reason.",
     }
-    assert style.overrides["app"].max_positional_parameters == 2
+    assert style.overrides["app"].future_annotations == "forbid"
     assert style.overrides["app"].reasons == {}
-    assert "style.overrides.app.reasons.max_positional_parameters" not in loaded.origins
+    assert "style.overrides.app.reasons.future_annotations" not in loaded.origins
 
 
 @pytest.mark.parametrize(
@@ -170,7 +170,7 @@ def test_cycles_report_the_chain_even_with_equivalent_paths(tmp_path: Path) -> N
             "rules.architecture/import-cycle.reason",
         ),
         ("architecture: {layerz: {}}", "architecture.layerz"),
-        ("version: 2", "version"),
+        ("version: 3", "version"),
     ],
 )
 def test_effective_validation_reports_the_base_origin(
@@ -181,7 +181,7 @@ def test_effective_validation_reports_the_base_origin(
         {
             "base.yml": base,
             "smelt.yml": "extends: base.yml\nproject: {root_packages: [app]}\n"
-            + ("" if base.startswith("version") else "version: 1\n"),
+            + ("" if base.startswith("version") else "version: 2\n"),
         },
     )
 
@@ -199,7 +199,7 @@ def test_inherited_duplicate_yaml_keys_are_still_errors(tmp_path: Path) -> None:
         tmp_path,
         {
             "base.yml": "rules: {architecture/import-cycle: error, architecture/import-cycle: off}\n",
-            "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "extends: base.yml\nversion: 2\nproject: {root_packages: [app]}\n",
         },
     )
 
@@ -219,7 +219,7 @@ def test_composition_never_supplies_missing_required_values(tmp_path: Path) -> N
         },
     )
 
-    with pytest.raises(ConfigError, match=r"version: 1.*required"):
+    with pytest.raises(ConfigError, match=r"version: 2.*required"):
         load_config(tmp_path / "smelt.yml")
 
 
@@ -227,7 +227,7 @@ def test_recursive_yaml_aliases_are_configuration_errors(tmp_path: Path) -> None
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: &loop {root_packages: [app], nested: *loop}\n"
+            "smelt.yml": "version: 2\nproject: &loop {root_packages: [app], nested: *loop}\n"
         },
     )
 
@@ -261,7 +261,7 @@ def test_absolute_parent_paths_are_rejected(tmp_path: Path) -> None:
 
 def test_removed_preset_points_to_explicit_rules(tmp_path: Path) -> None:
     write_policy_project(
-        tmp_path, {"smelt.yml": "extends: smelt:recommended\nversion: 1\n"}
+        tmp_path, {"smelt.yml": "extends: smelt:recommended\nversion: 2\n"}
     )
 
     with pytest.raises(ConfigError, match="list rules individually") as caught:

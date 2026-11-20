@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -31,7 +30,6 @@ _DECISIONS = (
 
 class ConstructorLogic(Rule):
     file_local = True
-    activation = POLICIES["SMT364"]
     code = "SMT364"
     name = "complexity/excess-constructor-decisions"
     category = Category.COMPLEXITY
@@ -70,12 +68,12 @@ class ConstructorLogic(Rule):
             "or classmethod and assign its result. Preserve evaluation order, exceptions "
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
-            "{complexity/excess-constructor-decisions: hint}, select SMT364, or set "
-            "max_constructor_decisions under style or in a package override. "
+            "{complexity/excess-constructor-decisions: hint} or select SMT364; "
+            "set max on the entry, in the root or a style override's rules. "
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."
         ),
-        config=("rules", "style.max_constructor_decisions", "style.overrides"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

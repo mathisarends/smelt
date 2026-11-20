@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 POLICY = """\
-version: 1
+version: 2
 project: {root_packages: [app]}
 style:
   overrides:
@@ -197,7 +197,7 @@ def test_is_inactive_without_policy(tmp_path: Path) -> None:
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/records.py": HEADER + "@dataclass\nclass Policy:\n    name: str\n",
         },

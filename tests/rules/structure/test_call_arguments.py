@@ -12,7 +12,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 AWAIT = CheckOptions(select=("SMT340",))
 AWAIT_SOURCE = """\
 async def read(browser):

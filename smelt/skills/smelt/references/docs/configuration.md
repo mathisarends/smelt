@@ -6,7 +6,7 @@ discovery picks `smelt.yml`.
 
 | Key | Root | `extends` base | uv member | How policy resolves |
 | --- | --- | --- | --- | --- |
-| `version` | Required after composition | Optional | Optional | The effective root uses `version: 1`. |
+| `version` | Required after composition | Optional | Optional | The effective root uses `version: 2`. |
 | `extends` | One local file | One local file | ? | Bases apply first. The path is relative to the file declaring it. |
 | `project` | Roots, package selection, workspace, coverage, exclusions | Optional defaults | `exclude` only | Root source/test roots apply inside each member. Member exclusions add to the root exclusions. |
 | `rules` | Shared rule settings | Optional layer | Member settings | Base, root, member, then closest applicable `style.overrides` entry. A member needs a reason to lower inherited severity. |
@@ -37,7 +37,7 @@ For a project containing `src/harnessed/` and `tests/`:
 
 ```yaml
 # yaml-language-server: $schema=.smelt.schema.json
-version: 1
+version: 2
 
 project:
   root_packages: [harnessed]
@@ -86,7 +86,7 @@ instead:
 
 ```yaml
 # smelt.base.yml (a policy fragment; no project selection is required here)
-version: 1
+version: 2
 rules:
   architecture/import-cycle: error
   tests/unbounded-wait: warning
@@ -121,7 +121,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
   replace inherited values; the result must satisfy the field's type.
 - Defaults, package discovery and cross-field validation run on the complete
   effective configuration. A fragment need not declare `project` or `version`,
-  but the combined result must declare `version: 1` and `project`. The editor
+  but the combined result must declare `version: 2` and `project`. The editor
   schema permits fragments; Smelt checks required fields after composition.
 - **All project paths use the selected project's directory**, including inherited
   source/test roots, project exclusions, test globs, `ignore.paths` and `debt`.
@@ -166,14 +166,14 @@ declares the workspace and the shared policy:
 
 ```yaml
 # smelt.yml (workspace root, next to the pyproject.toml with tool.uv.workspace)
-version: 1
+version: 2
 project:
   workspace: uv
   test_roots: [tests]
 style:
   future_annotations: when-needed
-  max_positional_parameters: 3
 rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 3}
   tests/missing-outcome-check: warning
 architecture:
   members:
@@ -201,8 +201,7 @@ without this file still inherits the shared root settings.
 rules:
   typing/redundant-future-annotations: {severity: hint, reason: Review legacy forward references first.}
   visibility/internal-public-member: error
-style:
-  max_positional_parameters: {value: 2, reason: Prefer named arguments in service handlers.}
+  complexity/excess-positional-parameters: {max: 2}
 architecture:
   packages:
     http: {match: api.http, public: ['.']}
@@ -296,8 +295,9 @@ object form, but only member weakening requires it. Reasons survive
 `config show --sources`; finding severities remain plain values in reports.
 
 A member that changes an inherited source convention must use a nonempty inline
-reason beside `value`. This applies to thresholds, lists and mapping-valued
-options. Member `style` inherits root conventions, and `style.overrides` inherits
+reason beside `value`. This applies to scalar, list and mapping-valued
+options. A rule's `max` in member `rules` refines the limit for the member and
+needs no reason. Member `style` inherits root conventions, and `style.overrides` inherits
 any matching member value before falling back to the root. A matching value or
 an option left open by the surrounding policy needs no reason.
 Root style also accepts the inline form. Existing `reasons` maps can still
@@ -306,9 +306,9 @@ be read. `smelt context` shows the effective value, source and reason.
 ```yaml
 # packages/legacy/smelt.yml
 style:
-  max_positional_parameters:
-    value: 8
-    reason: Keep positional calls supported by the legacy API.
+  future_annotations:
+    value: allow
+    reason: The legacy API still exports runtime-evaluated annotations.
   overrides:
     generated:
       match: legacy.generated
@@ -495,11 +495,17 @@ declared policy whose rule no entry names is a configuration warning; enabling
 a rule whose required policy is missing is a configuration error. See
 [rule activation](rule-selection.md#activation-and-precedence).
 
-Source-convention options such as `max_positional_parameters`,
-`future_annotations` or `dataclass_options` can be set directly under `style`
-for the whole project and overridden in `style.overrides`. Enable the matching
-rule in `rules`, or in the override's `rules` to check only those packages; see
+Source-convention options such as `future_annotations` or
+`dataclass_options` can be set directly under `style` for the whole project and
+overridden in `style.overrides`. Enable the matching rule in `rules`, or in the
+override's `rules` to check only those packages; see
 [project-wide options](structure.md#project-wide-options-and-package-overrides).
+
+A rule that counts something takes its limit as `max` in its own entry, for
+example `complexity/excess-positional-parameters: {severity: warning, max: 3}`.
+An entry in a style override's or member's `rules` may set only `max`; it keeps
+the inherited severity and refines the limit for those files. Families and
+`ALL` take no `max`. See [limits](structure.md#limits).
 
 ```bash
 smelt check --select visibility/internal-public-member,tests/unbounded-wait

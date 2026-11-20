@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 ROOT = (
-    "version: 1\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n"
+    "version: 2\nproject: {workspace: uv, source_roots: [src], test_roots: [tests]}\n"
 )
 PYPROJECT = '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\nexclude = ["packages/legacy"]\n'
 
@@ -61,7 +61,7 @@ def test_member_boundaries_require_a_uv_workspace(tmp_path: Path) -> None:
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {members: {'packages/*': {may_depend_on: []}}}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture: {members: {'packages/*': {may_depend_on: []}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -77,7 +77,7 @@ def test_a_root_project_contributes_its_packages_but_not_member_folders(
         tmp_path,
         {
             "pyproject.toml": '[project]\nname = "gateway"\n' + PYPROJECT,
-            "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
+            "smelt.yml": "version: 2\nproject: {workspace: uv}\n",
             "gateway/__init__.py": "",
         },
     )
@@ -94,7 +94,7 @@ def test_regular_member_package_shadows_workspace_namespace_scaffolding(
         tmp_path,
         {
             "pyproject.toml": '[project]\nname = "gateway"\n' + PYPROJECT,
-            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: ['.'], root_packages: [packages]}\n",
+            "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: ['.'], root_packages: [packages]}\n",
             "services/api/packages/__init__.py": "",
         },
     )
@@ -130,7 +130,7 @@ def test_member_structure_becomes_a_contract_for_each_member_package(
         tmp_path,
         {
             "services/api/src/admin/__init__.py": "",
-            "services/api/smelt.yml": "style: {max_positional_parameters: 2}\narchitecture:\n  packages:\n    http: {match: api.http, public: ['.']}\n",
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, max: 2}}\narchitecture:\n  packages:\n    http: {match: api.http, public: ['.']}\n",
             "packages/core/smelt.yml": "style: {future_annotations: forbid}\n",
         },
     )
@@ -150,8 +150,6 @@ def test_member_structure_becomes_a_contract_for_each_member_package(
 @pytest.mark.parametrize(
     ("option", "value"),
     [
-        ("max_positional_parameters", "10"),
-        ("max_positional_parameters", "0"),
         ("dataclass_options", "[]"),
         ("future_annotations", "allow"),
     ],
@@ -165,7 +163,6 @@ def test_member_style_changes_to_root_values_require_reasons(
             "smelt.yml": ROOT + "extends: base.yml\n",
             "base.yml": """
                 style:
-                  max_positional_parameters: 3
                   dataclass_options: [slots]
                   future_annotations: when-needed
                 """,
@@ -187,15 +184,18 @@ def test_member_style_reasons_survive_compilation(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": ROOT
-            + "style: {max_positional_parameters: 3, dataclass_options: [slots]}\n",
+            + "rules: {complexity/excess-positional-parameters: {severity: warning, max: 3}}\n"
+            + "style: {dataclass_options: [slots]}\n",
             "packages/core/smelt.yml": """
+                rules:
+                  complexity/excess-positional-parameters: {max: 0, reason: " Prefer named arguments. "}
                 style:
-                  max_positional_parameters: {value: 0, reason: " Prefer named arguments. "}
                   dataclass_options: {value: [], reason: Generated classes predate slots.}
                 """,
             "services/api/smelt.yml": """
+                rules:
+                  complexity/excess-positional-parameters: {max: 3}
                 style:
-                  max_positional_parameters: 3
                   future_annotations: when-needed
                 """,
         },
@@ -225,10 +225,10 @@ def test_member_style_rejects_blank_reasons(tmp_path: Path, reason: str) -> None
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": ROOT + "style: {max_positional_parameters: 3}\n",
+            "smelt.yml": ROOT + "style: {dataclass_options: [slots]}\n",
             "packages/core/smelt.yml": (
-                "style:\n  max_positional_parameters: 10\n"
-                f"  reasons: {{max_positional_parameters: {reason}}}\n"
+                "style:\n  dataclass_options: []\n"
+                f"  reasons: {{dataclass_options: {reason}}}\n"
             ),
         },
     )
@@ -236,7 +236,7 @@ def test_member_style_rejects_blank_reasons(tmp_path: Path, reason: str) -> None
     with pytest.raises(ConfigError) as caught:
         load_config(root / "smelt.yml")
 
-    assert caught.value.issues[0].path == "style.reasons.max_positional_parameters"
+    assert caught.value.issues[0].path == "style.reasons.dataclass_options"
 
 
 def test_root_style_override_cannot_target_a_member(
@@ -376,7 +376,7 @@ def test_member_package_api_has_no_local_layers(tmp_path: Path) -> None:
                     public-api: {match: core, public: ['.']}
                 style:
                   overrides:
-                    public-api: {match: core, max_positional_parameters: 2}
+                    public-api: {match: core, rules: {complexity/excess-positional-parameters: {max: 2}}}
                 """,
         },
     )
@@ -427,8 +427,8 @@ def test_without_a_workspace_root_a_nested_config_stays_its_own_project(
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [api]}\n",
-            "services/api/smelt.yml": "version: 1\nproject: {source_roots: [src]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [api]}\n",
+            "services/api/smelt.yml": "version: 2\nproject: {source_roots: [src]}\n",
         },
     )
 
@@ -467,8 +467,8 @@ def test_member_without_workspace_opt_in_explains_root_setting(tmp_path: Path) -
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [api]}\n",
-            "services/api/smelt.yml": "style: {max_positional_parameters: 2}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [api]}\n",
+            "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, max: 2}}\n",
         },
     )
 

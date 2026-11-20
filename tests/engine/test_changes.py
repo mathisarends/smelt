@@ -36,7 +36,7 @@ def test_changed_checks_find_new_deep_test_imports(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "from .impl import Item\n",
             "app/api/impl.py": "class Item: pass\n",
@@ -70,7 +70,7 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/first.py": source,
             "app/second.py": source.replace("def first", "def second"),
@@ -110,7 +110,7 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_module_imports: 1}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {imports/excess-module-imports: {severity: hint, max: 1}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
             "app/first.py": "First = 1\n",
@@ -144,7 +144,7 @@ def test_changed_private_definitions_detect_new_names(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -181,7 +181,7 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -215,7 +215,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {complexity/excess-constructor-decisions: {severity: hint, max: 0}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -243,7 +243,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "from .first import Store as PublicStore\n",
             "app/first.py": "class Store:\n    _data = None\n",
             "app/second.py": "class Store:\n    _data = None\n",
@@ -270,7 +270,7 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
             "deploy/docker-compose.yaml": "",
         },
@@ -298,7 +298,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",

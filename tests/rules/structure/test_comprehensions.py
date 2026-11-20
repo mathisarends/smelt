@@ -12,7 +12,7 @@ from tests.helpers import violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT363",))
 
 
@@ -112,12 +112,11 @@ def test_global_limit_and_closest_package_override(tmp_path: Path) -> None:
         {
             "smelt.yml": CONFIG
             + """\
-rules: {complexity/excess-comprehension-loops: warning}
+rules: {complexity/excess-comprehension-loops: {severity: warning, max: 3}}
 style:
-  max_comprehension_loops: 3
   overrides:
-    outer: {match: app, max_comprehension_loops: 2}
-    inner: {match: app.quiet, max_comprehension_loops: 3}
+    outer: {match: app, rules: {complexity/excess-comprehension-loops: {max: 2}}}
+    inner: {match: app.quiet, rules: {complexity/excess-comprehension-loops: {max: 3}}}
 """,
             "app/quiet/__init__.py": "",
             "app/quiet/model.py": source,
@@ -129,7 +128,7 @@ style:
     assert finding.expected["max_comprehension_loops"] == 2
     (root / "smelt.yml").write_text(
         CONFIG
-        + "rules: {complexity/excess-comprehension-loops: hint}\nstyle: {max_comprehension_loops: 3}\n",
+        + "rules: {complexity/excess-comprehension-loops: {severity: hint, max: 3}}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
@@ -142,13 +141,16 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
     root = _project(tmp_path, source)
     (root / "smelt.yml").write_text(
         CONFIG
-        + "style: {max_comprehension_loops: 1}\n"
-        + "rules: {complexity/excess-comprehension-loops: off}\n",
+        + "rules: {complexity/excess-comprehension-loops: {severity: off, max: 1}}\n",
         encoding="utf-8",
     )
     assert violations(root) == []
     write_policy_project(
-        root, {"smelt.yml": CONFIG + "style: {max_comprehension_loops: 1}\n"}
+        root,
+        {
+            "smelt.yml": CONFIG
+            + "rules: {complexity/excess-comprehension-loops: {severity: hint, max: 1}}\n"
+        },
     )
     assert [v.code for v in violations(root)] == ["SMT363"]
     write_policy_project(
@@ -175,14 +177,14 @@ style:
 @pytest.mark.parametrize(
     "setting",
     [
-        "style: {max_comprehension_loops: 0}",
-        "style: {overrides: {bad: {match: app, max_comprehension_loops: 0}}}",
+        "rules: {complexity/excess-comprehension-loops: {severity: hint, max: 0}}",
+        "style: {overrides: {bad: {match: app, rules: {complexity/excess-comprehension-loops: {max: 0}}}}}",
     ],
 )
 def test_rejects_limits_below_one(tmp_path: Path, setting: str) -> None:
     root = _project(tmp_path, "")
     (root / "smelt.yml").write_text(CONFIG + setting, encoding="utf-8")
-    with pytest.raises(ConfigError, match="max_comprehension_loops"):
+    with pytest.raises(ConfigError, match="max"):
         violations(root)
 
 

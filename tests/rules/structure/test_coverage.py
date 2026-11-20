@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
   source_roots: [src]
@@ -57,7 +57,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [arithmetic]}\narchitecture:\n  shared: [arithmetic]\nrules: {architecture/uncovered-source: error}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [arithmetic]}\narchitecture:\n  shared: [arithmetic]\nrules: {architecture/uncovered-source: error}\n",
                 "arithmetic/__init__.py": "from arithmetic.operations import add\n",
                 "arithmetic/operations.py": "def add(left, right):\n    return left + right\n",
                 "tests/test_operations.py": "def test_add(): pass\n",
@@ -80,7 +80,7 @@ class TestStrictCoverage:
             tmp_path,
             {
                 "smelt.yml": """
-                version: 1
+                version: 2
                 project:
                   root_packages: [corelib, persistence]
                   source_roots: [python/core, extensions]
@@ -149,7 +149,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  features: {root: app.features}\nrules: {architecture/uncovered-source: error}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  features: {root: app.features}\nrules: {architecture/uncovered-source: error}\n",
                 "src/app/__init__.py": "",
                 "src/app/features/one/model.py": "VALUE = 1\n",
                 "src/app/features/two/model.py": "VALUE = 2\n",

@@ -13,7 +13,7 @@ from tests.helpers import check, violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-_CONFIG = """version: 1
+_CONFIG = """version: 2
 project: {root_packages: [app]}
 rules: {visibility/internal-public-attribute: warning}
 """
@@ -144,7 +144,7 @@ def test_module_boundary_can_be_overridden_by_package(tmp_path: Path) -> None:
     write_policy_project(
         root,
         {
-            "smelt.yml": """version: 1
+            "smelt.yml": """version: 2
 project: {root_packages: [app]}
 style:
   public_attribute_boundary: module

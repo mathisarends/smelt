@@ -11,7 +11,7 @@ from tests.helpers import codes_at, violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-_CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
+_CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 _SELECTED = CheckOptions(select=("SMT369",))
 
 

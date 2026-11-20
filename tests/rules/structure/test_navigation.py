@@ -7,7 +7,7 @@ from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, violations, write_project
 
 OPTIONS = CheckOptions(select=("SMT322",))
-BASE_CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+BASE_CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 CONFIG = BASE_CONFIG + "rules: {complexity/excess-attribute-depth: hint}\n"
 
 

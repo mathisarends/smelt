@@ -12,7 +12,7 @@ from tests.helpers import check, codes_at, violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-_CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+_CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 _IMPORT_RULE = "rules:\n  imports/forbidden-import-style: error\n"
 # A policy for app.styled only: a setting scoped to app.local stays uncovered.
 _STYLED_POLICY = "    styled: {match: app.styled, imports: {style: absolute}}\n"
@@ -110,7 +110,7 @@ def test_workspace_rule_setting_points_to_the_owning_file(tmp_path: Path) -> Non
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\n",
+            "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\n",
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["packages/*"]\n',
             "packages/app/smelt.yml": _IMPORT_RULE,
             "packages/app/src/app/__init__.py": "",

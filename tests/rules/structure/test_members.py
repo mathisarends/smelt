@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    helpers:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n        layout/misplaced-static-helper: hint\n"
+CONFIG = "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    helpers:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n        layout/misplaced-static-helper: hint\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -40,7 +40,7 @@ def test_exported_class_keeps_public_api_but_still_reviews_private_static_helper
 
 def test_composition_root_preserves_runtime_entry_points(tmp_path: Path) -> None:
     config = (
-        "version: 1\nproject: {workspace: uv}\n"
+        "version: 2\nproject: {workspace: uv}\n"
         "rules: {visibility/internal-public-member: on, visibility/internal-public-module-symbol: on}\n"
     )
     member = "services/api/smelt.yml"
@@ -367,7 +367,7 @@ class Query{base}:
             return column.asc()
         return column.desc()
 """
-    root = _project(tmp_path, source, "version: 1\nproject: {root_packages: [app]}\n")
+    root = _project(tmp_path, source, "version: 2\nproject: {root_packages: [app]}\n")
 
     found = violations(root, CheckOptions(select=("SMT317",)))
 
@@ -426,7 +426,7 @@ def test_static_extraction_suggests_a_name_free_in_the_module_namespace(
 @pytest.mark.parametrize(
     ("config", "options"),
     [
-        ("version: 1\nproject: {root_packages: [app]}", CheckOptions()),
+        ("version: 2\nproject: {root_packages: [app]}", CheckOptions()),
         (
             CONFIG.replace("warning", "off").replace("hint", "off"),
             CheckOptions(select=("SMT316", "SMT317")),

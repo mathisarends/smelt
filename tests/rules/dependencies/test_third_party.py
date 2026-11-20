@@ -17,7 +17,7 @@ def _project(
     tmp_path: Path, third_party: str, source: str, *, transitive: bool = False
 ) -> Path:
     config = f"""
-version: 1
+version: 2
 project:
   root_packages: [app]
 architecture:

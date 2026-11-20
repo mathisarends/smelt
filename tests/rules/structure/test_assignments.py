@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 OPTIONS = CheckOptions(select=("SMT314",))
-CONFIG = "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
+CONFIG = "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -120,7 +120,7 @@ def test_implicit_static_and_class_methods_are_excluded(
 @pytest.mark.parametrize(
     "config",
     [
-        "version: 1\nproject: {root_packages: [app]}",
+        "version: 2\nproject: {root_packages: [app]}",
         CONFIG.replace(
             "idioms/bundled-instance-assignment: error",
             "idioms/bundled-instance-assignment: off",

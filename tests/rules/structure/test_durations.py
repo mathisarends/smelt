@@ -8,7 +8,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT357",))
 
 

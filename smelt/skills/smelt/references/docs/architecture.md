@@ -4,7 +4,7 @@
 
 
 ```yaml
-version: 1
+version: 2
 project:
   root_packages: [backend, agent]
   source_roots: [backend/src, libs/agent/src]

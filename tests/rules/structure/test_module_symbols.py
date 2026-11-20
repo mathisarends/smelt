@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-module-symbol: warning}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-module-symbol: warning}\n"
 SOURCE = "MIN_LENGTH = 8\ntype Payload = str | bytes\ndef _valid(value: Payload): return len(value) >= MIN_LENGTH\n"
 
 
@@ -29,7 +29,7 @@ def _project(root: Path, source: str = SOURCE, *, config: str = CONFIG) -> Path:
 def test_module_symbol_review_is_opt_in_and_supports_cli_selection(
     tmp_path: Path,
 ) -> None:
-    root = _project(tmp_path, config="version: 1\nproject: {root_packages: [app]}\n")
+    root = _project(tmp_path, config="version: 2\nproject: {root_packages: [app]}\n")
     assert violations(root) == []
     assert [
         item.code for item in violations(root, CheckOptions(select=("SMT320",)))

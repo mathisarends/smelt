@@ -16,7 +16,7 @@ from tests.helpers import check, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app]}
 style:
   overrides:

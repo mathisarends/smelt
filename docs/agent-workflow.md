@@ -11,7 +11,7 @@ Enable SMT316 explicitly; the hook alone does not enable review rules.
 For example:
 
 ```yaml
-version: 1
+version: 2
 project:
   root_packages: [app]
 style:

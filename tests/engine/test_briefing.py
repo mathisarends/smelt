@@ -26,7 +26,7 @@ def test_planned_module_explains_its_inherited_layer(tmp_path: Path) -> None:
         {
             "smelt.yml": "extends: layer-policy.yml\n",
             "layer-policy.yml": """\
-version: 1
+version: 2
 project: {root_packages: [app]}
 architecture:
   layers:
@@ -59,7 +59,7 @@ def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
             "app/__init__.py": "",
         },
     )
@@ -82,7 +82,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  canonical_exports: {app.api.Service: app.Service}\n  import_graph: {cycles: [modules], type_checking_cycles: ignore}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  canonical_exports: {app.api.Service: app.Service}\n  import_graph: {cycles: [modules], type_checking_cycles: ignore}\n",
             "app/__init__.py": "from .api import Service\n",
             "app/api.py": "class Service: pass\n",
         },
@@ -113,7 +113,7 @@ def test_member_policy_is_available_before_writing_a_module(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nstyle:\n  overrides:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\nstyle:\n  overrides:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
             "app/__init__.py": "",
         },
     )
@@ -132,7 +132,7 @@ def test_type_dispatch_policy_is_visible_before_writing_a_module(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
             "app/__init__.py": "",
         },
     )
@@ -151,7 +151,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
             "app/__init__.py": "",
         },
     )
@@ -183,7 +183,7 @@ def test_test_quality_policy_is_available_for_planned_placement(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
             "app/__init__.py": "",
         },
     )
@@ -204,7 +204,7 @@ def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ntests: {max_patches_per_test: 0}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {tests/excess-patches: {severity: error, max: 0}}",
             "app/__init__.py": "",
         },
     )
@@ -221,7 +221,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
             "app/__init__.py": "",
         },
     )
@@ -253,7 +253,7 @@ def test_private_module_convention_is_available_before_writing_a_file(
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
@@ -282,11 +282,11 @@ def test_positional_parameter_limit_is_available_before_editing(
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
-                signatures: {match: app, max_positional_parameters: 2}
+                signatures: {match: app, rules: {complexity/excess-positional-parameters: {max: 2}}}
         """,
             "app/__init__.py": "",
         },
@@ -304,7 +304,7 @@ def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> Non
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    imports: {match: app, max_module_imports: 0, module_import_exemptions: []}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    imports: {match: app, module_import_exemptions: [], rules: {imports/excess-module-imports: {severity: hint, max: 0}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -322,7 +322,7 @@ def test_rule_origins_name_their_declaring_key_and_reason(tmp_path: Path) -> Non
         tmp_path,
         {
             "smelt.yml": (
-                "version: 1\nproject: {root_packages: [app]}\nrules:\n"
+                "version: 2\nproject: {root_packages: [app]}\nrules:\n"
                 "  layout/definition-order: error\n"
                 "  architecture/import-cycle: {severity: hint, reason: Legacy plugins.}\n"
             ),
@@ -349,7 +349,7 @@ def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    expressions: {match: app, max_comprehension_loops: 2}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    expressions: {match: app, rules: {complexity/excess-comprehension-loops: {max: 2}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -364,7 +364,7 @@ def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    constructors: {match: app, max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    constructors: {match: app, rules: {complexity/excess-constructor-decisions: {max: 0}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -379,7 +379,7 @@ def test_private_definition_limit_is_available_before_editing(tmp_path: Path) ->
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    definitions: {match: app, max_private_definitions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    definitions: {match: app, rules: {visibility/excess-private-definitions: {max: 0}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -394,7 +394,7 @@ def test_private_attribute_boundary_is_available_before_editing(tmp_path: Path) 
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    ownership: {match: app, private_attribute_boundary: package}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    ownership: {match: app, private_attribute_boundary: package}\n",
             "app/__init__.py": "",
         },
     )
@@ -410,7 +410,7 @@ def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
@@ -438,7 +438,7 @@ def test_base_class_mapping_is_available_before_editing(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
@@ -465,7 +465,7 @@ def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [app]}
             style:
               overrides:
@@ -499,7 +499,7 @@ def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> Non
         tmp_path,
         {
             "smelt.yml": """
-            version: 1
+            version: 2
             project: {root_packages: [library]}
             architecture:
               shared: [library]
@@ -554,7 +554,7 @@ class TestResolveTarget:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
                 "src/app/__init__.py": "",
                 "src/app/domain/model.py": "",
                 "src/client/api.py": "VALUE = 1\n",
@@ -627,7 +627,7 @@ class TestResolveTarget:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
+                "smelt.yml": "version: 2\nproject: {workspace: uv}\n",
                 "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
                 "services/api/smelt.yml": """
                     architecture:
@@ -768,7 +768,7 @@ class TestModuleBriefing:
 
 MIRRORED = {
     "smelt.yml": """
-        version: 1
+        version: 2
         project: {root_packages: [app]}
         architecture:
           features: {root: app.features}

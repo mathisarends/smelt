@@ -580,7 +580,7 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
         "# yaml-language-server: $schema=.smelt.schema.json",
         "# Python guardrails for smelt. Reference: `smelt config schema`,",
         "# rule details: `smelt explain <rule>`.",
-        "version: 1",
+        "version: 2",
     ]
     out.extend(
         [
@@ -639,7 +639,7 @@ def policy_rules(*drafts: Mapping[str, Any]) -> list[str]:
     for draft in drafts:
         try:
             configs.append(
-                SmeltConfig.model_validate({"version": 1, "project": {}, **draft})
+                SmeltConfig.model_validate({"version": 2, "project": {}, **draft})
             )
         except ValidationError:
             continue

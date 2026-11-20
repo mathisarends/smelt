@@ -16,7 +16,7 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning, tests/unbounded-wait: warning}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning, tests/unbounded-wait: warning}\n",
             "app/__init__.py": "",
             "tests/test_compiler.py": (
                 "import subprocess\n"
@@ -54,7 +54,7 @@ def test_deadline_review_reports_unbounded_process_and_shared_clock(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/unbounded-wait: warning\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nrules:\n  tests/unbounded-wait: warning\n",
             "app/__init__.py": "",
             "tests/test_imports.py": "import subprocess\nimport asyncio\ndef test_import():\n    subprocess.run(command, check=True)\n    loop = asyncio.get_running_loop()\n    loop.time = lambda: 0.0",
         },
@@ -75,7 +75,7 @@ def test_async_exit_wait_needs_its_own_guard_after_bounded_communication(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/unbounded-wait: warning\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nrules:\n  tests/unbounded-wait: warning\n",
             "app/__init__.py": "",
             "tests/conftest.py": "import asyncio\nimport pytest\n@pytest.fixture\nasync def process():\n    child = await asyncio.create_subprocess_exec('tool')\n    yield child",
             "tests/test_process.py": """

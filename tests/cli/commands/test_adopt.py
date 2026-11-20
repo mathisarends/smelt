@@ -135,7 +135,7 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
             "architecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n"
             "rules: {SMT109: warning, SMT104: off}\ndebt: debt.json\n",
             "app/__init__.py": "",
@@ -202,7 +202,7 @@ def test_show_filters_stored_debt_without_analyzing_or_rewriting(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\n",
             # Showing the baseline must work with missing/broken analyzed sources.
             "app/broken.py": "def (\n",
         },
@@ -256,7 +256,7 @@ def test_show_filters_stored_debt_without_analyzing_or_rewriting(
 def test_show_missing_baseline_is_empty_and_does_not_enable_debt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = "version: 1\nproject: {root_packages: [app]}\n"
+    config = "version: 2\nproject: {root_packages: [app]}\n"
     write_policy_project(tmp_path, {"smelt.yml": config})
     monkeypatch.chdir(tmp_path)
     assert main(["debt", "--show", "--format", "json"]) == 0
@@ -273,7 +273,7 @@ def test_invalid_inspection_arguments_never_write_debt(
     args: list[str],
 ) -> None:
     write_policy_project(
-        tmp_path, {"smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"}
+        tmp_path, {"smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"}
     )
     monkeypatch.chdir(tmp_path)
     assert main(["debt", *args]) == 2

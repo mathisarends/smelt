@@ -101,11 +101,11 @@ class ExcessiveTestPatches(Rule):
         bad='def test_run(mocker):\n    mocker.patch("app.one")\n    mocker.patch("app.two")',
         good="def test_run():\n    result = run(InMemoryRepository())\n    assert result.status == 'active'",
         fix="Reduce the scenario's dependencies or inject a fake. Keep a justified integration scenario with a reasoned exception rather than hiding patches inside helpers.",
-        config=("tests.max_patches_per_test", "tests.quality_exclude"),
+        config=("rules", "tests.quality_exclude"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        maximum = ctx.config.tests.max_patches_per_test
+        maximum = ctx.config.max_patches_per_test
         if maximum is None:
             return
         for module in ctx.test_syntax.modules.values():

@@ -12,7 +12,7 @@ from tests.helpers import violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app, other]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app, other]}\n"
 SELECT = CheckOptions(select=("SMT110",))
 IMPORTS = "from app.users.read import Read\nfrom app.users.write import Write\nfrom other.pay import Pay\n"
 
@@ -78,7 +78,8 @@ def test_reexports_count_at_the_facade_used_by_the_caller(tmp_path: Path) -> Non
     )
     assert violations(root, SELECT) == []
     (root / "smelt.yml").write_text(
-        CONFIG + "style: {max_module_imports: 1}\n", encoding="utf-8"
+        CONFIG + "rules: {imports/excess-module-imports: {severity: hint, max: 1}}\n",
+        encoding="utf-8",
     )
     [finding] = violations(root, SELECT)
     assert finding.expected is not None
@@ -92,7 +93,7 @@ def test_type_checking_imports_follow_existing_policy(
     root = _project(
         tmp_path,
         "from app.users.read import Read\nfrom app.users.write import Write\nfrom typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from other.pay import Pay\n",
-        settings=f"style: {{max_module_imports: 2}}\narchitecture:\n  import_graph: {{type_checking: {policy}}}\n",
+        settings=f"rules: {{imports/excess-module-imports: {{severity: hint, max: 2}}}}\narchitecture:\n  import_graph: {{type_checking: {policy}}}\n",
     )
     assert len(violations(root, SELECT)) == count
 
@@ -101,9 +102,9 @@ def test_type_checking_imports_follow_existing_policy(
 def test_initializers_and_composition_roots_have_configurable_exemptions(
     tmp_path: Path, exempt: bool
 ) -> None:
-    settings = "style:\n  max_module_imports: 2\n"
+    settings = "rules: {imports/excess-module-imports: {severity: hint, max: 2}}\n"
     if not exempt:
-        settings += "  module_import_exemptions: []\n"
+        settings += "style: {module_import_exemptions: []}\n"
     settings += "architecture: {composition_root: [app.bootstrap]}\n"
     root = _project(tmp_path, "", settings=settings)
     write_policy_project(
@@ -120,11 +121,11 @@ def test_closest_package_threshold_and_empty_exemption_override(tmp_path: Path) 
         tmp_path,
         IMPORTS,
         settings="""\
+rules: {imports/excess-module-imports: {severity: hint, max: 3}}
 style:
-  max_module_imports: 3
   overrides:
-    outer: {match: app, max_module_imports: 2}
-    inner: {match: app.loose, max_module_imports: 3}
+    outer: {match: app, rules: {imports/excess-module-imports: {max: 2}}}
+    inner: {match: app.loose, rules: {imports/excess-module-imports: {max: 3}}}
     facade: {match: app.loose, module_import_exemptions: []}
 """,
     )
@@ -147,18 +148,24 @@ def test_contract_threshold_activates_only_the_configured_scope(tmp_path: Path) 
     root = _project(
         tmp_path,
         IMPORTS,
-        settings="style:\n  overrides:\n    users: {match: app.users, max_module_imports: 0}\n",
+        settings="style:\n  overrides:\n    users: {match: app.users, rules: {imports/excess-module-imports: {severity: hint, max: 0}}}\n",
     )
     write_policy_project(root, {"app/users/client.py": "from other.pay import Pay\n"})
     [finding] = violations(root)
     assert finding.path == "app/users/client.py"
 
 
-def test_rule_selection_requires_a_limit_and_zero_is_supported(tmp_path: Path) -> None:
+def test_rule_selection_uses_the_default_limit_and_zero_is_supported(
+    tmp_path: Path,
+) -> None:
     root = _project(tmp_path, IMPORTS, settings="")
     assert violations(root, SELECT) == []
     write_policy_project(
-        root, {"smelt.yml": CONFIG + "style: {max_module_imports: 0}\n"}
+        root,
+        {
+            "smelt.yml": CONFIG
+            + "rules: {imports/excess-module-imports: {severity: hint, max: 0}}\n"
+        },
     )
     [finding] = violations(root)
     assert finding.expected is not None
@@ -171,11 +178,10 @@ def test_off_override_suppression_and_tests_are_respected(tmp_path: Path) -> Non
         tmp_path,
         IMPORTS,
         settings="""\
+rules: {imports/excess-module-imports: {severity: warning, max: 2}}
 style:
-  max_module_imports: 2
   overrides:
     quiet: {match: app.quiet, rules: {imports/excess-module-imports: off}}
-rules: {imports/excess-module-imports: warning}
 """,
     )
     write_policy_project(
@@ -231,8 +237,8 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "settings",
     [
-        "style: {max_module_imports: -1}",
-        "style: {overrides: {bad: {match: app, max_module_imports: -1}}}",
+        "rules: {imports/excess-module-imports: {severity: hint, max: -1}}",
+        "style: {overrides: {bad: {match: app, rules: {imports/excess-module-imports: {max: -1}}}}}",
         "style: {module_import_exemptions: [unknown]}",
     ],
 )
@@ -245,7 +251,7 @@ def _project(
     tmp_path: Path,
     caller: str,
     *,
-    settings: str = "style: {max_module_imports: 2}\n",
+    settings: str = "rules: {imports/excess-module-imports: {severity: hint, max: 2}}\n",
 ) -> Path:
     return write_policy_project(
         tmp_path,

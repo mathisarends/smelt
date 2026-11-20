@@ -39,7 +39,10 @@ def test_editor_rule_completion_uses_the_runtime_catalog_and_examples() -> None:
         "on",
         "off",
     ]
-    assert schema["$defs"]["RuleOverride"]["required"] == ["severity", "reason"]
+    assert schema["$defs"]["RuleOverride"]["anyOf"] == [
+        {"required": ["max"]},
+        {"required": ["severity", "reason"]},
+    ]
 
 
 def test_editor_schema_accepts_inline_style_reasons() -> None:
@@ -52,7 +55,7 @@ def test_editor_schema_accepts_inline_style_reasons() -> None:
     for name in ("StyleConfig", "MemberStyleConfig", "StyleOverride"):
         properties = definitions[name]["properties"]
         assert properties["reasons"]["deprecated"] is True
-        _, reasoned = properties["max_positional_parameters"]["anyOf"]
+        _, reasoned = properties["future_annotations"]["anyOf"]
         assert reasoned["required"] == ["value", "reason"]
         assert reasoned["additionalProperties"] is False
 

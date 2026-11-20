@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
   source_roots: [app/src]
@@ -39,7 +39,7 @@ def test_unused_additive_options_preserve_released_policy_hashes(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {layers: {domain: {path: domain}}}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture: {layers: {domain: {path: domain}}}\n",
             "app/__init__.py": "",
         },
     )
@@ -95,7 +95,7 @@ class TestEffectiveCoverage:
             tmp_path,
             {
                 "smelt.yml": (
-                    "version: 1\nproject:\n  root_packages: [app]\n  "
+                    "version: 2\nproject:\n  root_packages: [app]\n  "
                     + project_settings
                     + "\n"
                 ),
@@ -122,7 +122,7 @@ class TestEffectiveCoverage:
             tmp_path,
             {
                 "smelt.yml": (
-                    "version: 1\nproject:\n  root_packages: [app]\n"
+                    "version: 2\nproject:\n  root_packages: [app]\n"
                     "  source_roots: [backend/src]\n"
                 ),
                 "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend"]\n',
