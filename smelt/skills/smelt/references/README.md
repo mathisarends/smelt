@@ -105,7 +105,7 @@ convention exceptions for its files; see
 ## Catch it at commit time
 
 Smelt uses the pre-commit hook format. With [prek](https://prek.j178.dev/installation/),
-add this to `.pre-commit-config.yml`:
+add this to `.pre-commit-config.yaml`:
 
 ```yaml
 repos:

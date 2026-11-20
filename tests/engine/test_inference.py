@@ -12,6 +12,7 @@ from smelt.config.loader import (
 from smelt.config.models import CrossFeatureAllowance
 from smelt.engine.check import CheckOptions, run_check
 from smelt.engine.inference import InferredLayer, infer_config, render_config
+from smelt.rules.registry import build_rule_set
 from tests.helpers import write_project
 
 if TYPE_CHECKING:
@@ -271,6 +272,28 @@ class TestInferConfig:
 
 
 class TestRenderConfig:
+    def test_maintainability_starter_lists_every_explicit_rule_once(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(tmp_path, {"app/__init__.py": "", "app/alpha.py": ""})
+        inferred = infer_config(tmp_path)
+        assert inferred is not None
+
+        text = render_config(inferred, maintainability=True)
+
+        explicit = [
+            rule.name
+            for rule in build_rule_set(lazy=True).rules
+            if getattr(rule, "activation", None) is None
+            and not getattr(rule, "enabled_by_default", False)
+        ]
+        assert all(text.count(f"{name}:") == 1 for name in explicit)
+        assert "typing/implicit-optional-default: warning" in text
+        assert "meta/unused-suppression" not in text
+        assert "\n# rules:\n" not in text
+        write_project(tmp_path, {"smelt.yml": text})
+        assert load_config(tmp_path / "smelt.yml").config.rules
+
     def test_adoption_exposes_coverage_decisions(self, tmp_path: Path) -> None:
         inferred = infer_config(write_project(tmp_path, DDD_WORKSPACE))
         assert inferred is not None

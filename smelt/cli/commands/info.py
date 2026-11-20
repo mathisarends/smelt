@@ -172,7 +172,7 @@ _ACTIVATION_LEGEND = (
     ("default", "default: runs without configuration"),
     (
         "policy",
-        "policy: runs once its smelt.yml option is set; `smelt explain` names it",
+        "policy: runs once its smelt.yml option is set (named by `smelt explain`) or when listed under rules:",
     ),
     ("explicit", "explicit: runs only when listed under rules: in smelt.yml"),
 )
