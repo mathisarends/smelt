@@ -102,7 +102,7 @@ def create_project(args: argparse.Namespace, root: Path) -> Path:
         if args.policy == "transitive":
             architecture_config += "  import_graph: {transitive: true}\n"
     (root / "smelt.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n"
+        "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n"
         "    api: {match: app, rules: {visibility/internal-public-member: warning}}\n"
         + architecture_config,
         encoding="utf-8",

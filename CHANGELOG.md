@@ -15,6 +15,17 @@ current configuration and complete rule contracts, see the [README](README.md),
   for the inferred policy; `smelt config migrate` adds them to existing configs.
   `smelt rules` shows the modes `default` and `explicit`. See the
   [upgrade guide](docs/upgrading.md#013-to-014).
+- **Breaking:** The configuration format is `version: 2`, and `version: 1` is
+  no longer read; the error points to `smelt config migrate --write`, which
+  converts the root, its bases and workspace members together.
+- **Breaking:** Limits moved into their rule entries as
+  `rules: {name: {severity, max}}`. `style.max_module_imports`,
+  `max_positional_parameters`, `max_comprehension_loops`,
+  `max_constructor_decisions`, `max_private_definitions` and
+  `tests.max_patches_per_test` were removed. An entry with only `max` in a style
+  override or member refines the limit and keeps the inherited severity.
+  Like other policy options, `style.module_import_exemptions` without an
+  SMT110 entry is a configuration warning.
 - **Breaking:** `project.coverage` was removed. Enable strict coverage with
   `rules: {architecture/uncovered-source: error}` in the root config, or for one
   run with `--strict-coverage`. JSON reports keep `coverage.mode`.

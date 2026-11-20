@@ -12,7 +12,7 @@ from tests.helpers import violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT367",))
 
 
@@ -76,7 +76,9 @@ def test_allows_exactly_the_limit_and_reports_the_next_definition(
 ) -> None:
     source = "".join(f"class _Model{i}: pass\n" for i in range(limit))
     root = _project(
-        tmp_path, source, settings=f"style: {{max_private_definitions: {limit}}}\n"
+        tmp_path,
+        source,
+        settings=f"rules: {{visibility/excess-private-definitions: {{severity: hint, max: {limit}}}}}\n",
     )
     assert violations(root, SELECT) == []
     write_policy_project(root, {"app/state.py": source + "class _Added: pass\n"})
@@ -104,7 +106,11 @@ __VERSION__ = '1'
 _DECLARED: int
 """
     [finding] = violations(
-        _project(tmp_path, source, settings="style: {max_private_definitions: 0}\n"),
+        _project(
+            tmp_path,
+            source,
+            settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
+        ),
         SELECT,
     )
     assert finding.expected is not None
@@ -155,7 +161,9 @@ except ImportError:
     assert (
         violations(
             _project(
-                tmp_path, source, settings="style: {max_private_definitions: 0}\n"
+                tmp_path,
+                source,
+                settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
             ),
             SELECT,
         )
@@ -168,7 +176,9 @@ def test_constants_alone_never_exceed_the_definition_limit(tmp_path: Path) -> No
     assert (
         violations(
             _project(
-                tmp_path, source, settings="style: {max_private_definitions: 0}\n"
+                tmp_path,
+                source,
+                settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
             ),
             SELECT,
         )
@@ -182,7 +192,7 @@ def test_checks_initializers_and_excludes_tests_and_excluded_sources(
     root = _project(
         tmp_path,
         "",
-        settings="style: {max_private_definitions: 0}\n",
+        settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
     )
     write_policy_project(
         root,
@@ -190,7 +200,7 @@ def test_checks_initializers_and_excludes_tests_and_excluded_sources(
             "app/__init__.py": "class _Model: pass\n",
             "tests/test_state.py": "class _TestModel: pass\n",
             "app/excluded.py": "class _Excluded: pass\n",
-            "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n  exclude:\n    - path: app/excluded.py\n      reason: outside this check\nstyle: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages: [app]\n  exclude:\n    - path: app/excluded.py\n      reason: outside this check\nrules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
         },
     )
     [finding] = violations(root, SELECT)
@@ -203,13 +213,12 @@ def test_global_and_closest_package_limits_including_zero(tmp_path: Path) -> Non
         tmp_path,
         source,
         settings="""\
-rules: {visibility/excess-private-definitions: warning}
+rules: {visibility/excess-private-definitions: {severity: warning, max: 1}}
 style:
-  max_private_definitions: 1
   overrides:
-    outer: {match: app, max_private_definitions: 0}
+    outer: {match: app, rules: {visibility/excess-private-definitions: {max: 0}}}
     inherited: {match: app.legacy, module_docstrings: allow}
-    inner: {match: app.legacy.models, max_private_definitions: 1}
+    inner: {match: app.legacy.models, rules: {visibility/excess-private-definitions: {max: 1}}}
 """,
     )
     write_policy_project(
@@ -234,7 +243,7 @@ style:
         root,
         {
             "smelt.yml": CONFIG
-            + "rules: {visibility/excess-private-definitions: hint}\nstyle: {max_private_definitions: 1}\n"
+            + "rules: {visibility/excess-private-definitions: {severity: hint, max: 1}}\n"
         },
     )
     assert violations(root) == []
@@ -245,16 +254,19 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
     tmp_path: Path,
 ) -> None:
     source = "class _Local: pass\n"
-    root = _project(tmp_path, source, settings="style: {max_private_definitions: 0}\n")
+    root = _project(
+        tmp_path,
+        source,
+        settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
+    )
     assert [v.code for v in violations(root)] == ["SMT367"]
     write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
             + """\
-rules: {visibility/excess-private-definitions: warning}
+rules: {visibility/excess-private-definitions: {severity: warning, max: 0}}
 style:
-  max_private_definitions: 0
   overrides:
     quiet: {match: app.quiet, rules: {visibility/excess-private-definitions: off}}
 """,
@@ -270,12 +282,12 @@ style:
 @pytest.mark.parametrize(
     "setting",
     [
-        "style: {max_private_definitions: -1}",
-        "style: {overrides: {bad: {match: app, max_private_definitions: -1}}}",
+        "rules: {visibility/excess-private-definitions: {severity: hint, max: -1}}",
+        "style: {overrides: {bad: {match: app, rules: {visibility/excess-private-definitions: {max: -1}}}}}",
     ],
 )
 def test_rejects_negative_limits(tmp_path: Path, setting: str) -> None:
-    with pytest.raises(ConfigError, match="max_private_definitions"):
+    with pytest.raises(ConfigError, match="max"):
         violations(_project(tmp_path, "", settings=setting))
 
 

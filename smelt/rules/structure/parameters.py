@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -19,7 +18,6 @@ _EXEMPT_DECORATORS = frozenset({"overload", "override"})
 
 class ExcessPositionalParameters(Rule):
     file_local = True
-    activation = POLICIES["SMT345"]
     code = "SMT345"
     name = "complexity/excess-positional-parameters"
     category = Category.COMPLEXITY
@@ -30,8 +28,8 @@ class ExcessPositionalParameters(Rule):
         rationale=(
             "Call sites such as connect(user, run, tab, True) do not say which "
             "value is which, and swapping two arguments of the same type still "
-            "type-checks. max_positional_parameters, set under style or in a "
-            "style override, is the limit; "
+            "type-checks. The max of the rule entry is the limit (5 when "
+            "omitted); "
             "parameters after that limit must be keyword-only so every call names "
             "them. self and cls are not counted, nor are *args and **kwargs. "
             "Dunder methods, @overload and @override definitions are exempt "
@@ -50,15 +48,12 @@ class ExcessPositionalParameters(Rule):
             "Insert * after the last allowed positional parameter, then pass the "
             "remaining arguments by keyword at every call site. Callbacks whose "
             "positional signature is fixed by a framework keep it with a reasoned "
-            "suppression. No automatic rewrite is performed. Enable it for the "
-            "project with style: {max_positional_parameters: 3}, for one "
-            "package with a contract, or with rules, which uses a limit of 5."
+            "suppression. No automatic rewrite is performed. Enable it with "
+            "rules: {complexity/excess-positional-parameters: "
+            "{severity: warning, max: 3}}; an entry in a style override's rules "
+            "refines the limit for that package."
         ),
-        config=(
-            "rules",
-            "style.max_positional_parameters",
-            "style.overrides",
-        ),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

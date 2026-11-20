@@ -74,7 +74,7 @@ def codes_at(found: list[Violation]) -> list[tuple[str, str | None, int | None]]
 
 
 LAYERED_POLICY = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 architecture:
@@ -90,12 +90,12 @@ architecture:
 """
 # The layers above plus the rule that checks them; tests with their own rules use the policy.
 LAYERED_CONFIG = LAYERED_POLICY.replace(
-    "version: 1\n", "version: 1\nrules: {architecture/layer-boundary: error}\n", 1
+    "version: 2\n", "version: 2\nrules: {architecture/layer-boundary: error}\n", 1
 )
 
 MEMBER_ARCHITECTURES = {
     "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
-    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nrules: {architecture/uncovered-source: error}\n",
+    "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\nrules: {architecture/uncovered-source: error}\n",
     "services/api/smelt.yml": """
         architecture:
           features: {root: api.features}
@@ -130,7 +130,7 @@ MEMBER_ARCHITECTURES = {
 MEMBER_BOUNDARIES = {
     "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
     "smelt.yml": """
-        version: 1
+        version: 2
         project: {workspace: uv, source_roots: [src]}
         architecture:
           members:

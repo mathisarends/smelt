@@ -68,7 +68,7 @@ def test_unmatched_members_and_overlapping_globs(
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\narchitecture:\n  "
+            "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\narchitecture:\n  "
             + policy
             + "\n"
         },
@@ -329,7 +329,7 @@ def test_explicit_namespace_package_uses_its_member_layers(
     root = _workspace(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  workspace: uv\n  root_packages: [core, plugins]\n"
+            "smelt.yml": "version: 2\nproject:\n  workspace: uv\n  root_packages: [core, plugins]\n"
             + source_roots,
             "services/api/smelt.yml": "architecture: {layers: {domain: {path: domain}, infra: {path: infra}}}\n",
             "services/api/src/plugins/domain/handlers/service.py": "import plugins.infra.adapters.storage\n",

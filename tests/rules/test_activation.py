@@ -21,7 +21,7 @@ BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903", "SMT904"}
 
 def _loaded(extra: dict[str, object]) -> LoadedConfig:
     config = SmeltConfig.model_validate(
-        {"version": 1, "project": {"root_packages": ["app"]}, **extra}
+        {"version": 2, "project": {"root_packages": ["app"]}, **extra}
     )
     return LoadedConfig(config, Path("smelt.yml"))
 
@@ -70,7 +70,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"architecture": {"composition_root": ["app.main"]}}, {"SMT106"}),
         ({"architecture": {"wiring": ["app.di"]}}, {"SMT106"}),
         ({"style": {"forbidden_names": ["utils"]}}, {"SMT302"}),
-        ({"style": {"max_module_imports": 0}}, {"SMT110"}),
+        ({"style": {"module_import_exemptions": []}}, {"SMT110"}),
         ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
         ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
         ({"rules": {"architecture/uncovered-source": "error"}}, {"SMT306"}),
@@ -78,7 +78,10 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"rules": {"tests/private-access": "error"}}, {"SMT420"}),
         ({"tests": {"forbidden_mock_paths": ["tests/domain/**"]}}, {"SMT421"}),
         ({"rules": {"tests/string-patch-target": "error"}}, {"SMT422"}),
-        ({"tests": {"max_patches_per_test": 0}}, {"SMT423"}),
+        (
+            {"rules": {"tests/excess-patches": {"severity": "error", "max": 0}}},
+            {"SMT423"},
+        ),
         ({"rules": {"tests/missing-outcome-check": "warning"}}, {"SMT424"}),
         ({"rules": {"tests/vacuous-assertion": "warning"}}, {"SMT425"}),
         ({"rules": {"tests/unbounded-wait": "warning"}}, {"SMT426"}),
@@ -102,7 +105,7 @@ def test_a_project_policy_needs_its_named_rule(
         ({"public": ["."]}, {"SMT107", "SMT307"}),
         ({"required": ["api"]}, {"SMT307"}),
         ({"min_imports_to_bundle": 3}, {"SMT108"}),
-        ({"max_module_imports": 0}, {"SMT110"}),
+        ({"module_import_exemptions": ["facades"]}, {"SMT110"}),
         ({"min_importers_to_export": 3}, {"SMT109"}),
         ({"min_importers_to_export": 3, "count_tests": True}, {"SMT109"}),
         ({"imports": {"style": "absolute"}}, {"SMT308"}),
@@ -149,7 +152,7 @@ def test_a_package_policy_needs_its_named_rule(
 
 
 SHARED_OPTIONS = [
-    ({"max_module_imports": 0}, {"SMT110"}),
+    ({"module_import_exemptions": []}, {"SMT110"}),
     ({"imports": {"style": "absolute"}}, {"SMT308"}),
     ({"module_docstrings": "require"}, {"SMT309"}),
     ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
@@ -159,13 +162,9 @@ SHARED_OPTIONS = [
     ({"private_attribute_boundary": "package"}, {"SMT339"}),
     ({"call_argument_kinds": ["await"]}, {"SMT340"}),
     ({"str_enum_values": "auto"}, {"SMT341"}),
-    ({"max_positional_parameters": 0}, {"SMT345"}),
     ({"dataclass_options": []}, {"SMT351"}),
     ({"bases": {}}, {"SMT353"}),
     ({"errors": {}}, {"SMT354"}),
-    ({"max_comprehension_loops": 2}, {"SMT363"}),
-    ({"max_constructor_decisions": 0}, {"SMT364"}),
-    ({"max_private_definitions": 0}, {"SMT367"}),
     ({"reexports": "all"}, {"SMT369"}),
     ({"reexports": "alias"}, {"SMT369"}),
 ]
@@ -187,7 +186,6 @@ def test_a_single_rule_option_is_reported_until_its_rule_is_named(
 @pytest.mark.parametrize(
     "policy",
     [
-        {"module_import_exemptions": []},
         {"ordering": {"fix": "off"}},
         {"module_docstrings": "allow", "type_dispatch": {"style": "allow"}},
         {"reexports": "allow"},
@@ -202,8 +200,8 @@ def test_modifiers_and_allow_values_declare_no_policy(
 def test_off_keeps_a_declared_policy_unchecked_without_a_warning() -> None:
     assert _checked(
         {
-            "style": {"max_comprehension_loops": 2},
-            "rules": {"complexity/excess-comprehension-loops": "off"},
+            "style": {"module_import_exemptions": []},
+            "rules": {"imports/excess-module-imports": "off"},
         }
     ) == (set(), set())
 
@@ -250,7 +248,7 @@ def test_an_override_option_is_enabled_in_that_override() -> None:
             {
                 "style": {
                     "overrides": {
-                        "api": {"match": "app", "max_positional_parameters": 3}
+                        "api": {"match": "app", "module_import_exemptions": []}
                     }
                 }
             }
@@ -259,7 +257,7 @@ def test_an_override_option_is_enabled_in_that_override() -> None:
 
     [(rule, locations)] = settings.policy_enablements()
 
-    assert rule.code == "SMT345"
+    assert rule.code == "SMT110"
     assert locations == (("style", "overrides", "api", "rules"),)
 
 

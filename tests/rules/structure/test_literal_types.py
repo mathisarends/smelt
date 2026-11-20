@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     import ast
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("SMT338",))
 SOURCE = """from typing import Literal
 def first(button: Literal["left", "right"]): pass
@@ -144,7 +144,7 @@ def test_does_not_group_separate_roots_or_test_files(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
         "from typing import Literal\nx: Literal[1, 2]\n",
-        "version: 1\nproject: {root_packages: [app, other]}\n",
+        "version: 2\nproject: {root_packages: [app, other]}\n",
     )
     write_project(
         root,

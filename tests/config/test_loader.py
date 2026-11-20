@@ -14,7 +14,7 @@ from tests.helpers import FIXTURES, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-MINIMAL = {"version": 1, "project": {"root_packages": ["app"]}}
+MINIMAL = {"version": 2, "project": {"root_packages": ["app"]}}
 
 
 def _with(**sections: object) -> dict[str, object]:
@@ -26,20 +26,20 @@ class TestDiscovery:
     def test_walks_up_from_nested_directory(
         self, tmp_path: Path, filename: str
     ) -> None:
-        (tmp_path / filename).write_text("version: 1\n")
+        (tmp_path / filename).write_text("version: 2\n")
         nested = tmp_path / "a" / "b"
         nested.mkdir(parents=True)
 
         assert discover_config(nested) == (tmp_path / filename).resolve()
 
     def test_accepts_yaml_extension(self, tmp_path: Path) -> None:
-        (tmp_path / "smelt.yaml").write_text("version: 1\n")
+        (tmp_path / "smelt.yaml").write_text("version: 2\n")
 
         assert discover_config(tmp_path) == (tmp_path / "smelt.yaml").resolve()
 
     def test_prefers_yml_over_yaml(self, tmp_path: Path) -> None:
-        (tmp_path / "smelt.yml").write_text("version: 1\n")
-        (tmp_path / "smelt.yaml").write_text("version: 1\n")
+        (tmp_path / "smelt.yml").write_text("version: 2\n")
+        (tmp_path / "smelt.yaml").write_text("version: 2\n")
 
         assert discover_config(tmp_path) == (tmp_path / "smelt.yml").resolve()
 
@@ -127,7 +127,7 @@ class TestParsing:
     ) -> None:
         path = tmp_path / "smelt.yml"
         path.write_text(
-            "version: 1\nproject: {root_packages: [app]}\n" + repeated, encoding="utf-8"
+            "version: 2\nproject: {root_packages: [app]}\n" + repeated, encoding="utf-8"
         )
 
         with pytest.raises(ConfigError, match="duplicate key") as caught:
@@ -138,7 +138,7 @@ class TestParsing:
     def test_yaml_merge_can_be_overridden_explicitly(self) -> None:
         config, _ = parse_config(
             _load_yaml(
-                "version: 1\nproject: {root_packages: [app]}\n"
+                "version: 2\nproject: {root_packages: [app]}\n"
                 "architecture:\n  layers:\n"
                 "    domain: &base {path: domain}\n"
                 "    application: {<<: *base, path: application}\n"
@@ -179,8 +179,22 @@ class TestParsing:
         assert loaded.root == (FIXTURES / "gateway").resolve()
 
     def test_version_is_required(self) -> None:
-        with pytest.raises(ConfigError, match="version: 1` is required"):
+        with pytest.raises(ConfigError, match="version: 2` is required"):
             parse_config({"project": {"root_packages": ["app"]}})
+
+    def test_version_1_points_to_the_migration(self, tmp_path: Path) -> None:
+        write_project(
+            tmp_path,
+            {
+                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+                "app/__init__.py": "",
+            },
+        )
+
+        with pytest.raises(ConfigError, match="smelt config migrate --write") as caught:
+            load_config(tmp_path / "smelt.yml")
+
+        assert [issue.path for issue in caught.value.issues] == ["version"]
 
     def test_unknown_key_suggests_known_key(self) -> None:
         raw = _with(architecture={"layerz": {}})
@@ -204,7 +218,7 @@ class TestParsing:
 
     def test_severity_off_is_not_a_boolean(self) -> None:
         raw = _load_yaml(
-            "version: 1\nproject: {root_packages: [app]}\nrules:\n  SMT101: off\n"
+            "version: 2\nproject: {root_packages: [app]}\nrules:\n  SMT101: off\n"
         )
 
         config, _ = parse_config(raw)
@@ -250,7 +264,7 @@ class TestRootPackages:
         )
 
         config, _ = parse_config(
-            {"version": 1, "project": {"source_roots": [source_root]}},
+            {"version": 2, "project": {"source_roots": [source_root]}},
             root=tmp_path,
         )
 
@@ -262,7 +276,7 @@ class TestRootPackages:
             {"app/__init__.py": "", "deploy/inner/__init__.py": ""},
         )
 
-        config, _ = parse_config({"version": 1, "project": {}}, root=tmp_path)
+        config, _ = parse_config({"version": 2, "project": {}}, root=tmp_path)
 
         assert config.project.root_packages == ["app"]
 
@@ -276,7 +290,7 @@ class TestRootPackages:
             },
         )
         raw = {
-            "version": 1,
+            "version": 2,
             "project": {"source_roots": ["backend/src", "libs/agent/src"]},
         }
 
@@ -293,7 +307,7 @@ class TestRootPackages:
 
     def test_error_when_nothing_is_found(self, tmp_path: Path) -> None:
         with pytest.raises(ConfigError, match="no packages found under source_roots"):
-            parse_config({"version": 1, "project": {}}, root=tmp_path)
+            parse_config({"version": 2, "project": {}}, root=tmp_path)
 
 
 class TestThirdPartyPolicy:

@@ -201,7 +201,7 @@ class TestSuppressions:
             tmp_path,
             {
                 "smelt.yml": (
-                    "version: 1\nproject: {root_packages: [app]}\n"
+                    "version: 2\nproject: {root_packages: [app]}\n"
                     "rules: {tests/private-access: error, meta/unused-suppression: error}\n"
                 ),
                 "app/__init__.py": "",
@@ -222,7 +222,7 @@ class TestSuppressions:
         write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": source,
             },
@@ -250,7 +250,7 @@ class TestSuppressions:
         write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, idioms/bundled-instance-assignment: warning}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, idioms/bundled-instance-assignment: warning}\n",
                 "app/__init__.py": "",
                 "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[SMT316, SMT314] -- deliberate API\n        self.first = self.second = 0\n",
             },
@@ -540,7 +540,7 @@ def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) 
         tmp_path,
         {
             "smelt.yml": (
-                "version: 1\nproject: {root_packages: [app]}\n"
+                "version: 2\nproject: {root_packages: [app]}\n"
                 "architecture:\n  packages:\n"
                 "    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
             ),

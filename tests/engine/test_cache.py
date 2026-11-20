@@ -20,7 +20,7 @@ from tests.helpers import LAYERED_CONFIG, check, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app]}
 style:
   overrides:
@@ -36,7 +36,7 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
     write_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: off}\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: off}\n",
             "first/smelt.yml": "extends: ../base.yml\n",
             "second/smelt.yml": "extends: ../base.yml\n",
             "first/app/__init__.py": "",
@@ -49,7 +49,7 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
     assert not check(root).report.violations
 
     (tmp_path / "base.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
+        "version: 2\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
         encoding="utf-8",
     )
 
@@ -78,7 +78,7 @@ def test_facade_exports_invalidate_public_member_decisions(tmp_path: Path) -> No
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, visibility/test-only-public-attribute: warning}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, visibility/test-only-public-attribute: warning}\n",
             "app/__init__.py": "",
             "app/models.py": "class Tab:\n    def __init__(self): self.loading = False\n    def reload(self): pass\n",
             "tests/test_tab.py": "from app.models import Tab\ndef test_tab(): assert Tab().loading is False\n",
@@ -149,7 +149,7 @@ def test_test_import_facts_follow_inventory_changes(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n",
             "app/__init__.py": "",
             "tests/test_api.py": "from app import api\n",
         },
@@ -173,7 +173,7 @@ def test_warm_test_imports_do_not_parse_unchanged_tests(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n",
             "app/__init__.py": "",
             "tests/test_api.py": "if TYPE_CHECKING:\n    import app\n",
         },
@@ -336,7 +336,7 @@ def test_ordering_reuses_facts_for_unchanged_files(
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {layout/definition-order: error}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {layout/definition-order: error}\n",
             "app/__init__.py": "",
             "app/edited.py": "def _first(): pass\ndef public(): pass\n",
             "app/unchanged.py": "def _load(): pass\ndef run(): return _load()\n",
@@ -384,7 +384,7 @@ def test_ordering_reuses_facts_for_unchanged_files(
 def test_ordering_invalidates_policy_and_target(
     tmp_path: Path, source: str, initial: str, *, changed: str
 ) -> None:
-    policy = 'version: 1\nproject: {root_packages: [app], python_version: "3.13"}\nstyle:\n  overrides:\n    api: {match: app, ordering: {constants_exempt: false}, rules: {layout/definition-order: error}}\n'
+    policy = 'version: 2\nproject: {root_packages: [app], python_version: "3.13"}\nstyle:\n  overrides:\n    api: {match: app, ordering: {constants_exempt: false}, rules: {layout/definition-order: error}}\n'
     write_project(
         tmp_path, {"smelt.yml": policy, "app/__init__.py": "", "app/service.py": source}
     )

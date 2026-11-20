@@ -44,14 +44,13 @@ class ModuleImportFanout(Rule):
         fix=(
             "Split a cohesive responsibility into its own module or depend on deliberate "
             "package facades. Review import cycles and initializer side effects before "
-            "adding re-exports. No automatic rewrite is performed. Set "
-            "max_module_imports under style or in a style override to enable "
-            "this opt-in hint for that scope (zero is supported). Selecting the rule "
-            "in rules or with --select uses a limit of 20. module_import_exemptions "
+            "adding re-exports. No automatic rewrite is performed. Enable it with "
+            "rules: {imports/excess-module-imports: {severity: hint, max: 15}}; "
+            "max defaults to 20, zero is supported, and an entry in a style "
+            "override's rules refines it for that package. module_import_exemptions "
             "defaults to [facades, composition_root]; [] checks both."
         ),
         config=(
-            "style.max_module_imports",
             "style.module_import_exemptions",
             "style.overrides",
             "rules",

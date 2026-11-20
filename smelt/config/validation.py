@@ -40,7 +40,7 @@ def partial_layer_issues(raw: dict[str, object]) -> list[ConfigIssue]:
         try:
             layers = SmeltConfig.model_validate(
                 {
-                    "version": 1,
+                    "version": 2,
                     "project": {},
                     "architecture": {"layers": architecture["layers"]},
                 }
@@ -52,7 +52,7 @@ def partial_layer_issues(raw: dict[str, object]) -> list[ConfigIssue]:
             try:
                 partial = SmeltConfig.model_validate(
                     {
-                        "version": 1,
+                        "version": 2,
                         "project": {},
                         "architecture": {
                             "layers": architecture["layers"],

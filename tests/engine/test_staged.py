@@ -22,7 +22,7 @@ from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_policy
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app]}
 style:
   overrides:
@@ -117,7 +117,7 @@ def test_staged_member_scope_uses_workspace_paths_and_metadata(
 ) -> None:
     files = {
         **MEMBER_BOUNDARIES,
-        "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nstyle: {max_positional_parameters: 1}\n",
+        "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\nrules: {complexity/excess-positional-parameters: {severity: warning, max: 1}}\n",
         "services/api/src/api/http.py": "def helper(first, second):\n    return first\n",
         "packages/core/src/core/model.py": "def helper(first, second):\n    return first\n",
     }
@@ -147,7 +147,7 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     write_policy_project(
         repo,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT338: warning}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {SMT338: warning}\n",
             "app/first.py": source,
         },
     )
@@ -280,7 +280,7 @@ def _check(
 def test_staged_redundant_module_name_uses_index_paths(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = """version: 1
+    config = """version: 2
 project: {root_packages: [app]}
 rules: {layout/redundant-module-name: warning}
 """
@@ -314,7 +314,7 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     write_policy_project(
         repo,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n" + policy,
             "deploy/compose.yml": "services: {}\n",
         },
     )
@@ -370,7 +370,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     write_policy_project(
         repo,
         {
-            "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
+            "policy/base.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
             "smelt.yml": "extends: policy/base.yml\n",
         },
     )
@@ -389,7 +389,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
 
     # Only the inherited policy changes in the index. The child is untouched.
     (repo / "policy/base.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: off}\n",
+        "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: off}\n",
         encoding="utf-8",
     )
     _git(repo, "add", "policy/base.yml")
@@ -411,7 +411,7 @@ def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
     write_policy_project(
         repo,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
             "smelt.yml": "extends: base.yml\n",
         },
     )
@@ -445,7 +445,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     write_policy_project(
         repo,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
             "app/api/__init__.py": "",
             "app/api/impl.py": "class Item: pass\n",
             "app/first.py": caller,
@@ -478,7 +478,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
 def test_staged_test_imports_use_index_callers_policy_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str], code: str, *, count: int
 ) -> None:
-    config = "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
+    config = "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
     write_policy_project(
         repo,
         {

@@ -111,8 +111,8 @@ POLICIES = {
         ),
     ),
     "SMT110": _option(
-        "max_module_imports",
-        "style or a package override sets max_module_imports, including zero.",
+        "module_import_exemptions",
+        "style or a package override sets module_import_exemptions.",
         required=False,
     ),
     "SMT111": PolicyActivation(
@@ -180,11 +180,6 @@ POLICIES = {
         "style or a package override sets str_enum_values.",
         required=False,
     ),
-    "SMT345": _option(
-        "max_positional_parameters",
-        "style or a package override sets max_positional_parameters, including zero.",
-        required=False,
-    ),
     "SMT351": _option(
         "dataclass_options",
         "style or a package override sets dataclass_options, including [].",
@@ -192,21 +187,6 @@ POLICIES = {
     "SMT353": _option("bases", "style or a package override sets bases, including {}."),
     "SMT354": _option(
         "errors", "style or a package override sets errors, including {}."
-    ),
-    "SMT363": _option(
-        "max_comprehension_loops",
-        "style or a package override sets max_comprehension_loops.",
-        required=False,
-    ),
-    "SMT364": _option(
-        "max_constructor_decisions",
-        "style or a package override sets max_constructor_decisions, including zero.",
-        required=False,
-    ),
-    "SMT367": _option(
-        "max_private_definitions",
-        "style or a package override sets max_private_definitions, including zero.",
-        required=False,
     ),
     "SMT369": _option(
         "reexports",
@@ -222,7 +202,7 @@ POLICIES = {
         lambda config: bool(config.tests.forbidden_mock_paths),
     ),
     "SMT423": PolicyActivation(
-        "tests.max_patches_per_test is set, including zero.",
-        lambda config: config.tests.max_patches_per_test is not None,
+        "The tests/excess-patches entry sets max, including zero.",
+        lambda config: config.max_patches_per_test is not None,
     ),
 }

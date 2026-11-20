@@ -11,7 +11,7 @@ from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.none_default_fixes import apply_none_default_fixes
 from tests.helpers import check, write_project
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SOURCE = "def create(options: int | None = None):\n    return options or 7\n"
 OPTIONS = CheckOptions(select=("SMT321",))
 

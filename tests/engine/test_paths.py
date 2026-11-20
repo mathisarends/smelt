@@ -24,7 +24,7 @@ def test_conflicting_type_dispatch_policies_are_rejected(tmp_path: Path) -> None
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    first: {match: app, type_dispatch: {min_branches: 3}}\n    second: {match: app, type_dispatch: {min_branches: 4}}",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    first: {match: app, type_dispatch: {min_branches: 3}}\n    second: {match: app, type_dispatch: {min_branches: 4}}",
             "app/__init__.py": "",
         },
     )
@@ -36,7 +36,7 @@ def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    first:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n    second:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: 'off'\n",
+            "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    first:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n    second:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: 'off'\n",
             "app/__init__.py": "",
         },
     )
@@ -46,7 +46,7 @@ def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -
 
 def _issues(tmp_path: Path, architecture: str, tests: str = "") -> list[str]:
     config = (
-        "version: 1\n"
+        "version: 2\n"
         "project: {root_packages: [app]}\n"
         f"architecture:\n{architecture}"
         "  layers: {domain: {path: domain}}\n"
@@ -113,7 +113,7 @@ class TestMissingPaths:
             {
                 **SOURCES,
                 "smelt.yml": (
-                    "version: 1\n"
+                    "version: 2\n"
                     "project: {root_packages: [app], source_roots: [src, .]}\n"
                 ),
             },
@@ -133,7 +133,7 @@ class TestMissingPaths:
                 **SOURCES,
                 "tests/__init__.py": "",
                 "smelt.yml": (
-                    "version: 1\n"
+                    "version: 2\n"
                     "project: {root_packages: [app]}\n"
                     "architecture:\n"
                     "  features: {root: app.features}\n"
@@ -189,7 +189,7 @@ def test_a_member_boundary_glob_must_match_a_member(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
-            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\n"
+            "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\n"
             f"architecture: {{members: {members}}}\n",
         },
     )
@@ -208,7 +208,7 @@ def test_the_workspace_root_is_a_member_boundary_target(tmp_path: Path) -> None:
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
-            "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\n"
+            "smelt.yml": "version: 2\nproject: {workspace: uv, source_roots: [src]}\n"
             "architecture: {members: {'.': {may_depend_on: []}, 'packages/*': {may_depend_on: ['.']}}}\n",
         },
     )

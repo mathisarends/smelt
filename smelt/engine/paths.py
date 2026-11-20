@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.config.errors import ConfigIssue, did_you_mean
-from smelt.config.models import CrossFeatureAllowance, PackagePolicy
+from smelt.config.models import LIMIT_RULES, POLICY_OPTIONS, CrossFeatureAllowance
 from smelt.config.patterns import module_matches, path_matches
 
 if TYPE_CHECKING:
@@ -100,7 +100,7 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
     for contract in ctx.contracts.resolved:
         if not contract.spec.style_override:
             continue
-        for key in PackagePolicy.model_fields:
+        for key in POLICY_OPTIONS:
             label = _POLICY_LABELS.get(key, f"{key} settings")
             policy = getattr(contract.spec, key)
             if policy is None:
@@ -109,11 +109,18 @@ def _conflicting_package_policies(ctx: AnalysisContext) -> list[ConfigIssue]:
             if previous != policy:
                 issues.append(
                     ConfigIssue(
-                        f"style.overrides.{contract.name}.{key}",
+                        f"style.overrides.{contract.name}.{_option_key(key)}",
                         f"conflicting {label} for {contract.package}; use one policy per package",
                     )
                 )
     return issues
+
+
+def _option_key(option: str) -> str:
+    """Where an override sets ``option``: a style key or a rule entry's max."""
+    if option in LIMIT_RULES:
+        return f"rules.{LIMIT_RULES[option][1]}.max"
+    return option
 
 
 def _architecture_views(ctx: AnalysisContext) -> list[tuple[AnalysisContext, str]]:

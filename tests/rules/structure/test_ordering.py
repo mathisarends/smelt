@@ -10,7 +10,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "\nversion: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
+CONFIG = "\nversion: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
 OPTIONS = CheckOptions(select=("SMT313",))
 
 
@@ -124,7 +124,7 @@ def test_ordering_is_opt_in(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/module.py": "def _helper(): pass\ndef api(): pass\n",
         },
     )

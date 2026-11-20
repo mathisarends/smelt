@@ -21,13 +21,13 @@ tests:
   layout: mirror
   forbidden_mock_paths:
   - '**/tests/**/domain/**'
-  max_patches_per_test: 2
   assertion_helpers:
   - tests.assertions.assert_user
   timeout_helpers:
   - tests.timing.deadline
   quality_exclude: []
 rules:
+  tests/excess-patches: {severity: error, max: 2}
   tests/private-access: error
   tests/string-patch-target: error
   tests/missing-outcome-check: warning

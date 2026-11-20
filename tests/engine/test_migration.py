@@ -18,9 +18,10 @@ def test_strict_coverage_becomes_the_guard_rule() -> None:
 def test_configured_coverage_is_dropped_with_an_empty_project() -> None:
     migrated = migrate_policy("version: 1\nproject:\n  coverage: configured\n")
 
-    assert yaml.safe_load(migrated.text) == {"version": 1}
+    assert yaml.safe_load(migrated.text) == {"version": 2}
     assert migrated.notes == (
         "Removed project.coverage; configured coverage is the default.",
+        "Updated version 1 to version 2.",
     )
 
 
@@ -64,3 +65,65 @@ def test_enable_rules_appends_before_the_blank_line_closing_the_map() -> None:
     migrated = enable_rules(text, [(("rules",), "SMT101", "error")])
 
     assert migrated.text == "rules:\n  SMT104: error\n  SMT101: error\n\nproject: {}\n"
+
+
+def test_enable_rules_keeps_the_inline_comment_of_the_last_entry() -> None:
+    text = "rules:\n  SMT104: error  # keep\n\nproject: {}\n"
+
+    migrated = enable_rules(text, [(("rules",), "SMT101", "error")])
+
+    assert migrated.text == (
+        "rules:\n  SMT104: error  # keep\n  SMT101: error\n\nproject: {}\n"
+    )
+
+
+def test_limits_become_the_max_of_their_rule_entry_in_the_same_scope() -> None:
+    migrated = migrate_policy(
+        """\
+version: 1
+style:
+  max_positional_parameters: 3
+  overrides:
+    api:
+      match: app.api
+      max_positional_parameters: {value: 2, reason: Handlers take named input.}
+    jobs:
+      match: app.jobs
+      max_comprehension_loops: 2
+tests:
+  max_patches_per_test: 0
+rules:
+  complexity/excess-positional-parameters: error
+"""
+    )
+
+    data = yaml.safe_load(migrated.text)
+    assert data["version"] == 2
+    assert "style" not in data or "max_positional_parameters" not in data["style"]
+    assert "tests" not in data
+    assert data["rules"] == {
+        "complexity/excess-positional-parameters": {"severity": "error", "max": 3},
+        "tests/excess-patches": {"severity": "error", "max": 0},
+    }
+    overrides = data["style"]["overrides"]
+    # The root enables SMT345, so the override refines only the limit.
+    assert overrides["api"]["rules"] == {
+        "complexity/excess-positional-parameters": {
+            "max": 2,
+            "reason": "Handlers take named input.",
+        }
+    }
+    # The override option enabled SMT363 there, so its entry keeps the default severity.
+    assert overrides["jobs"]["rules"] == {
+        "complexity/excess-comprehension-loops": {"severity": "hint", "max": 2}
+    }
+    assert migrated.notes == (
+        "Moved style.max_positional_parameters to "
+        "rules.complexity/excess-positional-parameters.max.",
+        "Moved tests.max_patches_per_test to rules.tests/excess-patches.max.",
+        "Moved style.overrides.api.max_positional_parameters to "
+        "style.overrides.api.rules.complexity/excess-positional-parameters.max.",
+        "Moved style.overrides.jobs.max_comprehension_loops to "
+        "style.overrides.jobs.rules.complexity/excess-comprehension-loops.max.",
+        "Updated version 1 to version 2.",
+    )

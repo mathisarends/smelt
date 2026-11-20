@@ -10,7 +10,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 OPTIONS = CheckOptions(select=("SMT334",))
 DOWNLOADS = """\
 class DownloadController:

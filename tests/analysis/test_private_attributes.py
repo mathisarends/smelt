@@ -16,7 +16,7 @@ def test_ownership_facts_preserve_definition_and_receiver_provenance(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/base.py": "class Store:\n    _data = None\n",
             "app/derived.py": "from .base import Store\nclass Derived(Store): pass\n",

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 FEATURE_CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [gw]
 architecture:
@@ -48,7 +48,7 @@ class TestUnknownLayer:
             tmp_path,
             {
                 "smelt.yml": """\
-version: 1
+version: 2
 project: {root_packages: [app, scripts]}
 architecture:
   modules: {scripts: tooling}
@@ -221,7 +221,7 @@ class TestUnclassifiedModule:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 2\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/main.py": "",
             },

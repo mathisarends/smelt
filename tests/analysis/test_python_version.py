@@ -46,7 +46,7 @@ def _context(tmp_path: Path, project: str = "") -> AnalysisContext:
     write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]\n{project}",
+            "smelt.yml": f"version: 2\nproject:\n  root_packages: [app]\n{project}",
             "app/main.py": "",
         },
     )
@@ -122,7 +122,7 @@ def test_external_source_root_uses_its_own_metadata(tmp_path: Path) -> None:
     write_project(
         tmp_path,
         {
-            "policy/smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [../member/src]}\n",
+            "policy/smelt.yml": "version: 2\nproject: {root_packages: [app], source_roots: [../member/src]}\n",
             "policy/pyproject.toml": '[project]\nrequires-python = ">=3.14"\n',
             "member/pyproject.toml": '[project]\nrequires-python = ">=3.12"\n',
             "member/src/app/module.py": "",

@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("SMT328",))
 SOURCE = "from dishka import Provider, Scope, provide\nclass AdminProvider(Provider):\n    scope = Scope.REQUEST\n    @provide\n    def query(self, session: AsyncSession) -> AdminUserQuery:\n        return SqlAdminUserQuery(session)\n"
 

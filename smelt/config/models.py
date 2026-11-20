@@ -42,22 +42,55 @@ class _Model(BaseModel):
 
 
 class RuleOverride(_Model):
-    """An explicit severity with the reason for a policy exception."""
+    """A rule entry: its severity, its limit and the reason for an exception."""
 
-    severity: RuleSeverity
-    reason: str = Field(min_length=1)
+    severity: RuleSeverity | None = Field(
+        default=None,
+        description="Severity of the rule here. Omitted keeps the inherited severity, so a package or member entry can set only max.",
+    )
+    max: int | None = Field(
+        default=None,
+        ge=0,
+        description="The rule's limit, for rules that count something, e.g. complexity/excess-positional-parameters. Package and member entries refine the root limit for their files.",
+    )
+    reason: str | None = Field(default=None, min_length=1)
 
     @field_validator("reason")
     @classmethod
-    def _reason_is_not_blank(cls, value: str) -> str:
-        if not value.strip():
+    def _reason_is_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
             raise ValueError("reason must not be blank")
-        return value.strip()
+        return None if value is None else value.strip()
+
+    @model_validator(mode="after")
+    def _sets_something(self) -> Self:
+        if self.max is None and self.severity is None:
+            raise ValueError("a rule entry sets severity, max or both")
+        if self.max is None and self.reason is None:
+            raise ValueError(
+                "reason is required when the entry sets only a severity; write the severity directly otherwise"
+            )
+        return self
 
 
 type RuleSetting = RuleSeverity | RuleOverride
 # The guard rule whose root setting enables strict policy coverage, by code and name.
 UNCOVERED_SOURCE = ("SMT306", "architecture/uncovered-source")
+# Rules whose entry takes max, by the compiled policy option that carries the limit.
+LIMIT_RULES = {
+    "max_module_imports": ("SMT110", "imports/excess-module-imports"),
+    "max_positional_parameters": (
+        "SMT345",
+        "complexity/excess-positional-parameters",
+    ),
+    "max_comprehension_loops": ("SMT363", "complexity/excess-comprehension-loops"),
+    "max_constructor_decisions": (
+        "SMT364",
+        "complexity/excess-constructor-decisions",
+    ),
+    "max_private_definitions": ("SMT367", "visibility/excess-private-definitions"),
+    "max_patches_per_test": ("SMT423", "tests/excess-patches"),
+}
 type _PolicyReason = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1)
 ]
@@ -738,14 +771,9 @@ class PackagePolicy(_Model):
         default=None,
         description="Package initializer re-export convention (SMT369). all uses __all__; alias uses same-name import aliases. allow permits either spelling. Selecting the rule alone uses all.",
     )
-    max_module_imports: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum distinct direct project-module imports per source module (SMT110, hint), across all root packages. Setting it, including zero, enables imports/excess-module-imports; selecting the rule alone uses 20.",
-    )
     module_import_exemptions: list[ModuleImportExemption] | None = Field(
         default=None,
-        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Setting it enables imports/excess-module-imports. Omitted means [facades, composition_root].",
+        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
     )
     module_docstrings: Literal["allow", "forbid", "require"] | None = Field(
         default=None,
@@ -774,26 +802,6 @@ class PackagePolicy(_Model):
     type_dispatch: TypeDispatchConfig | None = Field(
         default=None,
         description="SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite.",
-    )
-    max_positional_parameters: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum number of parameters a production function or method may accept positionally, excluding self/cls; later parameters must be keyword-only (SMT345). Dunder, overload and override definitions are exempt; no automatic rewrite. Setting it, including zero, enables the rule; selecting the rule alone uses 5.",
-    )
-    max_comprehension_loops: int | None = Field(
-        default=None,
-        ge=1,
-        description="Maximum for clauses in a comprehension (SMT363). Setting it enables complexity/excess-comprehension-loops. Omitted means 1.",
-    )
-    max_constructor_decisions: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum decision nodes in __init__/__post_init__ (SMT364); zero forbids all counted decisions. Setting it enables complexity/excess-constructor-decisions. Omitted means 2.",
-    )
-    max_private_definitions: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum private module-level classes, functions and PEP 695 type aliases (SMT367), including zero. Constants are informational only. Setting it enables visibility/excess-private-definitions. Omitted means 12.",
     )
     call_argument_kinds: list[CallArgumentKind] | None = Field(
         default=None,
@@ -851,6 +859,31 @@ class PackagePolicy(_Model):
         return any(
             getattr(self, name) is not None for name in PackagePolicy.model_fields
         )
+
+
+class RuleLimits(_Model):
+    """Limits from rule entries, compiled into the policy of their scope."""
+
+    max_module_imports: int | None = None
+    max_positional_parameters: int | None = None
+    max_comprehension_loops: int | None = None
+    max_constructor_decisions: int | None = None
+    max_private_definitions: int | None = None
+
+
+# Every option a compiled policy resolves per package: style options, then limits.
+POLICY_OPTIONS = (*PackagePolicy.model_fields, *RuleLimits.model_fields)
+
+
+def _rule_limits(rules: Mapping[str, RuleSetting]) -> dict[str, int]:
+    """The max of each limit rule that ``rules`` sets, by its policy option."""
+    limits = {}
+    for option, keys in LIMIT_RULES.items():
+        for key in keys:
+            setting = rules.get(key)
+            if isinstance(setting, RuleOverride) and setting.max is not None:
+                limits[option] = setting.max
+    return limits
 
 
 @dataclass(frozen=True, slots=True)
@@ -925,7 +958,7 @@ class _ReasonedStyle(PackagePolicy):
     @model_validator(mode="after")
     def _reasons_explain_options(self) -> Self:
         for name in self.reasons:
-            if name not in PackagePolicy.model_fields or getattr(self, name) is None:
+            if name not in POLICY_OPTIONS or getattr(self, name, None) is None:
                 raise ValueError(f"reasons.{name} must explain a style option set here")
         return self
 
@@ -939,7 +972,7 @@ class StyleOverride(_ReasonedStyle, _PackageTarget):
     )
 
 
-class PackageContract(PackageBoundary, StyleOverride):
+class PackageContract(PackageBoundary, StyleOverride, RuleLimits):
     """Compiled package policy for rules that consume style and API together."""
 
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
@@ -989,7 +1022,7 @@ class StyleConfig(_ProjectStyle):
     overrides: dict[str, StyleOverride] = Field(default_factory=dict)
 
 
-class StructureConfig(_ProjectStyle):
+class StructureConfig(_ProjectStyle, RuleLimits):
     """Effective style, plus architecture and style contracts compiled for analysis."""
 
     contracts: dict[str, PackageContract] = Field(default_factory=dict)
@@ -1021,11 +1054,6 @@ class TestsConfig(_Model):
     forbidden_mock_paths: list[str] = Field(
         default_factory=list,
         description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
-    )
-    max_patches_per_test: int | None = Field(
-        default=None,
-        ge=0,
-        description="Maximum recognized patch calls per collected test, including decorators (SMT423). Nested helpers and fixtures are not attributed to callers.",
     )
     assertion_helpers: list[str] = Field(
         default_factory=list,
@@ -1123,14 +1151,14 @@ class MemberStyleConfig(_ReasonedStyle):
     overrides: dict[str, StyleOverride] = Field(default_factory=dict)
 
 
-class MemberStructureConfig(_ReasonedStyle):
+class MemberStructureConfig(_ReasonedStyle, RuleLimits):
     contracts: dict[str, PackageContract] = Field(default_factory=dict)
 
 
 class MemberConfig(_Model):
     """A workspace member's own smelt.yml, refining the root policy for its files."""
 
-    version: Literal[1] | None = None
+    version: Literal[2] | None = None
     project: MemberProjectConfig = Field(default_factory=MemberProjectConfig)
     style: MemberStyleConfig = Field(default_factory=MemberStyleConfig)
     rules: dict[str, RuleSetting] = Field(
@@ -1172,6 +1200,7 @@ class MemberConfig(_Model):
             **style.model_dump(exclude={"overrides"}, by_alias=True),
             contracts=contracts,
         )
+        self._structure = _with_limits(self._structure, self.rules)
         return self
 
     _packages: tuple[str, ...] = PrivateAttr(default=())
@@ -1216,7 +1245,7 @@ class MemberConfig(_Model):
 
 
 class SmeltConfig(_Model):
-    version: Literal[1]
+    version: Literal[2]
     project: ProjectConfig
     architecture: ArchitectureConfig = Field(default_factory=ArchitectureConfig)
     style: StyleConfig = Field(default_factory=StyleConfig)
@@ -1261,6 +1290,7 @@ class SmeltConfig(_Model):
             contracts=_combine_packages(architecture.packages, style.overrides),
             canonical_exports=architecture.canonical_exports,
         )
+        self._structure = _with_limits(self._structure, self.rules)
         return self
 
     _rule_layers: tuple[dict[str, RuleSetting], ...] = PrivateAttr(default=())
@@ -1299,6 +1329,11 @@ class SmeltConfig(_Model):
         rules, so a project family overrides an individual entry of its base.
         """
         return self._rule_layers or (self.rules,)
+
+    @property
+    def max_patches_per_test(self) -> int | None:
+        """The max of the root tests/excess-patches entry."""
+        return _rule_limits(self.rules).get("max_patches_per_test")
 
     @property
     def strict_coverage(self) -> bool:
@@ -1367,12 +1402,32 @@ def _combine_packages(
         if override is not None and not (override.configured() or override.rules):
             raise ValueError(f"style.overrides.{name} has no style policy")
         contract = PackageContract.model_validate(api | style)
+        if override:
+            contract = _with_limits(contract, override.rules)
         contracts[name] = (
             contract.with_style_location(f"style.overrides.{name}", override=True)
             if override
             else contract
         )
     return contracts
+
+
+def _with_limits[T: _ReasonedStyle](policy: T, rules: Mapping[str, RuleSetting]) -> T:
+    """Copy ``policy`` with the style limits ``rules`` set and the reasons given for them."""
+    update: dict[str, object] = {}
+    reasons = dict(policy.reasons)
+    for option, keys in LIMIT_RULES.items():
+        if option not in RuleLimits.model_fields:
+            continue
+        for key in keys:
+            setting = rules.get(key)
+            if isinstance(setting, RuleOverride) and setting.max is not None:
+                update[option] = setting.max
+                if setting.reason is not None:
+                    reasons[option] = setting.reason
+    if reasons != policy.reasons:
+        update["reasons"] = reasons
+    return policy.model_copy(update=update)
 
 
 def _check_rule_keys(values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 SELECT = CheckOptions(select=("SMT371",))
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 LEGACY = """
 from typing import Generic, TypeVar
 
@@ -64,7 +64,7 @@ def test_resolves_generic_imports_and_accepts_inline_parameters(tmp_path: Path) 
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": 'version: 1\nproject: {root_packages: [app], python_version: "3.12"}\n',
+            "smelt.yml": 'version: 2\nproject: {root_packages: [app], python_version: "3.12"}\n',
             "pyproject.toml": '[project]\nrequires-python = ">=3.11"\n',
             "app/events.py": """
                 import typing_extensions as te

@@ -66,7 +66,7 @@ def test_upgrade_guide_is_printed_once_and_retained_in_json(
 ) -> None:
     policy = tmp_path / "smelt.yml"
     policy.write_text(
-        "version: 1\nstructure: {}\nrules: {import-cycle: error}\n", encoding="utf-8"
+        "version: 2\nstructure: {}\nrules: {import-cycle: error}\n", encoding="utf-8"
     )
     code, _, err = _run(capsys, "--config", str(policy), "check")
     assert code == 2
@@ -93,7 +93,7 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     write_policy_project(
         tmp_path,
         {
-            "policy/base.yml": "version: 1\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {architecture/import-cycle: error, tests/unbounded-wait: error}\n",
+            "policy/base.yml": "version: 2\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {architecture/import-cycle: error, tests/unbounded-wait: error}\n",
             "runtime/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/import-cycle: warning}\n",
             "runtime/src/app/__init__.py": "",
             "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
@@ -110,7 +110,7 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     assert config["project"]["root_packages"] == ["app"]
     assert config["project"]["source_roots"] == ["src"]
     assert config["debt"] == ".smelt/debt.json"
-    assert config["style"]["max_positional_parameters"] is None
+    assert "max_positional_parameters" not in config["style"]
     assert config["rules"] == {
         "architecture/import-cycle": "warning",
         "tests/unbounded-wait": "error",
@@ -148,7 +148,7 @@ def test_inherited_policy_errors_keep_file_origins_in_json(
         tmp_path,
         {
             "base.yml": "rules: {unknown-rule: error}\n",
-            "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "extends: base.yml\nversion: 2\nproject: {root_packages: [app]}\n",
         },
     )
     code, output, _ = _run(
@@ -173,7 +173,7 @@ def test_a_workspace_rule_replaces_its_base_under_another_alias(
         tmp_path,
         {
             "base.yml": "rules: {architecture/import-cycle: error}\n",
-            "smelt.yml": "extends: base.yml\nversion: 1\nproject: {root_packages: [app]}\nrules: {SMT104: off}\n",
+            "smelt.yml": "extends: base.yml\nversion: 2\nproject: {root_packages: [app]}\nrules: {SMT104: off}\n",
         },
     )
     code, _, error = _run(
@@ -197,11 +197,11 @@ def test_context_attributes_rules_to_the_layer_that_supplied_the_severity(
                   complexity: hint
                 """,
             "smelt.yml": """
-                version: 1
+                version: 2
                 extends: base.yml
                 project: {root_packages: [app]}
-                style: {max_positional_parameters: 3}
                 rules:
+                  complexity/excess-positional-parameters: {max: 3}
                   architecture/import-cycle: {severity: warning, reason: Local cycle policy.}
                   complexity: warning
                 """,
@@ -237,7 +237,7 @@ def test_an_explicit_base_path_widens_the_check_to_its_workspace(
     write_policy_project(
         tmp_path,
         {
-            "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
             "runtime/smelt.yml": "extends: ../base.yml\n",
             "runtime/app/__init__.py": "",
             "runtime/tests/test_wait.py": "import subprocess\ndef test_wait():\n    subprocess.run(['tool'], check=True)\n",
@@ -266,7 +266,7 @@ def test_a_member_check_runs_the_workspace_scoped_to_that_member(
         tmp_path,
         {
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
-            "smelt.yml": "version: 1\nproject: {workspace: uv}\n"
+            "smelt.yml": "version: 2\nproject: {workspace: uv}\n"
             "rules: {visibility/internal-public-member: warning}\n",
             "services/api/smelt.yml": "rules: {visibility/internal-public-member: error}\n"
             "architecture: {shared: [api]}\n",
@@ -333,7 +333,7 @@ def test_context_names_the_governing_workspace_files(
 ) -> None:
     files = {
         "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
-        "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
+        "smelt.yml": "version: 2\nproject: {workspace: uv}\n",
         "services/api/src/api/__init__.py": "",
         "services/api/src/api/views.py": "",
     }
@@ -365,22 +365,24 @@ def test_context_and_config_show_explain_member_style_and_rule_exceptions(
             "base.yml": "style: {future_annotations: when-needed}\n",
             "smelt.yml": """
                 extends: base.yml
-                version: 1
+                version: 2
                 project: {workspace: uv}
-                style: {max_positional_parameters: 3}
-                rules: {visibility/internal-public-member: warning}
+                rules:
+                  complexity/excess-positional-parameters: {severity: warning, max: 3}
+                  visibility/internal-public-member: warning
                 """,
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
             "services/api/src/api/__init__.py": "",
             "services/api/src/api/legacy/__init__.py": "",
             "services/api/smelt.yaml": """
+                rules:
+                  complexity/excess-positional-parameters: {max: 5, reason: Preserve plugin callbacks.}
                 style:
-                  max_positional_parameters: {value: 5, reason: Preserve plugin callbacks.}
                   overrides:
                     legacy:
                       match: api
-                      max_positional_parameters: {value: 6, reason: Match generated driver calls.}
                       rules:
+                        complexity/excess-positional-parameters: {max: 6, reason: Match generated driver calls.}
                         visibility/internal-public-member: {severity: hint, reason: Plugin entry points.}
                 architecture:
                   packages:
@@ -423,7 +425,7 @@ def test_context_and_config_show_explain_member_style_and_rule_exceptions(
     assert "members" not in data["config"]
     assert "services/api" in data["workspace_members"]
     assert data["origins"][
-        "members.services/api.style.overrides.legacy.max_positional_parameters.reason"
+        "members.services/api.style.overrides.legacy.rules.complexity/excess-positional-parameters.reason"
     ].endswith("services/api/smelt.yaml")
 
 
@@ -452,7 +454,7 @@ def test_retired_keys_selectors_and_unknown_layers_share_one_report(
 ) -> None:
     policy = tmp_path / "smelt.yml"
     policy.write_text(
-        "version: 1\nproject: {root_packages: [app]}\nstructure: {}\nrules: {import-cycle: error}\narchitecture:\n  layers: {api: {path: api, may_depend_on: [missing]}}\n",
+        "version: 2\nproject: {root_packages: [app]}\nstructure: {}\nrules: {import-cycle: error}\narchitecture:\n  layers: {api: {path: api, may_depend_on: [missing]}}\n",
         encoding="utf-8",
     )
     code, out, _ = _run(capsys, "--config", str(policy), "check", "--format", "json")
@@ -488,7 +490,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
                 "app/__init__.py": "",
                 "tests/test_smoke.py": "def test_smoke(): pass\n",
             },
@@ -523,7 +525,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
                 "app/__init__.py": "",
             },
         )
@@ -570,7 +572,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
                 "app/__init__.py": "",
                 "app/one.py": "from app import two",
                 "app/two.py": "from app import one",
@@ -594,7 +596,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
                 "app/__init__.py": "",
             },
         )
@@ -613,7 +615,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}",
                 "app/__init__.py": "",
                 "app/helpers.py": "def _hidden(): pass",
                 "tests/test_smoke.py": "def test_smoke(): pass",
@@ -640,7 +642,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
                 "app/__init__.py": "",
             },
         )
@@ -663,7 +665,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {}}",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {}}",
                 "app/__init__.py": "",
                 "app/events.py": source,
             },
@@ -692,7 +694,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
+                "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
                 "app/__init__.py": "",
                 "app/service.py": source,
             },
@@ -719,7 +721,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/string-patch-target: error\n",
+                "smelt.yml": "version: 2\nproject:\n  root_packages:\n  - app\nrules:\n  tests/string-patch-target: error\n",
                 "app/__init__.py": "",
                 "tests/test_service.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')",
             },
@@ -747,7 +749,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
+                "smelt.yml": "\nversion: 2\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
                 "app/service.py": "def _helper(): return 7\n\ndef api(): return _helper()\n",
             },
         )
@@ -786,7 +788,7 @@ class TestCheckCommand:
             tmp_path,
             {
                 "smelt.yml": """
-                version: 1
+                version: 2
                 project: {root_packages: [app]}
                 style:
                   overrides:
@@ -822,7 +824,7 @@ class TestCheckCommand:
             tmp_path,
             {
                 "smelt.yml": """
-                version: 1
+                version: 2
                 project: {root_packages: [app], python_version: "3.14"}
                 style:
                   overrides:
@@ -871,7 +873,7 @@ class TestCheckCommand:
             tmp_path,
             {
                 "smelt.yml": """
-                version: 1
+                version: 2
                 project: {root_packages: [library]}
                 architecture:
                   packages:
@@ -1275,7 +1277,7 @@ class TestCheckCommand:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         (tmp_path / "smelt.yml").write_text(
-            "version: 1\nproject: {root_packages: [app]}\nbogus: 1\n"
+            "version: 2\nproject: {root_packages: [app]}\nbogus: 1\n"
         )
 
         code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yml"), "check")
@@ -1290,7 +1292,7 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\n",
                 "app/__init__.py": "",
                 "app/model.py": "VALUE = 1\n",
                 "debt.json": '{"version":1,"violations":[]}',
@@ -1310,7 +1312,7 @@ class TestCheckCommand:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         (tmp_path / "smelt.yml").write_text(
-            "version: 1\nproject: {root_packages: [app]}\nbogus: 1\n"
+            "version: 2\nproject: {root_packages: [app]}\nbogus: 1\n"
         )
 
         code, out, _ = _run(
@@ -1356,7 +1358,7 @@ class TestCheckCommand:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         (tmp_path / "smelt.yml").write_text(
-            "version: 1\nproject: {root_packages: [nothere]}\n"
+            "version: 2\nproject: {root_packages: [nothere]}\n"
         )
 
         code, _, err = _run(capsys, "--config", str(tmp_path / "smelt.yml"), "check")
@@ -1900,7 +1902,7 @@ class TestDebtCommand:
         write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
                 "app/__init__.py": "",
                 "app/api.py": "def helper(): pass\n",
                 "app/legacy/__init__.py": "",
@@ -2071,7 +2073,7 @@ def test_optional_default_cli_requires_both_fix_flags(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
             "app/__init__.py": "",
             "app/service.py": OPTIONAL_DEFAULT_SOURCE,
         },
@@ -2123,7 +2125,7 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     root = write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app], python_version: '3.12'}\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n",
             "app/__init__.py": "",
             "app/service.py": "def _default():\n    return 7\ndef create(options: int | None = None):\n    return options or _default()\n",
         },

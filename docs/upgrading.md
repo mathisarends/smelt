@@ -2,8 +2,10 @@
 
 ## 0.13 to 0.14
 
-Run `smelt config migrate` to preview both changes below and add `--write` to
-apply them.
+Run `smelt config migrate` to preview the changes below and add `--write` to
+apply them. The configuration format is now `version: 2`; Smelt no longer
+reads `version: 1`. In a workspace, the command converts the root, its
+`extends` bases and every member config together.
 
 ### Enable the rules your policies used to enable
 
@@ -30,12 +32,53 @@ rules:
 ```
 
 The migration adds an entry at the catalog severity for each declared policy.
-An option set only in a style override, such as `max_positional_parameters`,
+An option set only in a style override, such as `dataclass_options`,
 is enabled in that override's `rules`, so its built-in default does not start
 checking other packages. Until you migrate, each unnamed policy is a
 configuration warning that fails `--fail-on warning`. Set the rule to `off` to
 keep a policy unchecked. Enabling a rule whose required policy is missing is now
 a configuration error instead of a silent no-op.
+
+### Move limits into their rule entries
+
+Rules that count something take their limit as `max` in their `rules` entry.
+The `style` and `tests` limit options were removed:
+
+| Removed option | Rule entry |
+| --- | --- |
+| `style.max_module_imports` | `imports/excess-module-imports: {severity: hint, max: N}` |
+| `style.max_positional_parameters` | `complexity/excess-positional-parameters: {severity: warning, max: N}` |
+| `style.max_comprehension_loops` | `complexity/excess-comprehension-loops: {severity: hint, max: N}` |
+| `style.max_constructor_decisions` | `complexity/excess-constructor-decisions: {severity: hint, max: N}` |
+| `style.max_private_definitions` | `visibility/excess-private-definitions: {severity: hint, max: N}` |
+| `tests.max_patches_per_test` | `tests/excess-patches: {severity: error, max: N}` |
+
+```yaml
+# before
+version: 1
+style:
+  max_positional_parameters: 3
+  overrides:
+    api:
+      match: app.api
+      max_positional_parameters: 2
+
+# after
+version: 2
+rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 3}
+style:
+  overrides:
+    api:
+      match: app.api
+      rules:
+        complexity/excess-positional-parameters: {max: 2}
+```
+
+The migration keeps an existing severity and moves an option's reason into
+the entry. An override or member entry that sets only `max` inherits the
+enclosing severity. The patch limit stays project-wide: it is only valid in
+the root `rules`.
 
 ### Replace project.coverage with the guard rule
 

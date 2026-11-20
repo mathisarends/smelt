@@ -22,7 +22,7 @@ def _config(
 ) -> SmeltConfig:
     config, _ = parse_config(
         {
-            "version": 1,
+            "version": 2,
             "project": {"root_packages": roots or ["gw"]},
             "architecture": architecture,
         }

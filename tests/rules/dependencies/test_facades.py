@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 CONFIG = """
-version: 1
+version: 2
 project: {root_packages: [app], test_roots: [tests]}
 architecture:
   packages:

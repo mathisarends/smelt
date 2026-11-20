@@ -140,7 +140,7 @@ def test_native_yaml_candidates_use_the_captured_index_and_python_policy(
     git(tmp_path, "add", ".")
     config = SmeltConfig.model_validate(
         {
-            "version": 1,
+            "version": 2,
             "project": {"root_packages": ["app"], "exclude": ["vendor/**"]},
             "style": {"file_naming": {"yaml_extension": "yml"}},
         }
@@ -243,7 +243,7 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     (tmp_path / "smelt.yml").write_text(
-        "version: 1\nproject: {root_packages: [app]}\n"
+        "version: 2\nproject: {root_packages: [app]}\n"
         "style:\n  overrides:\n    api:\n      match: app\n"
         "      rules: {visibility/internal-public-member: warning}\n"
     )

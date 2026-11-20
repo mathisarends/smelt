@@ -5,7 +5,7 @@ import pytest
 from smelt.engine.check import CheckOptions
 from tests.helpers import check, violations, write_project
 
-CONFIG = "version: 1\nproject: {root_packages: [app], test_roots: [tests]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 OPTIONS = CheckOptions(select=("SMT333",))
 SINGLE_METHOD = (
     "class ReportService:\n    def generate(self, report_id): return report_id\n"

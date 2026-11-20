@@ -12,7 +12,7 @@ from tests.helpers import violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT339",))
 
 
@@ -287,7 +287,7 @@ def test_nested_relative_imports_and_namespace_source_layouts(
     tmp_path: Path, with_init: bool
 ) -> None:
     files = {
-        "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\n",
+        "smelt.yml": "version: 2\nproject: {root_packages: [app], source_roots: [src]}\n",
         "src/app/feature/client.py": "from ..service import _helper\n",
         "src/app/service.py": "def _helper(): pass\n",
     }

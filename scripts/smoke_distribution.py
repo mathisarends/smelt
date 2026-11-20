@@ -117,7 +117,7 @@ def smoke(directory: Path) -> None:
             caller = package / "caller.py"
             caller.write_text("from .browser import Browser\nBrowser().emit()\n")
             (project / "smelt.yml").write_text(
-                "version: 1\nproject: {root_packages: [app]}\n"
+                "version: 2\nproject: {root_packages: [app]}\n"
                 "architecture:\n  layers:\n    domain: {path: domain}\n"
                 "  import_graph: {transitive: true}\n"
                 "style:\n  overrides:\n"

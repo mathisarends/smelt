@@ -10,12 +10,10 @@ it for matching packages. The closest style override that sets an option wins, t
 ```yaml
 style:
   future_annotations: when-needed
-  max_positional_parameters: 3
   dataclass_options: [slots]
   overrides:
     legacy:
       match: app.legacy
-      max_positional_parameters: 6
       dataclass_options: []
 ```
 
@@ -27,8 +25,8 @@ Options configure rules; they never enable them:
 - To check an option only in some packages, enable its rule in that style
   override's `rules` instead of the project `rules`.
 - An option whose rule no `rules` entry names is a configuration warning, so
-  `max_positional_parameters: 3` without `complexity/excess-positional-parameters`
-  does not go unchecked silently.
+  `dataclass_options: [slots]` without `modeling/missing-dataclass-option` does not go
+  unchecked silently.
 - `off` in `rules` always wins, including in a style override's `rules`.
 - `ordering` configures `layout/definition-order`, but the rule is enabled
   through `rules` like any other fixed pattern.
@@ -37,7 +35,6 @@ Options configure rules; they never enable them:
 | --- | --- | --- |
 | `imports` | SMT308 | none; nothing is checked without a style |
 | `reexports` | SMT369 | `all` |
-| `max_module_imports` | SMT110 | 20 |
 | `module_import_exemptions` | SMT110 | `[facades, composition_root]` |
 | `module_docstrings` | SMT309 | none |
 | `future_annotations` | SMT310, SMT311 | none |
@@ -45,10 +42,6 @@ Options configure rules; they never enable them:
 | `public_attribute_boundary` | SMT335 | `class` |
 | `private_attribute_boundary` | SMT339 | `module` |
 | `type_dispatch` | SMT315 | none |
-| `max_positional_parameters` | SMT345 | 5 |
-| `max_comprehension_loops` | SMT363 | 1 |
-| `max_constructor_decisions` | SMT364 | 2 |
-| `max_private_definitions` | SMT367 | 12 |
 | `call_argument_kinds` | SMT340 | `[await, comprehension, aggregate]` |
 | `str_enum_values` | SMT341 | `explicit` |
 | `dataclass_options` | SMT351 | none |
@@ -59,6 +52,36 @@ Options configure rules; they never enable them:
 `min_importers_to_export` and `count_tests`. Use `style.overrides` for
 conventions and package-level `rules`. Top-level `rules` set project-wide
 severities. `smelt context` shows the source of each effective option.
+
+## Limits
+
+Rules that count something take their limit as `max` in their own `rules`
+entry rather than as a `style` option:
+
+```yaml
+rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 3}
+style:
+  overrides:
+    legacy:
+      match: app.legacy
+      rules:
+        complexity/excess-positional-parameters: {max: 6}
+```
+
+An entry in a style override's or workspace member's `rules` may set only
+`max`: it keeps the severity inherited from the enclosing scope and refines the
+limit for those files. A `max` without a severity where no enclosing scope
+enables the rule is a configuration error. Families and `ALL` take no `max`.
+
+| Rule | Default `max` |
+| --- | --- |
+| [SMT110 `imports/excess-module-imports`](rules/SMT110.md) | 20 |
+| [SMT345 `complexity/excess-positional-parameters`](rules/SMT345.md) | 5 |
+| [SMT363 `complexity/excess-comprehension-loops`](rules/SMT363.md) | 1 (minimum 1) |
+| [SMT364 `complexity/excess-constructor-decisions`](rules/SMT364.md) | 2 |
+| [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) | 12 |
+| [SMT423 `tests/excess-patches`](rules/SMT423.md) | required; project-wide only |
 
 ## Source conventions
 
@@ -110,24 +133,22 @@ depending on the review as an error gate.
 
 Opt-in `complexity/excess-comprehension-loops` (SMT363) reviews list, set, dict and generator
 comprehensions with multiple iteration or decision steps. Enable
-`rules: {complexity/excess-comprehension-loops: hint}`, or set
-`max_comprehension_loops` (default 1) under `style` or in a style override
-to enable it with a limit, for example to permit intentional flattening in one
-package. Simple filters and conditional elements with names, attributes
+`rules: {complexity/excess-comprehension-loops: hint}`; a `max` (default 1)
+in the entry, or in a style override's entry, permits intentional flattening,
+for example in one package. Simple filters and conditional elements with names, attributes
 or constants on both branches remain valid. See [SMT363](rules/SMT363.md) for the
 exact triggers and repairs that preserve generator laziness.
 
 Opt-in `complexity/excess-constructor-decisions` (SMT364) reviews decision nodes in `__init__` and
-`__post_init__`. Enable `rules: {complexity/excess-constructor-decisions: hint}`, or set
-`max_constructor_decisions` (default 2) under `style` or in a package
-style override. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
+`__post_init__`. Enable `rules: {complexity/excess-constructor-decisions: hint}`
+and set its `max` (default 2) there or in a style override's entry. Zero forbids counted decisions. A single fallback or guard remains valid at the default threshold;
 nested helper bodies are excluded. See [SMT364](rules/SMT364.md) for the exact
 counting rules and repairs that preserve initialization behavior.
 
 Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
 many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
-`max_private_definitions` (default 12, zero allowed) under `style` or in a
-style override sets the limit for that scope.
+Its `max` (default 12, zero allowed), in the entry or in a style override's
+entry, sets the limit for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
 are listed separately and never contribute to the limit. Imports, methods,
@@ -259,12 +280,14 @@ Make later arguments keyword-only for the whole project, or for one package
 with a style override.
 
 ```yaml
+rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 3}
 style:
-  max_positional_parameters: 3
   overrides:
     named-arguments:
       match: app.api
-      max_positional_parameters: 2
+      rules:
+        complexity/excess-positional-parameters: {max: 2}
 ```
 
 [SMT345](rules/SMT345.md) reports definitions accepting more than that limit:
@@ -272,8 +295,8 @@ style:
 `connect(user_id, run_id, *, tab_id)` and callers supply `tab_id=...`.
 Zero requires all ordinary parameters to be keyword-only. `self`/`cls`, variadic
 arguments, dunders, overload/override definitions and tests are exempt.
-Enabling SMT345 in `rules` without the option uses a limit of 5; the closest
-package setting wins.
+Enabling SMT345 without a `max` uses a limit of 5; the closest style
+override's `max` wins.
 `smelt context` exposes the effective limit, including for planned paths.
 Update every caller and partial application; keep externally dictated callback
 signatures with a reasoned local exception. There is no automatic rewrite.
@@ -519,18 +542,21 @@ For total coupling across all project packages, configure
 [SMT110 `imports/excess-module-imports`](rules/SMT110.md):
 
 ```yaml
+rules:
+  imports/excess-module-imports: {severity: hint, max: 20}
 style:
-  max_module_imports: 20
   module_import_exemptions: [facades, composition_root]  # default; [] checks both
   overrides:
     core:
       match: app.core
-      max_module_imports: 12
+      rules:
+        imports/excess-module-imports: {max: 12}
 ```
 
-`max_module_imports` sets the limit for its scope, and the closest package
-threshold overrides the project-wide limit. Enabling the rule in `rules` or with
-`--select` without a threshold uses a limit of 20.
+The entry's `max` sets the limit, and the closest style override's `max`
+refines it for its packages. Enabling the rule or selecting it with `--select`
+without a `max` uses a limit of 20. `module_import_exemptions` without an
+SMT110 entry in `rules` is a configuration warning.
 Counts include direct internal imports across every root package, follow
 `architecture.import_graph.type_checking`, and retain facade paths without following
 re-exports to definitions. Repeated imports count once. Standard-library and

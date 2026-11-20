@@ -7,7 +7,7 @@ from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, violations, write_project
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("SMT321",))
 
 

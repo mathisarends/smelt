@@ -72,7 +72,7 @@ def test_retired_rule_configuration_explains_the_migration(
     write_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{setting}\n",
+            "smelt.yml": f"version: 2\nproject: {{root_packages: [app]}}\n{setting}\n",
             "app/__init__.py": "",
         },
     )

@@ -18,7 +18,7 @@ def _accesses(root: Path, files: dict[str, str]) -> list[tuple[str, str, str]]:
     ctx = AnalysisContext(
         root,
         SmeltConfig.model_validate(
-            {"version": 1, "project": {"root_packages": ["app"]}}
+            {"version": 2, "project": {"root_packages": ["app"]}}
         ),
     )
     return [

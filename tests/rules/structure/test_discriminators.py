@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("SMT324",))
 SOURCE = """from dataclasses import dataclass, field
 from typing import Literal

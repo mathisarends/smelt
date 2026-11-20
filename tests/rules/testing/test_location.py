@@ -24,7 +24,7 @@ MIRROR_SOURCES = {
 
 def _mirror(tmp_path: Path, tests: dict[str, str], options: str = "") -> Path:
     config = (
-        "version: 1\nproject:\n  root_packages: [app]\n"
+        "version: 2\nproject:\n  root_packages: [app]\n"
         f"tests:\n  layout: mirror\n{options}"
     )
     return write_project(tmp_path, {"smelt.yml": config, **MIRROR_SOURCES, **tests})
@@ -41,7 +41,7 @@ class TestMirrorLayout:
             tmp_path,
             {
                 "smelt.yml": (
-                    "version: 1\nproject:\n  root_packages: [app]\n"
+                    "version: 2\nproject:\n  root_packages: [app]\n"
                     f"  test_roots: {json.dumps(test_roots)}\n"
                     "tests: {layout: mirror}\n"
                 ),
@@ -73,7 +73,7 @@ class TestMirrorLayout:
             tmp_path,
             {
                 "smelt.yml": (
-                    "version: 1\nproject:\n  root_packages: [app, agent]\n"
+                    "version: 2\nproject:\n  root_packages: [app, agent]\n"
                     f"  source_roots: {json.dumps(sources)}\n  test_roots: {json.dumps(tests)}\n"
                     "tests: {layout: mirror}\n"
                 ),
@@ -277,7 +277,7 @@ class TestMirrorPattern:
 
 
 WORKSPACE_CONFIG = """
-    version: 1
+    version: 2
     project:
       root_packages: [backend, agent]
       source_roots: [backend/src, libs/agent/src]

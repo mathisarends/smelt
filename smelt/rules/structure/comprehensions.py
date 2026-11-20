@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -19,7 +18,6 @@ _MAX_FILTER_OPERANDS = 2
 
 class ComplexComprehension(Rule):
     file_local = True
-    activation = POLICIES["SMT363"]
     code = "SMT363"
     name = "complexity/excess-comprehension-loops"
     category = Category.COMPLEXITY
@@ -42,11 +40,11 @@ class ComplexComprehension(Rule):
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
             "rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or "
-            "select SMT363, or set max_comprehension_loops under style or in a "
-            "style override. The limit defaults to 1; a style override can "
+            "select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. "
+            "The limit defaults to 1; an entry in a style override's rules can "
             "permit intentional flattening."
         ),
-        config=("rules", "style.max_comprehension_loops", "style.overrides"),
+        config=("rules", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:

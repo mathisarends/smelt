@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = """version: 1
+CONFIG = """version: 2
 project: {root_packages: [app]}
 rules: {visibility/test-only-public-attribute: warning}
 """
@@ -298,14 +298,14 @@ def test_rule_selection_and_test_quality_exclusions(
     tmp_path: Path, policy: str, options: CheckOptions
 ) -> None:
     root = _project(
-        tmp_path, config=f"version: 1\nproject: {{root_packages: [app]}}\n{policy}"
+        tmp_path, config=f"version: 2\nproject: {{root_packages: [app]}}\n{policy}"
     )
     assert not any(finding.code == "SMT430" for finding in violations(root, options))
 
 
 @pytest.mark.parametrize("selection", ["SMT430", "SMT43"])
 def test_explicit_code_and_prefix_selection(tmp_path: Path, selection: str) -> None:
-    root = _project(tmp_path, config="version: 1\nproject: {root_packages: [app]}\n")
+    root = _project(tmp_path, config="version: 2\nproject: {root_packages: [app]}\n")
     [finding] = violations(root, CheckOptions(select=(selection,)))
     assert finding.code == "SMT430"
 
@@ -332,7 +332,7 @@ def test_run():
     assert worker.pending == [1]
     assert helper() == 1
 """,
-        config="version: 1\nproject: {root_packages: [app]}\nrules: {SMT316: warning, SMT317: hint, SMT429: warning, SMT430: warning}\n",
+        config="version: 2\nproject: {root_packages: [app]}\nrules: {SMT316: warning, SMT317: hint, SMT429: warning, SMT430: warning}\n",
     )
     assert sorted(finding.code for finding in violations(root)) == [
         "SMT316",

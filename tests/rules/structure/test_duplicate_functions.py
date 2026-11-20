@@ -9,7 +9,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CONFIG = "version: 1\nproject: {root_packages: [app]}\n"
+CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SELECT = CheckOptions(select=("SMT352",))
 HELPER = (
     "def {name}(exact: bool) -> str:\n"
@@ -151,7 +151,7 @@ def test_ignores_small_bodies_methods_nested_functions_and_tests(
 
 
 def test_compares_within_each_root_package(tmp_path: Path) -> None:
-    config = "version: 1\nproject: {root_packages: [app, other]}\n"
+    config = "version: 2\nproject: {root_packages: [app, other]}\n"
     root = _project(
         tmp_path,
         {

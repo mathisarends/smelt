@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 style:
@@ -47,7 +47,7 @@ class TestForbiddenPackageName:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject:\n  root_packages: [app]\n",
+                "smelt.yml": "version: 2\nproject:\n  root_packages: [app]\n",
                 "app/__init__.py": "",
                 "app/utils.py": "",
             },
@@ -57,7 +57,7 @@ class TestForbiddenPackageName:
 
 
 MODULE_CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 style:
@@ -136,7 +136,7 @@ class TestForbiddenPrivateModule:
     @pytest.mark.parametrize(
         "config",
         [
-            "version: 1\nproject: {root_packages: [app]}\n",
+            "version: 2\nproject: {root_packages: [app]}\n",
             MODULE_CONFIG.replace("private_modules: forbid", "private_modules: allow"),
         ],
     )
@@ -259,7 +259,7 @@ class TestForbiddenPrivateModule:
 
 
 CLASS_CONFIG = """
-version: 1
+version: 2
 project:
   root_packages: [app]
 style:
@@ -301,7 +301,7 @@ def test_suffix_convention_is_opt_in_and_preserves_imports_and_nearby_names(
         CLASS_CONFIG,
     )
     assert violations(root, CLASS_OPTIONS) == []
-    plain = "version: 1\nproject: {root_packages: [app]}\n"
+    plain = "version: 2\nproject: {root_packages: [app]}\n"
     write_project(
         root, {"smelt.yml": plain, "app/service.py": "class MessageBase: pass\n"}
     )
@@ -444,7 +444,7 @@ class TestBaseClassPrefix:
         root = _module_project(
             tmp_path,
             {"app/service.py": "class BaseService: pass\n"},
-            "version: 1\nproject: {root_packages: [app]}\n",
+            "version: 2\nproject: {root_packages: [app]}\n",
         )
 
         assert violations(root) == []
@@ -501,7 +501,7 @@ class TestBaseClassPrefix:
         root = _module_project(
             tmp_path,
             {"app/service.py": "class BaseService: pass\n"},
-            "version: 1\nproject: {root_packages: [app]}\nrules: {modeling/forbidden-base-class-affix: error}\n",
+            "version: 2\nproject: {root_packages: [app]}\nrules: {modeling/forbidden-base-class-affix: error}\n",
         )
 
         assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
@@ -540,7 +540,7 @@ class TestBaseClassPrefix:
         assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
 
 
-REDUNDANT_CONFIG = """version: 1
+REDUNDANT_CONFIG = """version: 2
 project: {root_packages: [backend]}
 rules: {layout/redundant-module-name: hint}
 """
@@ -682,7 +682,7 @@ class TestRedundantModuleName:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": """version: 1
+                "smelt.yml": """version: 2
 project:
   root_packages: [backend]
   source_roots: [cars]

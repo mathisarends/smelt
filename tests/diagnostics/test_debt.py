@@ -105,7 +105,7 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n"
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\n"
             + config,
             "app/__init__.py": "",
             **files,
@@ -139,7 +139,7 @@ def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_module_imports: 1}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\nrules: {imports/excess-module-imports: {severity: hint, max: 1}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
             "app/first.py": "First = 1\n",
@@ -170,7 +170,7 @@ def test_multiline_comprehension_baseline_does_not_hide_changed_logic(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -200,7 +200,7 @@ def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) ->
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_constructor_decisions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\nrules: {complexity/excess-constructor-decisions: {severity: hint, max: 0}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -228,7 +228,7 @@ def test_private_definition_baseline_does_not_hide_new_names(
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\nstyle: {max_private_definitions: 0}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\nrules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
             "app/__init__.py": "",
             "app/client.py": source,
         },
@@ -257,7 +257,7 @@ def test_identical_optional_occurrences_keep_their_multiplicity(tmp_path: Path) 
     root = write_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\ndebt: debt.json\n",
             "app/__init__.py": "",
             "app/item.py": source,
         },
