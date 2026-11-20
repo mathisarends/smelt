@@ -12,7 +12,7 @@ from smelt.config.patterns import path_matches
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
 
     from smelt.config.models import SmeltConfig
 
@@ -75,6 +75,10 @@ class FileIndex:
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
     _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
     _content_ids: dict[str, str] = field(default_factory=dict, repr=False)
+    _directories: dict[Path, tuple[tuple[Path, bool], ...]] = field(
+        default_factory=dict, repr=False
+    )
+    _relative_paths: dict[Path, str] = field(default_factory=dict, repr=False)
     _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -106,14 +110,19 @@ class FileIndex:
         )
 
     def relative(self, path: Path) -> str:
+        cached = self._relative_paths.get(path)
+        if cached is not None:
+            return cached
         absolute = self.resolve_path(path)
         try:
-            return absolute.relative_to(self.root).as_posix()
+            relative = absolute.relative_to(self.root).as_posix()
         except ValueError:
             try:
-                return Path(os.path.relpath(absolute, self.root)).as_posix()
+                relative = Path(os.path.relpath(absolute, self.root)).as_posix()
             except ValueError:  # different Windows drives
-                return absolute.as_posix()
+                relative = absolute.as_posix()
+        self._relative_paths[path] = relative
+        return relative
 
     def resolve_path(self, path: Path) -> Path:
         resolved = self._resolved_paths.get(path)
@@ -204,24 +213,35 @@ class FileIndex:
         found: set[str] = set()
         while pending:
             directory = pending.pop()
-            resolved = self.store.resolve(directory)
+            resolved = self.resolve_path(directory)
             if resolved in visited or not resolved.is_relative_to(self.root):
                 continue
             visited.add(resolved)
-            for entry in sorted(self.store.iterdir(directory)):
+            for entry, is_dir in sorted(self.entries(directory)):
                 relative = entry.relative_to(self.root).as_posix()
                 if self.is_excluded(relative):
                     continue
-                if self.store.is_dir(entry):
+                if is_dir:
                     if entry.name not in _YAML_SKIP_DIRS:
                         pending.append(entry)
                 elif (
                     entry.suffix in {".yaml", ".yml"}
                     and self.store.is_file(entry)
-                    and self.store.resolve(entry).is_relative_to(self.root)
+                    and self.resolve_path(entry).is_relative_to(self.root)
                 ):
                     found.add(relative)
         return tuple(sorted(found))
+
+    def entries(self, directory: Path) -> tuple[tuple[Path, bool], ...]:
+        """Share directory entries within one discovered view of the project."""
+        if directory not in self._directories:
+            self._directories[directory] = tuple(_entries(self.store, directory))
+        return self._directories[directory]
+
+    def python_files(self, directory: Path) -> Iterator[Path]:
+        yield from _walk_python_files(
+            directory, resolve=self.resolve_path, entries=self.entries
+        )
 
     def source_root_dir(self, module: str) -> str | None:
         parts = module.split(".")
@@ -247,16 +267,32 @@ def python_files(
 ) -> Iterable[Path]:
     """Python files below a root, skipping tool directories and symlink cycles."""
     store = store or SourceStore()
+    yield from _walk_python_files(
+        directory, resolve=store.resolve, entries=lambda parent: _entries(store, parent)
+    )
+
+
+def _entries(store: SourceStore, directory: Path) -> Iterator[tuple[Path, bool]]:
+    for entry in store.iterdir(directory):
+        yield entry, store.is_dir(entry)
+
+
+def _walk_python_files(
+    directory: Path,
+    *,
+    resolve: Callable[[Path], Path],
+    entries: Callable[[Path], Iterable[tuple[Path, bool]]],
+) -> Iterator[Path]:
     visited: set[Path] = set()
     pending = [directory]
     while pending:
         parent = pending.pop()
-        resolved = store.resolve(parent)
+        resolved = resolve(parent)
         if resolved in visited:
             continue
         visited.add(resolved)
-        for entry in store.iterdir(parent):
-            if store.is_dir(entry):
+        for entry, is_dir in entries(parent):
+            if is_dir:
                 if entry.name not in _SKIP_DIRS and not entry.name.startswith("."):
                     pending.append(entry)
             elif entry.suffix == ".py":
@@ -322,7 +358,7 @@ class _Discovery:
             directory = self._root / test_root
             if not self._store.is_dir(directory):
                 continue
-            for path in sorted(python_files(directory, store=self._store)):
+            for path in sorted(self._index.python_files(directory)):
                 rel = self._index.relative(path)
                 if rel in source_paths or self._index.is_excluded(rel):
                     continue
@@ -347,11 +383,13 @@ class _Discovery:
             )
         self.packages.setdefault(module, portion)
         self.package_parts.setdefault(module, []).append(portion)
-        for entry in sorted(self._store.iterdir(directory), key=lambda p: p.name):
-            if self._store.is_dir(entry):
+        for entry, is_dir in sorted(
+            self._index.entries(directory), key=lambda item: item[0].name
+        ):
+            if is_dir:
                 if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
                     continue
-                if _contains_python(entry, store=self._store):
+                if next(self._index.python_files(entry), None) is not None:
                     self._walk_package(entry, f"{module}.{entry.name}", source_root)
             elif entry.suffix == ".py" and self._store.is_file(entry):
                 rel = self._index.relative(entry)
@@ -370,7 +408,3 @@ class _Discovery:
                 f"ambiguous module {source.module}: {previous.path}, {source.path}"
             )
         self.sources[source.module] = source
-
-
-def _contains_python(directory: Path, *, store: SourceStore | None = None) -> bool:
-    return any(True for _ in python_files(directory, store=store))
