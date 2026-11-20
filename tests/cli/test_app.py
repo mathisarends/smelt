@@ -429,6 +429,40 @@ def clean_project(tmp_path: Path) -> Path:
     )
 
 
+def test_retired_keys_selectors_and_unknown_layers_share_one_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    policy = tmp_path / "smelt.yml"
+    policy.write_text(
+        "version: 1\nproject: {root_packages: [app]}\nstructure: {}\nrules: {import-cycle: error}\narchitecture:\n  layers: {api: {path: api, may_depend_on: [missing]}}\n",
+        encoding="utf-8",
+    )
+    code, out, _ = _run(capsys, "--config", str(policy), "check", "--format", "json")
+    assert code == 2
+    issues = json.loads(out)["error"]["config"]["issues"]
+    assert [issue["location"] for issue in issues] == [
+        "structure",
+        "rules.import-cycle",
+        "architecture.layers.api.may_depend_on[0]",
+    ]
+    assert 'unknown layer "missing"' in issues[-1]["message"]
+
+
+def test_missing_version_skips_dependent_config_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "smelt.yml"
+    path.write_text(
+        "rules: {import-cycle: error}\narchitecture: {layers: {one: {may_depend_on: [missing]}}}\n",
+        encoding="utf-8",
+    )
+    code, out, _ = _run(capsys, "--config", str(path), "check", "--format", "json")
+    assert code == 2
+    assert [i["location"] for i in json.loads(out)["error"]["config"]["issues"]] == [
+        "version"
+    ]
+
+
 class TestCheckCommand:
     def test_concise_keeps_the_finding_location_and_exit_threshold(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

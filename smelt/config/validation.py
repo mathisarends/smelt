@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
 from smelt.config.errors import ConfigIssue, did_you_mean
-from smelt.config.models import CrossFeatureAllowance
+from smelt.config.models import CrossFeatureAllowance, SmeltConfig
 from smelt.config.patterns import module_prefixes
 from smelt.config.workspace import architecture_scopes
 
@@ -14,8 +16,58 @@ if TYPE_CHECKING:
         ArchitectureConfig,
         LayerBinding,
         LayerConfig,
-        SmeltConfig,
     )
+
+
+def partial_layer_issues(raw: dict[str, object]) -> list[ConfigIssue]:
+    """Validate references with a complete layer namespace even if other keys failed."""
+    sections = [("architecture", raw.get("architecture"))]
+    members = raw.get("members")
+    if isinstance(members, dict):
+        sections.extend(
+            (f"members.{path}.architecture", member.get("architecture"))
+            for path, member in members.items()
+            if isinstance(member, dict)
+        )
+    issues: list[ConfigIssue] = []
+    for location, architecture in sections:
+        if not isinstance(architecture, dict) or not isinstance(
+            architecture.get("layers"), dict
+        ):
+            continue
+        # An invalid layer declaration makes the namespace unreliable. An invalid
+        # cross-feature section still permits checking the layer declarations.
+        try:
+            layers = SmeltConfig.model_validate(
+                {
+                    "version": 1,
+                    "project": {},
+                    "architecture": {"layers": architecture["layers"]},
+                }
+            )
+        except ValidationError:
+            continue
+        partial = layers
+        if "cross_feature" in architecture:
+            try:
+                partial = SmeltConfig.model_validate(
+                    {
+                        "version": 1,
+                        "project": {},
+                        "architecture": {
+                            "layers": architecture["layers"],
+                            "cross_feature": architecture["cross_feature"],
+                        },
+                    }
+                )
+            except ValidationError:
+                partial = layers
+        validator = _Validator(
+            partial, architecture=partial.architecture, roots=(), location=location
+        )
+        validator.check_layers()
+        issues.extend(validator.errors)
+    return issues
 
 
 def validate_semantics(
@@ -111,9 +163,12 @@ class _Validator:
         self.warnings: list[ConfigIssue] = []
 
     def run(self) -> None:
+        self.check_layers()
+        self._module_sets()
+
+    def check_layers(self) -> None:
         self._layers()
         self._cross_feature()
-        self._module_sets()
 
     def contracts(self) -> None:
 

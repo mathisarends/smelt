@@ -110,12 +110,22 @@ def _load_reporting_selectors(path: Path) -> LoadedConfig:
     try:
         return load_config(path)
     except ConfigError as exc:
+        raw = raw_config(path)
+        if "version" not in raw:
+            raise
         reported = {issue.path for issue in exc.issues}
         missing = [
             issue
-            for issue in unknown_selectors(raw_config(path), build_rule_set(lazy=True))
+            for issue in unknown_selectors(raw, build_rule_set(lazy=True))
             if issue.path not in reported
         ]
         if not missing:
             raise
-        raise ConfigError([*exc.issues, *missing], exc.source) from exc
+        raise ConfigError(
+            [
+                *(i for i in exc.issues if not i.semantic),
+                *missing,
+                *(i for i in exc.issues if i.semantic),
+            ],
+            exc.source,
+        ) from exc

@@ -22,6 +22,7 @@ class ConfigIssue:
     source: str | None = None
     # Deprecations are reported without failing --fail-on warning.
     deprecated: bool = False
+    semantic: bool = False
 
     def __str__(self) -> str:
         detail = f"{self.path}: {self.message}" if self.path else self.message
