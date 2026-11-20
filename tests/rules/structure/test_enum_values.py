@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT318",))
+OPTIONS = CheckOptions(select=("MOD001",))
 SOURCE = """from enum import StrEnum
 
 class MouseEventKind(StrEnum):
@@ -42,7 +42,7 @@ def test_reports_the_original_dispatch_example_without_changing_source(
     before = (root / "app/mouse.py").read_bytes()
     [finding] = violations(root, OPTIONS)
 
-    assert finding.code == "SMT318"
+    assert finding.code == "MOD001"
     assert finding.severity is Severity.HINT
     assert (finding.path, finding.line, finding.column) == ("app/mouse.py", 11, 14)
     assert (finding.end_line, finding.end_column) == (11, 40)
@@ -61,17 +61,17 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT318", "modeling/redundant-str-enum-value"])
+@pytest.mark.parametrize("name", ["MOD001", "modeling/redundant-str-enum-value"])
 def test_explicit_rule_setting_enables_the_hint(tmp_path: Path, name: str) -> None:
     [finding] = violations(_project(tmp_path, CONFIG + f"rules: {{{name}: hint}}\n"))
-    assert finding.code == "SMT318"
+    assert finding.code == "MOD001"
 
 
 @pytest.mark.parametrize(
     ("config", "options"),
     [
-        (CONFIG + "rules: {SMT318: off}\n", OPTIONS),
-        (CONFIG, CheckOptions(select=("SMT318",), ignore=("SMT318",))),
+        (CONFIG + "rules: {MOD001: off}\n", OPTIONS),
+        (CONFIG, CheckOptions(select=("MOD001",), ignore=("MOD001",))),
     ],
 )
 def test_explicit_disable_and_ignore_are_respected(
@@ -81,13 +81,13 @@ def test_explicit_disable_and_ignore_are_respected(
 
 
 def test_exact_string_boundary_can_be_suppressed_with_a_reason(tmp_path: Path) -> None:
-    root = _project(tmp_path, CONFIG + "rules: {SMT318: error}\n")
+    root = _project(tmp_path, CONFIG + "rules: {MOD001: error}\n")
     assert check(root).report.failed
     source = root / "app/mouse.py"
     source.write_text(
         SOURCE.replace(
             "delta_y=delta_y\n",
-            "delta_y=delta_y  # smelt: ignore[SMT318] -- API requires an exact str\n",
+            "delta_y=delta_y  # smelt: ignore[MOD001] -- API requires an exact str\n",
         ),
         encoding="utf-8",
     )

@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 
 class CompositionRootLeak(Rule):
-    activation = POLICIES["SMT106"]
-    code = "SMT106"
+    activation = POLICIES["ARC006"]
+    code = "ARC006"
     name = "architecture/composition-root-leak"
     architecture_scoped = True
     category = Category.ARCHITECTURE

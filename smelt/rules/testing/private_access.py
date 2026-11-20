@@ -18,7 +18,7 @@ def _private(name: str) -> bool:
 class PrivateTestAccess(Rule):
     test_local = True
     scope = "test"
-    code = "SMT420"
+    code = "TST002"
     name = "tests/private-access"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})

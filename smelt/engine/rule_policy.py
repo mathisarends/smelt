@@ -63,23 +63,23 @@ def missing_rule_policies(
 
 
 _REQUIRED = {
-    "SMT107": "architecture.packages.<name>.public",
-    "SMT108": "architecture.packages.<name>.min_imports_to_bundle",
-    "SMT109": "architecture.packages.<name>.min_importers_to_export",
-    "SMT308": "style.imports",
+    "ARC007": "architecture.packages.<name>.public",
+    "IMP001": "architecture.packages.<name>.min_imports_to_bundle",
+    "ARC008": "architecture.packages.<name>.min_importers_to_export",
+    "IMP003": "style.imports",
 }
 
 
 def _covered_modules(ctx: AnalysisContext, code: str, option: str) -> set[str]:
     modules = ctx.files.sources.keys()
-    if code == "SMT308":
+    if code == "IMP003":
         return {module for module in modules if ctx.contracts.style_for(module)}
     packages = {
         contract.package
         for contract in ctx.contracts.resolved
         if getattr(contract.spec, option) is not None
     }
-    if code == "SMT109":
+    if code == "ARC008":
         # Export gap findings are anchored at definitions within the contract.
         return {
             module for module in modules if any(is_within(module, p) for p in packages)

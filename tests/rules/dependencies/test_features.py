@@ -58,7 +58,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT102",)))
+        [found] = violations(root, CheckOptions(select=("ARC002",)))
 
         assert found.source_module == "gw.features.billing.domain.model"
         assert found.target_module == "gw.features.voice.application.calls"
@@ -82,7 +82,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT102",)))
+        [found] = violations(root, CheckOptions(select=("ARC002",)))
 
         assert found.source_module == "gw.features.billing.application.model"
         assert found.target_module == "gw.features.voice.domain.call"
@@ -98,7 +98,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT102",)))
+        [found] = violations(root, CheckOptions(select=("ARC002",)))
 
         assert [link.imported for link in found.import_chain] == [
             "gw.shared.bridge",
@@ -119,7 +119,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT102",))) == []
+        assert violations(root, CheckOptions(select=("ARC002",))) == []
 
     def test_allowed_layer_pair(self, tmp_path: Path) -> None:
         root = _project(
@@ -129,7 +129,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT102",))) == []
+        assert violations(root, CheckOptions(select=("ARC002",))) == []
 
     def test_disallowed_layer_pair(self, tmp_path: Path) -> None:
         root = _project(
@@ -139,7 +139,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT102",)))
+        [found] = violations(root, CheckOptions(select=("ARC002",)))
 
         assert (
             found.message
@@ -160,7 +160,7 @@ class TestCrossFeatureImport:
             {"gw/shared/money.py": "from gw.features.voice.domain import call\n"},
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT105",)))
+        [found] = violations(root, CheckOptions(select=("ARC005",)))
 
         assert found.edge == "gw.shared -> voice.domain"
 
@@ -183,7 +183,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT102",)))
+        found = violations(root, CheckOptions(select=("ARC002",)))
 
         assert [v.path for v in found] == ["gw/features/voice/application/calls.py"]
 
@@ -200,7 +200,7 @@ class TestCrossFeatureImport:
         )
         (root / "gw/features/__init__.py").unlink()
 
-        [found] = violations(root, CheckOptions(select=("SMT102",)))
+        [found] = violations(root, CheckOptions(select=("ARC002",)))
 
         assert found.path == "gw/features/billing/application/invoices.py"
         assert found.message == (
@@ -218,7 +218,7 @@ class TestCrossFeatureImport:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT102",))) == []
+        assert violations(root, CheckOptions(select=("ARC002",))) == []
 
 
 class TestSharedImportsFeature:
@@ -236,15 +236,15 @@ class TestSharedImportsFeature:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT105", "SMT106")))
+        found = violations(root, CheckOptions(select=("ARC005", "ARC006")))
 
         assert {
             (v.code, v.target_module)
             for v in found
             if v.source_module == "gw.shared.clock"
         } == {
-            ("SMT105", "gw.features.voice.domain.call"),
-            ("SMT106", "gw.bootstrap"),
+            ("ARC005", "gw.features.voice.domain.call"),
+            ("ARC006", "gw.bootstrap"),
         }
 
     def test_plain_import_chain_cannot_hide_a_feature(self, tmp_path: Path) -> None:
@@ -257,7 +257,7 @@ class TestSharedImportsFeature:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT105",)))
+        [found] = violations(root, CheckOptions(select=("ARC005",)))
 
         assert found.target_module == "gw.features.voice.domain.call"
         assert [link.imported for link in found.import_chain] == [
@@ -278,7 +278,7 @@ class TestSharedImportsFeature:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT105",)))
+        [found] = violations(root, CheckOptions(select=("ARC005",)))
 
         assert found.target_module == "gw.features.voice.domain.call"
         assert len(found.import_chain) == 2
@@ -288,7 +288,7 @@ class TestSharedImportsFeature:
             tmp_path, {"gw/shared/clock.py": "import gw.features.voice.domain.call\n"}
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT105",)))
+        [found] = violations(root, CheckOptions(select=("ARC005",)))
 
         assert (
             found.message
@@ -310,7 +310,7 @@ class TestSharedImportsFeature:
             },
         )
 
-        assert [v.code for v in violations(root)] == ["SMT105"]
+        assert [v.code for v in violations(root)] == ["ARC005"]
 
     def test_feature_importing_shared_is_fine(self, tmp_path: Path) -> None:
         root = _project(
@@ -321,7 +321,7 @@ class TestSharedImportsFeature:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT1",))) == []
+        assert violations(root, CheckOptions(select=("ARC",))) == []
 
 
 CENTRAL_CONFIG = """
@@ -367,7 +367,7 @@ class TestCentralModules:
             },
         )
 
-        [found] = violations(root, CheckOptions(select=("SMT101",)))
+        [found] = violations(root, CheckOptions(select=("ARC001",)))
 
         assert found.target_module == "gw.platform.orm"
         assert found.edge == "voice.domain -> infrastructure"
@@ -383,7 +383,7 @@ class TestCentralModules:
         [found] = violations(root)
 
         assert (found.code, found.message) == (
-            "SMT101",
+            "ARC001",
             "domain must not depend on infrastructure",
         )
         assert found.hint == (
@@ -426,7 +426,7 @@ class TestCentralModules:
         [found] = violations(root)
 
         assert (found.code, found.message) == (
-            "SMT105",
+            "ARC005",
             "central module gw.platform.settings must not import feature voice",
         )
         assert found.expected == {

@@ -21,7 +21,7 @@ architecture:
       match: app.user.application
       min_imports_to_bundle: 3
 """
-OPTIONS = CheckOptions(select=("SMT108",))
+OPTIONS = CheckOptions(select=("IMP001",))
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_bundling_reviews_test_callers_with_export_evidence(
 
     [finding] = violations(tmp_path, OPTIONS)
 
-    assert (finding.code, finding.path, finding.line) == ("SMT108", test_path, 1)
+    assert (finding.code, finding.path, finding.line) == ("IMP001", test_path, 1)
     assert finding.expected is not None
     assert finding.expected["count"] == 3
     assert {export["name"] for export in finding.expected["proposed_exports"]} == {
@@ -203,7 +203,7 @@ def test_threshold_is_configurable_and_can_fail_with_explicit_hint_threshold(
         config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
     )
 
-    outcome = check(tmp_path, CheckOptions(select=("SMT108",), fail_on=Severity.HINT))
+    outcome = check(tmp_path, CheckOptions(select=("IMP001",), fail_on=Severity.HINT))
 
     assert outcome.report.failed
 
@@ -360,7 +360,7 @@ def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> No
     )
 
     [cached] = violations(tmp_path, OPTIONS)
-    [fresh] = violations(tmp_path, CheckOptions(select=("SMT108",), use_cache=False))
+    [fresh] = violations(tmp_path, CheckOptions(select=("IMP001",), use_cache=False))
 
     assert cached.expected == fresh.expected
     assert cached.expected is not None

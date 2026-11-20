@@ -11,7 +11,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-OPTIONS = CheckOptions(select=("SMT315",))
+OPTIONS = CheckOptions(select=("IDM002",))
 CONFIG = """version: 2
 project: {root_packages: [app], python_version: '3.12'}
 style:
@@ -85,12 +85,12 @@ def test_closest_allow_override_wins(tmp_path: Path) -> None:
 
 
 def test_suppression_and_severity_overrides_are_supported(tmp_path: Path) -> None:
-    root = _project(tmp_path, CONFIG + "rules: {SMT315: error}\n")
+    root = _project(tmp_path, CONFIG + "rules: {IDM002: error}\n")
     source = root / "app/events.py"
     source.write_text(
         SOURCE.replace(
             ": start(event)",
-            ": start(event)  # smelt: ignore[SMT315] -- retain current dispatch",
+            ": start(event)  # smelt: ignore[IDM002] -- retain current dispatch",
         )
     )
     outcome = check(root, OPTIONS)

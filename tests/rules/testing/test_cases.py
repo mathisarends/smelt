@@ -18,7 +18,7 @@ def test_case_loop_review_remains_an_opt_in_hint(tmp_path: Path) -> None:
         },
     )
     [finding] = violations(tmp_path)
-    assert finding.code == "SMT427"
+    assert finding.code == "TST009"
     assert finding.severity.value == "hint"
     assert finding.line == 2
     assert finding.expected is not None

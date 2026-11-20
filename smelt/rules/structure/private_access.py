@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 
 class ForeignPrivateAccess(Rule):
-    activation = POLICIES["SMT339"]
-    code = "SMT339"
+    activation = POLICIES["VIS005"]
+    code = "VIS005"
     name = "visibility/foreign-private-access"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
@@ -60,7 +60,7 @@ class ForeignPrivateAccess(Rule):
             "class decorators, local imports in attribute evidence, "
             "comprehension/lambda receiver bodies, closure/global-variable flow, "
             "rebound or shadowed bindings and wildcard imports are skipped. Tests "
-            "are covered by tests/private-access (SMT420). No control-flow "
+            "are covered by tests/private-access (TST002). No control-flow "
             "narrowing, runtime dispatch or analyzed code execution is used."
         ),
         bad=(
@@ -83,7 +83,7 @@ class ForeignPrivateAccess(Rule):
             "do not merely rename or wrap internal state to silence the report. "
             "Preserve evaluation order, exceptions and side effects. No automatic "
             "rewrite is performed. Enable rules: {visibility/foreign-private-access: "
-            "warning}, select SMT339, or set private_attribute_boundary under "
+            "warning}, select VIS005, or set private_attribute_boundary under "
             "style or in a style override. The boundary defaults to module; "
             "package permits attribute cooperation between modules of the same "
             "immediate Python package and does not relax private symbols. "

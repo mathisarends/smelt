@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT362",))
+SELECT = CheckOptions(select=("IDM008",))
 SNAPSHOT = dedent("""
     from dataclasses import dataclass
 
@@ -52,7 +52,7 @@ def test_reports_reduced_snapshot_membership_with_explicit_evidence(
     (finding,) = violations(root, SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT362",
+        "IDM008",
         "app/state.py",
         23,
         36,
@@ -196,14 +196,14 @@ def test_supports_import_and_quoted_type_aliases(tmp_path: Path) -> None:
     )
     source = source.replace("tuple[Turn, ...]", '"Items[Turn, ...]"')
     (finding,) = violations(_project(tmp_path, source), SELECT)
-    assert finding.code == "SMT362"
+    assert finding.code == "IDM008"
 
 
 def test_is_opt_in_and_supports_package_overrides_and_suppression(
     tmp_path: Path,
 ) -> None:
     root = _project(tmp_path, SNAPSHOT)
-    assert not any(item.code == "SMT362" for item in violations(root))
+    assert not any(item.code == "IDM008" for item in violations(root))
     (root / "smelt.yml").write_text(
         CONFIG
         + "rules: {idioms/loop-invariant-collection: hint}\n"
@@ -219,7 +219,7 @@ def test_is_opt_in_and_supports_package_overrides_and_suppression(
         {
             "app/state.py": SNAPSHOT.replace(
                 "if step.turn_id not in {turn.id for turn in self.turns}:",
-                "if step.turn_id not in {turn.id for turn in self.turns}:  # smelt: ignore[SMT362] -- preserve evaluation at this guard",
+                "if step.turn_id not in {turn.id for turn in self.turns}:  # smelt: ignore[IDM008] -- preserve evaluation at this guard",
             )
         },
     )
@@ -229,11 +229,11 @@ def test_is_opt_in_and_supports_package_overrides_and_suppression(
 def test_cached_results_follow_field_declaration_changes(tmp_path: Path) -> None:
     root = _project(tmp_path, SNAPSHOT)
     (finding,) = violations(root, SELECT)
-    assert finding.code == "SMT362"
+    assert finding.code == "IDM008"
     write_project(root, {"app/state.py": SNAPSHOT.replace("id: str", "id: object")})
     assert (
         violations(root, SELECT)
-        == violations(root, CheckOptions(select=("SMT362",), use_cache=False))
+        == violations(root, CheckOptions(select=("IDM008",), use_cache=False))
         == []
     )
 
@@ -277,7 +277,7 @@ def test_multiline_projection_replacement_is_not_hidden_by_old_debt(
     new, known, resolved = baseline.match(
         violations(root, SELECT), lambda _: "if step.turn_id not in {"
     )
-    assert [item.code for item in new] == ["SMT362"]
+    assert [item.code for item in new] == ["IDM008"]
     assert known == []
     assert len(resolved) == 1
 

@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 
 class LayerBoundary(Rule):
-    activation = POLICIES["SMT101"]
-    code = "SMT101"
+    activation = POLICIES["ARC001"]
+    code = "ARC001"
     name = "architecture/layer-boundary"
     architecture_scoped = True
     category = Category.ARCHITECTURE
@@ -109,7 +109,7 @@ def _forbidden_layer(
         return None
     if source.layer == target.layer:
         return None
-    # across features SMT102 decides; a central module shares its layer rules with all
+    # across features ARC002 decides; a central module shares its layer rules with all
     if source.feature != target.feature and not (source.central or target.central):
         return None
     if target.layer in ctx.model.layers[source.layer].may_depend_on:

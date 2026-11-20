@@ -24,7 +24,7 @@ class _EngineRule(Rule):
 
 
 class UnusedSuppression(_EngineRule):
-    code = "SMT901"
+    code = "MET001"
     name = "meta/unused-suppression"
     default_severity = Severity.WARNING
     doc = RuleDoc(
@@ -32,7 +32,7 @@ class UnusedSuppression(_EngineRule):
         rationale=(
             "Stale suppressions hide future violations on the same line and make readers "
             "believe there is an exception where there is none."
-            " Inline comments accept rule names, stable SMT codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when SMT901 is selected. Known inactive rules are not treated as unknown."
+            " Inline comments accept rule names, codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when MET001 is selected. Known inactive rules are not treated as unknown."
         ),
         bad="import os  # smelt: ignore[architecture/layer-boundary] -- legacy",
         good="import os",
@@ -42,7 +42,7 @@ class UnusedSuppression(_EngineRule):
 
 
 class SuppressionWithoutReason(_EngineRule):
-    code = "SMT902"
+    code = "MET002"
     name = "meta/missing-suppression-reason"
     default_severity = Severity.ERROR
     doc = RuleDoc(
@@ -51,15 +51,15 @@ class SuppressionWithoutReason(_EngineRule):
             "Every exception to the architecture should explain itself, so the next "
             "person (or agent) knows whether it can be removed."
         ),
-        bad="from app.infra import Db  # smelt: ignore[SMT101]",
-        good="from app.infra import Db  # smelt: ignore[SMT101] -- migration tracked in #123",
+        bad="from app.infra import Db  # smelt: ignore[ARC001]",
+        good="from app.infra import Db  # smelt: ignore[ARC001] -- migration tracked in #123",
         fix="Append ` -- <reason>` to the comment.",
         config=("suppressions.require_reason",),
     )
 
 
 class ResolvedDebt(_EngineRule):
-    code = "SMT903"
+    code = "MET003"
     name = "meta/resolved-debt"
     default_severity = Severity.WARNING
     doc = RuleDoc(
@@ -68,7 +68,7 @@ class ResolvedDebt(_EngineRule):
             "Fixed violations should leave the debt file, otherwise they could silently "
             "come back."
         ),
-        bad='{"code": "SMT101", "path": "app/application/old.py", ...}',
+        bad='{"code": "ARC001", "path": "app/application/old.py", ...}',
         good="(entry removed after the violation was fixed)",
         fix="Run `smelt debt --prune`.",
         config=("debt",),
@@ -76,7 +76,7 @@ class ResolvedDebt(_EngineRule):
 
 
 class MissingRulePolicy(_EngineRule):
-    code = "SMT904"
+    code = "MET004"
     name = "meta/missing-rule-policy"
     default_severity = Severity.WARNING
     doc = RuleDoc(
@@ -88,7 +88,7 @@ class MissingRulePolicy(_EngineRule):
             "warning covers the narrower case. On full checks, it "
             "reports effective rule settings with no applicable public, "
             "min_imports_to_bundle, min_importers_to_export or import style policy "
-            "for SMT107, SMT108, SMT109 or SMT308 respectively. It uses the declared "
+            "for ARC007, IMP001, ARC008 or IMP003 respectively. It uses the declared "
             "policy and setting scope, independent of the number of source findings. "
             "Public and bundling contracts can govern callers across the project. "
             "An explicit public: [] is a policy. Changed, staged, and path-scoped "

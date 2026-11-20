@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT355",))
+SELECT = CheckOptions(select=("MOD009",))
 
 
 def _project(tmp_path: Path, files: dict[str, str], *, config: str = CONFIG) -> Path:
@@ -46,7 +46,7 @@ def test_reports_each_definition_from_the_issue(tmp_path: Path) -> None:
     first, second = violations(root, SELECT)
 
     assert (first.code, first.path, first.line, first.column) == (
-        "SMT355",
+        "MOD009",
         "app/observation/content.py",
         4,
         1,
@@ -152,11 +152,11 @@ def test_is_opt_in(tmp_path: Path) -> None:
     }
 
     assert [
-        item for item in violations(_project(tmp_path, files)) if item.code == "SMT355"
+        item for item in violations(_project(tmp_path, files)) if item.code == "MOD009"
     ] == []
     enabled = _project(
         tmp_path / "enabled",
         files,
         config=CONFIG + "rules: {modeling/duplicate-class-name: warning}\n",
     )
-    assert [item.code for item in violations(enabled)].count("SMT355") == 2
+    assert [item.code for item in violations(enabled)].count("MOD009") == 2

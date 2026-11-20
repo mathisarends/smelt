@@ -17,7 +17,7 @@ style:
       match: app
       bases: {pydantic.BaseModel: app.core.Options}
 """
-SELECT = CheckOptions(select=("SMT353",))
+SELECT = CheckOptions(select=("MOD007",))
 OPTIONS = (
     "from pydantic import BaseModel, ConfigDict\n\n\n"
     "class Options(BaseModel):\n"
@@ -59,7 +59,7 @@ def test_reports_direct_outside_base_from_the_issue(tmp_path: Path) -> None:
     (finding,) = violations(_project(tmp_path, source), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT353",
+        "MOD007",
         "app/manifest.py",
         4,
         1,
@@ -156,7 +156,7 @@ def test_nested_package_can_lift_the_mapping(tmp_path: Path) -> None:
 def test_accepts_a_reasoned_suppression(tmp_path: Path) -> None:
     source = (
         "from pydantic import BaseModel\n\n\n"
-        "class Raw(BaseModel):  # smelt: ignore[SMT353] -- mirrors a vendor schema\n"
+        "class Raw(BaseModel):  # smelt: ignore[MOD007] -- mirrors a vendor schema\n"
         "    name: str\n"
     )
 
@@ -183,4 +183,4 @@ def test_is_inactive_without_policy(tmp_path: Path) -> None:
         },
     )
 
-    assert [item for item in violations(root) if item.code == "SMT353"] == []
+    assert [item for item in violations(root) if item.code == "MOD007"] == []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import Counter
 from typing import TYPE_CHECKING
@@ -7,7 +8,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError
-from smelt.diagnostics.debt import Debt, DebtEntry
+from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
+from smelt.diagnostics.violation import Severity, Violation
 from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, write_project
 
@@ -23,19 +25,19 @@ def test_grouped_roundtrip_keeps_duplicate_tokens_and_separate_scopes(
     items = [
         {
             "fingerprint": "same",
-            "code": "SMT321",
+            "code": "TYP003",
             "path": "app/a.py",
             "message": "default",
         },
         {
             "fingerprint": "same",
-            "code": "SMT321",
+            "code": "TYP003",
             "path": "app/a.py",
             "message": "default",
         },
         {
             "fingerprint": "other",
-            "code": "SMT313",
+            "code": "LAY004",
             "path": "app/a.py",
             "message": "order",
         },
@@ -44,7 +46,7 @@ def test_grouped_roundtrip_keeps_duplicate_tokens_and_separate_scopes(
     debt = Debt.load(path)
     if version == 2:
         debt.entries.append(
-            DebtEntry("scoped", "SMT321", "app/a.py", "default", "Client.create")
+            DebtEntry("scoped", "TYP003", "app/a.py", "default", "Client.create")
         )
     expected = Counter(debt.entries)
     debt.write(path)
@@ -64,10 +66,10 @@ def test_grouped_roundtrip_keeps_duplicate_tokens_and_separate_scopes(
 @pytest.mark.parametrize(
     "group",
     [
-        {"code": "SMT109", "fingerprints": []},
-        {"code": "SMT109", "fingerprints": [7]},
-        {"code": "SMT109", "fingerprints": ["ok"], "unknown": True},
-        {"code": "SMT109", "fingerprint": "singular"},
+        {"code": "ARC008", "fingerprints": []},
+        {"code": "ARC008", "fingerprints": [7]},
+        {"code": "ARC008", "fingerprints": ["ok"], "unknown": True},
+        {"code": "ARC008", "fingerprint": "singular"},
     ],
 )
 def test_malformed_grouped_baselines_fail_with_file_context(
@@ -79,11 +81,11 @@ def test_malformed_grouped_baselines_fail_with_file_context(
         Debt.load(path)
 
 
-@pytest.mark.parametrize("code", ["SMT109", "SMT313"])
+@pytest.mark.parametrize("code", ["ARC008", "LAY004"])
 def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     tmp_path: Path, code: str
 ) -> None:
-    if code == "SMT109":
+    if code == "ARC008":
         config = "architecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n"
         files = {
             "app/api/__init__.py": "",
@@ -95,7 +97,7 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
         }
         changed = {"app/b.py": "", "app/d.py": "from app.api.item import Item\n"}
     else:
-        config = "style:\n  overrides:\n    order: {match: app, ordering: {}, rules: {SMT313: error}}\n"
+        config = "style:\n  overrides:\n    order: {match: app, ordering: {}, rules: {LAY004: error}}\n"
         files = {
             "app/item.py": "def _helper(): pass\ndef first(): pass\ndef second(): pass\n"
         }
@@ -117,7 +119,7 @@ def test_grouped_edges_detect_replacement_and_prune_without_accepting_it(
     debt.write(root / "debt.json")
     data = json.loads((root / "debt.json").read_text(encoding="utf-8"))
     assert len(data["violations"]) == 1
-    assert len(data["violations"][0]["fingerprints"]) == (3 if code == "SMT109" else 2)
+    assert len(data["violations"][0]["fingerprints"]) == (3 if code == "ARC008" else 2)
     assert check(root, options).report.violations == []
     write_project(root, changed)
     current = check(root, options)
@@ -147,7 +149,7 @@ def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
             "app/third.py": "Third = 1\n",
         },
     )
-    options = CheckOptions(select=("SMT110",))
+    options = CheckOptions(select=("IMP002",))
     outcome = check(root, options)
     Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
         root / "debt.json"
@@ -159,7 +161,7 @@ def test_module_fanout_baseline_does_not_hide_a_replaced_dependency(
     )
     current = check(root, options)
     [finding] = current.report.violations
-    assert finding.code == "SMT110"
+    assert finding.code == "IMP002"
     assert len(current.resolved_debt) == 1
 
 
@@ -175,7 +177,7 @@ def test_multiline_comprehension_baseline_does_not_hide_changed_logic(
             "app/client.py": source,
         },
     )
-    options = CheckOptions(select=("SMT363",))
+    options = CheckOptions(select=("CPX006",))
     outcome = check(root, options)
     Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
         root / "debt.json"
@@ -190,7 +192,7 @@ def test_multiline_comprehension_baseline_does_not_hide_changed_logic(
         },
     )
     [finding] = check(root, options).report.violations
-    assert finding.code == "SMT363"
+    assert finding.code == "CPX006"
     assert finding.expected is not None
     assert "nontrivial conditional element" in finding.expected["conditions"]
 
@@ -205,7 +207,7 @@ def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) ->
             "app/client.py": source,
         },
     )
-    options = CheckOptions(select=("SMT364",))
+    options = CheckOptions(select=("CPX007",))
     outcome = check(root, options)
     Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
         root / "debt.json"
@@ -215,7 +217,7 @@ def test_constructor_baseline_does_not_hide_an_added_decision(tmp_path: Path) ->
         root, {"app/client.py": source + "        self.other = [x for x in values]\n"}
     )
     [finding] = check(root, options).report.violations
-    assert finding.code == "SMT364"
+    assert finding.code == "CPX007"
     assert finding.expected is not None
     assert finding.expected["count"] == 2
 
@@ -233,7 +235,7 @@ def test_private_definition_baseline_does_not_hide_new_names(
             "app/client.py": source,
         },
     )
-    options = CheckOptions(select=("SMT367",))
+    options = CheckOptions(select=("VIS007",))
     outcome = check(root, options)
     Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
         root / "debt.json"
@@ -246,7 +248,7 @@ def test_private_definition_baseline_does_not_hide_new_names(
     )
     write_project(root, {"app/client.py": updated})
     [finding] = check(root, options).report.violations
-    assert finding.code == "SMT367"
+    assert finding.code == "VIS007"
     assert finding.expected is not None
     assert "class:_Added" in finding.expected["definition_edges"]
     assert finding.expected["count"] == (3 if change == "append" else 2)
@@ -262,7 +264,7 @@ def test_identical_optional_occurrences_keep_their_multiplicity(tmp_path: Path) 
             "app/item.py": source,
         },
     )
-    options = CheckOptions(select=("SMT321",))
+    options = CheckOptions(select=("TYP003",))
     original = check(root, options)
     debt = Debt.from_violations(original.unfiltered, snippet_reader(original.context))
     debt.write(root / "debt.json")
@@ -272,3 +274,39 @@ def test_identical_optional_occurrences_keep_their_multiplicity(tmp_path: Path) 
     current = check(root, options)
     assert len(current.report.violations) == 1
     assert current.report.in_debt == 2
+
+
+def test_family_codes_keep_the_fingerprints_of_their_smt_codes(
+    tmp_path: Path,
+) -> None:
+    violation = Violation(
+        code="ARC001",
+        rule="architecture/layer-boundary",
+        severity=Severity.ERROR,
+        message="m",
+        path="app/a.py",
+    )
+    payload = "\x1f".join(["SMT101", "app/a.py", "", "", "x = 1"])
+    path = tmp_path / "debt.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "violations": [
+                    {
+                        "fingerprint": "f",
+                        "code": "SMT101",
+                        "path": "a.py",
+                        "message": "m",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        fingerprint(violation, "x =  1")
+        == (hashlib.sha256(payload.encode()).hexdigest()[:32])
+    )
+    assert [entry.code for entry in Debt.load(path).entries] == ["ARC001"]

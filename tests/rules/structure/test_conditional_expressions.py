@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT359",))
+SELECT = CheckOptions(select=("CPX005",))
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_reports_once_at_outermost_direct_nesting(
 
     (finding,) = violations(root, SELECT)
 
-    assert (finding.code, finding.path) == ("SMT359", "app/model.py")
+    assert (finding.code, finding.path) == ("CPX005", "app/model.py")
     assert finding.column == (5 if expression.startswith("(\n") else 9)
     assert finding.line == (2 if expression.startswith("(\n") else 1)
     assert finding.severity == Severity.HINT
@@ -66,7 +66,7 @@ def test_reports_independent_nested_expression_inside_lambda(tmp_path: Path) -> 
 def test_supports_opt_in_package_overrides_and_suppression(tmp_path: Path) -> None:
     source = "value = a if x else b if y else c\n"
     root = _project(tmp_path, source)
-    assert not any(item.code == "SMT359" for item in violations(root))
+    assert not any(item.code == "CPX005" for item in violations(root))
 
     (root / "smelt.yml").write_text(
         CONFIG
@@ -80,13 +80,13 @@ def test_supports_opt_in_package_overrides_and_suppression(tmp_path: Path) -> No
         {
             "app/quiet/__init__.py": source,
             "app/intentional.py": source.rstrip()
-            + "  # smelt: ignore[SMT359] -- preserve compact generated dispatch\n",
+            + "  # smelt: ignore[CPX005] -- preserve compact generated dispatch\n",
         },
     )
 
     (finding,) = violations(root)
     assert (finding.code, finding.path, finding.severity) == (
-        "SMT359",
+        "CPX005",
         "app/model.py",
         Severity.WARNING,
     )

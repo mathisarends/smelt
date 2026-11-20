@@ -122,7 +122,7 @@ def test_lazy_exports_protect_actual_api_and_invalidate_after_table_edits(
     cached = check(tmp_path).report.violations
     fresh = check(tmp_path, CheckOptions(use_cache=False)).report.violations
     assert cached == fresh
-    assert [finding.code for finding in fresh] == ["SMT316"]
+    assert [finding.code for finding in fresh] == ["VIS001"]
 
 
 def test_stub_alone_does_not_prove_a_runtime_export(tmp_path: Path) -> None:
@@ -135,7 +135,7 @@ def test_stub_alone_does_not_prove_a_runtime_export(tmp_path: Path) -> None:
             "app/api.py": "class Service:\n    def run(self): pass\n",
         },
     )
-    assert [finding.code for finding in check(tmp_path).report.violations] == ["SMT316"]
+    assert [finding.code for finding in check(tmp_path).report.violations] == ["VIS001"]
 
 
 def test_verified_lazy_export_can_establish_canonical_ownership(tmp_path: Path) -> None:

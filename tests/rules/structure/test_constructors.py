@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT364",))
+SELECT = CheckOptions(select=("CPX007",))
 SOURCE = """\
 class Client:
     def __init__(self, values):
@@ -28,7 +28,7 @@ def test_reports_one_method_with_counted_node_locations(tmp_path: Path) -> None:
     root = _project(tmp_path, SOURCE)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT364",
+        "CPX007",
         "app/model.py",
         2,
         5,
@@ -165,7 +165,7 @@ def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
         SOURCE,
         settings="rules: {complexity/excess-constructor-decisions: {severity: hint, max: 0}}\n",
     )
-    assert [v.code for v in violations(root)] == ["SMT364"]
+    assert [v.code for v in violations(root)] == ["CPX007"]
     write_policy_project(
         root,
         {
@@ -179,7 +179,7 @@ style:
             "app/quiet/__init__.py": SOURCE,
             "app/intentional.py": SOURCE.replace(
                 "def __init__(self, values):",
-                "def __init__(self, values):  # smelt: ignore[SMT364] -- preserve ordered resource setup",
+                "def __init__(self, values):  # smelt: ignore[CPX007] -- preserve ordered resource setup",
             ),
         },
     )

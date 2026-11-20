@@ -13,7 +13,7 @@ from tests.helpers import check, write_project
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 SOURCE = "def create(options: int | None = None):\n    return options or 7\n"
-OPTIONS = CheckOptions(select=("SMT321",))
+OPTIONS = CheckOptions(select=("TYP003",))
 
 
 def _project(tmp_path: Path, source: str = SOURCE) -> Path:
@@ -127,12 +127,12 @@ def test_scope_ignores_and_suppressions_bound_the_fix(tmp_path: Path) -> None:
     root = _project(tmp_path)
     suppressed = SOURCE.replace(
         "options or 7",
-        "options or 7  # smelt: ignore[SMT321] -- intentional falsy fallback",
+        "options or 7  # smelt: ignore[TYP003] -- intentional falsy fallback",
     )
     write_project(root, {"app/other.py": SOURCE, "app/legacy.py": suppressed})
     assert (
         apply_none_default_fixes(
-            check(root, CheckOptions(select=("SMT321",), ignore=("SMT321",))),
+            check(root, CheckOptions(select=("TYP003",), ignore=("TYP003",))),
             unsafe=True,
         ).files
         == []
@@ -140,7 +140,7 @@ def test_scope_ignores_and_suppressions_bound_the_fix(tmp_path: Path) -> None:
     fixed = apply_none_default_fixes(
         check(
             root,
-            CheckOptions(select=("SMT321",), paths=("app/service.py", "app/legacy.py")),
+            CheckOptions(select=("TYP003",), paths=("app/service.py", "app/legacy.py")),
         ),
         unsafe=True,
     )
@@ -159,6 +159,6 @@ def test_accepted_debt_is_only_fixed_when_explicitly_bypassed(tmp_path: Path) ->
     assert apply_none_default_fixes(check(root, OPTIONS), unsafe=True).files == []
     assert (root / "app/service.py").read_text() == SOURCE
     fixed = apply_none_default_fixes(
-        check(root, CheckOptions(select=("SMT321",), use_debt=False)), unsafe=True
+        check(root, CheckOptions(select=("TYP003",), use_debt=False)), unsafe=True
     )
     assert fixed.files == ["app/service.py"]

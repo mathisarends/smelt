@@ -330,8 +330,8 @@ def _mirror_target(ctx: AnalysisContext, test_root: str, module: str) -> str:
 
 class MisplacedTestFile(Rule):
     scope = "test"
-    activation = POLICIES["SMT401"]
-    code = "SMT401"
+    activation = POLICIES["TST001"]
+    code = "TST001"
     name = "tests/misplaced-test"
     category = Category.TESTS
     default_severity = Severity.ERROR

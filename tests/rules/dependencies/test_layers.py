@@ -10,7 +10,7 @@ from tests.helpers import LAYERED_CONFIG, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT101 = CheckOptions(select=("SMT101",))
+ONLY_ARC001 = CheckOptions(select=("ARC001",))
 
 
 def _project(
@@ -35,7 +35,7 @@ class TestDirectImports:
             {"app/application/service.py": "from app.domain.user import User\n"},
         )
 
-        assert violations(root, ONLY_SMT101) == []
+        assert violations(root, ONLY_ARC001) == []
 
     def test_forbidden_dependency_reports_import_line(self, tmp_path: Path) -> None:
         root = _project(
@@ -45,7 +45,7 @@ class TestDirectImports:
             },
         )
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert (found.path, found.line, found.column, found.end_column) == (
             "app/application/service.py",
@@ -60,7 +60,7 @@ class TestDirectImports:
     def test_relative_imports_are_resolved(self, tmp_path: Path) -> None:
         root = _project(tmp_path, {"app/domain/rules.py": "from ..infra import db\n"})
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert (found.layer, found.target_module) == ("domain", "app.infra.db")
 
@@ -69,7 +69,7 @@ class TestDirectImports:
             tmp_path, {"app/domain/order.py": "from app.domain.user import User\n"}
         )
 
-        assert violations(root, ONLY_SMT101) == []
+        assert violations(root, ONLY_ARC001) == []
 
 
 class TestTypeChecking:
@@ -83,13 +83,13 @@ class TestTypeChecking:
     def test_type_checking_imports_count_by_default(self, tmp_path: Path) -> None:
         root = _project(tmp_path, {"app/application/service.py": self.source})
 
-        assert [v.line for v in violations(root, ONLY_SMT101)] == [4]
+        assert [v.line for v in violations(root, ONLY_ARC001)] == [4]
 
     def test_type_checking_imports_can_be_ignored(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG + "  import_graph:\n    type_checking: ignore\n"
         root = _project(tmp_path, {"app/application/service.py": self.source}, config)
 
-        assert violations(root, ONLY_SMT101) == []
+        assert violations(root, ONLY_ARC001) == []
 
 
 INDIRECT_FILES = {
@@ -102,13 +102,13 @@ class TestTransitive:
     def test_indirect_chain_is_ignored_by_default(self, tmp_path: Path) -> None:
         root = _project(tmp_path, INDIRECT_FILES)
 
-        assert violations(root, ONLY_SMT101) == []
+        assert violations(root, ONLY_ARC001) == []
 
     def test_indirect_chain_reports_full_path(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG + "  import_graph:\n    transitive: true\n"
         root = _project(tmp_path, INDIRECT_FILES, config)
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert (
             found.message
@@ -131,7 +131,7 @@ class TestTransitive:
             LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
-        found = violations(root, ONLY_SMT101)
+        found = violations(root, ONLY_ARC001)
 
         assert [(v.source_module, v.target_module) for v in found] == [
             ("app.application.service", "app.infra.db"),
@@ -153,7 +153,7 @@ class TestTransitive:
             LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert [link.imported for link in found.import_chain] == [
             "app.a",
@@ -183,7 +183,7 @@ class TestTransitive:
             + f"  import_graph: {{transitive: true, type_checking: {type_checking}}}\n",
         )
 
-        found = violations(root, ONLY_SMT101)
+        found = violations(root, ONLY_ARC001)
 
         assert len(found) == (1 if type_checking == "include" else 0)
         if found:
@@ -203,7 +203,7 @@ class TestTransitive:
             LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert found.line == 2
         assert found.import_chain == ()
@@ -218,7 +218,7 @@ class TestTransitive:
             LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
-        assert violations(root, ONLY_SMT101) == []
+        assert violations(root, ONLY_ARC001) == []
 
     def test_long_chains_have_no_reexport_hop_limit(self, tmp_path: Path) -> None:
         bridges = [f"app.bridge{i}" for i in range(12)]
@@ -234,7 +234,7 @@ class TestTransitive:
             LAYERED_CONFIG + "  import_graph: {transitive: true}\n",
         )
 
-        [found] = violations(root, ONLY_SMT101)
+        [found] = violations(root, ONLY_ARC001)
 
         assert [link.imported for link in found.import_chain] == [
             *bridges,
@@ -263,6 +263,6 @@ architecture:
         },
     )
 
-    [found] = violations(root, ONLY_SMT101)
+    [found] = violations(root, ONLY_ARC001)
 
     assert found.edge == "values -> adapters"

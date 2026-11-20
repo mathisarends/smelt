@@ -42,7 +42,7 @@ def test_yaml_extension_is_a_single_project_policy(
         f"deploy/compose.{other}",
     } | ({"smelt.yml"} if extension == "yaml" else set())
     assert {v.path for v in report.violations} == expected_paths
-    assert {v.code for v in report.violations} == {"SMT331"}
+    assert {v.code for v in report.violations} == {"LAY007"}
     assert all(v.line is None for v in report.violations)
     assert all(
         v.expected is not None and v.expected["yaml_extension"] == extension
@@ -73,8 +73,8 @@ def test_compose_basename_preserves_variants_and_does_not_choose_an_extension(
     )
     found = check(tmp_path).report.violations
     assert {(v.code, v.path, (v.expected or {})["path"]) for v in found} == {
-        ("SMT331", f"{other}.yml", f"{basename}.yml"),
-        ("SMT331", f"deploy/{other}.prod.eu.yaml", f"deploy/{basename}.prod.eu.yaml"),
+        ("LAY007", f"{other}.yml", f"{basename}.yml"),
+        ("LAY007", f"deploy/{other}.prod.eu.yaml", f"deploy/{basename}.prod.eu.yaml"),
     }
 
 
@@ -94,7 +94,7 @@ def test_both_policies_combine_into_one_finding_per_file(
     found = check(tmp_path).report.violations
     [finding] = found
     assert (finding.code, finding.path) == (
-        "SMT331",
+        "LAY007",
         "deploy/docker-compose.override.yaml",
     )
     assert finding.expected == {
@@ -122,7 +122,7 @@ def test_missing_policies_allow_both_spellings_even_when_selected(
             "docker-compose.yaml": "",
         },
     )
-    outcome = check(tmp_path, CheckOptions(select=("SMT33",)))
+    outcome = check(tmp_path, CheckOptions(select=("LAY007",)))
     assert not outcome.report.violations
 
 
@@ -135,7 +135,7 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
             )
             + "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
             + "rules: {layout/file-name-convention: warning}\n"
-            + "ignore:\n  - {rule: SMT331, paths: ['special.yaml'], reason: External contract}\n",
+            + "ignore:\n  - {rule: LAY007, paths: ['special.yaml'], reason: External contract}\n",
             "app/__init__.py": "",
             "vendor/docker-compose.yaml": "",
             "special.yaml": "",
@@ -145,7 +145,7 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
     )
     report = check(tmp_path, CheckOptions(paths=("deploy/docker-compose.yaml",))).report
     assert [(v.code, v.path, v.severity.value) for v in report.violations] == [
-        ("SMT331", "deploy/docker-compose.yaml", "warning")
+        ("LAY007", "deploy/docker-compose.yaml", "warning")
     ]
     assert report.checked_files == 1
 
@@ -167,7 +167,7 @@ def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
     cached = check(tmp_path).report
     fresh = check(tmp_path, CheckOptions(use_cache=False)).report
     assert cached.violations == fresh.violations
-    assert [v.code for v in cached.violations] == ["SMT331"]
+    assert [v.code for v in cached.violations] == ["LAY007"]
     (tmp_path / "docker-compose.yaml").unlink()
     assert not check(tmp_path).report.violations
 

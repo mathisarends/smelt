@@ -13,11 +13,11 @@ if TYPE_CHECKING:
 
 
 class FileNameConvention(Rule):
-    code = "SMT331"
+    code = "LAY007"
     name = "layout/file-name-convention"
     category = Category.LAYOUT
     scope = "project"
-    activation = POLICIES["SMT331"]
+    activation = POLICIES["LAY007"]
     requires = frozenset({Index.FILES})
     doc = RuleDoc(
         summary="A YAML or Compose filename differs from the project's canonical spelling.",

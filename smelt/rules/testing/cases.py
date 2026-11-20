@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class IndependentTestCaseLoop(Rule):
     test_local = True
     scope = "test"
-    code = "SMT427"
+    code = "TST009"
     name = "tests/independent-case-loop"
     category = Category.TESTS
     default_severity = Severity.HINT

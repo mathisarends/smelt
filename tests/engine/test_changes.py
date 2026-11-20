@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
 
 @pytest.mark.parametrize(
-    ("code", "count"), [("SMT107", 2), ("SMT108", 1), ("SMT319", 1)]
+    ("code", "count"), [("ARC007", 2), ("IMP001", 1), ("IMP004", 1)]
 )
 def test_changed_checks_find_new_deep_test_imports(
     tmp_path: Path, code: str, count: int
@@ -79,7 +79,7 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "accept duplicate group")
-    options = CheckOptions(changed=True, select=("SMT338",))
+    options = CheckOptions(changed=True, select=("TYP005",))
     assert not violations(tmp_path, options)
     write_policy_project(
         tmp_path, {"app/third.py": source.replace("def first", "def third")}
@@ -87,7 +87,7 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     for use_cache in (True, True, False):
         found = violations(
             tmp_path,
-            CheckOptions(changed=True, select=("SMT338",), use_cache=use_cache),
+            CheckOptions(changed=True, select=("TYP005",), use_cache=use_cache),
         )
         assert [v.path for v in found] == ["app/third.py"]
     (tmp_path / "app/first.py").write_text(
@@ -121,18 +121,18 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing imports")
-    options = CheckOptions(changed=True, select=("SMT110",))
+    options = CheckOptions(changed=True, select=("IMP002",))
     assert violations(root, options) == []
     write_policy_project(
         root,
         {"app/client.py": source.replace("second import Second", "third import Third")},
     )
     [finding] = violations(root, options)
-    assert (finding.code, finding.path) == ("SMT110", "app/client.py")
+    assert (finding.code, finding.path) == ("IMP002", "app/client.py")
     assert finding.expected is not None
     assert finding.expected["modules"] == ["app.first", "app.third"]
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT110",), use_cache=False)
+        root, CheckOptions(changed=True, select=("IMP002",), use_cache=False)
     ) == [finding]
 
 
@@ -152,7 +152,7 @@ def test_changed_private_definitions_detect_new_names(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing private definitions")
-    options = CheckOptions(changed=True, select=("SMT367",))
+    options = CheckOptions(changed=True, select=("VIS007",))
     assert violations(root, options) == []
     # Moving declarations and adding constants do not add counted definitions.
     write_policy_project(root, {"app/client.py": "_LIMIT = 10\n" + "\n" + source})
@@ -164,11 +164,11 @@ def test_changed_private_definitions_detect_new_names(
     )
     write_policy_project(root, {"app/client.py": updated})
     [finding] = violations(root, options)
-    assert (finding.code, finding.path) == ("SMT367", "app/client.py")
+    assert (finding.code, finding.path) == ("VIS007", "app/client.py")
     assert finding.expected is not None
     assert "class:_Added" in finding.expected["definition_edges"]
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT367",), use_cache=False)
+        root, CheckOptions(changed=True, select=("VIS007",), use_cache=False)
     ) == [finding]
     write_policy_project(root, {"app/client.py": "class _First: pass\n"})
     assert violations(root, options) == []
@@ -189,7 +189,7 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing comprehension")
-    options = CheckOptions(changed=True, select=("SMT363",))
+    options = CheckOptions(changed=True, select=("CPX006",))
     assert violations(root, options) == []
     write_policy_project(
         root,
@@ -200,11 +200,11 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
         },
     )
     [finding] = violations(root, options)
-    assert (finding.code, finding.line) == ("SMT363", 1)
+    assert (finding.code, finding.line) == ("CPX006", 1)
     assert finding.expected is not None
     assert "nontrivial conditional element" in finding.expected["conditions"]
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT363",), use_cache=False)
+        root, CheckOptions(changed=True, select=("CPX006",), use_cache=False)
     ) == [finding]
 
 
@@ -223,17 +223,17 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing constructor decision")
-    options = CheckOptions(changed=True, select=("SMT364",))
+    options = CheckOptions(changed=True, select=("CPX007",))
     assert violations(root, options) == []
     write_policy_project(
         root, {"app/client.py": source + "        self.other = [x for x in values]\n"}
     )
     [finding] = violations(root, options)
-    assert (finding.code, finding.line) == ("SMT364", 2)
+    assert (finding.code, finding.line) == ("CPX007", 2)
     assert finding.expected is not None
     assert finding.expected["count"] == 2
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT364",), use_cache=False)
+        root, CheckOptions(changed=True, select=("CPX007",), use_cache=False)
     ) == [finding]
 
 
@@ -253,7 +253,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "accept existing ownership")
-    options = CheckOptions(changed=True, select=("SMT339",))
+    options = CheckOptions(changed=True, select=("VIS005",))
     assert violations(root, options) == []
     (root / "app/__init__.py").write_text(
         "from .second import Store as PublicStore\n", encoding="utf-8"
@@ -262,7 +262,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     assert finding.target_module == "app.second.Store._data"
     assert finding.path == "app/client.py"
     assert violations(
-        root, CheckOptions(changed=True, select=("SMT339",), use_cache=False)
+        root, CheckOptions(changed=True, select=("VIS005",), use_cache=False)
     ) == [finding]
 
 
@@ -278,12 +278,12 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "initial")
-    options = CheckOptions(changed=True, select=("SMT33",))
+    options = CheckOptions(changed=True, select=("LAY007",))
     assert not violations(tmp_path, options)
     write_policy_project(tmp_path, {"deploy/docker-compose.prod.yaml": ""})
     found = violations(tmp_path, options)
     assert [(v.code, v.path) for v in found] == [
-        ("SMT331", "deploy/docker-compose.prod.yaml"),
+        ("LAY007", "deploy/docker-compose.prod.yaml"),
     ]
     (tmp_path / "deploy/docker-compose.prod.yaml").rename(
         tmp_path / "deploy/compose.prod.yml"
@@ -309,7 +309,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "initial")
-    options = CheckOptions(select=("SMT109",), changed=True)
+    options = CheckOptions(select=("ARC008",), changed=True)
     assert violations(tmp_path, options) == []
     write_policy_project(tmp_path, {"app/second.py": caller})
     [finding] = violations(tmp_path, options)
@@ -369,7 +369,7 @@ def test_changed_optional_defaults_distinguish_a_replaced_function(repo: Path) -
     write_policy_project(repo, {"app/application/service.py": original})
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "existing optional default")
-    options = CheckOptions(changed=True, select=("SMT321",))
+    options = CheckOptions(changed=True, select=("TYP003",))
     write_policy_project(repo, {"app/application/service.py": "\n\n" + original})
     assert violations(repo, options) == []
     write_policy_project(
@@ -460,7 +460,7 @@ class TestChangedMode:
         write_policy_project(repo, {"app/application/service.py": source})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "existing navigation")
-        options = CheckOptions(changed=True, select=("SMT322",))
+        options = CheckOptions(changed=True, select=("CPX001",))
         assert violations(repo, options) == []
         write_policy_project(
             repo,
@@ -472,15 +472,15 @@ class TestChangedMode:
 
         [finding] = violations(repo, options)
 
-        assert finding.code == "SMT322"
+        assert finding.code == "CPX001"
         assert finding.line == 4
 
     @pytest.mark.parametrize(
         ("code", "policy", "decorator"),
         [
-            ("SMT316", "rules: {visibility/internal-public-member: warning}", ""),
+            ("VIS001", "rules: {visibility/internal-public-member: warning}", ""),
             (
-                "SMT317",
+                "LAY005",
                 "rules: {layout/misplaced-static-helper: hint}",
                 "    @staticmethod\n",
             ),
@@ -528,7 +528,7 @@ class TestChangedMode:
         _git(repo, "commit", "-q", "-m", "external method user")
         write_policy_project(repo, {"app/application/consumer.py": ""})
 
-        [finding] = violations(repo, CheckOptions(changed=True, select=("SMT316",)))
+        [finding] = violations(repo, CheckOptions(changed=True, select=("VIS001",)))
 
         assert (finding.path, finding.line) == ("app/application/service.py", 2)
         assert finding.expected is not None
@@ -538,13 +538,13 @@ class TestChangedMode:
         ("expected", "policy", "source", "test"),
         [
             (
-                ("SMT429", 1),
+                ("VIS009", 1),
                 "visibility/test-only-public-function",
                 "def helper(): pass\ndef run(): helper()",
                 "from app.application.service import helper",
             ),
             (
-                ("SMT430", 2),
+                ("VIS010", 2),
                 "visibility/test-only-public-attribute",
                 "class Worker:\n    def __init__(self): self.pending = []",
                 "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
@@ -581,13 +581,13 @@ class TestChangedMode:
         ("code", "policy", "source", "test"),
         [
             (
-                "SMT429",
+                "VIS009",
                 "visibility/test-only-public-function",
                 "def helper(): pass",
                 "from app.application.service import helper",
             ),
             (
-                "SMT430",
+                "VIS010",
                 "visibility/test-only-public-attribute",
                 "class Worker:\n    def __init__(self): self.pending = []",
                 "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []",
@@ -630,14 +630,14 @@ class TestChangedMode:
         _git(repo, "commit", "-q", "-m", "before additional attribute test")
         write_policy_project(repo, {"tests/test_other.py": test})
 
-        findings = violations(repo, CheckOptions(changed=True, select=("SMT430",)))
+        findings = violations(repo, CheckOptions(changed=True, select=("VIS010",)))
 
         if existing_exposure:
             assert findings == []
         else:
             [finding] = findings
             assert (finding.code, finding.path, finding.line) == (
-                "SMT430",
+                "VIS010",
                 "app/application/service.py",
                 2,
             )
@@ -664,7 +664,7 @@ class TestChangedMode:
             },
         )
 
-        found = violations(repo, CheckOptions(changed=True, select=("SMT313",)))
+        found = violations(repo, CheckOptions(changed=True, select=("LAY004",)))
 
         assert len(found) == 1
         assert found[0].expected is not None
@@ -683,7 +683,7 @@ class TestChangedMode:
             repo,
             {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
         )
-        options = CheckOptions(select=("SMT313",))
+        options = CheckOptions(select=("LAY004",))
         baseline = Debt.from_violations(violations(repo, options), lambda _: "")
         write_policy_project(
             repo,
@@ -722,7 +722,7 @@ class TestChangedMode:
             },
         )
 
-        assert violations(repo, CheckOptions(changed=True, select=("SMT313",))) == []
+        assert violations(repo, CheckOptions(changed=True, select=("LAY004",))) == []
 
     def test_new_private_module_names_are_reported_without_repeating_existing_ones(
         self, repo: Path
@@ -738,10 +738,10 @@ class TestChangedMode:
         _git(repo, "commit", "-q", "-m", "declare module naming convention")
         write_policy_project(repo, {"app/domain/_new.py": ""})
 
-        found = violations(repo, CheckOptions(changed=True, select=("SMT312",)))
+        found = violations(repo, CheckOptions(changed=True, select=("LAY003",)))
 
         assert [(v.code, v.source_module) for v in found] == [
-            ("SMT312", "app.domain._new")
+            ("LAY003", "app.domain._new")
         ]
 
     def test_import_conventions_are_checked_for_new_changes(self, repo: Path) -> None:
@@ -766,10 +766,10 @@ class TestChangedMode:
         )
 
         found = violations(
-            repo, CheckOptions(changed=True, select=("SMT108", "SMT308"))
+            repo, CheckOptions(changed=True, select=("IMP001", "IMP003"))
         )
 
-        assert {v.code for v in found} == {"SMT108", "SMT308"}
+        assert {v.code for v in found} == {"IMP001", "IMP003"}
 
     def test_deleting_a_required_entry_point_is_a_new_finding(self, repo: Path) -> None:
         config = repo / "smelt.yml"
@@ -783,10 +783,10 @@ class TestChangedMode:
         _git(repo, "commit", "-q", "-m", "add package contract")
         (repo / "app/domain/api.py").unlink()
 
-        found = violations(repo, CheckOptions(changed=True, select=("SMT307",)))
+        found = violations(repo, CheckOptions(changed=True, select=("ARC014",)))
 
         assert [(v.code, v.target_module) for v in found] == [
-            ("SMT307", "app.domain.api")
+            ("ARC014", "app.domain.api")
         ]
 
     def test_new_private_import_is_reported_but_existing_one_is_not(
@@ -804,10 +804,10 @@ class TestChangedMode:
             repo, {"app/application/service.py": "from app.infra import db\n"}
         )
 
-        found = violations(repo, CheckOptions(changed=True, select=("SMT107",)))
+        found = violations(repo, CheckOptions(changed=True, select=("ARC007",)))
 
         assert [(v.code, v.source_module) for v in found] == [
-            ("SMT107", "app.application.service")
+            ("ARC007", "app.application.service")
         ]
 
     def test_existing_coverage_gaps_remain_visible_in_changed_mode(
@@ -820,7 +820,7 @@ class TestChangedMode:
 
         [found] = violations(repo, CheckOptions(changed=True))
 
-        assert (found.code, found.path) == ("SMT306", "client/api.py")
+        assert (found.code, found.path) == ("ARC013", "client/api.py")
 
     def test_first_python_package_after_a_committed_readme(
         self, tmp_path: Path
@@ -841,7 +841,7 @@ class TestChangedMode:
 
         found = violations(tmp_path, CheckOptions(changed=True))
 
-        assert codes_at(found) == [("SMT101", "app/domain/model.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/domain/model.py", 1)]
 
     def test_invalid_historical_source_is_still_an_error(self, repo: Path) -> None:
         path = repo / "app/domain/model.py"
@@ -875,7 +875,7 @@ class TestChangedMode:
             },
         )
 
-        [found] = violations(repo, CheckOptions(changed=True, select=("SMT101",)))
+        [found] = violations(repo, CheckOptions(changed=True, select=("ARC001",)))
 
         assert found.target_module == "app.presentation.api"
         assert found.edge == "domain -> presentation"
@@ -916,7 +916,7 @@ class TestChangedMode:
         _git(repo, "commit", "-qm", "Existing cyclic group")
         write_edges(after)
 
-        found = violations(repo, CheckOptions(changed=True, select=("SMT104",)))
+        found = violations(repo, CheckOptions(changed=True, select=("ARC004",)))
 
         assert bool(found) is introduced
 
@@ -931,7 +931,7 @@ class TestChangedMode:
                 "app/domain/c.py": "VALUE = 1\n",
             },
         )
-        options = CheckOptions(select=("SMT104",))
+        options = CheckOptions(select=("ARC004",))
         debt = Debt.from_violations(violations(repo, options), lambda v: "")
         write_policy_project(
             repo,
@@ -1008,7 +1008,7 @@ class TestChangedMode:
 
         found = violations(repo, CheckOptions(changed=True))
 
-        assert codes_at(found) == [("SMT101", "app/application/service.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/application/service.py", 1)]
 
     def test_full_check_still_sees_old_violations(self, repo: Path) -> None:
         (repo / "app/application/service.py").write_text("from app.infra import db\n")
@@ -1032,7 +1032,7 @@ class TestChangedMode:
 
         found = violations(repo, CheckOptions(changed=True))
 
-        assert codes_at(found) == [("SMT101", "app/application/new.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/application/new.py", 1)]
 
     def test_base_compares_against_merge_base(self, repo: Path) -> None:
         _git(repo, "checkout", "-q", "-b", "feature")
@@ -1041,4 +1041,4 @@ class TestChangedMode:
 
         found = violations(repo, CheckOptions(changed=True, base="main"))
 
-        assert codes_at(found) == [("SMT101", "app/application/service.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/application/service.py", 1)]

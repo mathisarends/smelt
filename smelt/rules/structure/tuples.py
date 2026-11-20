@@ -19,7 +19,7 @@ _EXEMPT_DECORATORS = frozenset({"override", "overload"})
 
 class AnonymousTupleType(Rule):
     file_local = True
-    code = "SMT347"
+    code = "TYP007"
     name = "typing/anonymous-tuple-type"
     category = Category.TYPING
     default_severity = Severity.HINT
@@ -55,7 +55,7 @@ class AnonymousTupleType(Rule):
             "dataclass that names each field, and use it in place of the tuple. "
             "Keep a tuple whose shape an external API dictates with a reasoned "
             "suppression. No automatic rewrite is performed. Enable rules: "
-            "{typing/anonymous-tuple-type: hint}, or select SMT347."
+            "{typing/anonymous-tuple-type: hint}, or select TYP007."
         ),
         config=("rules",),
     )

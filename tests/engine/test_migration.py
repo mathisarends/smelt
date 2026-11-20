@@ -27,10 +27,10 @@ def test_configured_coverage_is_dropped_with_an_empty_project() -> None:
 
 def test_strict_coverage_keeps_an_existing_guard_setting() -> None:
     migrated = migrate_policy(
-        "version: 1\nproject: {coverage: strict}\nrules: {SMT306: error}\n"
+        "version: 1\nproject: {coverage: strict}\nrules: {ARC013: error}\n"
     )
 
-    assert yaml.safe_load(migrated.text)["rules"] == {"SMT306": "error"}
+    assert yaml.safe_load(migrated.text)["rules"] == {"ARC013": "error"}
 
 
 def test_enable_rules_adds_missing_entries_and_keeps_comments() -> None:
@@ -40,16 +40,16 @@ def test_enable_rules_adds_missing_entries_and_keeps_comments() -> None:
         text,
         [
             (("rules",), "architecture/layer-boundary", "error"),
-            (("style", "overrides", "api", "rules"), "SMT345", "warning"),
+            (("style", "overrides", "api", "rules"), "CPX003", "warning"),
         ],
     )
 
     assert "# policy" in migrated.text
     data = yaml.safe_load(migrated.text)
     assert data["rules"] == {"architecture/layer-boundary": "hint"}
-    assert data["style"]["overrides"]["api"]["rules"] == {"SMT345": "warning"}
+    assert data["style"]["overrides"]["api"]["rules"] == {"CPX003": "warning"}
     assert migrated.notes == (
-        "Enabled SMT345 in style.overrides.api.rules; its policy enabled it implicitly before.",
+        "Enabled CPX003 in style.overrides.api.rules; its policy enabled it implicitly before.",
     )
 
 
@@ -60,20 +60,20 @@ def test_enable_rules_without_entries_keeps_the_text() -> None:
 
 
 def test_enable_rules_appends_before_the_blank_line_closing_the_map() -> None:
-    text = "rules:\n  SMT104: error\n\nproject: {}\n"
+    text = "rules:\n  ARC004: error\n\nproject: {}\n"
 
-    migrated = enable_rules(text, [(("rules",), "SMT101", "error")])
+    migrated = enable_rules(text, [(("rules",), "ARC001", "error")])
 
-    assert migrated.text == "rules:\n  SMT104: error\n  SMT101: error\n\nproject: {}\n"
+    assert migrated.text == "rules:\n  ARC004: error\n  ARC001: error\n\nproject: {}\n"
 
 
 def test_enable_rules_keeps_the_inline_comment_of_the_last_entry() -> None:
-    text = "rules:\n  SMT104: error  # keep\n\nproject: {}\n"
+    text = "rules:\n  ARC004: error  # keep\n\nproject: {}\n"
 
-    migrated = enable_rules(text, [(("rules",), "SMT101", "error")])
+    migrated = enable_rules(text, [(("rules",), "ARC001", "error")])
 
     assert migrated.text == (
-        "rules:\n  SMT104: error  # keep\n  SMT101: error\n\nproject: {}\n"
+        "rules:\n  ARC004: error  # keep\n  ARC001: error\n\nproject: {}\n"
     )
 
 
@@ -106,14 +106,14 @@ rules:
         "tests/excess-patches": {"severity": "error", "max": 0},
     }
     overrides = data["style"]["overrides"]
-    # The root enables SMT345, so the override refines only the limit.
+    # The root enables CPX003, so the override refines only the limit.
     assert overrides["api"]["rules"] == {
         "complexity/excess-positional-parameters": {
             "max": 2,
             "reason": "Handlers take named input.",
         }
     }
-    # The override option enabled SMT363 there, so its entry keeps the default severity.
+    # The override option enabled CPX006 there, so its entry keeps the default severity.
     assert overrides["jobs"]["rules"] == {
         "complexity/excess-comprehension-loops": {"severity": "hint", "max": 2}
     }
@@ -127,3 +127,13 @@ rules:
         "style.overrides.jobs.rules.complexity/excess-comprehension-loops.max.",
         "Updated version 1 to version 2.",
     )
+
+
+def test_pre_family_codes_become_rule_names() -> None:
+    migrated = migrate_policy(
+        "version: 2\nrules: {SMT345: error}\nignore:\n  - {rule: SMT101, paths: [a.py]}\n"
+    )
+
+    data = yaml.safe_load(migrated.text)
+    assert data["rules"] == {"complexity/excess-positional-parameters": "error"}
+    assert data["ignore"] == [{"rule": "ARC001", "paths": ["a.py"]}]

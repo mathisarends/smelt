@@ -29,7 +29,7 @@ class _Site:
 
 
 class DuplicateNarrowingAssert(Rule):
-    code = "SMT356"
+    code = "IDM007"
     name = "idioms/duplicate-narrowing-assert"
     category = Category.IDIOMS
     default_severity = Severity.WARNING
@@ -73,7 +73,7 @@ class DuplicateNarrowingAssert(Rule):
             "is used, or read it through one property or accessor that raises "
             "an error naming the missing setup step. No automatic rewrite is "
             "performed. Enable rules: {idioms/duplicate-narrowing-assert: warning}, or "
-            "select SMT356."
+            "select IDM007."
         ),
         config=("rules",),
     )

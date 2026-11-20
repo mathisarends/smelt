@@ -48,7 +48,7 @@ class _Duration:
 
 
 class ImplicitDurationUnit(Rule):
-    code = "SMT357"
+    code = "MOD010"
     name = "modeling/implicit-duration-unit"
     category = Category.MODELING
     default_severity = Severity.WARNING
@@ -98,7 +98,7 @@ class ImplicitDurationUnit(Rule):
             "or configuration field whose name states its purpose and unit, and "
             "reuse it at every call site that means the same wait. No automatic "
             "rewrite is performed. Enable rules: {modeling/implicit-duration-unit: "
-            "warning}, or select SMT357."
+            "warning}, or select MOD010."
         ),
         config=("rules",),
     )

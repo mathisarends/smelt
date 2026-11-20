@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT103 = CheckOptions(select=("SMT103",))
+ONLY_ARC003 = CheckOptions(select=("ARC003",))
 
 
 def _project(
@@ -53,7 +53,7 @@ class TestDefaultDeny:
     ) -> None:
         root = _project(tmp_path, policy, "import sqlalchemy.orm, sqlalchemy.sql\n")
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert found.target_module == "sqlalchemy"
         assert found.column == 1
@@ -72,7 +72,7 @@ class TestDefaultDeny:
     ) -> None:
         root = _project(tmp_path, self.policy, source)
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert found.target_module == (
             "sqlalchemy" if "sqlalchemy" in source else "requests"
@@ -96,7 +96,7 @@ class TestDefaultDeny:
             "from requests import Session; from requests import get\n",
         )
 
-        found = violations(root, ONLY_SMT103)
+        found = violations(root, ONLY_ARC003)
 
         assert len(found) == 2
         assert found[0].column != found[1].column
@@ -108,7 +108,7 @@ class TestDefaultDeny:
             "import pydantic.fields\nfrom sqlalchemy.orm import Mapped\n",
         )
 
-        assert violations(root, ONLY_SMT103) == []
+        assert violations(root, ONLY_ARC003) == []
 
     def test_standard_library_is_never_third_party(self, tmp_path: Path) -> None:
         root = _project(
@@ -117,12 +117,12 @@ class TestDefaultDeny:
             "from __future__ import annotations\nimport os\nimport json.decoder\n",
         )
 
-        assert violations(root, ONLY_SMT103) == []
+        assert violations(root, ONLY_ARC003) == []
 
     def test_other_package_lists_what_is_allowed(self, tmp_path: Path) -> None:
         root = _project(tmp_path, self.policy, "import requests\n")
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert (
             found.message
@@ -132,12 +132,12 @@ class TestDefaultDeny:
     def test_parent_of_allowed_submodule_is_denied(self, tmp_path: Path) -> None:
         root = _project(tmp_path, self.policy, "from sqlalchemy import text\n")
 
-        assert [v.code for v in violations(root, ONLY_SMT103)] == ["SMT103"]
+        assert [v.code for v in violations(root, ONLY_ARC003)] == ["ARC003"]
 
     def test_short_form_deny_allows_nothing(self, tmp_path: Path) -> None:
         root = _project(tmp_path, "deny", "import attrs\n")
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert (
             found.message
@@ -153,7 +153,7 @@ class TestDefaultAllow:
             "from fastapi.routing import APIRouter\nimport httpx\n",
         )
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert (found.line, found.message) == (
             1,
@@ -179,7 +179,7 @@ class TestTransitive:
             },
         )
 
-        found = violations(root, ONLY_SMT103)
+        found = violations(root, ONLY_ARC003)
 
         assert len(found) == int(transitive)
         if found:
@@ -222,7 +222,7 @@ class TestTransitive:
         )
         write_project(root, {"app/bridge.py": statement})
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert found.target_module == "sqlalchemy"
         assert found.import_chain[-1].importer == "app.bridge"
@@ -244,7 +244,7 @@ class TestTransitive:
             },
         )
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert [link.imported for link in found.import_chain] == ["app.b", "sqlalchemy"]
 
@@ -259,7 +259,7 @@ class TestTransitive:
             root, {"app/bridge.py": "import os\nfrom sqlalchemy.orm import Session\n"}
         )
 
-        assert violations(root, ONLY_SMT103) == []
+        assert violations(root, ONLY_ARC003) == []
 
     def test_one_shortest_report_per_denied_package(self, tmp_path: Path) -> None:
         root = _project(tmp_path, "deny", "from app import a, b\n", transitive=True)
@@ -271,7 +271,7 @@ class TestTransitive:
             },
         )
 
-        [found] = violations(root, ONLY_SMT103)
+        [found] = violations(root, ONLY_ARC003)
 
         assert [link.imported for link in found.import_chain] == ["app.a", "requests"]
 
@@ -298,4 +298,4 @@ class TestTransitive:
             encoding="utf-8",
         )
 
-        assert len(violations(root, ONLY_SMT103)) == int(type_checking == "include")
+        assert len(violations(root, ONLY_ARC003)) == int(type_checking == "include")

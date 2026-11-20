@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT339",))
+SELECT = CheckOptions(select=("VIS005",))
 
 
 def _symbol_project(tmp_path: Path, client: str, *, config: str = CONFIG) -> Path:
@@ -89,7 +89,7 @@ def test_reports_project_private_imports_and_qualified_reads(
     root = _symbol_project(tmp_path, client)
     before = (root / "app/client.py").read_bytes()
     [finding] = violations(root, SELECT)
-    assert finding.code == "SMT339"
+    assert finding.code == "VIS005"
     assert finding.severity is Severity.WARNING
     assert finding.source_module == "app.client"
     assert finding.target_module == "app.service"
@@ -151,7 +151,7 @@ def test_import_locations_and_multiline_suppression_are_alias_specific(
     root = _symbol_project(
         tmp_path,
         "from .service import (\n"
-        "    _helper as helper,  # smelt: ignore[SMT339] -- Compatibility adapter.\n"
+        "    _helper as helper,  # smelt: ignore[VIS005] -- Compatibility adapter.\n"
         "    _Service,\n)\n",
     )
     [finding] = violations(root, SELECT)
@@ -231,14 +231,14 @@ def test_public_reexport_stays_public_and_private_module_names_are_separate(
     assert finding.expected["private_target"] == "app._impl._helper"
 
 
-def test_test_files_remain_exclusively_with_smt420(tmp_path: Path) -> None:
+def test_test_files_remain_exclusively_with_tst002(tmp_path: Path) -> None:
     root = _symbol_project(tmp_path, "")
     write_policy_project(
         root,
         {"tests/test_service.py": "from app.service import _helper\n"},
     )
-    found = violations(root, CheckOptions(select=("SMT339", "SMT420")))
-    assert [(v.code, v.path) for v in found] == [("SMT420", "tests/test_service.py")]
+    found = violations(root, CheckOptions(select=("VIS005", "TST002")))
+    assert [(v.code, v.path) for v in found] == [("TST002", "tests/test_service.py")]
 
 
 def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None:
@@ -248,8 +248,8 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
         root, CheckOptions(select=("visibility/foreign-private-access",))
     )
     assert finding.severity is Severity.WARNING
-    assert [v.code for v in violations(root, CheckOptions(select=("SMT33",)))] == [
-        "SMT339"
+    assert [v.code for v in violations(root, CheckOptions(select=("VIS005",)))] == [
+        "VIS005"
     ]
     write_policy_project(
         root,
@@ -277,7 +277,7 @@ def test_cross_module_definition_changes_invalidate_cached_decisions(
     for definitions in ("", "from third_party import _helper\n", "_helper = 1\n"):
         write_policy_project(root, {"app/service.py": definitions})
         cached = violations(root, SELECT)
-        fresh = violations(root, CheckOptions(select=("SMT339",), use_cache=False))
+        fresh = violations(root, CheckOptions(select=("VIS005",), use_cache=False))
         assert cached == fresh
         assert len(cached) == (1 if definitions == "_helper = 1\n" else 0)
 
@@ -354,7 +354,7 @@ def test_reports_resolved_private_operations(
     source = f"from app.session import SessionLog\ndef persist(log: SessionLog):\n    {expression}\n"
     root = _attribute_project(tmp_path, source)
     [finding] = violations(root, SELECT)
-    assert (finding.code, finding.path, finding.line) == ("SMT339", "app/client.py", 3)
+    assert (finding.code, finding.path, finding.line) == ("VIS005", "app/client.py", 3)
     assert finding.severity == Severity.WARNING
     assert finding.target_module == f"app.session.SessionLog.{attribute}"
     assert finding.expected == {
@@ -570,7 +570,7 @@ def test_opt_in_package_off_suppression_and_test_exclusion(tmp_path: Path) -> No
     root = _attribute_project(
         tmp_path, source, settings="style: {private_attribute_boundary: module}\n"
     )
-    assert [v.code for v in violations(root)] == ["SMT339"]
+    assert [v.code for v in violations(root)] == ["VIS005"]
     write_policy_project(
         root,
         {
@@ -585,7 +585,7 @@ style:
             "app/quiet/client.py": source,
             "app/intentional.py": source.replace(
                 "return log._images",
-                "return log._images  # smelt: ignore[SMT339] -- reviewed storage adapter",
+                "return log._images  # smelt: ignore[VIS005] -- reviewed storage adapter",
             ),
             "tests/test_client.py": source,
         },
@@ -603,7 +603,7 @@ def test_cache_tracks_owner_changes_in_unchanged_consumers(tmp_path: Path) -> No
         OWNER.replace("self._images", "self.images"), encoding="utf-8"
     )
     assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("SMT339",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == []
 
 
 def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -> None:
@@ -625,12 +625,12 @@ def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -
     )
     [after] = violations(root, SELECT)
     assert after.target_module == "app.alternate.SessionLog._images"
-    assert violations(root, CheckOptions(select=("SMT339",), use_cache=False)) == [
+    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == [
         after
     ]
     (root / "app/alternate.py").unlink()
     assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("SMT339",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == []
 
 
 @pytest.mark.parametrize(

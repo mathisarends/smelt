@@ -65,7 +65,7 @@ architecture:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT301",)))
+        found = violations(root, CheckOptions(select=("ARC011",)))
         assert [v.source_module for v in found] == ["app.error.unknown"]
 
     @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ architecture:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT301",)))
+        found = violations(root, CheckOptions(select=("ARC011",)))
 
         assert [v.source_module for v in found] == ["gw.features.voice.stray"]
 
@@ -104,12 +104,12 @@ architecture:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT301",))) == []
+        assert violations(root, CheckOptions(select=("ARC011",))) == []
 
     def test_undeclared_package_in_feature(self, tmp_path: Path) -> None:
         root = _features(tmp_path, {"gw/features/voice/models/__init__.py": ""})
 
-        [found] = violations(root, CheckOptions(select=("SMT301",)))
+        [found] = violations(root, CheckOptions(select=("ARC011",)))
 
         assert found.path == "gw/features/voice/models/__init__.py"
         assert found.message == (
@@ -127,14 +127,14 @@ architecture:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT301",)))
+        found = violations(root, CheckOptions(select=("ARC011",)))
 
         assert [v.source_module for v in found] == ["gw.features.voice.infra.queues"]
 
     def test_namespace_package_without_init(self, tmp_path: Path) -> None:
         root = _features(tmp_path, {"gw/features/voice/misc/thing.py": ""})
 
-        [found] = violations(root, CheckOptions(select=("SMT301",)))
+        [found] = violations(root, CheckOptions(select=("ARC011",)))
 
         assert found.path == "gw/features/voice/misc"
 
@@ -149,14 +149,14 @@ architecture:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT301",)))
+        found = violations(root, CheckOptions(select=("ARC011",)))
 
         assert [v.source_module for v in found] == ["app.cli"]
 
     def test_loose_module_in_feature(self, tmp_path: Path) -> None:
         root = _features(tmp_path, {"gw/features/voice/helpers.py": ""})
 
-        [found] = violations(root, CheckOptions(select=("SMT301",)))
+        [found] = violations(root, CheckOptions(select=("ARC011",)))
 
         assert found.path == "gw/features/voice/helpers.py"
         assert found.message == (
@@ -179,7 +179,7 @@ architecture:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT301",)))
+        found = violations(root, CheckOptions(select=("ARC011",)))
 
         assert [v.source_module for v in found] == ["gw.features.voice.infra.config"]
 
@@ -194,16 +194,16 @@ architecture:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT301",))) == []
+        assert violations(root, CheckOptions(select=("ARC011",))) == []
 
 
 class TestUnclassifiedModule:
     def test_only_modules_outside_the_model(self, tmp_path: Path) -> None:
         root = _features(tmp_path, {"gw/settings.py": ""})
 
-        found = violations(root, CheckOptions(select=("SMT305",)))
+        found = violations(root, CheckOptions(select=("ARC012",)))
 
-        assert codes_at(found) == [("SMT305", "gw/settings.py", None)]
+        assert codes_at(found) == [("ARC012", "gw/settings.py", None)]
 
     def test_skips_root_packages_outside_the_architecture(self, tmp_path: Path) -> None:
         root = _features(
@@ -215,7 +215,7 @@ class TestUnclassifiedModule:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT305",))) == []
+        assert violations(root, CheckOptions(select=("ARC012",))) == []
 
     def test_silent_without_layers_or_features(self, tmp_path: Path) -> None:
         root = write_project(
@@ -227,4 +227,4 @@ class TestUnclassifiedModule:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT305",))) == []
+        assert violations(root, CheckOptions(select=("ARC012",))) == []

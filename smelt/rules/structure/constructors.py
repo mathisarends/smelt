@@ -30,7 +30,7 @@ _DECISIONS = (
 
 class ConstructorLogic(Rule):
     file_local = True
-    code = "SMT364"
+    code = "CPX007"
     name = "complexity/excess-constructor-decisions"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
@@ -68,7 +68,7 @@ class ConstructorLogic(Rule):
             "or classmethod and assign its result. Preserve evaluation order, exceptions "
             "and initialization side effects. Do not extract arbitrary fragments merely "
             "to lower a count. No automatic rewrite is performed. Enable rules: "
-            "{complexity/excess-constructor-decisions: hint} or select SMT364; "
+            "{complexity/excess-constructor-decisions: hint} or select CPX007; "
             "set max on the entry, in the root or a style override's rules. "
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."

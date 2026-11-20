@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT337",))
+OPTIONS = CheckOptions(select=("TYP004",))
 SOURCE = """\
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -28,7 +28,7 @@ def test_deprecated_annotation_reports_location_and_preserves_source(
     root = _project(tmp_path, SOURCE)
     [finding] = violations(root, OPTIONS)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT337",
+        "TYP004",
         "app/coordination.py",
         5,
         26,
@@ -96,8 +96,8 @@ def test_methods_and_nested_functions_are_checked(tmp_path: Path) -> None:
         "from collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\nclass Coordinator:\n    @asynccontextmanager\n    async def exclusive(self) -> AsyncIterator[None]:\n        yield\ndef factory():\n    @asynccontextmanager\n    async def resource() -> AsyncIterator[str]:\n        yield 'ready'\n    return resource\n",
     )
     assert [(v.code, v.line) for v in violations(root, OPTIONS)] == [
-        ("SMT337", 5),
-        ("SMT337", 9),
+        ("TYP004", 5),
+        ("TYP004", 9),
     ]
 
 
@@ -154,7 +154,7 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
         SOURCE,
         CONFIG + "rules: {typing/deprecated-async-contextmanager-return: warning}\n",
     )
-    assert [v.code for v in violations(root)] == ["SMT337"]
+    assert [v.code for v in violations(root)] == ["TYP004"]
     _project(
         tmp_path,
         SOURCE,
@@ -166,19 +166,19 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
         tmp_path,
         SOURCE.replace(
             "AsyncIterator[None]:",
-            "AsyncIterator[None]:  # smelt: ignore[SMT337] -- Legacy type checker contract.",
+            "AsyncIterator[None]:  # smelt: ignore[TYP004] -- Legacy type checker contract.",
         ),
     )
     assert violations(root, OPTIONS) == []
 
 
 def test_cached_results_follow_annotation_and_import_changes(tmp_path: Path) -> None:
-    uncached = CheckOptions(select=("SMT337",), use_cache=False)
+    uncached = CheckOptions(select=("TYP004",), use_cache=False)
     for source, expected in (
-        (SOURCE, ["SMT337"]),
+        (SOURCE, ["TYP004"]),
         (SOURCE.replace("AsyncIterator", "AsyncGenerator"), []),
         (SOURCE.replace("from contextlib", "from custom_contextlib"), []),
-        (SOURCE, ["SMT337"]),
+        (SOURCE, ["TYP004"]),
     ):
         root = _project(tmp_path, source)
         cached = violations(root, OPTIONS)

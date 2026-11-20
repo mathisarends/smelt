@@ -79,7 +79,7 @@ def config_json_schema() -> dict[str, Any]:
     }
     rule_settings = {
         "type": "object",
-        "description": "Enable individual checks by name or SMT code. Families and ALL can disable or cap active rules.",
+        "description": "Enable individual checks by name or code. Families and ALL can disable or cap active rules.",
         "properties": properties,
         "patternProperties": codes,
         "additionalProperties": False,
@@ -87,7 +87,7 @@ def config_json_schema() -> dict[str, Any]:
     schema["$defs"]["RuleSettings"] = rule_settings
     schema["$defs"]["SourceRuleSettings"] = {
         **rule_settings,
-        "description": "Enable source rules by name or SMT code. ALL and families disable or cap active source rules. Configure test-file and project rules at project level.",
+        "description": "Enable source rules by name or code. ALL and families disable or cap active source rules. Configure test-file and project rules at project level.",
         "properties": source_properties,
         "patternProperties": source_codes,
     }

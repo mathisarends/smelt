@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-SELECT = CheckOptions(select=("SMT371",))
+SELECT = CheckOptions(select=("TYP008",))
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 LEGACY = """
 from typing import Generic, TypeVar
@@ -38,7 +38,7 @@ def test_reports_legacy_generic_at_declared_minimum(
 
     [finding] = violations(root)
 
-    assert (finding.code, finding.path, finding.line) == ("SMT371", "app/events.py", 5)
+    assert (finding.code, finding.path, finding.line) == ("TYP008", "app/events.py", 5)
     assert finding.expected is not None
     assert finding.expected["class"] == "Event"
     assert finding.expected["python"]["minimum"] == version

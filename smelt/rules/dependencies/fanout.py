@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 
 class PackageImportFanout(Rule):
-    activation = POLICIES["SMT108"]
-    code = "SMT108"
+    activation = POLICIES["IMP001"]
+    code = "IMP001"
     name = "imports/excess-package-imports"
     category = Category.IMPORTS
     default_severity = Severity.HINT
@@ -40,7 +40,7 @@ class PackageImportFanout(Rule):
             "and conftest.py also count as outside callers, including configured "
             "test roots inside the package. Test-quality exclusions do not exempt "
             "imports; project exclusions and normal suppressions apply. This does "
-            "not change SMT109's separate count_tests opt-in for API expansion."
+            "not change ARC008's separate count_tests opt-in for API expansion."
         ),
         bad="# caller.py\nfrom app.users.application.get_user import GetUser\nfrom app.users.application.update_user import UpdateUser\nfrom app.users.application.delete_user import DeleteUser",
         good="# caller.py, after deliberate facade exports are defined\nfrom app.users.application import DeleteUser, GetUser, UpdateUser",

@@ -7,7 +7,7 @@ Smelt never runs the agent or rewrites source in this workflow.
 
 ## Enable the review policy and hook
 
-Enable SMT316 explicitly; the hook alone does not enable review rules.
+Enable VIS001 explicitly; the hook alone does not enable review rules.
 For example:
 
 ```yaml
@@ -52,12 +52,12 @@ contents are not part of this repository's staged snapshot.
 
 ## Keep a deliberate public API
 
-SMT316 means no external use was observed in the analyzed code. It does not prove
+VIS001 means no external use was observed in the analyzed code. It does not prove
 the method can be renamed: plugins, frameworks or downstream packages may call it.
 
 ```python
 class Plugin:
-    def on_event(self, event):  # smelt: ignore[SMT316] -- Public callback invoked by plugin hosts.
+    def on_event(self, event):  # smelt: ignore[VIS001] -- Public callback invoked by plugin hosts.
         ...
 ```
 
@@ -66,7 +66,7 @@ that is the line starting with `def` or `async def`. State the actual API contra
 "intentional" alone gives the next reviewer little evidence. For public module
 functions, explicit `__all__` exports can express the interface instead.
 
-By default SMT902 reports missing reasons, and SMT901 reports obsolete exceptions.
+By default MET002 reports missing reasons, and MET001 reports obsolete exceptions.
 With the staged hook's warning threshold, a newly added reasonless exception blocks
 the commit. Smelt cannot verify the truth of a reason. Agents should preserve the
 project's policy and review the reported evidence rather than disable rules or
@@ -93,7 +93,7 @@ then closes its transaction before the analysis cache opens. An unchanged policy
 does not require another Git blob subprocess after every source edit. YAML is
 still parsed from the captured policy object; a changed object ID selects new bytes.
 
-Per-file facts cover functions, methods, SMT430 attribute candidates, native import
+Per-file facts cover functions, methods, VIS010 attribute candidates, native import
 scans, resolved import details, namespaces, suppressions, test constructor/async
 specifications, fixtures and test references. Function references record their
 namespace dependencies, including missing namespaces. Re-exports and inheritance

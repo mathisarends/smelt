@@ -13,14 +13,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app, other]}\n"
-SELECT = CheckOptions(select=("SMT110",))
+SELECT = CheckOptions(select=("IMP002",))
 IMPORTS = "from app.users.read import Read\nfrom app.users.write import Write\nfrom other.pay import Pay\n"
 
 
 def test_counts_across_packages_and_groups_evidence(tmp_path: Path) -> None:
     root = _project(tmp_path, IMPORTS)
     [finding] = violations(root)
-    assert (finding.code, finding.path, finding.line) == ("SMT110", "app/client.py", 1)
+    assert (finding.code, finding.path, finding.line) == ("IMP002", "app/client.py", 1)
     assert finding.severity == Severity.HINT
     assert finding.expected == {
         "max_module_imports": 2,
@@ -37,7 +37,7 @@ def test_counts_across_packages_and_groups_evidence(tmp_path: Path) -> None:
         ],
         "automatic_rewrite": False,
     }
-    assert "SMT108" in (finding.hint or "")
+    assert "IMP001" in (finding.hint or "")
     assert (root / "app/client.py").read_text() == IMPORTS
 
 
@@ -170,7 +170,7 @@ def test_rule_selection_uses_the_default_limit_and_zero_is_supported(
     [finding] = violations(root)
     assert finding.expected is not None
     assert finding.expected["max_module_imports"] == 0
-    assert violations(root, CheckOptions(ignore=("SMT110",))) == []
+    assert violations(root, CheckOptions(ignore=("IMP002",))) == []
 
 
 def test_off_override_suppression_and_tests_are_respected(tmp_path: Path) -> None:
@@ -191,7 +191,7 @@ style:
             "app/quiet/client.py": IMPORTS,
             "app/intentional.py": IMPORTS.replace(
                 "from app.users.read import Read",
-                "from app.users.read import Read  # smelt: ignore[SMT110] -- deliberate coordinator",
+                "from app.users.read import Read  # smelt: ignore[IMP002] -- deliberate coordinator",
             ),
             "tests/test_client.py": IMPORTS,
         },
@@ -229,7 +229,7 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
         "app.users.write_api",
         "other.pay",
     ]
-    assert violations(root, CheckOptions(select=("SMT110",), use_cache=False)) == [
+    assert violations(root, CheckOptions(select=("IMP002",), use_cache=False)) == [
         finding
     ]
 

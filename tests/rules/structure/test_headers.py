@@ -11,8 +11,8 @@ from tests.helpers import check, codes_at, violations, write_policy_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-OPTIONS = CheckOptions(select=("SMT309", "SMT310", "SMT311"))
-_LOGGER_OPTIONS = CheckOptions(select=("SMT370",))
+OPTIONS = CheckOptions(select=("LAY002", "TYP001", "TYP002"))
+_LOGGER_OPTIONS = CheckOptions(select=("LAY011",))
 _LOGGER_CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 
 
@@ -45,7 +45,7 @@ def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) 
     )
     [finding] = violations(tmp_path)
 
-    assert (finding.code, finding.path, finding.line) == ("SMT370", "app/frames.py", 7)
+    assert (finding.code, finding.path, finding.line) == ("LAY011", "app/frames.py", 7)
     assert finding.column == 1
     assert finding.expected == {"logger": "_logger", "placement": "after-imports"}
     assert finding.severity.value == "warning"
@@ -115,7 +115,7 @@ def test_module_logger_order_respects_imports_and_known_bindings(
     )
 
     assert codes_at(violations(tmp_path, _LOGGER_OPTIONS)) == [
-        ("SMT370", "app/frames.py", line) for line in lines
+        ("LAY011", "app/frames.py", line) for line in lines
     ]
 
 
@@ -143,7 +143,7 @@ def _project(
 def test_module_docstring_can_be_forbidden(tmp_path: Path, docstring: str) -> None:
     _project(tmp_path, docstring + "\nVALUE = 1\n", policy="module_docstrings: forbid")
 
-    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["SMT309"]
+    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["LAY002"]
 
 
 def test_class_function_and_ordinary_strings_are_preserved(tmp_path: Path) -> None:
@@ -185,7 +185,7 @@ def test_required_docstring_reports_missing_or_blank_introduction(
 
     [finding] = violations(tmp_path)
 
-    assert finding.code == "SMT309"
+    assert finding.code == "LAY002"
     assert finding.rule == "layout/module-docstring-convention"
     assert finding.severity.value == "error"
     assert (finding.path, finding.line, finding.column) == ("app/module.py", 1, 1)
@@ -218,12 +218,12 @@ def test_required_docstring_includes_empty_initializers_and_entry_points(
     _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
     write_policy_project(tmp_path, {path: ""})
 
-    assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "SMT309")]
+    assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "LAY002")]
 
 
 @pytest.mark.parametrize(
     ("mode", "source", "code"),
-    [("require", "VALUE = 1", "SMT309"), ("forbid", '"""Introduction."""', "SMT309")],
+    [("require", "VALUE = 1", "LAY002"), ("forbid", '"""Introduction."""', "LAY002")],
 )
 def test_docstring_file_exceptions_require_a_reason(
     tmp_path: Path, mode: str, source: str, code: str
@@ -244,7 +244,7 @@ def test_docstring_file_exceptions_require_a_reason(
         {"app/module.py": f"# smelt: ignore-file[{code}]\n{source}"},
     )
 
-    assert [v.code for v in violations(tmp_path)] == ["SMT902"]
+    assert [v.code for v in violations(tmp_path)] == ["MET002"]
 
 
 @pytest.mark.parametrize("outer", ["require", "forbid"])
@@ -318,7 +318,7 @@ def test_conflicting_docstring_conventions_are_configuration_errors(
 
 @pytest.mark.parametrize(
     "setting",
-    ["rules: {layout/module-docstring-convention: off}\n", "rules: {SMT309: off}\n"],
+    ["rules: {layout/module-docstring-convention: off}\n", "rules: {LAY002: off}\n"],
 )
 def test_required_docstring_respects_explicit_off(tmp_path: Path, setting: str) -> None:
     _project(tmp_path, "VALUE = 1", policy="module_docstrings: require", extra=setting)
@@ -334,7 +334,7 @@ def test_future_can_be_forbidden_unconditionally(tmp_path: Path) -> None:
         version="3.12",
     )
 
-    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["SMT310"]
+    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["TYP001"]
 
 
 @pytest.mark.parametrize("version", [None, "3.12", "3.13"])
@@ -364,7 +364,7 @@ def test_review_hint_for_plain_boilerplate(tmp_path: Path, source: str) -> None:
 
     found = violations(tmp_path, OPTIONS)
 
-    assert [v.code for v in found] == ["SMT311"]
+    assert [v.code for v in found] == ["TYP002"]
     assert found[0].severity.value == "hint"
 
 
@@ -387,7 +387,7 @@ def test_314_flags_future_even_with_typing_signals(tmp_path: Path, source: str) 
 
     found = violations(tmp_path, OPTIONS)
 
-    assert [v.code for v in found] == ["SMT310"]
+    assert [v.code for v in found] == ["TYP001"]
     assert found[0].expected is not None
     assert found[0].expected["python"]["minimum"] == "3.14"
     assert found[0].expected["automatic_removal"] is False
@@ -457,6 +457,6 @@ def test_requires_python_enables_version_check(tmp_path: Path) -> None:
 
     found = violations(tmp_path, OPTIONS)
 
-    assert [v.code for v in found] == ["SMT310"]
+    assert [v.code for v in found] == ["TYP001"]
     assert found[0].expected is not None
     assert found[0].expected["python"]["source"] == "pyproject.toml"

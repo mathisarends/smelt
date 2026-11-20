@@ -27,7 +27,7 @@ _NOT_IMPLEMENTED = "NotImplementedError"
 
 class MissingInterfaceDocstring(Rule):
     file_local = True
-    code = "SMT348"
+    code = "IDM005"
     name = "idioms/missing-interface-docstring"
     category = Category.IDIOMS
     default_severity = Severity.HINT
@@ -72,7 +72,7 @@ class MissingInterfaceDocstring(Rule):
             "method's contract; a docstring alone is a valid body, so drop the "
             "... (Ruff PIE790 reports a placeholder left after a docstring). "
             "No automatic rewrite is performed. Enable rules: "
-            "{idioms/missing-interface-docstring: hint}, or select SMT348. Package "
+            "{idioms/missing-interface-docstring: hint}, or select IDM005. Package "
             "overrides and reasoned inline suppressions are supported."
         ),
         config=("rules",),

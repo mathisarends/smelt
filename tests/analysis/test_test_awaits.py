@@ -4,7 +4,7 @@ import pytest
 
 from smelt.analysis.test_awaits import call_only_async_mocks
 from smelt.analysis.test_syntax import (
-    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _analyze_test_syntax,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 
 

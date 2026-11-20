@@ -39,7 +39,7 @@ def test_shared_helper_has_one_repair_and_preserves_each_finding(
             "tests/test_imports.py": SHARED_WAIT,
         },
     )
-    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    report = check(tmp_path, CheckOptions(select=("TST008",))).report
     document = json.loads(render_json(report))
     [group] = document["groups"]
     assert len(document["violations"]) == group["count"] == 2
@@ -81,7 +81,7 @@ def test_shared_helper_groups_separate_operations_and_respect_suppression(
             "tests/test_imports.py": source,
         },
     )
-    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    report = check(tmp_path, CheckOptions(select=("TST008",))).report
     groups = group_findings(report.violations)
     assert len(groups) == 2
     assert groups[0]["location"]["column"] != groups[1]["location"]["column"]
@@ -91,11 +91,11 @@ def test_shared_helper_groups_separate_operations_and_respect_suppression(
         {
             "tests/test_imports.py": SHARED_WAIT.replace(
                 "check=False)",
-                "check=False)  # smelt: ignore[SMT426] -- parent enforces a deadline",
+                "check=False)  # smelt: ignore[TST008] -- parent enforces a deadline",
             )
         },
     )
-    suppressed = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    suppressed = check(tmp_path, CheckOptions(select=("TST008",))).report
     assert suppressed.suppressed == 2
     assert group_findings(suppressed.violations) == []
 
@@ -111,7 +111,7 @@ def test_grouping_never_reintroduces_a_hidden_hint_or_filtered_finding(
             "tests/test_imports.py": SHARED_WAIT,
         },
     )
-    report = check(tmp_path, CheckOptions(select=("SMT426",))).report
+    report = check(tmp_path, CheckOptions(select=("TST008",))).report
     first, second = report.violations
     report.violations = [first, replace(second, severity=Severity.HINT)]
     assert group_findings(report.violations) == []
@@ -131,7 +131,7 @@ def test_group_metadata_preserves_existing_finding_and_debt_identities(
             "tests/test_imports.py": SHARED_WAIT,
         },
     )
-    current = check(tmp_path, CheckOptions(select=("SMT426",))).report.violations
+    current = check(tmp_path, CheckOptions(select=("TST008",))).report.violations
     previous = []
     for finding in current:
         expected = dict(finding.expected or {})
@@ -159,7 +159,7 @@ def _import(
     path: str,
     edge: str,
     chain: tuple[ImportLink, ...] = (),
-    code: str = "SMT101",
+    code: str = "ARC001",
 ) -> Violation:
     return Violation(
         code=code,
@@ -199,7 +199,7 @@ class TestGroupFindings:
                 "app/user/c.py",
                 "user.domain -> infrastructure",
                 _through_facade("app.user.c"),
-                code="SMT102",
+                code="ARC002",
             ),
             _import("app/user/d.py", "user.domain -> infrastructure"),
         ]
@@ -211,7 +211,7 @@ class TestGroupFindings:
             "kind": "facade",
             "key": "app.llm",
             "count": 3,
-            "codes": ["SMT101", "SMT102"],
+            "codes": ["ARC001", "ARC002"],
             "violations": [v.finding_id for v in found[:3]],
             "direct": 0,
             "transitive": 3,
@@ -221,9 +221,9 @@ class TestGroupFindings:
             ],
         }
         edges = {g["key"]: g for g in groups if g["kind"] == "edge"}
-        assert edges["SMT101 chat.application -> infrastructure"]["count"] == 2
-        mixed = edges.get("SMT101 user.domain -> infrastructure")
-        assert mixed is None  # one SMT101 and one SMT102: two decisions
+        assert edges["ARC001 chat.application -> infrastructure"]["count"] == 2
+        mixed = edges.get("ARC001 user.domain -> infrastructure")
+        assert mixed is None  # one ARC001 and one ARC002: two decisions
 
     def test_edge_groups_count_direct_and_transitive(self) -> None:
         found = [
@@ -241,7 +241,7 @@ class TestGroupFindings:
             ImportLink("app.platform.auth.guard", "app.features.y", 8),
         )
         cycle = Violation(
-            code="SMT104",
+            code="ARC004",
             rule="architecture/import-cycle",
             severity=Severity.ERROR,
             message="import cycle",
@@ -260,7 +260,7 @@ class TestGroupFindings:
     def test_test_moves_group_by_directories(self) -> None:
         def move(name: str) -> Violation:
             return Violation(
-                code="SMT401",
+                code="TST001",
                 rule="tests/misplaced-test",
                 severity=Severity.ERROR,
                 message=f"{name} belongs in tests/auth/infrastructure/",
@@ -284,5 +284,5 @@ class TestGroupFindings:
         assert (
             keys
             == reversed_keys
-            == [("edge", "SMT101 e0 -> x"), ("edge", "SMT101 e1 -> x")]
+            == [("edge", "ARC001 e0 -> x"), ("edge", "ARC001 e1 -> x")]
         )

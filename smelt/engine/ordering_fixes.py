@@ -35,13 +35,13 @@ class _Prepared:
 
 
 def apply_ordering_fixes(outcome: CheckOutcome) -> OrderingFixes:
-    """Fix only visible SMT313 sections after scope, selection, ignores and debt."""
+    """Fix only visible LAY004 sections after scope, selection, ignores and debt."""
     files: list[str] = []
     sections = 0
     skipped: list[dict[str, str]] = []
     selected: dict[str, set[str]] = defaultdict(set)
     for violation in outcome.report.violations:
-        if violation.code != "SMT313" or violation.path is None:
+        if violation.code != "LAY004" or violation.path is None:
             continue
         expected = violation.expected or {}
         if not expected.get("fixable") or not isinstance(expected.get("section"), str):

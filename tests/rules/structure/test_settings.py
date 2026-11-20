@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT327",))
+OPTIONS = CheckOptions(select=("FWK001",))
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -38,7 +38,7 @@ def test_secret_settings_fields_accepting_plaintext_are_reviewed(
     source = f"from pydantic_settings import BaseSettings as SettingsBase\nfrom pydantic import SecretStr\nfrom typing import Optional, Annotated\nclass Settings(SettingsBase):\n    api_key: {annotation}\n"
     root = _project(tmp_path, source)
     [finding] = violations(root, OPTIONS)
-    assert (finding.code, finding.line) == ("SMT327", 5)
+    assert (finding.code, finding.line) == ("FWK001", 5)
     assert finding.expected is not None
     assert finding.expected["field"] == "api_key"
     assert (root / "app/settings.py").read_text() == source
@@ -49,7 +49,7 @@ def test_same_file_subclasses_and_module_aliases_are_supported(tmp_path: Path) -
         tmp_path,
         "import pydantic_settings as ps\nclass Common(ps.BaseSettings): pass\nclass Settings(Common):\n    database_password: str\n",
     )
-    assert [(v.code, v.line) for v in violations(root, OPTIONS)] == [("SMT327", 4)]
+    assert [(v.code, v.line) for v in violations(root, OPTIONS)] == [("FWK001", 4)]
 
 
 def test_secret_types_nonsecret_fields_unknown_types_and_other_models_are_preserved(
@@ -90,7 +90,7 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
     _project(
         tmp_path, source, CONFIG + "rules: {frameworks/prefer-secret-type: warning}\n"
     )
-    assert [v.code for v in violations(root)] == ["SMT327"]
+    assert [v.code for v in violations(root)] == ["FWK001"]
     _project(
         tmp_path,
         source,
@@ -102,7 +102,7 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
         tmp_path,
         source.replace(
             "password: str",
-            "password: str  # smelt: ignore[SMT327] -- Nonsecret protocol vocabulary.",
+            "password: str  # smelt: ignore[FWK001] -- Nonsecret protocol vocabulary.",
         ),
     )
     assert violations(root, OPTIONS) == []

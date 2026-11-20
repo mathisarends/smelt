@@ -24,12 +24,14 @@ map is a layer. A reasoned style option replaces the entire inherited option,
 including any previous reason. Workspace members inherit root policy directly.
 The root and each member own their internal architecture.
 
-Configure each fixed check by its individual name or SMT code. Rule names have
+Configure each fixed check by its individual name or code. Rule names have
 the form `family/finding`. The value activates that check and sets its severity.
 A family selector can disable or cap rules that are already active.
 See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
-Stable SMT codes remain valid aliases and keep existing debt identities.
+Each code starts with its family prefix, such as `ARC001` or `TST004`.
+Old `SMTnnn` codes are rejected with the new code; see the
+[upgrade guide](upgrading.md#use-the-family-rule-codes).
 
 ## A small Python project
 
@@ -131,7 +133,7 @@ Run `smelt check --config runtime/smelt.yml` from the repository root, or
 - `rules` do not merge key by key: every file is its own rules layer, and a
   named setting can replace an earlier setting. Families and `ALL` can
   cap or disable active rules. The base may spell a rule by code and the child by name.
-  Within one file, a rule name and its SMT code together remain a
+  Within one file, a rule name and its code together remain a
   duplicate-alias error. Unknown rules, invalid severities and strict-coverage
   restrictions still fail.
 - An inline style setting with `{value, reason}` replaces the whole option.
@@ -232,7 +234,7 @@ project:
 loads the workspace root and checks only that member. Run `smelt check` at the
 workspace root to include every member. A `smelt.yml` or `smelt.yaml` in a
 subdirectory of a member or in an undeclared directory is ignored with a
-configuration warning. In strict coverage mode, a member cannot lower SMT306.
+configuration warning. In strict coverage mode, a member cannot lower ARC013.
 
 ### Member architecture
 
@@ -262,7 +264,7 @@ architecture:
 - `architecture.import_graph` (which imports count) and `architecture.members`
   (boundaries between members) are set once in the workspace root.
 - `smelt context` for a member feature or path shows the member's layers. In
-  strict coverage mode, SMT306 and SMT305 use the architecture that governs each
+  strict coverage mode, ARC013 and ARC012 use the architecture that governs each
   module, and `coverage.member_architectures` lists the packages each member
   architecture governs.
 
@@ -328,7 +330,7 @@ to the root. Smelt drafts a local layout when it can infer layers, features,
 shared code or a composition root. The commented `architecture.members`
 example uses the workspace's member globs and pre-fills the observed target
 members. Review the allowed targets before enabling it.
-Keep packaging declarations in `pyproject.toml`; SMT112 checks those separately.
+Keep packaging declarations in `pyproject.toml`; ARC010 checks those separately.
 
 Root source roots are omitted so each current or future member uses its own
 `src/` directory or flat package layout automatically. Test roots cover `tests`
@@ -356,7 +358,7 @@ architecture:
     "packages/*": {may_depend_on: []}
 ```
 
-This enables [SMT111](rules/SMT111.md) `architecture/member-boundary`.
+This enables [ARC009](rules/ARC009.md) `architecture/member-boundary`.
 The keys and allowances are workspace-relative path globs, using `*`, `**` and
 `?`; `.` names the root project. Every key and every allowance must match at
 least one analyzed member (or `.`); a glob that matches nothing, such as a typo,
@@ -367,11 +369,11 @@ always pass. Member-local wiring or shared roles do not bypass these boundaries.
 Only direct production imports count, regardless of `architecture.import_graph.transitive`;
 `TYPE_CHECKING` imports follow the root `architecture.import_graph.type_checking` setting.
 
-`project.workspace: uv` also enables [SMT112](rules/SMT112.md)
+`project.workspace: uv` also enables [ARC010](rules/ARC010.md)
 `architecture/undeclared-member-dependency`. A production import of another member
 requires a declaration in the importing member's `project.dependencies` or
 `project.optional-dependencies`. If the root's member boundary forbids the import,
-SMT112 advises removing or moving it. Distribution names come from `[project].name`,
+ARC010 advises removing or moving it. Distribution names come from `[project].name`,
 independently of Python package names; for example package `core` can belong to
 distribution `core-lib`:
 
@@ -392,7 +394,7 @@ member; an explicit source elsewhere does not supply it. Local source paths are
 relative to the file declaring them. Without a source entry, a matching
 distribution name counts as declared; Smelt does not validate uv's resolver setup.
 Names are normalized, and all marker/extra branches count without evaluating the
-analyzer's environment. Development groups and test imports are outside SMT112.
+analyzer's environment. Development groups and test imports are outside ARC010.
 Members with dynamic dependencies or missing project metadata are skipped rather
 than guessed. Invalid static requirements or unreadable metadata are analysis errors.
 Only a direct import requires a direct declaration.
@@ -439,8 +441,8 @@ architecture:
 Both names must resolve to the same analyzed symbol through bounded static
 re-export chains. The target must actually be public, including `__all__` when
 declared. Missing, conflicting and unverifiable ownership is a config error,
-even when SMT109 is not selected. Without an ownership declaration, existing
-SMT109 behavior is retained. Declaring one owner prevents duplicate facade advice
+even when ARC008 is not selected. Without an ownership declaration, existing
+ARC008 behavior is retained. Declaring one owner prevents duplicate facade advice
 for that symbol; it does not make other internal aliases public or exempt imports
 from layers, package APIs or cycle checks. No callers or exports are
 rewritten. Review the existing export paths before adding another API declaration.
@@ -526,7 +528,7 @@ the inherited severity and refines the limit for those files. Families and
 
 ```bash
 smelt check --select visibility/internal-public-member,tests/unbounded-wait
-smelt check --select SMT3 --ignore layout/misplaced-static-helper
+smelt check --select LAY --ignore layout/misplaced-static-helper
 smelt explain tests/missing-await-assertion
 smelt rules --format json
 smelt config show
@@ -583,19 +585,19 @@ the format to `version: 2` (see [Upgrading Smelt](upgrading.md#013-to-014)).
 
 | Removed setting | Explicit rule |
 | --- | --- |
-| `ordering.enabled` or an implicitly activating `ordering` object | `layout/definition-order` (SMT313) |
-| `instance_assignments: separate` | `idioms/bundled-instance-assignment` (SMT314) |
-| `member_visibility: private-when-internal` | `visibility/internal-public-member` (SMT316) |
-| `static_methods: module-functions` | `layout/misplaced-static-helper` (SMT317) |
-| `tests.forbid_private_imports` | `tests/private-access` (SMT420) |
-| `tests.forbid_string_patch_targets` | `tests/string-patch-target` (SMT422) |
-| `tests.require_assertions` | `tests/missing-outcome-check` (SMT424) |
-| `tests.require_non_vacuous_assertions` | `tests/vacuous-assertion` (SMT425) |
-| `tests.review_test_deadlines` | `tests/unbounded-wait` (SMT426) |
-| `tests.review_case_loops` | `tests/independent-case-loop` (SMT427) |
-| `tests.review_async_mock_assertions` | `tests/missing-await-assertion` (SMT428) |
-| `tests.review_test_only_public_functions` | `visibility/test-only-public-function` (SMT429) |
-| `tests.review_test_only_public_attributes` | `visibility/test-only-public-attribute` (SMT430) |
+| `ordering.enabled` or an implicitly activating `ordering` object | `layout/definition-order` (LAY004) |
+| `instance_assignments: separate` | `idioms/bundled-instance-assignment` (IDM001) |
+| `member_visibility: private-when-internal` | `visibility/internal-public-member` (VIS001) |
+| `static_methods: module-functions` | `layout/misplaced-static-helper` (LAY005) |
+| `tests.forbid_private_imports` | `tests/private-access` (TST002) |
+| `tests.forbid_string_patch_targets` | `tests/string-patch-target` (TST004) |
+| `tests.require_assertions` | `tests/missing-outcome-check` (TST006) |
+| `tests.require_non_vacuous_assertions` | `tests/vacuous-assertion` (TST007) |
+| `tests.review_test_deadlines` | `tests/unbounded-wait` (TST008) |
+| `tests.review_case_loops` | `tests/independent-case-loop` (TST009) |
+| `tests.review_async_mock_assertions` | `tests/missing-await-assertion` (TST010) |
+| `tests.review_test_only_public_functions` | `visibility/test-only-public-function` (VIS009) |
+| `tests.review_test_only_public_attributes` | `visibility/test-only-public-attribute` (VIS010) |
 
 Former names `definition-order`, `prefer-private-module-function`,
 `missing-test-assertion`, `vacuous-test-outcome`, `test-deadline`,

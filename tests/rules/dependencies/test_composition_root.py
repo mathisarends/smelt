@@ -46,7 +46,7 @@ class TestCompositionRootLeak:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT106",)))
+        found = violations(root, CheckOptions(select=("ARC006",)))
 
         consumer = next(
             v for v in found if v.source_module == "app.application.service"
@@ -68,7 +68,7 @@ class TestCompositionRootLeak:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT106",)))
+        found = violations(root, CheckOptions(select=("ARC006",)))
 
         consumer = next(
             v for v in found if v.source_module == "app.application.service"
@@ -82,7 +82,7 @@ class TestCompositionRootLeak:
         )
         root = _project(tmp_path, {"app/application/service.py": example})
 
-        [found] = violations(root, CheckOptions(select=("SMT106",)))
+        [found] = violations(root, CheckOptions(select=("ARC006",)))
 
         assert found.target_module == "app.bootstrap"
 
@@ -124,7 +124,7 @@ class TestCompositionRootLeak:
             },
         )
 
-        outcome = check(root, CheckOptions(select=("SMT101", "SMT102", "SMT106")))
+        outcome = check(root, CheckOptions(select=("ARC001", "ARC002", "ARC006")))
 
         assert outcome.report.violations == []
         info = outcome.context.model.info("app.features.auth.infrastructure.di")
@@ -164,7 +164,7 @@ class TestCompositionRootLeak:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT106",)))
+        found = violations(root, CheckOptions(select=("ARC006",)))
 
         assert [v.message for v in found] == [
             "app.features.auth.application.service must not import the wiring module "
@@ -185,14 +185,14 @@ class TestCompositionRootLeak:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT106",))) == []
+        assert violations(root, CheckOptions(select=("ARC006",))) == []
 
     def test_importing_the_composition_root(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path, {"app/application/service.py": "from app import bootstrap\n"}
         )
 
-        found = violations(root, CheckOptions(select=("SMT106",)))
+        found = violations(root, CheckOptions(select=("ARC006",)))
 
         assert [v.message for v in found] == [
             "app.application.service must not import the composition root app.bootstrap"

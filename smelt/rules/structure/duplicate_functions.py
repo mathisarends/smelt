@@ -21,7 +21,7 @@ _MAX_LOCATIONS = 5
 
 
 class DuplicateFunction(Rule):
-    code = "SMT352"
+    code = "CPX004"
     name = "complexity/duplicate-function"
     category = Category.COMPLEXITY
     default_severity = Severity.WARNING
@@ -68,7 +68,7 @@ class DuplicateFunction(Rule):
             "architecture boundaries and import cycles when choosing the "
             "owner. Copies that must evolve independently keep a reasoned "
             "suppression. No automatic rewrite is performed. Enable rules: "
-            "{complexity/duplicate-function: warning}, or select SMT352."
+            "{complexity/duplicate-function: warning}, or select CPX004."
         ),
         config=("rules",),
     )

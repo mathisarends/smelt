@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 class PreferProjectBaseClass(Rule):
     file_local = True
-    activation = POLICIES["SMT353"]
-    code = "SMT353"
+    activation = POLICIES["MOD007"]
+    code = "MOD007"
     name = "modeling/prefer-project-base-class"
     category = Category.MODELING
     default_severity = Severity.WARNING

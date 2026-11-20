@@ -145,7 +145,7 @@ class RuleSet:
         return tuple(rule.code for rule in self.rules if rule.category == wanted)
 
     def matching_codes(self, selector: str) -> tuple[str, ...]:
-        """Resolve a name, family, SMT prefix or ALL against this rule set."""
+        """Resolve a name, family, code prefix or ALL against this rule set."""
         wanted = selector.strip()
         if (family := self.family_codes(wanted)) is not None:
             return family

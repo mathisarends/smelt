@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT356",))
+SELECT = CheckOptions(select=("IDM007",))
 
 
 def _project(tmp_path: Path, source: str, *, config: str = CONFIG) -> Path:
@@ -44,7 +44,7 @@ def test_reports_attribute_narrowed_in_several_methods(tmp_path: Path) -> None:
     (finding,) = violations(_project(tmp_path, source), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT356",
+        "IDM007",
         "app/tabs.py",
         3,
         9,
@@ -146,11 +146,11 @@ def test_is_opt_in(tmp_path: Path) -> None:
     )
 
     assert [
-        item for item in violations(_project(tmp_path, source)) if item.code == "SMT356"
+        item for item in violations(_project(tmp_path, source)) if item.code == "IDM007"
     ] == []
     enabled = _project(
         tmp_path / "enabled",
         source,
         config=CONFIG + "rules: {idioms/duplicate-narrowing-assert: warning}\n",
     )
-    assert [item.code for item in violations(enabled)].count("SMT356") == 1
+    assert [item.code for item in violations(enabled)].count("IDM007") == 1

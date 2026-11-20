@@ -18,7 +18,7 @@ _MAX_FILTER_OPERANDS = 2
 
 class ComplexComprehension(Rule):
     file_local = True
-    code = "SMT363"
+    code = "CPX006"
     name = "complexity/excess-comprehension-loops"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
@@ -40,7 +40,7 @@ class ComplexComprehension(Rule):
             "Name the per-item decision or use an explicit loop. Preserve generator "
             "laziness, iteration/filter order and conditional evaluation. No automatic "
             "rewrite is performed. Enable rules: {complexity/excess-comprehension-loops: hint} or "
-            "select SMT363; set max on the entry, e.g. {severity: hint, max: 2}. "
+            "select CPX006; set max on the entry, e.g. {severity: hint, max: 2}. "
             "The limit defaults to 1; an entry in a style override's rules can "
             "permit intentional flattening."
         ),

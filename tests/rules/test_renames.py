@@ -12,7 +12,7 @@ from tests.helpers import check, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-CODES = {"SMT323": "SMT323", "modeling/forbidden-base-class-affix": "SMT323"}
+CODES = {"MOD002": "MOD002", "modeling/forbidden-base-class-affix": "MOD002"}
 
 
 @pytest.mark.parametrize(
@@ -25,12 +25,12 @@ CODES = {"SMT323": "SMT323", "modeling/forbidden-base-class-affix": "SMT323"}
         ),
         (
             "SMT326",
-            '; merged into SMT323 "modeling/forbidden-base-class-affix" in 0.13.0 '
+            '; merged into MOD002 "modeling/forbidden-base-class-affix" in 0.13.0 '
             f"(see {UPGRADE_GUIDE_URL})",
         ),
         (
             "smt326",
-            '; merged into SMT323 "modeling/forbidden-base-class-affix" in 0.13.0 '
+            '; merged into MOD002 "modeling/forbidden-base-class-affix" in 0.13.0 '
             f"(see {UPGRADE_GUIDE_URL})",
         ),
         (
@@ -61,7 +61,7 @@ def test_retired_hint_points_to_the_replacement(key: str, hint: str) -> None:
         ),
         (
             "rules: {SMT366: hint}",
-            'unknown rule "SMT366"; merged into SMT340 '
+            'unknown rule "SMT366"; merged into CPX002 '
             '"complexity/inline-call-argument"',
         ),
     ],

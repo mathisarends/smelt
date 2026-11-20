@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from smelt.analysis.members import (
         Member,
         MemberState,
-        _FileFacts,  # smelt: ignore[SMT420] -- Type the instrumentation hook without exposing cache facts as public API.
+        _FileFacts,  # smelt: ignore[TST002] -- Type the instrumentation hook without exposing cache facts as public API.
     )
 
 
@@ -47,7 +47,7 @@ def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_de
     before = check(tmp_path).report
     assert {v.path for v in before.violations} == {"app/b.py", "app/unrelated.py"}
     rebuilt: list[str] = []
-    original = MemberUsageIndex._resolve_file  # smelt: ignore[SMT420] -- Count resolution work independently of the cached result.
+    original = MemberUsageIndex._resolve_file  # smelt: ignore[TST002] -- Count resolution work independently of the cached result.
 
     def resolve(
         self: MemberUsageIndex, file: _FileFacts, states: list[MemberState]
@@ -79,7 +79,7 @@ def test_attribute_facts_and_test_constructor_specs_reuse_unchanged_production_s
             "tests/test_worker.py": "from app.worker import Worker\ndef test_worker():\n    assert Worker().pending == 0\n",
         },
     )
-    assert [v.code for v in check(tmp_path).report.violations] == ["SMT430"]
+    assert [v.code for v in check(tmp_path).report.violations] == ["VIS010"]
     parsed: list[str] = []
     original = AstCache.parse
 
@@ -143,7 +143,7 @@ def test_fixture_changes_invalidate_unchanged_test_quality_decisions(
     fixture = tmp_path / "tests/conftest.py"
     fixture.write_text(fixture.read_text().replace("return Mock()", "return object()"))
     cached = check(tmp_path).report
-    assert [v.code for v in cached.violations] == ["SMT424"]
+    assert [v.code for v in cached.violations] == ["TST006"]
     assert render_json(cached) == render_json(
         check(tmp_path, CheckOptions(use_cache=False)).report
     )
@@ -209,10 +209,10 @@ def test_each_member_architecture_judges_only_its_own_modules(
     found = check(tmp_path).report.violations
 
     assert sorted((code, path) for code, path, _ in codes_at(found)) == [
-        ("SMT101", "packages/core/src/core/domain/thing.py"),
-        ("SMT101", "services/api/src/api/features/users/domain/model.py"),
-        ("SMT102", "services/api/src/api/features/orders/domain/order.py"),
-        ("SMT103", "packages/core/src/core/domain/thing.py"),
+        ("ARC001", "packages/core/src/core/domain/thing.py"),
+        ("ARC001", "services/api/src/api/features/users/domain/model.py"),
+        ("ARC002", "services/api/src/api/features/orders/domain/order.py"),
+        ("ARC003", "packages/core/src/core/domain/thing.py"),
     ]
 
 
@@ -239,9 +239,9 @@ def test_root_architecture_only_governs_root_packages(
     found = check(tmp_path).report.violations
 
     assert sorted((code, path) for code, path, _ in codes_at(found)) == [
-        ("SMT101", "packages/core/src/core/domain/thing.py"),
-        ("SMT101", "services/api/src/api/features/users/domain/model.py"),
-        ("SMT102", "services/api/src/api/features/orders/domain/order.py"),
-        ("SMT103", "src/root_app/domain/__init__.py"),
-        ("SMT306", "packages/util/src/util/domain/model.py"),
+        ("ARC001", "packages/core/src/core/domain/thing.py"),
+        ("ARC001", "services/api/src/api/features/users/domain/model.py"),
+        ("ARC002", "services/api/src/api/features/orders/domain/order.py"),
+        ("ARC003", "src/root_app/domain/__init__.py"),
+        ("ARC013", "packages/util/src/util/domain/model.py"),
     ]

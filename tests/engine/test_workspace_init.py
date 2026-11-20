@@ -133,7 +133,7 @@ def test_flat_member_draft_leaves_local_layout_to_the_member(
     )
     if not member_only:
         write_project(root, {"smelt.yml": shared})
-    assert {finding.code for finding in check(root).report.violations} == {"SMT306"}
+    assert {finding.code for finding in check(root).report.violations} == {"ARC013"}
     write_project(root, {"libs/core/smelt.yml": "architecture: {shared: [core]}\n"})
     assert check(root).report.violations == []
 
@@ -187,7 +187,7 @@ def test_workspace_init_drafts_mirror_and_defers_incomplete_layers(
         assert "apps/runner/tests/adapters/test_sync.py" in output
     assert config.members["apps/worker"].architecture is None
     assert "worker.jobs" in (root / "apps/worker/smelt.yml").read_text(encoding="utf-8")
-    assert "SMT301" not in {v.code for v in check(root).report.violations}
+    assert "ARC011" not in {v.code for v in check(root).report.violations}
 
 
 @pytest.mark.parametrize("member", ["../outside", "services/missing", "packages"])

@@ -13,7 +13,7 @@ from smelt.diagnostics.violation import DOCS_BASE_URL
 from smelt.docs import (
     DOCS_DIR,
     SCHEMA_FILE,
-    _generated_files,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _generated_files,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
     check_generated_files,
     write_generated_files,
 )
@@ -79,9 +79,9 @@ class TestGeneratedFiles:
     ) -> None:
         write_generated_files(tmp_path)
         assert check_generated_files(tmp_path) == []
-        edited = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT101.md"
+        edited = tmp_path / "smelt/skills/smelt/references/docs/rules/ARC001.md"
         edited.write_text("incorrect rule advice", encoding="utf-8")
-        missing = tmp_path / "docs/rules/SMT101.md"
+        missing = tmp_path / "docs/rules/ARC001.md"
         missing.unlink()
         extra = tmp_path / "smelt/skills/smelt/references/evaluation.json"
         extra.write_text("{}", encoding="utf-8")
@@ -132,7 +132,7 @@ class TestGeneratedFiles:
             [*command, "--check"], capture_output=True, check=False, timeout=30
         )
         assert clean.returncode == 0
-        page = tmp_path / "smelt/skills/smelt/references/docs/rules/SMT101.md"
+        page = tmp_path / "smelt/skills/smelt/references/docs/rules/ARC001.md"
         original = page.read_bytes()
         page.write_text("stale advice", encoding="utf-8")
 
@@ -140,7 +140,7 @@ class TestGeneratedFiles:
             [*command, "--check"], capture_output=True, check=False, timeout=30
         )
         assert drift.returncode == 1
-        assert b"references/docs/rules/SMT101.md" in drift.stdout
+        assert b"references/docs/rules/ARC001.md" in drift.stdout
         assert page.read_text(encoding="utf-8") == "stale advice"
 
         subprocess.run(command, capture_output=True, check=True, timeout=30)  # noqa: S603 - trusted local generator
@@ -178,7 +178,7 @@ class TestGeneratedFiles:
 
         assert obsolete.relative_to(tmp_path).as_posix() in changed
         assert not obsolete.exists()
-        assert (obsolete.parent / "SMT101.md").is_file()
+        assert (obsolete.parent / "ARC001.md").is_file()
 
 
 class TestSchema:
@@ -207,10 +207,10 @@ class TestRulePages:
             assert (ROOT / DOCS_DIR / f"{rule.code}.md").is_file()
 
     def test_page_carries_the_how_to_fix_section(self) -> None:
-        page = (ROOT / DOCS_DIR / "SMT401.md").read_text(encoding="utf-8")
+        page = (ROOT / DOCS_DIR / "TST001.md").read_text(encoding="utf-8")
 
         assert "## How to fix\n\nMove or rename the file" in page
-        assert page.startswith("# SMT401 tests/misplaced-test\n")
+        assert page.startswith("# TST001 tests/misplaced-test\n")
 
     def test_index_lists_every_rule(self) -> None:
         index = (ROOT / DOCS_DIR / "README.md").read_text(encoding="utf-8")

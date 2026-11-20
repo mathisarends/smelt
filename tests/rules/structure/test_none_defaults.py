@@ -8,7 +8,7 @@ from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, violations, write_project
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT321",))
+OPTIONS = CheckOptions(select=("TYP003",))
 
 
 @pytest.mark.parametrize("use_cache", [False, True])
@@ -20,7 +20,7 @@ def test_optional_debt_does_not_hide_a_new_function_after_an_old_one_is_fixed(
         "def download(content_type: str | None = None):\n    return content_type or 'default'\n"
     )
     root = _project(tmp_path, before, CONFIG + "debt: debt.json\n")
-    options = CheckOptions(select=("SMT321",), use_cache=use_cache)
+    options = CheckOptions(select=("TYP003",), use_cache=use_cache)
     original = check(root, options)
     debt = Debt.from_violations(original.unfiltered, snippet_reader(original.context))
     debt.write(root / "debt.json")
@@ -76,7 +76,7 @@ def test_unscoped_optional_debt_requires_review_instead_of_hiding_a_function(
             path
         )
     current = check(root, OPTIONS)
-    assert [item.code for item in current.report.violations] == ["SMT321"]
+    assert [item.code for item in current.report.violations] == ["TYP003"]
     assert current.report.in_debt == 0
     assert len(current.resolved_debt) == 1
 
@@ -138,7 +138,7 @@ def test_optional_annotations_report_the_defaulting_expression(
     assert len(found) == 1
     finding = found[0]
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT321",
+        "TYP003",
         "app/service.py",
         4,
         12,
@@ -278,7 +278,7 @@ def test_rule_name_selection_and_configuration_enable_the_review(
         "def create(options: Options | None = None):\n    return options or Options()\n",
         CONFIG + "rules: {typing/implicit-optional-default: warning}\n",
     )
-    assert [v.code for v in violations(root)] == ["SMT321"]
+    assert [v.code for v in violations(root)] == ["TYP003"]
     assert (
         len(
             violations(root, CheckOptions(select=("typing/implicit-optional-default",)))

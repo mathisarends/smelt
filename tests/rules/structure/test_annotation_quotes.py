@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-SELECT = CheckOptions(select=("SMT346",))
+SELECT = CheckOptions(select=("TYP006",))
 FUTURE = "from __future__ import annotations\n\n"
 ISSUE_EXAMPLE = (
     "from abc import ABC, abstractmethod\n\n\n"
@@ -50,7 +50,7 @@ def test_suggests_future_import_for_quoted_forward_reference(tmp_path: Path) -> 
     root = _project(tmp_path, ISSUE_EXAMPLE)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT346",
+        "TYP006",
         "app/handoff.py",
         6,
         51,

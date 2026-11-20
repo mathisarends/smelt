@@ -56,8 +56,20 @@ if TYPE_CHECKING:
     from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import RuleContract, RuleSet
 
-_META = frozenset({"SMT901", "SMT902", "SMT903", MissingRulePolicy.code})
-_COVERAGE = "SMT306"
+# Test-quality rules; any of them adds test-quality coverage to the report.
+TEST_QUALITY_CODES = (
+    "TST002",
+    "TST003",
+    "TST004",
+    "TST005",
+    "TST006",
+    "TST007",
+    "TST008",
+    "TST009",
+    "TST010",
+)
+_META = frozenset({"MET001", "MET002", "MET003", MissingRulePolicy.code})
+_COVERAGE = "ARC013"
 _BASELINE = TypeAdapter(list[DebtEntry])
 _SUPPRESSIONS = TypeAdapter(list[Suppression])
 
@@ -238,9 +250,9 @@ def _run_check(
             effective_coverage(
                 ctx,
                 include_inventory=True,
-                include_ordering=any(rule.code == "SMT313" for rule, _ in active),
+                include_ordering=any(rule.code == "LAY004" for rule, _ in active),
                 include_test_quality=any(
-                    rule.code.startswith("SMT42") for rule, _ in active
+                    rule.code in TEST_QUALITY_CODES for rule, _ in active
                 ),
             ),
             len(ctx.files.sources),
@@ -285,11 +297,11 @@ def _run_check(
         violations, known, scope_resolved = debt.match(violations, snippet_reader(ctx))
         resolved.extend(scope_resolved)
         in_debt += len(known)
-        if "SMT903" in severity_of and not options.paths and not options.changed:
+        if "MET003" in severity_of and not options.paths and not options.changed:
             violations.extend(
                 replace(finding, member=debt_scope.member)
                 for finding in _resolved_violations(
-                    scope_resolved, debt_scope.path, severity_of["SMT903"]
+                    scope_resolved, debt_scope.path, severity_of["MET003"]
                 )
             )
     comparison: Comparison | None = None
@@ -706,7 +718,7 @@ def _suppression_violations(
     codes: tuple[dict[str, str], set[str]],
     severity_of: dict[str, Severity],
 ) -> list[Violation]:
-    """SMT901/SMT902 findings; ``codes`` holds the catalog by name and the enabled codes."""
+    """MET001/MET002 findings; ``codes`` holds the catalog by name and the enabled codes."""
     names, enabled = codes
     known = set(names.values())
     results: list[Violation] = []
@@ -715,7 +727,7 @@ def _suppression_violations(
     checked = active_codes - _META
     for suppression, used in usage.items():
         if (
-            "SMT902" in active_codes
+            "MET002" in active_codes
             and ctx.config.suppressions.require_reason
             and not suppression.reason
         ):
@@ -726,9 +738,9 @@ def _suppression_violations(
                     line=suppression.line,
                     column=suppression.column + 1,
                     hint="Append ` -- <why this exception is acceptable>` to the comment.",
-                ).with_severity(severity_of["SMT902"])
+                ).with_severity(severity_of["MET002"])
             )
-        if "SMT901" not in active_codes:
+        if "MET001" not in active_codes:
             continue
         unknown = [
             suppression.label(prefix)
@@ -744,7 +756,7 @@ def _suppression_violations(
                     column=suppression.column + 1,
                     expected={"unknown_identifiers": unknown},
                     hint=_unknown_identifier_hint(unknown, names),
-                ).with_severity(severity_of["SMT901"])
+                ).with_severity(severity_of["MET001"])
             )
         unused = _unused_codes(
             suppression,
@@ -767,7 +779,7 @@ def _suppression_violations(
                 line=suppression.line,
                 column=suppression.column + 1,
                 hint="Remove the suppression; nothing on this line needs it.",
-            ).with_severity(severity_of["SMT901"])
+            ).with_severity(severity_of["MET001"])
         )
     return results
 
@@ -780,7 +792,7 @@ def _unknown_identifier_hint(unknown: list[str], names: dict[str, str]) -> str:
         for identifier in unknown
     ]
     if not any(suggestions):
-        return "Use a rule name or a stable SMT code; `smelt rules` lists both."
+        return "Use a rule name or a rule code; `smelt rules` lists both."
     return " ".join(
         f"{identifier}{suggestion}."
         for identifier, suggestion in zip(unknown, suggestions, strict=True)

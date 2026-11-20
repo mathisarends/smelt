@@ -209,7 +209,7 @@ def _group_ordering(violations: list[Violation]) -> list[Violation]:
     groups: dict[tuple[str | None, str], list[Violation]] = {}
     for violation in violations:
         if (
-            violation.code == "SMT313"
+            violation.code == "LAY004"
             and (violation.expected or {}).get("scope") == "module"
             and violation.message
             in {
@@ -221,7 +221,7 @@ def _group_ordering(violations: list[Violation]) -> list[Violation]:
     result: list[Violation] = []
     for violation in violations:
         group = groups.get((violation.path, violation.message), [])
-        if violation.code != "SMT313" or len(group) <= 1:
+        if violation.code != "LAY004" or len(group) <= 1:
             result.append(violation)
         elif violation is group[0]:
             affected = ", ".join(str(v.line) for v in group)
@@ -261,13 +261,13 @@ class _Style:
 def _group_unclassified(violations: list[Violation]) -> list[Violation]:
     groups: dict[tuple[str, Severity, str | None], list[Violation]] = {}
     for violation in violations:
-        if violation.code in ("SMT305", "SMT306") and violation.path:
+        if violation.code in ("ARC012", "ARC013") and violation.path:
             groups.setdefault(
                 (violation.code, violation.severity, violation.hint), []
             ).append(violation)
     result: list[Violation] = []
     for violation in violations:
-        if violation.code not in ("SMT305", "SMT306") or not violation.path:
+        if violation.code not in ("ARC012", "ARC013") or not violation.path:
             result.append(violation)
             continue
         group = groups[(violation.code, violation.severity, violation.hint)]
@@ -279,7 +279,7 @@ def _group_unclassified(violations: list[Violation]) -> list[Violation]:
                 violation,
                 path=directory,
                 message=f"{len(group)} source files have incomplete policy coverage; --format json lists individual paths"
-                if violation.code == "SMT306"
+                if violation.code == "ARC013"
                 else f"{len(group)} modules have no architecture classification; --format json lists individual paths",
             )
             result.append(grouped)

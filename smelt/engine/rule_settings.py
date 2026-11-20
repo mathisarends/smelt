@@ -21,11 +21,11 @@ if TYPE_CHECKING:
     from smelt.config.models import RuleSetting
     from smelt.rules.base import RuleContract, RuleSet
 
-_STRICT_COVERAGE = "SMT306"
+_STRICT_COVERAGE = "ARC013"
 _RANK = {"off": 0, "hint": 1, "warning": 2, "error": 3}
 _LIMIT_CODES = dict(LIMIT_RULES.values())
 # The comprehension limit counts for clauses, so a comprehension has at least one.
-_MINIMUM_MAX = {"SMT363": 1}
+_MINIMUM_MAX = {"CPX006": 1}
 _PATCH_LIMIT = LIMIT_RULES["max_patches_per_test"][0]
 
 

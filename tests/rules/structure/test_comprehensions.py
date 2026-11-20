@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT363",))
+SELECT = CheckOptions(select=("CPX006",))
 
 
 @pytest.mark.parametrize(
@@ -42,7 +42,7 @@ def test_reports_named_conditions(
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT363",
+        "CPX006",
         "app/model.py",
         1,
         9,
@@ -152,7 +152,7 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
             + "rules: {complexity/excess-comprehension-loops: {severity: hint, max: 1}}\n"
         },
     )
-    assert [v.code for v in violations(root)] == ["SMT363"]
+    assert [v.code for v in violations(root)] == ["CPX006"]
     write_policy_project(
         root,
         {
@@ -165,7 +165,7 @@ style:
 """,
             "app/quiet/__init__.py": source,
             "app/intentional.py": source.rstrip()
-            + "  # smelt: ignore[SMT363] -- deliberate flattening\n",
+            + "  # smelt: ignore[CPX006] -- deliberate flattening\n",
             "tests/test_model.py": source,
         },
     )

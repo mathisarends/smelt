@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class UnboundedTestWait(Rule):
     test_local = True
     scope = "test"
-    code = "SMT426"
+    code = "TST008"
     name = "tests/unbounded-wait"
     category = Category.TESTS
     default_severity = Severity.WARNING

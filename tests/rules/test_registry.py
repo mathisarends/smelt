@@ -13,9 +13,24 @@ import pytest
 import smelt.rules
 from smelt.analysis.context import Index
 from smelt.config.models import SmeltConfig
-from smelt.diagnostics.violation import Severity
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleContract, RuleSet
 from smelt.rules.registry import build_rule_set
+
+# Code prefixes per family, as listed in CONTRIBUTING.md.
+_CODE_PREFIXES = {
+    Category.ARCHITECTURE: "ARC",
+    Category.IMPORTS: "IMP",
+    Category.LAYOUT: "LAY",
+    Category.VISIBILITY: "VIS",
+    Category.MODELING: "MOD",
+    Category.TYPING: "TYP",
+    Category.COMPLEXITY: "CPX",
+    Category.IDIOMS: "IDM",
+    Category.FRAMEWORKS: "FWK",
+    Category.TESTS: "TST",
+    Category.META: "MET",
+}
 
 # Qualifiers the naming scheme in CONTRIBUTING.md replaces with
 # forbidden-, redundant- or a finding noun.
@@ -44,7 +59,7 @@ class TestBuiltins:
 
     @pytest.mark.parametrize("rule", build_rule_set().rules, ids=lambda rule: rule.code)
     def test_catalog_contract(self, rule: Rule) -> None:
-        assert re.fullmatch(r"SMT[1349]\d{2}", rule.code)
+        assert re.fullmatch(rf"{_CODE_PREFIXES[rule.category]}\d{{3}}", rule.code)
         family, _, finding = rule.name.partition("/")
         assert family == rule.category.value, "a rule name starts with its family"
         assert re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", finding)
@@ -71,9 +86,9 @@ class TestBuiltins:
     def test_lookup_by_code_and_by_name(self) -> None:
         rule_set = build_rule_set()
 
-        assert rule_set.lookup("smt101") is rule_set.by_code("SMT101")
+        assert rule_set.lookup("arc001") is rule_set.by_code("ARC001")
         assert rule_set.lookup("architecture/layer-boundary") is rule_set.by_code(
-            "SMT101"
+            "ARC001"
         )
         assert rule_set.lookup("nope") is None
 

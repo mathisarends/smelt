@@ -4,7 +4,7 @@ import pytest
 
 from smelt.analysis.test_deadlines import async_deadline
 from smelt.analysis.test_syntax import (
-    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _analyze_test_syntax,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 
 

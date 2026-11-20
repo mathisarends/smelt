@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
 from smelt.config.source import SourceStore
+from smelt.diagnostics.legacy_codes import LEGACY_CODES, legacy_code
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -72,16 +73,17 @@ def fingerprint(violation: Violation, snippet: str, *, legacy: bool = False) -> 
         if violation.target_module and not legacy
         else re.sub(r"\s+", " ", snippet).strip()
     )
+    # Fingerprints hash the pre-family SMT code so earlier baselines stay valid.
     payload = "\x1f".join(
         [
-            violation.code,
+            legacy_code(violation.code),
             violation.path or "",
             violation.source_module or "",
             violation.target_module or "",
             normalized,
         ]
     )
-    if violation.code == "SMT321" and not legacy and (scope := _scope(violation)):
+    if violation.code == "TYP003" and not legacy and (scope := _scope(violation)):
         payload += f"\x1f{scope}"
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
@@ -98,10 +100,11 @@ def _fingerprints(violation: Violation, snippet: str) -> list[str]:
         # One baseline token per cyclic architecture edge, independent of the
         # displayed shortest witness. Subtracting edges is an improvement; adding
         # an edge or expanding/splitting a component cannot hide behind a witness.
+        code = legacy_code(violation.code)
         prefix = (
-            "SMT104"
-            if violation.code == "SMT104"
-            else f"{violation.code}\x1f{violation.path}\x1f{violation.source_module}"
+            code
+            if violation.code == "ARC004"
+            else f"{code}\x1f{violation.path}\x1f{violation.source_module}"
         )
         return [
             hashlib.sha256(f"{prefix}\x1f{edge}".encode()).hexdigest()[:32]
@@ -119,18 +122,18 @@ def _semantic_edges(violation: Violation) -> list[str]:
 
 def _edge_field(violation: Violation) -> str | None:
     return {
-        "SMT104": "cyclic_edges",
-        "SMT109": "export_edges",
-        "SMT110": "import_edges",
-        "SMT313": "ordering_edges",
-        "SMT315": "dispatch_edges",
-        "SMT338": "literal_edges",
-        "SMT361": "pairing_edges",
-        "SMT362": "lookup_edges",
-        "SMT363": "comprehension_edges",
-        "SMT364": "decision_edges",
-        "SMT367": "definition_edges",
-        "SMT423": "patch_edges",
+        "ARC004": "cyclic_edges",
+        "ARC008": "export_edges",
+        "IMP002": "import_edges",
+        "LAY004": "ordering_edges",
+        "IDM002": "dispatch_edges",
+        "TYP005": "literal_edges",
+        "MOD012": "pairing_edges",
+        "IDM008": "lookup_edges",
+        "CPX006": "comprehension_edges",
+        "CPX007": "decision_edges",
+        "VIS007": "definition_edges",
+        "TST005": "patch_edges",
     }.get(violation.code)
 
 
@@ -157,7 +160,9 @@ class Debt:
         if isinstance(data, _GroupedDebtDocument):
             return cls(
                 [
-                    DebtEntry(key, item.code, item.path, item.message, item.scope)
+                    DebtEntry(
+                        key, _current(item.code), item.path, item.message, item.scope
+                    )
                     for item in data.violations
                     for key in item.fingerprints
                 ]
@@ -166,7 +171,7 @@ class Debt:
             [
                 DebtEntry(
                     fingerprint=item.fingerprint,
-                    code=item.code,
+                    code=_current(item.code),
                     path=item.path,
                     message=item.message,
                 )
@@ -249,7 +254,7 @@ class Debt:
             if (
                 not matched
                 and not _semantic_edges(violation)
-                and not (violation.code == "SMT321" and _scope(violation))
+                and not (violation.code == "TYP003" and _scope(violation))
             ):
                 # Existing version-1 debt files used the complete source line.
                 if violation.target_module:
@@ -296,3 +301,8 @@ class Debt:
             else:
                 kept.append(entry)
         return Debt(kept)
+
+
+def _current(code: str) -> str:
+    """The family code of an entry written with a pre-family SMT code."""
+    return LEGACY_CODES.get(code, code)

@@ -17,7 +17,7 @@ style:
       match: app
       errors: {base: app.errors.AppError}
 """
-SELECT = CheckOptions(select=("SMT354",))
+SELECT = CheckOptions(select=("MOD008",))
 
 
 def _project(
@@ -61,7 +61,7 @@ def test_reports_builtin_raised_for_a_domain_failure(tmp_path: Path) -> None:
     (finding,) = violations(_project(tmp_path, source), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT354",
+        "MOD008",
         "app/files.py",
         7,
         9,
@@ -201,4 +201,4 @@ def test_is_inactive_without_policy(tmp_path: Path) -> None:
         config="version: 2\nproject: {root_packages: [app]}\n",
     )
 
-    assert [item for item in violations(root) if item.code == "SMT354"] == []
+    assert [item for item in violations(root) if item.code == "MOD008"] == []

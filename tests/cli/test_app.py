@@ -55,9 +55,9 @@ def test_statistics_by_member_includes_source_findings_and_test_hints(
     _, out, _ = _run(capsys, "check", "--format", "json")
     found = json.loads(out)["violations"]
     assert [(v["code"], v["member"]) for v in found] == [
-        ("SMT111", "packages/core"),
-        ("SMT112", "packages/core"),
-        ("SMT427", "services/api"),
+        ("ARC009", "packages/core"),
+        ("ARC010", "packages/core"),
+        ("TST009", "services/api"),
     ]
 
 
@@ -173,7 +173,7 @@ def test_a_workspace_rule_replaces_its_base_under_another_alias(
         tmp_path,
         {
             "base.yml": "rules: {architecture/import-cycle: error}\n",
-            "smelt.yml": "extends: base.yml\nversion: 2\nproject: {root_packages: [app]}\nrules: {SMT104: off}\n",
+            "smelt.yml": "extends: base.yml\nversion: 2\nproject: {root_packages: [app]}\nrules: {ARC004: off}\n",
         },
     )
     code, _, error = _run(
@@ -255,7 +255,7 @@ def test_an_explicit_base_path_widens_the_check_to_its_workspace(
     report = json.loads(output)
     assert code == 1
     assert error == ""
-    assert [v["code"] for v in report["violations"]] == ["SMT426"]
+    assert [v["code"] for v in report["violations"]] == ["TST008"]
     assert report["scope"]["paths"] == []
 
 
@@ -508,7 +508,7 @@ class TestCheckCommand:
 
         assert code == 1
         assert err == ""
-        assert "tests/test_smoke.py:1:1 SMT424" in out
+        assert "tests/test_smoke.py:1:1 TST006" in out
         assert "Expected" not in out
 
     @pytest.mark.parametrize("fail_on", ["error", "warning"])
@@ -539,7 +539,7 @@ class TestCheckCommand:
             "--fail-on",
             fail_on,
             "--select",
-            "SMT901",
+            "MET001",
         )
         assert code == (0 if fail_on == "error" else 1)
         assert "cyclic may_depend_on" in out
@@ -584,11 +584,11 @@ class TestCheckCommand:
         assert json.loads(out)["violations"] == []
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 1
-        assert "SMT104" in {item["code"] for item in json.loads(out)["violations"]}
-        add_rules(root, {"SMT104": "off"})
+        assert "ARC004" in {item["code"] for item in json.loads(out)["violations"]}
+        add_rules(root, {"ARC004": "off"})
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 0
-        assert "SMT104" not in json.loads(out)["scope"]["rules"]
+        assert "ARC004" not in json.loads(out)["scope"]["rules"]
 
     def test_enabled_rule_debt_can_still_be_resolved_and_pruned(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -596,11 +596,11 @@ class TestCheckCommand:
         root = write_policy_project(
             tmp_path,
             {
-                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
+                "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {ARC004: error}\ndebt: .smelt/debt.json",
                 "app/__init__.py": "",
             },
         )
-        entry = DebtEntry("b" * 32, "SMT104", "app/old.py", "removed cycle")
+        entry = DebtEntry("b" * 32, "ARC004", "app/old.py", "removed cycle")
         Debt([entry]).write(root / ".smelt/debt.json")
         assert check(root).resolved_debt == [entry]
         code, _, _ = _run(
@@ -627,11 +627,11 @@ class TestCheckCommand:
         report = json.loads(out)
         assert code == 0
         assert set(report["scope"]["rules"]) == {
-            "SMT301",
-            "SMT901",
-            "SMT902",
-            "SMT903",
-            "SMT904",
+            "ARC011",
+            "MET001",
+            "MET002",
+            "MET003",
+            "MET004",
         }
         assert report["violations"] == []
 
@@ -647,7 +647,7 @@ class TestCheckCommand:
             },
         )
         entry = DebtEntry(
-            "a" * 32, "SMT104", "app/old.py", "cycle not currently checked"
+            "a" * 32, "ARC004", "app/old.py", "cycle not currently checked"
         )
         Debt([entry]).write(root / ".smelt/debt.json")
         outcome = check(root)
@@ -677,13 +677,13 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT315",
+            "IDM002",
             "--fix",
             "--format",
             "json",
         )
         assert code == 0
-        assert json.loads(out)["violations"][0]["code"] == "SMT315"
+        assert json.loads(out)["violations"][0]["code"] == "IDM002"
         assert json.loads(out)["violations"][0]["severity"] == "hint"
         assert (root / "app/events.py").read_bytes() == before
 
@@ -706,13 +706,13 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT314",
+            "IDM001",
             "--fix",
             "--format",
             "json",
         )
         assert code == 1
-        assert json.loads(out)["violations"][0]["code"] == "SMT314"
+        assert json.loads(out)["violations"][0]["code"] == "IDM001"
         assert (root / "app/service.py").read_bytes() == before
 
     def test_test_quality_rule_reports_json_and_sarif(
@@ -731,17 +731,17 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT422",
+            "TST004",
         )
         code, out, _ = _run(capsys, *arguments, "--format", "json")
         assert code == 1
         report = json.loads(out)
-        assert report["violations"][0]["code"] == "SMT422"
+        assert report["violations"][0]["code"] == "TST004"
         assert "tests" not in report["coverage"]
-        assert "SMT422" in report["scope"]["rules"]
+        assert "TST004" in report["scope"]["rules"]
         code, out, _ = _run(capsys, *arguments, "--format", "sarif")
         assert code == 1
-        assert json.loads(out)["runs"][0]["results"][0]["ruleId"] == "SMT422"
+        assert json.loads(out)["runs"][0]["results"][0]["ruleId"] == "TST004"
 
     def test_ordering_fixes_require_explicit_request_and_report_result(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -760,7 +760,7 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT313",
+            "LAY004",
             "--format",
             "json",
         )
@@ -804,7 +804,7 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT312",
+            "LAY003",
             "--show-coverage",
             "--format",
             "json",
@@ -813,7 +813,7 @@ class TestCheckCommand:
 
         assert code == 1
         assert err == ""
-        assert document["violations"][0]["code"] == "SMT312"
+        assert document["violations"][0]["code"] == "LAY003"
         assert document["violations"][0]["path"] == "app/_service.py"
         assert document["coverage"]["contracts"][0]["private_modules"] == "forbid"
 
@@ -847,7 +847,7 @@ class TestCheckCommand:
 
         assert code == 1
         assert err == ""
-        assert {"SMT309", "SMT310"} <= {item["code"] for item in document["violations"]}
+        assert {"LAY002", "TYP001"} <= {item["code"] for item in document["violations"]}
         assert document["coverage"]["python_targets"][0]["minimum"] == "3.14"
 
         code, out, err = _run(
@@ -891,7 +891,7 @@ class TestCheckCommand:
             "--config",
             str(root / "smelt.yml"),
             "--select",
-            "SMT307",
+            "ARC014",
             "--show-coverage",
             "--format",
             "json",
@@ -900,7 +900,7 @@ class TestCheckCommand:
 
         assert code == 1
         assert err == ""
-        assert document["violations"][0]["code"] == "SMT307"
+        assert document["violations"][0]["code"] == "ARC014"
         assert document["coverage"]["contracts"][0]["missing"] == ["library.api"]
 
     def test_strict_coverage_override_and_optional_inventory(
@@ -932,7 +932,7 @@ class TestCheckCommand:
         assert err == ""
         assert document["coverage"]["mode"] == "strict"
         assert document["coverage"]["complete"] is False
-        assert document["violations"][0]["code"] == "SMT306"
+        assert document["violations"][0]["code"] == "ARC013"
         assert any(
             item["path"] == "client/api.py"
             for item in document["coverage"]["inventory"]
@@ -1036,7 +1036,7 @@ class TestCheckCommand:
         code, out, err = _run(capsys, *args)
 
         assert code == 1
-        assert "SMT101" in out
+        assert "ARC001" in out
         assert "app/domain/model.py" in out
         assert err == ""
 
@@ -1056,15 +1056,15 @@ class TestCheckCommand:
         )
         monkeypatch.chdir(clean_project)
 
-        _, text, _ = _run(capsys, "check", "--select", "SMT305")
-        _, output, _ = _run(capsys, "check", "--select", "SMT305", "--format", "json")
-        _, statistics, _ = _run(capsys, "check", "--select", "SMT305", "--statistics")
+        _, text, _ = _run(capsys, "check", "--select", "ARC012")
+        _, output, _ = _run(capsys, "check", "--select", "ARC012", "--format", "json")
+        _, statistics, _ = _run(capsys, "check", "--select", "ARC012", "--statistics")
 
-        assert text.count("SMT305 architecture/unclassified-module") == 1
+        assert text.count("ARC012 architecture/unclassified-module") == 1
         assert "2 modules have no architecture classification" in text
         assert "Give app.platform a layer" in text
         assert len(json.loads(output)["violations"]) == 2
-        assert "2  SMT305 architecture/unclassified-module" in statistics
+        assert "2  ARC012 architecture/unclassified-module" in statistics
 
     @pytest.mark.parametrize("path", ["app/domian", "README.md"])
     def test_rejects_missing_or_unanalyzed_scope(
@@ -1099,13 +1099,13 @@ class TestCheckCommand:
     ) -> None:
         monkeypatch.chdir(clean_project)
 
-        code, out, err = _run(capsys, "check", option, "SMT1,SMT999")
+        code, out, err = _run(capsys, "check", option, "ARC,SMT999")
 
         assert code == 2
         assert out == ""
         assert option in err
         assert 'unknown rule prefix "SMT999"' in err
-        assert "SMT903" not in err
+        assert "MET003" not in err
 
     def test_usage_error_is_json_when_json_was_asked_for(
         self,
@@ -1133,7 +1133,7 @@ class TestCheckCommand:
                 ["--format", "json", "--fail-on", "bogus"],
                 {"option": "--fail-on", "value": "bogus"},
             ),
-            (["--format=json", "--selct", "SMT1"], None),
+            (["--format=json", "--selct", "ARC"], None),
         ],
     )
     def test_argument_error_is_json_when_json_was_asked_for(
@@ -1175,7 +1175,7 @@ class TestCheckCommand:
         scope = json.loads(out)["scope"]
         assert scope["paths"] == ["app/application"]
         assert scope["files"] == 2
-        assert "SMT101" in scope["rules"]
+        assert "ARC001" in scope["rules"]
         assert (
             "Scope: app/application (2 analyzed source/test files)"
             in _run(capsys, "check", "app/application")[1]
@@ -1226,7 +1226,7 @@ class TestCheckCommand:
         assert document["schema_version"] == 2
         assert document["status"] == "failed"
         assert document["summary"]["errors"] == 7
-        assert document["violations"][0]["code"] == "SMT104"
+        assert document["violations"][0]["code"] == "ARC004"
 
     def test_select_narrows_rules(self, capsys: pytest.CaptureFixture[str]) -> None:
         _, out, _ = _run(
@@ -1237,10 +1237,10 @@ class TestCheckCommand:
             "--format",
             "json",
             "--select",
-            "SMT105",
+            "ARC005",
         )
 
-        assert [v["code"] for v in json.loads(out)["violations"]] == ["SMT105"]
+        assert [v["code"] for v in json.loads(out)["violations"]] == ["ARC005"]
 
     def test_positional_paths_filter_results(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -1378,7 +1378,7 @@ class TestChangedHints:
             ["commit", "-qm", "i"],
         ):
             subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
-        add_rules(clean_project, {"SMT305": "hint"})
+        add_rules(clean_project, {"ARC012": "hint"})
         (clean_project / "app" / "misc.py").write_text("", encoding="utf-8")
         monkeypatch.chdir(clean_project)
         return clean_project
@@ -1387,13 +1387,13 @@ class TestChangedHints:
     def test_changed_mode_shows_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
         _, out, _ = _run(capsys, "check", "--changed", "--no-color")
 
-        assert "app/misc.py  SMT305 architecture/unclassified-module  [hint]" in out
+        assert "app/misc.py  ARC012 architecture/unclassified-module  [hint]" in out
 
     @pytest.mark.usefixtures("repo")
     def test_full_check_folds_hints(self, capsys: pytest.CaptureFixture[str]) -> None:
         _, out, _ = _run(capsys, "check", "--no-color")
 
-        assert "SMT305" not in out
+        assert "ARC012" not in out
         assert "1 hint (use --show-hints)" in out
 
 
@@ -1428,18 +1428,18 @@ class TestInfoCommands:
 
         codes = [rule["code"] for rule in json.loads(out)]
         assert code == 0
-        assert codes[:6] == ["SMT101", "SMT102", "SMT103", "SMT104", "SMT105", "SMT106"]
+        assert codes[:6] == ["ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006"]
 
     def test_catalog_and_explanation_share_config_metadata(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         code, out, _ = _run(capsys, "rules", "--format", "json")
         assert code == 0
-        entry = next(rule for rule in json.loads(out) if rule["code"] == "SMT308")
+        entry = next(rule for rule in json.loads(out) if rule["code"] == "IMP003")
         assert entry["requires"] == ["syntax"]
         assert "style.overrides" in entry["config"]
 
-        code, out, _ = _run(capsys, "explain", "SMT308", "--format", "json")
+        code, out, _ = _run(capsys, "explain", "IMP003", "--format", "json")
         assert code == 0
         explanation = json.loads(out)
         assert explanation["requires"] == entry["requires"]
@@ -1450,7 +1450,7 @@ class TestInfoCommands:
 
         assert code == 0
         assert out.startswith(
-            "SMT101 architecture/layer-boundary  [architecture, activation: explicit, severity: error]"
+            "ARC001 architecture/layer-boundary  [architecture, activation: explicit, severity: error]"
         )
 
     def test_explain_unknown_rule(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1467,14 +1467,11 @@ class TestInfoCommands:
     @pytest.mark.parametrize(
         ("raw", "suggestion"),
         [
-            ("SMT999", ""),
-            ("SMT102x", ""),
-            ("SMT119", ""),  # Ambiguous between SMT109 and SMT319.
-            ("SMT401", None),
-            ("SMT411", ""),  # Ambiguous between SMT311 and SMT401.
-            ("SMT524", ""),  # Ambiguous between SMT324 and SMT424.
-            ("SMT527", ""),  # Ambiguous between SMT327 and SMT427.
-            ("SMT199", ' (did you mean "SMT109"?)'),
+            ("ARC999", ""),
+            ("ARC002x", ""),
+            ("ARC018", ""),  # Ambiguous between ARC008 and ARC010-ARC014.
+            ("TST001", None),
+            ("XRC001", ' (did you mean "ARC001"?)'),
             ("layer-boundry", ' (did you mean "architecture/layer-boundary"?)'),
         ],
     )
@@ -1556,7 +1553,7 @@ class TestDiscoveryCommands:
         monkeypatch.chdir(clean_project)
         code, report, err = _run(capsys, "check", "--format", "json")
         assert (code, err) == (1, "")
-        assert "SMT101" in {v["code"] for v in json.loads(report)["violations"]}
+        assert "ARC001" in {v["code"] for v in json.loads(report)["violations"]}
 
         def unexpected_build(*args: object, **kwargs: object) -> None:
             pytest.fail("context rebuilt the import graph after an unchanged check")
@@ -1567,14 +1564,14 @@ class TestDiscoveryCommands:
                 capsys, "context", "app.domain.order", "--format", "json"
             )
         assert (code, err) == (0, "")
-        assert "SMT101" in json.loads(output)["violations"]["codes"]
+        assert "ARC001" in json.loads(output)["violations"]["codes"]
 
         module.write_text("", encoding="utf-8")
         code, output, err = _run(
             capsys, "context", "app.domain.order", "--format", "json"
         )
         assert (code, err) == (0, "")
-        assert "SMT101" not in json.loads(output)["violations"]["codes"]
+        assert "ARC001" not in json.loads(output)["violations"]["codes"]
 
     def test_context_survives_unrelated_syntax_error(
         self,
@@ -1697,7 +1694,7 @@ class TestInitCommand:
         assert code == 1
         assert err == ""
         report = json.loads(out)
-        assert {"SMT313", "SMT316"} <= {
+        assert {"LAY004", "VIS001"} <= {
             finding["code"] for finding in report["violations"]
         }
 
@@ -1733,7 +1730,7 @@ class TestInitCommand:
         assert architecture is not None
         assert set(architecture.layers) == {"domain", "infrastructure"}
         assert config.tests.layout == "none"
-        assert {"SMT101", "SMT313", "SMT316"} <= {
+        assert {"ARC001", "LAY004", "VIS001"} <= {
             v.code for v in check(tmp_path).report.violations
         }
 
@@ -2083,7 +2080,7 @@ def test_optional_default_cli_requires_both_fix_flags(
         "--config",
         str(root / "smelt.yml"),
         "--select",
-        "SMT321",
+        "TYP003",
         "--fail-on",
         "warning",
         "--format",
@@ -2110,7 +2107,7 @@ def test_optional_default_cli_requires_both_fix_flags(
         )
     else:
         assert code == 1
-        assert report["violations"][0]["code"] == "SMT321"
+        assert report["violations"][0]["code"] == "TYP003"
         assert (root / "app/service.py").read_text() == OPTIONAL_DEFAULT_SOURCE
         if "--fix" in flags:
             assert (
@@ -2137,7 +2134,7 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
                 "--config",
                 str(root / "smelt.yml"),
                 "--select",
-                "SMT313,SMT321",
+                "LAY004,TYP003",
                 "--fail-on",
                 "warning",
                 "--fix",
@@ -2154,3 +2151,12 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     rewritten = (root / "app/service.py").read_text()
     assert rewritten.startswith("def create")
     assert "options if options is not None else" in rewritten
+
+
+def test_explain_points_a_retired_smt_code_to_its_family_code(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, _, err = _run(capsys, "explain", "SMT401")
+
+    assert code != 0
+    assert 'renamed to TST001 "tests/misplaced-test" in 0.14.0' in err

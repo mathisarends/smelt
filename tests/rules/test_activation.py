@@ -8,7 +8,7 @@ from smelt.config.models import SmeltConfig
 from smelt.engine.check import (
     CheckOptions,
     InvalidOptionError,
-    _resolve_active_rules,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _resolve_active_rules,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
     rule_meta,
 )
 from smelt.engine.rule_settings import RuleSettings
@@ -16,7 +16,7 @@ from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import Rule
 from smelt.rules.registry import build_rule_set
 
-BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903", "SMT904"}
+BASELINE = {"ARC011", "MET001", "MET002", "MET003", "MET004"}
 
 
 def _loaded(extra: dict[str, object]) -> LoadedConfig:
@@ -55,41 +55,41 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
 @pytest.mark.parametrize(
     ("extra", "expected"),
     [
-        ({"architecture": {"layers": {"domain": {"path": "domain"}}}}, {"SMT101"}),
-        ({"architecture": {"features": {"root": "app.features"}}}, {"SMT102"}),
+        ({"architecture": {"layers": {"domain": {"path": "domain"}}}}, {"ARC001"}),
+        ({"architecture": {"features": {"root": "app.features"}}}, {"ARC002"}),
         (
             {
                 "architecture": {
                     "layers": {"domain": {"path": "domain", "third_party": "deny"}}
                 }
             },
-            {"SMT101", "SMT103"},
+            {"ARC001", "ARC003"},
         ),
-        ({"architecture": {"shared": ["app.shared"]}}, {"SMT105"}),
-        ({"architecture": {"modules": {"app.platform": "infrastructure"}}}, {"SMT105"}),
-        ({"architecture": {"composition_root": ["app.main"]}}, {"SMT106"}),
-        ({"architecture": {"wiring": ["app.di"]}}, {"SMT106"}),
-        ({"style": {"forbidden_names": ["utils"]}}, {"SMT302"}),
-        ({"style": {"module_import_exemptions": []}}, {"SMT110"}),
-        ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
-        ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
-        ({"rules": {"architecture/uncovered-source": "error"}}, {"SMT306"}),
-        ({"tests": {"layout": "mirror"}}, {"SMT401"}),
-        ({"rules": {"tests/private-access": "error"}}, {"SMT420"}),
-        ({"tests": {"forbidden_mock_paths": ["tests/domain/**"]}}, {"SMT421"}),
-        ({"rules": {"tests/string-patch-target": "error"}}, {"SMT422"}),
+        ({"architecture": {"shared": ["app.shared"]}}, {"ARC005"}),
+        ({"architecture": {"modules": {"app.platform": "infrastructure"}}}, {"ARC005"}),
+        ({"architecture": {"composition_root": ["app.main"]}}, {"ARC006"}),
+        ({"architecture": {"wiring": ["app.di"]}}, {"ARC006"}),
+        ({"style": {"forbidden_names": ["utils"]}}, {"LAY001"}),
+        ({"style": {"module_import_exemptions": []}}, {"IMP002"}),
+        ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"LAY007"}),
+        ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"LAY007"}),
+        ({"rules": {"architecture/uncovered-source": "error"}}, {"ARC013"}),
+        ({"tests": {"layout": "mirror"}}, {"TST001"}),
+        ({"rules": {"tests/private-access": "error"}}, {"TST002"}),
+        ({"tests": {"forbidden_mock_paths": ["tests/domain/**"]}}, {"TST003"}),
+        ({"rules": {"tests/string-patch-target": "error"}}, {"TST004"}),
         (
             {"rules": {"tests/excess-patches": {"severity": "error", "max": 0}}},
-            {"SMT423"},
+            {"TST005"},
         ),
-        ({"rules": {"tests/missing-outcome-check": "warning"}}, {"SMT424"}),
-        ({"rules": {"tests/vacuous-assertion": "warning"}}, {"SMT425"}),
-        ({"rules": {"tests/unbounded-wait": "warning"}}, {"SMT426"}),
-        ({"rules": {"tests/independent-case-loop": "hint"}}, {"SMT427"}),
-        ({"rules": {"tests/missing-await-assertion": "warning"}}, {"SMT428"}),
-        ({"rules": {"visibility/test-only-public-function": "warning"}}, {"SMT429"}),
-        ({"rules": {"visibility/test-only-public-attribute": "warning"}}, {"SMT430"}),
-        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"SMT322"}),
+        ({"rules": {"tests/missing-outcome-check": "warning"}}, {"TST006"}),
+        ({"rules": {"tests/vacuous-assertion": "warning"}}, {"TST007"}),
+        ({"rules": {"tests/unbounded-wait": "warning"}}, {"TST008"}),
+        ({"rules": {"tests/independent-case-loop": "hint"}}, {"TST009"}),
+        ({"rules": {"tests/missing-await-assertion": "warning"}}, {"TST010"}),
+        ({"rules": {"visibility/test-only-public-function": "warning"}}, {"VIS009"}),
+        ({"rules": {"visibility/test-only-public-attribute": "warning"}}, {"VIS010"}),
+        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"CPX001"}),
     ],
 )
 def test_a_project_policy_needs_its_named_rule(
@@ -101,25 +101,25 @@ def test_a_project_policy_needs_its_named_rule(
 @pytest.mark.parametrize(
     ("policy", "expected"),
     [
-        ({"public": []}, {"SMT107"}),
-        ({"public": ["."]}, {"SMT107", "SMT307"}),
-        ({"required": ["api"]}, {"SMT307"}),
-        ({"min_imports_to_bundle": 3}, {"SMT108"}),
-        ({"module_import_exemptions": ["facades"]}, {"SMT110"}),
-        ({"min_importers_to_export": 3}, {"SMT109"}),
-        ({"min_importers_to_export": 3, "count_tests": True}, {"SMT109"}),
-        ({"imports": {"style": "absolute"}}, {"SMT308"}),
-        ({"module_docstrings": "forbid"}, {"SMT309"}),
-        ({"module_docstrings": "require"}, {"SMT309"}),
-        ({"future_annotations": "forbid"}, {"SMT310"}),
-        ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
-        ({"private_modules": "forbid"}, {"SMT312"}),
-        ({"ordering": {}, "rules": {"layout/definition-order": "error"}}, {"SMT313"}),
-        ({"rules": {"idioms/bundled-instance-assignment": "error"}}, {"SMT314"}),
-        ({"type_dispatch": {}}, {"SMT315"}),
-        ({"rules": {"visibility/internal-public-member": "warning"}}, {"SMT316"}),
-        ({"rules": {"layout/misplaced-static-helper": "hint"}}, {"SMT317"}),
-        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"SMT322"}),
+        ({"public": []}, {"ARC007"}),
+        ({"public": ["."]}, {"ARC007", "ARC014"}),
+        ({"required": ["api"]}, {"ARC014"}),
+        ({"min_imports_to_bundle": 3}, {"IMP001"}),
+        ({"module_import_exemptions": ["facades"]}, {"IMP002"}),
+        ({"min_importers_to_export": 3}, {"ARC008"}),
+        ({"min_importers_to_export": 3, "count_tests": True}, {"ARC008"}),
+        ({"imports": {"style": "absolute"}}, {"IMP003"}),
+        ({"module_docstrings": "forbid"}, {"LAY002"}),
+        ({"module_docstrings": "require"}, {"LAY002"}),
+        ({"future_annotations": "forbid"}, {"TYP001"}),
+        ({"future_annotations": "when-needed"}, {"TYP001", "TYP002"}),
+        ({"private_modules": "forbid"}, {"LAY003"}),
+        ({"ordering": {}, "rules": {"layout/definition-order": "error"}}, {"LAY004"}),
+        ({"rules": {"idioms/bundled-instance-assignment": "error"}}, {"IDM001"}),
+        ({"type_dispatch": {}}, {"IDM002"}),
+        ({"rules": {"visibility/internal-public-member": "warning"}}, {"VIS001"}),
+        ({"rules": {"layout/misplaced-static-helper": "hint"}}, {"LAY005"}),
+        ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"CPX001"}),
         (
             {
                 "module_docstrings": "allow",
@@ -152,21 +152,21 @@ def test_a_package_policy_needs_its_named_rule(
 
 
 SHARED_OPTIONS = [
-    ({"module_import_exemptions": []}, {"SMT110"}),
-    ({"imports": {"style": "absolute"}}, {"SMT308"}),
-    ({"module_docstrings": "require"}, {"SMT309"}),
-    ({"future_annotations": "when-needed"}, {"SMT310", "SMT311"}),
-    ({"private_modules": "forbid"}, {"SMT312"}),
-    ({"type_dispatch": {}}, {"SMT315"}),
-    ({"public_attribute_boundary": "module"}, {"SMT335"}),
-    ({"private_attribute_boundary": "package"}, {"SMT339"}),
-    ({"call_argument_kinds": ["await"]}, {"SMT340"}),
-    ({"str_enum_values": "auto"}, {"SMT341"}),
-    ({"dataclass_options": []}, {"SMT351"}),
-    ({"bases": {}}, {"SMT353"}),
-    ({"errors": {}}, {"SMT354"}),
-    ({"reexports": "all"}, {"SMT369"}),
-    ({"reexports": "alias"}, {"SMT369"}),
+    ({"module_import_exemptions": []}, {"IMP002"}),
+    ({"imports": {"style": "absolute"}}, {"IMP003"}),
+    ({"module_docstrings": "require"}, {"LAY002"}),
+    ({"future_annotations": "when-needed"}, {"TYP001", "TYP002"}),
+    ({"private_modules": "forbid"}, {"LAY003"}),
+    ({"type_dispatch": {}}, {"IDM002"}),
+    ({"public_attribute_boundary": "module"}, {"VIS004"}),
+    ({"private_attribute_boundary": "package"}, {"VIS005"}),
+    ({"call_argument_kinds": ["await"]}, {"CPX002"}),
+    ({"str_enum_values": "auto"}, {"MOD004"}),
+    ({"dataclass_options": []}, {"MOD006"}),
+    ({"bases": {}}, {"MOD007"}),
+    ({"errors": {}}, {"MOD008"}),
+    ({"reexports": "all"}, {"VIS008"}),
+    ({"reexports": "alias"}, {"VIS008"}),
 ]
 
 
@@ -221,11 +221,11 @@ def test_a_named_rule_runs_with_its_declared_policy() -> None:
             "architecture": {"layers": {"domain": {"path": "domain"}}},
             "rules": {"architecture/layer-boundary": "error"},
         }
-    ) == ({"SMT101"}, set())
+    ) == ({"ARC001"}, set())
 
 
 @pytest.mark.parametrize(
-    "rule", ["architecture/layer-boundary", "SMT308", "tests/misplaced-test"]
+    "rule", ["architecture/layer-boundary", "IMP003", "tests/misplaced-test"]
 )
 def test_a_rule_without_its_required_policy_is_a_config_error(rule: str) -> None:
     with pytest.raises(ConfigError, match="policy is missing") as caught:
@@ -236,7 +236,7 @@ def test_a_rule_without_its_required_policy_is_a_config_error(rule: str) -> None
 
 def test_a_rule_with_built_in_defaults_needs_no_policy() -> None:
     assert _checked({"rules": {"complexity/excess-positional-parameters": "on"}}) == (
-        {"SMT345"},
+        {"CPX003"},
         set(),
     )
 
@@ -257,7 +257,7 @@ def test_an_override_option_is_enabled_in_that_override() -> None:
 
     [(rule, locations)] = settings.policy_enablements()
 
-    assert rule.code == "SMT110"
+    assert rule.code == "IMP002"
     assert locations == (("style", "overrides", "api", "rules"),)
 
 
@@ -267,15 +267,20 @@ def test_scope_settings_alone_do_not_enable_explicit_heuristics() -> None:
         == BASELINE
     )
     assert _active(
-        {"rules": {"SMT104": "error", "architecture/unclassified-module": "warning"}}
-    ) == BASELINE | {"SMT104", "SMT305"}
+        {"rules": {"ARC004": "error", "architecture/unclassified-module": "warning"}}
+    ) == BASELINE | {"ARC004", "ARC012"}
 
 
 def test_prefix_selection_enables_opt_in_rules_and_replaces_normal_selection() -> None:
     expected = {
-        rule.code for rule in build_rule_set().rules if rule.code.startswith("SMT3")
+        rule.code for rule in build_rule_set().rules if rule.code.startswith("VIS")
     }
-    assert _active({}, CheckOptions(select=("smt3",))) == expected
+    assert _active({}, CheckOptions(select=("vis",))) == expected
+
+
+def test_retired_smt_prefix_is_rejected_with_the_upgrade_hint() -> None:
+    with pytest.raises(InvalidOptionError, match="SMT codes were replaced"):
+        _active({}, CheckOptions(select=("smt3",)))
 
 
 def test_all_selects_every_supported_rule() -> None:
@@ -286,10 +291,10 @@ def test_all_selects_every_supported_rule() -> None:
 
 def test_off_and_ignore_win_over_explicit_selection() -> None:
     active = _active(
-        {"rules": {"SMT104": "off"}}, CheckOptions(select=("ALL",), ignore=("SMT3",))
+        {"rules": {"ARC004": "off"}}, CheckOptions(select=("ALL",), ignore=("LAY",))
     )
-    assert "SMT104" not in active
-    assert not any(code.startswith("SMT3") for code in active)
+    assert "ARC004" not in active
+    assert not any(code.startswith("LAY") for code in active)
     assert _active({}, CheckOptions(ignore=("ALL",))) == set()
 
 
@@ -308,15 +313,15 @@ def test_the_coverage_guard_only_reports_errors(value: str) -> None:
 
 
 def test_a_broad_off_leaves_the_coverage_guard_enabled() -> None:
-    assert "SMT306" in _active(
+    assert "ARC013" in _active(
         {"rules": {"architecture/uncovered-source": "error", "ALL": "off"}}
     )
 
 
 def test_strict_coverage_still_runs_outside_a_select_prefix() -> None:
-    assert "SMT306" in _active(
+    assert "ARC013" in _active(
         {"rules": {"architecture/uncovered-source": "error"}},
-        CheckOptions(select=("SMT1",)),
+        CheckOptions(select=("ARC",)),
     )
 
 

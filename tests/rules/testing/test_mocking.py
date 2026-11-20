@@ -43,7 +43,7 @@ def test_domain_mock_policy_covers_construction_and_patching(
     root = _project(
         tmp_path, source, "  forbidden_mock_paths: ['tests/**/domain/**']\n"
     )
-    [finding] = violations(root, CheckOptions(select=("SMT421",)))
+    [finding] = violations(root, CheckOptions(select=("TST003",)))
     assert finding.path == "tests/domain/test_service.py"
     assert finding.expected is not None
     assert finding.expected["operation"]
@@ -64,7 +64,7 @@ def test_fixture_file_is_covered_but_integration_path_is_allowed(
             "tests/integration/test_http.py": "from unittest.mock import Mock\ndef test_run(): Mock()"
         },
     )
-    assert len(violations(root, CheckOptions(select=("SMT421",)))) == 1
+    assert len(violations(root, CheckOptions(select=("TST003",)))) == 1
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_string_patch_policy_is_precise(
         f"from unittest.mock import patch\ndef test_run():\n    {expression}\n",
         "rules: {tests/string-patch-target: error}\n",
     )
-    assert bool(violations(root, CheckOptions(select=("SMT422",)))) is flagged
+    assert bool(violations(root, CheckOptions(select=("TST004",)))) is flagged
 
 
 def test_patch_count_includes_decorators_and_object_patching(tmp_path: Path) -> None:
@@ -98,7 +98,7 @@ def test_patch_count_includes_decorators_and_object_patching(tmp_path: Path) -> 
         "from unittest.mock import patch\n@patch('app.first')\ndef test_run(mock):\n    patch.object(module, 'second')\n",
         "rules: {tests/excess-patches: {severity: error, max: 1}}\n",
     )
-    [finding] = violations(root, CheckOptions(select=("SMT423",)))
+    [finding] = violations(root, CheckOptions(select=("TST005",)))
     assert finding.expected is not None
     assert len(finding.expected["patches"]) == 2
 
@@ -110,13 +110,13 @@ def test_patch_limit_zero_and_quality_exclusion(tmp_path: Path) -> None:
         "  quality_exclude: ['tests/domain/**']\n"
         "rules: {tests/excess-patches: {severity: error, max: 0}}\n",
     )
-    assert violations(root, CheckOptions(select=("SMT423",))) == []
+    assert violations(root, CheckOptions(select=("TST005",))) == []
 
 
 def test_scope_and_inline_suppression_are_honored(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
-        "from unittest.mock import patch\ndef test_run():\n    patch('app.repo')  # smelt: ignore[SMT422] -- deliberately test lookup\n",
+        "from unittest.mock import patch\ndef test_run():\n    patch('app.repo')  # smelt: ignore[TST004] -- deliberately test lookup\n",
         "rules: {tests/string-patch-target: error}\n",
     )
     write_policy_project(
@@ -125,7 +125,7 @@ def test_scope_and_inline_suppression_are_honored(tmp_path: Path) -> None:
             "tests/test_other.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')"
         },
     )
-    outcome = check(root, CheckOptions(select=("SMT422",), paths=("tests/domain",)))
+    outcome = check(root, CheckOptions(select=("TST004",), paths=("tests/domain",)))
     assert outcome.report.violations == []
     assert outcome.report.suppressed == 1
 
@@ -136,7 +136,7 @@ def test_an_extra_patch_cannot_hide_behind_existing_debt(tmp_path: Path) -> None
         "def test_run(mocker):\n    mocker.patch('app.one')\n    mocker.patch('app.two')\n",
         "rules: {tests/excess-patches: {severity: error, max: 1}}\n",
     )
-    options = CheckOptions(select=("SMT423",))
+    options = CheckOptions(select=("TST005",))
     initial = check(root, options)
     debt = Debt.from_violations(
         initial.report.violations, snippet_reader(initial.context)
@@ -157,7 +157,7 @@ def test_duplicate_patch_calls_keep_separate_baseline_tokens(tmp_path: Path) -> 
         "def test_run(mocker):\n    mocker.patch('app.one')\n    mocker.patch('app.one')\n",
         "rules: {tests/excess-patches: {severity: error, max: 0}}\n",
     )
-    outcome = check(root, CheckOptions(select=("SMT423",)))
+    outcome = check(root, CheckOptions(select=("TST005",)))
     debt = Debt.from_violations(
         outcome.report.violations, snippet_reader(outcome.context)
     )
@@ -189,7 +189,7 @@ def test_monkeypatch_dotted_target_overloads(
         f"def test_run(monkeypatch):\n    {expression}\n",
         "rules: {tests/string-patch-target: error}\n",
     )
-    found = violations(root, CheckOptions(select=("SMT422",)))
+    found = violations(root, CheckOptions(select=("TST004",)))
     assert bool(found) is flagged
     if found:
         assert found[0].expected is not None
@@ -217,7 +217,7 @@ def test_monkeypatch_aliases_types_and_context_are_counted(
         "rules: {tests/string-patch-target: error, tests/excess-patches: {severity: error, max: 0}}\n",
     )
     found = violations(root)
-    assert {finding.code for finding in found} == {"SMT421", "SMT422", "SMT423"}
+    assert {finding.code for finding in found} == {"TST003", "TST004", "TST005"}
     assert all(finding.expected is not None for finding in found)
 
 

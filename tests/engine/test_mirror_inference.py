@@ -6,7 +6,7 @@ from smelt.engine.mirror_inference import (
     DEFAULT_MIRROR,
     ROOT_MIRROR,
     MirrorGuess,
-    _clashing_test_roots,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _clashing_test_roots,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
     infer_mirror,
 )
 from tests.helpers import write_project

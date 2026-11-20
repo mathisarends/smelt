@@ -72,7 +72,7 @@ Run `uv run smelt check --strict-coverage --fail-on warning` before committing.
 CI and release validation use the same warning threshold; the staged hook checks
 new findings against HEAD. Do not record debt or disable rules to adopt a change.
 Prefer private helpers and test public behavior. A direct unit test of a parser,
-rewriter or cache invalidation boundary can use a local `SMT420` exception with a
+rewriter or cache invalidation boundary can use a local `TST002` exception with a
 specific reason; in multiline imports put it on the imported name. Entry points
 used by excluded maintainer scripts retain a specific visibility suppression
 naming the actual consumer. Keep `__all__` declarations in package `__init__.py`
@@ -134,7 +134,7 @@ Fixed-pattern source/test reviews are selected directly by a problem name in
 `rules`; do not add `review_*`, `require_*` or other duplicate boolean switches.
 Keep real options separate from activation. Package `rules` use the same names
 and severities, with closest-package precedence. Update the canonical class/name,
-CLI explanation, findings, editor schema and documentation together. Stable SMT
+CLI explanation, findings, editor schema and documentation together. Stable rule
 codes preserve diagnostic and debt identities across a documented name migration.
 
 - Reserve `enabled_by_default = True` for reliable baseline diagnostics that need
@@ -166,16 +166,29 @@ their precedence. The generated catalog and CLI metadata derive activation from
 the rule class; there is no second registration list of activation decisions.
 
 Use `Rule`, a stable code, a unique `family/finding` name, the matching
-`category`, explicit `requires` and a complete `RuleDoc`. Allocate an unused code
-from the live catalog. Code ranges are historical and only separate where a rule
-is evaluated; the family, not the code, groups rules for users:
+`category`, explicit `requires` and a complete `RuleDoc`. A code is the family
+prefix and the next free three-digit number in that family from the live
+catalog, for example `MOD013`. Never reuse or renumber a code:
 
-| Range | Evaluated by |
+| Prefix | Family |
 | --- | --- |
-| SMT1xx | import-graph and architecture rules (directory `dependencies/`) |
-| SMT3xx | source rules (directory `structure/`) |
-| SMT4xx | test rules (directory `testing/`) |
-| SMT9xx | meta, evaluated by engine post-processing where appropriate |
+| ARC | architecture |
+| IMP | imports |
+| LAY | layout |
+| VIS | visibility |
+| MOD | modeling |
+| TYP | typing |
+| CPX | complexity |
+| IDM | idioms |
+| FWK | frameworks |
+| TST | tests |
+| MET | meta |
+
+The directory still separates where a rule is evaluated: `dependencies/` for
+import-graph rules, `structure/` for source rules, `testing/` for test rules and
+the engine for meta rules. `smelt/diagnostics/legacy_codes.py` freezes the
+retired `SMTnnn` codes for migration hints and debt fingerprints; new rules get
+none, and Smelt does not accept them as input.
 
 ### Rule names
 

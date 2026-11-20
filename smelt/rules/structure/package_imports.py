@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class PreferPackageImport(Rule):
-    code = "SMT319"
+    code = "IMP004"
     name = "imports/prefer-package-import"
     category = Category.IMPORTS
     default_severity = Severity.HINT

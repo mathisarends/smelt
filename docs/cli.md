@@ -12,7 +12,7 @@ See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 
 Use `smelt explain visibility` to list the visibility family. Select individual
-checks by name or by stable SMT code.
+checks by name or by stable code, such as `VIS001`.
 
 ```bash
 smelt init                           # draft smelt.yml from the code (also uv workspaces)
@@ -29,9 +29,9 @@ smelt check --statistics              # findings per rule, hints included
 smelt check --statistics --by member  # findings per uv workspace member, hints included
 smelt check --strict-coverage         # enable architecture/uncovered-source for this run
 smelt check --show-coverage --format json  # include the per-file policy inventory
-smelt check --select SMT321 --fix --unsafe-fixes  # use None-only defaults after review
+smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
 smelt context user                   # what applies to a feature, module or path
-smelt explain SMT101                 # rationale, examples and config keys of a rule
+smelt explain ARC001                 # rationale, examples and config keys of a rule
 smelt rules                          # full catalog with activation and severity
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
@@ -56,7 +56,7 @@ with a `files` map when several baselines are selected; one selected file retain
 the normal version-2 document. Stored paths remain workspace-relative.
 
 Normal checks are read-only. `--fix` applies permitted safe ordering fixes.
-Opt-in [SMT321](rules/SMT321.md) reviews `parameter or fallback` for optional
+Opt-in [TYP003](rules/TYP003.md) reviews `parameter or fallback` for optional
 parameters with a `None` default. Its rewrite to an explicit `is not None`
 conditional also requires `--unsafe-fixes`: falsy values will be preserved and
 custom truthiness will no longer be called. Use this only after reviewing intent.
@@ -107,7 +107,7 @@ command line; an invalid `--format` value itself is reported as argparse text.
 Schema 2 moves repeated visibility-analysis boundaries from each finding's
 `expected.usage_scope` into the report's `usage_scopes` array; findings reference
 it with `expected.usage_scope_index`. Finding identities and debt fingerprints are
-unchanged by presentation grouping. Text groups related late-import SMT313
+unchanged by presentation grouping. Text groups related late-import LAY004
 findings with their affected lines; JSON retains every finding and adds an
 `ordering` group. Text and GitHub output show usage limits once; SARIF retains
 them in run properties as `usageScopes`. Text omits empty detail fields.
@@ -118,17 +118,17 @@ unless strict coverage is requested. Coverage checks and exit codes still apply.
 Concise output omits usage limits and shows the policy-coverage line only when
 coverage is incomplete.
 
-Shared SMT426 helper findings add `shared_helper` groups with the helper identity,
+Shared TST008 helper findings add `shared_helper` groups with the helper identity,
 the exact operation location, one repair and every affected test/call line. Text
 and concise output show the repair once. JSON retains the individual findings;
 totals, exit behavior, debt identities and suppression scope do not change.
 Only visible, compatible findings form a group. Distinct operations in one helper
 remain separate, including operations on the same physical line.
 
-SMT424 includes `helper_review` call locations and known inference-limit reasons.
+TST006 includes `helper_review` call locations and known inference-limit reasons.
 An imported body being unassessed does not mean it lacks assertions. Existing
 `tests.assertion_helpers` can express a trusted assertion-helper contract; no
-additional helper bodies are inferred. SMT104 includes `graph_kind` and
+additional helper bodies are inferred. ARC004 includes `graph_kind` and
 `witness_edges` with each selected import's phase. These are additive schema-2
 fields; existing finding identities and default rule activation are preserved.
 

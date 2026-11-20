@@ -6,7 +6,7 @@ import pytest
 
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.python_version import (
-    _minimum_from_requires_python,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _minimum_from_requires_python,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 from smelt.config import load_config
 from tests.helpers import write_project

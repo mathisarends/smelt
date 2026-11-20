@@ -3,7 +3,7 @@ import ast
 import pytest
 
 from smelt.analysis.test_syntax import (
-    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _analyze_test_syntax,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 from smelt.analysis.test_timing import unbounded_waits
 

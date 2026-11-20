@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class SecretSettingsField(Rule):
     file_local = True
-    code = "SMT327"
+    code = "FWK001"
     name = "frameworks/prefer-secret-type"
     category = Category.FRAMEWORKS
     default_severity = Severity.WARNING

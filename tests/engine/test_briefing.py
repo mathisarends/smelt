@@ -225,7 +225,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
             "app/__init__.py": "",
         },
     )
-    outcome = check(root, CheckOptions(select=("SMT313",)))
+    outcome = check(root, CheckOptions(select=("LAY004",)))
     ctx = outcome.context
 
     briefing = build_briefing(
@@ -702,7 +702,7 @@ class TestFeatureBriefing:
             "\n"
             "Tests: no layout enforced\n"
             "\n"
-            "Current violations: 5 errors (SMT101, SMT102, SMT103, SMT106)\n"
+            "Current violations: 5 errors (ARC001, ARC002, ARC003, ARC006)\n"
         )
 
     def test_json_counts_only_feature_violations(self, outcome: CheckOutcome) -> None:
@@ -714,7 +714,7 @@ class TestFeatureBriefing:
             "errors": 1,
             "warnings": 0,
             "hints": 0,
-            "codes": ["SMT104"],
+            "codes": ["ARC004"],
         }
         assert data["layers"][0]["package"] == "gateway.features.billing.domain"
 
@@ -755,7 +755,7 @@ class TestModuleBriefing:
 
         assert "Kind: feature voice, layer application\n" in text
         assert " *application    → domain" in text
-        assert text.endswith("Current violations: 2 errors (SMT101, SMT103)\n")
+        assert text.endswith("Current violations: 2 errors (ARC001, ARC003)\n")
 
     def test_shared_module_kind(self, outcome: CheckOutcome) -> None:
         ctx = outcome.context
@@ -830,8 +830,8 @@ class TestMirroredProject:
         text = _briefing(tmp_path, "app/misc.py")
 
         assert "Layer and feature boundaries are not enforced for this module" in text
-        assert "SMT106" in text
-        assert "SMT104" in text
+        assert "ARC006" in text
+        assert "ARC004" in text
         assert "Layers:" not in text
 
     def test_wiring_exceptions_are_explicit(self, tmp_path: Path) -> None:
@@ -881,7 +881,7 @@ class TestMirroredProject:
         assert briefing.central is True
         assert briefing.cross_feature == "none (must not import features)"
         assert "must not import features" in briefing.boundary_policy
-        assert "SMT105" in briefing.violation_codes
+        assert "ARC005" in briefing.violation_codes
 
     def test_composition_root_has_no_feature_pair_restrictions(
         self, tmp_path: Path

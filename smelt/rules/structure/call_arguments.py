@@ -36,8 +36,8 @@ _CALLEE_PREVIEW = 60
 
 class InlineCallArgument(Rule):
     file_local = True
-    activation = POLICIES["SMT340"]
-    code = "SMT340"
+    activation = POLICIES["CPX002"]
+    code = "CPX002"
     name = "complexity/inline-call-argument"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
@@ -56,7 +56,7 @@ class InlineCallArgument(Rule):
             "the kinds in call_argument_kinds (all by default): await "
             "(an await expression, including nested forms such as "
             "await f(await g())), comprehension (a list, set or dict "
-            "comprehension, even when SMT363 accepts its internal logic) or "
+            "comprehension, even when CPX006 accepts its internal logic) or "
             "aggregate (an unshadowed builtin all, any, max, min, sorted or sum "
             "reducing a generator expression; the whole reduction is named and the "
             "generator stays lazy). It applies to any call without inferring "
@@ -92,7 +92,7 @@ class InlineCallArgument(Rule):
             "evaluate it before earlier arguments or the callable itself. Do not "
             "eagerly materialize generator expressions. No automatic rewrite is "
             "performed. Enable rules: {complexity/inline-call-argument: hint}, "
-            "select SMT340, or set call_argument_kinds under style or in a "
+            "select CPX002, or set call_argument_kinds under style or in a "
             "style override, which also narrows the review to that scope. "
             "Reasoned inline suppressions are supported."
         ),

@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 
 class MemberBoundary(Rule):
-    activation = POLICIES["SMT111"]
-    code = "SMT111"
+    activation = POLICIES["ARC009"]
+    code = "ARC009"
     name = "architecture/member-boundary"
     category = Category.ARCHITECTURE
     requires = frozenset({Index.IMPORTS, Index.WORKSPACE})
@@ -66,8 +66,8 @@ class MemberBoundary(Rule):
 
 
 class UndeclaredMemberDependency(Rule):
-    activation = POLICIES["SMT112"]
-    code = "SMT112"
+    activation = POLICIES["ARC010"]
+    code = "ARC010"
     name = "architecture/undeclared-member-dependency"
     category = Category.ARCHITECTURE
     requires = frozenset({Index.IMPORTS, Index.WORKSPACE})
@@ -114,7 +114,7 @@ class UndeclaredMemberDependency(Rule):
             name = target_project["name"]
             hint = (
                 "Remove this import or move the dependency behind an allowed member boundary. "
-                "The root architecture.members policy forbids this dependency (SMT111)."
+                "The root architecture.members policy forbids this dependency (ARC009)."
                 if _boundary_restriction(ctx, source, target) is not None
                 else f"Declare {name} in {source}/pyproject.toml project.dependencies and configure its tool.uv.sources workspace source."
             )

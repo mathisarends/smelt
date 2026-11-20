@@ -70,9 +70,9 @@ def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
         == 0
     )
     found = {rule["code"] for rule in json.loads(capsys.readouterr().out)}
-    assert "SMT316" not in found
-    assert "SMT110" not in found
-    assert "SMT347" in found
+    assert "VIS001" not in found
+    assert "IMP002" not in found
+    assert "TYP007" in found
 
 
 def test_rule_listing_explains_its_columns(capsys: pytest.CaptureFixture[str]) -> None:

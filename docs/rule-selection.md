@@ -15,7 +15,7 @@ rules:
 ## Families
 
 Every rule name starts with its family. Enable an individual rule by canonical
-name or stable SMT code. The value `on` uses its catalog severity.
+name or stable code. The value `on` uses its catalog severity.
 
 Use `smelt check --select typing` or `smelt check --select ALL` to explore the
 catalog. In YAML, families and `ALL` can turn rules `off` or cap the
@@ -42,13 +42,13 @@ earlier setting. A broad setting can disable or cap matching rules. Use
 
 ## Information hiding
 
-The visibility reviews cover functions and methods (SMT316), module constants
-and type aliases (SMT320), data attributes (SMT335) and APIs whose only observed
-consumers are tests (SMT429 and SMT430). Enable the ones your project uses by
+The visibility reviews cover functions and methods (VIS001), module constants
+and type aliases (VIS002), data attributes (VIS004) and APIs whose only observed
+consumers are tests (VIS009 and VIS010). Enable the ones your project uses by
 individual name. Explore these five together with:
 
 ```sh
-smelt check --select SMT316,SMT320,SMT335,SMT429,SMT430
+smelt check --select VIS001,VIS002,VIS004,VIS009,VIS010
 ```
 
 The static checker cannot prove a rename is safe. Preserve deliberate public
@@ -95,7 +95,7 @@ The catalog distinguishes two modes, independently of severity:
 
 | Mode | Activation |
 | --- | --- |
-| `default` | SMT301, suppression/debt hygiene SMT901–SMT903, and missing required rule policy SMT904 |
+| `default` | ARC011, suppression/debt hygiene MET001–MET003, and missing required rule policy MET004 |
 | `explicit` | Every other rule; enable it with `rules` or CLI selection |
 
 A policy describes what a rule checks; it never enables the rule. Declaring
@@ -124,7 +124,7 @@ Two configuration diagnostics keep policy and rules in step:
   `off` to keep the policy unchecked.
 
 Some rules have built-in defaults and run without their option, for example a
-limit of 5 for SMT345. Set under `style`, an option covers the project; a style
+limit of 5 for CPX003. Set under `style`, an option covers the project; a style
 override covers the matching packages. A rule whose policy is required reports
 nothing in packages without that policy. See
 [project-wide options](structure.md#project-wide-options-and-package-overrides)
@@ -136,7 +136,7 @@ for the defaults. Use `smelt context MODULE --format json` to inspect the target
 smelt rules --format json
 smelt explain visibility/internal-public-member
 smelt check --select visibility,tests/unbounded-wait
-smelt check --select SMT3
+smelt check --select VIS001,TST004
 smelt check --select ALL --ignore architecture/import-cycle
 ```
 
@@ -150,7 +150,7 @@ they can disable a global rule, change severity or enable it locally. CLI ignore
 apply across the run. Duplicate name/code entries and conflicting settings for
 the same concrete package are config errors.
 
-`architecture/uncovered-source` (SMT306) is a guard. Enable it with
+`architecture/uncovered-source` (ARC013) is a guard. Enable it with
 `rules: {architecture/uncovered-source: error}` in the root config, or for one
 run with `--strict-coverage`. Once enabled it stays enabled outside a select
 prefix and always reports errors. Lowering its severity, ignoring it, recording

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT360",))
+SELECT = CheckOptions(select=("MOD011",))
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ def test_reports_mutable_instance_field_with_resolved_type(
 
     (finding,) = violations(root, SELECT)
 
-    assert (finding.code, finding.path, finding.column) == ("SMT360", "app/model.py", 5)
+    assert (finding.code, finding.path, finding.column) == ("MOD011", "app/model.py", 5)
     assert finding.expected == {
         "class": "Snapshot",
         "field": "values",
@@ -110,10 +110,10 @@ def test_is_opt_in_and_supports_intentional_reference_holder(tmp_path: Path) -> 
         from dataclasses import dataclass
         @dataclass(frozen=True)
         class Reference:
-            values: list[int]  # smelt: ignore[SMT360] -- intentionally shares an append-only log
+            values: list[int]  # smelt: ignore[MOD011] -- intentionally shares an append-only log
     """
     root = _project(tmp_path, source)
-    assert not any(item.code == "SMT360" for item in violations(root))
+    assert not any(item.code == "MOD011" for item in violations(root))
     assert violations(root, SELECT) == []
 
     (root / "smelt.yml").write_text(
@@ -123,7 +123,7 @@ def test_is_opt_in_and_supports_intentional_reference_holder(tmp_path: Path) -> 
     assert violations(root) == []
     write_project(root, {"app/model.py": source.replace("# smelt:", "# reason:")})
     (finding,) = violations(root)
-    assert finding.code == "SMT360"
+    assert finding.code == "MOD011"
     assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 

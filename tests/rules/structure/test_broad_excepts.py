@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT350",))
+SELECT = CheckOptions(select=("IDM006",))
 
 
 def _project(tmp_path: Path, body: str, *, config: str = CONFIG) -> Path:
@@ -41,7 +41,7 @@ def test_reports_silenced_handler_from_the_issue(tmp_path: Path) -> None:
     [found] = violations(root, SELECT)
 
     assert (found.code, found.path, found.line, found.column) == (
-        "SMT350",
+        "IDM006",
         "app/plugin.py",
         4,
         5,
@@ -203,7 +203,7 @@ def test_ignores_specific_handlers_and_tests(tmp_path: Path) -> None:
 
 def test_suppression_reason_explains_the_handler(tmp_path: Path) -> None:
     body = (
-        "    except Exception:  # smelt: ignore[SMT350] -- legacy loader\n"
+        "    except Exception:  # smelt: ignore[IDM006] -- legacy loader\n"
         "        return None\n"
     )
 
@@ -215,4 +215,4 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     assert violations(_project(tmp_path / "default", body)) == []
     config = CONFIG + "rules: {idioms/missing-broad-except-reason: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", body, config=config))
-    assert (finding.code, finding.severity) == ("SMT350", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("IDM006", Severity.WARNING)

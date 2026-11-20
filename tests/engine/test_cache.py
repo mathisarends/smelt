@@ -56,7 +56,7 @@ def test_editing_only_a_shared_policy_invalidates_each_workspace(
     cached = check(root).report
     fresh = check(root, CheckOptions(use_cache=False)).report
     assert render_json(cached) == render_json(fresh)
-    assert [v.code for v in cached.violations] == ["SMT426"]
+    assert [v.code for v in cached.violations] == ["TST008"]
 
 
 def test_cache_creates_an_ignore_file_and_preserves_existing_content(
@@ -70,7 +70,7 @@ def test_cache_creates_an_ignore_file_and_preserves_existing_content(
     ignore = tmp_path / ".smelt_cache/.gitignore"
     assert ignore.read_text(encoding="utf-8") == "*\n"
     ignore.write_text("# custom\n*\n", encoding="utf-8")
-    check(tmp_path, CheckOptions(select=("SMT104",)))
+    check(tmp_path, CheckOptions(select=("ARC004",)))
     assert ignore.read_text(encoding="utf-8") == "# custom\n*\n"
 
 
@@ -85,7 +85,7 @@ def test_facade_exports_invalidate_public_member_decisions(tmp_path: Path) -> No
         },
     )
     before = check(tmp_path).report
-    assert {v.code for v in before.violations} == {"SMT316", "SMT430"}
+    assert {v.code for v in before.violations} == {"VIS001", "VIS010"}
 
     for facade, exported in [
         ("from .models import Tab\n", True),
@@ -122,7 +122,7 @@ def test_content_changes_invalidate_even_with_identical_size_and_mtime(
     uncached = check(tmp_path, CheckOptions(use_cache=False)).report
 
     assert render_json(warm) == render_json(uncached)
-    assert [(v.code, v.path) for v in warm.violations] == [("SMT316", "app/service.py")]
+    assert [(v.code, v.path) for v in warm.violations] == [("VIS001", "app/service.py")]
 
 
 def test_warm_check_reuses_rule_execution(
@@ -274,12 +274,12 @@ def test_explicit_selection_cannot_reuse_a_package_only_result(tmp_path: Path) -
         },
     )
     initial = check(tmp_path)
-    ignore = tuple(rule.code for rule, _ in initial.active if rule.code != "SMT316")
+    ignore = tuple(rule.code for rule, _ in initial.active if rule.code != "VIS001")
     assert check(tmp_path, CheckOptions(ignore=ignore)).report.violations == []
     options = CheckOptions(select=("visibility/internal-public-member",), ignore=ignore)
     selected = check(tmp_path, options).report
     assert [(v.code, v.path) for v in selected.violations] == [
-        ("SMT316", "app/other.py")
+        ("VIS001", "app/other.py")
     ]
     assert render_json(selected) == render_json(
         check(
@@ -326,7 +326,7 @@ def test_new_uncovered_source_cannot_hide_in_a_warm_cache(tmp_path: Path) -> Non
     assert not check(tmp_path, options).report.violations
     (tmp_path / "forgotten.py").write_text("VALUE = 1")
     assert [(v.code, v.path) for v in check(tmp_path, options).report.violations] == [
-        ("SMT306", "forgotten.py")
+        ("ARC013", "forgotten.py")
     ]
 
 
@@ -448,7 +448,7 @@ def test_incremental_members_only_rebuild_changed_contributions(
         },
     )
     check(tmp_path)
-    original = MemberUsageIndex._summary  # smelt: ignore[SMT420] -- Instrument contribution rebuilds to verify incremental cache reuse.
+    original = MemberUsageIndex._summary  # smelt: ignore[TST002] -- Instrument contribution rebuilds to verify incremental cache reuse.
     rebuilt: list[str] = []
 
     def summary(self: MemberUsageIndex, path: str) -> object:

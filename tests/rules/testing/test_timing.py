@@ -29,7 +29,7 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
         },
     )
     [finding] = violations(tmp_path)
-    assert (finding.code, finding.line) == ("SMT426", 3)
+    assert (finding.code, finding.line) == ("TST008", 3)
     assert finding.expected is not None
     assert finding.expected["helper"] == {
         "name": "verify",
@@ -45,7 +45,7 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
     assert render_json(cached) == render_json(uncached)
     path.write_text(path.read_text().replace("assert result.returncode == 0", "pass"))
     [finding] = violations(tmp_path)
-    assert finding.code == "SMT424"
+    assert finding.code == "TST006"
 
 
 def test_deadline_review_reports_unbounded_process_and_shared_clock(
@@ -61,7 +61,7 @@ def test_deadline_review_reports_unbounded_process_and_shared_clock(
     )
     found = violations(tmp_path)
     assert len(found) == 2
-    assert {finding.code for finding in found} == {"SMT426"}
+    assert {finding.code for finding in found} == {"TST008"}
     assert {finding.expected["kind"] for finding in found if finding.expected} == {
         "unbounded-wait",
         "scheduler-clock",
@@ -91,7 +91,7 @@ def test_async_exit_wait_needs_its_own_guard_after_bounded_communication(
         },
     )
     [finding] = violations(tmp_path)
-    assert finding.code == "SMT426"
+    assert finding.code == "TST008"
     assert finding.line == 5
     assert finding.expected == {
         "test": "test_exit",

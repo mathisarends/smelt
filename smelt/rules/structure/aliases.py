@@ -15,7 +15,7 @@ _TYPING = frozenset({"typing", "typing_extensions"})
 
 class RedundantNameAlias(Rule):
     file_local = True
-    code = "SMT344"
+    code = "IDM004"
     name = "idioms/redundant-name-alias"
     category = Category.IDIOMS
     default_severity = Severity.HINT
@@ -51,7 +51,7 @@ class RedundantNameAlias(Rule):
             "shared name once it describes a real type expression, such as a union "
             "with a second member. Keep a deliberate public compatibility name with "
             "a reasoned suppression. No automatic rewrite is performed. Enable "
-            "rules: {idioms/redundant-name-alias: hint}, or select SMT344."
+            "rules: {idioms/redundant-name-alias: hint}, or select IDM004."
         ),
         config=("rules",),
     )

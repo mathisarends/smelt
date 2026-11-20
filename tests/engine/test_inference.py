@@ -7,7 +7,7 @@ import pytest
 from smelt.config import load_config, parse_config
 from smelt.config.loader import (
     LoadedConfig,
-    _load_yaml,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _load_yaml,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
 )
 from smelt.config.models import CrossFeatureAllowance
 from smelt.engine.check import CheckOptions, run_check

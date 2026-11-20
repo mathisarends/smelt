@@ -40,7 +40,7 @@ def test_conflicting_instance_assignment_policies_are_rejected(tmp_path: Path) -
             "app/__init__.py": "",
         },
     )
-    with pytest.raises(ConfigError, match="conflicting SMT314 settings"):
+    with pytest.raises(ConfigError, match="conflicting IDM001 settings"):
         check(tmp_path)
 
 

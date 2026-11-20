@@ -22,7 +22,7 @@ class _Definition:
 
 
 class DuplicateClassName(Rule):
-    code = "SMT355"
+    code = "MOD009"
     name = "modeling/duplicate-class-name"
     category = Category.MODELING
     default_severity = Severity.WARNING
@@ -62,7 +62,7 @@ class DuplicateClassName(Rule):
             "is meant, or merge them when they describe the same thing. A "
             "class that only exists as a private implementation detail can "
             "take a leading underscore. No automatic rewrite is performed. "
-            "Enable rules: {modeling/duplicate-class-name: warning}, or select SMT355."
+            "Enable rules: {modeling/duplicate-class-name: warning}, or select MOD009."
         ),
         config=("rules",),
     )

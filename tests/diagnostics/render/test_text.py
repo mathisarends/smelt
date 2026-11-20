@@ -32,7 +32,7 @@ class TestViolations:
         out = render_concise(report)
 
         assert (
-            "gw/features/voice/domain/calls.py:1:1 SMT101 architecture/layer-boundary domain must not import infrastructure -> Depend on a port instead."
+            "gw/features/voice/domain/calls.py:1:1 ARC001 architecture/layer-boundary domain must not import infrastructure -> Depend on a port instead."
             in out
         )
         assert "Chain:" not in out
@@ -67,7 +67,7 @@ class TestViolations:
         report.violations = [
             replace(
                 report.violations[0],
-                code="SMT313",
+                code="LAY004",
                 rule="layout/definition-order",
                 path="app/__init__.py",
                 edge=None,
@@ -80,13 +80,13 @@ class TestViolations:
         ]
         out = render_text(report, read_line)
 
-        assert out.count("SMT313") == 1
+        assert out.count("LAY004") == 1
         assert "lines 2, 3, 4" in out
         assert len(report.violations) == 3
 
     def test_full_report(self, report: Report) -> None:
         assert render_text(report, read_line) == (
-            "gw/features/voice/domain/calls.py:1:1  SMT101 architecture/layer-boundary  [error]\n"
+            "gw/features/voice/domain/calls.py:1:1  ARC001 architecture/layer-boundary  [error]\n"
             "  domain must not import infrastructure\n"
             "    from gw.features.voice.infra import sql\n"
             "    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
@@ -108,7 +108,7 @@ class TestViolations:
     def test_hints_are_shown_on_request(self, report: Report) -> None:
         out = render_text(report, read_line, show_hints=True)
 
-        assert "gw/features/voice/infra/  SMT305 crowded-package  [hint]" in out
+        assert "gw/features/voice/infra/  ARC012 crowded-package  [hint]" in out
         assert out.endswith(
             "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
         )
@@ -206,17 +206,17 @@ class TestRepeatedEdges:
         first = report.violations[0]
         report.violations = [
             *(replace(first, path=f"gw/calls_{n}.py") for n in range(3)),
-            replace(first, code="SMT102", edge="voice.domain -> billing.domain"),
-            replace(first, code="SMT102", edge="voice.domain -> billing.domain"),
-            replace(first, code="SMT102", edge="voice.domain -> chat.domain"),
+            replace(first, code="ARC002", edge="voice.domain -> billing.domain"),
+            replace(first, code="ARC002", edge="voice.domain -> billing.domain"),
+            replace(first, code="ARC002", edge="voice.domain -> chat.domain"),
         ]
 
         out = render_text(report, read_line)
 
         assert (
             'Repeated dependency edges (often one decision or fix each; JSON "edge"):\n'
-            "  3x SMT101 voice.domain -> voice.infra\n"
-            "  2x SMT102 voice.domain -> billing.domain\n"
+            "  3x ARC001 voice.domain -> voice.infra\n"
+            "  2x ARC002 voice.domain -> billing.domain\n"
             "\n"
         ) in out
         assert "chat.domain" not in out.split("Repeated")[1]
@@ -251,7 +251,7 @@ class TestRepeatedEdges:
 
         out = render_text(report, read_line)
 
-        assert "  2x SMT101 a4 -> b\n  … 2 more\n" in out
+        assert "  2x ARC001 a4 -> b\n  … 2 more\n" in out
 
 
 class TestStatistics:
@@ -259,9 +259,9 @@ class TestStatistics:
         out = render_text(report, read_line, statistics=True, show_hints=True)
 
         assert out == (
-            "1  SMT101 architecture/layer-boundary  [error]\n"
+            "1  ARC001 architecture/layer-boundary  [error]\n"
+            "1  ARC012 crowded-package              [hint]\n"
             "1  SMT303 role-file                    [warning]\n"
-            "1  SMT305 crowded-package              [hint]\n"
             "\n"
             "✗ 1 error · 1 warning · 1 hint · 1 suppressed · 2 in debt · 4 modules\n"
         )
@@ -271,7 +271,7 @@ class TestStatistics:
     ) -> None:
         out = render_text(report, read_line, statistics=True)
 
-        assert "1  SMT305 crowded-package              [hint]\n" in out
+        assert "1  ARC012 crowded-package              [hint]\n" in out
 
     def test_long_listing_ends_with_statistics(self, report: Report) -> None:
         many = replace(report, violations=report.violations * 6)
@@ -279,7 +279,7 @@ class TestStatistics:
         out = render_text(many, read_line)
 
         assert out.endswith(
-            "6  SMT101 architecture/layer-boundary  [error]\n"
+            "6  ARC001 architecture/layer-boundary  [error]\n"
             "6  SMT303 role-file                    [warning]\n"
             "\n"
             "✗ 6 errors · 6 warnings · 6 hints (use --show-hints) · 1 suppressed · "
@@ -289,7 +289,7 @@ class TestStatistics:
     def test_short_listing_has_no_statistics(self, report: Report) -> None:
         out = render_text(report, read_line)
 
-        assert "\n1  SMT101 architecture/layer-boundary" not in out
+        assert "\n1  ARC001 architecture/layer-boundary" not in out
 
 
 class TestSummary:

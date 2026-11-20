@@ -12,8 +12,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
-OPTIONS = CheckOptions(select=("SMT330",))
-_REEXPORT_OPTIONS = CheckOptions(select=("SMT368",))
+OPTIONS = CheckOptions(select=("VIS003",))
+_REEXPORT_OPTIONS = CheckOptions(select=("LAY010",))
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ def test_module_export_declarations_are_reported_without_rewriting(
         tmp_path, {"smelt.yml": CONFIG, "app/__init__.py": "", "app/api.py": source}
     )
     [finding] = violations(tmp_path, OPTIONS)
-    assert finding.code == "SMT330"
+    assert finding.code == "VIS003"
     assert finding.path == "app/api.py"
     assert finding.line == (2 if source.startswith("if ") else 1)
     assert (tmp_path / "app/api.py").read_text() == source
@@ -64,7 +64,7 @@ def test_rule_is_opt_in_and_closest_off_wins(tmp_path: Path) -> None:
         tmp_path,
         {"smelt.yml": CONFIG + "rules: {visibility/misplaced-dunder-all: error}\n"},
     )
-    assert [v.code for v in violations(tmp_path)] == ["SMT330"]
+    assert [v.code for v in violations(tmp_path)] == ["VIS003"]
     write_project(
         tmp_path,
         {
@@ -81,7 +81,7 @@ def test_reasoned_suppression_is_supported(tmp_path: Path) -> None:
         {
             "smelt.yml": CONFIG,
             "app/__init__.py": "",
-            "app/api.py": "__all__ = []  # smelt: ignore[SMT330] -- Retain published star-import behavior.\n",
+            "app/api.py": "__all__ = []  # smelt: ignore[VIS003] -- Retain published star-import behavior.\n",
         },
     )
     assert violations(tmp_path, OPTIONS) == []
@@ -121,7 +121,7 @@ def test_module_with_only_explicit_reexports_is_reported_once(
     [finding] = violations(tmp_path, _REEXPORT_OPTIONS)
 
     assert (finding.code, finding.path, finding.line) == (
-        "SMT368",
+        "LAY010",
         "app/events_api.py",
         line,
     )
@@ -168,12 +168,12 @@ def test_reexport_module_review_is_opt_in_and_accepts_a_compatibility_exception(
     write_project(
         tmp_path, {"smelt.yml": CONFIG + "rules: {layout/reexport-only-module: hint}\n"}
     )
-    assert [finding.code for finding in violations(tmp_path)] == ["SMT368"]
+    assert [finding.code for finding in violations(tmp_path)] == ["LAY010"]
 
     write_project(
         tmp_path,
         {
-            "app/events_api.py": "# smelt: ignore-file[SMT368] -- Keep the published import path.\n"
+            "app/events_api.py": "# smelt: ignore-file[LAY010] -- Keep the published import path.\n"
             + source,
         },
     )

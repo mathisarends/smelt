@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT357",))
+SELECT = CheckOptions(select=("MOD010",))
 
 
 def _project(tmp_path: Path, source: str, *, config: str = CONFIG) -> Path:
@@ -39,7 +39,7 @@ def test_reports_unitless_constant_from_the_issue(tmp_path: Path) -> None:
     (finding,) = violations(_project(tmp_path, "_FRAME_TIMEOUT = 2.0\n"), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT357",
+        "MOD010",
         "app/frames.py",
         1,
         1,
@@ -128,14 +128,14 @@ def test_names_are_opt_in(tmp_path: Path) -> None:
     source = "_TIMEOUT = 5\n"
 
     assert [
-        item for item in violations(_project(tmp_path, source)) if item.code == "SMT357"
+        item for item in violations(_project(tmp_path, source)) if item.code == "MOD010"
     ] == []
     enabled = _project(
         tmp_path / "enabled",
         source,
         config=CONFIG + "rules: {modeling/implicit-duration-unit: warning}\n",
     )
-    assert [item.code for item in violations(enabled)].count("SMT357") == 1
+    assert [item.code for item in violations(enabled)].count("MOD010") == 1
 
 
 def test_reports_inline_timeout_from_the_issue(tmp_path: Path) -> None:
@@ -149,7 +149,7 @@ def test_reports_inline_timeout_from_the_issue(tmp_path: Path) -> None:
     (finding,) = violations(_project(tmp_path, source), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT357",
+        "MOD010",
         "app/frames.py",
         5,
         32,
@@ -244,14 +244,14 @@ def test_literals_are_opt_in(tmp_path: Path) -> None:
     source = "import time\n\ntime.sleep(1)\n"
 
     assert [
-        item for item in violations(_project(tmp_path, source)) if item.code == "SMT357"
+        item for item in violations(_project(tmp_path, source)) if item.code == "MOD010"
     ] == []
     enabled = _project(
         tmp_path / "enabled",
         source,
         config=CONFIG + "rules: {modeling/implicit-duration-unit: warning}\n",
     )
-    assert [item.code for item in violations(enabled)].count("SMT357") == 1
+    assert [item.code for item in violations(enabled)].count("MOD010") == 1
 
 
 def test_reports_names_and_literals_in_source_order(tmp_path: Path) -> None:

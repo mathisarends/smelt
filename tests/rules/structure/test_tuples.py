@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT347",))
+SELECT = CheckOptions(select=("TYP007",))
 HEADER = "from uuid import UUID\n\n\n"
 
 
@@ -31,7 +31,7 @@ def test_reports_dict_value_tuple_from_the_issue(tmp_path: Path) -> None:
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT347",
+        "TYP007",
         "app/browser.py",
         6,
         39,

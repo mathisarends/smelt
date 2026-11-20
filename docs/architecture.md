@@ -45,7 +45,7 @@ tests:
   other wiring modules and their package facades may import declared wiring. Central or
   shared wiring keeps the prohibition on importing features.
 - Every module should belong somewhere: an unclassified module is exempt from all
-  layer and feature boundary checks, so SMT305 warns about it. Composition-root/wiring
+  layer and feature boundary checks, so ARC012 warns about it. Composition-root/wiring
   import restrictions and configured cycle checks still apply.
 
 `smelt init` infers most of this: features, layers, shared and settings modules, the
@@ -88,7 +88,7 @@ Direct violations are not repeated as indirect ones for the same target.
 This is a module-graph check: importing one name from a facade also makes the
 facade's other imports reachable. A layer's `may_depend_on` and cross-feature
 allowances must permit all reachable targets when transitive checking is enabled.
-The package's public-entry-point contract ([SMT107](rules/SMT107.md)) still
+The package's public-entry-point contract ([ARC007](rules/ARC007.md)) still
 allows intentional symbol re-exports. External packages are leaves; smelt does
 not inspect their implementation or infer dynamic imports. No `import-linter`
 dependency or separate contracts are needed for these indirect checks.
@@ -199,9 +199,9 @@ and exclusion reason. Text output groups related missing files into one decision
 while JSON retains every path. The text summary also reports incomplete policy
 assignment in `configured` mode, which preserves the existing exit behavior.
 
-Strict coverage findings (`SMT306`) remain errors even in `--changed`, path-scoped
+Strict coverage findings (`ARC013`) remain errors even in `--changed`, path-scoped
 and `--select` runs. Inline/config ignores and debt cannot hide them; disabling or
-demoting SMT306 in strict mode is rejected. Recording or pruning debt requires
+demoting ARC013 in strict mode is rejected. Recording or pruning debt requires
 complete coverage first. Resolve the placement or document a deliberate exclusion.
 
 `smelt context <path> --format json` includes the file's coverage status and policy.

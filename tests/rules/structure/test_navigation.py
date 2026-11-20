@@ -6,7 +6,7 @@ from smelt.diagnostics.debt import Debt
 from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, violations, write_project
 
-OPTIONS = CheckOptions(select=("SMT322",))
+OPTIONS = CheckOptions(select=("CPX001",))
 BASE_CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 CONFIG = BASE_CONFIG + "rules: {complexity/excess-attribute-depth: hint}\n"
 
@@ -26,8 +26,8 @@ def test_repeated_navigation_reports_one_hint_per_whole_call(tmp_path: Path) -> 
     found = violations(root)
 
     assert [(v.code, v.line, v.column) for v in found] == [
-        ("SMT322", 3, 15),
-        ("SMT322", 4, 17),
+        ("CPX001", 3, 15),
+        ("CPX001", 4, 17),
     ]
     assert all(v.severity.value == "hint" for v in found)
     assert found[0].expected == {
@@ -196,7 +196,7 @@ def test_async_positional_receivers_control_flow_and_nested_classes(
     tmp_path: Path, source: str
 ) -> None:
     [finding] = violations(_project(tmp_path, source), OPTIONS)
-    assert finding.code == "SMT322"
+    assert finding.code == "CPX001"
 
 
 @pytest.mark.parametrize(
@@ -276,7 +276,7 @@ def test_deeper_chains_wrappers_and_keyword_arguments(
     assert found[0].expected["stored_depth"] == depth
 
 
-@pytest.mark.parametrize("selection", ["SMT322", "complexity/excess-attribute-depth"])
+@pytest.mark.parametrize("selection", ["CPX001", "complexity/excess-attribute-depth"])
 def test_explicit_selection_enables_the_opt_in_hint(
     tmp_path: Path, selection: str
 ) -> None:
@@ -308,7 +308,7 @@ def test_closest_package_override_and_severity_are_respected(tmp_path: Path) -> 
 
 
 def test_inline_suppression_and_rule_off_are_respected(tmp_path: Path) -> None:
-    source = "class Controller:\n    def run(self):\n        self.browser.input.motor()  # smelt: ignore[SMT322] -- public SDK navigation\n"
+    source = "class Controller:\n    def run(self):\n        self.browser.input.motor()  # smelt: ignore[CPX001] -- public SDK navigation\n"
     root = _project(tmp_path, source)
     outcome = check(root)
     assert outcome.report.violations == []

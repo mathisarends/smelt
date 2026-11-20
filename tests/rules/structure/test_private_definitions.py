@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT367",))
+SELECT = CheckOptions(select=("VIS007",))
 
 
 def test_authentication_state_support_definitions_are_reported_once(
@@ -29,7 +29,7 @@ def test_authentication_state_support_definitions_are_reported_once(
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT367",
+        "VIS007",
         "app/state.py",
         2,
         1,
@@ -259,7 +259,7 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
         source,
         settings="rules: {visibility/excess-private-definitions: {severity: hint, max: 0}}\n",
     )
-    assert [v.code for v in violations(root)] == ["SMT367"]
+    assert [v.code for v in violations(root)] == ["VIS007"]
     write_policy_project(
         root,
         {
@@ -271,7 +271,7 @@ style:
     quiet: {match: app.quiet, rules: {visibility/excess-private-definitions: off}}
 """,
             "app/quiet/__init__.py": source,
-            "app/intentional.py": "class _Local: pass  # smelt: ignore[SMT367] -- cohesive parser implementation\n",
+            "app/intentional.py": "class _Local: pass  # smelt: ignore[VIS007] -- cohesive parser implementation\n",
         },
     )
     [finding] = violations(root)

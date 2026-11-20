@@ -7,6 +7,18 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- **Breaking:** Rule codes start with their family instead of `SMT`: `ARC`
+  architecture, `IMP` imports, `LAY` layout, `VIS` visibility, `MOD` modeling,
+  `TYP` typing, `CPX` complexity, `IDM` idioms, `FWK` frameworks, `TST` tests
+  and `MET` meta, numbered within the family (`SMT101` is now `ARC001`). Findings,
+  JSON, SARIF and rule pages (`docs/rules/ARC001.md`) use the new codes. Old
+  `SMTnnn` codes and prefixes are rejected in `rules`, `ignore`, `--select`,
+  `--ignore` and `smelt explain`, and reported as unknown in inline
+  suppressions; each error names the new code. `smelt config migrate` replaces
+  old codes in `rules` with rule names and in `ignore` with the new codes.
+  Existing debt baselines keep matching. See the
+  [upgrade guide](docs/upgrading.md#use-the-family-rule-codes).
+
 - **Breaking:** `rules` is the only switch that enables a rule. Declared
   policies such as `architecture.layers`, `tests.layout: mirror` or
   `style.imports` no longer enable their rules. A policy whose rule no `rules`
@@ -25,7 +37,7 @@ current configuration and complete rule contracts, see the [README](README.md),
   `tests.max_patches_per_test` were removed. An entry with only `max` in a style
   override or member refines the limit and keeps the inherited severity.
   Like other policy options, `style.module_import_exemptions` without an
-  SMT110 entry is a configuration warning.
+  IMP002 entry is a configuration warning.
 - **Breaking:** `project.coverage` was removed. Enable strict coverage with
   `rules: {architecture/uncovered-source: error}` in the root config, or for one
   run with `--strict-coverage`. JSON reports keep `coverage.mode`.
@@ -44,7 +56,7 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 - Preview a 0.12 policy upgrade with `smelt config migrate`. Add `--write` to
   replace the file after validation.
-- Enable [SMT371](docs/rules/SMT371.md) with `typing/prefer-inline-type-parameters: hint`
+- Enable [TYP008](docs/rules/TYP008.md) with `typing/prefer-inline-type-parameters: hint`
   to review explicit `Generic[...]` bases for PEP 695 class syntax on Python 3.12+.
 - `architecture.modules` is deprecated and will be removed in 0.15.0. List each
   assignment under `architecture.layers.<layer>.modules` instead. Checks report
@@ -59,8 +71,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   alongside them. A valid layer declaration also reports unknown layer references
   alongside unrelated schema errors. Every unknown `ignore[].rule` is reported at once.
 - Inline suppressions accept rule names, such as
-  `# smelt: ignore[architecture/layer-boundary] -- reason`, alongside SMT codes
-  and prefixes. [SMT901](docs/rules/SMT901.md) reports unknown or unused
+  `# smelt: ignore[architecture/layer-boundary] -- reason`, alongside rule codes
+  and prefixes. [MET001](docs/rules/MET001.md) reports unknown or unused
   identifiers as written and names the replacement for a retired or misspelled
   rule name.
 - Migration errors for retired keys and rules link the installed release's upgrade
@@ -75,24 +87,24 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Declare explicit package prefixes or module names in each layer's `modules`
   list. Legacy `architecture.modules` assignments continue to work. Smelt warns
   about redundant descendants, `smelt init` writes grouped assignments, and
-  `smelt context` reports which assignment a planned module inherits. SMT301
+  `smelt context` reports which assignment a planned module inherits. ARC011
   now respects explicit assignments when checking layout. See the
   [library layout guide](docs/architecture.md#libraries-and-mixed-package-layouts).
-- Enable [SMT370](docs/rules/SMT370.md) with `layout/misplaced-module-logger: warning`
+- Enable [LAY011](docs/rules/LAY011.md) with `layout/misplaced-module-logger: warning`
   to keep module loggers immediately after imports and before constants.
-- Set `style.reexports` to `all` or `alias` to have [SMT369](docs/rules/SMT369.md)
+- Set `style.reexports` to `all` or `alias` to have [VIS008](docs/rules/VIS008.md)
   check explicit re-export spelling in package initializers. Package overrides
   can select another spelling or allow an intentional runtime export list.
-- Enable [SMT368](docs/rules/SMT368.md) with `layout/reexport-only-module: hint`
+- Enable [LAY010](docs/rules/LAY010.md) with `layout/reexport-only-module: hint`
   to review ordinary modules made entirely of explicit re-exports.
 - The `smelt.engine.workspace` import path was removed. Import `WorkspaceMember`,
   `import_root` and `workspace_members` from `smelt.analysis.workspace`.
-- Full checks warn with [SMT904](docs/rules/SMT904.md) when explicitly enabled
-  SMT107, SMT108, SMT109 or SMT308 has no required policy in the setting's scope.
+- Full checks warn with [MET004](docs/rules/MET004.md) when explicitly enabled
+  ARC007, IMP001, ARC008 or IMP003 has no required policy in the setting's scope.
   Follow the reported configuration entry to supply the policy or turn off the rule.
-- Set `style.public_attribute_boundary: module` to let [SMT335](docs/rules/SMT335.md)
+- Set `style.public_attribute_boundary: module` to let [VIS004](docs/rules/VIS004.md)
   suggest private names for fields used by same-module helpers and classes.
-  The default is `class`. [SMT430](docs/rules/SMT430.md) uses the same boundary
+  The default is `class`. [VIS010](docs/rules/VIS010.md) uses the same boundary
   when enabled and continues to cover test-only reads.
 
 ## [0.13.0] - 2026-11-18
@@ -531,7 +543,7 @@ required. See the [upgrade checklist](docs/upgrading.md#0111-to-0120).
   preserve callable lookup and argument evaluation order.
   Implements [#180](https://github.com/mathisarends/smelt/issues/180).
 
-- Opt-in hint [SMT367](docs/rules/SMT367.md) `excess-private-definitions`
+- Opt-in hint [SMT367](docs/rules/VIS007.md) `excess-private-definitions`
   reviews modules with more than twelve private classes, functions and PEP 695
   type aliases. Enable the rule explicitly; `structure.max_private_definitions`
   supports global and closest-package limits, including zero. Findings list
@@ -548,9 +560,9 @@ together to `0.11.1` (`v0.11.1`) and refresh the bundled agent skill with
 package policies; see the [upgrade checklist](docs/upgrading.md#0110-to-0111).
 
 - Package API checks now include discovered tests and `conftest.py`, including
-  configured test roots inside a source package. [SMT107](docs/rules/SMT107.md)
-  enforces public entry points, [SMT108](docs/rules/SMT108.md) reviews configured
-  bundling thresholds, and opt-in [SMT319](docs/rules/SMT319.md) suggests existing
+  configured test roots inside a source package. [SMT107](docs/rules/ARC007.md)
+  enforces public entry points, [SMT108](docs/rules/IMP001.md) reviews configured
+  bundling thresholds, and opt-in [SMT319](docs/rules/IMP004.md) suggests existing
   package re-exports. Existing policies can now report previously missed test
   imports; no new setting or automatic rewrite. SMT109's `count_tests` opt-in
   remains unchanged. Fixes [#177](https://github.com/mathisarends/smelt/issues/177).
@@ -564,7 +576,7 @@ hook and CI pins together to `0.11.0` (`v0.11.0`), refresh the editor schema and
 reinstall the bundled agent skill with `smelt skill install --force`. No baseline
 rewrite is required. See the [upgrade checklist](docs/upgrading.md#0100-to-0110).
 
-- Optional [SMT110](docs/rules/SMT110.md) `module-import-fanout` counts distinct
+- Optional [SMT110](docs/rules/IMP002.md) `module-import-fanout` counts distinct
   direct imports across all project packages. Configure `structure.max_module_imports`
   or a closest-package threshold to activate the hint. Initializers and declared
   composition roots are exempt by default; `module_import_exempt: []` includes them.
@@ -580,14 +592,14 @@ rewrite is required. See the [upgrade checklist](docs/upgrading.md#0100-to-0110)
   ambiguous inheritance are skipped; no automatic rewrite.
   Implements [#170](https://github.com/mathisarends/smelt/issues/170).
 
-- Opt-in review [SMT363](docs/rules/SMT363.md) `complex-comprehension`
+- Opt-in review [SMT363](docs/rules/CPX006.md) `complex-comprehension`
   reports excessive iteration clauses, nontrivial conditional elements and
   compound filters, once per outermost comprehension. Enable the rule explicitly;
   `structure.max_comprehension_loops` and package overrides allow deliberate
   flattening. No automatic rewrite; preserve generator laziness.
   Implements [#167](https://github.com/mathisarends/smelt/issues/167).
 
-- Opt-in review [SMT364](docs/rules/SMT364.md) `constructor-logic` reports
+- Opt-in review [SMT364](docs/rules/CPX007.md) `constructor-logic` reports
   `__init__`/`__post_init__` methods above a configurable decision limit, with the
   counted node locations. Enable the rule explicitly; the global
   `structure.max_constructor_decisions` defaults to 2 and supports closest-package
@@ -603,14 +615,14 @@ together to `0.10.0` (`v0.10.0`), refresh the editor schema and reinstall the
 bundled agent skill with `smelt skill install --force`. No baseline rewrite is
 required. See the [upgrade checklist](docs/upgrading.md#090-to-0100).
 
-- Optional design review [SMT361](docs/rules/SMT361.md) `parallel-record-fields`
+- Optional design review [SMT361](docs/rules/MOD012.md) `parallel-record-fields`
   reports declared sequence fields of the same instance paired with `zip`, once
   per class and field group, with declaration and use locations. It recognizes
   import aliases, simple field aliases and `strict=True`. Local sequences and
   different receivers remain valid; deliberate column storage can keep reasoned
   suppressions. Enable `rules: {parallel-record-fields: hint}`; no automatic rewrite.
   Implements [#155](https://github.com/mathisarends/smelt/issues/155).
-- Optional performance review [SMT362](docs/rules/SMT362.md)
+- Optional performance review [SMT362](docs/rules/IDM008.md)
   `loop-invariant-collection` groups repeated membership-set comprehensions in
   passive `for` loops when tuple literals or explicit immutable tuple/frozen-record
   declarations establish stable inputs. Unknown calls, mutable inputs, properties
@@ -630,20 +642,20 @@ schema and reinstall the bundled agent skill with `smelt skill install --force`.
 No baseline rewrite is required. See the
 [upgrade checklist](docs/upgrading.md#080-to-090).
 
-- Optional ownership review [SMT360](docs/rules/SMT360.md)
+- Optional ownership review [SMT360](docs/rules/MOD011.md)
   `mutable-field-in-frozen-dataclass` reports directly annotated `dict`, `list`
   and `set` instance fields on explicitly frozen dataclasses, including import
   aliases. Review mutability and caller aliases; `Mapping` alone freezes nothing
   and a mapping proxy needs a defensive copy to isolate the caller's dictionary.
   Enable `rules: {mutable-field-in-frozen-dataclass: warning}`; no automatic rewrite.
   Implements [#153](https://github.com/mathisarends/smelt/issues/153).
-- Optional style review [SMT359](docs/rules/SMT359.md)
+- Optional style review [SMT359](docs/rules/CPX005.md)
   `nested-conditional-expression` reports direct nesting in either result branch,
   once per outermost chain. Use explicit `if/elif` or `match` while preserving lazy
   evaluation. Simple fallbacks and independent conditionals remain valid. Enable
   `rules: {nested-conditional-expression: hint}`; no automatic rewrite. Implements
   [#152](https://github.com/mathisarends/smelt/issues/152).
-- Optional review [SMT348](docs/rules/SMT348.md) `missing-interface-docstring`
+- Optional review [SMT348](docs/rules/IDM005.md) `missing-interface-docstring`
   reports `@abstractmethod` and `typing.Protocol` methods whose body is only
   `...`, `pass` or `raise NotImplementedError` and which have no docstring, so
   ports state their contract where implementers read it. Default
@@ -651,7 +663,7 @@ No baseline rewrite is required. See the
   dunders other than `__call__` and tests are ignored. Enable it with
   `rules: {missing-interface-docstring: hint}`; no automatic rewrite.
   Implements [#127](https://github.com/mathisarends/smelt/issues/127).
-- Optional review [SMT349](docs/rules/SMT349.md) `stateful-dataclass` reports
+- Optional review [SMT349](docs/rules/MOD005.md) `stateful-dataclass` reports
   a `@dataclass` that is not `frozen=True` when a method other than
   `__post_init__` assigns, deletes or augments an attribute of `self`, writes
   an item of a field, calls a mutating container method on a field declared as
@@ -660,7 +672,7 @@ No baseline rewrite is required. See the
   with private attributes. Mutations through other objects and tests are
   ignored. Enable it with `rules: {stateful-dataclass: hint}`; no automatic
   rewrite. Implements [#133](https://github.com/mathisarends/smelt/issues/133).
-- Optional review [SMT350](docs/rules/SMT350.md) `missing-broad-except-reason`
+- Optional review [SMT350](docs/rules/IDM006.md) `missing-broad-except-reason`
   reports `except Exception`, `except BaseException`, tuples containing them
   and bare `except:` handlers without a comment explaining why they catch
   everything. Comments on the `except` line, directly above it or before or on
@@ -670,7 +682,7 @@ No baseline rewrite is required. See the
   automatic rewrite. Implements
   [#143](https://github.com/mathisarends/smelt/issues/143).
 - Package contracts accept `dataclass_options`, a list of `frozen`, `slots`
-  and `kw_only`. Policy rule [SMT351](docs/rules/SMT351.md)
+  and `kw_only`. Policy rule [SMT351](docs/rules/MOD006.md)
   `missing-dataclass-option` then reports production `@dataclass` classes
   that do not set each listed option to `True`. Missing `slots` is not
   reported below bases from outside the project or for classes with a
@@ -678,14 +690,14 @@ No baseline rewrite is required. See the
   outer requirement and `smelt context` shows the policy. Tests are not
   checked; no automatic rewrite. Implements
   [#137](https://github.com/mathisarends/smelt/issues/137).
-- Optional review [SMT355](docs/rules/SMT355.md) `duplicate-class-name`
+- Optional review [SMT355](docs/rules/MOD009.md) `duplicate-class-name`
   reports public top-level classes whose name is also defined at the top level
   of another module in the same package, counting the package's `__init__.py`.
   Each definition gets a finding with the other locations. Re-exports, private
   and nested classes, separate packages and tests are not compared. Enable it
   with `rules: {duplicate-class-name: warning}`; no automatic rewrite.
   Implements [#138](https://github.com/mathisarends/smelt/issues/138).
-- Optional review [SMT356](docs/rules/SMT356.md) `duplicate-narrowing-assert`
+- Optional review [SMT356](docs/rules/IDM007.md) `duplicate-narrowing-assert`
   reports, once per class and expression, `assert self.<attribute> is not None`
   or `assert isinstance(self.<attribute>, ...)` repeated in at least two methods
   of the same class, including each operand of an `and`. Single local
@@ -694,7 +706,7 @@ No baseline rewrite is required. See the
   one property that raises a meaningful error. Enable it with
   `rules: {duplicate-narrowing-assert: warning}`; no automatic rewrite.
   Implements [#142](https://github.com/mathisarends/smelt/issues/142).
-- Optional review [SMT352](docs/rules/SMT352.md) `duplicate-function` reports
+- Optional review [SMT352](docs/rules/CPX004.md) `duplicate-function` reports
   module-level functions whose parameters, annotations, decorators and body
   match another function in the same root package, ignoring names,
   docstrings, comments and formatting. Every copy gets a finding listing the
@@ -702,7 +714,7 @@ No baseline rewrite is required. See the
   methods, nested functions and tests are ignored. Enable it with
   `rules: {duplicate-function: warning}`; no automatic rewrite. Implements
   [#140](https://github.com/mathisarends/smelt/issues/140).
-- Optional review [SMT357](docs/rules/SMT357.md) `missing-duration-unit`
+- Optional review [SMT357](docs/rules/MOD010.md) `missing-duration-unit`
   reports module constants, class fields and parameters named `*timeout`,
   `*delay`, `*interval`, `*duration` or `*wait` that hold an `int` or `float`
   without a unit suffix, such as `_FRAME_TIMEOUT = 2.0`. Names ending in a
@@ -720,7 +732,7 @@ No baseline rewrite is required. See the
 - Package contracts accept `bases`, a mapping from an outside base class to
   the project base that replaces it, e.g.
   `{pydantic.BaseModel: app.core.Options}`. Policy rule
-  [SMT353](docs/rules/SMT353.md) `prefer-project-base-class` then reports
+  [SMT353](docs/rules/MOD007.md) `prefer-project-base-class` then reports
   production classes that inherit the outside base directly, resolved through
   imports, aliases and module attributes. Only inheritance is judged:
   importing the outside base for annotations, `isinstance` or adapters stays
@@ -729,7 +741,7 @@ No baseline rewrite is required. See the
   policy. Tests are not checked; no automatic rewrite. Implements
   [#139](https://github.com/mathisarends/smelt/issues/139).
 - Package contracts accept `errors: {base: <qualified exception>, allow: [...]}`.
-  Policy rule [SMT354](docs/rules/SMT354.md) `prefer-domain-exception` then
+  Policy rule [SMT354](docs/rules/MOD008.md) `prefer-domain-exception` then
   reports production code that raises a builtin exception class instead of
   the project hierarchy, including `raise ValueError(...) from error`.
   `NotImplementedError`, `StopIteration`, `StopAsyncIteration`,
@@ -750,7 +762,7 @@ manual repairs. Update installation, hook and CI pins together to `0.8.0`
 `smelt skill install --force`. No baseline rewrite is required. See the
 [upgrade checklist](docs/upgrading.md#070-to-080).
 
-- Optional style review [SMT346](docs/rules/SMT346.md)
+- Optional style review [SMT346](docs/rules/TYP006.md)
   `prefer-deferred-annotations` reports modules that quote annotations such as
   `list["Tab"]`. With the annotations future import or a declared Python 3.14+
   minimum the quotes are redundant; otherwise the hint suggests adding
@@ -760,7 +772,7 @@ manual repairs. Update installation, hook and CI pins together to `0.8.0`
   with `rules: {prefer-deferred-annotations: hint}`; no automatic rewrite.
   Implements [#123](https://github.com/mathisarends/smelt/issues/123).
 
-- Optional review [SMT347](docs/rules/SMT347.md) `anonymous-tuple-type`
+- Optional review [SMT347](docs/rules/TYP007.md) `anonymous-tuple-type`
   reports fixed-length tuple types in annotations and type aliases with three
   or more elements or a repeated element type, such as
   `dict[UUID, tuple[UUID, UUID, Connection]]`, and suggests a `NamedTuple` or
@@ -770,7 +782,7 @@ manual repairs. Update installation, hook and CI pins together to `0.8.0`
   rewrite. Implements part of
   [#121](https://github.com/mathisarends/smelt/issues/121).
 
-- Optional review [SMT344](docs/rules/SMT344.md) `redundant-name-alias` reports
+- Optional review [SMT344](docs/rules/IDM004.md) `redundant-name-alias` reports
   a module-level name that only repeats another class or function name, such as
   `AutofillData = PasswordData`, including `TypeAlias` and `type` statements.
   Unions, subscripts, `Annotated`, constants, conditional fallbacks, typing
@@ -780,14 +792,14 @@ manual repairs. Update installation, hook and CI pins together to `0.8.0`
 
 - New package policy `max_positional_parameters` limits how many parameters a
   function or method may accept positionally; later parameters must be
-  keyword-only. [SMT345](docs/rules/SMT345.md) `excess-positional-parameters`
+  keyword-only. [SMT345](docs/rules/CPX003.md) `excess-positional-parameters`
   reports violations (warning). `self`/`cls`, `*args`/`**kwargs`, dunder,
   `@overload` and `@override` definitions and tests are not counted. Enable it
   with `structure.contracts.<name>: {match: app, max_positional_parameters: 2}`;
   `smelt context` shows the limit. No automatic rewrite. Implements
   [#122](https://github.com/mathisarends/smelt/issues/122).
 
-- Optional review [SMT343](docs/rules/SMT343.md) `redundant-private-delegate`
+- Optional review [SMT343](docs/rules/VIS006.md) `redundant-private-delegate`
   reports a method whose whole body returns a call to a private method of the
   same class that receives every parameter unchanged and is used nowhere else,
   such as `def events(...): return self._events(...)`. Validation before the
@@ -808,7 +820,7 @@ editor schema and the installed agent skill. No baseline rewrite is required.
 See the [upgrade checklist](docs/upgrading.md#060-to-070).
 
 - Optional style rules fix how `StrEnum` values are declared.
-  [SMT341](docs/rules/SMT341.md) `str-enum-auto-values` makes `auto()` the
+  [SMT341](docs/rules/MOD004.md) `str-enum-auto-values` makes `auto()` the
   convention: it reports explicit strings equal to the lowercased member name,
   and `auto()` members in classes that need custom values such as
   `"mouseMoved"`. [SMT342](https://github.com/mathisarends/smelt/blob/v0.7.0/docs/rules/SMT342.md) `str-enum-explicit-values`
@@ -832,7 +844,7 @@ See the [upgrade checklist](docs/upgrading.md#060-to-070).
   of prefixing every detail with `Expected`, and omits the constant
   `automatic_rename` flag. JSON and SARIF are unchanged.
 
-- Optional [SMT340](docs/rules/SMT340.md) reports an awaited result passed
+- Optional [SMT340](docs/rules/CPX002.md) reports an awaited result passed
   directly as a call argument, such as `Result(text=await client.read())`, and
   suggests naming it in a local variable first (the keyword for keyword
   arguments). Enable `rules: {await-in-call-argument: hint}`. Awaits in
@@ -840,14 +852,14 @@ See the [upgrade checklist](docs/upgrading.md#060-to-070).
   conditions are skipped; tests are not checked; no automatic rewrite. Implements
   [#112](https://github.com/mathisarends/smelt/issues/112).
 
-- Optional [SMT339](docs/rules/SMT339.md) reports production imports and
+- Optional [SMT339](docs/rules/VIS005.md) reports production imports and
   module-qualified reads of private symbols defined in analyzed project modules.
   Enable `rules: {private-symbol-import: warning}`. Dunders, public aliases and
   initializer re-exports under public aliases stay valid; tests remain with
   SMT420. Respects the TYPE_CHECKING policy; renames stay manual. Implements
   [#105](https://github.com/mathisarends/smelt/issues/105).
 
-- Optional [SMT338](docs/rules/SMT338.md), enabled with
+- Optional [SMT338](docs/rules/TYP005.md), enabled with
   `rules: {duplicate-literal-type: hint}`, finds repeated multi-value `Literal`
   types within and across source files in the same root package. Findings group
   locations per file and value set, preserve `Annotated` metadata boundaries,
@@ -855,7 +867,7 @@ See the [upgrade checklist](docs/upgrading.md#060-to-070).
   changes to existing groups remain visible in changed checks and debt baselines.
   Same values may describe independent concepts; no automatic rewrite is made.
 
-- Optional [SMT337](docs/rules/SMT337.md) flags `AsyncIterator[T]` return
+- Optional [SMT337](docs/rules/TYP004.md) flags `AsyncIterator[T]` return
   annotations on `@asynccontextmanager` functions and recommends
   `AsyncGenerator[T, None]`. Enable
   `rules: {deprecated-async-contextmanager-return: warning}`. The decorator stays
@@ -873,7 +885,7 @@ Update installation, hook and CI pins together to `0.6.0` (`v0.6.0`), refresh th
 editor schema and review findings before changing debt. No baseline rewrite is
 required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-060).
 
-- Optional [SMT336](docs/rules/SMT336.md) reviews module filenames that repeat an
+- Optional [SMT336](docs/rules/LAY009.md) reviews module filenames that repeat an
   ancestor package, such as `cars/application/car_exporter.py`. Enable
   `rules: {redundant-module-name: hint}`. Whole-name prefixes/suffixes and simple
   trailing-s plurals are recognized; occupied shorter names are not suggested.
@@ -890,7 +902,7 @@ required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-
   writes this group, adding the module-symbol and attribute reviews to its
   generated selection. See [scope and migration](docs/rule-selection.md#information-hiding).
 
-- Optional [SMT335](docs/rules/SMT335.md) reviews public instance and class data
+- Optional [SMT335](docs/rules/VIS004.md) reviews public instance and class data
   attributes with no observed access outside their class. Enable
   `rules: {internal-public-attribute: warning}`. Test access preserves visibility
   without duplicating SMT430; exports and uncertain inheritance/framework
@@ -906,13 +918,13 @@ required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-
   `python scripts/generate.py --check`. The bundle contains consumer guides and
   rule pages; benchmark/evaluation data and maintainer documents stay in the repo.
 
-- Optional [SMT334](docs/rules/SMT334.md) reviews private literal constants such
+- Optional [SMT334](docs/rules/LAY008.md) reviews private literal constants such
   as `DownloadController._DOWNLOADABLE_EXTENSIONS` for placement at module scope.
   Enable `rules: {private-class-constant: error}` to block them. Inherited and
   decorated classes retain their attribute contracts; moves and reference updates
   remain manual. Implements [#82](https://github.com/mathisarends/smelt/issues/82).
 
-- Optional [SMT333](docs/rules/SMT333.md), enabled with
+- Optional [SMT333](docs/rules/IDM003.md), enabled with
   `rules: {prefer-callable-instance: hint}`, reviews classes with one public
   instance method for `__call__` and an operation-based class name. Findings keep
   constructor and call-time signatures separate. Existing callable APIs,
@@ -920,7 +932,7 @@ required for this upgrade. See the [upgrade checklist](docs/upgrading.md#050-to-
 
 - Declare canonical YAML extensions and Compose basenames once with
   `structure.file_naming: {yaml_extension: yaml, compose_basename: compose}`.
-  [SMT331](docs/rules/SMT331.md) and [SMT332](https://github.com/mathisarends/smelt/blob/v0.6.0/docs/rules/SMT332.md) flag other
+  [SMT331](docs/rules/LAY007.md) and [SMT332](https://github.com/mathisarends/smelt/blob/v0.6.0/docs/rules/SMT332.md) flag other
   spellings throughout the project, including hidden configuration directories
   and dotted Compose variants. Policies are optional, respect exclusions and
   support staged checks; renames and reference updates remain manual.
@@ -980,7 +992,7 @@ See the [upgrade checklist](docs/upgrading.md#040-to-050).
   remains available for matching. Version-1 files remain readable; `smelt debt
   --prune` upgrades assessed entries without accepting new debt. Use `smelt debt
   --show [PATHS]` for a compact, read-only baseline summary, or add `--format json`
-  for the grouped data. [SMT321](docs/rules/SMT321.md) now distinguishes enclosing
+  for the grouped data. [SMT321](docs/rules/TYP003.md) now distinguishes enclosing
   functions in debt and changed checks, so fixing one function cannot silently
   accept an identical new violation in another. Old unscoped SMT321 debt requires
   review and explicit re-recording. See [adoption](docs/adoption.md).
@@ -989,10 +1001,10 @@ See the [upgrade checklist](docs/upgrading.md#040-to-050).
   [SMT325](https://github.com/mathisarends/smelt/blob/v0.5.0/docs/rules/SMT325.md) `missing-module-docstring` for every analyzed
   production module, including empty package initializers. Empty/blank docstrings
   do not satisfy the requirement. Choose `forbid` for the existing
-  [SMT309](docs/rules/SMT309.md) convention; use a reasoned file suppression or an
+  [SMT309](docs/rules/LAY002.md) convention; use a reasoned file suppression or an
   explicit nested `allow` policy for exceptions. Defaults remain unchanged.
 
-- Optional [SMT324](docs/rules/SMT324.md), enabled with
+- Optional [SMT324](docs/rules/MOD003.md), enabled with
   `rules: {prefer-str-enum-discriminator: hint}`, reviews single-string `Literal`
   fields named `type`, `kind` or `tag` for shared `StrEnum` members. Keep narrow
   `Literal[EventType.MEMBER]` annotations and matching enum defaults. This syntax
@@ -1013,7 +1025,7 @@ together to `0.4.0` (`v0.4.0`) and refresh the editor schema. See the
   `.pre-commit-hooks.yaml` manifest retains its required filename. Integration
   instructions consistently use prek.
 
-- Optional [SMT323](docs/rules/SMT323.md), enabled with
+- Optional [SMT323](docs/rules/MOD002.md), enabled with
   `rules: {no-base-class-prefix: error}`, rejects class definitions such as
   `BaseRepository` and `_BaseRepository` in favor of responsibility-based names.
   Imports, third-party inheritance, `Baseline` and `Base64` remain valid. Package
@@ -1039,34 +1051,34 @@ together to `0.4.0` (`v0.4.0`) and refresh the editor schema. See the
   include all bases. Both published hooks now run on every commit, including
   policy-only edits. See [shared configuration](docs/configuration.md#shared-local-policy).
 
-- New opt-in [SMT322](docs/rules/SMT322.md) `deep-object-navigation` reviews
+- New opt-in [SMT322](docs/rules/CPX001.md) `deep-object-navigation` reviews
   method calls reached through multiple stored instance attributes, such as
   `self.browser.input.motor().aim()`. Enable with
   `rules: {deep-object-navigation: hint}` or `--select SMT322`; package rule
   overrides and inline suppressions preserve intentional navigation. Direct
   collaborator calls, pure data reads and direct-collaborator fluent chains
   remain quiet. This bounded syntax review has no automatic rewrite.
-- [SMT901](docs/rules/SMT901.md) diagnoses unknown inline suppression identifiers,
+- [SMT901](docs/rules/MET001.md) diagnoses unknown inline suppression identifiers,
   including readable rule names where stable SMT codes are required. Known
   inactive rules retain their narrowed-check behavior.
-- [SMT426](docs/rules/SMT426.md) groups shared-helper operations by one repair in
+- [SMT426](docs/rules/TST008.md) groups shared-helper operations by one repair in
   text and adds deterministic `shared_helper` JSON groups. Individual findings,
-  identities, counts, suppressions and debt remain unchanged. [SMT424](docs/rules/SMT424.md)
+  identities, counts, suppressions and debt remain unchanged. [SMT424](docs/rules/TST006.md)
   explains known helper inference limits at the affected call sites.
-- [SMT104](docs/rules/SMT104.md) adds the opt-in `cycles: [modules]` scope and
+- [SMT104](docs/rules/ARC004.md) adds the opt-in `cycles: [modules]` scope and
   independent `type_checking_cycles: ignore`. Existing scopes are explicitly
   labeled as aggregated; witnesses include edge phases. Default scopes stay unchanged.
-- [SMT109](docs/rules/SMT109.md) accepts optional, statically verified
+- [SMT109](docs/rules/ARC008.md) accepts optional, statically verified
   `structure.canonical_exports` ownership and distinguishes same-root/other-root
   importers. Existing exports inform the review; frequency alone never expands API.
 - Literal lazy-export tables with a matching guarded `import_module`/`getattr`
   forwarder now contribute export identity and visibility evidence. Unsupported
   dynamic handlers, escaped/mutated tables and type stubs alone remain unverified.
-- [SMT313](docs/rules/SMT313.md) permits bounded ordering fixes around unrelated
+- [SMT313](docs/rules/LAY004.md) permits bounded ordering fixes around unrelated
   nested-function dictionaries and `nonlocal` closure writes. Reflection on
   unknown receivers or ordered namespaces retains its manual-review barrier.
 
-- New opt-in [SMT321](docs/rules/SMT321.md) `implicit-optional-default`
+- New opt-in [SMT321](docs/rules/TYP003.md) `implicit-optional-default`
   reviews `parameter or fallback` for explicitly optional parameters with a
   `None` default. Enable with `rules: {implicit-optional-default: warning}` or
   `--select SMT321`. Use `--fix --unsafe-fixes` to replace it with an explicit
@@ -1092,8 +1104,8 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
 
 | Capability | Enable / use | Details |
 | --- | --- | --- |
-| Review widely imported names missing from a package facade | Set a contract's `export_at` threshold; opt-in, hint severity | [SMT109](docs/rules/SMT109.md) |
-| Review internal public constants and PEP 695 aliases | `rules: {internal-public-module-symbol: warning}`; opt-in | [SMT320](docs/rules/SMT320.md) |
+| Review widely imported names missing from a package facade | Set a contract's `export_at` threshold; opt-in, hint severity | [SMT109](docs/rules/ARC008.md) |
+| Review internal public constants and PEP 695 aliases | `rules: {internal-public-module-symbol: warning}`; opt-in | [SMT320](docs/rules/VIS002.md) |
 | Get one-line findings with repair advice | `smelt check --format concise` | [CLI and reports](docs/cli.md) |
 | Migrate existing installations and report consumers | Follow the release-specific checklist | [Upgrading](docs/upgrading.md) |
 
@@ -1104,7 +1116,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   `str | bytes` no longer silently blocks public-first ordering on Python 3.12/3.13.
   Imported/user-defined operands, shadowed names, explicit namespace mutations and unions in defaults remain
   execution barriers. Inspect barriers with `check --format json --show-coverage`.
-- New opt-in [SMT320](docs/rules/SMT320.md) `internal-public-module-symbol`
+- New opt-in [SMT320](docs/rules/VIS002.md) `internal-public-module-symbol`
   reviews single, unconditional uppercase module assignments and PEP 695 type
   aliases with no observed external use or public-signature evidence. Enable it
   with `rules: {internal-public-module-symbol: warning}` or `--select SMT320`.
@@ -1197,7 +1209,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   multiline imports. A reasoned exception on that name now survives Ruff
   formatting and does not suppress neighboring import lines; put multiline
   import exceptions next to the affected name.
-- Optional [SMT319](docs/rules/SMT319.md), enabled with
+- Optional [SMT319](docs/rules/IMP004.md), enabled with
   `rules: {prefer-package-import: hint}` or `--select SMT319`, suggests existing
   package re-exports so callers can combine imports through a common `__init__.py`.
   All names must have direct, unconditional public re-exports in analyzed code;
@@ -1255,7 +1267,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   and unused facade exports, rather than just selected re-exports. External
   packages remain leaves and the default is still direct imports only. Smelt's
   own repository policy enables these checks. See
-  [SMT101](docs/rules/SMT101.md) and [SMT103](docs/rules/SMT103.md).
+  [SMT101](docs/rules/ARC001.md) and [SMT103](docs/rules/ARC003.md).
 - **Breaking configuration API:** fixed source/test checks are enabled directly by
   problem name in `rules`, with one value for activation and severity. Removed
   `review_*`, assertion/private-import boolean flags, binary helper conventions,
@@ -1272,7 +1284,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   examples come from the real catalog and work offline. Plain `init` keeps its
   conservative check selection. Existing configs can export `smelt config schema`
   and add the modeline; see [editor setup](docs/configuration.md#editor-completion-hover-and-validation).
-- Optional [SMT430](docs/rules/SMT430.md), enabled by
+- Optional [SMT430](docs/rules/VIS010.md), enabled by
   `rules: {test-only-public-attribute: warning}` or `--select SMT430`,
   reviews public instance/class data attributes read only by tests outside their
   class. Findings include test locations and a collision-free private name.
@@ -1280,7 +1292,7 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   checks never rename code. Public-use rules now share the same member index,
   export/import evidence and private-name suggestions. The new rule is off by
   default and never renames code automatically.
-- Optional [SMT318](docs/rules/SMT318.md), enabled with `rules: {SMT318: hint}`
+- Optional [SMT318](docs/rules/MOD001.md), enabled with `rules: {SMT318: hint}`
   or `--select SMT318`, reviews direct `StrEnum.MEMBER.value` reads for using the
   string enum member directly. Known import aliases and analyzed re-exports are
   supported; ordinary enums, uncertain bindings and instance inference are
@@ -1302,20 +1314,20 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   `# smelt: ignore[SMT316] -- ...` comment on its definition. Existing suppression
   reason and unused-suppression checks continue to apply with caching.
 
-- Optional [SMT316](docs/rules/SMT316.md), enabled with
+- Optional [SMT316](docs/rules/VIS001.md), enabled with
   `rules: {internal-public-member: warning}`, reviews public module functions and
   ordinary instance methods with no observed external use, including unused
   definitions. Findings suggest a private name and list internal uses/callbacks
   so agents can review renames. Existing private names are avoided. Explicit
   exports, decorators, inheritance and possible external method accesses preserve
   public APIs; test-only public module functions remain covered by SMT429.
-- Optional [SMT317](docs/rules/SMT317.md), enabled with
+- Optional [SMT317](docs/rules/LAY005.md), enabled with
   `rules: {internal-static-helper: hint}`, suggests extracting internal static helpers
   to private module functions. Class dependencies, inheritance, extra decorators
   and possible external callers preserve deliberate static APIs. Both new
   rules support closest package `off` overrides and appear in `smelt context`.
   Checks remain read-only and the default rule set is unchanged.
-- Optional [SMT429](docs/rules/SMT429.md), enabled by
+- Optional [SMT429](docs/rules/VIS009.md), enabled by
   `rules: {test-only-public-function: warning}`, reviews public module functions
   accessed from tests but not from other analyzed production modules. Findings
   suggest a leading underscore and include test locations so agents can review
@@ -1377,17 +1389,17 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
   fixture receivers and awaited, bounded asyncio Event observations. Unused
   `pytest.raises`/`warns` context objects no longer count as checks. Unknown
   `assert_*` methods and fixture execution alone remain insufficient evidence.
-- [SMT420](docs/rules/SMT420.md) tracks direct known production constructors and
+- [SMT420](docs/rules/TST002.md) tracks direct known production constructors and
   explicitly typed instance reads, including analyzed facade re-exports and
   consistent known fixture return/yield tuple components. Unknown/conflicting
   outputs, private writes and local fakes are excluded; fixture inference has
   separate provenance and respects class/conftest scope. A private class import
   is not reported again for each public instance operation.
-  [SMT421–SMT423](docs/rules/SMT422.md) now include MonkeyPatch attribute
+  [SMT421–SMT423](docs/rules/TST004.md) now include MonkeyPatch attribute
   replacement, aliases and context scopes, with operation/provenance metadata.
   MonkeyPatch environment/mapping setup is excluded from the mock count.
-- Optional [SMT425](docs/rules/SMT425.md), [SMT426](docs/rules/SMT426.md) and
-  [SMT427](docs/rules/SMT427.md) review potentially vacuous outcomes, known waits
+- Optional [SMT425](docs/rules/TST007.md), [SMT426](docs/rules/TST008.md) and
+  [SMT427](docs/rules/TST009.md) review potentially vacuous outcomes, known waits
   without deadlines/scheduler-clock replacements, and small independent-case loop
   candidates. They remain advisory and require explicit test policies; no fixer,
   blanket mock/sleep ban or assertion quota is introduced.
@@ -1429,14 +1441,14 @@ then refresh `.smelt.schema.json`. Upgrading from 0.1.x also requires the
 
 | Capability | Rules / interface | What agents can now check |
 | --- | --- | --- |
-| Strict architecture coverage | [SMT306](docs/rules/SMT306.md), `project.coverage: strict`, `--strict-coverage` | Production files outside package selection, missing architecture roles and exclusions without reasons. These gaps cannot be hidden by changed/path filters, suppressions or debt. |
-| Package structure and public APIs | [SMT107](docs/rules/SMT107.md), [SMT307](docs/rules/SMT307.md) | Required modules and explicit public entry points through `structure.contracts`; outside callers cannot import private implementation modules. |
-| Import fanout | [SMT108](docs/rules/SMT108.md) | Optional hints when one outside caller imports too many distinct modules from the same contracted package. |
-| Source conventions | [SMT308](docs/rules/SMT308.md)–[SMT312](docs/rules/SMT312.md) | Scoped absolute/relative import styles, module-docstring policy, future-annotation policy and private module/package names. Python targets come from declared metadata or configuration. |
-| Definition order | [SMT313](docs/rules/SMT313.md) | Dependency-aware module/class ordering, including execution barriers and bounded, explicitly requested fixes. |
-| Instance field assignments | [SMT314](docs/rules/SMT314.md) | Bundled or chained writes to multiple direct instance attributes when `instance_assignments: separate` is declared. |
-| Type dispatch | [SMT315](docs/rules/SMT315.md) | Review hints for same-subject `isinstance`/`elif` chains under a declared `type_dispatch` policy. |
-| Test quality | [SMT420](docs/rules/SMT420.md)–[SMT424](docs/rules/SMT424.md) | Configured private production access, forbidden mocks, string patch targets, per-test patch limits and missing recognized outcome assertions. |
+| Strict architecture coverage | [SMT306](docs/rules/ARC013.md), `project.coverage: strict`, `--strict-coverage` | Production files outside package selection, missing architecture roles and exclusions without reasons. These gaps cannot be hidden by changed/path filters, suppressions or debt. |
+| Package structure and public APIs | [SMT107](docs/rules/ARC007.md), [SMT307](docs/rules/ARC014.md) | Required modules and explicit public entry points through `structure.contracts`; outside callers cannot import private implementation modules. |
+| Import fanout | [SMT108](docs/rules/IMP001.md) | Optional hints when one outside caller imports too many distinct modules from the same contracted package. |
+| Source conventions | [SMT308](docs/rules/IMP003.md)–[SMT312](docs/rules/LAY003.md) | Scoped absolute/relative import styles, module-docstring policy, future-annotation policy and private module/package names. Python targets come from declared metadata or configuration. |
+| Definition order | [SMT313](docs/rules/LAY004.md) | Dependency-aware module/class ordering, including execution barriers and bounded, explicitly requested fixes. |
+| Instance field assignments | [SMT314](docs/rules/IDM001.md) | Bundled or chained writes to multiple direct instance attributes when `instance_assignments: separate` is declared. |
+| Type dispatch | [SMT315](docs/rules/IDM002.md) | Review hints for same-subject `isinstance`/`elif` chains under a declared `type_dispatch` policy. |
+| Test quality | [SMT420](docs/rules/TST002.md)–[SMT424](docs/rules/TST006.md) | Configured private production access, forbidden mocks, string patch targets, per-test patch limits and missing recognized outcome assertions. |
 
 - `smelt context <path> --format json` explains ownership, coverage status,
   applicable contracts, effective conventions and Python targets for existing or

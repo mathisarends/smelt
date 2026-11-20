@@ -94,22 +94,22 @@ class TestNewerSyntax:
             "from app.infra import db\n", encoding="utf-8-sig"
         )
 
-        found = violations(root, CheckOptions(select=("SMT101",)))
+        found = violations(root, CheckOptions(select=("ARC001",)))
 
-        assert codes_at(found) == [("SMT101", "app/domain/service.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
 
     @pytest.mark.skipif(sys.version_info < (3, 13), reason="PEP 696 needs 3.13")
     def test_type_parameter_defaults(self, tmp_path: Path) -> None:
         root = _project(tmp_path, PY313, requires=">=3.13")
 
-        found = violations(root, CheckOptions(select=("SMT101",)))
+        found = violations(root, CheckOptions(select=("ARC001",)))
 
-        assert codes_at(found) == [("SMT101", "app/domain/service.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
 
     @pytest.mark.skipif(sys.version_info < (3, 14), reason="PEP 750/758 need 3.14")
     def test_template_strings_and_bare_except_tuples(self, tmp_path: Path) -> None:
         root = _project(tmp_path, PY314, requires=">=3.14")
 
-        found = violations(root, CheckOptions(select=("SMT101",)))
+        found = violations(root, CheckOptions(select=("ARC001",)))
 
-        assert codes_at(found) == [("SMT101", "app/domain/service.py", 1)]
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]

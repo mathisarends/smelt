@@ -19,8 +19,8 @@ _MIN_PLURAL_LENGTH = 4
 
 
 class ForbiddenPackageName(Rule):
-    activation = POLICIES["SMT302"]
-    code = "SMT302"
+    activation = POLICIES["LAY001"]
+    code = "LAY001"
     name = "layout/forbidden-module-name"
     category = Category.LAYOUT
     default_severity = Severity.ERROR
@@ -71,8 +71,8 @@ class ForbiddenPackageName(Rule):
 
 
 class ForbiddenPrivateModule(Rule):
-    activation = POLICIES["SMT312"]
-    code = "SMT312"
+    activation = POLICIES["LAY003"]
+    code = "LAY003"
     name = "layout/forbidden-private-module"
     category = Category.LAYOUT
     default_severity = Severity.ERROR
@@ -138,7 +138,7 @@ class ForbiddenPrivateModule(Rule):
 
 class ForbiddenBaseClassAffix(Rule):
     file_local = True
-    code = "SMT323"
+    code = "MOD002"
     name = "modeling/forbidden-base-class-affix"
     category = Category.MODELING
     default_severity = Severity.ERROR
@@ -179,7 +179,7 @@ class ForbiddenBaseClassAffix(Rule):
             "can preserve a published name. No symbols are renamed "
             "automatically. Enable with rules: "
             "{modeling/forbidden-base-class-affix: error}, globally or in a "
-            "style override, or --select SMT323."
+            "style override, or --select MOD002."
         ),
         config=("rules", "style.overrides"),
     )
@@ -212,7 +212,7 @@ class ForbiddenBaseClassAffix(Rule):
 
 
 class RedundantModuleName(Rule):
-    code = "SMT336"
+    code = "LAY009"
     name = "layout/redundant-module-name"
     category = Category.LAYOUT
     default_severity = Severity.HINT
@@ -240,7 +240,7 @@ class RedundantModuleName(Rule):
             "when renaming. An occupied module/package name is not suggested. "
             "No files are renamed automatically. Enable with rules: "
             "{layout/redundant-module-name: hint}, globally or in a style override, "
-            "or --select SMT336. Use a package off override or a reasoned "
+            "or --select LAY009. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),
         config=("rules", "style.overrides"),

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT352",))
+SELECT = CheckOptions(select=("CPX004",))
 HELPER = (
     "def {name}(exact: bool) -> str:\n"
     "{doc}"
@@ -57,7 +57,7 @@ def test_reports_each_copy_from_the_issue(tmp_path: Path) -> None:
     first, second = violations(root, SELECT)
 
     assert (first.code, first.path, first.line, first.column) == (
-        "SMT352",
+        "CPX004",
         "app/tools/keyboard.py",
         1,
         1,
@@ -185,6 +185,6 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     config = CONFIG + "rules: {complexity/duplicate-function: warning}\n"
     found = violations(_project(tmp_path / "enabled", files, config=config))
     assert [(item.code, item.severity) for item in found] == [
-        ("SMT352", Severity.WARNING),
-        ("SMT352", Severity.WARNING),
+        ("CPX004", Severity.WARNING),
+        ("CPX004", Severity.WARNING),
     ]

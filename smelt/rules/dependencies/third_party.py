@@ -29,8 +29,8 @@ def _is_denied(policy: ThirdPartyPolicy, names: tuple[str, ...]) -> bool:
 
 
 class ThirdPartyDenied(Rule):
-    activation = POLICIES["SMT103"]
-    code = "SMT103"
+    activation = POLICIES["ARC003"]
+    code = "ARC003"
     name = "architecture/forbidden-third-party-import"
     architecture_scoped = True
     category = Category.ARCHITECTURE

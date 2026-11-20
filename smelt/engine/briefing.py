@@ -697,7 +697,7 @@ def _boundary_policy(info: ModuleInfo | None) -> str:  # noqa: PLR0911
     if info.kind is ModuleKind.UNCLASSIFIED:
         return (
             "Layer and feature boundaries are not enforced for this module. "
-            "Composition-root/wiring import restrictions (SMT106) and configured cycle checks (SMT104) still apply. "
+            "Composition-root/wiring import restrictions (ARC006) and configured cycle checks (ARC004) still apply. "
             "Add its package to the intended layer's modules list, or list it in shared or composition_root."
         )
     if info.central:

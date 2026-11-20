@@ -29,13 +29,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 GATEWAY_EXPECTED = [
-    ("SMT104", "src/gateway/features/billing/application/invoices.py", 1),
-    ("SMT106", "src/gateway/features/voice/api/routes.py", 3),
-    ("SMT102", "src/gateway/features/voice/api/routes.py", 4),
-    ("SMT103", "src/gateway/features/voice/application/session.py", 1),
-    ("SMT101", "src/gateway/features/voice/application/session.py", 5),
-    ("SMT103", "src/gateway/features/voice/domain/session.py", 4),
-    ("SMT105", "src/gateway/shared/clock.py", 1),
+    ("ARC004", "src/gateway/features/billing/application/invoices.py", 1),
+    ("ARC006", "src/gateway/features/voice/api/routes.py", 3),
+    ("ARC002", "src/gateway/features/voice/api/routes.py", 4),
+    ("ARC003", "src/gateway/features/voice/application/session.py", 1),
+    ("ARC001", "src/gateway/features/voice/application/session.py", 5),
+    ("ARC003", "src/gateway/features/voice/domain/session.py", 4),
+    ("ARC005", "src/gateway/shared/clock.py", 1),
 ]
 
 
@@ -72,18 +72,18 @@ class TestGatewayFixture:
 
 class TestRuleSelection:
     def test_severity_override_and_off(self, tmp_path: Path) -> None:
-        config = LAYERED_POLICY + "rules:\n  SMT101: warning\n"
+        config = LAYERED_POLICY + "rules:\n  ARC001: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         outcome = check(root)
 
         assert [(v.code, v.severity) for v in outcome.report.violations] == [
-            ("SMT101", Severity.WARNING)
+            ("ARC001", Severity.WARNING)
         ]
         assert outcome.report.failed is False
 
     def test_fail_on_warning(self, tmp_path: Path) -> None:
-        config = LAYERED_POLICY + "rules:\n  SMT101: warning\n"
+        config = LAYERED_POLICY + "rules:\n  ARC001: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         assert check(root, CheckOptions(fail_on=Severity.WARNING)).report.failed is True
@@ -107,7 +107,7 @@ class TestRuleSelection:
         root = _layered(
             tmp_path,
             "from app.infra import db\n",
-            LAYERED_POLICY + "rules:\n  SMT101: off\n",
+            LAYERED_POLICY + "rules:\n  ARC001: off\n",
         )
 
         assert violations(root) == []
@@ -115,7 +115,7 @@ class TestRuleSelection:
     def test_ignore_option(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "from app.infra import db\n")
 
-        assert violations(root, CheckOptions(ignore=("SMT1",))) == []
+        assert violations(root, CheckOptions(ignore=("ARC",))) == []
 
     def test_unknown_rule_in_config(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "", LAYERED_POLICY + "rules:\n  SMT199: off\n")
@@ -129,7 +129,7 @@ class TestRuleSelection:
 
         found = violations(root)
 
-        assert [(v.code, v.severity) for v in found] == [("SMT101", Severity.WARNING)]
+        assert [(v.code, v.severity) for v in found] == [("ARC001", Severity.WARNING)]
 
     def test_unknown_rule_name_suggests_a_match(self, tmp_path: Path) -> None:
         config = LAYERED_POLICY + "rules:\n  layer-boundry: off\n"
@@ -143,18 +143,18 @@ class TestRuleSelection:
     def test_rule_configured_by_code_and_name(self, tmp_path: Path) -> None:
         config = (
             LAYERED_POLICY
-            + "rules:\n  SMT101: off\n  architecture/layer-boundary: error\n"
+            + "rules:\n  ARC001: off\n  architecture/layer-boundary: error\n"
         )
         root = _layered(tmp_path, "", config)
 
-        with pytest.raises(ConfigError, match="SMT101 is already configured"):
+        with pytest.raises(ConfigError, match="ARC001 is already configured"):
             check(root)
 
 
 class TestIgnoreEntries:
     def test_module_glob(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG + (
-            "ignore:\n  - rule: SMT101\n    modules: ['app.application.**']\n    reason: legacy\n"
+            "ignore:\n  - rule: ARC001\n    modules: ['app.application.**']\n    reason: legacy\n"
         )
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
@@ -162,7 +162,7 @@ class TestIgnoreEntries:
 
     def test_path_glob(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG + (
-            "ignore:\n  - rule: SMT1\n    paths: ['app/application/*.py']\n    reason: legacy\n"
+            "ignore:\n  - rule: ARC\n    paths: ['app/application/*.py']\n    reason: legacy\n"
         )
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
@@ -176,7 +176,7 @@ class TestSuppressions:
     ) -> None:
         expression = (
             "(\n    service._state()\n"
-            "    is None  # smelt: ignore[SMT420] -- deliberate internal seam\n)\n"
+            "    is None  # smelt: ignore[TST002] -- deliberate internal seam\n)\n"
         )
         statement = {
             "assertion": "assert " + expression,
@@ -214,11 +214,11 @@ class TestSuppressions:
 
         assert outcome.report.suppressed == 1
         [remaining] = outcome.report.violations
-        assert remaining.code == "SMT420"
+        assert remaining.code == "TST002"
         assert remaining.line == len(formatted.stdout.splitlines())
 
     def test_ruff_format_preserves_a_definition_exception(self, tmp_path: Path) -> None:
-        source = "def public_function(first_parameter: int, second_parameter: int, third_parameter: int):  # smelt: ignore[SMT316] -- deliberate external API\n    return first_parameter\n"
+        source = "def public_function(first_parameter: int, second_parameter: int, third_parameter: int):  # smelt: ignore[VIS001] -- deliberate external API\n    return first_parameter\n"
         write_policy_project(
             tmp_path,
             {
@@ -252,22 +252,22 @@ class TestSuppressions:
             {
                 "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, idioms/bundled-instance-assignment: warning}\n",
                 "app/__init__.py": "",
-                "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[SMT316, SMT314] -- deliberate API\n        self.first = self.second = 0\n",
+                "app/worker.py": "class Worker:\n    def helper(\n        self,\n    ):  # smelt: ignore[VIS001, IDM001] -- deliberate API\n        self.first = self.second = 0\n",
             },
         )
         outcome = check(tmp_path)
 
         assert outcome.report.suppressed == 1
         assert {(v.code, v.line) for v in outcome.report.violations} == {
-            ("SMT314", 5),
-            ("SMT901", 4),
+            ("IDM001", 5),
+            ("MET001", 4),
         }
 
     @pytest.mark.parametrize("comment_line", ["opening", "closing"])
     def test_multiline_statement_suppression_survives_formatting(
         self, tmp_path: Path, comment_line: str
     ) -> None:
-        comment = "  # smelt: ignore[SMT101] -- migration"
+        comment = "  # smelt: ignore[ARC001] -- migration"
         source = (
             "from app.infra import ("
             + (comment if comment_line == "opening" else "")
@@ -283,15 +283,15 @@ class TestSuppressions:
     def test_statement_suppression_does_not_cover_the_next_statement(
         self, tmp_path: Path
     ) -> None:
-        source = "from app.infra import (\n    db,\n)  # smelt: ignore[SMT101] -- migration\nfrom app.infra import db\n"
+        source = "from app.infra import (\n    db,\n)  # smelt: ignore[ARC001] -- migration\nfrom app.infra import db\n"
         outcome = check(_layered(tmp_path, source))
 
-        assert [(v.code, v.line) for v in outcome.report.violations] == [("SMT101", 4)]
+        assert [(v.code, v.line) for v in outcome.report.violations] == [("ARC001", 4)]
         assert outcome.report.suppressed == 1
 
     def test_inline_suppression_with_reason(self, tmp_path: Path) -> None:
         root = _layered(
-            tmp_path, "from app.infra import db  # smelt: ignore[SMT101] -- migrating\n"
+            tmp_path, "from app.infra import db  # smelt: ignore[ARC001] -- migrating\n"
         )
 
         outcome = check(root)
@@ -300,38 +300,38 @@ class TestSuppressions:
         assert outcome.report.suppressed == 1
 
     def test_suppression_without_reason(self, tmp_path: Path) -> None:
-        root = _layered(tmp_path, "from app.infra import db  # smelt: ignore[SMT101]\n")
+        root = _layered(tmp_path, "from app.infra import db  # smelt: ignore[ARC001]\n")
 
         assert codes_at(violations(root)) == [
-            ("SMT902", "app/application/service.py", 1)
+            ("MET002", "app/application/service.py", 1)
         ]
 
     def test_file_level_prefix_suppression(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path,
-            "# smelt: ignore-file[SMT1] -- generated\nfrom app.infra import db\n",
+            "# smelt: ignore-file[ARC] -- generated\nfrom app.infra import db\n",
         )
 
         assert violations(root) == []
 
     def test_unused_suppression(self, tmp_path: Path) -> None:
-        root = _layered(tmp_path, "import os  # smelt: ignore[SMT101] -- stale\n")
+        root = _layered(tmp_path, "import os  # smelt: ignore[ARC001] -- stale\n")
 
         [found] = violations(root)
 
         assert (found.code, found.message) == (
-            "SMT901",
+            "MET001",
             "unused suppression (all codes)",
         )
 
     def test_partially_used_suppression(self, tmp_path: Path) -> None:
         root = _layered(
-            tmp_path, "from app.infra import db  # smelt: ignore[SMT101, SMT103] -- x\n"
+            tmp_path, "from app.infra import db  # smelt: ignore[ARC001, ARC003] -- x\n"
         )
 
         [found] = violations(root)
 
-        assert found.message == "unused suppression (SMT103)"
+        assert found.message == "unused suppression (ARC003)"
 
     def test_rule_name_suppresses_its_finding(self, tmp_path: Path) -> None:
         root = _layered(
@@ -348,7 +348,7 @@ class TestSuppressions:
     def test_unused_rule_name_is_reported_as_written(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path,
-            "from app.infra import db  # smelt: ignore[SMT101, "
+            "from app.infra import db  # smelt: ignore[ARC001, "
             "architecture/forbidden-third-party-import] -- x\n",
         )
 
@@ -363,11 +363,11 @@ class TestSuppressions:
     ) -> None:
         root = _layered(
             tmp_path,
-            "import os  # smelt: ignore[SMT104] -- x\n",
-            LAYERED_POLICY + "rules:\n  SMT104: error\n",
+            "import os  # smelt: ignore[ARC004] -- x\n",
+            LAYERED_POLICY + "rules:\n  ARC004: error\n",
         )
 
-        assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
+        assert violations(root, CheckOptions(select=("ARC001", "MET001"))) == []
 
     def test_unused_blanket_suppression(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "import os  # smelt: ignore -- stale\n")
@@ -375,20 +375,20 @@ class TestSuppressions:
         [found] = violations(root)
 
         assert (found.code, found.message) == (
-            "SMT901",
+            "MET001",
             "unused suppression (all codes)",
         )
 
     def test_blanket_suppression_in_a_narrowed_run(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "import os  # smelt: ignore -- stale\n")
 
-        assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
+        assert violations(root, CheckOptions(select=("ARC001", "MET001"))) == []
 
     def test_suppression_for_a_rule_that_is_off(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path,
-            "import os  # smelt: ignore[SMT305] -- x\n",
-            LAYERED_POLICY + "rules:\n  SMT305: off\n",
+            "import os  # smelt: ignore[ARC012] -- x\n",
+            LAYERED_POLICY + "rules:\n  ARC012: off\n",
         )
 
         [found] = violations(root)
@@ -399,9 +399,9 @@ class TestSuppressions:
 @pytest.mark.parametrize(
     ("identifier", "reported"),
     [
-        ("SMT999", "SMT999"),
-        ("smtx", "SMTX"),
-        ("SMT1010", "SMT1010"),
+        ("XYZ999", "XYZ999"),
+        ("arcx", "ARCX"),
+        ("ARC0010", "ARC0010"),
         ("tests/no-such-finding", "tests/no-such-finding"),
     ],
 )
@@ -409,13 +409,11 @@ def test_unknown_suppression_identifiers_are_diagnosed_in_narrowed_checks(
     tmp_path: Path, identifier: str, reported: str
 ) -> None:
     root = _layered(tmp_path, f"import os  # smelt: ignore[{identifier}] -- reviewed\n")
-    [finding] = violations(root, CheckOptions(select=("SMT101", "SMT901")))
-    assert finding.code == "SMT901"
+    [finding] = violations(root, CheckOptions(select=("ARC001", "MET001")))
+    assert finding.code == "MET001"
     assert finding.expected == {"unknown_identifiers": [reported]}
     assert finding.line == 1
-    assert finding.hint == (
-        "Use a rule name or a stable SMT code; `smelt rules` lists both."
-    )
+    assert finding.hint == ("Use a rule name or a rule code; `smelt rules` lists both.")
 
 
 def test_retired_rule_name_in_a_suppression_names_its_replacement(
@@ -442,7 +440,7 @@ def test_misspelled_rule_name_in_a_suppression_suggests_the_rule(
         tmp_path, "import os  # smelt: ignore[architecture/layer-boundry] -- x\n"
     )
 
-    [finding] = violations(root, CheckOptions(select=("SMT101", "SMT901")))
+    [finding] = violations(root, CheckOptions(select=("ARC001", "MET001")))
 
     assert finding.hint == (
         'architecture/layer-boundry (did you mean "architecture/layer-boundary"?).'
@@ -452,11 +450,11 @@ def test_misspelled_rule_name_in_a_suppression_suggests_the_rule(
 def test_unknown_identifier_does_not_hide_a_valid_suppression(tmp_path: Path) -> None:
     root = _layered(
         tmp_path,
-        "from app.infra import db  # smelt: ignore[SMT101, SMT999] -- reviewed\n",
+        "from app.infra import db  # smelt: ignore[ARC001, SMT999] -- reviewed\n",
     )
     outcome = check(root)
     assert outcome.report.suppressed == 1
-    assert [finding.code for finding in outcome.report.violations] == ["SMT901"]
+    assert [finding.code for finding in outcome.report.violations] == ["MET001"]
 
 
 class TestDebt:
@@ -523,7 +521,7 @@ class TestDebt:
                     "violations": [
                         {
                             "fingerprint": "abc",
-                            "code": "SMT101",
+                            "code": "ARC001",
                             "path": "x.py",
                             "message": "gone",
                         }
@@ -532,7 +530,7 @@ class TestDebt:
             )
         )
 
-        assert [v.code for v in violations(root)] == ["SMT903"]
+        assert [v.code for v in violations(root)] == ["MET003"]
 
 
 def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) -> None:
@@ -562,9 +560,21 @@ def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) 
             wraps=internal_module_symbols,
         ) as symbols,
     ):
-        found = violations(root, CheckOptions(select=("SMT107", "SMT108", "SMT320")))
+        found = violations(root, CheckOptions(select=("ARC007", "IMP001", "VIS002")))
     assert any(
-        item.code == "SMT107" and item.path == "tests/test_api.py" for item in found
+        item.code == "ARC007" and item.path == "tests/test_api.py" for item in found
     )
     test_imports.assert_called_once()
     symbols.assert_called_once()
+
+
+def test_retired_smt_code_in_a_suppression_names_its_family_code(
+    tmp_path: Path,
+) -> None:
+    root = _layered(tmp_path, "import os  # smelt: ignore[SMT101] -- reviewed\n")
+
+    [finding] = violations(root, CheckOptions(select=("ARC001", "MET001")))
+
+    assert finding.expected == {"unknown_identifiers": ["SMT101"]}
+    assert finding.hint is not None
+    assert 'renamed to ARC001 "architecture/layer-boundary"' in finding.hint

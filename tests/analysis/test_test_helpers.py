@@ -5,7 +5,7 @@ import pytest
 
 from smelt.analysis.test_outcomes import vacuous_outcomes
 from smelt.analysis.test_syntax import (
-    _analyze_test_syntax,  # smelt: ignore[SMT420] -- Verify helper execution and binding facts.
+    _analyze_test_syntax,  # smelt: ignore[TST002] -- Verify helper execution and binding facts.
 )
 from smelt.analysis.test_timing import unbounded_waits
 

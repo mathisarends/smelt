@@ -47,7 +47,7 @@ class TestStrictCoverage:
 
         [found] = violations(root)
 
-        assert found.code == "SMT306"
+        assert found.code == "ARC013"
         assert found.hint is not None
         assert "standalone module into a governed package" in found.hint
         assert found.expected is not None
@@ -186,7 +186,7 @@ class TestStrictCoverage:
         text = render_text(outcome.report, lambda path, line: "")
 
         assert len(outcome.report.violations) == 2
-        assert text.count("SMT306 architecture/uncovered-source") == 1
+        assert text.count("ARC013 architecture/uncovered-source") == 1
         assert "2 source files have incomplete policy coverage" in text
 
     @pytest.mark.parametrize(
@@ -221,7 +221,7 @@ class TestStrictCoverage:
         [found] = violations(root)
 
         assert (found.code, found.path, found.source_module) == (
-            "SMT306",
+            "ARC013",
             "src/client/api.py",
             "client.api",
         )
@@ -244,7 +244,7 @@ class TestStrictCoverage:
 
         [found] = violations(root)
 
-        assert found.code == "SMT306"
+        assert found.code == "ARC013"
         assert found.path == "libs/client/src/client/api.py"
         assert found.source_module == "client.api"
 
@@ -292,7 +292,7 @@ class TestStrictCoverage:
 
         [found] = violations(root)
 
-        assert found.code == "SMT306"
+        assert found.code == "ARC013"
         assert "no coverage reason" in found.message
 
     def test_configured_mode_reports_gaps_without_changing_exit_behavior(
@@ -328,7 +328,7 @@ class TestStrictCoverage:
 
         [found] = violations(root)
 
-        assert found.code == "SMT306"
+        assert found.code == "ARC013"
         assert "unclassified" in found.message
 
     @pytest.mark.parametrize(
@@ -367,7 +367,7 @@ class TestStrictCoverage:
 
         [found] = violations(root)
 
-        assert found.code == "SMT306"
+        assert found.code == "ARC013"
         assert found.path == "src/app/__init__.py"
 
     def test_known_library_policy_and_tests_are_not_gaps(self, tmp_path: Path) -> None:
@@ -402,23 +402,23 @@ class TestStrictCoverage:
         root = _project(tmp_path, {"src/client/api.py": ""})
 
         [found] = violations(
-            root, CheckOptions(paths=("src/app/domain/model.py",), select=("SMT101",))
+            root, CheckOptions(paths=("src/app/domain/model.py",), select=("ARC001",))
         )
 
-        assert (found.code, found.path) == ("SMT306", "src/client/api.py")
+        assert (found.code, found.path) == ("ARC013", "src/client/api.py")
 
     def test_baseline_and_suppressions_cannot_accept_coverage_gaps(
         self, tmp_path: Path
     ) -> None:
         config = (
             CONFIG.replace("[app]", "[app, client]")
-            + "ignore:\n  - rule: SMT306\n    paths: ['src/**']\n    reason: intentionally ignored\n"
+            + "ignore:\n  - rule: ARC013\n    paths: ['src/**']\n    reason: intentionally ignored\n"
         )
         root = _project(
             tmp_path,
             {
                 "smelt.yml": config,
-                "src/client/api.py": "# smelt: ignore-file[SMT306] -- legacy\nVALUE = 1\n",
+                "src/client/api.py": "# smelt: ignore-file[ARC013] -- legacy\nVALUE = 1\n",
             },
         )
         initial = check(root)
@@ -428,7 +428,7 @@ class TestStrictCoverage:
         outcome = check(root)
 
         assert outcome.report.failed
-        assert any(v.code == "SMT306" for v in outcome.report.violations)
+        assert any(v.code == "ARC013" for v in outcome.report.violations)
         assert outcome.report.in_debt == 0
 
     @pytest.mark.parametrize("setting", ["warning", "hint"])
@@ -451,4 +451,4 @@ class TestStrictCoverage:
         root = _project(tmp_path, {})
 
         with pytest.raises(InvalidOptionError, match="cannot disable strict coverage"):
-            check(root, CheckOptions(ignore=("SMT306",)))
+            check(root, CheckOptions(ignore=("ARC013",)))

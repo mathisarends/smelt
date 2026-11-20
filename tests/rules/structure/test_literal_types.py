@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT338",))
+OPTIONS = CheckOptions(select=("TYP005",))
 SOURCE = """from typing import Literal
 def first(button: Literal["left", "right"]): pass
 def second(button: Literal["right", "left"]): pass
@@ -160,13 +160,13 @@ def test_does_not_group_separate_roots_or_test_files(tmp_path: Path) -> None:
 def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> None:
     root = _project(tmp_path)
     assert not violations(root)
-    assert len(violations(root, CheckOptions(select=("SMT338",)))) == 1
+    assert len(violations(root, CheckOptions(select=("TYP005",)))) == 1
     config = CONFIG + "rules: {typing/duplicate-literal-type: warning}\n"
     (root / "smelt.yml").write_text(config, encoding="utf-8")
     assert violations(root)[0].severity is Severity.WARNING
     (root / "smelt.yml").write_text(
         config + "style:\n  overrides:\n"
-        "    local: {match: app, rules: {SMT338: off}}\n",
+        "    local: {match: app, rules: {TYP005: off}}\n",
         encoding="utf-8",
     )
     assert not violations(root, OPTIONS)
@@ -174,7 +174,7 @@ def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> N
     (root / "app/pointer.py").write_text(
         SOURCE.replace(
             'def first(button: Literal["left", "right"]): pass',
-            'def first(button: Literal["left", "right"]): pass  # smelt: ignore[SMT338] -- Separate external contracts.',
+            'def first(button: Literal["left", "right"]): pass  # smelt: ignore[TYP005] -- Separate external contracts.',
         ),
         encoding="utf-8",
     )

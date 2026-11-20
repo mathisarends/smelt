@@ -35,11 +35,11 @@ class TestForbiddenPackageName:
             },
         )
 
-        found = violations(root, CheckOptions(select=("SMT302",)))
+        found = violations(root, CheckOptions(select=("LAY001",)))
 
         assert codes_at(found) == [
-            ("SMT302", "app/billing/helpers.py", None),
-            ("SMT302", "app/utils/__init__.py", None),
+            ("LAY001", "app/billing/helpers.py", None),
+            ("LAY001", "app/utils/__init__.py", None),
         ]
         assert found[1].message == 'package name "utils" is not allowed (app.utils)'
 
@@ -53,7 +53,7 @@ class TestForbiddenPackageName:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT302",))) == []
+        assert violations(root, CheckOptions(select=("LAY001",))) == []
 
 
 MODULE_CONFIG = """
@@ -66,7 +66,7 @@ style:
       match: app
       private_modules: forbid
 """
-MODULE_OPTIONS = CheckOptions(select=("SMT312",))
+MODULE_OPTIONS = CheckOptions(select=("LAY003",))
 
 
 def _module_project(
@@ -84,7 +84,7 @@ class TestForbiddenPrivateModule:
 
         found = violations(root, MODULE_OPTIONS)
 
-        assert codes_at(found) == [("SMT312", f"app/{name}.py", None)]
+        assert codes_at(found) == [("LAY003", f"app/{name}.py", None)]
         assert found[0].expected is not None
         assert found[0].expected["kind"] == "module"
         assert found[0].expected["contract"] == "module-names"
@@ -101,7 +101,7 @@ class TestForbiddenPrivateModule:
 
         found = violations(root, MODULE_OPTIONS)
 
-        assert codes_at(found) == [("SMT312", f"app/{name}/__init__.py", None)]
+        assert codes_at(found) == [("LAY003", f"app/{name}/__init__.py", None)]
         assert found[0].expected is not None
         assert found[0].expected["kind"] == "package"
 
@@ -268,7 +268,7 @@ style:
       match: app
       rules: {modeling/forbidden-base-class-affix: error}
 """
-CLASS_OPTIONS = CheckOptions(select=("SMT323",))
+CLASS_OPTIONS = CheckOptions(select=("MOD002",))
 
 
 @pytest.mark.parametrize(
@@ -279,8 +279,8 @@ def test_base_suffix_definitions_are_reported_without_renaming(
 ) -> None:
     source = f"class {name}: pass\n"
     root = _module_project(tmp_path, {"app/service.py": source}, CLASS_CONFIG)
-    [finding] = violations(root, CheckOptions(select=("SMT323",)))
-    assert codes_at([finding]) == [("SMT323", "app/service.py", 1)]
+    [finding] = violations(root, CheckOptions(select=("MOD002",)))
+    assert codes_at([finding]) == [("MOD002", "app/service.py", 1)]
     assert finding.expected == {
         "forbidden_affix": "Base",
         "position": "suffix",
@@ -310,7 +310,7 @@ def test_suffix_convention_is_opt_in_and_preserves_imports_and_nearby_names(
         root,
         {"smelt.yml": plain + "rules: {modeling/forbidden-base-class-affix: error}\n"},
     )
-    assert [v.code for v in violations(root)] == ["SMT323"]
+    assert [v.code for v in violations(root)] == ["MOD002"]
 
 
 def test_suffix_package_override_and_suppression(tmp_path: Path) -> None:
@@ -321,15 +321,15 @@ def test_suffix_package_override_and_suppression(tmp_path: Path) -> None:
     root = _module_project(
         tmp_path, {"app/service.py": "class MessageBase: pass\n"}, config
     )
-    assert violations(root, CheckOptions(select=("SMT323",))) == []
+    assert violations(root, CheckOptions(select=("MOD002",))) == []
     write_project(
         root,
         {
             "smelt.yml": CLASS_CONFIG,
-            "app/service.py": "class MessageBase:  # smelt: ignore[SMT323] -- Published plugin abstraction name.\n    pass\n",
+            "app/service.py": "class MessageBase:  # smelt: ignore[MOD002] -- Published plugin abstraction name.\n    pass\n",
         },
     )
-    assert violations(root, CheckOptions(select=("SMT323",))) == []
+    assert violations(root, CheckOptions(select=("MOD002",))) == []
 
 
 def test_suffix_checks_nested_and_local_definitions_but_not_tests(
@@ -343,9 +343,9 @@ def test_suffix_checks_nested_and_local_definitions_but_not_tests(
         },
         CLASS_CONFIG,
     )
-    assert codes_at(violations(root, CheckOptions(select=("SMT323",)))) == [
-        ("SMT323", "app/service.py", 2),
-        ("SMT323", "app/service.py", 4),
+    assert codes_at(violations(root, CheckOptions(select=("MOD002",)))) == [
+        ("MOD002", "app/service.py", 2),
+        ("MOD002", "app/service.py", 4),
     ]
 
 
@@ -370,7 +370,7 @@ class TestBaseClassPrefix:
 
         found = violations(root)
 
-        assert codes_at(found) == [("SMT323", "app/service.py", 2)]
+        assert codes_at(found) == [("MOD002", "app/service.py", 2)]
         assert found[0].column == 1
         assert found[0].source_module == "app.service"
         assert found[0].expected == {
@@ -415,9 +415,9 @@ class TestBaseClassPrefix:
         found = violations(root)
 
         assert codes_at(found) == [
-            ("SMT323", "app/service.py", 2),
-            ("SMT323", "app/service.py", 4),
-            ("SMT323", "app/service.py", 6),
+            ("MOD002", "app/service.py", 2),
+            ("MOD002", "app/service.py", 4),
+            ("MOD002", "app/service.py", 6),
         ]
         assert [v.column for v in found] == [5, 5, 5]
 
@@ -436,7 +436,7 @@ class TestBaseClassPrefix:
         assert violations(root) == []
 
     @pytest.mark.parametrize(
-        "selector", ["SMT323", "modeling/forbidden-base-class-affix"]
+        "selector", ["MOD002", "modeling/forbidden-base-class-affix"]
     )
     def test_default_is_off_and_explicit_selection_activates_the_rule(
         self, tmp_path: Path, selector: str
@@ -449,7 +449,7 @@ class TestBaseClassPrefix:
 
         assert violations(root) == []
         assert codes_at(violations(root, CheckOptions(select=(selector,)))) == [
-            ("SMT323", "app/service.py", 1)
+            ("MOD002", "app/service.py", 1)
         ]
 
     def test_closest_package_off_override_and_reactivation(
@@ -458,7 +458,7 @@ class TestBaseClassPrefix:
         config = (
             CLASS_CONFIG
             + "    compatibility:\n      match: app.compat\n      rules: {modeling/forbidden-base-class-affix: off}\n"
-            + "    modern:\n      match: app.compat.modern\n      rules: {SMT323: error}\n"
+            + "    modern:\n      match: app.compat.modern\n      rules: {MOD002: error}\n"
         )
         root = _module_project(
             tmp_path,
@@ -472,8 +472,8 @@ class TestBaseClassPrefix:
         )
 
         assert codes_at(violations(root)) == [
-            ("SMT323", "app/compat/modern/__init__.py", 1),
-            ("SMT323", "app/service.py", 1),
+            ("MOD002", "app/compat/modern/__init__.py", 1),
+            ("MOD002", "app/service.py", 1),
         ]
 
     def test_only_matching_packages_and_included_source_are_checked(
@@ -493,7 +493,7 @@ class TestBaseClassPrefix:
             config,
         )
 
-        assert codes_at(violations(root)) == [("SMT323", "app/api/__init__.py", 1)]
+        assert codes_at(violations(root)) == [("MOD002", "app/api/__init__.py", 1)]
 
     def test_global_rule_activation_needs_no_additional_policy(
         self, tmp_path: Path
@@ -504,7 +504,7 @@ class TestBaseClassPrefix:
             "version: 2\nproject: {root_packages: [app]}\nrules: {modeling/forbidden-base-class-affix: error}\n",
         )
 
-        assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
+        assert codes_at(violations(root)) == [("MOD002", "app/service.py", 1)]
 
     def test_explicit_off_wins_over_selection(self, tmp_path: Path) -> None:
         root = _module_project(
@@ -523,17 +523,17 @@ class TestBaseClassPrefix:
             tmp_path,
             {},
             CLASS_CONFIG
-            + "    contradictory:\n      match: app\n      rules: {SMT323: off}\n",
+            + "    contradictory:\n      match: app\n      rules: {MOD002: off}\n",
         )
 
-        with pytest.raises(ConfigError, match="conflicting SMT323"):
+        with pytest.raises(ConfigError, match="conflicting MOD002"):
             violations(root)
 
     def test_cached_check_observes_renamed_classes(self, tmp_path: Path) -> None:
         root = _module_project(
             tmp_path, {"app/service.py": "class BaseService: pass\n"}, CLASS_CONFIG
         )
-        assert codes_at(violations(root)) == [("SMT323", "app/service.py", 1)]
+        assert codes_at(violations(root)) == [("MOD002", "app/service.py", 1)]
 
         (root / "app/service.py").write_text("class Service: pass\n", encoding="utf-8")
 
@@ -560,7 +560,7 @@ class TestRedundantModuleName:
 
         [finding] = violations(root)
 
-        assert codes_at([finding]) == [("SMT336", REDUNDANT_PATH, None)]
+        assert codes_at([finding]) == [("LAY009", REDUNDANT_PATH, None)]
         assert finding.source_module == "backend.features.cars.application.car_exporter"
         assert finding.severity.value == "hint"
         assert finding.expected == {
@@ -593,7 +593,7 @@ class TestRedundantModuleName:
 
         [finding] = violations(root)
 
-        assert codes_at([finding]) == [("SMT336", path, None)]
+        assert codes_at([finding]) == [("LAY009", path, None)]
         assert finding.expected is not None
         assert finding.expected["suggested_name"] == suggested
 
@@ -628,7 +628,7 @@ class TestRedundantModuleName:
         assert violations(root) == []
 
     @pytest.mark.parametrize(
-        "selector", ["SMT336", "layout/redundant-module-name", "SMT33"]
+        "selector", ["LAY009", "layout/redundant-module-name", "lay009"]
     )
     def test_opt_in_selection_without_architecture_policy(
         self, tmp_path: Path, selector: str
@@ -643,10 +643,10 @@ class TestRedundantModuleName:
 
         assert violations(root) == []
         assert codes_at(violations(root, CheckOptions(select=(selector,)))) == [
-            ("SMT336", REDUNDANT_PATH, None)
+            ("LAY009", REDUNDANT_PATH, None)
         ]
         assert (
-            violations(root, CheckOptions(select=(selector,), ignore=("SMT336",))) == []
+            violations(root, CheckOptions(select=(selector,), ignore=("LAY009",))) == []
         )
 
     def test_closest_package_override_and_file_suppression(
@@ -667,11 +667,11 @@ class TestRedundantModuleName:
 """,
                 REDUNDANT_PATH: "",
                 "backend/features/cars/car_legacy.py": "",
-                "backend/features/cars/application/car_api.py": "# smelt: ignore-file[SMT336] -- Published module path.\n",
+                "backend/features/cars/application/car_api.py": "# smelt: ignore-file[LAY009] -- Published module path.\n",
             },
         )
 
-        [finding] = violations(root, CheckOptions(select=("SMT336",)))
+        [finding] = violations(root, CheckOptions(select=("LAY009",)))
 
         assert finding.path == REDUNDANT_PATH
         assert finding.severity.value == "warning"

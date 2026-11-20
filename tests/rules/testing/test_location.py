@@ -11,7 +11,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT401 = CheckOptions(select=("SMT401",))
+ONLY_TST001 = CheckOptions(select=("TST001",))
 
 MIRROR_SOURCES = {
     "app/__init__.py": "",
@@ -51,7 +51,7 @@ class TestMirrorLayout:
             },
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     @pytest.mark.parametrize("prefix", ["", "./"])
     @pytest.mark.parametrize("separator", ["/", "\\"])
@@ -86,7 +86,7 @@ class TestMirrorLayout:
             },
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     def test_mirrored_paths_pass_whatever_they_import(self, tmp_path: Path) -> None:
         root = _mirror(
@@ -101,7 +101,7 @@ class TestMirrorLayout:
             },
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     def test_imports_name_the_mirrored_location(self, tmp_path: Path) -> None:
         root = _mirror(
@@ -109,7 +109,7 @@ class TestMirrorLayout:
             {"tests/test_invoice.py": "from app.billing.invoice import total\n"},
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == "test_invoice.py belongs in tests/billing/"
         assert found.expected == {
@@ -128,7 +128,7 @@ class TestMirrorLayout:
             },
         )
 
-        found = violations(root, ONLY_SMT401)
+        found = violations(root, ONLY_TST001)
 
         assert [(v.path, v.message) for v in found] == [
             (
@@ -153,14 +153,14 @@ class TestMirrorLayout:
     def test_package_test_must_live_in_the_package_dir(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/test_billing.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/test_billing.py"
 
     def test_package_is_not_a_module(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_stripe.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/billing/test_stripe.py"
         assert found.message == "test_stripe.py belongs in tests/billing/stripe/"
@@ -174,7 +174,7 @@ class TestMirrorLayout:
     def test_suffixes_are_off_by_default(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_invoice_rounding.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/billing/test_invoice_rounding.py"
 
@@ -189,7 +189,7 @@ class TestMirrorLayout:
             "  mirror_suffixes: true\n",
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/billing/test_ghost_rounding.py"
 
@@ -203,12 +203,12 @@ class TestMirrorLayout:
             '  mirror_exclude: ["tests/integration/**", "tests/e2e"]\n',
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     def test_name_outside_the_pattern(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/invoice_test.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "invoice_test.py does not match tests.mirror ({path}/test_{module}.py)"
@@ -220,7 +220,7 @@ class TestMirrorLayout:
             {"tests/billing/invoice_test.py": "from app.billing import invoice\n"},
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == "invoice_test.py should be named test_invoice.py"
         assert found.expected == {
@@ -239,7 +239,7 @@ class TestMirrorPattern:
             '  mirror: "{path}/{module}_test.py"\n',
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     def test_with_root_package(self, tmp_path: Path) -> None:
         root = _mirror(
@@ -251,7 +251,7 @@ class TestMirrorPattern:
             '  mirror: "{root}/{path}/test_{module}.py"\n',
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/other/billing/test_invoice.py"
 
@@ -265,7 +265,7 @@ class TestMirrorPattern:
             '  mirror: "unit/{path}/test_{module}.py"\n',
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == "test_payment.py belongs in tests/unit/billing/"
         assert found.expected == {
@@ -307,7 +307,7 @@ class TestWorkspace:
             },
         )
 
-        assert violations(root, ONLY_SMT401) == []
+        assert violations(root, ONLY_TST001) == []
 
     def test_orphan_names_the_source_of_its_member(self, tmp_path: Path) -> None:
         root = write_project(
@@ -320,7 +320,7 @@ class TestWorkspace:
             },
         )
 
-        found = violations(root, ONLY_SMT401)
+        found = violations(root, ONLY_TST001)
 
         assert [v.message for v in found] == [
             "test_executor.py has no source module at its mirrored path "
@@ -342,7 +342,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_billing_invoice.py should be named test_invoice.py"
@@ -360,7 +360,7 @@ class TestSuggestions:
     ) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_billing_payment.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_billing_payment.py should be named test_payment.py"
@@ -381,7 +381,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message.startswith(
             "test_billing_stripe_payment.py has no source module"
@@ -396,7 +396,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.path == "tests/billing/test_billing_payment.py"
         assert found.message.startswith("test_billing_payment.py has no source module")
@@ -413,14 +413,14 @@ class TestSuggestions:
             {"tests/billing/test_invoise.py": "from app.billing import invoice\n"},
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message.endswith('(did you mean "invoice.py"?)')
 
     def test_similar_name_alone_names_no_subject(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_invoise.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_invoise.py has no source module at its mirrored path "
@@ -439,7 +439,7 @@ class TestSuggestions:
             },
         )
 
-        found = violations(root, ONLY_SMT401)
+        found = violations(root, ONLY_TST001)
 
         assert [v.message for v in found] == [
             "test_invoise.py has no source module at its mirrored path "
@@ -457,7 +457,7 @@ class TestSuggestions:
             {"app/billing/errors.py": "", "tests/billing/test_memory.py": ""},
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_memory.py has no source module at its mirrored path "
@@ -482,7 +482,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == "test_commands.py belongs in tests/billing/commands/"
         assert found.expected == {
@@ -500,7 +500,7 @@ class TestSuggestions:
             {"tests/billing/test_stripe.py": "from app.billing import invoice\n"},
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_stripe.py has no source module at its mirrored path "
@@ -525,7 +525,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == "test_commands.py belongs in tests/billing/commands/"
         assert found.expected is not None
@@ -551,7 +551,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_bootstrap.py has no source module at its mirrored path "
@@ -594,7 +594,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.message == (
             "test_workspace_update_events.py has no source module at its mirrored "
@@ -614,7 +614,7 @@ class TestSuggestions:
             },
         )
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert "did you mean" not in found.message
         assert found.expected is not None
@@ -623,7 +623,7 @@ class TestSuggestions:
     def test_name_only_move_says_so(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/billing/test_stripe.py": "import os\n"})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.expected is not None
         assert found.expected["evidence"] == "name"
@@ -633,7 +633,7 @@ class TestSuggestions:
     def test_missing_root_placeholder_is_pointed_out(self, tmp_path: Path) -> None:
         root = _mirror(tmp_path, {"tests/app/billing/test_invoice.py": ""})
 
-        [found] = violations(root, ONLY_SMT401)
+        [found] = violations(root, ONLY_TST001)
 
         assert found.hint is not None
         assert found.hint.endswith(
