@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT104 = CheckOptions(select=("ARC004",))
+ONLY_ARC004 = CheckOptions(select=("ARC004",))
 
 
 def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
@@ -30,11 +30,11 @@ def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
             "app/right/contract.py": "class Item: pass\n",
         },
     )
-    [aggregate] = violations(tmp_path, ONLY_SMT104)
+    [aggregate] = violations(tmp_path, ONLY_ARC004)
     assert aggregate.expected is not None
     assert aggregate.expected["graph_kind"] == "aggregated"
     write_project(tmp_path, {"smelt.yml": config.replace("[siblings]", "[modules]")})
-    assert violations(tmp_path, ONLY_SMT104) == []
+    assert violations(tmp_path, ONLY_ARC004) == []
 
 
 @pytest.mark.parametrize("annotation_policy", ["include", "ignore"])
@@ -50,7 +50,7 @@ def test_concrete_annotation_cycles_have_separate_selection_and_phase_witnesses(
             "app/b.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import a\n",
         },
     )
-    found = violations(tmp_path, ONLY_SMT104)
+    found = violations(tmp_path, ONLY_ARC004)
     assert len(found) == int(annotation_policy == "include")
     if found:
         expected = found[0].expected
@@ -76,7 +76,7 @@ def test_runtime_witness_is_preferred_over_a_shorter_annotation_cycle(
             "app/d.py": "from app import b\n",
         },
     )
-    [finding] = violations(tmp_path, ONLY_SMT104)
+    [finding] = violations(tmp_path, ONLY_ARC004)
     assert "type checking only" not in finding.message
     assert finding.expected is not None
     assert finding.expected["cycle"] == ["app.b", "app.c", "app.d", "app.b"]
@@ -116,7 +116,7 @@ class TestSiblingCycles:
             },
         )
 
-        [found] = violations(root, ONLY_SMT104)
+        [found] = violations(root, ONLY_ARC004)
 
         assert found.message == "import cycle between modules in app: a -> b -> c -> a"
         assert found.edge == "a -> b -> c -> a"
@@ -140,7 +140,7 @@ class TestSiblingCycles:
             },
         )
 
-        [found] = violations(root, ONLY_SMT104)
+        [found] = violations(root, ONLY_ARC004)
 
         assert found.edge == "features -> platform -> features"
         assert [(link.importer, link.imported) for link in found.import_chain] == [
@@ -164,7 +164,7 @@ class TestSiblingCycles:
             },
         )
 
-        [found] = violations(root, ONLY_SMT104)
+        [found] = violations(root, ONLY_ARC004)
 
         assert found.message == (
             "import cycle between modules in app: a -> b -> a (type checking only)"
@@ -215,7 +215,7 @@ class TestSiblingCycles:
             },
         )
 
-        [found] = violations(root, ONLY_SMT104)
+        [found] = violations(root, ONLY_ARC004)
 
         assert found.message == "import cycle between modules in app: a -> b -> a"
         assert found.expected == {
@@ -250,7 +250,7 @@ class TestSiblingCycles:
             },
         )
 
-        assert violations(root, ONLY_SMT104) == []
+        assert violations(root, ONLY_ARC004) == []
 
     def test_scope_can_be_disabled(self, tmp_path: Path) -> None:
         root = write_project(
@@ -266,7 +266,7 @@ class TestSiblingCycles:
             },
         )
 
-        assert violations(root, ONLY_SMT104) == []
+        assert violations(root, ONLY_ARC004) == []
 
 
 class TestLayerCycles:
@@ -294,7 +294,7 @@ class TestLayerCycles:
             },
         )
 
-        [found] = violations(root, ONLY_SMT104)
+        [found] = violations(root, ONLY_ARC004)
 
         assert found.message == "import cycle between layers: a -> b -> a"
 
@@ -327,4 +327,4 @@ class TestFeatureCycles:
             },
         )
 
-        assert violations(root, ONLY_SMT104) == []
+        assert violations(root, ONLY_ARC004) == []

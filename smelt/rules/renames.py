@@ -1,5 +1,7 @@
 """Retired rule names and codes, for actionable config errors and migrations."""
 
+import re
+
 from smelt.config.errors import UPGRADE_GUIDE_URL
 from smelt.diagnostics.legacy_codes import LEGACY_CODES
 
@@ -114,6 +116,11 @@ _MERGED_CODES: dict[str, str] = {
 }
 
 
+_CODES_GUIDE_URL = UPGRADE_GUIDE_URL.replace(
+    "#012-to-013", "#use-the-family-rule-codes"
+)
+_SMT_PREFIX = re.compile(r"SMT\d*")
+
 _INFORMATION_HIDING_RULES = (
     "visibility/internal-public-member",
     "visibility/internal-public-module-symbol",
@@ -136,7 +143,7 @@ def replacement_selectors(key: str) -> tuple[str, ...]:
 
 
 def retired_hint(key: str, codes: dict[str, str]) -> str:
-    """Explain where a pre-0.13 rule name or merged code went, if it did."""
+    """Explain where a retired rule name or code went, if it did."""
     if key.lower() == "information-hiding":
         names = ", ".join(_INFORMATION_HIDING_RULES)
         return f"; the information-hiding selector was removed in 0.13.0. List {names} individually with the same severity (see {UPGRADE_GUIDE_URL})"
@@ -148,4 +155,14 @@ def retired_hint(key: str, codes: dict[str, str]) -> str:
             code,
         )
         return f'; merged into {code} "{name}" in 0.13.0 (see {UPGRADE_GUIDE_URL})'
+    wanted = key.strip().upper()
+    if (code := LEGACY_CODES.get(wanted)) is not None:
+        current = next(
+            (name for name, value in codes.items() if value == code and name != code),
+            None,
+        )
+        label = f'{code} "{current}"' if current else code
+        return f"; renamed to {label} in 0.14.0; run `smelt config migrate` (see {_CODES_GUIDE_URL})"
+    if _SMT_PREFIX.fullmatch(wanted):
+        return f"; SMT codes were replaced by family codes such as ARC001 in 0.14.0 (see {_CODES_GUIDE_URL})"
     return ""

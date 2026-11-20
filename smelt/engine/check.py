@@ -19,7 +19,6 @@ from smelt.config.patterns import module_matches, path_matches
 from smelt.config.workspace import debt_scope_for_path, debt_scopes
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
-from smelt.diagnostics.legacy_codes import matches_code_prefix
 from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
 from smelt.diagnostics.suppressions import (
     Suppression,
@@ -746,7 +745,7 @@ def _suppression_violations(
         unknown = [
             suppression.label(prefix)
             for prefix in suppression.codes
-            if not any(matches_code_prefix(code, prefix) for code in known)
+            if not any(code.startswith(prefix) for code in known)
         ]
         if unknown:
             results.append(
@@ -819,7 +818,7 @@ def _unused_codes(
     evaluated = tuple(
         prefix
         for prefix in suppression.unused_codes(used)
-        if (matching := {code for code in known if matches_code_prefix(code, prefix)})
+        if (matching := {code for code in known if code.startswith(prefix)})
         and matching & enabled <= checked
     )
     if not evaluated:

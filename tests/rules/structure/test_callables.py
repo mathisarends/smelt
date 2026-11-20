@@ -115,7 +115,7 @@ def test_callable_and_richer_or_uncertain_apis_remain_valid(
 def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
     root = _project(tmp_path, SINGLE_METHOD)
     assert violations(root) == []
-    assert [v.code for v in violations(root, CheckOptions(select=("SMT33",)))] == [
+    assert [v.code for v in violations(root, CheckOptions(select=("IDM003",)))] == [
         "IDM003"
     ]
 

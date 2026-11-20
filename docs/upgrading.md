@@ -15,11 +15,13 @@ visibility, `MOD` modeling, `TYP` typing, `CPX` complexity, `IDM` idioms, `FWK`
 frameworks, `TST` tests and `MET` meta. Findings, JSON, SARIF and the rule pages
 use the new codes, so update scripts or dashboards that match on `SMTnnn`.
 
-Nothing else has to change at once. Old codes and prefixes such as `SMT3` remain
-accepted in `rules`, `ignore`, `--select`, `--ignore`, `smelt explain` and inline
-suppressions, and existing debt baselines keep matching. `smelt config migrate`
-replaces old codes in `rules` with rule names and in `ignore` with the new codes.
-Prefer rule names in configuration and suppressions; they do not change.
+Old codes are no longer accepted. Smelt rejects them in `rules`, `ignore`,
+`--select`, `--ignore` and `smelt explain`, and each error names the new code.
+`smelt config migrate` replaces old codes in `rules` with rule names and in
+`ignore` with the new codes; rewrite old prefixes such as `SMT3` by hand, for
+example with a family name. Inline suppressions with old codes no longer
+suppress anything; `meta/unused-suppression`, on by default, reports each one
+with its new code. Prefer rule names in suppressions; they do not change. Existing debt baselines keep matching without regeneration.
 
 <details>
 <summary>Old and new codes</summary>

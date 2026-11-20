@@ -122,7 +122,7 @@ def test_missing_policies_allow_both_spellings_even_when_selected(
             "docker-compose.yaml": "",
         },
     )
-    outcome = check(tmp_path, CheckOptions(select=("SMT33",)))
+    outcome = check(tmp_path, CheckOptions(select=("LAY007",)))
     assert not outcome.report.violations
 
 

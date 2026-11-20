@@ -47,9 +47,3 @@ class TestParseSuppressions:
         [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[ARC, TST]\n")
 
         assert found.unused_codes(["ARC004"]) == ("TST",)
-
-    def test_pre_family_codes_and_prefixes_still_apply(self) -> None:
-        [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[SMT104, SMT4]\n")
-
-        assert (found.covers("ARC004"), found.covers("TST001")) == (True, True)
-        assert found.unused_codes(["ARC004"]) == ("SMT4",)

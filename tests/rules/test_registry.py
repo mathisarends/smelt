@@ -86,7 +86,7 @@ class TestBuiltins:
     def test_lookup_by_code_and_by_name(self) -> None:
         rule_set = build_rule_set()
 
-        assert rule_set.lookup("smt101") is rule_set.by_code("ARC001")
+        assert rule_set.lookup("arc001") is rule_set.by_code("ARC001")
         assert rule_set.lookup("architecture/layer-boundary") is rule_set.by_code(
             "ARC001"
         )

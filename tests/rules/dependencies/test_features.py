@@ -321,7 +321,7 @@ class TestSharedImportsFeature:
             },
         )
 
-        assert violations(root, CheckOptions(select=("SMT1",))) == []
+        assert violations(root, CheckOptions(select=("ARC",))) == []
 
 
 CENTRAL_CONFIG = """

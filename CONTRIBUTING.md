@@ -186,8 +186,9 @@ catalog, for example `MOD013`. Never reuse or renumber a code:
 
 The directory still separates where a rule is evaluated: `dependencies/` for
 import-graph rules, `structure/` for source rules, `testing/` for test rules and
-the engine for meta rules. Pre-family `SMTnnn` codes are frozen aliases in
-`smelt/diagnostics/legacy_codes.py`; new rules get none.
+the engine for meta rules. `smelt/diagnostics/legacy_codes.py` freezes the
+retired `SMTnnn` codes for migration hints and debt fingerprints; new rules get
+none, and Smelt does not accept them as input.
 
 ### Rule names
 

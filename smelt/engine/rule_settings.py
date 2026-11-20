@@ -9,7 +9,6 @@ from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.models import ALL_RULES, LIMIT_RULES, RuleOverride
 from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
-from smelt.diagnostics.legacy_codes import LEGACY_CODES
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.renames import retired_hint
@@ -873,17 +872,14 @@ def unknown_selectors(raw: Mapping[str, object], rules: RuleSet) -> list[ConfigI
 
 
 def _rule_codes(rules: RuleSet) -> dict[str, str]:
-    """Codes by code, name and pre-family SMT code."""
     codes = {rule.code: rule.code for rule in rules.rules}
     codes.update({rule.name: rule.code for rule in rules.rules})
-    codes.update(LEGACY_CODES)
     return codes
 
 
 def _suggestion(key: str, codes: dict[str, str]) -> str:
     families = [category.value for category in Category]
-    current = [name for name in codes if name not in LEGACY_CODES]
-    return retired_hint(key, codes) or did_you_mean(key, [*current, *families])
+    return retired_hint(key, codes) or did_you_mean(key, [*codes, *families])
 
 
 def _limit_issues(code: str, value: int, location: str) -> list[ConfigIssue]:

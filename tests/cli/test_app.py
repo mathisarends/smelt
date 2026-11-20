@@ -1099,7 +1099,7 @@ class TestCheckCommand:
     ) -> None:
         monkeypatch.chdir(clean_project)
 
-        code, out, err = _run(capsys, "check", option, "SMT1,SMT999")
+        code, out, err = _run(capsys, "check", option, "ARC,SMT999")
 
         assert code == 2
         assert out == ""
@@ -1133,7 +1133,7 @@ class TestCheckCommand:
                 ["--format", "json", "--fail-on", "bogus"],
                 {"option": "--fail-on", "value": "bogus"},
             ),
-            (["--format=json", "--selct", "SMT1"], None),
+            (["--format=json", "--selct", "ARC"], None),
         ],
     )
     def test_argument_error_is_json_when_json_was_asked_for(
@@ -1471,7 +1471,6 @@ class TestInfoCommands:
             ("ARC002x", ""),
             ("ARC018", ""),  # Ambiguous between ARC008 and ARC010-ARC014.
             ("TST001", None),
-            ("SMT401", None),  # Pre-family alias of TST001.
             ("XRC001", ' (did you mean "ARC001"?)'),
             ("layer-boundry", ' (did you mean "architecture/layer-boundary"?)'),
         ],
@@ -2152,3 +2151,12 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     rewritten = (root / "app/service.py").read_text()
     assert rewritten.startswith("def create")
     assert "options if options is not None else" in rewritten
+
+
+def test_explain_points_a_retired_smt_code_to_its_family_code(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, _, err = _run(capsys, "explain", "SMT401")
+
+    assert code != 0
+    assert 'renamed to TST001 "tests/misplaced-test" in 0.14.0' in err

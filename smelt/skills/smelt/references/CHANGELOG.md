@@ -12,10 +12,11 @@ current configuration and complete rule contracts, see the [README](README.md),
   `TYP` typing, `CPX` complexity, `IDM` idioms, `FWK` frameworks, `TST` tests
   and `MET` meta, numbered within the family (`SMT101` is now `ARC001`). Findings,
   JSON, SARIF and rule pages (`docs/rules/ARC001.md`) use the new codes. Old
-  `SMTnnn` codes and prefixes such as `SMT3` remain accepted in `rules`,
-  `ignore`, `--select`, `--ignore`, `smelt explain` and inline suppressions, and
-  existing debt baselines keep matching. `smelt config migrate` replaces old
-  codes in `rules` with rule names and in `ignore` with the new codes. See the
+  `SMTnnn` codes and prefixes are rejected in `rules`, `ignore`, `--select`,
+  `--ignore` and `smelt explain`, and reported as unknown in inline
+  suppressions; each error names the new code. `smelt config migrate` replaces
+  old codes in `rules` with rule names and in `ignore` with the new codes.
+  Existing debt baselines keep matching. See the
   [upgrade guide](docs/upgrading.md#use-the-family-rule-codes).
 
 - **Breaking:** `rules` is the only switch that enables a rule. Declared

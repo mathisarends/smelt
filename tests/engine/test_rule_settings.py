@@ -242,7 +242,7 @@ style:
 
 
 @pytest.mark.parametrize(
-    "selector", ["VIS001", "smt316", "visibility/internal-public-member"]
+    "selector", ["VIS001", "vis001", "visibility/internal-public-member"]
 )
 def test_select_accepts_the_same_canonical_name_as_yaml(
     tmp_path: Path, selector: str
@@ -257,7 +257,6 @@ def test_select_accepts_the_same_canonical_name_as_yaml(
     "settings",
     [
         "VIS001: warning, visibility/internal-public-member: error",
-        "SMT316: warning, VIS001: error",
         "internal-pubic-member: warning",
     ],
 )
@@ -820,7 +819,7 @@ def test_rule_and_ignore_selector_mistakes_are_reported_together(
 def test_unknown_selectors_of_an_unvalidated_config() -> None:
     raw = {
         "rules": {"ALL": "off", "imports": "hint", "import-cycle": "error"},
-        "ignore": [{"rule": "SMT1"}, {"rule": "private-test-access"}, "broken"],
+        "ignore": [{"rule": "ARC"}, {"rule": "private-test-access"}, "broken"],
         "structure": {},
     }
 
@@ -917,9 +916,10 @@ style:
     ]
 
 
-def test_pre_family_code_still_configures_its_rule(tmp_path: Path) -> None:
+def test_retired_smt_code_is_a_config_error_naming_its_family_code(
+    tmp_path: Path,
+) -> None:
     root = _project(tmp_path, "rules: {SMT316: error}\n")
 
-    assert {(v.code, v.severity) for v in check(root).report.violations} == {
-        ("VIS001", Severity.ERROR)
-    }
+    with pytest.raises(ConfigError, match="renamed to VIS001"):
+        check(root)

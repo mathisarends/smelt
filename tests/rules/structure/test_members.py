@@ -294,7 +294,7 @@ def test_module_exports_and_decorated_private_or_rebound_functions_are_preserved
     assert violations(_project(tmp_path, source)) == []
 
 
-def test_test_only_module_function_stays_with_smt429_without_duplicate_findings(
+def test_test_only_module_function_stays_with_vis009_without_duplicate_findings(
     tmp_path: Path,
 ) -> None:
     root = _project(

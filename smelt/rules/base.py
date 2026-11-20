@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
-from smelt.diagnostics.legacy_codes import LEGACY_CODES, legacy_prefix_codes
 from smelt.diagnostics.violation import (
     Category,
     ImportLink,
@@ -132,11 +131,9 @@ class RuleSet:
         return next((r for r in self.rules if r.code == code), None)
 
     def lookup(self, code_or_name: str) -> RuleContract | None:
-        """A rule by name, code or pre-family SMT code."""
         wanted = code_or_name.strip()
-        code = LEGACY_CODES.get(wanted.upper(), wanted.upper())
         return next(
-            (r for r in self.rules if code == r.code or wanted == r.name),
+            (r for r in self.rules if wanted.upper() == r.code or wanted == r.name),
             None,
         )
 
@@ -148,15 +145,13 @@ class RuleSet:
         return tuple(rule.code for rule in self.rules if rule.category == wanted)
 
     def matching_codes(self, selector: str) -> tuple[str, ...]:
-        """Resolve a name, family, code prefix, SMT prefix or ALL against this rule set."""
+        """Resolve a name, family, code prefix or ALL against this rule set."""
         wanted = selector.strip()
         if (family := self.family_codes(wanted)) is not None:
             return family
         if rule := self.lookup(wanted.lower()):
             return (rule.code,)
         prefix = wanted.upper()
-        if legacy := legacy_prefix_codes(prefix):
-            return tuple(rule.code for rule in self.rules if rule.code in legacy)
         return tuple(
             rule.code
             for rule in self.rules

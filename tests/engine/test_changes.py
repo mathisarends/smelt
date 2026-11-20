@@ -278,7 +278,7 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "initial")
-    options = CheckOptions(changed=True, select=("SMT33",))
+    options = CheckOptions(changed=True, select=("LAY007",))
     assert not violations(tmp_path, options)
     write_policy_project(tmp_path, {"deploy/docker-compose.prod.yaml": ""})
     found = violations(tmp_path, options)

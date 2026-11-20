@@ -5,7 +5,6 @@ import pytest
 from smelt.config import ConfigError
 from smelt.config.loader import LoadedConfig
 from smelt.config.models import SmeltConfig
-from smelt.diagnostics.legacy_codes import legacy_code
 from smelt.engine.check import (
     CheckOptions,
     InvalidOptionError,
@@ -279,13 +278,9 @@ def test_prefix_selection_enables_opt_in_rules_and_replaces_normal_selection() -
     assert _active({}, CheckOptions(select=("vis",))) == expected
 
 
-def test_pre_family_prefix_selects_the_rules_it_used_to() -> None:
-    expected = {
-        rule.code
-        for rule in build_rule_set().rules
-        if legacy_code(rule.code).startswith("SMT3")
-    }
-    assert _active({}, CheckOptions(select=("smt3",))) == expected
+def test_retired_smt_prefix_is_rejected_with_the_upgrade_hint() -> None:
+    with pytest.raises(InvalidOptionError, match="SMT codes were replaced"):
+        _active({}, CheckOptions(select=("smt3",)))
 
 
 def test_all_selects_every_supported_rule() -> None:
@@ -296,10 +291,10 @@ def test_all_selects_every_supported_rule() -> None:
 
 def test_off_and_ignore_win_over_explicit_selection() -> None:
     active = _active(
-        {"rules": {"ARC004": "off"}}, CheckOptions(select=("ALL",), ignore=("SMT3",))
+        {"rules": {"ARC004": "off"}}, CheckOptions(select=("ALL",), ignore=("LAY",))
     )
     assert "ARC004" not in active
-    assert not any(legacy_code(code).startswith("SMT3") for code in active)
+    assert not any(code.startswith("LAY") for code in active)
     assert _active({}, CheckOptions(ignore=("ALL",))) == set()
 
 
@@ -326,7 +321,7 @@ def test_a_broad_off_leaves_the_coverage_guard_enabled() -> None:
 def test_strict_coverage_still_runs_outside_a_select_prefix() -> None:
     assert "ARC013" in _active(
         {"rules": {"architecture/uncovered-source": "error"}},
-        CheckOptions(select=("SMT1",)),
+        CheckOptions(select=("ARC",)),
     )
 
 

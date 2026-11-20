@@ -303,7 +303,7 @@ def test_rule_selection_and_test_quality_exclusions(
     assert not any(finding.code == "VIS010" for finding in violations(root, options))
 
 
-@pytest.mark.parametrize("selection", ["VIS010", "SMT43"])
+@pytest.mark.parametrize("selection", ["VIS010", "vis010"])
 def test_explicit_code_and_prefix_selection(tmp_path: Path, selection: str) -> None:
     root = _project(tmp_path, config="version: 2\nproject: {root_packages: [app]}\n")
     [finding] = violations(root, CheckOptions(select=(selection,)))

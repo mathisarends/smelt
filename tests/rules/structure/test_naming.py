@@ -628,7 +628,7 @@ class TestRedundantModuleName:
         assert violations(root) == []
 
     @pytest.mark.parametrize(
-        "selector", ["LAY009", "layout/redundant-module-name", "SMT33"]
+        "selector", ["LAY009", "layout/redundant-module-name", "lay009"]
     )
     def test_opt_in_selection_without_architecture_policy(
         self, tmp_path: Path, selector: str

@@ -115,7 +115,7 @@ class TestRuleSelection:
     def test_ignore_option(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "from app.infra import db\n")
 
-        assert violations(root, CheckOptions(ignore=("SMT1",))) == []
+        assert violations(root, CheckOptions(ignore=("ARC",))) == []
 
     def test_unknown_rule_in_config(self, tmp_path: Path) -> None:
         root = _layered(tmp_path, "", LAYERED_POLICY + "rules:\n  SMT199: off\n")
@@ -162,7 +162,7 @@ class TestIgnoreEntries:
 
     def test_path_glob(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG + (
-            "ignore:\n  - rule: SMT1\n    paths: ['app/application/*.py']\n    reason: legacy\n"
+            "ignore:\n  - rule: ARC\n    paths: ['app/application/*.py']\n    reason: legacy\n"
         )
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
@@ -309,7 +309,7 @@ class TestSuppressions:
     def test_file_level_prefix_suppression(self, tmp_path: Path) -> None:
         root = _layered(
             tmp_path,
-            "# smelt: ignore-file[SMT1] -- generated\nfrom app.infra import db\n",
+            "# smelt: ignore-file[ARC] -- generated\nfrom app.infra import db\n",
         )
 
         assert violations(root) == []
@@ -399,9 +399,9 @@ class TestSuppressions:
 @pytest.mark.parametrize(
     ("identifier", "reported"),
     [
-        ("SMT999", "SMT999"),
-        ("smtx", "SMTX"),
-        ("SMT1010", "SMT1010"),
+        ("XYZ999", "XYZ999"),
+        ("arcx", "ARCX"),
+        ("ARC0010", "ARC0010"),
         ("tests/no-such-finding", "tests/no-such-finding"),
     ],
 )
@@ -566,3 +566,15 @@ def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) 
     )
     test_imports.assert_called_once()
     symbols.assert_called_once()
+
+
+def test_retired_smt_code_in_a_suppression_names_its_family_code(
+    tmp_path: Path,
+) -> None:
+    root = _layered(tmp_path, "import os  # smelt: ignore[SMT101] -- reviewed\n")
+
+    [finding] = violations(root, CheckOptions(select=("ARC001", "MET001")))
+
+    assert finding.expected == {"unknown_identifiers": ["SMT101"]}
+    assert finding.hint is not None
+    assert 'renamed to ARC001 "architecture/layer-boundary"' in finding.hint

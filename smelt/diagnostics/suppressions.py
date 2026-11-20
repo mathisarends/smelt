@@ -6,8 +6,6 @@ import tokenize
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.legacy_codes import matches_code_prefix
-
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
 
@@ -50,9 +48,7 @@ class Suppression:
         return dict(zip(self.codes, self.written, strict=True)).get(code, code)
 
     def covers(self, code: str) -> bool:
-        return not self.codes or any(
-            matches_code_prefix(code, prefix) for prefix in self.codes
-        )
+        return not self.codes or any(code.startswith(prefix) for prefix in self.codes)
 
     def matches(self, violation: Violation) -> bool:
         if violation.path != self.path or not self.covers(violation.code):
@@ -73,7 +69,7 @@ class Suppression:
         return tuple(
             prefix
             for prefix in self.codes
-            if not any(matches_code_prefix(code, prefix) for code in used)
+            if not any(code.startswith(prefix) for code in used)
         )
 
 

@@ -253,7 +253,7 @@ def test_default_configuration_keeps_quality_rules_opt_in(tmp_path: Path) -> Non
         },
     )
     assert violations(tmp_path) == []
-    assert {v.code for v in violations(tmp_path, CheckOptions(select=("SMT42",)))} == {
+    assert {v.code for v in violations(tmp_path, CheckOptions(select=("TST",)))} == {
         "TST002",
         "TST004",
         "TST006",

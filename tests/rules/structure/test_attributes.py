@@ -242,7 +242,7 @@ def test_repeated_writes_custom_receiver_and_name_collisions(tmp_path: Path) -> 
         (_MODULE_BOUNDARY, "\ndef read(value: Readiness): return value.initial"),
     ],
 )
-def test_test_only_attributes_are_owned_by_smt430(
+def test_test_only_attributes_are_owned_by_vis010(
     tmp_path: Path, style: str, consumer: str
 ) -> None:
     root = _project(tmp_path, "class Readiness:\n    initial = 1" + consumer)
@@ -268,7 +268,7 @@ def test_test_only_attributes_are_owned_by_smt430(
 
 
 @pytest.mark.parametrize(
-    "selection", ["VIS004", "SMT33", "visibility/internal-public-attribute"]
+    "selection", ["VIS004", "vis004", "visibility/internal-public-attribute"]
 )
 def test_rule_is_opt_in_and_supports_explicit_selection(
     tmp_path: Path, selection: str

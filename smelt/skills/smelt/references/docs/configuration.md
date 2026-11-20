@@ -30,7 +30,8 @@ A family selector can disable or cap rules that are already active.
 See [families](rule-selection.md#families).
 The same names appear in YAML, CLI selection, `explain`, diagnostics and JSON.
 Each code starts with its family prefix, such as `ARC001` or `TST004`.
-Pre-family `SMTnnn` codes remain accepted aliases and keep existing debt identities.
+Old `SMTnnn` codes are rejected with the new code; see the
+[upgrade guide](upgrading.md#use-the-family-rule-codes).
 
 ## A small Python project
 

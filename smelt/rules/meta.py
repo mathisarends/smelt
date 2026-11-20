@@ -32,7 +32,7 @@ class UnusedSuppression(_EngineRule):
         rationale=(
             "Stale suppressions hide future violations on the same line and make readers "
             "believe there is an exception where there is none."
-            " Inline comments accept rule names, codes and code prefixes, like YAML and the CLI; exact pre-family SMT codes still resolve. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when MET001 is selected. Known inactive rules are not treated as unknown."
+            " Inline comments accept rule names, codes and code prefixes, like YAML and the CLI. Unknown identifiers, including retired rule names, are diagnosed with their replacement even in narrowed checks when MET001 is selected. Known inactive rules are not treated as unknown."
         ),
         bad="import os  # smelt: ignore[architecture/layer-boundary] -- legacy",
         good="import os",

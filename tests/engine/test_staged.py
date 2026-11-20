@@ -327,13 +327,13 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     (repo / "deploy/docker-compose.yaml").rename(repo / "deploy/compose.yml")
     write_policy_project(repo, {"smelt.yml": CONFIG})
     for flags in ((), (), ("--no-cache",)):
-        code, data = _check(repo, capsys, "--select", "SMT33", *flags)
+        code, data = _check(repo, capsys, "--select", "LAY007", *flags)
         assert code == 1
         assert [(v["code"], v["path"]) for v in data["violations"]] == [
             ("LAY007", "deploy/docker-compose.yaml"),
         ]
     _git(repo, "add", "deploy")
-    code, data = _check(repo, capsys, "--select", "SMT33")
+    code, data = _check(repo, capsys, "--select", "LAY007")
     assert code == 0
     assert not data["violations"]
 

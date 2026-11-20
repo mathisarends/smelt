@@ -1,4 +1,4 @@
-"""Pre-family SMT rule codes, still accepted as aliases of the family codes."""
+"""Retired SMT rule codes, for migration hints and stable debt fingerprints."""
 
 # Frozen: debt fingerprints hash these codes, so existing baselines stay valid.
 LEGACY_CODES: dict[str, str] = {
@@ -96,19 +96,6 @@ LEGACY_CODES: dict[str, str] = {
 }
 
 _CURRENT_TO_LEGACY = {new: old for old, new in LEGACY_CODES.items()}
-
-
-def matches_code_prefix(code: str, prefix: str) -> bool:
-    """Whether ``prefix`` selects ``code`` directly or through its SMT code."""
-    return code.startswith(prefix) or legacy_code(code).startswith(prefix)
-
-
-def legacy_prefix_codes(prefix: str) -> tuple[str, ...]:
-    """Family codes whose SMT code starts with ``prefix``, like ``SMT3``."""
-    wanted = prefix.strip().upper()
-    if not wanted.startswith("SMT"):
-        return ()
-    return tuple(new for old, new in LEGACY_CODES.items() if old.startswith(wanted))
 
 
 def legacy_code(code: str) -> str:

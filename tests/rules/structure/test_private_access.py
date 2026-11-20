@@ -231,7 +231,7 @@ def test_public_reexport_stays_public_and_private_module_names_are_separate(
     assert finding.expected["private_target"] == "app._impl._helper"
 
 
-def test_test_files_remain_exclusively_with_smt420(tmp_path: Path) -> None:
+def test_test_files_remain_exclusively_with_tst002(tmp_path: Path) -> None:
     root = _symbol_project(tmp_path, "")
     write_policy_project(
         root,
@@ -248,7 +248,7 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
         root, CheckOptions(select=("visibility/foreign-private-access",))
     )
     assert finding.severity is Severity.WARNING
-    assert [v.code for v in violations(root, CheckOptions(select=("SMT33",)))] == [
+    assert [v.code for v in violations(root, CheckOptions(select=("VIS005",)))] == [
         "VIS005"
     ]
     write_policy_project(
