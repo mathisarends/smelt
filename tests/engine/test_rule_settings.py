@@ -12,7 +12,7 @@ from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
 from smelt.engine.rule_settings import unknown_selectors
 from smelt.rules.registry import build_rule_set
-from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_project
+from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.parametrize("value", ["off", "warning", "hint", "on"])
 def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -38,7 +38,7 @@ def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
 
 
 def test_member_weakening_names_the_yaml_selector_once(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -70,7 +70,7 @@ def test_member_weakening_names_the_yaml_selector_once(tmp_path: Path) -> None:
 def test_reasoned_member_and_contract_exceptions_are_accepted(
     tmp_path: Path, policy: str
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -84,7 +84,7 @@ def test_reasoned_member_and_contract_exceptions_are_accepted(
 
 
 def test_specific_member_entry_cannot_borrow_a_broader_reason(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -98,15 +98,16 @@ def test_specific_member_entry_cannot_borrow_a_broader_reason(tmp_path: Path) ->
         check(root)
 
 
-def test_inherited_root_style_activation_is_included_in_the_member_guard(
+def test_an_inherited_root_rule_is_included_in_the_member_guard(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"] + "extends: policy.yml\n",
-            "policy.yml": "style: {max_positional_parameters: 2}\n",
+            "policy.yml": "style: {max_positional_parameters: 2}\n"
+            "rules: {complexity/excess-positional-parameters: warning}\n",
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: off}\n",
         },
     )
@@ -115,9 +116,22 @@ def test_inherited_root_style_activation_is_included_in_the_member_guard(
         check(root)
 
 
+def test_a_member_cannot_enable_the_workspace_coverage_guard(tmp_path: Path) -> None:
+    root = write_policy_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "services/api/smelt.yml": "rules: {architecture/uncovered-source: error}\n",
+        },
+    )
+
+    with pytest.raises(ConfigError, match="covers the whole workspace"):
+        check(root)
+
+
 @pytest.mark.parametrize("reason", ["''", "'  '"])
 def test_blank_member_override_reasons_are_invalid(tmp_path: Path, reason: str) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -130,7 +144,7 @@ def test_blank_member_override_reasons_are_invalid(tmp_path: Path, reason: str) 
 
 
 def _project(tmp_path: Path, policy: str) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
@@ -354,7 +368,7 @@ _INDIVIDUAL_VISIBILITY = ", ".join(
 
 
 def _visibility_project(tmp_path: Path, policy: str = _INDIVIDUAL_VISIBILITY) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{policy}}}\n",
@@ -475,7 +489,7 @@ def test_family_in_scoped_path_ignores(tmp_path: Path) -> None:
 
 def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path, "visibility: off")
-    write_project(
+    write_policy_project(
         root,
         {
             "app/legacy/__init__.py": "",
@@ -507,7 +521,7 @@ def test_closest_group_overrides_parent_individual_setting(tmp_path: Path) -> No
 
 def test_group_configuration_preserves_stable_suppressions(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/api.py": _VISIBILITY_SOURCE.replace(
@@ -600,7 +614,7 @@ def test_all_remains_available_for_cli_exploration(tmp_path: Path) -> None:
 
 def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path, "")
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {SMT316: error, SMT335: hint}\n",
@@ -619,19 +633,24 @@ def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
 
 def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path, "")
-    write_project(
+    write_policy_project(
         tmp_path,
         {
-            "smelt.yml": "version: 1\nproject: {root_packages: [app], coverage: strict}\n"
+            "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
             "architecture: {layers: {domain: {path: domain}}}\n"
-            "rules: {architecture: warning, ALL: hint}\n",
+            "rules:\n"
+            "  architecture/uncovered-source: error\n"
+            "  architecture/layer-boundary: error\n"
+            "  architecture: warning\n"
+            "  ALL: hint\n",
         },
     )
 
     active = _severities(root)
 
     assert active["SMT306"] == Severity.ERROR
-    assert active["SMT101"] == Severity.WARNING
+    # The named rule wins over the broad selectors of its own layer.
+    assert active["SMT101"] == Severity.ERROR
 
 
 def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> None:
@@ -664,7 +683,7 @@ def test_broad_override_error_names_the_style_key(tmp_path: Path) -> None:
 
 def test_a_broad_child_setting_does_not_reactivate_an_off_rule(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path, "")
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {SMT316: error, visibility/internal-public-attribute: off}\n",
@@ -691,16 +710,17 @@ _WORKSPACE = {
 
 
 def _members(tmp_path: Path, files: dict[str, str]) -> Path:
-    return write_project(tmp_path, {**_WORKSPACE, **files})
+    return write_policy_project(tmp_path, {**_WORKSPACE, **files})
 
 
-def test_broad_root_limit_can_cap_a_locally_activated_rule(tmp_path: Path) -> None:
+def test_a_member_rule_setting_refines_a_broad_root_cap(tmp_path: Path) -> None:
     source = "def helper(a, b, c, d): return a + b + c + d\n"
     root = _members(
         tmp_path,
         {
             "smelt.yml": _WORKSPACE["smelt.yml"] + "rules: {complexity: hint}\n",
-            "services/api/smelt.yml": "style: {max_positional_parameters: 3}\n",
+            "services/api/smelt.yml": "style: {max_positional_parameters: 3}\n"
+            "rules: {complexity/excess-positional-parameters: warning}\n",
             "services/api/src/api/views.py": source,
             "packages/core/src/core/views.py": source,
         },
@@ -710,7 +730,7 @@ def test_broad_root_limit_can_cap_a_locally_activated_rule(tmp_path: Path) -> No
     assert (finding.code, finding.member, finding.severity) == (
         "SMT345",
         "services/api",
-        Severity.HINT,
+        Severity.WARNING,
     )
 
 
@@ -764,7 +784,8 @@ def test_a_member_cannot_relax_strict_coverage(tmp_path: Path) -> None:
     root = _members(
         tmp_path,
         {
-            "smelt.yml": _WORKSPACE["smelt.yml"].replace("}", ", coverage: strict}"),
+            "smelt.yml": _WORKSPACE["smelt.yml"]
+            + "rules: {architecture/uncovered-source: error}\n",
             "services/api/smelt.yml": "rules: {SMT306: warning}\n",
         },
     )

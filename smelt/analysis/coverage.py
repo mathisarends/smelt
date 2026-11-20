@@ -82,7 +82,7 @@ class CoverageIndex:
         try:
             members = workspace_members(files.root, strict=True, store=files.store)
         except AnalysisError as exc:
-            if files.config.project.coverage == "strict":
+            if files.config.strict_coverage:
                 raise
             members = []
             discovery_errors = (str(exc),)

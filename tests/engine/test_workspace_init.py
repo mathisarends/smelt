@@ -77,6 +77,8 @@ def test_init_writes_shared_root_and_independent_member_drafts(
         "infrastructure",
     }
     assert "layout/definition-order" in config.rules
+    # Member layers are checked by the root rule that the draft names.
+    assert config.rules["architecture/layer-boundary"] == "error"
     assert "rules:" not in (root / "services/api/smelt.yml").read_text(encoding="utf-8")
     write_project(root, {"packages/new/src/new/__init__.py": ""})
     assert "new" in load_config(root / "smelt.yml").config.project.root_packages
@@ -120,7 +122,7 @@ def test_flat_member_draft_leaves_local_layout_to_the_member(
             "libs/core/src/core/ids.py": "VALUE = 1\n",
         },
     )
-    shared = "version: 1\nproject: {workspace: uv, coverage: strict}\n"
+    shared = "version: 1\nproject: {workspace: uv}\nrules: {architecture/uncovered-source: error}\n"
     if member_only:
         write_project(root, {"smelt.yml": shared})
     monkeypatch.chdir(root)

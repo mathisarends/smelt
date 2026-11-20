@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,7 +26,7 @@ HEADER = "from dataclasses import dataclass\n\n\n"
 def _project(
     tmp_path: Path, source: str, *, extra: dict[str, str] | None = None
 ) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": POLICY,
@@ -164,7 +164,7 @@ def test_closest_package_policy_wins(tmp_path: Path) -> None:
         "      dataclass_options: []\n"
     )
     source = HEADER + "@dataclass\nclass Holder:\n    name: str\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -185,7 +185,7 @@ def test_closest_package_policy_wins(tmp_path: Path) -> None:
 def test_requires_kw_only_when_listed(tmp_path: Path) -> None:
     config = POLICY.replace("[frozen, slots]", "[kw_only]")
     source = HEADER + "@dataclass\nclass Policy:\n    name: str\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {"smelt.yml": config, "app/__init__.py": "", "app/records.py": source},
     )
@@ -194,7 +194,7 @@ def test_requires_kw_only_when_listed(tmp_path: Path) -> None:
 
 
 def test_is_inactive_without_policy(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -208,7 +208,7 @@ def test_is_inactive_without_policy(tmp_path: Path) -> None:
 
 def test_rules_entry_can_turn_it_off(tmp_path: Path) -> None:
     config = POLICY + "rules: {modeling/missing-dataclass-option: off}\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,

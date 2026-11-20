@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.config import load_config
+from smelt.config.errors import ConfigError
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
+from smelt.engine.migration import enable_rules
+from smelt.engine.rule_settings import RuleSettings
+from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
     from smelt.diagnostics.violation import Violation
@@ -21,6 +25,41 @@ def write_project(root: Path, files: dict[str, str]) -> Path:
     return root
 
 
+def write_policy_project(root: Path, files: dict[str, str]) -> Path:
+    """Write a project and name the rules of its declared policies, as `smelt config migrate` does.
+
+    Rule tests exercise a rule's findings; activation itself is covered in
+    tests/rules/test_activation.py. Invalid configs are left for the test to observe.
+    """
+    write_project(root, files)
+    path = root / "smelt.yml"
+    if not path.exists():
+        return root
+    try:
+        settings = RuleSettings(build_rule_set(lazy=True), load_config(path))
+        enablements = settings.policy_enablements()
+    except ConfigError:
+        return root
+    entries = [
+        (location, rule.name, rule.default_severity.value)
+        for rule, locations in enablements
+        for location in locations
+    ]
+    if entries:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(enable_rules(text, entries).text, encoding="utf-8")
+    return root
+
+
+def add_rules(root: Path, rules: dict[str, str]) -> None:
+    """Add rule settings to a project's root rules, keeping the ones it names."""
+    path = root / "smelt.yml"
+    entries = [(("rules",), name, severity) for name, severity in rules.items()]
+    path.write_text(
+        enable_rules(path.read_text(encoding="utf-8"), entries).text, encoding="utf-8"
+    )
+
+
 def check(root: Path, options: CheckOptions | None = None) -> CheckOutcome:
     loaded = load_config(root / "smelt.yml")
     return run_check(loaded, options or CheckOptions())
@@ -34,7 +73,7 @@ def codes_at(found: list[Violation]) -> list[tuple[str, str | None, int | None]]
     return [(v.code, v.path, v.line) for v in found]
 
 
-LAYERED_CONFIG = """
+LAYERED_POLICY = """
 version: 1
 project:
   root_packages: [app]
@@ -49,10 +88,14 @@ architecture:
       path: infra
       may_depend_on: [domain, application]
 """
+# The layers above plus the rule that checks them; tests with their own rules use the policy.
+LAYERED_CONFIG = LAYERED_POLICY.replace(
+    "version: 1\n", "version: 1\nrules: {architecture/layer-boundary: error}\n", 1
+)
 
 MEMBER_ARCHITECTURES = {
     "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*", "packages/*"]\n',
-    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src], coverage: strict}\n",
+    "smelt.yml": "version: 1\nproject: {workspace: uv, source_roots: [src]}\nrules: {architecture/uncovered-source: error}\n",
     "services/api/smelt.yml": """
         architecture:
           features: {root: api.features}

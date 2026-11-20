@@ -7,7 +7,7 @@ import pytest
 from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -106,7 +106,9 @@ def test_initializers_and_composition_roots_have_configurable_exemptions(
         settings += "  module_import_exemptions: []\n"
     settings += "architecture: {composition_root: [app.bootstrap]}\n"
     root = _project(tmp_path, "", settings=settings)
-    write_project(root, {"app/__init__.py": IMPORTS, "app/bootstrap.py": IMPORTS})
+    write_policy_project(
+        root, {"app/__init__.py": IMPORTS, "app/bootstrap.py": IMPORTS}
+    )
     found = violations(root, SELECT)
     assert [finding.path for finding in found] == (
         [] if exempt else ["app/__init__.py", "app/bootstrap.py"]
@@ -126,7 +128,7 @@ style:
     facade: {match: app.loose, module_import_exemptions: []}
 """,
     )
-    write_project(
+    write_policy_project(
         root, {"app/loose/__init__.py": IMPORTS, "app/loose/client.py": IMPORTS}
     )
     [finding] = violations(root, SELECT)
@@ -147,7 +149,7 @@ def test_contract_threshold_activates_only_the_configured_scope(tmp_path: Path) 
         IMPORTS,
         settings="style:\n  overrides:\n    users: {match: app.users, max_module_imports: 0}\n",
     )
-    write_project(root, {"app/users/client.py": "from other.pay import Pay\n"})
+    write_policy_project(root, {"app/users/client.py": "from other.pay import Pay\n"})
     [finding] = violations(root)
     assert finding.path == "app/users/client.py"
 
@@ -155,8 +157,8 @@ def test_contract_threshold_activates_only_the_configured_scope(tmp_path: Path) 
 def test_rule_selection_requires_a_limit_and_zero_is_supported(tmp_path: Path) -> None:
     root = _project(tmp_path, IMPORTS, settings="")
     assert violations(root, SELECT) == []
-    (root / "smelt.yml").write_text(
-        CONFIG + "style: {max_module_imports: 0}\n", encoding="utf-8"
+    write_policy_project(
+        root, {"smelt.yml": CONFIG + "style: {max_module_imports: 0}\n"}
     )
     [finding] = violations(root)
     assert finding.expected is not None
@@ -176,7 +178,7 @@ style:
 rules: {imports/excess-module-imports: warning}
 """,
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/quiet/__init__.py": "",
@@ -198,7 +200,7 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
         tmp_path,
         "from app.users import read_api, write_api\nfrom other.pay import Pay\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/users/__init__.py": "from .read import Read as read_api\nfrom .write import Write as write_api\n",
@@ -206,7 +208,7 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
     )
     assert violations(root, SELECT) == []
     # Replacing exported values with submodules changes the target inventory.
-    write_project(
+    write_policy_project(
         root,
         {
             "app/users/__init__.py": "",
@@ -245,7 +247,7 @@ def _project(
     *,
     settings: str = "style: {max_module_imports: 2}\n",
 ) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + settings,

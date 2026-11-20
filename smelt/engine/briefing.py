@@ -601,7 +601,7 @@ def _target_info(model: ArchitectureModel, target: Target) -> ModuleInfo | None:
 def _coverage_brief(
     ctx: AnalysisContext, target: Target, *, info: ModuleInfo | None
 ) -> dict[str, Any]:
-    mode = ctx.config.project.coverage
+    mode = "strict" if ctx.config.strict_coverage else "configured"
     if target.planned:
         governed = is_governed(info, layers_declared=bool(ctx.model.layers))
         return {

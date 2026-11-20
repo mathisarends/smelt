@@ -100,10 +100,10 @@ extends: ../smelt.base.yml
 project:
   source_roots: [src]
   test_roots: [tests]
-  coverage: strict
 architecture:
   features: {root: runtime_extension.features}
 rules:
+  architecture/uncovered-source: error
   tests/unbounded-wait: error
 ```
 
@@ -490,13 +490,15 @@ only applicable source rules.
 
 Architecture/interface policies and parameterized conventions such as import
 style, required modules, mirror layout, forbidden mock paths and patch limits
-retain their policy activation. Declaring such a policy is enough to check it.
-The catalog distinguishes those checks from explicitly selected fixed patterns.
+describe what their rule checks. Only a `rules` entry enables the rule. A
+declared policy whose rule no entry names is a configuration warning; enabling
+a rule whose required policy is missing is a configuration error. See
+[rule activation](rule-selection.md#activation-and-precedence).
 
 Source-convention options such as `max_positional_parameters`,
 `future_annotations` or `dataclass_options` can be set directly under `style`
-for the whole project and overridden in `style.overrides`. Setting an option that
-belongs to one rule enables that rule for its scope; see
+for the whole project and overridden in `style.overrides`. Enable the matching
+rule in `rules`, or in the override's `rules` to check only those packages; see
 [project-wide options](structure.md#project-wide-options-and-package-overrides).
 
 ```bash

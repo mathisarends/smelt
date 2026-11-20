@@ -31,7 +31,7 @@ def effective_coverage(
     architecture = config.architecture
     inventory = ctx.coverage
     report = {
-        "mode": project.coverage,
+        "mode": "strict" if config.strict_coverage else "configured",
         "architecture_configured": bool(
             architecture.has_layout
             or any(member.governs_architecture for member in config.members.values())

@@ -86,8 +86,8 @@ smelt explain SMT101  # why it fired and how to fix it
 
 The same configuration can describe [feature boundaries and third-party dependencies](docs/architecture.md),
 [package APIs and source conventions](docs/structure.md), and
-[test conventions](docs/testing.md). Most checks require explicit selection or
-an applicable policy; see [rule activation](docs/rule-selection.md).
+[test conventions](docs/testing.md). A policy describes what a rule checks;
+the rule runs once `rules` names it. See [rule activation](docs/rule-selection.md).
 
 Use the visibility rules to review unnecessarily public definitions and APIs
 whose only observed users are tests.

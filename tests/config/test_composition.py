@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.config import ConfigError, load_config
-from tests.helpers import write_project
+from tests.helpers import write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,11 +14,11 @@ if TYPE_CHECKING:
 def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "policy/base.yml": "version: 1\nrules: {architecture/import-cycle: error, tests/unbounded-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
-            "first/smelt.yml": "extends: ../policy/base.yml\nproject: {coverage: strict}\narchitecture: {modules: {first: domain}, layers: {domain: {path: domain}}}\n",
+            "first/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/uncovered-source: error}\narchitecture: {modules: {first: domain}, layers: {domain: {path: domain}}}\n",
             "second/smelt.yml": "extends: ../policy/base.yml\nrules: {tests/unbounded-wait: error}\narchitecture: {modules: {second: domain}, layers: {domain: {path: domain}}}\n",
             "first/src/first/__init__.py": "",
             "second/src/second/__init__.py": "",
@@ -31,6 +31,7 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     assert first.config.rules == {
         "architecture/import-cycle": "error",
         "tests/unbounded-wait": "warning",
+        "architecture/uncovered-source": "error",
     }
     assert second.config.rules == {
         "architecture/import-cycle": "error",
@@ -38,8 +39,8 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
     }
     assert first.config.project.root_packages == ["first"]
     assert second.config.project.root_packages == ["second"]
-    assert first.config.project.coverage == "strict"
-    assert second.config.project.coverage == "configured"
+    assert first.config.strict_coverage
+    assert not second.config.strict_coverage
     assert first.config.suppressions.require_reason is False
     assert first.inputs == (
         (tmp_path / "policy/base.yml").resolve(),
@@ -50,7 +51,7 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
 
 
 def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app], exclude: [generated/**]}\narchitecture:\n  layers:\n    domain: {path: domain, may_depend_on: [application]}\n    application: {path: application}\ntests: {quality_exclude: [tests/generated/**]}\nignore: [{rule: SMT101, paths: ['**']}]\n",
@@ -75,7 +76,7 @@ def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) ->
 def test_replacing_style_options_drops_their_inherited_legacy_reasons(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": """
@@ -118,7 +119,7 @@ def test_replacing_style_options_drops_their_inherited_legacy_reasons(
     "value", ["[]", "null", "''", "'https://example.com/policy.yml'", "42"]
 )
 def test_extends_requires_one_local_relative_path(tmp_path: Path, value: str) -> None:
-    write_project(tmp_path, {"smelt.yml": f"extends: {value}\n"})
+    write_policy_project(tmp_path, {"smelt.yml": f"extends: {value}\n"})
 
     with pytest.raises(ConfigError, match="local relative file path") as caught:
         load_config(tmp_path / "smelt.yml")
@@ -129,7 +130,7 @@ def test_extends_requires_one_local_relative_path(tmp_path: Path, value: str) ->
 
 
 def test_missing_parent_names_the_referring_file_and_key(tmp_path: Path) -> None:
-    write_project(tmp_path, {"smelt.yml": "extends: missing.yml\n"})
+    write_policy_project(tmp_path, {"smelt.yml": "extends: missing.yml\n"})
 
     with pytest.raises(ConfigError, match=r"cannot read.*missing.yml") as caught:
         load_config(tmp_path / "smelt.yml")
@@ -140,7 +141,7 @@ def test_missing_parent_names_the_referring_file_and_key(tmp_path: Path) -> None
 
 
 def test_cycles_report_the_chain_even_with_equivalent_paths(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "extends: policy/base.yml\n",
@@ -175,7 +176,7 @@ def test_cycles_report_the_chain_even_with_equivalent_paths(tmp_path: Path) -> N
 def test_effective_validation_reports_the_base_origin(
     tmp_path: Path, base: str, location: str
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": base,
@@ -194,7 +195,7 @@ def test_effective_validation_reports_the_base_origin(
 
 
 def test_inherited_duplicate_yaml_keys_are_still_errors(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {architecture/import-cycle: error, architecture/import-cycle: off}\n",
@@ -210,7 +211,7 @@ def test_inherited_duplicate_yaml_keys_are_still_errors(tmp_path: Path) -> None:
 
 
 def test_composition_never_supplies_missing_required_values(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {}\n",
@@ -223,7 +224,7 @@ def test_composition_never_supplies_missing_required_values(tmp_path: Path) -> N
 
 
 def test_recursive_yaml_aliases_are_configuration_errors(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: &loop {root_packages: [app], nested: *loop}\n"
@@ -237,7 +238,7 @@ def test_recursive_yaml_aliases_are_configuration_errors(tmp_path: Path) -> None
 
 
 def test_deep_inheritance_is_bounded(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             f"policy{index}.yml": f"extends: policy{index + 1}.yml\n"
@@ -250,7 +251,7 @@ def test_deep_inheritance_is_bounded(tmp_path: Path) -> None:
 
 
 def test_absolute_parent_paths_are_rejected(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path, {"smelt.yml": f"extends: '{(tmp_path / 'base.yml').as_posix()}'\n"}
     )
 
@@ -259,7 +260,9 @@ def test_absolute_parent_paths_are_rejected(tmp_path: Path) -> None:
 
 
 def test_removed_preset_points_to_explicit_rules(tmp_path: Path) -> None:
-    write_project(tmp_path, {"smelt.yml": "extends: smelt:recommended\nversion: 1\n"})
+    write_policy_project(
+        tmp_path, {"smelt.yml": "extends: smelt:recommended\nversion: 1\n"}
+    )
 
     with pytest.raises(ConfigError, match="list rules individually") as caught:
         load_config(tmp_path / "smelt.yml")

@@ -7,7 +7,7 @@ import pytest
 from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -107,7 +107,7 @@ def test_groups_an_inner_trigger_when_the_outer_comprehension_is_simple(
 def test_global_limit_and_closest_package_override(tmp_path: Path) -> None:
     source = "value = [x for a in items for b in a for x in b]\n"
     root = _project(tmp_path, source)
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -147,11 +147,11 @@ def test_explicit_selection_off_override_suppression_and_test_exclusion(
         encoding="utf-8",
     )
     assert violations(root) == []
-    (root / "smelt.yml").write_text(
-        CONFIG + "style: {max_comprehension_loops: 1}\n", encoding="utf-8"
+    write_policy_project(
+        root, {"smelt.yml": CONFIG + "style: {max_comprehension_loops: 1}\n"}
     )
     assert [v.code for v in violations(root)] == ["SMT363"]
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -187,7 +187,7 @@ def test_rejects_limits_below_one(tmp_path: Path, setting: str) -> None:
 
 
 def _project(tmp_path: Path, source: str) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG,

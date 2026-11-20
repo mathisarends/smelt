@@ -7,7 +7,7 @@ import pytest
 from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -118,7 +118,7 @@ def test_zero_limit_counts_each_documented_decision(
 
 def test_ignores_other_methods_free_functions_and_tests(tmp_path: Path) -> None:
     root = _project(tmp_path, SOURCE.replace("__init__", "__new__"))
-    write_project(
+    write_policy_project(
         root,
         {
             "app/validators.py": SOURCE.replace("__init__", "validate"),
@@ -142,7 +142,9 @@ style:
     inner: {match: app.legacy, max_constructor_decisions: 3}
 """,
     )
-    write_project(root, {"app/legacy/__init__.py": "", "app/legacy/model.py": SOURCE})
+    write_policy_project(
+        root, {"app/legacy/__init__.py": "", "app/legacy/model.py": SOURCE}
+    )
     [finding] = violations(root)
     assert (finding.path, finding.severity) == ("app/model.py", Severity.WARNING)
     assert finding.expected is not None
@@ -161,7 +163,7 @@ def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
         tmp_path, SOURCE, settings="style: {max_constructor_decisions: 0}\n"
     )
     assert [v.code for v in violations(root)] == ["SMT364"]
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -196,7 +198,7 @@ def test_rejects_negative_limits(tmp_path: Path, setting: str) -> None:
 
 
 def _project(tmp_path: Path, source: str, *, settings: str = "") -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + settings,

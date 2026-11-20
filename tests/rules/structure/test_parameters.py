@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ SELECT = CheckOptions(select=("SMT345",))
 
 
 def _project(tmp_path: Path, source: str, *, limit: int = 2) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": POLICY.replace("{limit}", str(limit)),
@@ -129,7 +129,7 @@ def test_zero_limit_requires_keyword_only_parameters(tmp_path: Path) -> None:
 
 
 def test_inactive_without_policy(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -144,7 +144,7 @@ def test_closest_package_policy_wins(tmp_path: Path) -> None:
     config = POLICY.replace("{limit}", "2") + (
         "    legacy:\n      match: app.legacy\n      max_positional_parameters: 4\n"
     )
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -158,7 +158,7 @@ def test_closest_package_policy_wins(tmp_path: Path) -> None:
 
 
 def test_ignores_tests(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": POLICY.replace("{limit}", "0"),
@@ -170,7 +170,7 @@ def test_ignores_tests(tmp_path: Path) -> None:
 
 
 def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -191,7 +191,7 @@ def test_structure_limit_applies_to_every_package(tmp_path: Path) -> None:
 
 
 def test_rule_selection_without_a_limit_uses_the_default(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -213,7 +213,7 @@ def test_rule_selection_without_a_limit_uses_the_default(tmp_path: Path) -> None
 
 
 def test_contract_activation_is_limited_to_its_package(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """

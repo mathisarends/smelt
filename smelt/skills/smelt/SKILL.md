@@ -39,11 +39,13 @@ installed skill records the CLI version that installed it.
 - Enable rules individually by name or stable SMT code. A named `on` uses the
   catalog severity. Families and `ALL` in YAML can only disable or cap
   active rules. Use local `extends` files to share explicit policy.
-  Architecture, package and test options activate their associated rules.
+  Policies never enable rules: name each rule that checks a declared policy.
+  An unnamed policy is a configuration warning; enabling a rule without its
+  required policy is a configuration error.
   Use `smelt rules --unconfigured` to find named checks to review after upgrades.
 - `--select` replaces normal selection and accepts names, families,
-  SMT prefixes and `ALL`. Explicit `off` entries still apply. Strict coverage
-  takes precedence over selection and severity settings.
+  SMT prefixes and `ALL`. Explicit `off` entries still apply. Once enabled,
+  `architecture/uncovered-source` takes precedence over selection and severity settings.
 - Normal checks are read-only. `--fix` writes permitted source-ordering repairs;
   behavior-changing SMT321 repairs also need `--unsafe-fixes` and review of falsy
   values. `--unsafe-fixes` alone writes nothing. `--staged` rejects `--fix`.
@@ -55,12 +57,12 @@ installed skill records the CLI version that installed it.
   SMT347 reviews anonymous tuple types; repeated shapes can represent distinct
   concepts, so name records where field meaning benefits callers rather than
   merging unrelated types. `max_positional_parameters`, set under `style` or
-  in a style override, activates SMT345 for that scope; after adding
+  in a style override, sets the SMT345 limit for that scope; after adding
   keyword-only parameters, update all callers, including tests and callbacks.
   These rules have no automatic rewrite.
 - Keep shared conventions in `style` and package-specific choices in
-  `style.overrides`. An option tied to a rule enables it wherever the option
-  applies. `smelt context TARGET --format json` shows effective `style` and
+  `style.overrides`. Enable an option's rule in an override's `rules` to check
+  only those packages. `smelt context TARGET --format json` shows effective `style` and
   `rule_details`, with sources and exception reasons.
 - In a uv workspace, keep `project.workspace: uv` in the root `smelt.yml`.
   Check the owning file before adding a local policy.

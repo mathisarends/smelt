@@ -17,8 +17,9 @@ from tests.helpers import (
     FIXTURES,
     LAYERED_CONFIG,
     MEMBER_BOUNDARIES,
+    add_rules,
     check,
-    write_project,
+    write_policy_project,
 )
 
 GATEWAY = FIXTURES / "gateway"
@@ -31,7 +32,7 @@ def test_statistics_by_member_includes_source_findings_and_test_hints(
     capsys: pytest.CaptureFixture[str],
     format_name: str,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             **MEMBER_BOUNDARIES,
@@ -89,7 +90,7 @@ def test_statistics_grouping_requires_statistics(
 def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "policy/base.yml": "version: 1\nproject: {source_roots: [src], test_roots: [tests], exclude: [src/app/generated/**]}\ntests: {quality_exclude: [tests/generated/**]}\ndebt: .smelt/debt.json\nrules: {architecture/import-cycle: error, tests/unbounded-wait: error}\n",
@@ -143,7 +144,7 @@ def test_inherited_config_show_explains_sources_and_is_cwd_independent(
 def test_inherited_policy_errors_keep_file_origins_in_json(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {unknown-rule: error}\n",
@@ -168,7 +169,7 @@ def test_inherited_policy_errors_keep_file_origins_in_json(
 def test_a_workspace_rule_replaces_its_base_under_another_alias(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "rules: {architecture/import-cycle: error}\n",
@@ -185,10 +186,12 @@ def test_a_workspace_rule_replaces_its_base_under_another_alias(
 def test_context_attributes_rules_to_the_layer_that_supplied_the_severity(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
+            "rules.yml": "rules: {complexity/excess-positional-parameters: warning}\n",
             "base.yml": """
+                extends: rules.yml
                 rules:
                   architecture/import-cycle: {severity: error, reason: Base cycle policy.}
                   complexity: hint
@@ -231,7 +234,7 @@ def test_context_attributes_rules_to_the_layer_that_supplied_the_severity(
 def test_an_explicit_base_path_widens_the_check_to_its_workspace(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/unbounded-wait: error}\n",
@@ -259,7 +262,7 @@ def test_an_explicit_base_path_widens_the_check_to_its_workspace(
 def test_a_member_check_runs_the_workspace_scoped_to_that_member(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["services/*"]\n',
@@ -336,7 +339,7 @@ def test_context_names_the_governing_workspace_files(
     }
     if member_config is not None:
         files["services/api/smelt.yaml"] = member_config
-    root = write_project(tmp_path, files)
+    root = write_policy_project(tmp_path, files)
     args = ("context", "api.views", "--config", str(root / "smelt.yml"))
     code, output, error = _run(capsys, *args, "--format", "json")
 
@@ -356,7 +359,7 @@ def test_context_names_the_governing_workspace_files(
 def test_context_and_config_show_explain_member_style_and_rule_exceptions(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "base.yml": "style: {future_annotations: when-needed}\n",
@@ -399,7 +402,7 @@ def test_context_and_config_show_explain_member_style_and_rule_exceptions(
     )
     assert (
         brief["rule_details"]["complexity/excess-positional-parameters"]["activation"]
-        == "policy"
+        == "rules"
     )
     rule = brief["rule_details"]["visibility/internal-public-member"]
     assert (rule["severity"], rule["source"], rule["reason"]) == (
@@ -432,7 +435,7 @@ def _run(capsys: pytest.CaptureFixture[str], *args: str) -> tuple[int, str, str]
 
 @pytest.fixture
 def clean_project(tmp_path: Path) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": LAYERED_CONFIG,
@@ -482,7 +485,7 @@ class TestCheckCommand:
     def test_concise_keeps_the_finding_location_and_exit_threshold(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
@@ -517,7 +520,7 @@ class TestCheckCommand:
         fail_on: str,
         output_format: str,
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  layers:\n    application: {path: application, may_depend_on: [infrastructure]}\n    infrastructure: {path: infrastructure, may_depend_on: [application]}",
@@ -564,7 +567,7 @@ class TestCheckCommand:
     def test_all_prefix_enables_cycle_check_and_explicit_off_wins(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture: {shared: [app]}\n",
@@ -580,8 +583,7 @@ class TestCheckCommand:
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 1
         assert "SMT104" in {item["code"] for item in json.loads(out)["violations"]}
-        with (root / "smelt.yml").open("a") as handle:
-            handle.write("rules: {SMT104: off}\n")
+        add_rules(root, {"SMT104": "off"})
         code, out, _ = _run(capsys, *args, "--select", "ALL")
         assert code == 0
         assert "SMT104" not in json.loads(out)["scope"]["rules"]
@@ -589,7 +591,7 @@ class TestCheckCommand:
     def test_enabled_rule_debt_can_still_be_resolved_and_pruned(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT104: error}\ndebt: .smelt/debt.json",
@@ -608,7 +610,7 @@ class TestCheckCommand:
     def test_minimal_configuration_reports_only_baseline_rules(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}",
@@ -635,7 +637,7 @@ class TestCheckCommand:
     def test_inactive_rule_debt_is_preserved_when_recording_and_pruning(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, prune: bool
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: .smelt/debt.json",
@@ -658,7 +660,7 @@ class TestCheckCommand:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         source = "if isinstance(event, A): first(event)\nelif isinstance(event, B): second(event)\nelif isinstance(event, C): third(event)\n"
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {}}",
@@ -687,7 +689,7 @@ class TestCheckCommand:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         source = "class Inbox:\n    def update(self):\n        self.a, self.b = self.b, self.a\n"
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
@@ -714,7 +716,7 @@ class TestCheckCommand:
     def test_test_quality_rule_reports_json_and_sarif(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nrules:\n  tests/string-patch-target: error\n",
@@ -742,7 +744,7 @@ class TestCheckCommand:
     def test_ordering_fixes_require_explicit_request_and_report_result(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "\nversion: 1\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
@@ -780,7 +782,7 @@ class TestCheckCommand:
     def test_private_module_name_has_a_machine_readable_finding(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": """
@@ -816,7 +818,7 @@ class TestCheckCommand:
     def test_header_policy_and_version_are_visible_to_agents(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": """
@@ -865,7 +867,7 @@ class TestCheckCommand:
     def test_contract_failure_and_coverage_metadata_are_machine_readable(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": """
@@ -902,7 +904,7 @@ class TestCheckCommand:
     def test_strict_coverage_override_and_optional_inventory(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": LAYERED_CONFIG,
@@ -939,11 +941,11 @@ class TestCheckCommand:
     def test_debt_command_does_not_write_when_coverage_is_incomplete(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, prune: bool
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": LAYERED_CONFIG.replace(
-                    "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
+                    "rules: {", "rules: {architecture/uncovered-source: error, "
                 ),
                 "app/__init__.py": "",
                 "client/api.py": "VALUE = 1\n",
@@ -965,7 +967,7 @@ class TestCheckCommand:
     def test_nested_configuration_identifies_and_rebases_paths(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, output_format: str
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 ".git": "",
@@ -1012,7 +1014,7 @@ class TestCheckCommand:
         clean_project: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             clean_project,
             {
                 "app/domain/model.py": "from app.application import service\n",
@@ -1042,7 +1044,7 @@ class TestCheckCommand:
         clean_project: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             clean_project,
             {
                 "app/platform/__init__.py": "",
@@ -1285,7 +1287,7 @@ class TestCheckCommand:
     def test_invalid_encoding_is_a_structured_input_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path, input_file: str
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
@@ -1374,11 +1376,7 @@ class TestChangedHints:
             ["commit", "-qm", "i"],
         ):
             subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
-        config = clean_project / "smelt.yml"
-        config.write_text(
-            config.read_text(encoding="utf-8") + "rules: {SMT305: hint}\n",
-            encoding="utf-8",
-        )
+        add_rules(clean_project, {"SMT305": "hint"})
         (clean_project / "app" / "misc.py").write_text("", encoding="utf-8")
         monkeypatch.chdir(clean_project)
         return clean_project
@@ -1450,7 +1448,7 @@ class TestInfoCommands:
 
         assert code == 0
         assert out.startswith(
-            "SMT101 architecture/layer-boundary  [architecture, activation: policy, severity: error]"
+            "SMT101 architecture/layer-boundary  [architecture, activation: explicit, severity: error]"
         )
 
     def test_explain_unknown_rule(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1633,7 +1631,7 @@ class TestInitCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "app/__init__.py": "",
@@ -1662,7 +1660,9 @@ class TestInitCommand:
     ) -> None:
         source = "def _helper(): pass\ndef api(): _helper()\n"
         module = f"{source_root}/app/api.py"
-        write_project(tmp_path, {f"{source_root}/app/__init__.py": "", module: source})
+        write_policy_project(
+            tmp_path, {f"{source_root}/app/__init__.py": "", module: source}
+        )
         monkeypatch.chdir(tmp_path)
 
         code, out, err = _run(capsys, "init", "--maintainability")
@@ -1705,7 +1705,7 @@ class TestInitCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "pyproject.toml": '[tool.uv.workspace]\nmembers = ["backend", "client"]\n',
@@ -1741,7 +1741,7 @@ class TestInitCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "app/__init__.py": "",
@@ -1766,7 +1766,7 @@ class TestInitCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "pyproject.toml": (
@@ -1855,7 +1855,9 @@ class TestInitCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(tmp_path, {"service/shop/__init__.py": "", "other/x.py": ""})
+        write_policy_project(
+            tmp_path, {"service/shop/__init__.py": "", "other/x.py": ""}
+        )
         monkeypatch.chdir(tmp_path)
 
         code, out, _ = _run(capsys, "init", "--config", "service/smelt.yml")
@@ -1895,7 +1897,7 @@ class TestDebtCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
@@ -1929,14 +1931,14 @@ class TestDebtCommand:
     ) -> None:
         files = _violating_project()
         files["smelt.yml"] += "debt: debt.json\n"
-        root = write_project(tmp_path, files)
+        root = write_policy_project(tmp_path, files)
         [known] = check(root).unfiltered
         source = files["app/domain/model.py"]
         legacy = fingerprint(known, source, legacy=True)
         Debt([DebtEntry(legacy, known.code, known.path, known.message)]).write(
             root / "debt.json"
         )
-        write_project(root, {"app/domain/new.py": source})
+        write_policy_project(root, {"app/domain/new.py": source})
         monkeypatch.chdir(root)
 
         code, _, err = _run(capsys, "debt", "--prune")
@@ -1946,7 +1948,7 @@ class TestDebtCommand:
         assert len(debt.entries) == 1
         assert debt.entries[0].fingerprint == fingerprint(known, source)
         assert debt.entries[0].fingerprint != legacy
-        write_project(
+        write_policy_project(
             root, {"app/domain/model.py": source.rstrip() + " # changed comment\n"}
         )
         report = check(root).report
@@ -1989,7 +1991,7 @@ class TestDebtCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        root = write_project(tmp_path, _violating_project())
+        root = write_policy_project(tmp_path, _violating_project())
         monkeypatch.chdir(root)
 
         code, out, err = _run(capsys, "debt")
@@ -2009,7 +2011,7 @@ class TestDebtCommand:
     ) -> None:
         files = _violating_project()
         files["smelt.yml"] += "# debt: .smelt/debt.json\n"
-        root = write_project(tmp_path, files)
+        root = write_policy_project(tmp_path, files)
         monkeypatch.chdir(root)
 
         _run(capsys, "debt")
@@ -2026,7 +2028,7 @@ class TestDebtCommand:
     ) -> None:
         files = _violating_project()
         files["smelt.yml"] += "debt: debt.json\n"
-        root = write_project(tmp_path, files)
+        root = write_policy_project(tmp_path, files)
         monkeypatch.chdir(root)
         _run(capsys, "debt")
         (root / "app/domain/model.py").write_text("", encoding="utf-8")
@@ -2066,7 +2068,7 @@ OPTIONAL_DEFAULT_SOURCE = (
 def test_optional_default_cli_requires_both_fix_flags(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], flags: tuple[str, ...]
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -2118,7 +2120,7 @@ def test_optional_default_cli_requires_both_fix_flags(
 def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app], python_version: '3.12'}\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n",

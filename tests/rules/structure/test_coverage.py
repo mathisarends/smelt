@@ -19,7 +19,8 @@ version: 1
 project:
   root_packages: [app]
   source_roots: [src]
-  coverage: strict
+rules:
+  architecture/uncovered-source: error
 architecture:
   layers:
     domain: {path: domain}
@@ -56,7 +57,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [arithmetic], coverage: strict}\narchitecture:\n  shared: [arithmetic]\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [arithmetic]}\narchitecture:\n  shared: [arithmetic]\nrules: {architecture/uncovered-source: error}\n",
                 "arithmetic/__init__.py": "from arithmetic.operations import add\n",
                 "arithmetic/operations.py": "def add(left, right):\n    return left + right\n",
                 "tests/test_operations.py": "def test_add(): pass\n",
@@ -83,7 +84,8 @@ class TestStrictCoverage:
                 project:
                   root_packages: [corelib, persistence]
                   source_roots: [python/core, extensions]
-                  coverage: strict
+                rules:
+                  architecture/uncovered-source: error
                 architecture:
                   layers:
                     pure: {path: logic}
@@ -126,7 +128,10 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG.replace("coverage: strict", "coverage: configured"),
+                "smelt.yml": CONFIG.replace(
+                    "  architecture/uncovered-source: error",
+                    "  architecture/uncovered-source: off",
+                ),
                 "pyproject.toml": "[invalid",
             },
         )
@@ -144,7 +149,7 @@ class TestStrictCoverage:
         root = write_project(
             tmp_path,
             {
-                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src], coverage: strict}\narchitecture:\n  features: {root: app.features}\n",
+                "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  features: {root: app.features}\nrules: {architecture/uncovered-source: error}\n",
                 "src/app/__init__.py": "",
                 "src/app/features/one/model.py": "VALUE = 1\n",
                 "src/app/features/two/model.py": "VALUE = 2\n",
@@ -250,8 +255,8 @@ class TestStrictCoverage:
             tmp_path,
             {
                 "smelt.yml": CONFIG.replace(
-                    "  coverage: strict",
-                    '  coverage: strict\n  exclude: [{path: "libs/client/**", reason: "Generated SDK, validated by its generator"}]',
+                    "  source_roots: [src]",
+                    '  source_roots: [src]\n  exclude: [{path: "libs/client/**", reason: "Generated SDK, validated by its generator"}]',
                 ),
                 "pyproject.toml": '[tool.uv.workspace]\nmembers = ["libs/client"]\n',
                 "libs/client/src/client/api.py": "VALUE = 1\n",
@@ -278,8 +283,8 @@ class TestStrictCoverage:
             tmp_path,
             {
                 "smelt.yml": CONFIG.replace(
-                    "  coverage: strict",
-                    "  coverage: strict\n  exclude: ['src/client/**']",
+                    "  source_roots: [src]",
+                    "  source_roots: [src]\n  exclude: ['src/client/**']",
                 ),
                 "src/client/api.py": "",
             },
@@ -296,7 +301,10 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG.replace("coverage: strict", "coverage: configured"),
+                "smelt.yml": CONFIG.replace(
+                    "  architecture/uncovered-source: error",
+                    "  architecture/uncovered-source: off",
+                ),
                 "src/client/api.py": "",
             },
         )
@@ -423,19 +431,20 @@ class TestStrictCoverage:
         assert any(v.code == "SMT306" for v in outcome.report.violations)
         assert outcome.report.in_debt == 0
 
-    @pytest.mark.parametrize("setting", ["off", "warning", "hint"])
+    @pytest.mark.parametrize("setting", ["warning", "hint"])
     def test_strict_coverage_cannot_be_demoted(
         self, tmp_path: Path, setting: str
     ) -> None:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG
-                + f"rules: {{architecture/uncovered-source: {setting}}}\n"
+                "smelt.yml": CONFIG.replace(
+                    "uncovered-source: error", f"uncovered-source: {setting}"
+                )
             },
         )
 
-        with pytest.raises(ConfigError, match="strict coverage must remain an error"):
+        with pytest.raises(ConfigError, match="always reports errors"):
             check(root)
 
     def test_ignoring_the_coverage_rule_is_a_usage_error(self, tmp_path: Path) -> None:

@@ -6,7 +6,7 @@ import pytest
 
 from smelt.config import ConfigError
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, codes_at, violations, write_project
+from tests.helpers import check, codes_at, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +25,7 @@ def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) 
         "_FRAME_RETRY_DELAY_SECONDS = 0.05\n"
         "_logger = logging.getLogger(__name__)\n"
     )
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _LOGGER_CONFIG,
@@ -36,7 +36,7 @@ def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) 
     )
     assert violations(tmp_path) == []
 
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _LOGGER_CONFIG
@@ -109,7 +109,7 @@ def test_module_logger_after_constants_is_reported_when_enabled(tmp_path: Path) 
 def test_module_logger_order_respects_imports_and_known_bindings(
     tmp_path: Path, source: str, lines: list[int]
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {"smelt.yml": _LOGGER_CONFIG, "app/frames.py": source},
     )
@@ -120,13 +120,18 @@ def test_module_logger_order_respects_imports_and_known_bindings(
 
 
 def _project(
-    tmp_path: Path, source: str, *, policy: str, version: str | None = None
+    tmp_path: Path,
+    source: str,
+    *,
+    policy: str,
+    version: str | None = None,
+    extra: str = "",
 ) -> None:
     minimum = f'\n  python_version: "{version}"' if version else ""
-    write_project(
+    write_policy_project(
         tmp_path,
         {
-            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstyle:\n  overrides:\n    source:\n      match: app\n      {policy}\n",
+            "smelt.yml": f"version: 1\nproject:\n  root_packages: [app]{minimum}\nstyle:\n  overrides:\n    source:\n      match: app\n      {policy}\n{extra}",
             "app/module.py": source,
         },
     )
@@ -211,7 +216,7 @@ def test_required_docstring_includes_empty_initializers_and_entry_points(
     tmp_path: Path, path: str
 ) -> None:
     _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
-    write_project(tmp_path, {path: ""})
+    write_policy_project(tmp_path, {path: ""})
 
     assert [(v.path, v.code) for v in violations(tmp_path)] == [(path, "SMT309")]
 
@@ -234,7 +239,7 @@ def test_docstring_file_exceptions_require_a_reason(
     assert outcome.report.violations == []
     assert outcome.report.suppressed == 1
 
-    write_project(
+    write_policy_project(
         tmp_path,
         {"app/module.py": f"# smelt: ignore-file[{code}]\n{source}"},
     )
@@ -251,14 +256,9 @@ def test_nested_docstring_convention_overrides_outer_in_both_directions(
         tmp_path,
         "VALUE = 1" if outer == "require" else '"""Introduction."""',
         policy=f"module_docstrings: {outer}",
+        extra=f"    nested:\n      match: app.nested\n      module_docstrings: {inner}\n",
     )
-    config = tmp_path / "smelt.yml"
-    config.write_text(
-        config.read_text()
-        + f"    nested:\n      match: app.nested\n      module_docstrings: {inner}\n",
-        encoding="utf-8",
-    )
-    write_project(
+    write_policy_project(
         tmp_path,
         {"app/nested/__init__.py": '"""Introduction."""' if inner == "forbid" else ""},
     )
@@ -270,14 +270,13 @@ def test_nested_docstring_convention_overrides_outer_in_both_directions(
 
 
 def test_nested_allow_exempts_required_docstrings(tmp_path: Path) -> None:
-    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
-    config = tmp_path / "smelt.yml"
-    config.write_text(
-        config.read_text()
-        + "    nested:\n      match: app.nested\n      module_docstrings: allow\n",
-        encoding="utf-8",
+    _project(
+        tmp_path,
+        '"""Introduction."""',
+        policy="module_docstrings: require",
+        extra="    nested:\n      match: app.nested\n      module_docstrings: allow\n",
     )
-    write_project(tmp_path, {"app/nested/__init__.py": ""})
+    write_policy_project(tmp_path, {"app/nested/__init__.py": ""})
 
     assert violations(tmp_path, OPTIONS) == []
 
@@ -285,18 +284,19 @@ def test_nested_allow_exempts_required_docstrings(tmp_path: Path) -> None:
 def test_required_docstrings_respect_source_inventory_and_exclusions(
     tmp_path: Path,
 ) -> None:
-    _project(tmp_path, '"""Introduction."""', policy="module_docstrings: require")
-    config = tmp_path / "smelt.yml"
-    config.write_text(
-        config.read_text().replace(
-            "root_packages: [app]",
-            "root_packages: [app]\n  exclude:\n    - path: app/generated.py\n      reason: Generated source.",
-        ),
-        encoding="utf-8",
-    )
-    write_project(
+    write_policy_project(
         tmp_path,
-        {"app/generated.py": "VALUE = 1", "tests/test_module.py": "VALUE = 1"},
+        {
+            "smelt.yml": "version: 1\n"
+            "project:\n"
+            "  root_packages: [app]\n"
+            "  exclude:\n"
+            "    - {path: app/generated.py, reason: Generated source.}\n"
+            "style: {module_docstrings: require}\n",
+            "app/module.py": '"""Introduction."""',
+            "app/generated.py": "VALUE = 1",
+            "tests/test_module.py": "VALUE = 1",
+        },
     )
 
     assert violations(tmp_path, OPTIONS) == []
@@ -305,12 +305,11 @@ def test_required_docstrings_respect_source_inventory_and_exclusions(
 def test_conflicting_docstring_conventions_are_configuration_errors(
     tmp_path: Path,
 ) -> None:
-    _project(tmp_path, "VALUE = 1", policy="module_docstrings: require")
-    config = tmp_path / "smelt.yml"
-    config.write_text(
-        config.read_text()
-        + "    other:\n      match: app\n      module_docstrings: forbid\n",
-        encoding="utf-8",
+    _project(
+        tmp_path,
+        "VALUE = 1",
+        policy="module_docstrings: require",
+        extra="    other:\n      match: app\n      module_docstrings: forbid\n",
     )
 
     with pytest.raises(ConfigError, match="conflicting module docstring policies"):
@@ -322,9 +321,7 @@ def test_conflicting_docstring_conventions_are_configuration_errors(
     ["rules: {layout/module-docstring-convention: off}\n", "rules: {SMT309: off}\n"],
 )
 def test_required_docstring_respects_explicit_off(tmp_path: Path, setting: str) -> None:
-    _project(tmp_path, "VALUE = 1", policy="module_docstrings: require")
-    config = tmp_path / "smelt.yml"
-    config.write_text(config.read_text() + setting, encoding="utf-8")
+    _project(tmp_path, "VALUE = 1", policy="module_docstrings: require", extra=setting)
 
     assert violations(tmp_path, OPTIONS) == []
 
@@ -418,14 +415,15 @@ def test_other_future_features_are_unaffected(tmp_path: Path) -> None:
 
 
 def test_nested_allow_overrides_outer_policy(tmp_path: Path) -> None:
-    _project(tmp_path, '"""Forbidden here."""', policy="module_docstrings: forbid")
-    config = tmp_path / "smelt.yml"
-    config.write_text(
-        config.read_text()
-        + "    documented:\n      match: app.documented\n      module_docstrings: allow\n",
-        encoding="utf-8",
+    _project(
+        tmp_path,
+        '"""Forbidden here."""',
+        policy="module_docstrings: forbid",
+        extra="    documented:\n      match: app.documented\n      module_docstrings: allow\n",
     )
-    write_project(tmp_path, {"app/documented/__init__.py": '"""Allowed here."""'})
+    write_policy_project(
+        tmp_path, {"app/documented/__init__.py": '"""Allowed here."""'}
+    )
 
     assert [v.path for v in violations(tmp_path, OPTIONS)] == ["app/module.py"]
 
@@ -434,7 +432,7 @@ def test_nested_allow_overrides_outer_policy(tmp_path: Path) -> None:
     "source", ["", '"""Introduction."""\nfrom __future__ import annotations']
 )
 def test_absent_policy_preserves_existing_behavior(tmp_path: Path, source: str) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "app/__init__.py": "",
@@ -453,7 +451,7 @@ def test_requires_python_enables_version_check(tmp_path: Path) -> None:
         "from __future__ import annotations\ndef f(x: Later): pass\nclass Later: pass",
         policy="future_annotations: when-needed",
     )
-    write_project(
+    write_policy_project(
         tmp_path, {"pyproject.toml": '[project]\nrequires-python = ">=3.14"\n'}
     )
 

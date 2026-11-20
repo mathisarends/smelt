@@ -2,11 +2,16 @@ version: 1
 project:
   workspace: uv
   source_roots: [src]
-  coverage: strict
 style:
   max_positional_parameters: 3
 rules:
+  architecture/uncovered-source: error
   tests/missing-outcome-check: warning
+  architecture/layer-boundary: error
+  architecture/cross-feature-import: error
+  architecture/member-boundary: error
+  architecture/undeclared-member-dependency: error
+  complexity/excess-positional-parameters: warning
 architecture:
   members:
     services/*: {may_depend_on: [packages/*]}

@@ -6,7 +6,7 @@ import pytest
 
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +25,7 @@ def _enum(*members: str, header: str = HEADER, base: str = "StrEnum") -> str:
 
 
 def _project(tmp_path: Path, source: str, *, config: str = CONFIG) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {"smelt.yml": config, "app/__init__.py": "", "app/kinds.py": source},
     )
@@ -135,7 +135,7 @@ def test_non_str_enum_classes_are_not_reported(tmp_path: Path) -> None:
 
 def test_tests_are_not_checked(tmp_path: Path) -> None:
     for style, config in (("explicit", CONFIG), ("auto", AUTO_CONFIG)):
-        root = write_project(
+        root = write_policy_project(
             tmp_path / style,
             {
                 "smelt.yml": config,

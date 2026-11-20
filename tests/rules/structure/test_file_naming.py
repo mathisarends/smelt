@@ -6,7 +6,7 @@ import pytest
 
 from smelt.config import ConfigError
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, write_project
+from tests.helpers import check, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +19,7 @@ def test_yaml_extension_is_a_single_project_policy(
     tmp_path: Path, extension: str
 ) -> None:
     other = "yml" if extension == "yaml" else "yaml"
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG
@@ -56,7 +56,7 @@ def test_compose_basename_preserves_variants_and_does_not_choose_an_extension(
     tmp_path: Path, basename: str
 ) -> None:
     other = "docker-compose" if basename == "compose" else "compose"
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG
@@ -81,7 +81,7 @@ def test_compose_basename_preserves_variants_and_does_not_choose_an_extension(
 def test_both_policies_combine_into_one_finding_per_file(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG
@@ -113,7 +113,7 @@ def test_both_policies_combine_into_one_finding_per_file(
 def test_missing_policies_allow_both_spellings_even_when_selected(
     tmp_path: Path, policy: str
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + policy,
@@ -127,7 +127,7 @@ def test_missing_policies_allow_both_spellings_even_when_selected(
 
 
 def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG.replace(
@@ -153,7 +153,7 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
 def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG
@@ -177,7 +177,7 @@ def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
     ["yaml_extension: json", "yaml_extension: .yaml", "compose_basename: stack"],
 )
 def test_invalid_filename_policy_is_rejected(tmp_path: Path, policy: str) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + f"style: {{file_naming: {{{policy}}}}}\n",

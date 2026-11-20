@@ -18,7 +18,7 @@ from smelt.cli import main
 from smelt.diagnostics.debt import Debt
 from smelt.engine.changes import GitIndex, capture_index
 from smelt.engine.check import snippet_reader
-from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_project
+from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_policy_project
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
@@ -33,7 +33,7 @@ style:
 def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             **MEMBER_BOUNDARIES,
@@ -43,12 +43,12 @@ def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
     )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "workspace without imports")
-    write_project(
+    write_policy_project(
         repo, {"services/api/src/api/http.py": "from core.model import Order\n"}
     )
     _git(repo, "add", "services/api/src/api/http.py")
     # The unstaged dependency repair must not change a staged import finding.
-    write_project(
+    write_policy_project(
         repo,
         {
             "services/api/pyproject.toml": MEMBER_BOUNDARIES[
@@ -74,17 +74,20 @@ def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
 def test_staged_member_reason_cannot_be_supplied_by_an_unstaged_repair(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             **MEMBER_BOUNDARIES,
+            # The member config is invalid until staged, so name the boundary rules here.
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + "rules: {complexity/excess-positional-parameters: error}\n",
+            + "rules: {complexity/excess-positional-parameters: error,"
+            + " architecture/member-boundary: error,"
+            + " architecture/undeclared-member-dependency: error}\n",
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: warning}\n",
         },
     )
     _git(repo, "add", ".")
-    write_project(
+    write_policy_project(
         repo,
         {
             "services/api/smelt.yml": "rules: {complexity/excess-positional-parameters: {severity: warning, reason: Migration review.}}\n"
@@ -120,7 +123,7 @@ def test_staged_member_scope_uses_workspace_paths_and_metadata(
     }
     if explicit:
         files["services/api/smelt.yml"] = "{}\n"
-    write_project(repo, files)
+    write_policy_project(repo, files)
     _git(repo, "add", ".")
     monkeypatch.chdir(repo / "services/api")
     options = ["--config", "smelt.yml"] if explicit else []
@@ -141,7 +144,7 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = "from typing import Literal\ndef click(x: Literal[1, 2]): pass\n"
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {SMT338: warning}\n",
@@ -150,10 +153,10 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "single literal contract")
-    write_project(repo, {"app/second.py": source})
+    write_policy_project(repo, {"app/second.py": source})
     _git(repo, "add", "app/second.py")
     # Neither unstaged removal nor disabling the rule may change the index view.
-    write_project(repo, {"app/second.py": "", "smelt.yml": CONFIG})
+    write_policy_project(repo, {"app/second.py": "", "smelt.yml": CONFIG})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
         status, data = _check(repo, capsys, "--select", "SMT338", *flags)
@@ -171,7 +174,7 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
 def test_staged_private_symbols_use_index_definitions_and_callers(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             "app/service.py": "def _helper(): pass\n",
@@ -179,7 +182,7 @@ def test_staged_private_symbols_use_index_definitions_and_callers(
         },
     )
     _git(repo, "add", ".")
-    write_project(repo, {"app/service.py": "", "app/caller.py": ""})
+    write_policy_project(repo, {"app/service.py": "", "app/caller.py": ""})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
         status, data = _check(repo, capsys, "--select", "SMT339", *flags)
@@ -194,7 +197,7 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     original = "def upload(value: int | None = None):\n    return value or 7\n"
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": CONFIG + "debt: debt.json\nrules: {SMT321: warning}\n",
@@ -207,7 +210,7 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "accept scoped optional default")
-    write_project(
+    write_policy_project(
         repo,
         {
             "app/storage.py": "def upload(value: int | None = None):\n    return value if value is not None else 7\n"
@@ -216,7 +219,7 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     )
     _git(repo, "add", "app/storage.py")
     # The working tree would report no new finding; only the staged blob has one.
-    write_project(repo, {"app/storage.py": original})
+    write_policy_project(repo, {"app/storage.py": original})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
         status, data = _check(repo, capsys, "--select", "SMT321", *flags)
@@ -238,7 +241,7 @@ def _git(root: Path, *args: str) -> None:
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG,
@@ -281,7 +284,9 @@ def test_staged_redundant_module_name_uses_index_paths(
 project: {root_packages: [app]}
 rules: {layout/redundant-module-name: warning}
 """
-    write_project(repo, {"smelt.yml": config, "app/cars/application/exporter.py": ""})
+    write_policy_project(
+        repo, {"smelt.yml": config, "app/cars/application/exporter.py": ""}
+    )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "concise module name")
     original = repo / "app/cars/application/exporter.py"
@@ -290,7 +295,7 @@ rules: {layout/redundant-module-name: warning}
     _git(repo, "add", "app/cars")
     # Only the index contains the redundant filename and enabled rule.
     redundant.rename(original)
-    write_project(repo, {"smelt.yml": CONFIG})
+    write_policy_project(repo, {"smelt.yml": CONFIG})
     monkeypatch.chdir(repo)
 
     for flags in ((), (), ("--no-cache",)):
@@ -306,7 +311,7 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     policy = "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n"
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n" + policy,
@@ -320,7 +325,7 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     _git(repo, "add", "deploy")
     # An unstaged rename and policy edit must not affect the captured inventory.
     (repo / "deploy/docker-compose.yaml").rename(repo / "deploy/compose.yml")
-    write_project(repo, {"smelt.yml": CONFIG})
+    write_policy_project(repo, {"smelt.yml": CONFIG})
     for flags in ((), (), ("--no-cache",)):
         code, data = _check(repo, capsys, "--select", "SMT33", *flags)
         assert code == 1
@@ -362,7 +367,7 @@ def test_staged_discovery_matches_cached_and_uncached_config_preference(
 def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             "policy/base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
@@ -403,7 +408,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
 def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             "base.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
@@ -437,7 +442,7 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     caller = "from app.api.impl import Item\n"
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
@@ -449,10 +454,10 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "facade baseline")
-    write_project(repo, {"app/second.py": caller})
+    write_policy_project(repo, {"app/second.py": caller})
     _git(repo, "add", "app/second.py")
     # Unstaged exports and caller removals must not hide the index's gap.
-    write_project(
+    write_policy_project(
         repo, {"app/api/__init__.py": "from .impl import Item\n", "app/second.py": ""}
     )
     code, report = _check(repo, capsys, "--select", "SMT109")
@@ -474,7 +479,7 @@ def test_staged_test_imports_use_index_callers_policy_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str], code: str, *, count: int
 ) -> None:
     config = "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": config,
@@ -486,7 +491,7 @@ def test_staged_test_imports_use_index_callers_policy_and_exports(
     )
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "public API baseline")
-    write_project(
+    write_policy_project(
         repo,
         {
             "tests/test_api.py": "from app.api.impl import Item\nfrom app.api.other import Other\n"
@@ -494,7 +499,7 @@ def test_staged_test_imports_use_index_callers_policy_and_exports(
     )
     _git(repo, "add", "tests/test_api.py")
     # Working-tree repairs and policy changes must not hide staged imports.
-    write_project(
+    write_policy_project(
         repo,
         {
             "tests/test_api.py": "from app.api import Item\n",
@@ -586,7 +591,7 @@ def test_first_commit_and_removed_working_config(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    empty = write_project(
+    empty = write_policy_project(
         repo / "new",
         {
             "smelt.yml": CONFIG,
@@ -609,7 +614,7 @@ def test_nested_config_and_sibling_source_roots(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             "policy/architecture.yml": CONFIG.replace(
@@ -654,7 +659,8 @@ def test_staged_python_metadata_determines_version_aware_findings(
     (repo / "smelt.yml").write_text(
         CONFIG.replace(
             "rules: {visibility/internal-public-member: warning}",
-            "future_annotations: when-needed",
+            "future_annotations: when-needed,"
+            " rules: {typing/forbidden-future-annotations: error}",
         )
     )
     (repo / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.14"\n')
@@ -930,7 +936,7 @@ def test_retained_worker_matches_fresh_checks_after_edits_errors_and_head_change
 def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write_project(
+    write_policy_project(
         repo,
         {
             "smelt.yml": LAYERED_CONFIG,

@@ -4,9 +4,10 @@ See the [changelog](../CHANGELOG.md) for new capabilities, fixes and migration n
 by release, including changes to agent workflows and rule defaults.
 For the schema 1 to 2 transition, see the [upgrade checklist and parser example](upgrading.md#json-report-consumers).
 
-Most rules are opt-in. Smelt enables declared architecture/package/test policies
-without a second switch; only architecture/unknown-layer and suppression/debt diagnostics run
-by default. Import cycles and architecture/unclassified-module findings require explicit selection.
+Most rules are opt-in: a rule runs only when `rules` names it or `--select`
+selects it. Declared policies describe what a rule checks and do not enable it;
+a policy whose rule is named nowhere is a configuration warning. Only
+architecture/unknown-layer and suppression/debt diagnostics run by default.
 See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 
@@ -26,7 +27,7 @@ smelt check --changed --base origin/main --format json
 smelt check --changed --format concise  # path:line:col CODE family/finding message -> repair
 smelt check --statistics              # findings per rule, hints included
 smelt check --statistics --by member  # findings per uv workspace member, hints included
-smelt check --strict-coverage         # fail on omitted or unclassified production code
+smelt check --strict-coverage         # enable architecture/uncovered-source for this run
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select SMT321 --fix --unsafe-fixes  # use None-only defaults after review
 smelt context user                   # what applies to a feature, module or path

@@ -2,6 +2,58 @@
 
 ## 0.13 to 0.14
 
+Run `smelt config migrate` to preview both changes below and add `--write` to
+apply them.
+
+### Enable the rules your policies used to enable
+
+A declared policy no longer enables its rule. Name every rule you want checked
+under `rules`:
+
+```yaml
+# before: layers and the mirror layout enabled their rules implicitly
+architecture:
+  layers:
+    domain: {modules: [app.domain]}
+tests:
+  layout: mirror
+
+# after
+architecture:
+  layers:
+    domain: {modules: [app.domain]}
+tests:
+  layout: mirror
+rules:
+  architecture/layer-boundary: error
+  tests/misplaced-test: error
+```
+
+The migration adds an entry at the catalog severity for each declared policy.
+An option set only in a style override, such as `max_positional_parameters`,
+is enabled in that override's `rules`, so its built-in default does not start
+checking other packages. Until you migrate, each unnamed policy is a
+configuration warning that fails `--fail-on warning`. Set the rule to `off` to
+keep a policy unchecked. Enabling a rule whose required policy is missing is now
+a configuration error instead of a silent no-op.
+
+### Replace project.coverage with the guard rule
+
+`project.coverage` was removed. Enable the guard in the root config instead:
+
+```yaml
+# before
+project:
+  coverage: strict
+
+# after
+rules:
+  architecture/uncovered-source: error
+```
+
+`--strict-coverage` still enables it for one run. The guard always reports
+errors and cannot be enabled in a workspace member.
+
 ### Move layer assignments into layers
 
 `architecture.modules` is deprecated and will be removed in 0.15.0. List each

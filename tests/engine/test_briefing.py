@@ -12,7 +12,7 @@ from smelt.engine.briefing import (
     resolve_target,
 )
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
-from tests.helpers import FIXTURES, MEMBER_ARCHITECTURES, check, write_project
+from tests.helpers import FIXTURES, MEMBER_ARCHITECTURES, check, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +21,7 @@ GATEWAY = FIXTURES / "gateway"
 
 
 def test_planned_module_explains_its_inherited_layer(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "extends: layer-policy.yml\n",
@@ -56,7 +56,7 @@ architecture:
 
 
 def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
@@ -79,7 +79,7 @@ def test_briefing_exposes_canonical_file_naming(tmp_path: Path) -> None:
 def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  canonical_exports: {app.api.Service: app.Service}\n  import_graph: {cycles: [modules], type_checking_cycles: ignore}\n",
@@ -110,7 +110,7 @@ def test_briefing_exposes_canonical_ownership_and_independent_cycle_policy(
 def test_member_policy_is_available_before_writing_a_module(
     tmp_path: Path, key: str, value: str
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nstyle:\n  overrides:\n    helpers: {{match: app, rules: {{{key}: {value}}}}}",
@@ -129,7 +129,7 @@ def test_member_policy_is_available_before_writing_a_module(
 def test_type_dispatch_policy_is_visible_before_writing_a_module(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    dispatch: {match: app, type_dispatch: {min_branches: 4}}",
@@ -148,7 +148,7 @@ def test_type_dispatch_policy_is_visible_before_writing_a_module(
 def test_instance_assignment_policy_is_visible_for_a_planned_module(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n",
@@ -180,7 +180,7 @@ def test_instance_assignment_policy_is_visible_for_a_planned_module(
 def test_test_quality_policy_is_available_for_planned_placement(
     tmp_path: Path, flag: str
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\nrules: {{{flag}: warning}}",
@@ -201,7 +201,7 @@ def test_test_quality_policy_is_available_for_planned_placement(
 def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ntests: {max_patches_per_test: 0}",
@@ -218,7 +218,7 @@ def test_zero_patch_limit_is_visible_without_other_test_quality_flags(
 
 
 def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering:\n        constants_exempt: true\n      rules:\n        layout/definition-order: error\n",
@@ -249,7 +249,7 @@ def test_ordering_context_exposes_policy_for_a_planned_file(tmp_path: Path) -> N
 def test_private_module_convention_is_available_before_writing_a_file(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -278,7 +278,7 @@ def test_private_module_convention_is_available_before_writing_a_file(
 def test_positional_parameter_limit_is_available_before_editing(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -301,7 +301,7 @@ def test_positional_parameter_limit_is_available_before_editing(
 
 
 def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    imports: {match: app, max_module_imports: 0, module_import_exemptions: []}\n",
@@ -318,7 +318,7 @@ def test_module_import_policy_is_available_before_editing(tmp_path: Path) -> Non
 
 
 def test_rule_origins_name_their_declaring_key_and_reason(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": (
@@ -346,7 +346,7 @@ def test_rule_origins_name_their_declaring_key_and_reason(tmp_path: Path) -> Non
 
 
 def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    expressions: {match: app, max_comprehension_loops: 2}\n",
@@ -361,7 +361,7 @@ def test_comprehension_limit_is_available_before_editing(tmp_path: Path) -> None
 
 
 def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    constructors: {match: app, max_constructor_decisions: 0}\n",
@@ -376,7 +376,7 @@ def test_constructor_limit_is_available_before_editing(tmp_path: Path) -> None:
 
 
 def test_private_definition_limit_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    definitions: {match: app, max_private_definitions: 0}\n",
@@ -391,7 +391,7 @@ def test_private_definition_limit_is_available_before_editing(tmp_path: Path) ->
 
 
 def test_private_attribute_boundary_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle:\n  overrides:\n    ownership: {match: app, private_attribute_boundary: package}\n",
@@ -406,7 +406,7 @@ def test_private_attribute_boundary_is_available_before_editing(tmp_path: Path) 
 
 
 def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -434,7 +434,7 @@ def test_dataclass_options_are_available_before_editing(tmp_path: Path) -> None:
 
 
 def test_base_class_mapping_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -461,7 +461,7 @@ def test_base_class_mapping_is_available_before_editing(tmp_path: Path) -> None:
 
 
 def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -495,7 +495,7 @@ def test_error_policy_is_available_before_editing(tmp_path: Path) -> None:
 
 
 def test_contracts_explain_existing_and_planned_placement(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": """
@@ -551,7 +551,7 @@ class TestResolveTarget:
     def test_existing_uncovered_source_has_an_actionable_briefing(
         self, tmp_path: Path
     ) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app], source_roots: [src]}\narchitecture:\n  layers:\n    domain: {path: domain}\n",
@@ -624,7 +624,7 @@ class TestResolveTarget:
         assert briefing.to_json()["feature_planned"] is False
 
     def test_planned_feature_uses_the_member_pattern(self, tmp_path: Path) -> None:
-        root = write_project(
+        root = write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {workspace: uv}\n",
@@ -798,7 +798,7 @@ MIRRORED = {
 
 
 def _briefing(tmp_path: Path, target: str) -> str:
-    outcome = check(write_project(tmp_path, MIRRORED))
+    outcome = check(write_policy_project(tmp_path, MIRRORED))
     ctx = outcome.context
     briefing = build_briefing(ctx, resolve_target(ctx, target), outcome.report)
     return render_briefing(briefing, ctx)
@@ -835,7 +835,7 @@ class TestMirroredProject:
         assert "Layers:" not in text
 
     def test_wiring_exceptions_are_explicit(self, tmp_path: Path) -> None:
-        outcome = check(write_project(tmp_path, MIRRORED))
+        outcome = check(write_policy_project(tmp_path, MIRRORED))
         ctx = outcome.context
         target = resolve_target(ctx, "app.features.voice.infra.di")
         briefing = build_briefing(ctx, target, outcome.report)
@@ -848,7 +848,7 @@ class TestMirroredProject:
         assert "Cross-feature:    allowed (wiring/composition-root exception)" in text
 
     def test_central_json_explains_feature_restriction(self, tmp_path: Path) -> None:
-        outcome = check(write_project(tmp_path, MIRRORED))
+        outcome = check(write_policy_project(tmp_path, MIRRORED))
         ctx = outcome.context
         briefing = build_briefing(
             ctx, resolve_target(ctx, "app.platform"), outcome.report
@@ -871,7 +871,7 @@ class TestMirroredProject:
             "wiring: [app.features.*.infra.di]",
             "wiring: [app.features.*.infra.di, app.platform.di]",
         )
-        outcome = check(write_project(tmp_path, files))
+        outcome = check(write_policy_project(tmp_path, files))
         ctx = outcome.context
         briefing = build_briefing(
             ctx, resolve_target(ctx, "app.platform.di"), outcome.report
@@ -890,7 +890,7 @@ class TestMirroredProject:
         files["smelt.yml"] = files["smelt.yml"].replace(
             "wiring:", "composition_root: [app.main]\n          wiring:"
         )
-        outcome = check(write_project(tmp_path, files))
+        outcome = check(write_policy_project(tmp_path, files))
         ctx = outcome.context
         briefing = build_briefing(ctx, resolve_target(ctx, "app.main"), outcome.report)
 
@@ -900,7 +900,7 @@ class TestMirroredProject:
         assert "allowed" in (briefing.cross_feature or "")
 
     def test_unknown_target_lists_the_features(self, tmp_path: Path) -> None:
-        outcome = check(write_project(tmp_path, MIRRORED))
+        outcome = check(write_policy_project(tmp_path, MIRRORED))
 
         with pytest.raises(TargetError, match=r"; features: billing, voice$"):
             resolve_target(outcome.context, "nothing")
@@ -916,7 +916,7 @@ class TestMirroredProject:
 def test_a_member_briefing_shows_the_member_architecture(
     tmp_path: Path, target: str, layers: list[str]
 ) -> None:
-    outcome = check(write_project(tmp_path, MEMBER_ARCHITECTURES))
+    outcome = check(write_policy_project(tmp_path, MEMBER_ARCHITECTURES))
 
     briefing = build_briefing(
         outcome.context, resolve_target(outcome.context, target), outcome.report

@@ -12,6 +12,7 @@ from smelt.config.loader import (
 from smelt.config.models import CrossFeatureAllowance
 from smelt.engine.check import CheckOptions, run_check
 from smelt.engine.inference import InferredLayer, infer_config, render_config
+from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.registry import build_rule_set
 from tests.helpers import write_project
 
@@ -230,6 +231,29 @@ class TestInferConfig:
         assert inferred.shared == ["shop.common"]
         assert inferred.composition_root == ["shop.bootstrap"]
         assert inferred.tests_layout == "none"
+
+    def test_rendered_config_names_the_rules_of_its_policies(
+        self, tmp_path: Path
+    ) -> None:
+        write_project(
+            tmp_path,
+            {
+                "app/__init__.py": "",
+                "app/domain/__init__.py": "",
+                "app/domain/model.py": "",
+                "app/infra/__init__.py": "",
+                "app/infra/db.py": "from app.domain import model\n",
+            },
+        )
+        inferred = infer_config(tmp_path)
+        assert inferred is not None
+
+        config, _ = parse_config(_load_yaml(render_config(inferred)), root=tmp_path)
+
+        assert config.architecture.layers
+        assert config.rules["architecture/layer-boundary"] == "error"
+        loaded = LoadedConfig(config, tmp_path / "smelt.yml")
+        assert RuleSettings(build_rule_set(), loaded).unused_policies() == []
 
     def test_feature_pattern_without_container(self, tmp_path: Path) -> None:
         write_project(

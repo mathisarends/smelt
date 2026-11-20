@@ -12,7 +12,14 @@ from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.changes import capture_repository, export_base, resolve_comparison
 from smelt.engine.check import CheckOptions
-from tests.helpers import LAYERED_CONFIG, check, codes_at, violations, write_project
+from tests.helpers import (
+    LAYERED_CONFIG,
+    add_rules,
+    check,
+    codes_at,
+    violations,
+    write_policy_project,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,7 +33,7 @@ pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 def test_changed_checks_find_new_deep_test_imports(
     tmp_path: Path, code: str, count: int
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n",
@@ -41,7 +48,7 @@ def test_changed_checks_find_new_deep_test_imports(
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "public API baseline")
     assert violations(root, CheckOptions(changed=True, select=(code,))) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "tests/test_api.py": "from app.api.impl import Item\nfrom app.api.other import Other\n"
@@ -60,7 +67,7 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     tmp_path: Path,
 ) -> None:
     source = "from typing import Literal\ndef first(x: Literal[1, 2]): pass\n"
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -74,7 +81,9 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     _git(tmp_path, "commit", "-qm", "accept duplicate group")
     options = CheckOptions(changed=True, select=("SMT338",))
     assert not violations(tmp_path, options)
-    write_project(tmp_path, {"app/third.py": source.replace("def first", "def third")})
+    write_policy_project(
+        tmp_path, {"app/third.py": source.replace("def first", "def third")}
+    )
     for use_cache in (True, True, False):
         found = violations(
             tmp_path,
@@ -98,7 +107,7 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     tmp_path: Path,
 ) -> None:
     source = "from app.first import First\nfrom app.second import Second\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_module_imports: 1}\n",
@@ -114,7 +123,7 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     _git(root, "commit", "-qm", "accept existing imports")
     options = CheckOptions(changed=True, select=("SMT110",))
     assert violations(root, options) == []
-    write_project(
+    write_policy_project(
         root,
         {"app/client.py": source.replace("second import Second", "third import Third")},
     )
@@ -132,7 +141,7 @@ def test_changed_private_definitions_detect_new_names(
     tmp_path: Path, change: str
 ) -> None:
     source = "class _First: pass\nclass _Second: pass\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_private_definitions: 0}\n",
@@ -146,14 +155,14 @@ def test_changed_private_definitions_detect_new_names(
     options = CheckOptions(changed=True, select=("SMT367",))
     assert violations(root, options) == []
     # Moving declarations and adding constants do not add counted definitions.
-    write_project(root, {"app/client.py": "_LIMIT = 10\n" + "\n" + source})
+    write_policy_project(root, {"app/client.py": "_LIMIT = 10\n" + "\n" + source})
     assert violations(root, options) == []
     updated = (
         source + "class _Added: pass\n"
         if change == "append"
         else source.replace("_Second", "_Added")
     )
-    write_project(root, {"app/client.py": updated})
+    write_policy_project(root, {"app/client.py": updated})
     [finding] = violations(root, options)
     assert (finding.code, finding.path) == ("SMT367", "app/client.py")
     assert finding.expected is not None
@@ -161,7 +170,7 @@ def test_changed_private_definitions_detect_new_names(
     assert violations(
         root, CheckOptions(changed=True, select=("SMT367",), use_cache=False)
     ) == [finding]
-    write_project(root, {"app/client.py": "class _First: pass\n"})
+    write_policy_project(root, {"app/client.py": "class _First: pass\n"})
     assert violations(root, options) == []
 
 
@@ -169,7 +178,7 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     tmp_path: Path,
 ) -> None:
     source = "value = [\n    x for group in groups for x in group\n]\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -182,7 +191,7 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     _git(root, "commit", "-qm", "accept existing comprehension")
     options = CheckOptions(changed=True, select=("SMT363",))
     assert violations(root, options) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "app/client.py": source.replace(
@@ -203,7 +212,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     tmp_path: Path,
 ) -> None:
     source = "class Client:\n    def __init__(self, values):\n        self.values = [x for x in values]\n"
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {max_constructor_decisions: 0}\n",
@@ -216,7 +225,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     _git(root, "commit", "-qm", "accept existing constructor decision")
     options = CheckOptions(changed=True, select=("SMT364",))
     assert violations(root, options) == []
-    write_project(
+    write_policy_project(
         root, {"app/client.py": source + "        self.other = [x for x in values]\n"}
     )
     [finding] = violations(root, options)
@@ -231,7 +240,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
 def test_changed_private_access_detects_an_owner_change_in_a_facade(
     tmp_path: Path,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n",
@@ -258,7 +267,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
 
 
 def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nstyle: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
@@ -271,7 +280,7 @@ def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
     _git(tmp_path, "commit", "-qm", "initial")
     options = CheckOptions(changed=True, select=("SMT33",))
     assert not violations(tmp_path, options)
-    write_project(tmp_path, {"deploy/docker-compose.prod.yaml": ""})
+    write_policy_project(tmp_path, {"deploy/docker-compose.prod.yaml": ""})
     found = violations(tmp_path, options)
     assert [(v.code, v.path) for v in found] == [
         ("SMT331", "deploy/docker-compose.prod.yaml"),
@@ -286,7 +295,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     tmp_path: Path,
 ) -> None:
     caller = "from app.api.impl import Item\n"
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\narchitecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n",
@@ -302,7 +311,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     _git(tmp_path, "commit", "-qm", "initial")
     options = CheckOptions(select=("SMT109",), changed=True)
     assert violations(tmp_path, options) == []
-    write_project(tmp_path, {"app/second.py": caller})
+    write_policy_project(tmp_path, {"app/second.py": caller})
     [finding] = violations(tmp_path, options)
     assert finding.path == "app/api/impl.py"
     assert finding.expected is not None
@@ -310,7 +319,7 @@ def test_changed_facade_gap_tracks_new_callers_at_an_unchanged_definition(
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "accept existing gap")
     assert violations(tmp_path, options) == []
-    write_project(tmp_path, {"app/third.py": caller})
+    write_policy_project(tmp_path, {"app/third.py": caller})
     [expanded] = violations(tmp_path, options)
     assert expanded.expected is not None
     assert expanded.expected["count"] == 3
@@ -337,7 +346,7 @@ def test_repository_capture_keeps_the_observed_head_when_head_moves(
 def test_export_ignore_does_not_hide_existing_findings(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": LAYERED_CONFIG,
@@ -357,13 +366,13 @@ def test_export_ignore_does_not_hide_existing_findings(
 
 def test_changed_optional_defaults_distinguish_a_replaced_function(repo: Path) -> None:
     original = "def upload(value: int | None = None):\n    return value or 7\n"
-    write_project(repo, {"app/application/service.py": original})
+    write_policy_project(repo, {"app/application/service.py": original})
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "existing optional default")
     options = CheckOptions(changed=True, select=("SMT321",))
-    write_project(repo, {"app/application/service.py": "\n\n" + original})
+    write_policy_project(repo, {"app/application/service.py": "\n\n" + original})
     assert violations(repo, options) == []
-    write_project(
+    write_policy_project(
         repo,
         {
             "app/application/service.py": "def upload(value: int | None = None):\n    return value if value is not None else 7\n"
@@ -387,7 +396,7 @@ def _git(root: Path, *args: str) -> None:
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": LAYERED_CONFIG,
@@ -447,17 +456,13 @@ class TestChangedMode:
         self, repo: Path
     ) -> None:
         source = "class Controller:\n    def run(self):\n        self.browser.input.motor()\n"
-        config = repo / "smelt.yml"
-        config.write_text(
-            config.read_text() + "\nrules: {complexity/excess-attribute-depth: hint}\n",
-            encoding="utf-8",
-        )
-        write_project(repo, {"app/application/service.py": source})
+        add_rules(repo, {"complexity/excess-attribute-depth": "hint"})
+        write_policy_project(repo, {"app/application/service.py": source})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "existing navigation")
         options = CheckOptions(changed=True, select=("SMT322",))
         assert violations(repo, options) == []
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": source
@@ -491,10 +496,10 @@ class TestChangedMode:
             encoding="utf-8",
         )
         source = f"class Original:\n{decorator}    def emit(self): pass\n"
-        write_project(repo, {"app/application/service.py": source})
+        write_policy_project(repo, {"app/application/service.py": source})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "original member")
-        write_project(
+        write_policy_project(
             repo,
             {"app/application/service.py": source.replace("Original", "Replacement")},
         )
@@ -512,7 +517,7 @@ class TestChangedMode:
             + "\nstyle:\n  overrides:\n    members:\n      match: app\n      rules:\n        visibility/internal-public-member: warning\n",
             encoding="utf-8",
         )
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": "class Browser:\n    def emit(self): pass",
@@ -521,7 +526,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "external method user")
-        write_project(repo, {"app/application/consumer.py": ""})
+        write_policy_project(repo, {"app/application/consumer.py": ""})
 
         [finding] = violations(repo, CheckOptions(changed=True, select=("SMT316",)))
 
@@ -550,12 +555,8 @@ class TestChangedMode:
         self, repo: Path, expected: tuple[str, int], policy: str, source: str, test: str
     ) -> None:
         code, line = expected
-        config = repo / "smelt.yml"
-        config.write_text(
-            config.read_text() + f"\nrules: {{{policy}: warning}}\n",
-            encoding="utf-8",
-        )
-        write_project(
+        add_rules(repo, {policy: "warning"})
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": source,
@@ -563,7 +564,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "before direct helper tests")
-        write_project(
+        write_policy_project(
             repo,
             {"tests/test_service.py": test},
         )
@@ -596,12 +597,8 @@ class TestChangedMode:
     def test_extra_test_references_do_not_make_an_existing_visibility_finding_new(
         self, repo: Path, code: str, policy: str, source: str, test: str
     ) -> None:
-        config = repo / "smelt.yml"
-        config.write_text(
-            config.read_text() + f"\nrules: {{{policy}: warning}}\n",
-            encoding="utf-8",
-        )
-        write_project(
+        add_rules(repo, {policy: "warning"})
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": source,
@@ -610,7 +607,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "existing direct helper test")
-        write_project(
+        write_policy_project(
             repo,
             {"tests/test_other.py": test},
         )
@@ -621,22 +618,17 @@ class TestChangedMode:
     def test_changed_attribute_exposure_reports_only_a_new_public_contract(
         self, repo: Path, existing_exposure: bool
     ) -> None:
-        config = repo / "smelt.yml"
-        config.write_text(
-            config.read_text()
-            + "\nrules: {visibility/test-only-public-attribute: warning}\n",
-            encoding="utf-8",
-        )
+        add_rules(repo, {"visibility/test-only-public-attribute": "warning"})
         test = "from app.application.service import Worker\ndef test_state(): assert Worker().pending == []"
         files = {
             "app/application/service.py": "class Worker:\n    def __init__(self): self.pending = []",
         }
         if existing_exposure:
             files["tests/test_service.py"] = test
-        write_project(repo, files)
+        write_policy_project(repo, files)
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "before additional attribute test")
-        write_project(repo, {"tests/test_other.py": test})
+        write_policy_project(repo, {"tests/test_other.py": test})
 
         findings = violations(repo, CheckOptions(changed=True, select=("SMT430",)))
 
@@ -659,13 +651,13 @@ class TestChangedMode:
             + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
-        write_project(
+        write_policy_project(
             repo,
             {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "accept existing ordering")
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": "def _existing(): pass\ndef _new(): pass\ndef api(): pass\n"
@@ -687,13 +679,13 @@ class TestChangedMode:
             + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
-        write_project(
+        write_policy_project(
             repo,
             {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
         )
         options = CheckOptions(select=("SMT313",))
         baseline = Debt.from_violations(violations(repo, options), lambda _: "")
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": "def _existing(): pass\ndef _new(): pass\ndef api(): pass\n"
@@ -717,13 +709,13 @@ class TestChangedMode:
             + "\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n",
             encoding="utf-8",
         )
-        write_project(
+        write_policy_project(
             repo,
             {"app/application/service.py": "def _existing(): pass\ndef api(): pass\n"},
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "existing order")
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/application/service.py": "# comment\ndef _existing():\n    pass\n\n\ndef api():\n    pass\n"
@@ -741,10 +733,10 @@ class TestChangedMode:
             + "\nstyle:\n  overrides:\n    names: {match: app, private_modules: forbid}\n",
             encoding="utf-8",
         )
-        write_project(repo, {"app/domain/_legacy.py": ""})
+        write_policy_project(repo, {"app/domain/_legacy.py": ""})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "declare module naming convention")
-        write_project(repo, {"app/domain/_new.py": ""})
+        write_policy_project(repo, {"app/domain/_new.py": ""})
 
         found = violations(repo, CheckOptions(changed=True, select=("SMT312",)))
 
@@ -759,7 +751,7 @@ class TestChangedMode:
             + "\n  packages:\n    api: {match: app.domain, min_imports_to_bundle: 2}\nstyle:\n  overrides:\n    style: {match: app, imports: {style: absolute}}\n",
             encoding="utf-8",
         )
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/domain/one.py": "",
@@ -769,7 +761,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "declare import conventions")
-        write_project(
+        write_policy_project(
             repo, {"app/application/service.py": "from ..domain import one, two\n"}
         )
 
@@ -786,7 +778,7 @@ class TestChangedMode:
             + "\n  packages:\n    core: {match: app.domain, required: [api]}\n",
             encoding="utf-8",
         )
-        write_project(repo, {"app/domain/api.py": ""})
+        write_policy_project(repo, {"app/domain/api.py": ""})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "add package contract")
         (repo / "app/domain/api.py").unlink()
@@ -808,7 +800,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "declare public facade")
-        write_project(
+        write_policy_project(
             repo, {"app/application/service.py": "from app.infra import db\n"}
         )
 
@@ -821,14 +813,8 @@ class TestChangedMode:
     def test_existing_coverage_gaps_remain_visible_in_changed_mode(
         self, repo: Path
     ) -> None:
-        config = repo / "smelt.yml"
-        config.write_text(
-            config.read_text(encoding="utf-8").replace(
-                "root_packages: [app]", "root_packages: [app]\n  coverage: strict"
-            ),
-            encoding="utf-8",
-        )
-        write_project(repo, {"client/api.py": "VALUE = 1\n"})
+        add_rules(repo, {"architecture/uncovered-source": "error"})
+        write_policy_project(repo, {"client/api.py": "VALUE = 1\n"})
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "Existing coverage gap")
 
@@ -840,10 +826,10 @@ class TestChangedMode:
         self, tmp_path: Path
     ) -> None:
         _git(tmp_path, "init", "-q")
-        write_project(tmp_path, {"README.md": "Project\n"})
+        write_policy_project(tmp_path, {"README.md": "Project\n"})
         _git(tmp_path, "add", "README.md")
         _git(tmp_path, "commit", "-qm", "Readme")
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "smelt.yml": LAYERED_CONFIG,
@@ -868,7 +854,7 @@ class TestChangedMode:
             check(repo, CheckOptions(changed=True))
 
     def test_replacing_an_indirect_forbidden_target_is_new(self, repo: Path) -> None:
-        write_project(
+        write_policy_project(
             repo,
             {
                 "smelt.yml": LAYERED_CONFIG
@@ -881,7 +867,7 @@ class TestChangedMode:
         )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "Existing indirect violation")
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/__init__.py": "from app.presentation.api import Api\n",
@@ -915,7 +901,7 @@ class TestChangedMode:
         introduced: bool,
     ) -> None:
         def write_edges(edges: dict[str, str]) -> None:
-            write_project(
+            write_policy_project(
                 repo,
                 {
                     f"app/domain/{name}.py": f"from app.domain import {targets}\n"
@@ -937,7 +923,7 @@ class TestChangedMode:
     def test_pruning_a_growing_cycle_preserves_only_known_edges(
         self, repo: Path
     ) -> None:
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/domain/a.py": "from app.domain import b\n",
@@ -947,7 +933,7 @@ class TestChangedMode:
         )
         options = CheckOptions(select=("SMT104",))
         debt = Debt.from_violations(violations(repo, options), lambda v: "")
-        write_project(
+        write_policy_project(
             repo,
             {
                 "app/domain/b.py": "from app.domain import a, c\n",

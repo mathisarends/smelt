@@ -1,6 +1,11 @@
 version: 1
 rules:
   SMT104: error
+  architecture/layer-boundary: error
+  architecture/cross-feature-import: error
+  architecture/forbidden-third-party-import: error
+  architecture/shared-imports-feature: error
+  architecture/composition-root-leak: error
 
 project:
   root_packages: [gateway]
