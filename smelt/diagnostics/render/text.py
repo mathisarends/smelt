@@ -121,7 +121,7 @@ def _render(
         )
     if report.comparison and report.comparison.get("mode") == "staged":
         lines.append("Scope: staged Git index; new findings since the compared commit.")
-    if any((v.expected or {}).get("usage_scope") for v in shown):
+    if not style.concise and any((v.expected or {}).get("usage_scope") for v in shown):
         lines.append(
             "Usage limits: excluded files (including maintainer scripts), unselected "
             "packages and external/dynamic consumers were not assessed; review them before renaming."
@@ -129,6 +129,8 @@ def _render(
     if (
         report.coverage is not None
         and "complete" in report.coverage
+        # Concise output reports coverage only when it needs attention.
+        and not (style.concise and report.coverage["complete"])
         and (
             report.coverage.get("architecture_configured", True)
             or report.coverage.get("mode") == "strict"

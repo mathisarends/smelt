@@ -96,7 +96,7 @@ The catalog distinguishes three modes, independently of severity:
 | --- | --- |
 | `default` | SMT301, suppression/debt hygiene SMT901–SMT903, and missing required rule policy SMT904 |
 | `policy` | Explicit architecture/interface policies or real parameters such as import style, mirror layout, mock paths and patch limits |
-| `explicit` | Fixed source/test patterns, import cycles and architecture/unclassified-module hints; enable with `rules` or CLI selection |
+| `explicit` | Fixed source/test patterns, import cycles and architecture/unclassified-module findings; enable with `rules` or CLI selection |
 
 Declaring layer dependencies activates SMT101; `tests.layout: mirror` activates
 SMT401. An empty public list still declares a private API, and a patch limit of

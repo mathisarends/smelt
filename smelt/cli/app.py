@@ -108,12 +108,12 @@ def _add_check(sub: _Subparsers) -> None:
     scope.add_argument(
         "--changed",
         action="store_true",
-        help="only report violations introduced since HEAD (incl. uncommitted files)",
+        help="only report findings introduced since HEAD (incl. uncommitted files)",
     )
     scope.add_argument(
         "--staged",
         action="store_true",
-        help="only report violations introduced by the Git index since HEAD",
+        help="only report findings introduced by the Git index since HEAD",
     )
     check.add_argument(
         "--base",
@@ -134,7 +134,7 @@ def _add_check(sub: _Subparsers) -> None:
     check.add_argument(
         "--ignore",
         metavar="CODES",
-        help="skip rule names, groups, code prefixes or ALL; strict coverage remains mandatory",
+        help="skip rule names, families, code prefixes or ALL; strict coverage remains mandatory",
     )
     check.add_argument(
         "--show-hints",
@@ -144,7 +144,7 @@ def _add_check(sub: _Subparsers) -> None:
     check.add_argument(
         "--statistics",
         action="store_true",
-        help="show counts per rule instead of each violation",
+        help="show counts per rule instead of each finding",
     )
     check.add_argument("--no-color", action="store_true")
     check.add_argument(
@@ -167,7 +167,7 @@ def _add_check(sub: _Subparsers) -> None:
     check.add_argument(
         "--unsafe-fixes",
         action="store_true",
-        help="with --fix, also apply behavior-changing optional-default fixes",
+        help="with --fix, also apply fixes marked unsafe because they can change behavior",
     )
     check.add_argument(
         "--strict-coverage",

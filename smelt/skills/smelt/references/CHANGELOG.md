@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `smelt init --maintainability` lists every explicitly selectable rule. Rules
+  outside the starter selection appear commented out with their catalog
+  severity, and the starter contains a single `rules` block.
+- `--format concise` omits the usage-limits note and reports policy coverage
+  only when it is incomplete.
+- `smelt rules` explains that policy rules also run when listed under `rules:`.
+  CLI help uses "findings" and "families" consistently, and the hook examples
+  use `.pre-commit-config.yaml`, which both prek and pre-commit read.
+
 - Native checks keep waiting for a busy analyzer after five seconds. An idle or
   disconnected worker still falls back, with a five-minute limit on active requests.
 

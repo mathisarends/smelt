@@ -10,7 +10,7 @@ from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
 from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.patterns import module_matches, module_prefixes
-from smelt.diagnostics.violation import Category, Severity
+from smelt.diagnostics.violation import Category
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 from smelt.rules.registry import build_rule_set
 
@@ -615,15 +615,20 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
         )
     if maintainability:
         out.extend(["", *maintainability_rules()])
+    else:
+        out.extend(
+            [
+                "",
+                "# Enable individual checks by name: error | warning | hint | on | off",
+                "# rules:",
+                "#   architecture/import-cycle: error  # opt in to import-cycle detection",
+                "#   architecture/unclassified-module: warning  # opt in to unclassified-module findings",
+            ]
+        )
     out.extend(
         [
             "",
-            "# Enable individual checks by name: error | warning | hint | on | off",
-            "# rules:",
-            "#   architecture/import-cycle: error  # opt in to import-cycle detection",
-            "#   architecture/unclassified-module: warning  # opt in to unclassified-module hints",
-            "",
-            "# Adopt incrementally: `smelt debt` records today's violations.",
+            "# Adopt incrementally: `smelt debt` records today's findings.",
             "# debt: .smelt/debt.json",
         ]
     )
@@ -634,7 +639,7 @@ def maintainability_rules() -> list[str]:
     """Render a fixed list of named starter choices using current catalog metadata."""
     catalog = build_rule_set(lazy=True).rules
     lines = [
-        "# Each named check is explicit; review optional hints before enabling.",
+        "# Each named check is explicit; review the commented checks before enabling them.",
         "rules:",
     ]
     for family in Category:
@@ -645,10 +650,10 @@ def maintainability_rules() -> list[str]:
             severity = rule.default_severity
             if rule.code in _STARTER_RULES:
                 family_lines.append(f"  {rule.name}: {severity.value}")
-            elif (
-                severity is Severity.HINT and getattr(rule, "activation", None) is None
+            elif getattr(rule, "activation", None) is None and not getattr(
+                rule, "enabled_by_default", False
             ):
-                family_lines.append(f"  # {rule.name}: hint")
+                family_lines.append(f"  # {rule.name}: {severity.value}")
         if family_lines:
             lines.extend([f"  # {family.value}", *family_lines])
     return lines

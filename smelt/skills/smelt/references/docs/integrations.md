@@ -44,7 +44,7 @@ can affect unchanged modules. Keep `always_run: true` in local hook definitions
 when using [shared configuration](configuration.md#shared-local-policy).
 
 Install [prek](https://prek.j178.dev/installation/) and add the hook to
-`.pre-commit-config.yml`:
+`.pre-commit-config.yaml`:
 
 ```yaml
 repos:
@@ -90,9 +90,10 @@ cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
 own `.gitignore`; cache files should not enter commits.
 
 prek uses the [pre-commit hook format](https://pre-commit.com/#creating-new-hooks).
-The published `.pre-commit-hooks.yaml` manifest keeps the required filename;
-project configuration uses `.pre-commit-config.yml`. Existing upstream pre-commit
-integrations can continue using the same published hooks.
+The published `.pre-commit-hooks.yaml` manifest keeps the required filename.
+prek and pre-commit both read `.pre-commit-config.yaml`; prek also accepts
+`.yml`. Existing upstream pre-commit integrations can continue using the same
+published hooks.
 
 
 ## GitHub Actions

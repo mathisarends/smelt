@@ -6,7 +6,7 @@ For the schema 1 to 2 transition, see the [upgrade checklist and parser example]
 
 Most rules are opt-in. Smelt enables declared architecture/package/test policies
 without a second switch; only architecture/unknown-layer and suppression/debt diagnostics run
-by default. Import cycles and architecture/unclassified-module hints require explicit selection.
+by default. Import cycles and architecture/unclassified-module findings require explicit selection.
 See [rule activation and migration](rule-selection.md) and the
 [full catalog](rules/README.md) for the decisions and precedence rules.
 
@@ -114,6 +114,8 @@ Text and concise output list a repair repeated verbatim by several findings of
 one rule once, below the findings; JSON keeps the hint on every finding.
 Projects without architecture configuration have no policy-completeness banner
 unless strict coverage is requested. Coverage checks and exit codes still apply.
+Concise output omits usage limits and shows the policy-coverage line only when
+coverage is incomplete.
 
 Shared SMT426 helper findings add `shared_helper` groups with the helper identity,
 the exact operation location, one repair and every affected test/call line. Text

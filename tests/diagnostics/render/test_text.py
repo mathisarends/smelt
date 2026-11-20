@@ -306,6 +306,23 @@ class TestSummary:
         clean_report.coverage = {**clean_report.coverage, "mode": "strict"}
         assert "Policy coverage: incomplete" in render_text(clean_report, read_line)
 
+    def test_concise_reports_coverage_only_when_incomplete(
+        self, clean_report: Report
+    ) -> None:
+        clean_report.coverage = {"complete": True, "mode": "strict", "counts": {}}
+        assert "Policy coverage" not in render_concise(clean_report)
+        assert "Policy coverage: complete" in render_text(clean_report, read_line)
+        clean_report.coverage = {**clean_report.coverage, "complete": False}
+        assert "Policy coverage: incomplete" in render_concise(clean_report)
+
+    def test_concise_omits_usage_limits(self, report: Report) -> None:
+        report.violations = [
+            replace(report.violations[0], expected={"usage_scope": {"files": 1}})
+        ]
+
+        assert "Usage limits" not in render_concise(report)
+        assert "Usage limits" in render_text(report, read_line)
+
     def test_clean_report_lists_the_categories(self, clean_report: Report) -> None:
         assert render_text(clean_report, read_line) == (
             "✓ architecture ✓ layout · 4 modules\n"
