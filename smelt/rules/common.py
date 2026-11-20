@@ -22,13 +22,6 @@ def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:
     )
 
 
-def package_api_imports(ctx: AnalysisContext) -> Iterator[tuple[str, ImportDetail]]:
-    """Source and test callers for package API policy, without widening layer checks."""
-    for detail in ctx.imports.all_imports():
-        yield ctx.files.sources[detail.importer].path, detail
-    yield from ctx.imports.imports_in_tests(ctx.syntax)
-
-
 def boundary_imports(
     ctx: AnalysisContext,
 ) -> Iterator[tuple[ImportDetail, tuple[ImportLink, ...]]]:

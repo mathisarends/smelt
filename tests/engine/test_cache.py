@@ -197,6 +197,33 @@ def test_warm_test_imports_do_not_parse_unchanged_tests(
         ]
 
 
+def test_attribute_candidates_reuse_unchanged_content_and_refresh_line_numbers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = "app/api.py"
+    source = "def call(obj):\n    return obj._api.chat.send()\n"
+    write_project(tmp_path, {"smelt.yml": CONFIG, "app/__init__.py": "", path: source})
+    config = load_config(tmp_path / "smelt.yml").config
+
+    def lines() -> tuple[tuple[int, ...], tuple[int, ...]]:
+        with closing(FactCache(tmp_path / ".smelt_cache")) as cache:
+            ctx = AnalysisContext(tmp_path, config, cache=cache)
+            candidates = ctx.syntax.attribute_candidates(path)
+            return candidates.private, candidates.navigation
+
+    assert lines() == ((2,), (2,))
+    with monkeypatch.context() as patch:
+
+        def unexpected(*args: object) -> None:
+            pytest.fail("unchanged attribute candidates were parsed again")
+
+        patch.setattr(AstCache, "parse", unexpected)
+        assert lines() == ((2,), (2,))
+
+    (tmp_path / path).write_text("\n" + source, encoding="utf-8")
+    assert lines() == ((3,), (3,))
+
+
 def test_corrupt_cache_falls_back_to_full_analysis(tmp_path: Path) -> None:
     write_project(
         tmp_path,

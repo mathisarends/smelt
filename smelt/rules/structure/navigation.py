@@ -11,6 +11,8 @@ from smelt.rules.base import Rule, RuleDoc
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.syntax import AttributeCandidates
+
 
 class DeepObjectNavigation(Rule):
     code = "SMT322"
@@ -48,7 +50,12 @@ class DeepObjectNavigation(Rule):
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         namespaces = NavigationNamespaces(ctx.syntax, ctx.files)
         for source in ctx.files.sources.values():
-            for cls, method, receiver in _instance_methods(ctx.asts.parse(source.path)):
+            candidates = ctx.syntax.attribute_candidates(source.path)
+            if not candidates.navigation:
+                continue
+            for cls, method, receiver in _instance_methods(
+                ctx.asts.parse(source.path), candidates
+            ):
                 for statement in method.body:
                     for call, attributes in _calls(statement, receiver):
                         evidence = namespaces.assess(source.module, cls, attributes)
@@ -86,6 +93,7 @@ class DeepObjectNavigation(Rule):
 
 def _instance_methods(
     tree: ast.Module,
+    candidates: AttributeCandidates,
 ) -> Iterator[tuple[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef, str]]:
     for cls in ast.walk(tree):
         if not isinstance(cls, ast.ClassDef):
@@ -95,7 +103,8 @@ def _instance_methods(
                 continue
             args = [*method.args.posonlyargs, *method.args.args]
             if (
-                method.decorator_list
+                not candidates.may_navigate(method)
+                or method.decorator_list
                 or method.name in {"__new__", "__init_subclass__", "__class_getitem__"}
                 or not args
             ):

@@ -49,30 +49,39 @@ class PrivateAttributeIndex:
         self._members_cache: dict[str, dict[str, _Member]] = {}
 
     def accesses(self, module: ModuleSyntax) -> Iterator[PrivateAttributeAccess]:
-        yield from self._scope(module.module, module.tree.body, {}, module_scope=True)
+        if self._syntax.attribute_candidates(module.path).private:
+            yield from self._scope(module, module.tree.body, {}, module_scope=True)
 
     def _scope(
         self,
-        module: str,
+        syntax: ModuleSyntax,
         body: list[ast.stmt],
         env: dict[str, _Value],
         *,
         owner: ast.ClassDef | None = None,
         module_scope: bool = False,
     ) -> Iterator[PrivateAttributeAccess]:
+        module = syntax.module
+        candidates = self._syntax.attribute_candidates(syntax.path)
         writes = _writes(_scope_nodes(body))
         blocked = set(writes) | env.keys()
         if module_scope:
             blocked -= self._bindings(module).keys()
         for statement in body:
+            has_access = candidates.may_access_private(statement)
             if isinstance(statement, ast.ClassDef):
-                yield from self._scope(module, statement.body, {}, owner=statement)
+                if has_access:
+                    yield from self._scope(syntax, statement.body, {}, owner=statement)
                 continue
             if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
-                parameters = self._function_env(module, statement, owner)
-                yield from self._scope(module, statement.body, parameters)
+                if has_access:
+                    parameters = self._function_env(module, statement, owner)
+                    yield from self._scope(syntax, statement.body, parameters)
                 continue
-            yield from self._statement_accesses(module, statement, env, blocked=blocked)
+            if has_access:
+                yield from self._statement_accesses(
+                    module, statement, env, blocked=blocked
+                )
             for target in _targets(statement):
                 if not isinstance(target, ast.Name) or writes[target.id] != 1:
                     continue
