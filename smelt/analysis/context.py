@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.coverage import CoverageIndex
     from smelt.analysis.files import FileIndex, SourceFile
-    from smelt.analysis.imports import ImportIndex
+    from smelt.analysis.imports import ImportDetail, ImportIndex
     from smelt.analysis.members import MemberUsageIndex
     from smelt.analysis.ordering import DefinitionOrderIndex
     from smelt.analysis.parsing import AstCache
@@ -139,6 +139,17 @@ class AnalysisContext:
         from smelt.analysis.imports import ImportIndex  # noqa: PLC0415
 
         return ImportIndex.build(self.files, self.asts, cache=self.cache)
+
+    @cached_property
+    def package_api_imports(self) -> tuple[tuple[str, ImportDetail], ...]:
+        """Source and test callers shared by all package API policies."""
+        sources = self.files.sources
+        callers = [
+            (sources[detail.importer].path, detail)
+            for detail in self.imports.all_imports()
+        ]
+        callers.extend(self.imports.imports_in_tests(self.syntax))
+        return tuple(callers)
 
     @cached_property
     def syntax(self) -> SyntaxIndex:

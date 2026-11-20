@@ -10,7 +10,7 @@ from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, package_api_imports, skip_import
+from smelt.rules.common import import_violation, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -66,7 +66,7 @@ class PackageImportFanout(Rule):
             if threshold is None:
                 continue
             callers: dict[str, dict[str, ImportDetail]] = defaultdict(dict)
-            for path, detail in package_api_imports(ctx):
+            for path, detail in ctx.package_api_imports:
                 if (
                     detail.external
                     or skip_import(ctx, detail)

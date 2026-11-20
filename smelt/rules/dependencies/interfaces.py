@@ -9,7 +9,7 @@ from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, join, package_api_imports, skip_import
+from smelt.rules.common import import_violation, join, skip_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -54,7 +54,7 @@ class PrivateModuleImport(Rule):
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         if not any(contract.public is not None for contract in ctx.contracts.resolved):
             return
-        for path, detail in package_api_imports(ctx):
+        for path, detail in ctx.package_api_imports:
             if detail.external or skip_import(ctx, detail):
                 continue
             for target in _module_targets(ctx, detail):

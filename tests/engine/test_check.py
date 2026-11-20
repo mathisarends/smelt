@@ -5,9 +5,12 @@ import subprocess
 import sys
 import textwrap
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
+from smelt.analysis.imports import ImportIndex
+from smelt.analysis.module_symbols import internal_module_symbols
 from smelt.config import ConfigError
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from smelt.diagnostics.violation import Severity
@@ -529,3 +532,38 @@ class TestDebt:
         )
 
         assert [v.code for v in violations(root)] == ["SMT903"]
+
+
+def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) -> None:
+    root = write_project(
+        tmp_path,
+        {
+            "smelt.yml": (
+                "version: 1\nproject: {root_packages: [app]}\n"
+                "architecture:\n  packages:\n"
+                "    api: {match: app.api, public: ['.'], min_imports_to_bundle: 2}\n"
+            ),
+            "app/__init__.py": "",
+            "app/api/__init__.py": "",
+            "app/api/models.py": "LIMIT = 1\n",
+            "tests/test_api.py": "from app.api.models import LIMIT\n",
+        },
+    )
+    with (
+        patch.object(
+            ImportIndex,
+            "imports_in_tests",
+            autospec=True,
+            side_effect=ImportIndex.imports_in_tests,
+        ) as test_imports,
+        patch(
+            "smelt.rules.structure.module_symbols.internal_module_symbols",
+            wraps=internal_module_symbols,
+        ) as symbols,
+    ):
+        found = violations(root, CheckOptions(select=("SMT107", "SMT108", "SMT320")))
+    assert any(
+        item.code == "SMT107" and item.path == "tests/test_api.py" for item in found
+    )
+    test_imports.assert_called_once()
+    symbols.assert_called_once()
