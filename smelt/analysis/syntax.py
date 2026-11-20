@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from bisect import bisect_left
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -15,6 +16,50 @@ if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex, SourceFile
 
 _NAMESPACE = TypeAdapter(Namespace)
+
+
+@dataclass(frozen=True, slots=True)
+class AttributeCandidates:
+    """Line ranges can rule out a scope before resolving cross-module types."""
+
+    private: tuple[int, ...]
+    navigation: tuple[int, ...]
+
+    def may_access_private(self, statement: ast.stmt) -> bool:
+        return self._contains(self.private, statement)
+
+    def may_navigate(self, statement: ast.stmt) -> bool:
+        return self._contains(self.navigation, statement)
+
+    @classmethod
+    def from_tree(cls, tree: ast.Module) -> AttributeCandidates:
+        private: set[int] = set()
+        navigation: set[int] = set()
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Attribute)
+                and node.attr.startswith("_")
+                and not (node.attr.startswith("__") and node.attr.endswith("__"))
+            ):
+                private.add(node.lineno)
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Attribute)
+                and isinstance(node.func.value.value, ast.Attribute)
+            ):
+                navigation.add(node.lineno)
+        return cls(tuple(sorted(private)), tuple(sorted(navigation)))
+
+    @staticmethod
+    def _contains(lines: tuple[int, ...], statement: ast.stmt) -> bool:
+        index = bisect_left(lines, statement.lineno)
+        return index < len(lines) and lines[index] <= (
+            statement.end_lineno or statement.lineno
+        )
+
+
+_ATTRIBUTES = TypeAdapter(AttributeCandidates)
 
 
 @dataclass
@@ -47,6 +92,7 @@ class SyntaxIndex:
         self._asts = asts
         self.cache = cache
         self._by_path: dict[str, ModuleSyntax] = {}
+        self._attributes: dict[str, AttributeCandidates] = {}
         self._namespaces: dict[str, Namespace | None] = {}
 
     def for_path(self, path: str) -> ModuleSyntax | None:
@@ -65,6 +111,24 @@ class SyntaxIndex:
         _collect_bindings(syntax)
         self._by_path[path] = syntax
         return syntax
+
+    def attribute_candidates(self, path: str) -> AttributeCandidates:
+        if path not in self._attributes:
+
+            def build() -> AttributeCandidates:
+                return AttributeCandidates.from_tree(self._asts.parse(path))
+
+            self._attributes[path] = (
+                build()
+                if self.cache is None
+                else self.cache.get(
+                    "attribute-candidates",
+                    self.files.content_id(path),
+                    _ATTRIBUTES,
+                    build=build,
+                )
+            )
+        return self._attributes[path]
 
     def namespace(self, module: str) -> Namespace | None:
         """Module bindings for ``analysis.exports``; namespaces have no initializer bindings."""
