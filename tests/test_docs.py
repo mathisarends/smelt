@@ -6,8 +6,6 @@ import sys
 import tomllib
 from pathlib import Path
 
-import pytest
-
 from smelt.config.schema import SCHEMA_ID
 from smelt.diagnostics.violation import DOCS_BASE_URL
 from smelt.docs import (
@@ -60,14 +58,10 @@ class TestReleaseMetadata:
 
 
 class TestGeneratedFiles:
-    @pytest.mark.parametrize("name", sorted(_generated_files()))
-    def test_committed_file_is_current(self, name: str) -> None:
-        path = ROOT / name
+    def test_committed_files_are_current(self) -> None:
+        stale = check_generated_files(ROOT)
 
-        assert path.is_file(), f"run `uv run python scripts/generate.py` to add {name}"
-        assert path.read_text(encoding="utf-8") == _generated_files()[name], (
-            f"{name} is stale; run `uv run python scripts/generate.py`"
-        )
+        assert stale == [], "run `uv run python scripts/generate.py`"
 
     def test_writing_twice_changes_nothing(self, tmp_path: Path) -> None:
         write_generated_files(tmp_path)

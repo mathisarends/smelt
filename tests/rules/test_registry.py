@@ -57,21 +57,14 @@ class TestBuiltins:
             implementations ^ registered,
         )
 
-    @pytest.mark.parametrize("rule", build_rule_set().rules, ids=lambda rule: rule.code)
-    def test_catalog_contract(self, rule: Rule) -> None:
-        assert re.fullmatch(rf"{_CODE_PREFIXES[rule.category]}\d{{3}}", rule.code)
-        family, _, finding = rule.name.partition("/")
-        assert family == rule.category.value, "a rule name starts with its family"
-        assert re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", finding)
-        assert not finding.startswith(_RETIRED_QUALIFIERS), rule.name
-        assert isinstance(rule.default_severity, Severity)
-        assert isinstance(rule.requires, frozenset)
-        assert all(isinstance(index, Index) for index in rule.requires)
-        doc = rule.explain()
-        for value in (doc.summary, doc.rationale, doc.bad, doc.good, doc.fix):
-            assert value.strip(), f"{rule.code} needs complete RuleDoc content"
-        for path in doc.config:
-            assert path.split(".")[0] in SmeltConfig.model_fields, path
+    def test_every_rule_meets_the_catalog_contract(self) -> None:
+        problems = [
+            f"{rule.code}: {problem}"
+            for rule in build_rule_set().rules
+            for problem in _catalog_problems(rule)
+        ]
+
+        assert problems == []
 
     def test_codes_are_unique(self) -> None:
         codes = [rule.code for rule in build_rule_set().rules]
@@ -152,3 +145,33 @@ assert 'smelt.analysis.test_syntax' not in sys.modules
         timeout=20,
     )
     assert completed.returncode == 0, completed.stderr
+
+
+def _catalog_problems(rule: RuleContract) -> list[str]:
+    family, _, finding = rule.name.partition("/")
+    doc = rule.explain()
+    checks = {
+        "code must be the family prefix and three digits": re.fullmatch(
+            rf"{_CODE_PREFIXES[rule.category]}\d{{3}}", rule.code
+        ),
+        "name must start with its family": family == rule.category.value,
+        "finding must be kebab-case": re.fullmatch(
+            r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", finding
+        ),
+        "finding must not use a retired qualifier": not finding.startswith(
+            _RETIRED_QUALIFIERS
+        ),
+        "default severity must be a Severity": isinstance(
+            rule.default_severity, Severity
+        ),
+        "requires must be a frozenset of Index": isinstance(rule.requires, frozenset)
+        and all(isinstance(index, Index) for index in rule.requires),
+        "RuleDoc needs summary, rationale, bad, good and fix": all(
+            value.strip()
+            for value in (doc.summary, doc.rationale, doc.bad, doc.good, doc.fix)
+        ),
+        "config paths must name SmeltConfig fields": all(
+            path.split(".")[0] in SmeltConfig.model_fields for path in doc.config
+        ),
+    }
+    return [message for message, passed in checks.items() if not passed]
