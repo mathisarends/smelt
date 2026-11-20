@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
-from smelt.config.models import ALL_RULES, LIMIT_RULES, RuleOverride
+from smelt.config.models import ALL_RULES, LIMIT_RULES, POLICY_DEFAULTS, RuleOverride
 from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
@@ -27,6 +27,7 @@ _LIMIT_CODES = dict(LIMIT_RULES.values())
 # The comprehension limit counts for clauses, so a comprehension has at least one.
 _MINIMUM_MAX = {"CPX006": 1}
 _PATCH_LIMIT = LIMIT_RULES["max_patches_per_test"][0]
+_LIMIT_OPTIONS = {code: option for option, (code, _) in LIMIT_RULES.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +49,56 @@ class _Setting:
         if inherited is None:
             return None
         return min(inherited, self.value, key=_RANK.__getitem__)
+
+
+type RuleState = Literal["on", "scoped", "off", "needs policy"]
+
+
+@dataclass(frozen=True, slots=True)
+class RuleStatus:
+    """Whether a rule runs for the whole project, and at which severity."""
+
+    state: RuleState
+    severity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuleUsage:
+    """How to enable a rule, which options configure it and what it requires."""
+
+    enable: str
+    options: tuple[str, ...]
+    requires: str | None
+
+
+def rule_usage(rule: RuleContract) -> RuleUsage:
+    """The rules entry that enables ``rule``, its options and required policy."""
+    severity = rule.default_severity.value
+    options = []
+    if (option := _LIMIT_OPTIONS.get(rule.code)) is not None:
+        default = getattr(POLICY_DEFAULTS, option, None)
+        options.append(
+            f"max (default {default})" if default is not None else "max (required)"
+        )
+        enable = f"rules: {{{rule.name}: {{severity: {severity}, max: {default if default is not None else '<n>'}}}}}"
+    else:
+        enable = f"rules: {{{rule.name}: {severity}}}"
+    if getattr(rule, "enabled_by_default", False):
+        enable = f"on by default; turn it off with rules: {{{rule.name}: off}}"
+    options.extend(key for key in rule.explain().config if key != "rules")
+    activation = getattr(rule, "activation", None)
+    requires = activation.description if activation and activation.required else None
+    return RuleUsage(enable, tuple(options), requires)
+
+
+def catalog_status(rule: RuleContract) -> RuleStatus:
+    """The status of ``rule`` without a configuration."""
+    if getattr(rule, "enabled_by_default", False):
+        return RuleStatus("on", rule.default_severity.value)
+    activation = getattr(rule, "activation", None)
+    return RuleStatus(
+        "needs policy" if activation is not None and activation.required else "off"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,6 +291,23 @@ class RuleSettings:
             raise ConfigError(issues, self.source)
         self._validate_member_overrides(ctx)
         self._validate_scoped_selectors(ctx)
+
+    def status(self, rule: RuleContract) -> RuleStatus:
+        """Whether ``rule`` runs project-wide, only in some scopes, or not at all."""
+        value = self.global_value(rule)
+        if value not in (None, "off"):
+            return RuleStatus("on", value)
+        if self.has_package_activation(rule.code):
+            return RuleStatus("scoped")
+        activation = getattr(rule, "activation", None)
+        if (
+            value is None
+            and activation is not None
+            and activation.required
+            and not activation.matches(self.config)
+        ):
+            return RuleStatus("needs policy")
+        return RuleStatus("off")
 
     def has_explicit_activation(self, code: str) -> bool:
         """Whether a named setting anywhere can enable the rule."""
