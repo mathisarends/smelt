@@ -4,17 +4,22 @@ import ast
 import re
 from collections import Counter, deque
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import yaml
+from pydantic import ValidationError
 
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
 from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
+from smelt.config.models import SmeltConfig
 from smelt.config.patterns import module_matches, module_prefixes
 from smelt.diagnostics.violation import Category
 from smelt.engine.mirror_inference import DEFAULT_MIRROR, MirrorGuess, infer_mirror
 from smelt.rules.registry import build_rule_set
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from smelt.analysis.exports import Loader
@@ -613,18 +618,11 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
         out.append(
             f"  # {guess.mirrored} of {guess.total} test files match this mirror pattern; review before enforcing it."
         )
+    policies = policy_rules(yaml.safe_load("\n".join(out)))
     if maintainability:
-        out.extend(["", *maintainability_rules()])
+        out.extend(["", *maintainability_rules(policies)])
     else:
-        out.extend(
-            [
-                "",
-                "# Enable individual checks by name: error | warning | hint | on | off",
-                "# rules:",
-                "#   architecture/import-cycle: error  # opt in to import-cycle detection",
-                "#   architecture/unclassified-module: warning  # opt in to unclassified-module findings",
-            ]
-        )
+        out.extend(["", *_rules_block(policies)])
     out.extend(
         [
             "",
@@ -635,17 +633,41 @@ def render_config(inferred: InferredConfig, *, maintainability: bool = False) ->
     return "\n".join(out) + "\n"
 
 
-def maintainability_rules() -> list[str]:
+def policy_rules(*drafts: Mapping[str, Any]) -> list[str]:
+    """Rules entries for the policies the drafts declare; a policy enables nothing itself."""
+    configs = []
+    for draft in drafts:
+        try:
+            configs.append(
+                SmeltConfig.model_validate({"version": 1, "project": {}, **draft})
+            )
+        except ValidationError:
+            continue
+    return [
+        f"{rule.name}: {rule.default_severity.value}"
+        for rule in build_rule_set(lazy=True).rules
+        if (activation := getattr(rule, "activation", None)) is not None
+        and not getattr(rule, "enabled_by_default", False)
+        and any(activation.matches(config) for config in configs)
+    ]
+
+
+def maintainability_rules(policies: Sequence[str] = ()) -> list[str]:
     """Render a fixed list of named starter choices using current catalog metadata."""
     catalog = build_rule_set(lazy=True).rules
     lines = [
         "# Each named check is explicit; review the commented checks before enabling them.",
         "rules:",
     ]
+    if policies:
+        lines.extend(
+            ["  # checks for the policies above", *(f"  {entry}" for entry in policies)]
+        )
+    enabled = {entry.split(":", 1)[0] for entry in policies}
     for family in Category:
         family_lines = []
         for rule in catalog:
-            if rule.category is not family:
+            if rule.category is not family or rule.name in enabled:
                 continue
             severity = rule.default_severity
             if rule.code in _STARTER_RULES:
@@ -657,6 +679,22 @@ def maintainability_rules() -> list[str]:
         if family_lines:
             lines.extend([f"  # {family.value}", *family_lines])
     return lines
+
+
+def _rules_block(policies: Sequence[str]) -> list[str]:
+    examples = (
+        "architecture/import-cycle: error  # opt in to import-cycle detection",
+        "architecture/unclassified-module: warning  # opt in to unclassified-module findings",
+    )
+    header = "# Enable individual checks by name: error | warning | hint | on | off"
+    if not policies:
+        return [header, "# rules:", *(f"#   {entry}" for entry in examples)]
+    return [
+        header,
+        "rules:",
+        *(f"  {entry}" for entry in policies),
+        *(f"  # {entry}" for entry in examples),
+    ]
 
 
 def _loader(packages: list[Path]) -> Loader:

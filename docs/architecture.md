@@ -146,8 +146,9 @@ to verify placement and import boundaries.
 ## Strict policy coverage
 
 
-Enable `project.coverage: strict`, or use `smelt check --strict-coverage`, to fail
-when production source escapes package selection or has no architecture role.
+Enable `architecture/uncovered-source` in the root `rules`, or use
+`smelt check --strict-coverage`, to fail when production source escapes package
+selection or has no architecture role.
 Folder names, layer names and frameworks come from your policy. Flat libraries,
 feature-only architectures and custom layers work without adopting a DDD layout.
 Outside uv workspaces, declare the relevant import roots in `source_roots`.
@@ -161,10 +162,11 @@ in `tool.uv.workspace.exclude` do not hide source from this inventory.
 project:
   root_packages: [backend, client]
   source_roots: [backend/src, libs/client/src]
-  coverage: strict
   exclude:
     - path: "libs/client/src/client/generated/**"
       reason: "Generated SDK; regeneration and drift are checked separately."
+rules:
+  architecture/uncovered-source: error
 ```
 
 Each discovered source has one status:

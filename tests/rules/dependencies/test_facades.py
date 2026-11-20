@@ -8,7 +8,7 @@ from smelt.config.errors import ConfigError
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,7 +33,7 @@ def test_canonical_export_uses_static_identity_and_leaves_unowned_symbols_visibl
         "architecture:\n  canonical_exports: {app.browser.bridge.Events: app.Events}\n",
     )
     root = _project(tmp_path, config=config)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "from .browser.bridge import Events\n__all__ = ['Events']\n",
@@ -41,7 +41,7 @@ def test_canonical_export_uses_static_identity_and_leaves_unowned_symbols_visibl
         },
     )
     assert violations(root, OPTIONS) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "app/browser/base.py": "class Browser: pass\nclass BrowserEvents: pass\nclass Shared: pass\n",
@@ -91,7 +91,7 @@ def test_invalid_canonical_exports_are_actionable_config_errors(
             f"architecture:\n  canonical_exports: {{{symbol}: {export}}}\n",
         ),
     )
-    write_project(root, {"app/__init__.py": root_source})
+    write_policy_project(root, {"app/__init__.py": root_source})
     with pytest.raises(ConfigError, match="canonical_exports"):
         violations(root, OPTIONS)
 
@@ -104,7 +104,7 @@ def test_conflicting_ownership_through_alias_keys_is_rejected(tmp_path: Path) ->
             "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events, app.browser.bridge.Events: app.browser.Events}\n",
         ),
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "from .browser.base import BrowserEvents as Events\n",
@@ -126,11 +126,11 @@ def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_ru
             "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
         ),
     )
-    write_project(
+    write_policy_project(
         root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
     )
     assert violations(root, OPTIONS) == []
-    write_project(root, {"app/__init__.py": ""})
+    write_policy_project(root, {"app/__init__.py": ""})
     with pytest.raises(ConfigError, match="verified public export"):
         violations(root, CheckOptions(select=("SMT901",)))
 
@@ -143,7 +143,7 @@ def test_canonical_ownership_does_not_relax_package_public_boundaries(
         "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
     ).replace("min_importers_to_export: 3", "min_importers_to_export: 3, public: ['.']")
     root = _project(tmp_path, config=config)
-    write_project(
+    write_policy_project(
         root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
     )
     found = violations(root, CheckOptions(select=("SMT107", "SMT109")))
@@ -153,7 +153,7 @@ def test_canonical_ownership_does_not_relax_package_public_boundaries(
 
 def test_facade_importer_context_distinguishes_workspace_roots(tmp_path: Path) -> None:
     root = _project(tmp_path, config=CONFIG.replace("[app]", "[app, other]"))
-    write_project(root, {"other/__init__.py": "", "other/client.py": CLIENT})
+    write_policy_project(root, {"other/__init__.py": "", "other/client.py": CLIENT})
     [finding] = violations(root, OPTIONS)
     assert finding.expected is not None
     assert finding.expected["same_root_importers"] == [
@@ -175,7 +175,7 @@ def test_canonical_ownership_does_not_disable_concrete_cycle_checks(
         + "  import_graph: {cycles: [modules]}\n"
     )
     root = _project(tmp_path, config=config)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "from .browser.base import BrowserEvents as Events\n",
@@ -194,7 +194,7 @@ def _project(
     config: str = CONFIG,
     exports: str = "from .base import Browser\n",
 ) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -240,7 +240,7 @@ def test_repeated_aliases_and_local_or_relative_imports_count_distinct_modules(
     tmp_path: Path,
 ) -> None:
     root = _project(tmp_path)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/first.py": "from .browser.base import BrowserEvents as Events\n" * 3,
@@ -250,7 +250,7 @@ def test_repeated_aliases_and_local_or_relative_imports_count_distinct_modules(
         },
     )
     assert violations(root, OPTIONS) == []
-    write_project(root, {"app/third.py": CLIENT})
+    write_policy_project(root, {"app/third.py": CLIENT})
     [finding] = violations(root, OPTIONS)
     assert finding.expected is not None
     assert finding.expected["count"] == 3
@@ -267,7 +267,7 @@ def test_tests_only_drive_the_threshold_when_explicitly_requested(
             f"min_importers_to_export: 3, count_tests: {str(count_tests).lower()}",
         ),
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/third.py": "",
@@ -291,7 +291,7 @@ def test_type_checking_only_imports_never_drive_api_expansion(
         tmp_path,
         config=CONFIG + f"  import_graph: {{type_checking: {policy}}}\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/third.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.browser.base import BrowserEvents\n"
@@ -314,7 +314,7 @@ def test_private_star_module_and_facade_imports_do_not_create_gap_findings(
     tmp_path: Path, client: str
 ) -> None:
     root = _project(tmp_path)
-    write_project(
+    write_policy_project(
         root, {f"app/{name}.py": client for name in ("first", "second", "third")}
     )
     assert violations(root, OPTIONS) == []
@@ -339,7 +339,9 @@ def test_exported_conflicting_and_uncertain_facade_bindings_are_preserved(
     tmp_path: Path, exports: str
 ) -> None:
     root = _project(tmp_path, exports="from .base import Browser\n" + exports)
-    write_project(root, {"app/browser/api.py": "from .base import BrowserEvents\n"})
+    write_policy_project(
+        root, {"app/browser/api.py": "from .base import BrowserEvents\n"}
+    )
     assert violations(root, OPTIONS) == []
 
 
@@ -361,7 +363,7 @@ def test_reexport_provenance_aggregates_aliases_and_shows_other_facades(
     tmp_path: Path,
 ) -> None:
     root = _project(tmp_path)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/other/__init__.py": "from app.browser.base import BrowserEvents as Events\n",
@@ -393,7 +395,9 @@ def test_unknown_cyclic_and_rebound_provenance_is_not_a_definition(
     tmp_path: Path, definition: str
 ) -> None:
     root = _project(tmp_path)
-    write_project(root, {"app/browser/base.py": "class Browser: pass\n" + definition})
+    write_policy_project(
+        root, {"app/browser/base.py": "class Browser: pass\n" + definition}
+    )
     assert violations(root, OPTIONS) == []
 
 
@@ -409,7 +413,7 @@ def test_cycle_check_reports_an_internal_return_path_even_without_external_depen
     root = _project(
         tmp_path, exports="from .common import Marker\nfrom .base import Browser\n"
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/browser/base.py": "from .helper import Marker\nclass Browser: pass\nclass BrowserEvents: pass\n",
@@ -453,7 +457,7 @@ def test_warm_and_uncached_results_follow_callers_exports_and_deleted_definition
         ({"app/browser/__init__.py": "from .base import Browser\n"}, 1),
         ({"app/browser/base.py": "class Browser: pass\n"}, 0),
     ):
-        write_project(root, updates)
+        write_policy_project(root, updates)
         warm = violations(root, OPTIONS)
         fresh = violations(root, CheckOptions(select=("SMT109",), use_cache=False))
         assert warm == fresh
@@ -466,7 +470,7 @@ def test_recorded_gap_does_not_hide_a_new_symbol_or_importer(tmp_path: Path) -> 
     root = _project(tmp_path)
     [old] = violations(root, OPTIONS)
     debt = Debt.from_violations([old], lambda _finding: "")
-    write_project(root, {"app/fourth.py": CLIENT})
+    write_policy_project(root, {"app/fourth.py": CLIENT})
     [expanded] = violations(root, OPTIONS)
     new, known, _ = debt.match([expanded], lambda _finding: "")
     assert new == [expanded]
@@ -474,7 +478,7 @@ def test_recorded_gap_does_not_hide_a_new_symbol_or_importer(tmp_path: Path) -> 
     assert known[0].expected is not None
     assert old.expected is not None
     assert known[0].expected["export_edges"] == old.expected["export_edges"]
-    write_project(
+    write_policy_project(
         root,
         {
             "app/browser/base.py": "class Browser: pass\nclass TabInfo: pass\n",
@@ -535,9 +539,11 @@ def test_source_test_packages_do_not_drive_exports_by_default(tmp_path: Path) ->
         tmp_path,
         config=CONFIG.replace("test_roots: [tests]", "test_roots: [app/tests]"),
     )
-    write_project(root, {"app/third.py": "", "app/tests/test_browser.py": CLIENT})
+    write_policy_project(
+        root, {"app/third.py": "", "app/tests/test_browser.py": CLIENT}
+    )
     assert violations(root, OPTIONS) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG.replace(

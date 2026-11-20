@@ -6,7 +6,7 @@ import json
 from typing import TYPE_CHECKING
 
 from smelt.cli import main
-from tests.helpers import write_project
+from tests.helpers import write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,7 +46,7 @@ def test_maintainability_init_lists_individual_rules_and_optional_hints(
 def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "app/__init__.py": "",
@@ -80,5 +80,5 @@ def test_rule_listing_explains_its_columns(capsys: pytest.CaptureFixture[str]) -
 
     out = capsys.readouterr().out
     assert out.splitlines()[0].split() == ["code", "rule", "enabled", "severity"]
-    assert "policy: runs once its smelt.yml option is set" in out
+    assert "policy:" not in out
     assert "explicit: runs only when listed under rules: in smelt.yml" in out

@@ -7,7 +7,7 @@ import pytest
 from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +17,7 @@ SELECT = CheckOptions(select=("SMT339",))
 
 
 def _symbol_project(tmp_path: Path, client: str, *, config: str = CONFIG) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -197,7 +197,7 @@ def test_only_own_initializer_public_reexports_are_exempt(
     tmp_path: Path, initializer: str, flagged: bool
 ) -> None:
     root = _symbol_project(tmp_path, "")
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG.replace("[app]", "[app, other]"),
@@ -218,7 +218,7 @@ def test_public_reexport_stays_public_and_private_module_names_are_separate(
         "from . import helper\nfrom . import _impl\nimport app._impl\n"
         "app._impl._helper()\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "from ._impl import _helper as helper",
@@ -233,7 +233,7 @@ def test_public_reexport_stays_public_and_private_module_names_are_separate(
 
 def test_test_files_remain_exclusively_with_smt420(tmp_path: Path) -> None:
     root = _symbol_project(tmp_path, "")
-    write_project(
+    write_policy_project(
         root,
         {"tests/test_service.py": "from app.service import _helper\n"},
     )
@@ -251,7 +251,7 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
     assert [v.code for v in violations(root, CheckOptions(select=("SMT33",)))] == [
         "SMT339"
     ]
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -261,7 +261,7 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
         },
     )
     assert violations(root, SELECT) == []
-    write_project(
+    write_policy_project(
         root,
         {"smelt.yml": CONFIG + "rules: {visibility/foreign-private-access: error}\n"},
     )
@@ -275,7 +275,7 @@ def test_cross_module_definition_changes_invalidate_cached_decisions(
     root = _symbol_project(tmp_path, "import app.service as s\ns._helper()")
     assert len(violations(root, SELECT)) == 1
     for definitions in ("", "from third_party import _helper\n", "_helper = 1\n"):
-        write_project(root, {"app/service.py": definitions})
+        write_policy_project(root, {"app/service.py": definitions})
         cached = violations(root, SELECT)
         fresh = violations(root, CheckOptions(select=("SMT339",), use_cache=False))
         assert cached == fresh
@@ -293,7 +293,7 @@ def test_nested_relative_imports_and_namespace_source_layouts(
     }
     if with_init:
         files.update({"src/app/__init__.py": "", "src/app/feature/__init__.py": ""})
-    root = write_project(tmp_path, files)
+    root = write_policy_project(tmp_path, files)
     [finding] = violations(root, SELECT)
     assert finding.path == "src/app/feature/client.py"
     assert finding.expected is not None
@@ -306,7 +306,7 @@ def test_reexported_module_aliases_and_private_symbol_chains(tmp_path: Path) -> 
         "from .bridge import service as s\ns._helper()\n"
         "from .bridge import _helper\nfrom .bridge import _external\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/bridge.py": "from . import service\nfrom .service import _helper\n"
@@ -407,7 +407,7 @@ def test_resolves_annotations_constructors_aliases_and_reexports(
     tmp_path: Path, source: str
 ) -> None:
     root = _attribute_project(tmp_path, source)
-    write_project(
+    write_policy_project(
         root, {"app/__init__.py": "from .session import SessionLog as PublicLog\n"}
     )
     [finding] = violations(root, SELECT)
@@ -420,7 +420,7 @@ def test_inherited_members_keep_the_defining_class_owner(tmp_path: Path) -> None
         tmp_path,
         "from app.special import SpecialLog\ndef persist(log: SpecialLog):\n    return log._images\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/special.py": "from .session import SessionLog\nclass SpecialLog(SessionLog):\n    pass\n"
@@ -498,7 +498,7 @@ def test_skips_ambiguous_inherited_ownership(tmp_path: Path) -> None:
         tmp_path,
         "from app.special import SpecialLog\ndef persist(log: SpecialLog):\n    return log._images\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/special.py": "from .session import SessionLog\nclass Other: pass\nclass SpecialLog(Other, SessionLog): pass\n"
@@ -523,7 +523,9 @@ def test_global_package_boundary_keeps_subpackages_separate(tmp_path: Path) -> N
     root = _attribute_project(
         tmp_path, source, settings="style: {private_attribute_boundary: package}\n"
     )
-    write_project(root, {"app/runtime/__init__.py": "", "app/runtime/inbox.py": source})
+    write_policy_project(
+        root, {"app/runtime/__init__.py": "", "app/runtime/inbox.py": source}
+    )
     [finding] = violations(root, SELECT)
     assert finding.path == "app/runtime/inbox.py"
 
@@ -541,7 +543,7 @@ style:
     inner: {match: app.runtime, private_attribute_boundary: package}
 """,
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/runtime/__init__.py": "",
@@ -559,7 +561,7 @@ def test_package_initializer_shares_its_package_boundary(tmp_path: Path) -> None
         "from app import SessionLog\ndef persist(log: SessionLog):\n    return log._images\n",
         settings="style: {private_attribute_boundary: package}\n",
     )
-    write_project(root, {"app/__init__.py": OWNER})
+    write_policy_project(root, {"app/__init__.py": OWNER})
     assert violations(root, SELECT) == []
 
 
@@ -569,7 +571,7 @@ def test_opt_in_package_off_suppression_and_test_exclusion(tmp_path: Path) -> No
         tmp_path, source, settings="style: {private_attribute_boundary: module}\n"
     )
     assert [v.code for v in violations(root)] == ["SMT339"]
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -609,7 +611,7 @@ def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -
         tmp_path,
         "from app import PublicLog\ndef persist(log: PublicLog):\n    return log._images\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "from .session import SessionLog as PublicLog\n",
@@ -649,7 +651,7 @@ def test_rejects_invalid_or_conflicting_boundaries(
 def _attribute_project(
     tmp_path: Path, source: str, *, settings: str = "", owner: str = OWNER
 ) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + settings,

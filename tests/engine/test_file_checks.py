@@ -13,7 +13,7 @@ from tests.helpers import (
     MEMBER_ARCHITECTURES,
     check,
     codes_at,
-    write_project,
+    write_policy_project,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_decisions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
@@ -69,7 +69,7 @@ def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_de
 def test_attribute_facts_and_test_constructor_specs_reuse_unchanged_production_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/test-only-public-attribute: warning}\n",
@@ -100,7 +100,7 @@ def test_attribute_facts_and_test_constructor_specs_reuse_unchanged_production_s
 def test_unchanged_test_quality_decisions_do_not_reparse_test_bodies(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
@@ -130,7 +130,7 @@ def test_unchanged_test_quality_decisions_do_not_reparse_test_bodies(
 def test_fixture_changes_invalidate_unchanged_test_quality_decisions(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {tests/missing-outcome-check: warning}\n",
@@ -152,7 +152,7 @@ def test_fixture_changes_invalidate_unchanged_test_quality_decisions(
 def test_transitive_imports_can_reach_namespace_packages_without_initializers(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": LAYERED_CONFIG,
@@ -172,7 +172,7 @@ def test_transitive_imports_can_reach_namespace_packages_without_initializers(
 def test_native_import_scans_and_details_only_parse_changed_contents(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": LAYERED_CONFIG,
@@ -204,7 +204,7 @@ def test_native_import_scans_and_details_only_parse_changed_contents(
 def test_each_member_architecture_judges_only_its_own_modules(
     tmp_path: Path,
 ) -> None:
-    write_project(tmp_path, MEMBER_ARCHITECTURES)
+    write_policy_project(tmp_path, MEMBER_ARCHITECTURES)
 
     found = check(tmp_path).report.violations
 
@@ -219,7 +219,7 @@ def test_each_member_architecture_judges_only_its_own_modules(
 def test_root_architecture_only_governs_root_packages(
     tmp_path: Path,
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             **MEMBER_ARCHITECTURES,

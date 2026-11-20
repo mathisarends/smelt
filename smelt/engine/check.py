@@ -53,6 +53,7 @@ if TYPE_CHECKING:
 
     from smelt.config.loader import LoadedConfig
     from smelt.config.source import SourceStore
+    from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import RuleContract, RuleSet
 
 _META = frozenset({"SMT901", "SMT902", "SMT903", MissingRulePolicy.code})
@@ -109,10 +110,10 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
         requires=tuple(sorted(index.value for index in rule.requires)),
         config=rule.explain().config,
         activation={
-            "mode": "default" if default else "policy" if activation else "explicit",
+            "mode": "default" if default else "explicit",
             "description": "Enabled by default."
             if default
-            else activation.description
+            else _policy_description(activation)
             if activation
             else "Enable by rule setting or --select.",
         },
@@ -186,10 +187,8 @@ def _run_check(
     cache: FactCache | None,
 ) -> CheckOutcome:
     config = loaded.config
-    if options.strict_coverage and config.project.coverage != "strict":
-        config = config.model_copy(
-            update={"project": config.project.model_copy(update={"coverage": "strict"})}
-        )
+    if options.strict_coverage and not config.strict_coverage:
+        config = config.with_strict_coverage()
         loaded = replace(loaded, config=config)
     rules = rules or build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
@@ -339,7 +338,10 @@ def _run_check(
                 issue.message,
                 Severity.HINT if issue.deprecated else Severity.WARNING,
             )
-            for issue in loaded.warnings
+            for issue in (
+                *loaded.warnings,
+                *RuleSettings(rules, loaded).unused_policies(),
+            )
         ],
     )
     return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
@@ -543,7 +545,7 @@ def _resolve_active_rules(
     active: list[tuple[RuleContract, Severity]] = []
     for rule in rules.rules:
         setting = policy.global_value(rule)
-        if rule.code == _COVERAGE and loaded.config.project.coverage == "strict":
+        if rule.code == _COVERAGE and loaded.config.strict_coverage:
             _validate_strict_coverage(loaded, options, setting)
             active.append((rule, Severity.ERROR))
             continue
@@ -857,3 +859,10 @@ def _under_any(path: str | None, scopes: tuple[str, ...]) -> bool:
         if path == normalized or path.startswith(f"{normalized}/"):
             return True
     return False
+
+
+def _policy_description(activation: PolicyActivation) -> str:
+    policy = activation.description[0].lower() + activation.description[1:]
+    if activation.required:
+        return f"Enable by rule setting or --select; requires that {policy}"
+    return f"Enable by rule setting or --select; configurable when {policy}"

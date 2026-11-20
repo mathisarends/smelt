@@ -10,6 +10,7 @@ from smelt.config.models import ALL_RULES, RuleOverride
 from smelt.config.patterns import module_matches
 from smelt.config.workspace import architecture_scopes
 from smelt.diagnostics.violation import Category, Severity
+from smelt.rules.activation import POLICIES
 from smelt.rules.renames import retired_hint
 
 if TYPE_CHECKING:
@@ -61,10 +62,10 @@ class RuleDecision:
 
 class RuleSettings:
     def __init__(
-        self, rules: RuleSet, loaded: LoadedConfig, *, validate_selectors: bool = True
+        self, rules: RuleSet, loaded: LoadedConfig, *, validate: bool = True
     ) -> None:
         self.config = loaded.config
-        # A member architecture's policy activates its rules like the root's does.
+        # A member architecture's policy satisfies its rules like the root's does.
         self._policies = (
             self.config,
             *(scope.config for scope in architecture_scopes(self.config)[1:]),
@@ -94,11 +95,6 @@ class RuleSettings:
                 source=source,
                 pending=pending,
             )
-            if validate_selectors:
-                try:
-                    self._validate_broad(layer, "rules", entries)
-                except ConfigError as exc:
-                    pending.extend(exc.issues)
             self._layers.append(entries)
         self._packages = {
             name: self._entries(
@@ -119,6 +115,8 @@ class RuleSettings:
             )
             for path, member in loaded.config.members.items()
         }
+        if validate:
+            self._validate_root_broad(loaded, pending)
         pending.extend(
             ConfigIssue(
                 f"ignore[{index}].rule",
@@ -136,6 +134,9 @@ class RuleSettings:
             else None
         )
         self._validate_member_overrides()
+        if validate:
+            # The workspace base alone misses member policies; the full settings check them.
+            self._validate_policies()
         lowered = [
             path
             for path, settings in self._members.items()
@@ -151,6 +152,39 @@ class RuleSettings:
                         "strict coverage must remain an error; use reasoned project.exclude entries instead",
                     )
                     for path in lowered
+                ],
+                self.source,
+            )
+        member_guards = [
+            setting.location
+            for settings in self._members.values()
+            if (setting := settings.get(_STRICT_COVERAGE)) is not None
+            and setting.enables
+            and not self._strict_guard()
+        ]
+        if member_guards:
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        location,
+                        "architecture/uncovered-source covers the whole workspace; enable it in the root rules",
+                    )
+                    for location in member_guards
+                ],
+                self.source,
+            )
+        guards = [
+            layer[_STRICT_COVERAGE]
+            for layer in self._layers
+            if _STRICT_COVERAGE in layer
+        ]
+        if self._strict_guard() and guards[-1].value != "error":
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        guards[-1].location,
+                        "architecture/uncovered-source is a guard and always reports errors; use error or off",
+                    )
                 ],
                 self.source,
             )
@@ -257,11 +291,7 @@ class RuleSettings:
         selected: bool = False,
     ) -> RuleDecision:
         """Resolve a target's severity and the setting that supplied it."""
-        value = (
-            rule.default_severity.value
-            if self._enabled_for(rule, ctx, module)
-            else None
-        )
+        value = rule.default_severity.value if self._default_enabled(rule) else None
         winner = None
         for setting in self._target_settings(rule.code, ctx, module=module, path=path):
             updated = setting.apply(value)
@@ -276,6 +306,67 @@ class RuleSettings:
             if winner
             else RuleDecision(severity)
         )
+
+    def unused_policies(self) -> list[ConfigIssue]:
+        """Declared policies whose rule no rules entry names, enabled or off."""
+        return [
+            ConfigIssue(
+                f"rules.{rule.name}",
+                f"{POLICIES[rule.code].description.rstrip('.')}, "
+                f"but {rule.name} is not enabled; "
+                f'add "{rule.name}: {rule.default_severity.value}" under rules, '
+                'or "off" to keep the policy unchecked',
+            )
+            for rule, _ in self.policy_enablements()
+        ]
+
+    def policy_enablements(
+        self,
+    ) -> list[tuple[RuleContract, tuple[tuple[str, ...], ...]]]:
+        """Unnamed rules with a declared policy, and the rules maps that enable them.
+
+        Built-in defaults would let an optional policy's rule check every package,
+        so a policy set only in style overrides is enabled in those overrides.
+        """
+        named = {
+            code
+            for layer in (
+                *self._layers,
+                *self._members.values(),
+                *self._packages.values(),
+            )
+            for code, setting in layer.items()
+            if not setting.broad or setting.value == "off"
+        }
+        result: list[tuple[RuleContract, tuple[tuple[str, ...], ...]]] = []
+        for rule in self.rules.rules:
+            activation = POLICIES.get(rule.code)
+            if (
+                activation is None
+                or rule.code in named
+                or getattr(rule, "enabled_by_default", False)
+                or not any(activation.matches(policy) for policy in self._policies)
+            ):
+                continue
+            option = activation.option
+            if activation.required or option is None:
+                result.append((rule, (("rules",),)))
+                continue
+            accept = activation.accept or (lambda value: value is not None)
+            if accept(getattr(self.config.structure, option)):
+                result.append((rule, (("rules",),)))
+                continue
+            result.append(
+                (
+                    rule,
+                    tuple(
+                        ("style", "overrides", name, "rules")
+                        for name, contract in self.config.structure.contracts.items()
+                        if accept(getattr(contract, option))
+                    ),
+                )
+            )
+        return result
 
     def global_value(self, rule: RuleContract) -> str | None:
         default = rule.default_severity.value if self._default_enabled(rule) else None
@@ -327,8 +418,10 @@ class RuleSettings:
                 if (setting := self._packages[contract.name].get(code)) is not None:
                     yield setting
 
-    def _apply_layers(self, code: str, value: str | None) -> str | None:
-        for layer in self._layers:
+    def _apply_layers(
+        self, code: str, value: str | None, *, upto: int | None = None
+    ) -> str | None:
+        for layer in self._layers[:upto]:
             if (setting := layer.get(code)) is not None:
                 value = setting.apply(value)
         return value
@@ -336,7 +429,7 @@ class RuleSettings:
     def _validate_member_overrides(self, ctx: AnalysisContext | None = None) -> None:
         if self._base_loaded is None:
             return
-        root = RuleSettings(self.rules, self._base_loaded, validate_selectors=False)
+        root = RuleSettings(self.rules, self._base_loaded, validate=False)
         root_ctx = None
         if ctx is not None:
             from smelt.analysis.context import AnalysisContext  # noqa: PLC0415
@@ -440,42 +533,41 @@ class RuleSettings:
             None,
         )
 
-    def _enabled_for(
-        self,
-        rule: RuleContract,
-        ctx: AnalysisContext,
-        module: str | None,
-    ) -> bool:
-        """An option-scoped activation applies only where structure or a contract sets it."""
-        activation = getattr(rule, "activation", None)
-        if (
-            activation is not None
-            and getattr(rule, "architecture_scoped", False)
-            and module is not None
-            and self.config.project.workspace == "uv"
-        ):
-            return bool(activation.matches(ctx.model.part_for(module).config))
-        if (
-            activation is None
-            or activation.option is None
-            or getattr(rule, "enabled_by_default", False)
-            or module is None
-        ):
-            return self._default_enabled(rule)
-        return (
-            activation.matches(self.config)
-            and ctx.contracts.policy_for(module, activation.option) is not None
-        )
-
     def _default_enabled(self, rule: RuleContract) -> bool:
-        activation = getattr(rule, "activation", None)
-        return bool(
-            getattr(rule, "enabled_by_default", False)
-            or (
-                activation is not None
-                and any(activation.matches(policy) for policy in self._policies)
+        return bool(getattr(rule, "enabled_by_default", False))
+
+    def _validate_policies(self) -> None:
+        """An enabled rule whose policy is required must find that policy."""
+        issues = []
+        for rule in self.rules.rules:
+            activation = getattr(rule, "activation", None)
+            if activation is None or not activation.required:
+                continue
+            location = next(
+                (
+                    setting.location
+                    for layer in (
+                        *self._layers,
+                        *self._members.values(),
+                        *self._packages.values(),
+                    )
+                    if (setting := layer.get(rule.code)) is not None and setting.enables
+                ),
+                None,
             )
-        )
+            if location is None or any(
+                activation.matches(policy) for policy in self._policies
+            ):
+                continue
+            issues.append(
+                ConfigIssue(
+                    location,
+                    f"{rule.name} is enabled but its policy is missing; it requires that "
+                    f"{activation.description[0].lower()}{activation.description[1:]}",
+                )
+            )
+        if issues:
+            raise ConfigError(issues, self.source)
 
     def _entries(
         self,
@@ -551,7 +643,7 @@ class RuleSettings:
 
     def _strict_guard(self) -> frozenset[str]:
         """Strict coverage stays an error, so broad selections leave it alone."""
-        if self.config.project.coverage == "strict":
+        if self.config.strict_coverage:
             return frozenset({_STRICT_COVERAGE})
         return frozenset()
 
@@ -602,6 +694,34 @@ class RuleSettings:
                 self._packages[name],
                 active=active,
             )
+
+    def _validate_root_broad(
+        self, loaded: LoadedConfig, pending: list[ConfigIssue]
+    ) -> None:
+        """A root broad selector caps rules enabled before it or by any member or package."""
+        scoped = {
+            code
+            for entries in (*self._members.values(), *self._packages.values())
+            for code, setting in entries.items()
+            if not setting.broad and setting.value != "off"
+        }
+        for index, layer in enumerate(loaded.config.rule_layers):
+            active = scoped | {
+                rule.code
+                for rule in self.rules.rules
+                if self._apply_layers(
+                    rule.code,
+                    rule.default_severity.value
+                    if self._default_enabled(rule)
+                    else None,
+                    upto=index,
+                )
+                not in (None, "off")
+            }
+            try:
+                self._validate_broad(layer, "rules", self._layers[index], active=active)
+            except ConfigError as exc:
+                pending.extend(exc.issues)
 
     def _validate_broad(
         self,

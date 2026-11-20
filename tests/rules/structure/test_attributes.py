@@ -8,7 +8,7 @@ import pytest
 
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, violations, write_project
+from tests.helpers import check, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +29,7 @@ _SOURCE = """class Readiness:
 
 
 def _project(tmp_path: Path, source: str = _SOURCE) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": _CONFIG,
@@ -95,9 +95,9 @@ def test_any_external_access_preserves_visibility(
     root = _project(
         tmp_path, "class Readiness:\n    def __init__(self): self.initial = 1"
     )
-    write_project(root, {path: consumer})
+    write_policy_project(root, {path: consumer})
     assert violations(root) == []
-    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    write_policy_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
     assert violations(root) == []
 
 
@@ -123,7 +123,7 @@ def test_module_boundary_reviews_same_module_accesses(
         f"class Readiness:\n    def __init__(self): self.initial = 1\n\n{consumer}",
     )
     assert violations(root) == []
-    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    write_policy_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
     [finding] = violations(root)
     assert (finding.code, finding.path, finding.line) == (
         "SMT335",
@@ -141,7 +141,7 @@ def test_module_boundary_can_be_overridden_by_package(tmp_path: Path) -> None:
     root = _project(
         tmp_path, "class Readiness:\n    initial = 1\nvalue = Readiness.initial"
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": """version: 1
@@ -200,7 +200,7 @@ def test_uncertain_contracts_and_non_fields_are_preserved(
 )
 def test_public_facades_preserve_data_contracts(tmp_path: Path, facade: str) -> None:
     root = _project(tmp_path)
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": facade,
@@ -208,7 +208,7 @@ def test_public_facades_preserve_data_contracts(tmp_path: Path, facade: str) -> 
         },
     )
     assert violations(root) == []
-    write_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
+    write_policy_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
     assert violations(root) == []
 
 
@@ -226,7 +226,7 @@ def test_repeated_writes_custom_receiver_and_name_collisions(tmp_path: Path) -> 
     assert finding.expected is not None
     assert finding.expected["suggested_name"] == "_initial_internal_2"
     assert finding.expected["internal_references"] == [3, 6]
-    write_project(
+    write_policy_project(
         root,
         {
             "app/readiness.py": "class Readiness:\n    def __init__(self): self._initial = 1"
@@ -253,7 +253,7 @@ def test_test_only_attributes_are_owned_by_smt430(
         )
         + style
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": config,
@@ -261,7 +261,7 @@ def test_test_only_attributes_are_owned_by_smt430(
         },
     )
     assert [v.code for v in violations(root)] == ["SMT430"]
-    write_project(
+    write_policy_project(
         root, {"smelt.yml": config + "tests: {quality_exclude: ['tests/**']}\n"}
     )
     assert violations(root) == []
@@ -274,7 +274,7 @@ def test_rule_is_opt_in_and_supports_explicit_selection(
     tmp_path: Path, selection: str
 ) -> None:
     root = _project(tmp_path, "class Readiness:\n    initial = 1")
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": _CONFIG.replace(
@@ -292,7 +292,7 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
     source = "class Readiness:\n    initial = 1"
     root = _project(tmp_path, source)
     assert violations(root, CheckOptions(ignore=("SMT335",))) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": _CONFIG
@@ -300,7 +300,7 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
         },
     )
     assert violations(root, CheckOptions(select=("SMT335",))) == []
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": _CONFIG.replace("warning", "error"),
@@ -311,7 +311,7 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
     outcome = check(root)
     assert outcome.report.violations == []
     assert outcome.report.suppressed == 1
-    write_project(root, {"app/readiness.py": source})
+    write_policy_project(root, {"app/readiness.py": source})
     assert [v.severity for v in violations(root)] == [Severity.ERROR]
 
 
@@ -321,7 +321,7 @@ def test_cached_results_follow_external_uses_exports_and_inheritance(
     style: str,
 ) -> None:
     root = _project(tmp_path, "class Readiness:\n    initial = 1")
-    write_project(root, {"smelt.yml": _CONFIG + style})
+    write_policy_project(root, {"smelt.yml": _CONFIG + style})
     states = [
         {"app/other.py": "def consume(value): return value.initial"},
         {
@@ -340,7 +340,7 @@ def test_cached_results_follow_external_uses_exports_and_inheritance(
     ]
     assert [v.code for v in violations(root)] == ["SMT335"]
     for index, files in enumerate(states):
-        write_project(root, files)
+        write_policy_project(root, files)
         cached = violations(root)
         assert cached == violations(root, CheckOptions(use_cache=False))
         assert [v.code for v in cached] == (

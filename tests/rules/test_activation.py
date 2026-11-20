@@ -11,6 +11,7 @@ from smelt.engine.check import (
     _resolve_active_rules,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
     rule_meta,
 )
+from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import Rule
 from smelt.rules.registry import build_rule_set
@@ -18,17 +19,31 @@ from smelt.rules.registry import build_rule_set
 BASELINE = {"SMT301", "SMT901", "SMT902", "SMT903", "SMT904"}
 
 
-def _active(extra: dict[str, object], options: CheckOptions | None = None) -> set[str]:
+def _loaded(extra: dict[str, object]) -> LoadedConfig:
     config = SmeltConfig.model_validate(
         {"version": 1, "project": {"root_packages": ["app"]}, **extra}
     )
-    loaded = LoadedConfig(config, Path("smelt.yml"))
+    return LoadedConfig(config, Path("smelt.yml"))
+
+
+def _active(extra: dict[str, object], options: CheckOptions | None = None) -> set[str]:
     return {
         rule.code
         for rule, _ in _resolve_active_rules(
-            build_rule_set(), loaded, options or CheckOptions()
+            build_rule_set(), _loaded(extra), options or CheckOptions()
         )
     }
+
+
+def _checked(extra: dict[str, object]) -> tuple[set[str], set[str]]:
+    """The enabled non-baseline rules and the rules of unnamed declared policies."""
+    unused = RuleSettings(build_rule_set(), _loaded(extra)).policy_enablements()
+    return _active(extra) - BASELINE, {rule.code for rule, _ in unused}
+
+
+def _expected(extra: dict[str, object], codes: set[str]) -> tuple[set[str], set[str]]:
+    """Rules entries enable rules; a policy alone only reports its unnamed rule."""
+    return (codes, set()) if "rules" in extra else (set(), codes)
 
 
 def test_minimal_configuration_runs_only_the_small_baseline() -> None:
@@ -58,7 +73,7 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"style": {"max_module_imports": 0}}, {"SMT110"}),
         ({"style": {"file_naming": {"yaml_extension": "yaml"}}}, {"SMT331"}),
         ({"style": {"file_naming": {"compose_basename": "compose"}}}, {"SMT331"}),
-        ({"project": {"root_packages": ["app"], "coverage": "strict"}}, {"SMT306"}),
+        ({"rules": {"architecture/uncovered-source": "error"}}, {"SMT306"}),
         ({"tests": {"layout": "mirror"}}, {"SMT401"}),
         ({"rules": {"tests/private-access": "error"}}, {"SMT420"}),
         ({"tests": {"forbidden_mock_paths": ["tests/domain/**"]}}, {"SMT421"}),
@@ -74,10 +89,10 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
         ({"rules": {"complexity/excess-attribute-depth": "hint"}}, {"SMT322"}),
     ],
 )
-def test_explicit_project_policy_activates_its_checks(
+def test_a_project_policy_needs_its_named_rule(
     extra: dict[str, object], expected: set[str]
 ) -> None:
-    assert _active(extra) == BASELINE | expected
+    assert _checked(extra) == _expected(extra, expected)
 
 
 @pytest.mark.parametrize(
@@ -120,7 +135,7 @@ def test_explicit_project_policy_activates_its_checks(
         ),
     ],
 )
-def test_package_policy_activates_without_a_second_rule_switch(
+def test_a_package_policy_needs_its_named_rule(
     policy: dict[str, object], expected: set[str]
 ) -> None:
     entry = {"api": {"match": "app", **policy}}
@@ -130,7 +145,7 @@ def test_package_policy_activates_without_a_second_rule_switch(
         & {"public", "required", "min_imports_to_bundle", "min_importers_to_export"}
         else {"style": {"overrides": entry}}
     )
-    assert _active(options) == BASELINE | expected
+    assert _checked(options) == _expected(policy, expected)
 
 
 SHARED_OPTIONS = [
@@ -158,7 +173,7 @@ SHARED_OPTIONS = [
 
 @pytest.mark.parametrize(("policy", "expected"), SHARED_OPTIONS)
 @pytest.mark.parametrize("level", ["style", "contract"])
-def test_a_single_rule_option_activates_its_rule_at_either_level(
+def test_a_single_rule_option_is_reported_until_its_rule_is_named(
     policy: dict[str, object], expected: set[str], level: str
 ) -> None:
     structure = (
@@ -166,7 +181,7 @@ def test_a_single_rule_option_activates_its_rule_at_either_level(
         if level == "style"
         else {"overrides": {"api": {"match": "app", **policy}}}
     )
-    assert _active({"style": structure}) == BASELINE | expected
+    assert _checked({"style": structure}) == (set(), expected)
 
 
 @pytest.mark.parametrize(
@@ -178,22 +193,74 @@ def test_a_single_rule_option_activates_its_rule_at_either_level(
         {"reexports": "allow"},
     ],
 )
-def test_modifiers_and_allow_values_do_not_activate_a_rule(
+def test_modifiers_and_allow_values_declare_no_policy(
     policy: dict[str, object],
 ) -> None:
-    assert _active({"style": policy}) == BASELINE
+    assert _checked({"style": policy}) == (set(), set())
 
 
-def test_off_wins_over_an_activating_option() -> None:
-    assert (
-        _active(
-            {
-                "style": {"max_comprehension_loops": 2},
-                "rules": {"complexity/excess-comprehension-loops": "off"},
-            }
-        )
-        == BASELINE
+def test_off_keeps_a_declared_policy_unchecked_without_a_warning() -> None:
+    assert _checked(
+        {
+            "style": {"max_comprehension_loops": 2},
+            "rules": {"complexity/excess-comprehension-loops": "off"},
+        }
+    ) == (set(), set())
+
+
+def test_a_broad_off_acknowledges_a_declared_policy() -> None:
+    assert _checked(
+        {
+            "architecture": {"layers": {"domain": {"path": "domain"}}},
+            "rules": {"architecture": "off"},
+        }
+    ) == (set(), set())
+
+
+def test_a_named_rule_runs_with_its_declared_policy() -> None:
+    assert _checked(
+        {
+            "architecture": {"layers": {"domain": {"path": "domain"}}},
+            "rules": {"architecture/layer-boundary": "error"},
+        }
+    ) == ({"SMT101"}, set())
+
+
+@pytest.mark.parametrize(
+    "rule", ["architecture/layer-boundary", "SMT308", "tests/misplaced-test"]
+)
+def test_a_rule_without_its_required_policy_is_a_config_error(rule: str) -> None:
+    with pytest.raises(ConfigError, match="policy is missing") as caught:
+        _active({"rules": {rule: "error"}})
+
+    assert caught.value.issues[0].path == f"rules.{rule}"
+
+
+def test_a_rule_with_built_in_defaults_needs_no_policy() -> None:
+    assert _checked({"rules": {"complexity/excess-positional-parameters": "on"}}) == (
+        {"SMT345"},
+        set(),
     )
+
+
+def test_an_override_option_is_enabled_in_that_override() -> None:
+    settings = RuleSettings(
+        build_rule_set(),
+        _loaded(
+            {
+                "style": {
+                    "overrides": {
+                        "api": {"match": "app", "max_positional_parameters": 3}
+                    }
+                }
+            }
+        ),
+    )
+
+    [(rule, locations)] = settings.policy_enablements()
+
+    assert rule.code == "SMT345"
+    assert locations == (("style", "overrides", "api", "rules"),)
 
 
 def test_scope_settings_alone_do_not_enable_explicit_heuristics() -> None:
@@ -228,23 +295,29 @@ def test_off_and_ignore_win_over_explicit_selection() -> None:
     assert _active({}, CheckOptions(ignore=("ALL",))) == set()
 
 
-@pytest.mark.parametrize("option", ["off", "ignore"])
-def test_all_cannot_silence_explicit_strict_coverage(option: str) -> None:
-    extra: dict[str, object] = {
-        "project": {"root_packages": ["app"], "coverage": "strict"}
-    }
-    options = CheckOptions(select=("SMT1",))
-    if option == "off":
-        extra["rules"] = {"SMT306": "off"}
-    else:
-        options = CheckOptions(ignore=("ALL",))
-    with pytest.raises((ConfigError, InvalidOptionError), match="strict coverage"):
-        _active(extra, options)
+def test_ignore_all_cannot_silence_the_coverage_guard() -> None:
+    with pytest.raises(InvalidOptionError, match="strict coverage"):
+        _active(
+            {"rules": {"architecture/uncovered-source": "error"}},
+            CheckOptions(ignore=("ALL",)),
+        )
+
+
+@pytest.mark.parametrize("value", ["warning", "hint"])
+def test_the_coverage_guard_only_reports_errors(value: str) -> None:
+    with pytest.raises(ConfigError, match="always reports errors"):
+        _active({"rules": {"architecture/uncovered-source": value}})
+
+
+def test_a_broad_off_leaves_the_coverage_guard_enabled() -> None:
+    assert "SMT306" in _active(
+        {"rules": {"architecture/uncovered-source": "error", "ALL": "off"}}
+    )
 
 
 def test_strict_coverage_still_runs_outside_a_select_prefix() -> None:
     assert "SMT306" in _active(
-        {"project": {"root_packages": ["app"], "coverage": "strict"}},
+        {"rules": {"architecture/uncovered-source": "error"}},
         CheckOptions(select=("SMT1",)),
     )
 
@@ -254,8 +327,7 @@ def test_catalog_exposes_every_rule_activation_decision() -> None:
         rule.code: rule_meta(rule).activation["mode"] for rule in build_rule_set().rules
     }
     assert {code for code, mode in modes.items() if mode == "default"} == BASELINE
-    assert modes["SMT104"] == "explicit"
-    assert modes["SMT305"] == "explicit"
+    assert set(modes.values()) == {"default", "explicit"}
     for rule in build_rule_set().rules:
         activation = getattr(rule, "activation", None)
         if activation is not None:

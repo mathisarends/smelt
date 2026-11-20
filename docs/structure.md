@@ -19,24 +19,26 @@ style:
       dataclass_options: []
 ```
 
-Every option has one activation rule:
+Options configure rules; they never enable them:
 
-- An option that belongs to a single rule enables that rule where it applies.
-  Under `style` that is the whole project; under `style.overrides` it is the matching
-  packages. `max_positional_parameters: 3` therefore enables SMT345 and
-  `max_comprehension_loops: 2` enables SMT363.
-- Selecting the rule in `rules` or with `--select` enables it everywhere. Where
-  no option is set, the built-in default applies.
+- Enable the rule in `rules` or with `--select`. Under `style` an option applies
+  to the whole project; under `style.overrides` it applies to the matching
+  packages. Where no option is set, the built-in default applies.
+- To check an option only in some packages, enable its rule in that style
+  override's `rules` instead of the project `rules`.
+- An option whose rule no `rules` entry names is a configuration warning, so
+  `max_positional_parameters: 3` without `complexity/excess-positional-parameters`
+  does not go unchecked silently.
 - `off` in `rules` always wins, including in a style override's `rules`.
 - `ordering` configures `layout/definition-order`, but the rule is enabled
   through `rules` like any other fixed pattern.
 
-| Option | Rule | Default when the rule is selected |
+| Option | Rule | Default when the option is unset |
 | --- | --- | --- |
 | `imports` | SMT308 | none; nothing is checked without a style |
 | `reexports` | SMT369 | `all` |
 | `max_module_imports` | SMT110 | 20 |
-| `module_import_exemptions` | SMT110 | `[facades, composition_root]`; does not enable the rule |
+| `module_import_exemptions` | SMT110 | `[facades, composition_root]` |
 | `module_docstrings` | SMT309 | none |
 | `future_annotations` | SMT310, SMT311 | none |
 | `private_modules` | SMT312 | none |
@@ -65,8 +67,8 @@ three kinds of direct call arguments: awaited results (`await`), list, set and
 dict comprehensions (`comprehension`) and builtin `all`, `any`, `max`, `min`,
 `sorted` or `sum` reductions of a generator (`aggregate`). Enable
 `rules: {complexity/inline-call-argument: hint}` to ask for named intermediate
-values before construction or consumption. Setting `call_argument_kinds` (all
-three by default) both enables the review and narrows it:
+values before construction or consumption. `call_argument_kinds` (all three
+by default) narrows the review:
 
 ```yaml
 style:
@@ -101,9 +103,8 @@ responsibility of SMT420. Unresolved receivers are skipped.
 `private_attribute_boundary` defaults to `module`; `package` permits
 attribute cooperation within the same immediate Python package, including its
 initializer. Private module symbols always use the module boundary.
-Subpackages remain separate boundaries. Setting the option under `style` or
-in a style override enables the rule for that scope, and `smelt context` shows
-the effective value.
+Subpackages remain separate boundaries. Set the option under `style` or in a
+style override, and `smelt context` shows the effective value.
 No automatic rewrite is performed. Review the documented inference limits before
 depending on the review as an error gate.
 
@@ -125,8 +126,8 @@ counting rules and repairs that preserve initialization behavior.
 
 Opt-in [SMT367 `visibility/excess-private-definitions`](rules/SMT367.md) reviews modules with
 many private supporting definitions. Enable `rules: {visibility/excess-private-definitions: hint}`.
-Setting `max_private_definitions` (default 12, zero allowed) under `style`
-or in a style override enables the rule for that scope.
+`max_private_definitions` (default 12, zero allowed) under `style` or in a
+style override sets the limit for that scope.
 Private classes, sync/async functions and PEP 695 type aliases directly in the
 module body count once per kind and name. Private uppercase assignments with values
 are listed separately and never contribute to the limit. Imports, methods,
@@ -271,8 +272,8 @@ style:
 `connect(user_id, run_id, *, tab_id)` and callers supply `tab_id=...`.
 Zero requires all ordinary parameters to be keyword-only. `self`/`cls`, variadic
 arguments, dunders, overload/override definitions and tests are exempt.
-Setting the option enables the rule for its scope. Selecting SMT345 in `rules`
-without the option uses a limit of 5; the closest package setting wins.
+Enabling SMT345 in `rules` without the option uses a limit of 5; the closest
+package setting wins.
 `smelt context` exposes the effective limit, including for planned paths.
 Update every caller and partial application; keep externally dictated callback
 signatures with a reasoned local exception. There is no automatic rewrite.
@@ -479,7 +480,7 @@ under these style overrides.
 
 ## Re-export spelling in package initializers
 
-Set `style.reexports` to activate [SMT369](rules/SMT369.md) for package
+Set `style.reexports` and enable [SMT369](rules/SMT369.md) to check package
 initializers. `all` uses ordinary imports and an explicit list of public names.
 
 ```python
@@ -527,9 +528,9 @@ style:
       max_module_imports: 12
 ```
 
-Setting `max_module_imports` activates this hint for its scope, and the closest
-package threshold overrides the project-wide limit. Selecting the rule in `rules`
-or with `--select` without a threshold uses a limit of 20.
+`max_module_imports` sets the limit for its scope, and the closest package
+threshold overrides the project-wide limit. Enabling the rule in `rules` or with
+`--select` without a threshold uses a limit of 20.
 Counts include direct internal imports across every root package, follow
 `architecture.import_graph.type_checking`, and retain facade paths without following
 re-exports to definitions. Repeated imports count once. Standard-library and
@@ -657,11 +658,11 @@ style:
 
 Choose one canonical `module_docstrings` convention for a package:
 
-- `require` enables SMT309: every analyzed production module needs a non-empty
-  initial docstring, including empty files, `__init__.py` and `__main__.py`.
+- `require` makes SMT309 require a non-empty initial docstring in every
+  analyzed production module, including empty files, `__init__.py` and `__main__.py`.
   Empty/whitespace-only strings, comments, later strings and class/function
   documentation do not satisfy the requirement.
-- `forbid` enables SMT309: no initial module docstring, even an empty one.
+- `forbid` makes SMT309 reject any initial module docstring, even an empty one.
   Class/function documentation and ordinary string values are unaffected.
 - `allow` explicitly permits either style in a more specific package. Omitting
   the field inherits the closest explicit package policy, or adds no policy

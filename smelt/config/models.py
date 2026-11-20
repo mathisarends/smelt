@@ -56,6 +56,8 @@ class RuleOverride(_Model):
 
 
 type RuleSetting = RuleSeverity | RuleOverride
+# The guard rule whose root setting enables strict policy coverage, by code and name.
+UNCOVERED_SOURCE = ("SMT306", "architecture/uncovered-source")
 type _PolicyReason = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1)
 ]
@@ -105,11 +107,7 @@ class ProjectConfig(_Model):
     )
     exclude: list[str | SourceExclusion] = Field(
         default_factory=list,
-        description="Path globs or {path, reason} entries smelt skips entirely. Strict coverage requires a reason for every exclusion.",
-    )
-    coverage: Literal["configured", "strict"] = Field(
-        default="configured",
-        description="strict: fail on uncovered or unclassified production files and exclusions without reasons, including Python workspace members.",
+        description="Path globs or {path, reason} entries smelt skips entirely. architecture/uncovered-source requires a reason for every exclusion.",
     )
     workspace: Literal["uv"] | None = Field(
         default=None,
@@ -1301,6 +1299,29 @@ class SmeltConfig(_Model):
         rules, so a project family overrides an individual entry of its base.
         """
         return self._rule_layers or (self.rules,)
+
+    @property
+    def strict_coverage(self) -> bool:
+        """Whether the root rules enable architecture/uncovered-source.
+
+        The rule is a guard: once enabled it stays an error, and broad
+        selectors, member or package settings, suppressions and debt cannot hide it.
+        """
+        value: RuleSetting | None = None
+        for layer in self.rule_layers:
+            for key in UNCOVERED_SOURCE:
+                if key in layer:
+                    value = layer[key]
+        severity = value.severity if isinstance(value, RuleOverride) else value
+        return severity not in (None, "off")
+
+    def with_strict_coverage(self) -> Self:
+        """Enable architecture/uncovered-source for one run, as --strict-coverage does."""
+        if self.strict_coverage:
+            return self
+        return self.with_rule_layers(
+            (*self.rule_layers, {UNCOVERED_SOURCE[1]: "error"})
+        )
 
     def with_rule_layers(self, layers: Iterable[Mapping[str, RuleSetting]]) -> Self:
         layered = self.model_copy()

@@ -18,10 +18,11 @@ from smelt.engine.check import CheckOptions
 from tests.helpers import (
     FIXTURES,
     LAYERED_CONFIG,
+    LAYERED_POLICY,
     check,
     codes_at,
     violations,
-    write_project,
+    write_policy_project,
 )
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ GATEWAY_EXPECTED = [
 
 
 def _layered(tmp_path: Path, service: str, config: str = LAYERED_CONFIG) -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -71,7 +72,7 @@ class TestGatewayFixture:
 
 class TestRuleSelection:
     def test_severity_override_and_off(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  SMT101: warning\n"
+        config = LAYERED_POLICY + "rules:\n  SMT101: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         outcome = check(root)
@@ -82,7 +83,7 @@ class TestRuleSelection:
         assert outcome.report.failed is False
 
     def test_fail_on_warning(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  SMT101: warning\n"
+        config = LAYERED_POLICY + "rules:\n  SMT101: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         assert check(root, CheckOptions(fail_on=Severity.WARNING)).report.failed is True
@@ -106,7 +107,7 @@ class TestRuleSelection:
         root = _layered(
             tmp_path,
             "from app.infra import db\n",
-            LAYERED_CONFIG + "rules:\n  SMT101: off\n",
+            LAYERED_POLICY + "rules:\n  SMT101: off\n",
         )
 
         assert violations(root) == []
@@ -117,13 +118,13 @@ class TestRuleSelection:
         assert violations(root, CheckOptions(ignore=("SMT1",))) == []
 
     def test_unknown_rule_in_config(self, tmp_path: Path) -> None:
-        root = _layered(tmp_path, "", LAYERED_CONFIG + "rules:\n  SMT199: off\n")
+        root = _layered(tmp_path, "", LAYERED_POLICY + "rules:\n  SMT199: off\n")
 
         with pytest.raises(ConfigError, match='unknown rule "SMT199"'):
             check(root)
 
     def test_rule_configured_by_name(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  architecture/layer-boundary: warning\n"
+        config = LAYERED_POLICY + "rules:\n  architecture/layer-boundary: warning\n"
         root = _layered(tmp_path, "from app.infra import db\n", config)
 
         found = violations(root)
@@ -131,7 +132,7 @@ class TestRuleSelection:
         assert [(v.code, v.severity) for v in found] == [("SMT101", Severity.WARNING)]
 
     def test_unknown_rule_name_suggests_a_match(self, tmp_path: Path) -> None:
-        config = LAYERED_CONFIG + "rules:\n  layer-boundry: off\n"
+        config = LAYERED_POLICY + "rules:\n  layer-boundry: off\n"
         root = _layered(tmp_path, "", config)
 
         with pytest.raises(
@@ -141,7 +142,7 @@ class TestRuleSelection:
 
     def test_rule_configured_by_code_and_name(self, tmp_path: Path) -> None:
         config = (
-            LAYERED_CONFIG
+            LAYERED_POLICY
             + "rules:\n  SMT101: off\n  architecture/layer-boundary: error\n"
         )
         root = _layered(tmp_path, "", config)
@@ -196,7 +197,7 @@ class TestSuppressions:
             check=False,
         )
         assert formatted.returncode == 0, formatted.stderr
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "smelt.yml": (
@@ -218,7 +219,7 @@ class TestSuppressions:
 
     def test_ruff_format_preserves_a_definition_exception(self, tmp_path: Path) -> None:
         source = "def public_function(first_parameter: int, second_parameter: int, third_parameter: int):  # smelt: ignore[SMT316] -- deliberate external API\n    return first_parameter\n"
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning}\n",
@@ -246,7 +247,7 @@ class TestSuppressions:
     def test_signature_suppression_does_not_cover_function_body(
         self, tmp_path: Path
     ) -> None:
-        write_project(
+        write_policy_project(
             tmp_path,
             {
                 "smelt.yml": "version: 1\nproject: {root_packages: [app]}\nrules: {visibility/internal-public-member: warning, idioms/bundled-instance-assignment: warning}\n",
@@ -363,7 +364,7 @@ class TestSuppressions:
         root = _layered(
             tmp_path,
             "import os  # smelt: ignore[SMT104] -- x\n",
-            LAYERED_CONFIG + "rules:\n  SMT104: error\n",
+            LAYERED_POLICY + "rules:\n  SMT104: error\n",
         )
 
         assert violations(root, CheckOptions(select=("SMT101", "SMT901"))) == []
@@ -387,7 +388,7 @@ class TestSuppressions:
         root = _layered(
             tmp_path,
             "import os  # smelt: ignore[SMT305] -- x\n",
-            LAYERED_CONFIG + "rules:\n  SMT305: off\n",
+            LAYERED_POLICY + "rules:\n  SMT305: off\n",
         )
 
         [found] = violations(root)
@@ -535,7 +536,7 @@ class TestDebt:
 
 
 def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": (

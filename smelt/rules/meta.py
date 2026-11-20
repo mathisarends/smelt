@@ -80,10 +80,12 @@ class MissingRulePolicy(_EngineRule):
     name = "meta/missing-rule-policy"
     default_severity = Severity.WARNING
     doc = RuleDoc(
-        summary="An explicitly enabled rule is missing the policy it needs.",
+        summary="An explicitly enabled rule is missing the policy it needs in its scope.",
         rationale=(
             "An explicitly enabled rule can appear to enforce a convention even "
-            "when its required policy is absent. On full checks, this warning "
+            "when its required policy does not reach the setting's scope. A rule "
+            "named without any matching policy is a configuration error; this "
+            "warning covers the narrower case. On full checks, it "
             "reports effective rule settings with no applicable public, "
             "min_imports_to_bundle, min_importers_to_export or import style policy "
             "for SMT107, SMT108, SMT109 or SMT308 respectively. It uses the declared "
@@ -92,8 +94,17 @@ class MissingRulePolicy(_EngineRule):
             "An explicit public: [] is a policy. Changed, staged, and path-scoped "
             "checks skip this warning. CLI selection alone does not count as a setting."
         ),
-        bad="rules: {imports/forbidden-import-style: error}",
-        good="style:\n  imports: {style: relative, max_relative_level: 1}",
+        bad=(
+            "style:\n  overrides:\n"
+            "    api: {match: app.api, imports: {style: absolute}}\n"
+            "    jobs: {match: app.jobs, rules: {imports/forbidden-import-style: error}}"
+        ),
+        good=(
+            "style:\n  overrides:\n"
+            "    api: {match: app.api, imports: {style: absolute}}\n"
+            "    jobs:\n      match: app.jobs\n      imports: {style: relative}\n"
+            "      rules: {imports/forbidden-import-style: error}"
+        ),
         fix=(
             "Configure the named policy for the intended scope. Remove the explicit "
             "rule setting or set it to off where the convention should not apply."

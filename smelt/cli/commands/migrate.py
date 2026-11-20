@@ -10,7 +10,7 @@ from smelt.cli.support import EXIT_OK, CliError
 from smelt.config import load_config
 from smelt.config.loader import discover_config
 from smelt.config.source import SourceStore
-from smelt.engine.migration import migrate_policy
+from smelt.engine.migration import enable_rules, migrate_policy
 from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.registry import build_rule_set
 
@@ -39,10 +39,20 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
     encoding = "utf-8-sig" if original.startswith(b"\xef\xbb\xbf") else "utf-8"
     before = original.decode(encoding)
     result = migrate_policy(before)
-    after = result.text
+    rules = build_rule_set(lazy=True)
+    loaded = load_config(path, store=_Preview(path, result.text.encode(encoding)))
+    enabled = enable_rules(
+        result.text,
+        [
+            (location, rule.name, rule.default_severity.value)
+            for rule, locations in RuleSettings(rules, loaded).policy_enablements()
+            for location in locations
+        ],
+    )
+    after = enabled.text
     if "\r\n" in before and "\n" not in before.replace("\r\n", ""):
         after = after.replace("\r\n", "\n").replace("\n", "\r\n")
-    for note in result.notes:
+    for note in (*result.notes, *enabled.notes):
         console.print(note)
     if after != before:
         console.print(
@@ -59,7 +69,7 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
     content = after.encode(encoding)
     store = _Preview(path, content)
     loaded = load_config(path, store=store)
-    policy = RuleSettings(build_rule_set(lazy=True), loaded)
+    policy = RuleSettings(rules, loaded)
     policy.validate_packages(AnalysisContext(loaded.root, loaded.config, store=store))
     if after == before:
         console.print("Configuration already uses the current keys and selectors.")

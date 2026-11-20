@@ -6,14 +6,14 @@ import pytest
 
 from smelt.analysis.errors import AnalysisError
 from smelt.engine.check import CheckOptions
-from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_project
+from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def _workspace(tmp_path: Path, files: dict[str, str]) -> Path:
-    return write_project(tmp_path, {**MEMBER_BOUNDARIES, **files})
+    return write_policy_project(tmp_path, {**MEMBER_BOUNDARIES, **files})
 
 
 def test_allowed_member_and_same_member_imports_pass(tmp_path: Path) -> None:
@@ -223,7 +223,7 @@ def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
     root = _workspace(tmp_path, {})
     assert violations(root) == []
 
-    write_project(
+    write_policy_project(
         root, {"services/api/pyproject.toml": '[project]\nname = "web-api"\n'}
     )
     cached = check(root).report.violations
@@ -232,7 +232,7 @@ def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
     assert [v.code for v in cached] == ["SMT112"]
     assert cached == uncached
 
-    write_project(
+    write_policy_project(
         root,
         {
             "services/api/pyproject.toml": MEMBER_BOUNDARIES[

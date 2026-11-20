@@ -6,7 +6,7 @@ import pytest
 
 from smelt.diagnostics.debt import Debt
 from smelt.engine.check import CheckOptions, snippet_reader
-from tests.helpers import check, violations, write_project
+from tests.helpers import check, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -16,7 +16,7 @@ def _project(
     tmp_path: Path, source: str, policy: str, path: str = "tests/domain/test_service.py"
 ) -> Path:
     section = "tests:\n" if policy.startswith("  ") else ""
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": f"version: 1\nproject: {{root_packages: [app]}}\n{section}{policy}",
@@ -58,7 +58,7 @@ def test_fixture_file_is_covered_but_integration_path_is_allowed(
         "  forbidden_mock_paths: ['tests/**/domain/**']\n",
         "tests/domain/conftest.py",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "tests/integration/test_http.py": "from unittest.mock import Mock\ndef test_run(): Mock()"
@@ -118,7 +118,7 @@ def test_scope_and_inline_suppression_are_honored(tmp_path: Path) -> None:
         "from unittest.mock import patch\ndef test_run():\n    patch('app.repo')  # smelt: ignore[SMT422] -- deliberately test lookup\n",
         "rules: {tests/string-patch-target: error}\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "tests/test_other.py": "from unittest.mock import patch\ndef test_run(): patch('app.repo')"

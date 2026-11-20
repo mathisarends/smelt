@@ -7,7 +7,7 @@ import pytest
 from smelt.config import ConfigError
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -79,7 +79,7 @@ def test_allows_exactly_the_limit_and_reports_the_next_definition(
         tmp_path, source, settings=f"style: {{max_private_definitions: {limit}}}\n"
     )
     assert violations(root, SELECT) == []
-    write_project(root, {"app/state.py": source + "class _Added: pass\n"})
+    write_policy_project(root, {"app/state.py": source + "class _Added: pass\n"})
     [finding] = violations(root, SELECT)
     assert finding.expected is not None
     assert finding.expected["count"] == limit + 1
@@ -184,7 +184,7 @@ def test_checks_initializers_and_excludes_tests_and_excluded_sources(
         "",
         settings="style: {max_private_definitions: 0}\n",
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/__init__.py": "class _Model: pass\n",
@@ -212,7 +212,7 @@ style:
     inner: {match: app.legacy.models, max_private_definitions: 1}
 """,
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "app/legacy/__init__.py": "",
@@ -230,7 +230,7 @@ style:
         v.expected is not None and v.expected["max_private_definitions"] == 0
         for v in found
     )
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -247,7 +247,7 @@ def test_requires_opt_in_and_supports_off_overrides_and_suppression(
     source = "class _Local: pass\n"
     root = _project(tmp_path, source, settings="style: {max_private_definitions: 0}\n")
     assert [v.code for v in violations(root)] == ["SMT367"]
-    write_project(
+    write_policy_project(
         root,
         {
             "smelt.yml": CONFIG
@@ -280,7 +280,7 @@ def test_rejects_negative_limits(tmp_path: Path, setting: str) -> None:
 
 
 def _project(tmp_path: Path, source: str, *, settings: str = "") -> Path:
-    return write_project(
+    return write_policy_project(
         tmp_path,
         {
             "smelt.yml": CONFIG + settings,

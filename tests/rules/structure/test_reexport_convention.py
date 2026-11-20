@@ -6,7 +6,7 @@ import pytest
 
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions
-from tests.helpers import codes_at, violations, write_project
+from tests.helpers import codes_at, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,7 +22,7 @@ def test_all_reports_aliases_under_the_package_convention(tmp_path: Path) -> Non
         "from .models import Snapshot as Snapshot\n"
         '__all__ = ["Event", "OldEvent", "Other", "collections"]\n'
     )
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _CONFIG + "style: {reexports: all}\n",
@@ -49,7 +49,7 @@ def test_alias_reports_direct_imports_exported_only_by_all(tmp_path: Path) -> No
         "class Local: pass\n"
         '__all__ = ["Event", "Snapshot", "OldEvent", "collections", "xml", "Local"]\n'
     )
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _CONFIG + "style: {reexports: alias}\n",
@@ -83,7 +83,7 @@ def test_alias_reports_direct_imports_exported_only_by_all(tmp_path: Path) -> No
 def test_uncertain_package_reexports_are_skipped(
     tmp_path: Path, style: str, source: str
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _CONFIG + f"style: {{reexports: {style}}}\n",
@@ -109,7 +109,7 @@ style:
       reexports: {value: allow, reason: Preserve the list-only runtime API convention.}
 """
     )
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": config,
@@ -127,7 +127,7 @@ style:
 
 def test_override_activates_only_its_package_and_off_wins(tmp_path: Path) -> None:
     source = "from .events import Event as Event\n"
-    write_project(
+    write_policy_project(
         tmp_path,
         {
             "smelt.yml": _CONFIG,
@@ -141,8 +141,8 @@ def test_override_activates_only_its_package_and_off_wins(tmp_path: Path) -> Non
     config = (
         _CONFIG + "style: {overrides: {local: {match: app.events, reexports: all}}}\n"
     )
-    write_project(tmp_path, {"smelt.yml": config})
+    write_policy_project(tmp_path, {"smelt.yml": config})
     assert codes_at(violations(tmp_path)) == [("SMT369", "app/events/__init__.py", 1)]
 
-    write_project(tmp_path, {"smelt.yml": config + "rules: {SMT369: off}\n"})
+    write_policy_project(tmp_path, {"smelt.yml": config + "rules: {SMT369: off}\n"})
     assert violations(tmp_path, _SELECTED) == []

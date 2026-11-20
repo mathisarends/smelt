@@ -521,6 +521,10 @@ _RETIRED_POLICY_KEYS = {
     ): "module_import_exempt was renamed to module_import_exemptions",
     ("unmirrored",): "unmirrored was renamed to mirror_exclude",
     ("forbid_mocks_in",): "forbid_mocks_in was renamed to forbidden_mock_paths",
+    (
+        "project",
+        "coverage",
+    ): "project.coverage was replaced by the rule; set rules.architecture/uncovered-source to error (smelt config migrate does this)",
 }
 
 

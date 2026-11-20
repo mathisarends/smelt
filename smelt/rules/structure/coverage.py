@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
 
 class IncompleteCoverage(Rule):
     scope = "project"
-    activation = POLICIES["SMT306"]
     code = "SMT306"
     name = "architecture/uncovered-source"
     category = Category.ARCHITECTURE
@@ -28,13 +26,14 @@ class IncompleteCoverage(Rule):
             "project.root_packages. Pure package facades do not need their own layer."
         ),
         bad=(
-            "# smelt.yml\nproject:\n  root_packages: [backend]\n  coverage: strict\n"
+            "# smelt.yml\nproject:\n  root_packages: [backend]\nrules:\n  architecture/uncovered-source: error\n"
             "# A new workspace library exists but is not selected or classified."
         ),
         good=(
             "# smelt.yml\nproject:\n  root_packages: [backend, client]\n"
-            "  source_roots: [backend/src, libs/client/src]\n  coverage: strict\n"
-            "architecture:\n  modules: {client: infrastructure}"
+            "  source_roots: [backend/src, libs/client/src]\n"
+            "rules:\n  architecture/uncovered-source: error\n"
+            "architecture:\n  layers:\n    infrastructure: {modules: [client]}"
         ),
         fix=(
             "Select missing production packages and assign their architecture role. "
@@ -43,7 +42,6 @@ class IncompleteCoverage(Rule):
             "Coverage gaps cannot be hidden by debt, inline ignores or a narrowed check."
         ),
         config=(
-            "project.coverage",
             "project.root_packages",
             "project.source_roots",
             "project.exclude",
@@ -53,7 +51,7 @@ class IncompleteCoverage(Rule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if ctx.config.project.coverage != "strict":
+        if not ctx.config.strict_coverage:
             return
         for pattern in ctx.coverage.unexplained_exclusions:
             yield self.violation(

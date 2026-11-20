@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.engine.check import CheckOptions
-from tests.helpers import violations, write_project
+from tests.helpers import violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +41,7 @@ def _project(tmp_path: Path, files: dict[str, str]) -> Path:
         "gw/features/billing/domain/__init__.py": "",
         "gw/features/billing/application/__init__.py": "",
     }
-    return write_project(tmp_path, {**base, **files})
+    return write_policy_project(tmp_path, {**base, **files})
 
 
 class TestCrossFeatureImport:
@@ -352,7 +352,7 @@ def _central(tmp_path: Path, files: dict[str, str]) -> Path:
         "gw/features/voice/domain/call.py": "",
         "gw/features/voice/infrastructure/__init__.py": "",
     }
-    return write_project(tmp_path, {**base, **files})
+    return write_policy_project(tmp_path, {**base, **files})
 
 
 class TestCentralModules:

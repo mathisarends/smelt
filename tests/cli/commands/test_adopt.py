@@ -9,7 +9,7 @@ import pytest
 from smelt.cli import main
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.engine.check import CheckOptions
-from tests.helpers import FIXTURES, check, write_project
+from tests.helpers import FIXTURES, check, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def _member_debt_project(tmp_path: Path) -> Path:
     root = shutil.copytree(FIXTURES / "uv_workspace", tmp_path, dirs_exist_ok=True)
-    return write_project(
+    return write_policy_project(
         root,
         {
             "packages/core/src/core/infra/db.py": "DB = 1\n",
@@ -43,7 +43,7 @@ def test_member_debt_records_only_its_findings_and_prunes_without_accepting_new(
     assert check(root).report.in_debt == 1
     assert all(v.member == "services/api" for v in check(root).report.violations)
 
-    write_project(
+    write_policy_project(
         root,
         {
             "packages/core/src/core/domain/task.py": "def run():\n    return 1\n",
@@ -132,7 +132,7 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
     capsys: pytest.CaptureFixture[str],
     version: int,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"
@@ -177,7 +177,9 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
         )
     else:
         baseline.write(path)
-    write_project(root, {"app/b.py": "", "app/d.py": "from app.api.item import Item\n"})
+    write_policy_project(
+        root, {"app/b.py": "", "app/d.py": "from app.api.item import Item\n"}
+    )
     assert main(["debt", "--prune"]) == 0
     output = capsys.readouterr()
     assert not output.err
@@ -197,7 +199,7 @@ def test_show_filters_stored_debt_without_analyzing_or_rewriting(
     capsys: pytest.CaptureFixture[str],
     version: int,
 ) -> None:
-    root = write_project(
+    root = write_policy_project(
         tmp_path,
         {
             "smelt.yml": "version: 1\nproject: {root_packages: [app]}\ndebt: debt.json\n",
@@ -255,7 +257,7 @@ def test_show_missing_baseline_is_empty_and_does_not_enable_debt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config = "version: 1\nproject: {root_packages: [app]}\n"
-    write_project(tmp_path, {"smelt.yml": config})
+    write_policy_project(tmp_path, {"smelt.yml": config})
     monkeypatch.chdir(tmp_path)
     assert main(["debt", "--show", "--format", "json"]) == 0
     assert json.loads(capsys.readouterr().out) == {"version": 2, "violations": []}
@@ -270,7 +272,7 @@ def test_invalid_inspection_arguments_never_write_debt(
     capsys: pytest.CaptureFixture[str],
     args: list[str],
 ) -> None:
-    write_project(
+    write_policy_project(
         tmp_path, {"smelt.yml": "version: 1\nproject: {root_packages: [app]}\n"}
     )
     monkeypatch.chdir(tmp_path)

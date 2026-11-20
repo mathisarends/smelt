@@ -1,9 +1,10 @@
-"""Typed, declarative activation metadata for configuration-driven rules.
+"""Typed, declarative policy metadata for configuration-driven rules.
 
-An option that belongs to a single rule enables that rule wherever it applies:
-set under style it covers the project, set in a style override it covers
-that package. Selecting the rule in rules or with --select enables it everywhere
-with the built-in defaults, and an explicit off always wins.
+A policy never enables a rule: only a rules entry or --select does. The metadata
+names the policy a rule reads. A required policy must exist once the rule is
+enabled, and a declared policy whose rule is named nowhere is reported, so a
+configured option cannot silently go unchecked. An option set in a style
+override limits the rule to that package.
 """
 
 from __future__ import annotations
@@ -24,6 +25,10 @@ class PolicyActivation:
     matches: Callable[[SmeltConfig], bool]
     option: PolicyOption | None = None
     """The structure or contract option whose scope limits the activation."""
+    required: bool = True
+    """False when built-in defaults let the rule run without its policy."""
+    accept: Callable[[Any], bool] | None = None
+    """Which values of ``option`` declare the policy."""
 
 
 def _policies(config: SmeltConfig) -> tuple[PackagePolicy, ...]:
@@ -34,14 +39,18 @@ def _option(
     option: PolicyOption,
     description: str,
     accept: Callable[[Any], bool] = lambda value: value is not None,
+    *,
+    required: bool = True,
 ) -> PolicyActivation:
-    """Activation by an option set under style or in any style override."""
+    """A policy option set under style or in any style override."""
     return PolicyActivation(
         description,
         lambda config: any(
             accept(getattr(policy, option)) for policy in _policies(config)
         ),
         option,
+        required,
+        accept,
     )
 
 
@@ -104,6 +113,7 @@ POLICIES = {
     "SMT110": _option(
         "max_module_imports",
         "style or a package override sets max_module_imports, including zero.",
+        required=False,
     ),
     "SMT111": PolicyActivation(
         "architecture.members declares workspace member boundaries.",
@@ -116,10 +126,6 @@ POLICIES = {
     "SMT302": PolicyActivation(
         "style.forbidden_names contains naming restrictions.",
         lambda config: bool(config.structure.forbidden_names),
-    ),
-    "SMT306": PolicyActivation(
-        "project.coverage is strict, including --strict-coverage; the guard cannot be disabled in strict mode.",
-        lambda config: config.project.coverage == "strict",
     ),
     "SMT307": PolicyActivation(
         "A package API requires modules or named public entry points.",
@@ -157,22 +163,27 @@ POLICIES = {
     "SMT335": _option(
         "public_attribute_boundary",
         "style or a package override sets public_attribute_boundary.",
+        required=False,
     ),
     "SMT339": _option(
         "private_attribute_boundary",
         "style or a package override sets private_attribute_boundary.",
+        required=False,
     ),
     "SMT340": _option(
         "call_argument_kinds",
         "style or a package override sets call_argument_kinds.",
+        required=False,
     ),
     "SMT341": _option(
         "str_enum_values",
         "style or a package override sets str_enum_values.",
+        required=False,
     ),
     "SMT345": _option(
         "max_positional_parameters",
         "style or a package override sets max_positional_parameters, including zero.",
+        required=False,
     ),
     "SMT351": _option(
         "dataclass_options",
@@ -185,19 +196,23 @@ POLICIES = {
     "SMT363": _option(
         "max_comprehension_loops",
         "style or a package override sets max_comprehension_loops.",
+        required=False,
     ),
     "SMT364": _option(
         "max_constructor_decisions",
         "style or a package override sets max_constructor_decisions, including zero.",
+        required=False,
     ),
     "SMT367": _option(
         "max_private_definitions",
         "style or a package override sets max_private_definitions, including zero.",
+        required=False,
     ),
     "SMT369": _option(
         "reexports",
         "style or a package override sets reexports to all or alias.",
         lambda value: value in {"all", "alias"},
+        required=False,
     ),
     "SMT401": PolicyActivation(
         "tests.layout is mirror.", lambda config: config.tests.layout == "mirror"

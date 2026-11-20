@@ -5,7 +5,6 @@ project:
   root_packages: [smelt]
   source_roots: ["."]
   test_roots: [tests]
-  coverage: strict
   exclude:
     - path: "tests/fixtures/**"
       reason: Deliberately violating example projects, checked by the test suite.
@@ -114,4 +113,18 @@ rules:
   tests/unbounded-wait: warning
   tests/independent-case-loop: warning
   tests/missing-await-assertion: warning
+  architecture/uncovered-source: error
+  architecture/layer-boundary: error
+  architecture/shared-imports-feature: error
+  architecture/composition-root-leak: error
+  architecture/non-public-module-import: error
+  imports/excess-package-imports: hint
+  layout/forbidden-module-name: error
+  architecture/missing-required-module: error
+  typing/forbidden-future-annotations: error
+  layout/forbidden-private-module: error
+  complexity/excess-positional-parameters: warning
+  modeling/missing-dataclass-option: warning
+  visibility/reexport-convention: warning
+  tests/misplaced-test: error
 # yaml-language-server: $schema=smelt.schema.json

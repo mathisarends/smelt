@@ -19,6 +19,7 @@ from smelt.engine.inference import (
     InferredConfig,
     infer_config,
     maintainability_rules,
+    policy_rules,
     render_config,
 )
 
@@ -52,6 +53,7 @@ def workspace_drafts(
         if workspace is not None:
             base = replace(base, mirror=workspace.mirror)
         data = yaml.safe_load(render_config(base))
+        data.pop("rules", None)
         data["project"].pop("source_roots", None)
         data["project"]["workspace"] = "uv"
         data["project"]["test_roots"] = ["tests", "test"]
@@ -77,8 +79,7 @@ def workspace_drafts(
         drafts[root_filename] = _with_boundary_draft(
             root, drafts[root_filename], data=data, patterns=draft_patterns
         )
-        if maintainability:
-            drafts[root_filename] += "\n" + "\n".join(maintainability_rules()) + "\n"
+    architectures: list[dict[str, Any]] = []
     for path in members:
         if selected is not None and path != selected:
             continue
@@ -97,6 +98,7 @@ def workspace_drafts(
             (name for name in CONFIG_FILENAMES if (root / path / name).exists()),
             CONFIG_FILENAMES[0],
         )
+        architectures.append({"architecture": architecture})
         schema = posixpath.relpath(".smelt.schema.json", path)
         policy = (
             "# This file defines the internal architecture for this member. Review the inferred boundaries.\n"
@@ -112,7 +114,25 @@ def workspace_drafts(
             drafts[posixpath.join(path, filename)] += (
                 f"# Layer draft omitted. Review unclassified placements: {missing}.\n"
             )
+    if selected is None:
+        drafts[root_filename] += _root_rules(
+            drafts[root_filename], architectures, maintainability=maintainability
+        )
     return drafts
+
+
+def _root_rules(
+    document: str, architectures: list[dict[str, Any]], *, maintainability: bool
+) -> str:
+    """Member architectures are checked by the root's rules."""
+    policies = policy_rules(yaml.safe_load(document), *architectures)
+    if maintainability:
+        return "\n" + "\n".join(maintainability_rules(policies)) + "\n"
+    if not policies:
+        return ""
+    return "# Policies are checked only by the rules named here.\nrules:\n" + "".join(
+        f"  {entry}\n" for entry in policies
+    )
 
 
 def _with_boundary_draft(

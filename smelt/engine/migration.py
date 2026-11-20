@@ -1,4 +1,4 @@
-"""Round-trip a legacy policy through the 0.13 key and rule taxonomy."""
+"""Round-trip a legacy policy through the 0.14 key and rule taxonomy."""
 
 from __future__ import annotations
 
@@ -12,11 +12,13 @@ from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.error import YAMLError
 
 from smelt.config.errors import ConfigError, ConfigIssue
-from smelt.config.models import PackageBoundary
+from smelt.config.models import UNCOVERED_SOURCE, PackageBoundary
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import replacement_selectors
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from smelt.rules.base import RuleSet
 
 _LEVELS = ("off", "hint", "warning", "error")
@@ -29,19 +31,11 @@ class Migration:
 
 
 def migrate_policy(text: str) -> Migration:
-    yaml = YAML(typ="rt")
-    yaml.preserve_quotes = True
-    yaml.width = 100
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    try:
-        root = yaml.load(text)
-    except YAMLError as exc:
-        raise ConfigError([ConfigIssue("", str(exc))]) from exc
-    if not isinstance(root, CommentedMap):
-        raise ConfigError([ConfigIssue("", "expected a YAML mapping")])
+    yaml, root = _load(text)
     before = deepcopy(root)
     notes: list[str] = []
     _structure(root)
+    _coverage(root, notes)
     catalog = build_rule_set(lazy=True)
     _rules(root.get("rules"), catalog, notes)
     style = root.get("style")
@@ -66,11 +60,72 @@ def migrate_policy(text: str) -> Migration:
                     extra = deepcopy(entry)
                     extra["rule"] = new
                     ignore.insert(index + 1, extra)
+    return _dump(yaml, root, before, text=text, notes=notes)
+
+
+def enable_rules(
+    text: str, entries: Sequence[tuple[tuple[str, ...], str, str]]
+) -> Migration:
+    """Add ``name: severity`` to each rules map, at its path, that lacks the rule.
+
+    A declared policy no longer enables its rule, so a migration names every
+    rule the policy used to enable.
+    """
+    yaml, root = _load(text)
+    before = deepcopy(root)
+    notes: list[str] = []
+    for path, name, severity in entries:
+        settings = root
+        for key in path:
+            settings = _mapping(settings, key)
+        if name not in settings:
+            _append(settings, name, severity)
+            notes.append(
+                f"Enabled {name} in {'.'.join(path)}; its policy enabled it implicitly before."
+            )
+    return _dump(yaml, root, before, text=text, notes=notes)
+
+
+def _load(text: str) -> tuple[YAML, CommentedMap]:
+    yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
+    yaml.width = 100
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    try:
+        root = yaml.load(text)
+    except YAMLError as exc:
+        raise ConfigError([ConfigIssue("", str(exc))]) from exc
+    if not isinstance(root, CommentedMap):
+        raise ConfigError([ConfigIssue("", "expected a YAML mapping")])
+    return yaml, root
+
+
+def _dump(
+    yaml: YAML, root: CommentedMap, before: CommentedMap, *, text: str, notes: list[str]
+) -> Migration:
     if root == before:
         return Migration(text, tuple(notes))
     output = io.StringIO()
     yaml.dump(root, output)
     return Migration(output.getvalue(), tuple(notes))
+
+
+def _coverage(root: CommentedMap, notes: list[str]) -> None:
+    project = root.get("project")
+    if not isinstance(project, CommentedMap) or "coverage" not in project:
+        return
+    mode = project.pop("coverage")
+    if not project:
+        del root["project"]
+    if mode != "strict":
+        notes.append("Removed project.coverage; configured coverage is the default.")
+        return
+    rules = _mapping(root, "rules")
+    if not any(key in rules for key in UNCOVERED_SOURCE):
+        _append(rules, UNCOVERED_SOURCE[1], "error")
+    notes.append(
+        f"Replaced project.coverage: strict with rules.{UNCOVERED_SOURCE[1]}: error."
+    )
 
 
 def _structure(root: CommentedMap) -> None:
@@ -194,6 +249,15 @@ def _severity(setting: Any, default: str) -> int:
             [ConfigIssue("rules", f"cannot merge unknown severity {value!r}")]
         )
     return _LEVELS.index(value)
+
+
+def _append(mapping: CommentedMap, key: str, value: str) -> None:
+    """Append a key, keeping the blank lines and comments that close the mapping after it."""
+    last = next(reversed(mapping), None) if mapping else None
+    trailing = mapping.ca.items.pop(last, None) if last is not None else None
+    mapping[key] = value
+    if trailing is not None:
+        mapping.ca.items[key] = trailing
 
 
 def _mapping(parent: CommentedMap, name: str) -> CommentedMap:

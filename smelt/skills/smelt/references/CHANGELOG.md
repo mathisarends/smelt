@@ -7,13 +7,23 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- **Breaking:** `rules` is the only switch that enables a rule. Declared
+  policies such as `architecture.layers`, `tests.layout: mirror` or
+  `style.imports` no longer enable their rules. A policy whose rule no `rules`
+  entry names is a configuration warning, and enabling a rule whose required
+  policy is missing is a configuration error. `smelt init` writes the entries
+  for the inferred policy; `smelt config migrate` adds them to existing configs.
+  `smelt rules` shows the modes `default` and `explicit`. See the
+  [upgrade guide](docs/upgrading.md#013-to-014).
+- **Breaking:** `project.coverage` was removed. Enable strict coverage with
+  `rules: {architecture/uncovered-source: error}` in the root config, or for one
+  run with `--strict-coverage`. JSON reports keep `coverage.mode`.
 - `smelt init --maintainability` lists every explicitly selectable rule. Rules
   outside the starter selection appear commented out with their catalog
   severity, and the starter contains a single `rules` block.
 - `--format concise` omits the usage-limits note and reports policy coverage
   only when it is incomplete.
-- `smelt rules` explains that policy rules also run when listed under `rules:`.
-  CLI help uses "findings" and "families" consistently, and the hook examples
+- CLI help uses "findings" and "families" consistently, and the hook examples
   use `.pre-commit-config.yaml`, which both prek and pre-commit read.
 
 - Native checks keep waiting for a busy analyzer after five seconds. An idle or

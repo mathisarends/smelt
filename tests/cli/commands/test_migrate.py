@@ -45,6 +45,10 @@ ignore:
     preview = capsys.readouterr().out
     assert "+++ smelt.yml" in preview
     assert "Merged no-base-class-suffix" in preview
+    assert (
+        "Enabled complexity/excess-positional-parameters in style.overrides.api.rules"
+        in preview
+    )
     assert path.read_text(encoding="utf-8") == before
 
     assert main([*args, "--write"]) == 0
@@ -59,9 +63,11 @@ ignore:
         "public": [],
         "min_importers_to_export": 3,
     }
+    # The option used to enable its rule; the migration names it where it applies.
     assert data["style"]["overrides"]["api"] == {
         "match": "app",
         "max_positional_parameters": 3,
+        "rules": {"complexity/excess-positional-parameters": "warning"},
     }
     assert data["architecture"]["import_graph"] == {"type_checking": "ignore"}
     assert data["rules"]["modeling/forbidden-base-class-affix"] == "error"
