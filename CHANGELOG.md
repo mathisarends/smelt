@@ -33,9 +33,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   and prefixes. [SMT901](docs/rules/SMT901.md) reports unknown or unused
   identifiers as written and names the replacement for a retired or misspelled
   rule name.
-- Migration errors for retired keys and rules link the upgrade guide by an
-  absolute URL. The removed `information-hiding` selector now lists the five
-  rules that replace it.
+- Migration errors for retired keys and rules link the installed release's upgrade
+  guide once per text report. Structured JSON issues retain their individual links.
+  The removed `information-hiding` selector lists the five rules that replace it.
 - `smelt context` shows where a rule's setting comes from as
   `(smelt.yml: rules.<name>); reason: ...` instead of a separator that read
   like a question.

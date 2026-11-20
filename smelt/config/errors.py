@@ -2,16 +2,33 @@ from __future__ import annotations
 
 import difflib
 import os.path
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from smelt import __version__
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-# Absolute, so installed users without a source checkout can follow it.
-UPGRADE_GUIDE_URL = (
-    "https://github.com/mathisarends/smelt/blob/main/docs/upgrading.md#012-to-013"
+
+def _upgrade_guide_url(version: str, *, checkout: bool) -> str:
+    """Use the release tag for packaged releases and main for development builds."""
+    ref = (
+        f"v{version}"
+        if not checkout
+        and version != "0.0.0"
+        and re.fullmatch(r"\d+\.\d+\.\d+", version)
+        else "main"
+    )
+    return (
+        f"https://github.com/mathisarends/smelt/blob/{ref}/docs/upgrading.md#012-to-013"
+    )
+
+
+UPGRADE_GUIDE_URL = _upgrade_guide_url(
+    __version__, checkout=(Path(__file__).resolve().parents[2] / ".git").exists()
 )
 
 
@@ -38,13 +55,21 @@ class ConfigError(Exception):
         header = (
             f"invalid configuration in {source}" if source else "invalid configuration"
         )
-        lines = [
-            header,
-            *(
-                f"  {replace(issue, source=None) if issue.source == source else issue}"
-                for issue in self.issues
-            ),
-        ]
+        lines = [header]
+        guide = False
+        for issue in self.issues:
+            message = issue.message.removesuffix(
+                f" (see {UPGRADE_GUIDE_URL})"
+            ).removesuffix(f"; see {UPGRADE_GUIDE_URL}")
+            guide |= message != issue.message
+            visible = replace(
+                issue,
+                message=message,
+                source=None if issue.source == source else issue.source,
+            )
+            lines.append(f"  {visible}")
+        if guide:
+            lines.append(f"  see {UPGRADE_GUIDE_URL}")
         super().__init__("\n".join(lines))
 
     def relative_to(self, root: Path) -> ConfigError:

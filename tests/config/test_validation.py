@@ -1,6 +1,12 @@
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
-from smelt.config import ConfigError, parse_config
+from smelt.config import ConfigError, errors, parse_config
 from smelt.config.errors import UPGRADE_GUIDE_URL
 
 MINIMAL = {"version": 1, "project": {"root_packages": ["gateway"]}}
@@ -311,3 +317,37 @@ def test_test_quality_globs_are_canonical_and_zero_is_valid() -> None:
     )
     assert config.tests.forbidden_mock_paths == ["tests/**/domain/**"]
     assert config.tests.max_patches_per_test == 0
+
+
+@pytest.mark.parametrize(
+    ("version", "checkout", "ref"),
+    [
+        ("0.13.0", False, "v0.13.0"),
+        ("0.13.0", True, "main"),
+        ("0.14.0.dev1", False, "main"),
+        ("0.0.0", False, "main"),
+    ],
+)
+def test_migration_guide_tracks_release_builds(
+    tmp_path: Path, version: str, checkout: bool, *, ref: str
+) -> None:
+    package = tmp_path / "smelt"
+    (package / "config").mkdir(parents=True)
+    (package / "__init__.py").write_text(f"__version__ = {version!r}", encoding="utf-8")
+    shutil.copyfile(errors.__file__, package / "config/errors.py")
+    if checkout:
+        (tmp_path / ".git").mkdir()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-P",
+            "-c",
+            "from smelt.config.errors import UPGRADE_GUIDE_URL; print(UPGRADE_GUIDE_URL)",
+        ],
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    )
+    assert f"/blob/{ref}/" in result.stdout
