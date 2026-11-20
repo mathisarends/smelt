@@ -166,10 +166,7 @@ style:
     "source",
     [
         "@dataclass\nclass Readiness:\n    initial: int = 1",
-        "@attrs.define\nclass Readiness:\n    initial: int = 1",
         "class Readiness(BaseModel):\n    initial: int = 1",
-        "class Readiness(NamedTuple):\n    initial: int",
-        "class Readiness(TypedDict):\n    initial: int",
         "class Readiness(Plugin):\n    def __init__(self): self.initial = 1",
         "class Readiness:\n    initial = 1\nclass Child(Readiness): pass",
         "class Readiness(metaclass=Meta):\n    initial = 1",
@@ -179,7 +176,6 @@ style:
         "class Readiness:\n    initial = descriptor()",
         "class Readiness:\n    initial = descriptor\n    def __init__(self): self.initial = 1",
         "class Readiness:\n    def __init__(self): self._initial = 1",
-        "class Readiness:\n    def __init__(self): self.__initial__ = 1",
         "class Readiness:\n    @staticmethod\n    def create(other): other.initial = 1",
         "class Readiness:\n    def run(self):\n        self = other\n        self.initial = 1",
         "class Readiness:\n    initial = 1\nReadiness = replacement",

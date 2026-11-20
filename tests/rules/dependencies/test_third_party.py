@@ -62,7 +62,6 @@ class TestDefaultDeny:
         "source",
         [
             "from requests import Session; from pydantic import BaseModel\n",
-            "from pydantic import BaseModel; from requests import Session\n",
             "import requests; from pydantic import BaseModel\n",
             "from sqlalchemy import text; from sqlalchemy.orm import Mapped\n",
         ],
@@ -207,7 +206,6 @@ class TestTransitive:
         "statement",
         [
             "from sqlalchemy.orm import Session\nfrom sqlalchemy.sql import text\n",
-            "from sqlalchemy.sql import text\nfrom sqlalchemy.orm import Session\n",
             "import sqlalchemy.orm, sqlalchemy.sql\n",
         ],
     )

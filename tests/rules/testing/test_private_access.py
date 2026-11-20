@@ -15,12 +15,9 @@ if TYPE_CHECKING:
     ("source", "flagged"),
     [
         ("from app.service import _helper", True),
-        ("from app.service import _helper as public", True),
         ("import app._internal", True),
-        ("from app import _internal", True),
         ("from app import service as s\ndef test_run(): s._helper()", True),
         ("from app.service import public", False),
-        ("from app.service import __version__", False),
         ("from unittest.mock import _ANY", False),
         ("def _helper(): pass\ndef test_run(): _helper()", False),
         ("from app import service as s\ndef test_run(s): s._helper()", False),

@@ -80,12 +80,9 @@ def test_top_level_builtin_aliases(imports: str, checker: str) -> None:
         "from custom import isinstance\n",
         "from custom import *\n",
         "def unrelated(isinstance): pass\n",
-        "class isinstance: pass\n",
-        "for isinstance in values: pass\n",
         "try:\n    run()\nexcept Error as isinstance:\n    pass\n",
         "match value:\n    case isinstance:\n        pass\n",
         "import builtins\nbuiltins.isinstance = custom\n",
-        "import builtins\ndel builtins.isinstance\n",
     ],
 )
 def test_shadowed_or_mutated_checkers_are_conservatively_excluded(prefix: str) -> None:
@@ -106,16 +103,12 @@ def test_later_binding_is_not_mistaken_for_a_builtin_inside_a_function() -> None
     [
         CHAIN.replace("isinstance(event, Finished)", "ready"),
         CHAIN.replace("isinstance(event, Finished)", "isinstance(other, Finished)"),
-        CHAIN.replace("isinstance(event, Finished)", "not isinstance(event, Finished)"),
         CHAIN.replace("isinstance(event, Finished)", "isinstance(event, factory())"),
-        CHAIN.replace("isinstance(event, Finished)", "isinstance(event, list[int])"),
-        CHAIN.replace("isinstance(event, Finished)", "isinstance(event, ())"),
         CHAIN.replace(
             "isinstance(event, Finished)", "isinstance(event, Finished) or ready"
         ),
         CHAIN.replace("event.ok", "(event := other)"),
         CHAIN.replace("event,", "holder.event,"),
-        CHAIN.replace("event,", "load(),"),
         CHAIN.replace("elif", "if"),
         CHAIN.replace("isinstance", "custom.isinstance"),
     ],

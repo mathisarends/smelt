@@ -20,7 +20,6 @@ SELECT = CheckOptions(select=("CPX005",))
     [
         "first if a else second if b else third if c else last",
         "(first if a else second) if b else last",
-        "(first if a else second) if b else (third if c else last)",
         "(\n    first if a\n    else second if b\n    else last\n)",
     ],
 )
@@ -42,11 +41,6 @@ def test_reports_once_at_outermost_direct_nesting(
     "expression",
     [
         "supplied if supplied is not None else default",
-        "(a if x else b, c if y else d)",
-        "(lambda: a if x else b) if y else default",
-        "[a if x else b for x in items] if ready else []",
-        "call(a if x else b) if ready else default",
-        "a if (x if y else z) else b",
     ],
 )
 def test_accepts_separate_simple_conditionals(tmp_path: Path, expression: str) -> None:

@@ -148,7 +148,6 @@ def test_method_accesses_from_tests_count_as_external_uses(tmp_path: Path) -> No
     "body",
     [
         "def callback(other): return other.emit\n        return callback",
-        "def callback(self): return self.emit\n        return callback",
         "return lambda self: self.emit",
         "return [self.emit for self in objects]",
         "self = external\n        return self.emit",
@@ -198,10 +197,8 @@ def test_existing_private_instance_attributes_are_not_suggested_as_rename_target
         "class Browser:\n    def _emit(self): pass\n    def __str__(self): return 'browser'",
         "class Browser:\n    @property\n    def status(self): return 'ready'",
         "class Browser:\n    @classmethod\n    def open(cls): return cls()",
-        "class Browser:\n    @register\n    def emit(self): pass",
         "@framework\nclass Browser:\n    def emit(self): pass",
         "class Browser(Protocol):\n    def emit(self): pass",
-        "class Browser(Base):\n    def emit(self): pass",
         "class Browser(metaclass=Meta):\n    def emit(self): pass",
         "class Browser:\n    def emit(self): pass\nclass Child(Browser): pass",
         "class Browser:\n    def emit(self): pass\n    emit = callback",

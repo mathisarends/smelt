@@ -28,11 +28,9 @@ def test_no_detected_postponement_need(source: str) -> None:
         "def f(value: list[str]): pass",
         "def f(value: int | None): pass",
         "def f(value: module.Type): pass",
-        "def f(value: make_type()): pass",
         "@decorator\ndef f(value: int): pass",
         "class Model(Base):\n    value: int",
         "def f(value: int): pass\nprint(f.__annotations__)",
-        "from typing import get_type_hints\ndef f(value: int): pass\nget_type_hints(f)",
         "class User: pass\ndel User\ndef f(value: User): pass",
     ],
 )

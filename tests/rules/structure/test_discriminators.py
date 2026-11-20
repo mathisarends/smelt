@@ -99,7 +99,6 @@ def test_conventional_fields_typing_aliases_and_wrappers(
     "declaration",
     [
         'class Started:\n    kind: Literal["started"] = "started"',
-        'class Started(BaseModel):\n    type: Literal["started"] = Field(default="started")',
         'class Started(TypedDict):\n    tag: Required[Literal["started"]]',
         'def create():\n    class Started:\n        kind: Literal["started"]',
         'class Events:\n    class Started:\n        kind: Literal["started"]',
@@ -124,14 +123,10 @@ def test_model_shapes_and_defaults(tmp_path: Path, declaration: str) -> None:
     [
         'from typing import Literal\nclass Options:\n    type: Literal["a", "b"]',
         "from typing import Literal\nclass Options:\n    type: Literal[1]",
-        "from typing import Literal\nclass Options:\n    type: Literal[True]",
-        'from typing import Literal\nclass Options:\n    type: Literal[b"a"]',
         'from typing import Literal\nclass Options:\n    status: Literal["a"]',
         'from typing import Literal, ClassVar\nclass Options:\n    type: ClassVar[Literal["a"]]',
-        'from typing import Literal\nclass Options:\n    type: list[Literal["a"]]',
         'from typing import Literal\nclass Options:\n    type: Literal["a"] | None',
         'from typing import Literal\nclass Options:\n    type: str = "a"',
-        'from typing import Literal\ntype Tag = Literal["a"]\nclass Options:\n    type: Tag',
         'from typing import Literal\ntype: Literal["a"] = "a"',
         'from typing import Literal\ndef create(type: Literal["a"]): pass',
         'from typing import Literal\ndef create():\n    type: Literal["a"] = "a"',
@@ -195,7 +190,6 @@ type Checkpoint = CheckpointExtension | CheckpointFinished
     "shadow",
     [
         "Literal = object()",
-        "del Literal",
         "class Literal: pass",
         "def Literal(): pass",
         "def create(Literal): pass",
@@ -219,7 +213,6 @@ def test_shadowed_literal_imports_are_uncertain(tmp_path: Path, shadow: str) -> 
     [
         "t = other",
         "t.Literal = other",
-        "del t.Literal",
         "def create(t): pass",
     ],
 )

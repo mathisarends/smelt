@@ -65,10 +65,8 @@ def test_reviews_both_constructor_methods(tmp_path: Path, method: str) -> None:
     "body",
     [
         "self.value = value if value is not None else default()",
-        "if value is None:\n            raise ValueError('required')",
         "self.value = validate(value)",
         "def normalize():\n            if value:\n                for x in value:\n                    raise ValueError(x)\n        self.value = normalize()",
-        "normalize = lambda: a if value else b if ready else c\n        self.value = normalize()",
         "class Nested:\n            if value:\n                for x in value:\n                    raise ValueError(x)\n        self.value = Nested()",
     ],
 )

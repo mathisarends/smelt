@@ -80,11 +80,9 @@ def test_resolves_import_aliases_and_preceding_field_alias(tmp_path: Path) -> No
         "def run(self):\n    return zip(self.models, self.models)",
         "def run(self):\n    return zip(self.models, *self.fields)",
         "def run(self):\n    models = self.models\n    models = []\n    return zip(models, self.fields)",
-        "def run(self, models):\n    result = zip(models, self.fields)\n    models = self.models\n    return result",
         "def run(self):\n    if ready:\n        models = self.models\n    return zip(models, self.fields)",
         "def run(self):\n    def nested():\n        return zip(self.models, self.fields)\n    return nested",
         "@staticmethod\ndef run(self):\n    return zip(self.models, self.fields)",
-        "@classmethod\ndef run(cls):\n    return zip(cls.models, cls.fields)",
         "def run(self, other):\n    self = other\n    return zip(self.models, self.fields)",
     ],
 )

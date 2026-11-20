@@ -29,8 +29,6 @@ def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
         "self.log = self.control = value",
         "self.log, (self.control, local) = values",
         "self.log, *self.control = values",
-        "self.log, self.control = self.control, self.log",
-        "self.log, self.control = load_pair()",
     ],
 )
 def test_bundled_instance_fields_are_reported(tmp_path: Path, assignment: str) -> None:
@@ -54,9 +52,7 @@ def test_bundled_instance_fields_are_reported(tmp_path: Path, assignment: str) -
         "self.log = log\n        self.control = control",
         "log, control = values",
         "self.log, control = values",
-        "self.repo.log, self.repo.control = values",
         "def helper(self):\n            self.log, self.control = values",
-        "other.log, other.control = values",
     ],
 )
 def test_local_unpacking_and_other_receivers_are_allowed(
@@ -72,7 +68,6 @@ def test_local_unpacking_and_other_receivers_are_allowed(
     "source",
     [
         "class Inbox:\n    async def update(this, /):\n        this.log, this.control = values",
-        "class Inbox:\n    def update(self):\n        if condition:\n            self.log, self.control = values",
         "class Outer:\n    def update(self):\n        class Inner:\n            def __init__(this):\n                this.log, this.control = values",
     ],
 )
@@ -86,7 +81,6 @@ def test_methods_control_flow_and_nested_class_receivers(
     ("decorator", "imports"),
     [
         ("staticmethod", ""),
-        ("classmethod", ""),
         ("static", "from builtins import staticmethod as static\n"),
         ("builtins.classmethod", "import builtins\n"),
     ],

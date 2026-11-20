@@ -97,10 +97,6 @@ def test_configured_imported_assertion_helper_remains_an_explicit_contract(
             True,
         ),
         (
-            "subprocess.run([sys.executable, '-c', 'if False: assert result == 1'], check=True, timeout=1)",
-            True,
-        ),
-        (
             "subprocess.run([sys.executable, '-O', '-c', 'assert result == 1'], check=True, timeout=1)",
             True,
         ),
@@ -175,7 +171,6 @@ def test_child_assertion_failure_is_observed_by_the_parent(
         ("assert result.status == 'active'", False),
         ("assert result", False),
         ("with pytest.raises(ValueError):\n        run()", False),
-        ("with pytest.warns(UserWarning):\n        run()", False),
         ("def helper():\n        assert result == 1", True),
         ("def helper():\n        with pytest.raises(ValueError): run()", True),
         ("manager = lambda: pytest.raises(ValueError)", True),

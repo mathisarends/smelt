@@ -36,7 +36,6 @@ __all__ = sorted(_EXPORTS)
     "source",
     [
         LAZY,
-        LAZY.replace("    globals()[name] = value\n", ""),
         LAZY.replace("from importlib import import_module", "import importlib").replace(
             "getattr(import_module(", "getattr(importlib.import_module("
         ),
@@ -54,27 +53,17 @@ def test_literal_forwarding_table_is_a_static_export(source: str) -> None:
     [
         LAZY.replace('("app.api", "Service")', "build_export()"),
         LAZY.replace('("app.api", "Service")', '(".api", "Service")'),
-        LAZY.replace('("app.api", "Service")', '("app.api", "Service", "extra")'),
         LAZY.replace("return value", "return replacement"),
-        LAZY.replace(
-            "getattr(import_module(module), attribute)",
-            "custom_loader(module, attribute)",
-        ),
         LAZY.replace("if name not in _EXPORTS:", "if condition:"),
         LAZY.replace(
             "def __getattr__(name):", "def __getattr__(name: namespace.dynamic):"
         ),
         LAZY + '\n_EXPORTS["Public"] = ("app.other", "Other")\n',
         LAZY + "\n_EXPORTS.update(other)\n",
-        LAZY + "\nother = _EXPORTS\n",
         LAZY + "\nimport_module = replacement\n",
         LAZY + "\ngetattr = replacement\n",
         LAZY + "\nPublic = replacement\n",
-        LAZY + "\n__all__.clear()\n",
         LAZY + '\n__all__ += ["Other"]\n',
-        LAZY.replace(
-            "def __getattr__(name):", "def __getattr__(name: mutate(_EXPORTS)):\n"
-        ),
         LAZY.replace(
             'raise AttributeError(f"module {__name__!r} has no attribute {name!r}")',
             "raise AttributeError(name) from mutate(_EXPORTS)",

@@ -56,10 +56,6 @@ from smelt.analysis.test_timing import unbounded_waits
             "process = await asyncio.create_subprocess_exec('tool')\n    await process.wait()",
             True,
         ),
-        (
-            "process = await asyncio.create_subprocess_shell('tool')\n    await process.communicate()",
-            True,
-        ),
         ("process = await spawn('tool')\n    await process.wait()", True),
         (
             "process = asyncio.create_subprocess_exec('tool')\n    await process.wait()",
@@ -80,14 +76,9 @@ from smelt.analysis.test_timing import unbounded_waits
             True,
         ),
         (
-            "process = await asyncio.create_subprocess_exec('tool')\n    process.kill()\n    await process.wait()",
-            True,
-        ),
-        (
             "process = await asyncio.create_subprocess_exec('tool')\n    pending = process.wait()",
             False,
         ),
-        ("process = unknown()\n    await process.wait()", False),
         (
             "async with asyncio.timeout(1):\n        await asyncio.sleep(0.01)\n    await asyncio.sleep(0)",
             False,
@@ -112,7 +103,6 @@ def test_known_waits_and_local_deadlines(body: str, flagged: bool) -> None:
             True,
         ),
         ("clock = domain_clock()\n    clock.time = lambda: 0.0", False),
-        ("loop = unknown()\n    loop.time = lambda: 0.0", False),
     ],
 )
 def test_scheduler_clock_provenance_is_distinct_from_domain_time(

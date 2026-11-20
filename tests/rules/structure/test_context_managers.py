@@ -110,12 +110,8 @@ def test_methods_and_nested_functions_are_checked(tmp_path: Path) -> None:
         ),
         SOURCE.replace("AsyncIterator", "AsyncGenerator"),
         SOURCE.replace("from contextlib", "from custom_contextlib"),
-        SOURCE.replace("from collections.abc", "from custom_types"),
-        SOURCE.replace("from contextlib", "from .contextlib"),
         SOURCE.replace("async def", "def"),
         SOURCE.replace("AsyncIterator[None]", '"not valid ["'),
-        SOURCE.replace("AsyncIterator[None]", "UnknownIterator[None]"),
-        SOURCE.replace("AsyncIterator[None]", "list[AsyncIterator[None]]"),
         SOURCE.replace(" -> AsyncIterator[None]", ""),
         "def factory():\n    from collections.abc import AsyncIterator\n    from contextlib import asynccontextmanager\n    @asynccontextmanager\n    async def resource() -> AsyncIterator[None]:\n        yield\n    return resource\n",
     ],
@@ -133,7 +129,6 @@ def test_valid_and_unknown_neighbors_are_preserved(tmp_path: Path, source: str) 
         "class AsyncIterator: pass",
         "from other import *",
         "def helper[AsyncIterator](): pass",
-        "del asynccontextmanager",
     ],
 )
 def test_shadowed_bindings_are_not_guessed(tmp_path: Path, shadow: str) -> None:

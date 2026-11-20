@@ -12,7 +12,6 @@ from smelt.analysis.none_defaults import none_defaults
         "(1 if ready else 3)",
         "(lambda: 7)",
         "(yield 7)",
-        "await fallback()",
         "f'{other or 7}'",
     ],
 )

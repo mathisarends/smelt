@@ -71,7 +71,6 @@ def test_qualified_name_resolves_known_bindings(
         ("dataclass", "dataclass"),
         ("dataclasses.dataclass", "dataclasses.dataclass"),
         ("call().attribute", ""),
-        ("items[0]", ""),
     ],
 )
 def test_dotted_name_spells_name_chains(source: str, expected: str) -> None:

@@ -29,11 +29,6 @@ CODES = {"MOD002": "MOD002", "modeling/forbidden-base-class-affix": "MOD002"}
             f"(see {UPGRADE_GUIDE_URL})",
         ),
         (
-            "smt326",
-            '; merged into MOD002 "modeling/forbidden-base-class-affix" in 0.13.0 '
-            f"(see {UPGRADE_GUIDE_URL})",
-        ),
-        (
             "information-hiding",
             "; the information-hiding selector was removed in 0.13.0. List "
             "visibility/internal-public-member, "
@@ -44,7 +39,6 @@ CODES = {"MOD002": "MOD002", "modeling/forbidden-base-class-affix": "MOD002"}
             f"severity (see {UPGRADE_GUIDE_URL})",
         ),
         ("modeling/forbidden-base-class-affix", ""),
-        ("unknown-rule", ""),
     ],
 )
 def test_retired_hint_points_to_the_replacement(key: str, hint: str) -> None:

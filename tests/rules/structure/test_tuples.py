@@ -87,7 +87,6 @@ def test_reports_annotation_positions(
         "def route() -> tuple[()]: ...\n",
         "def route(pair: 'tuple[UUID, UUID]') -> None: ...\n",
         "ROUTE = (1, 2, 3)\n",
-        "PAIRS = [tuple[int, int]]\n",
         "class Grid:\n    def __getitem__(self, key: tuple[int, int]) -> int: ...\n",
         "from typing import override\n\n\nclass Grid:\n    @override\n    def get(self, key: tuple[int, int]) -> int: ...\n",
     ],

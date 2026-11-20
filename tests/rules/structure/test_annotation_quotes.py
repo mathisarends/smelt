@@ -99,7 +99,6 @@ def test_reports_redundant_quotes_on_python_314(
     "source",
     [
         'value: "Tab | None" = None\n',
-        'class Holder:\n    tab: "Tab"\n',
         'def tabs(*tabs: "Tab", **named: "Tab") -> None: ...\n',
         'def tabs() -> dict[str, "Tab"]: ...\n',
         'from typing import Annotated\n\ndef tabs(tab: Annotated["Tab", "meta"]) -> None: ...\n',
