@@ -407,6 +407,23 @@ the default grouping remains per rule. `--show-coverage` includes
 
 ## Options and package exceptions
 
+### Where an exception belongs
+
+Choose the narrowest mechanism that states why the code differs:
+
+| Mechanism | Use it for | Scope |
+| --- | --- | --- |
+| `project.exclude` | Code that should not be analyzed at all, such as generated clients | Path globs, optional reason |
+| `ignore` | Findings of a rule that do not apply to some files or modules | Path globs or modules, any rule, required reason |
+| `style.overrides` | Different conventions, severities or limits for a package | Package `match`; source rules and style options |
+| `# smelt: ignore[CODE] -- reason` | One deliberate exception at one location | A single finding |
+| [Debt](adoption.md) | Accepted existing findings you plan to fix | Recorded findings; new ones still fail |
+
+`ignore` and `style.overrides` are separate on purpose. `ignore` hides
+findings and always needs a reason. `style.overrides` changes the policy that
+applies to a package and can also enable a rule there. Use `ignore` for test
+files; package overrides cover only production modules.
+
 API ownership can be stated separately from export-frequency review:
 
 ```yaml
