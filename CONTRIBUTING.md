@@ -336,10 +336,14 @@ uv run pytest tests/rules/test_registry.py tests/test_docs.py
 uv run smelt explain <code> --format json
 uv run smelt check --strict-coverage --fail-on warning --format json
 uv run prek run --all-files
-uv run pytest
+uv run pytest -n auto -m "not session"
+uv run pytest -m session
 ```
 
-Replace placeholders with real paths/codes. If source discovery, analysis shared
+Replace placeholders with real paths/codes. The full suite runs in two
+steps: `-n auto` spreads it over all cores with pytest-xdist, and the `session`
+tests, which start real workers against startup deadlines, run serially after it.
+Focused runs need neither. If source discovery, analysis shared
 by multiple rules, metadata or machine output changes, include its consumers in
 focused validation; CI runs the full supported Python/OS matrix.
 

@@ -24,6 +24,10 @@ from tests.helpers import write_project
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+# Real workers start against startup deadlines, which a saturated CPU misses;
+# parallel runs deselect these with `-m "not session"` and run them serially.
+pytestmark = pytest.mark.session
+
 CONFIG = """version: 2
 project: {root_packages: [app]}
 style:

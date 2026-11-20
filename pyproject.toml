@@ -46,6 +46,7 @@ dev = [
     "prek>=0.5.9",
     "pytest>=9.1",
     "pytest-cov>=7.1",
+    "pytest-xdist>=3.8",
     "ruff>=0.16.9",
     "types-pyyaml>=6.0.12.20260906",
 ]
@@ -118,6 +119,9 @@ minversion = "9.0"
 testpaths = ["tests"]
 norecursedirs = ["tests/fixtures"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+    "session: starts real check workers against startup deadlines; run serially",
+]
 xfail_strict = true
 filterwarnings = ["error"]
 

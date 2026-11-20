@@ -47,7 +47,8 @@ jobs:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
       - run: uv sync --locked
-      - run: uv run pytest --cov --cov-report=term-missing
+      - run: uv run pytest -n auto -m "not session" --cov --cov-report=
+      - run: uv run pytest -m session --cov --cov-append --cov-report=term-missing
 
   smelt:
     runs-on: ubuntu-latest
