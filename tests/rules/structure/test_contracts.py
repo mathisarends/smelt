@@ -22,7 +22,7 @@ architecture:
       match: app.parts.*
       required: [api, core.models]
 """
-OPTIONS = CheckOptions(select=("SMT307",))
+OPTIONS = CheckOptions(select=("ARC014",))
 
 
 def test_missing_modules_are_reported_per_matching_package(tmp_path: Path) -> None:
@@ -44,7 +44,7 @@ def test_missing_modules_are_reported_per_matching_package(tmp_path: Path) -> No
         ("app.parts.one", "app.parts.one.core.models"),
         ("app.parts.two", "app.parts.two.api"),
     }
-    assert all(v.code == "SMT307" for v in found)
+    assert all(v.code == "ARC014" for v in found)
     assert all(v.expected and v.expected["contract"] == "component" for v in found)
 
 

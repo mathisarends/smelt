@@ -20,7 +20,7 @@ style:
       match: app
       imports: {style: relative, max_relative_level: 1}
 """
-OPTIONS = CheckOptions(select=("SMT308",))
+OPTIONS = CheckOptions(select=("IMP003",))
 
 
 def _project(

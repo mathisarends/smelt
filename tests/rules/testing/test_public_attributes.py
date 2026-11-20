@@ -46,7 +46,7 @@ def _project(
 def test_public_instance_state_is_not_justified_by_a_test_read(tmp_path: Path) -> None:
     [finding] = violations(_project(tmp_path))
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT430",
+        "VIS010",
         "app/worker.py",
         3,
         9,
@@ -277,7 +277,7 @@ def test_multiple_writes_and_tests_produce_one_finding_with_sorted_evidence(
     [
         ("", CheckOptions()),
         (
-            "rules: {SMT430: off}",
+            "rules: {VIS010: off}",
             CheckOptions(select=("ALL",)),
         ),
         (
@@ -285,11 +285,11 @@ def test_multiple_writes_and_tests_produce_one_finding_with_sorted_evidence(
             CheckOptions(),
         ),
         (
-            "rules: {SMT430: warning}",
-            CheckOptions(ignore=("SMT430",)),
+            "rules: {VIS010: warning}",
+            CheckOptions(ignore=("VIS010",)),
         ),
         (
-            "rules: {SMT430: warning}\ntests: {quality_exclude: ['tests/**']}",
+            "rules: {VIS010: warning}\ntests: {quality_exclude: ['tests/**']}",
             CheckOptions(),
         ),
     ],
@@ -300,14 +300,14 @@ def test_rule_selection_and_test_quality_exclusions(
     root = _project(
         tmp_path, config=f"version: 2\nproject: {{root_packages: [app]}}\n{policy}"
     )
-    assert not any(finding.code == "SMT430" for finding in violations(root, options))
+    assert not any(finding.code == "VIS010" for finding in violations(root, options))
 
 
-@pytest.mark.parametrize("selection", ["SMT430", "SMT43"])
+@pytest.mark.parametrize("selection", ["VIS010", "SMT43"])
 def test_explicit_code_and_prefix_selection(tmp_path: Path, selection: str) -> None:
     root = _project(tmp_path, config="version: 2\nproject: {root_packages: [app]}\n")
     [finding] = violations(root, CheckOptions(select=(selection,)))
-    assert finding.code == "SMT430"
+    assert finding.code == "VIS010"
 
 
 def test_related_public_use_rules_share_evidence_without_duplicate_findings(
@@ -332,13 +332,13 @@ def test_run():
     assert worker.pending == [1]
     assert helper() == 1
 """,
-        config="version: 2\nproject: {root_packages: [app]}\nrules: {SMT316: warning, SMT317: hint, SMT429: warning, SMT430: warning}\n",
+        config="version: 2\nproject: {root_packages: [app]}\nrules: {VIS001: warning, LAY005: hint, VIS009: warning, VIS010: warning}\n",
     )
     assert sorted(finding.code for finding in violations(root)) == [
-        "SMT316",
-        "SMT317",
-        "SMT429",
-        "SMT430",
+        "LAY005",
+        "VIS001",
+        "VIS009",
+        "VIS010",
     ]
 
 
@@ -347,7 +347,7 @@ def test_reasoned_suppression_and_severity_override(tmp_path: Path) -> None:
         tmp_path,
         source=SOURCE.replace(
             "self.pending = []",
-            "self.pending = []  # smelt: ignore[SMT430] -- supported diagnostic API",
+            "self.pending = []  # smelt: ignore[VIS010] -- supported diagnostic API",
         ),
         config=CONFIG.replace("warning", "error"),
     )

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
-_SELECTED = CheckOptions(select=("SMT369",))
+_SELECTED = CheckOptions(select=("VIS008",))
 
 
 def test_all_reports_aliases_under_the_package_convention(tmp_path: Path) -> None:
@@ -34,7 +34,7 @@ def test_all_reports_aliases_under_the_package_convention(tmp_path: Path) -> Non
 
     found = violations(tmp_path)
 
-    assert codes_at(found) == [("SMT369", "app/__init__.py", n) for n in (1, 2, 3)]
+    assert codes_at(found) == [("VIS008", "app/__init__.py", n) for n in (1, 2, 3)]
     assert [v.expected for v in found] == [
         {"style": "all", "name": name} for name in ("Event", "collections", "Snapshot")
     ]
@@ -59,7 +59,7 @@ def test_alias_reports_direct_imports_exported_only_by_all(tmp_path: Path) -> No
 
     found = violations(tmp_path)
 
-    assert codes_at(found) == [("SMT369", "app/__init__.py", n) for n in (1, 2)]
+    assert codes_at(found) == [("VIS008", "app/__init__.py", n) for n in (1, 2)]
     assert [v.expected for v in found] == [
         {"style": "alias", "name": name} for name in ("Event", "collections")
     ]
@@ -120,8 +120,8 @@ style:
     )
 
     assert codes_at(violations(tmp_path)) == [
-        ("SMT369", "app/__init__.py", 1),
-        ("SMT369", "app/lists/__init__.py", 1),
+        ("VIS008", "app/__init__.py", 1),
+        ("VIS008", "app/lists/__init__.py", 1),
     ]
 
 
@@ -142,7 +142,7 @@ def test_override_activates_only_its_package_and_off_wins(tmp_path: Path) -> Non
         _CONFIG + "style: {overrides: {local: {match: app.events, reexports: all}}}\n"
     )
     write_policy_project(tmp_path, {"smelt.yml": config})
-    assert codes_at(violations(tmp_path)) == [("SMT369", "app/events/__init__.py", 1)]
+    assert codes_at(violations(tmp_path)) == [("VIS008", "app/events/__init__.py", 1)]
 
-    write_policy_project(tmp_path, {"smelt.yml": config + "rules: {SMT369: off}\n"})
+    write_policy_project(tmp_path, {"smelt.yml": config + "rules: {VIS008: off}\n"})
     assert violations(tmp_path, _SELECTED) == []

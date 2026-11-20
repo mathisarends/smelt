@@ -44,7 +44,7 @@ def test_member_weakening_names_the_yaml_selector_once(tmp_path: Path) -> None:
         {
             **MEMBER_BOUNDARIES,
             "smelt.yml": MEMBER_BOUNDARIES["smelt.yml"]
-            + "rules: {modeling/str-enum-value-convention: error, SMT349: warning}\n",
+            + "rules: {modeling/str-enum-value-convention: error, MOD005: warning}\n",
             "services/api/smelt.yml": "rules: {modeling: off}\n",
         },
     )
@@ -95,7 +95,7 @@ def test_specific_member_entry_cannot_borrow_a_broader_reason(tmp_path: Path) ->
         },
     )
 
-    with pytest.raises(ConfigError, match=r"SMT345.*reason"):
+    with pytest.raises(ConfigError, match=r"CPX003.*reason"):
         check(root)
 
 
@@ -112,7 +112,7 @@ def test_an_inherited_root_rule_is_included_in_the_member_guard(
         },
     )
 
-    with pytest.raises(ConfigError, match=r"SMT345.*reason"):
+    with pytest.raises(ConfigError, match=r"CPX003.*reason"):
         check(root)
 
 
@@ -188,7 +188,7 @@ style:
       rules: {visibility/internal-public-member: warning}
     new:
       match: app.legacy.new
-      rules: {SMT316: error}
+      rules: {VIS001: error}
 """,
     )
 
@@ -202,7 +202,7 @@ style:
         target.write(
             "    disabled:\n      match: app.legacy.new\n      rules: {visibility/internal-public-member: off}\n"
         )
-    with pytest.raises(ConfigError, match="conflicting SMT316"):
+    with pytest.raises(ConfigError, match="conflicting VIS001"):
         check(root)
 
 
@@ -220,7 +220,7 @@ style:
       rules: {visibility/internal-public-member: warning}
     new:
       match: app.legacy.new
-      rules: {SMT316: off}
+      rules: {VIS001: off}
 """,
     )
 
@@ -242,7 +242,7 @@ style:
 
 
 @pytest.mark.parametrize(
-    "selector", ["SMT316", "smt316", "visibility/internal-public-member"]
+    "selector", ["VIS001", "smt316", "visibility/internal-public-member"]
 )
 def test_select_accepts_the_same_canonical_name_as_yaml(
     tmp_path: Path, selector: str
@@ -256,7 +256,8 @@ def test_select_accepts_the_same_canonical_name_as_yaml(
 @pytest.mark.parametrize(
     "settings",
     [
-        "SMT316: warning, visibility/internal-public-member: error",
+        "VIS001: warning, visibility/internal-public-member: error",
+        "SMT316: warning, VIS001: error",
         "internal-pubic-member: warning",
     ],
 )
@@ -343,7 +344,7 @@ ignore:
     assert [v.path for v in check(root).report.violations] == ["app/api.py"]
 
 
-_VISIBILITY_CODES = {"SMT316", "SMT320", "SMT335", "SMT429", "SMT430"}
+_VISIBILITY_CODES = {"VIS001", "VIS002", "VIS004", "VIS009", "VIS010"}
 _VISIBILITY_SOURCE = """LIMIT = 3
 def helper(): return LIMIT
 def testing_hook(): return 0
@@ -389,7 +390,7 @@ def test_information_hiding_includes_test_only_apis_without_duplicates(
     assert len(findings) == 5
     assert all(v.severity == Severity.WARNING for v in findings)
     assert findings == violations(root, CheckOptions(use_cache=False))
-    assert not {"SMT317", "SMT334"} & {rule.code for rule, _ in outcome.active}
+    assert not {"LAY005", "LAY008"} & {rule.code for rule, _ in outcome.active}
 
 
 def test_existing_individual_configuration_retains_identical_findings(
@@ -406,29 +407,29 @@ def test_existing_individual_configuration_retains_identical_findings(
 @pytest.mark.parametrize(
     "policy",
     [
-        "visibility: off, SMT316: warning",
-        "SMT316: warning, visibility: off",
+        "visibility: off, VIS001: warning",
+        "VIS001: warning, visibility: off",
     ],
 )
 def test_specific_rule_overrides_group_regardless_of_key_order(
     tmp_path: Path, policy: str
 ) -> None:
     findings = violations(_visibility_project(tmp_path, policy))
-    assert {v.code for v in findings} == {"SMT316"}
+    assert {v.code for v in findings} == {"VIS001"}
 
 
 @pytest.mark.parametrize(
     "policy",
     [
-        "visibility: off, SMT335: error",
-        "SMT335: error, visibility: off",
+        "visibility: off, VIS004: error",
+        "VIS004: error, visibility: off",
     ],
 )
 def test_group_can_be_disabled_with_one_individual_exception(
     tmp_path: Path, policy: str
 ) -> None:
     [finding] = violations(_visibility_project(tmp_path, policy))
-    assert (finding.code, finding.severity) == ("SMT335", Severity.ERROR)
+    assert (finding.code, finding.severity) == ("VIS004", Severity.ERROR)
 
 
 def test_individual_severity_override(tmp_path: Path) -> None:
@@ -436,21 +437,21 @@ def test_individual_severity_override(tmp_path: Path) -> None:
         _visibility_project(
             tmp_path,
             _INDIVIDUAL_VISIBILITY.replace(
-                "SMT335: warning", "visibility/internal-public-attribute: hint"
+                "VIS004: warning", "visibility/internal-public-attribute: hint"
             ),
         )
     )
     assert {v.code for v in findings} == _VISIBILITY_CODES
-    assert {v.severity for v in findings if v.code == "SMT335"} == {Severity.HINT}
-    assert {v.severity for v in findings if v.code != "SMT335"} == {Severity.WARNING}
+    assert {v.severity for v in findings if v.code == "VIS004"} == {Severity.HINT}
+    assert {v.severity for v in findings if v.code != "VIS004"} == {Severity.WARNING}
 
 
 def test_group_does_not_allow_duplicate_individual_aliases(tmp_path: Path) -> None:
-    with pytest.raises(ConfigError, match="SMT335 is already configured"):
+    with pytest.raises(ConfigError, match="VIS004 is already configured"):
         check(
             _visibility_project(
                 tmp_path,
-                "visibility: off, SMT335: off, visibility/internal-public-attribute: warning",
+                "visibility: off, VIS004: off, visibility/internal-public-attribute: warning",
             )
         )
 
@@ -468,11 +469,11 @@ def test_cli_group_selection_needs_no_yaml_activation(
 
 def test_cli_group_selection_respects_off_and_ignore(tmp_path: Path) -> None:
     root = _visibility_project(
-        tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: off")
+        tmp_path, _INDIVIDUAL_VISIBILITY.replace("VIS004: warning", "VIS004: off")
     )
     assert {
         v.code for v in violations(root, CheckOptions(select=("visibility",)))
-    } == _VISIBILITY_CODES - {"SMT335"}
+    } == _VISIBILITY_CODES - {"VIS004"}
     assert violations(root, CheckOptions(ignore=("visibility",))) == []
     _visibility_project(tmp_path, "visibility: off")
     assert violations(root, CheckOptions(select=("visibility",))) == []
@@ -500,7 +501,7 @@ def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
     )
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {SMT316: warning}\n    new:\n      match: app.legacy.new\n      rules: {SMT316: error}\n"
+            "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {VIS001: warning}\n    new:\n      match: app.legacy.new\n      rules: {VIS001: error}\n"
         )
     assert [(v.path, v.severity) for v in violations(root)] == [
         ("app/legacy/api.py", Severity.WARNING),
@@ -510,7 +511,7 @@ def test_package_group_and_closest_individual_override(tmp_path: Path) -> None:
 
 def test_closest_group_overrides_parent_individual_setting(tmp_path: Path) -> None:
     root = _visibility_project(
-        tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: error")
+        tmp_path, _INDIVIDUAL_VISIBILITY.replace("VIS004: warning", "VIS004: error")
     )
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
@@ -526,12 +527,12 @@ def test_group_configuration_preserves_stable_suppressions(tmp_path: Path) -> No
         {
             "app/api.py": _VISIBILITY_SOURCE.replace(
                 "self.pending = 0",
-                "self.pending = 0  # smelt: ignore[SMT335] -- diagnostic API",
+                "self.pending = 0  # smelt: ignore[VIS004] -- diagnostic API",
             )
         },
     )
     outcome = check(root)
-    assert {v.code for v in outcome.report.violations} == _VISIBILITY_CODES - {"SMT335"}
+    assert {v.code for v in outcome.report.violations} == _VISIBILITY_CODES - {"VIS004"}
     assert outcome.report.suppressed == 1
 
 
@@ -559,7 +560,7 @@ def test_debt_survives_group_adoption_and_disable_is_unassessed(tmp_path: Path) 
 def test_group_selection_cannot_bypass_strict_coverage(tmp_path: Path) -> None:
     root = _visibility_project(tmp_path)
     outcome = check(root, CheckOptions(select=("visibility",), strict_coverage=True))
-    assert "SMT306" in {rule.code for rule, _ in outcome.active}
+    assert "ARC013" in {rule.code for rule, _ in outcome.active}
 
 
 def test_group_conflicts_with_an_individual_in_another_same_package_contract(
@@ -568,15 +569,15 @@ def test_group_conflicts_with_an_individual_in_another_same_package_contract(
     root = _visibility_project(tmp_path, "")
     with (root / "smelt.yml").open("a", encoding="utf-8") as config:
         config.write(
-            "style:\n  overrides:\n    policy:\n      match: app\n      rules: {SMT335: warning}\n    exception:\n      match: app\n      rules: {SMT335: off}\n"
+            "style:\n  overrides:\n    policy:\n      match: app\n      rules: {VIS004: warning}\n    exception:\n      match: app\n      rules: {VIS004: off}\n"
         )
-    with pytest.raises(ConfigError, match="conflicting SMT335"):
+    with pytest.raises(ConfigError, match="conflicting VIS004"):
         check(root)
 
 
 def test_group_context_reports_effective_individual_settings(tmp_path: Path) -> None:
     root = _visibility_project(
-        tmp_path, _INDIVIDUAL_VISIBILITY.replace("SMT335: warning", "SMT335: off")
+        tmp_path, _INDIVIDUAL_VISIBILITY.replace("VIS004: warning", "VIS004: off")
     )
     outcome = check(root)
     briefing = build_briefing(
@@ -617,18 +618,18 @@ def test_family_caps_only_active_rules_in_a_base(tmp_path: Path) -> None:
     write_policy_project(
         tmp_path,
         {
-            "base.yml": "rules: {SMT316: error, SMT335: hint}\n",
+            "base.yml": "rules: {VIS001: error, VIS004: hint}\n",
             "smelt.yml": "extends: base.yml\nversion: 2\n"
-            "project: {root_packages: [app]}\nrules: {visibility: warning, SMT320: error}\n",
+            "project: {root_packages: [app]}\nrules: {visibility: warning, VIS002: error}\n",
         },
     )
 
     active = _severities(root)
 
-    assert active["SMT316"] == Severity.WARNING
-    assert active["SMT335"] == Severity.HINT
-    assert active["SMT320"] == Severity.ERROR
-    assert "SMT429" not in active
+    assert active["VIS001"] == Severity.WARNING
+    assert active["VIS004"] == Severity.HINT
+    assert active["VIS002"] == Severity.ERROR
+    assert "VIS009" not in active
 
 
 def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None:
@@ -648,9 +649,9 @@ def test_broad_selection_leaves_strict_coverage_an_error(tmp_path: Path) -> None
 
     active = _severities(root)
 
-    assert active["SMT306"] == Severity.ERROR
+    assert active["ARC013"] == Severity.ERROR
     # The named rule wins over the broad selectors of its own layer.
-    assert active["SMT101"] == Severity.ERROR
+    assert active["ARC001"] == Severity.ERROR
 
 
 def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> None:
@@ -662,7 +663,7 @@ def test_broad_package_selection_only_selects_source_rules(tmp_path: Path) -> No
 
     found = check(root).report.violations
 
-    assert {v.path for v in found if v.code == "SMT316"} == {
+    assert {v.path for v in found if v.code == "VIS001"} == {
         "app/legacy/api.py",
         "app/legacy/new/api.py",
     }
@@ -686,13 +687,13 @@ def test_a_broad_child_setting_does_not_reactivate_an_off_rule(tmp_path: Path) -
     write_policy_project(
         tmp_path,
         {
-            "base.yml": "rules: {SMT316: error, visibility/internal-public-attribute: off}\n",
+            "base.yml": "rules: {VIS001: error, visibility/internal-public-attribute: off}\n",
             "smelt.yml": "extends: base.yml\nversion: 2\n"
             "project: {root_packages: [app]}\nrules: {visibility: warning}\n",
         },
     )
 
-    assert {v.code for v in violations(root)} == {"SMT316"}
+    assert {v.code for v in violations(root)} == {"VIS001"}
 
 
 _WORKSPACE = {
@@ -727,7 +728,7 @@ def test_a_member_rule_setting_refines_a_broad_root_cap(tmp_path: Path) -> None:
 
     [finding] = violations(root)
     assert (finding.code, finding.member, finding.severity) == (
-        "SMT345",
+        "CPX003",
         "services/api",
         Severity.WARNING,
     )
@@ -785,14 +786,14 @@ def test_a_member_cannot_relax_strict_coverage(tmp_path: Path) -> None:
         {
             "smelt.yml": _WORKSPACE["smelt.yml"]
             + "rules: {architecture/uncovered-source: error}\n",
-            "services/api/smelt.yml": "rules: {SMT306: warning}\n",
+            "services/api/smelt.yml": "rules: {ARC013: warning}\n",
         },
     )
 
     with pytest.raises(ConfigError, match="strict coverage must remain") as caught:
         check(root)
 
-    assert caught.value.issues[0].path == "rules.SMT306"
+    assert caught.value.issues[0].path == "rules.ARC013"
 
 
 def test_rule_and_ignore_selector_mistakes_are_reported_together(
@@ -914,3 +915,11 @@ style:
     assert [(v.path, v.severity) for v in violations(root)] == [
         ("app/core.py", Severity.ERROR)
     ]
+
+
+def test_pre_family_code_still_configures_its_rule(tmp_path: Path) -> None:
+    root = _project(tmp_path, "rules: {SMT316: error}\n")
+
+    assert {(v.code, v.severity) for v in check(root).report.violations} == {
+        ("VIS001", Severity.ERROR)
+    }

@@ -25,7 +25,7 @@ def check_generated_files(
     root: Path,
 ) -> list[
     str
-]:  # smelt: ignore[SMT429] -- Public maintainer entry point called by excluded scripts/generate.py.
+]:  # smelt: ignore[VIS009] -- Public maintainer entry point called by excluded scripts/generate.py.
     """Report missing, changed and unexpected generated files without writing."""
     generated = _generated_files()
     drift = [
@@ -41,7 +41,7 @@ def write_generated_files(
     root: Path,
 ) -> list[
     str
-]:  # smelt: ignore[SMT429] -- Public maintainer entry point called by excluded scripts/generate.py.
+]:  # smelt: ignore[VIS009] -- Public maintainer entry point called by excluded scripts/generate.py.
     """Write the schema and the rule pages, and report what changed."""
     changed = []
     generated = _generated_files()

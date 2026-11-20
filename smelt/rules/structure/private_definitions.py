@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class ExcessPrivateDefinitions(Rule):
     file_local = True
-    code = "SMT367"
+    code = "VIS007"
     name = "visibility/excess-private-definitions"
     category = Category.VISIBILITY
     default_severity = Severity.HINT
@@ -58,7 +58,7 @@ class ExcessPrivateDefinitions(Rule):
             "extract arbitrary fragments merely to lower the count. Keep deliberate "
             "cohesive implementations with a reasoned suppression or package override. "
             "No automatic rewrite is performed. Enable rules: "
-            "{visibility/excess-private-definitions: hint} or select SMT367; "
+            "{visibility/excess-private-definitions: hint} or select VIS007; "
             "set max on the entry, in the root or a style override's rules. "
             "The limit defaults to 12; zero is supported."
         ),

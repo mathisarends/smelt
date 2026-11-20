@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT343",))
+SELECT = CheckOptions(select=("VIS006",))
 
 ISSUE_EXAMPLE = """\
 from collections.abc import AsyncGenerator
@@ -51,7 +51,7 @@ def test_reports_public_method_forwarding_to_private_generator(
     root = _project(tmp_path, ISSUE_EXAMPLE)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT343",
+        "VIS006",
         "app/frames.py",
         5,
         5,
@@ -93,7 +93,7 @@ def test_reports_public_method_forwarding_to_private_generator(
 )
 def test_reports_forwarding_spellings(tmp_path: Path, methods: tuple[str, str]) -> None:
     [finding] = violations(_project(tmp_path, _class(*methods)), SELECT)
-    assert finding.code == "SMT343"
+    assert finding.code == "VIS006"
 
 
 @pytest.mark.parametrize(
@@ -109,7 +109,7 @@ def test_reports_classes_without_external_bases(tmp_path: Path, header: str) -> 
     [finding] = violations(
         _project(tmp_path, _class(FORWARD, TARGET, header=header)), SELECT
     )
-    assert finding.code == "SMT343"
+    assert finding.code == "VIS006"
 
 
 @pytest.mark.parametrize(

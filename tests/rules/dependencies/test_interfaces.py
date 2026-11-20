@@ -21,7 +21,7 @@ architecture:
       match: app.orders
       public: [api]
 """
-OPTIONS = CheckOptions(select=("SMT107",))
+OPTIONS = CheckOptions(select=("ARC007",))
 
 
 @pytest.mark.parametrize(
@@ -62,7 +62,7 @@ def test_tests_obey_the_public_package_interface(
 
     [finding] = violations(tmp_path, OPTIONS)
 
-    assert (finding.code, finding.path, finding.line) == ("SMT107", test_path, 2)
+    assert (finding.code, finding.path, finding.line) == ("ARC007", test_path, 2)
     assert finding.target_module == "app.orders.storage"
     assert finding.expected is not None
     assert finding.expected["public"] == ["app.orders.api"]
@@ -86,7 +86,7 @@ def test_guarded_test_imports_follow_policy_despite_quality_exclusions(
     )
     found = violations(tmp_path, OPTIONS)
     assert [(v.code, v.line) for v in found] == (
-        [("SMT107", 3)] if policy == "include" else []
+        [("ARC007", 3)] if policy == "include" else []
     )
 
 
@@ -95,7 +95,7 @@ def test_deliberate_private_test_import_can_be_suppressed(tmp_path: Path) -> Non
     write_project(
         tmp_path,
         {
-            "tests/test_orders.py": "from app.orders.storage import OrderStore  # smelt: ignore[SMT107] -- integration test of storage adapter\n"
+            "tests/test_orders.py": "from app.orders.storage import OrderStore  # smelt: ignore[ARC007] -- integration test of storage adapter\n"
         },
     )
     report = check(tmp_path, OPTIONS).report
@@ -300,9 +300,9 @@ def test_layer_boundaries_still_reject_public_but_illegal_import(
         tmp_path, {"app/domain/service.py": "from app.orders.api import OrderStore\n"}
     )
 
-    found = violations(tmp_path, CheckOptions(select=("SMT101", "SMT107")))
+    found = violations(tmp_path, CheckOptions(select=("ARC001", "ARC007")))
 
-    assert [v.code for v in found] == ["SMT101"]
+    assert [v.code for v in found] == ["ARC001"]
 
 
 def test_nested_contracts_are_additive(tmp_path: Path) -> None:

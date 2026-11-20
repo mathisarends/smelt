@@ -1,6 +1,7 @@
-"""Rule names and codes retired by the 0.13.0 taxonomy, for actionable config errors."""
+"""Retired rule names and codes, for actionable config errors and migrations."""
 
 from smelt.config.errors import UPGRADE_GUIDE_URL
+from smelt.diagnostics.legacy_codes import LEGACY_CODES
 
 _RENAMED_RULES: dict[str, str] = {
     "complexity/constructor-logic": "complexity/excess-constructor-decisions",
@@ -103,13 +104,13 @@ _RENAMED_RULES: dict[str, str] = {
 }
 
 _MERGED_CODES: dict[str, str] = {
-    "SMT325": "SMT309",
-    "SMT326": "SMT323",
-    "SMT332": "SMT331",
-    "SMT342": "SMT341",
-    "SMT358": "SMT357",
-    "SMT365": "SMT339",
-    "SMT366": "SMT340",
+    "SMT325": "LAY002",
+    "SMT326": "MOD002",
+    "SMT332": "LAY007",
+    "SMT342": "MOD004",
+    "SMT358": "MOD010",
+    "SMT365": "VIS005",
+    "SMT366": "CPX002",
 }
 
 
@@ -123,10 +124,14 @@ _INFORMATION_HIDING_RULES = (
 
 
 def replacement_selectors(key: str) -> tuple[str, ...]:
-    """Canonical replacements for a legacy selector; merged codes stay codes."""
+    """Canonical replacements for a legacy selector; merged and SMT codes become codes."""
     if key.lower() == "information-hiding":
         return _INFORMATION_HIDING_RULES
-    replacement = _RENAMED_RULES.get(key) or _MERGED_CODES.get(key.upper())
+    replacement = (
+        _RENAMED_RULES.get(key)
+        or _MERGED_CODES.get(key.upper())
+        or LEGACY_CODES.get(key.upper())
+    )
     return (replacement,) if replacement else ()
 
 

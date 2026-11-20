@@ -24,8 +24,8 @@ _SCOPE = (
 
 class StrEnumValueConvention(Rule):
     file_local = True
-    activation = POLICIES["SMT341"]
-    code = "SMT341"
+    activation = POLICIES["MOD004"]
+    code = "MOD004"
     name = "modeling/str-enum-value-convention"
     category = Category.MODELING
     default_severity = Severity.HINT
@@ -60,7 +60,7 @@ class StrEnumValueConvention(Rule):
             "each reported explicit string with auto(), or spell the auto() "
             "members of a class with custom values explicitly. No automatic "
             "rewrite is performed. Enable rules: "
-            "{modeling/str-enum-value-convention: hint}, select SMT341, or set "
+            "{modeling/str-enum-value-convention: hint}, select MOD004, or set "
             "str_enum_values under style or in a style override. Reasoned "
             "inline suppressions are supported."
         ),

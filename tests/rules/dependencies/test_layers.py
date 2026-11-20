@@ -10,7 +10,7 @@ from tests.helpers import LAYERED_CONFIG, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT101 = CheckOptions(select=("SMT101",))
+ONLY_SMT101 = CheckOptions(select=("ARC001",))
 
 
 def _project(

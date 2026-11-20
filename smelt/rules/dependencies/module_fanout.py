@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 
 class ModuleImportFanout(Rule):
-    activation = POLICIES["SMT110"]
-    code = "SMT110"
+    activation = POLICIES["IMP002"]
+    code = "IMP002"
     name = "imports/excess-module-imports"
     category = Category.IMPORTS
     default_severity = Severity.HINT
@@ -29,7 +29,7 @@ class ModuleImportFanout(Rule):
         summary="A module imports more project modules than its policy allows.",
         rationale=(
             "Many independent project dependencies can signal that a module coordinates "
-            "too many responsibilities. Unlike SMT108, this review counts distinct "
+            "too many responsibilities. Unlike IMP001, this review counts distinct "
             "direct target modules across every project root package, without requiring "
             "a contract on each target package. Repeated imports and multiple symbols "
             "from one module count once. Facade re-exports count at the facade path "
@@ -100,7 +100,7 @@ class ModuleImportFanout(Rule):
             hint = "Split cohesive responsibilities or review deliberate package facades and their import cycles."
             dominant = max(sorted(grouped), key=lambda package: len(grouped[package]))
             if len(grouped[dominant]) * 2 > len(targets):
-                hint += f" SMT108 can review per-package fanout into {dominant}."
+                hint += f" IMP001 can review per-package fanout into {dominant}."
             yield self.violation(
                 f"{source.module} imports {len(targets)} project modules (limit {limit}); review its responsibilities or package facades",
                 path=source.path,

@@ -44,8 +44,8 @@ def finding_usage_scopes(violations: list[Violation]) -> list[dict[str, Any]]:
     return scopes
 
 
-_CYCLE = "SMT104"
-_TEST_LOCATION = "SMT401"
+_CYCLE = "ARC004"
+_TEST_LOCATION = "TST001"
 
 
 def _groups(
@@ -151,7 +151,7 @@ def _test_move(violation: Violation) -> str | None:
 
 def _ordering(violation: Violation) -> str | None:
     if (
-        violation.code == "SMT313"
+        violation.code == "LAY004"
         and (violation.expected or {}).get("scope") == "module"
         and violation.message
         in {
@@ -168,7 +168,7 @@ def _shared_helper(violation: Violation) -> str | None:
     helper = expected.get("helper")
     location = expected.get("operation_location")
     if (
-        violation.code != "SMT426"
+        violation.code != "TST008"
         or expected.get("kind") != "unbounded-wait"
         or not isinstance(helper, dict)
         or not isinstance(location, dict)

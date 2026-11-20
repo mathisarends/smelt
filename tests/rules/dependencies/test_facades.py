@@ -21,7 +21,7 @@ architecture:
   packages:
     browser-api: {match: app.browser, min_importers_to_export: 3}
 """
-OPTIONS = CheckOptions(select=("SMT109",))
+OPTIONS = CheckOptions(select=("ARC008",))
 CLIENT = "from app.browser.base import Browser, BrowserEvents\n"
 
 
@@ -132,7 +132,7 @@ def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_ru
     assert violations(root, OPTIONS) == []
     write_policy_project(root, {"app/__init__.py": ""})
     with pytest.raises(ConfigError, match="verified public export"):
-        violations(root, CheckOptions(select=("SMT901",)))
+        violations(root, CheckOptions(select=("MET001",)))
 
 
 def test_canonical_ownership_does_not_relax_package_public_boundaries(
@@ -146,9 +146,9 @@ def test_canonical_ownership_does_not_relax_package_public_boundaries(
     write_policy_project(
         root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
     )
-    found = violations(root, CheckOptions(select=("SMT107", "SMT109")))
+    found = violations(root, CheckOptions(select=("ARC007", "ARC008")))
     assert found
-    assert {finding.code for finding in found} == {"SMT107"}
+    assert {finding.code for finding in found} == {"ARC007"}
 
 
 def test_facade_importer_context_distinguishes_workspace_roots(tmp_path: Path) -> None:
@@ -184,8 +184,8 @@ def test_canonical_ownership_does_not_disable_concrete_cycle_checks(
     )
     assert {
         finding.code
-        for finding in violations(root, CheckOptions(select=("SMT104", "SMT109")))
-    } == {"SMT104"}
+        for finding in violations(root, CheckOptions(select=("ARC004", "ARC008")))
+    } == {"ARC004"}
 
 
 def _project(
@@ -218,7 +218,7 @@ def test_reports_one_missing_name_at_its_definition_with_mixed_imports(
         root
     )  # min_importers_to_export activates the rule without a second switch
 
-    assert finding.code == "SMT109"
+    assert finding.code == "ARC008"
     assert finding.severity is Severity.HINT
     assert (finding.path, finding.line, finding.column) == ("app/browser/base.py", 2, 1)
     assert finding.source_module == "app.browser.base"
@@ -459,7 +459,7 @@ def test_warm_and_uncached_results_follow_callers_exports_and_deleted_definition
     ):
         write_policy_project(root, updates)
         warm = violations(root, OPTIONS)
-        fresh = violations(root, CheckOptions(select=("SMT109",), use_cache=False))
+        fresh = violations(root, CheckOptions(select=("ARC008",), use_cache=False))
         assert warm == fresh
         assert len(warm) == expected
     (root / "app/browser/base.py").unlink()

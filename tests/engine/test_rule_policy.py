@@ -28,7 +28,7 @@ _PACKAGES = {
 }
 
 
-def _local(setting: str = "SMT308: warning") -> str:
+def _local(setting: str = "IMP003: warning") -> str:
     """A config whose app.local override names a rule without its policy (line 9)."""
     return _CONFIG + _LOCAL.replace("{setting}", setting)
 
@@ -37,21 +37,21 @@ def _local(setting: str = "SMT308: warning") -> str:
     ("code", "policy", "configured"),
     [
         (
-            "SMT107",
+            "ARC007",
             "public",
             "architecture: {packages: {api: {match: app, public: []}}}\n",
         ),
         (
-            "SMT108",
+            "IMP001",
             "min_imports_to_bundle",
             "architecture: {packages: {api: {match: app, min_imports_to_bundle: 2}}}\n",
         ),
         (
-            "SMT109",
+            "ARC008",
             "min_importers_to_export",
             "architecture: {packages: {api: {match: app, min_importers_to_export: 2}}}\n",
         ),
-        ("SMT308", "imports", "style: {imports: {style: absolute}}\n"),
+        ("IMP003", "imports", "style: {imports: {style: absolute}}\n"),
     ],
 )
 def test_a_named_rule_without_any_policy_is_a_config_error(
@@ -76,14 +76,14 @@ def test_missing_policy_warns_at_the_uncovered_setting(tmp_path: Path) -> None:
 
     [finding] = outcome.report.violations
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT904",
+        "MET004",
         "smelt.yml",
         9,
         9,
     )
     assert finding.severity is Severity.WARNING
     assert finding.expected is not None
-    assert finding.expected["setting"] == "style.overrides.local.rules.SMT308"
+    assert finding.expected["setting"] == "style.overrides.local.rules.IMP003"
     assert finding.expected["policy"] == "style.imports"
     assert outcome.report.failed
 
@@ -119,30 +119,30 @@ def test_workspace_rule_setting_points_to_the_owning_file(tmp_path: Path) -> Non
         },
     )
 
-    assert codes_at(violations(root)) == [("SMT904", "packages/app/smelt.yml", 2)]
+    assert codes_at(violations(root)) == [("MET004", "packages/app/smelt.yml", 2)]
 
 
 def test_an_off_override_and_cli_selection_alone_do_not_warn(tmp_path: Path) -> None:
     root = write_policy_project(
-        tmp_path, {"smelt.yml": _local("SMT308: off"), **_PACKAGES}
+        tmp_path, {"smelt.yml": _local("IMP003: off"), **_PACKAGES}
     )
 
     assert violations(root) == []
     write_policy_project(root, {"smelt.yml": _CONFIG})
-    assert violations(root, CheckOptions(select=("SMT308", "SMT904"))) == []
+    assert violations(root, CheckOptions(select=("IMP003", "MET004"))) == []
 
 
 def test_same_cache_supports_full_and_path_scoped_checks(tmp_path: Path) -> None:
     root = write_policy_project(tmp_path, {"smelt.yml": _local(), **_PACKAGES})
 
     assert violations(root, CheckOptions(paths=("app",))) == []
-    assert codes_at(violations(root)) == [("SMT904", "smelt.yml", 9)]
+    assert codes_at(violations(root)) == [("MET004", "smelt.yml", 9)]
     assert violations(root, CheckOptions(paths=("app",))) == []
 
 
 def test_yaml_merge_keeps_the_rule_key_location(tmp_path: Path) -> None:
     root = write_policy_project(
-        tmp_path, {"smelt.yml": _local("<<:\n          SMT308: error"), **_PACKAGES}
+        tmp_path, {"smelt.yml": _local("<<:\n          IMP003: error"), **_PACKAGES}
     )
 
-    assert codes_at(violations(root)) == [("SMT904", "smelt.yml", 10)]
+    assert codes_at(violations(root)) == [("MET004", "smelt.yml", 10)]

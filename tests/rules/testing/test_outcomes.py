@@ -49,7 +49,7 @@ def test_missing_outcome_explains_existing_helper_limits(
             "tests/test_run.py": source,
         },
     )
-    [finding] = violations(tmp_path, CheckOptions(select=("SMT424",)))
+    [finding] = violations(tmp_path, CheckOptions(select=("TST006",)))
     assert finding.expected is not None
     assert finding.expected["helper_review"][0]["reason"] == reason
     assert finding.expected["analysis_limits"]["helper_hops"] == 1
@@ -66,7 +66,7 @@ def test_configured_imported_assertion_helper_remains_an_explicit_contract(
             "tests/test_run.py": "from tests.support import verify\nasync def test_run():\n    await verify()\n",
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT424",))) == []
+    assert violations(tmp_path, CheckOptions(select=("TST006",))) == []
 
 
 @pytest.mark.parametrize(
@@ -148,7 +148,7 @@ def test_checked_inline_python_assertions_are_static_evidence(
         },
     )
     found = violations(tmp_path)
-    assert [finding.code for finding in found] == (["SMT424"] if flagged else [])
+    assert [finding.code for finding in found] == (["TST006"] if flagged else [])
 
 
 @pytest.mark.parametrize("observed", [0, 1])
@@ -192,7 +192,7 @@ def test_outcome_evidence(tmp_path: Path, body: str, flagged: bool) -> None:
             + "\n",
         },
     )
-    found = violations(tmp_path, CheckOptions(select=("SMT424",)))
+    found = violations(tmp_path, CheckOptions(select=("TST006",)))
     assert bool(found) is flagged
     if found:
         assert found[0].severity.value == "warning"
@@ -208,7 +208,7 @@ def test_assertion_helper_is_configurable_and_alias_aware(tmp_path: Path) -> Non
             "tests/test_service.py": "from tests.assertions import assert_user as verify\ndef test_run(): verify(user)",
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT424",))) == []
+    assert violations(tmp_path, CheckOptions(select=("TST006",))) == []
 
 
 def test_event_observations_share_deadline_recognition(tmp_path: Path) -> None:
@@ -234,7 +234,7 @@ def test_event_observations_share_deadline_recognition(tmp_path: Path) -> None:
         },
     )
     found = violations(tmp_path)
-    assert {finding.code for finding in found} == {"SMT424", "SMT426"}
+    assert {finding.code for finding in found} == {"TST006", "TST008"}
     assert len(found) == 2
     assert all(
         finding.expected is not None
@@ -254,9 +254,9 @@ def test_default_configuration_keeps_quality_rules_opt_in(tmp_path: Path) -> Non
     )
     assert violations(tmp_path) == []
     assert {v.code for v in violations(tmp_path, CheckOptions(select=("SMT42",)))} == {
-        "SMT420",
-        "SMT422",
-        "SMT424",
+        "TST002",
+        "TST004",
+        "TST006",
     }
 
 
@@ -273,7 +273,7 @@ def test_vacuity_review_is_separate_from_missing_outcomes_and_honors_exclusion(
         },
     )
     [finding] = violations(tmp_path)
-    assert finding.code == "SMT425"
+    assert finding.code == "TST007"
     assert finding.severity.value == "warning"
     assert finding.expected is not None
     assert finding.expected["evidence"] == [{"line": 2, "kind": "loop"}]
@@ -321,7 +321,7 @@ def test_codegen_review_is_backed_by_an_executed_empty_output_probe(
     )
     findings = violations(tmp_path)
     assert [finding.code for finding in findings] == (
-        [] if complete_comparison else ["SMT425"]
+        [] if complete_comparison else ["TST007"]
     )
     executed = subprocess.run(
         [

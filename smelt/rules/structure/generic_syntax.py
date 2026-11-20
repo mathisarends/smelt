@@ -16,7 +16,7 @@ _INLINE_TYPE_PARAMETERS = (3, 12)
 
 class PreferInlineTypeParameters(Rule):
     file_local = True
-    code = "SMT371"
+    code = "TYP008"
     name = "typing/prefer-inline-type-parameters"
     category = Category.TYPING
     default_severity = Severity.HINT
@@ -48,7 +48,7 @@ class PreferInlineTypeParameters(Rule):
             "defaults. Review inferred variance, shared type variable uses and "
             "runtime introspection before migrating. A class that needs to retain "
             "explicit variance can use a reasoned Smelt suppression. Enable "
-            "rules: {typing/prefer-inline-type-parameters: hint}, or select SMT371."
+            "rules: {typing/prefer-inline-type-parameters: hint}, or select TYP008."
         ),
         config=("rules", "style.overrides", "project.python_version"),
     )

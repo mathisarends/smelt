@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 
 class CrossFeatureImport(Rule):
-    activation = POLICIES["SMT102"]
-    code = "SMT102"
+    activation = POLICIES["ARC002"]
+    code = "ARC002"
     name = "architecture/cross-feature-import"
     architecture_scoped = True
     category = Category.ARCHITECTURE
@@ -111,8 +111,8 @@ _MAY_IMPORT = {
 
 
 class SharedImportsFeature(Rule):
-    activation = POLICIES["SMT105"]
-    code = "SMT105"
+    activation = POLICIES["ARC005"]
+    code = "ARC005"
     name = "architecture/shared-imports-feature"
     architecture_scoped = True
     category = Category.ARCHITECTURE

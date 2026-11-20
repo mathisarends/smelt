@@ -99,8 +99,8 @@ def smoke(directory: Path) -> None:
             for arguments in (
                 ["--version"],
                 ["rules"],
-                ["explain", "SMT101"],
-                ["explain", "SMT336", "--format", "json"],
+                ["explain", "ARC001"],
+                ["explain", "LAY009", "--format", "json"],
                 ["explain", "visibility", "--format", "json"],
                 ["config", "schema"],
             ):
@@ -131,7 +131,7 @@ def smoke(directory: Path) -> None:
             independent = json.loads(run([*command, "--no-cache"], project))
             if edited != independent or [
                 finding["code"] for finding in edited["violations"]
-            ] != ["SMT316"]:
+            ] != ["VIS001"]:
                 raise AssertionError("installed checker lost the removed caller")
             print(f"Installed and checked {distribution.name}")  # noqa: T201
 

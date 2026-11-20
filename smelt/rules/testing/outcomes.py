@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class TestWithoutOutcomeCheck(Rule):
     test_local = True
     scope = "test"
-    code = "SMT424"
+    code = "TST006"
     name = "tests/missing-outcome-check"
     category = Category.TESTS
     default_severity = Severity.WARNING
@@ -81,7 +81,7 @@ class TestWithoutOutcomeCheck(Rule):
 class TestOnlyChecksPossiblyEmptyData(Rule):
     test_local = True
     scope = "test"
-    code = "SMT425"
+    code = "TST007"
     name = "tests/vacuous-assertion"
     category = Category.TESTS
     default_severity = Severity.WARNING

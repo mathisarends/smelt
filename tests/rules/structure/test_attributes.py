@@ -43,8 +43,8 @@ def _project(tmp_path: Path, source: str = _SOURCE) -> Path:
 def test_internal_state_is_reported_at_its_declaration(tmp_path: Path) -> None:
     findings = violations(_project(tmp_path))
     assert [(v.code, v.path, v.line, v.column) for v in findings] == [
-        ("SMT335", "app/readiness.py", 3, 9),
-        ("SMT335", "app/readiness.py", 4, 9),
+        ("VIS004", "app/readiness.py", 3, 9),
+        ("VIS004", "app/readiness.py", 4, 9),
     ]
     first = findings[0]
     assert first.severity == Severity.WARNING
@@ -126,7 +126,7 @@ def test_module_boundary_reviews_same_module_accesses(
     write_policy_project(root, {"smelt.yml": _CONFIG + _MODULE_BOUNDARY})
     [finding] = violations(root)
     assert (finding.code, finding.path, finding.line) == (
-        "SMT335",
+        "VIS004",
         "app/readiness.py",
         2,
     )
@@ -158,7 +158,7 @@ style:
         },
     )
     assert [(v.code, v.path) for v in violations(root)] == [
-        ("SMT335", "app/readiness.py")
+        ("VIS004", "app/readiness.py")
     ]
 
 
@@ -260,7 +260,7 @@ def test_test_only_attributes_are_owned_by_smt430(
             "tests/test_readiness.py": "from app.readiness import Readiness\ndef test_initial(): assert Readiness().initial == 1",
         },
     )
-    assert [v.code for v in violations(root)] == ["SMT430"]
+    assert [v.code for v in violations(root)] == ["VIS010"]
     write_policy_project(
         root, {"smelt.yml": config + "tests: {quality_exclude: ['tests/**']}\n"}
     )
@@ -268,7 +268,7 @@ def test_test_only_attributes_are_owned_by_smt430(
 
 
 @pytest.mark.parametrize(
-    "selection", ["SMT335", "SMT33", "visibility/internal-public-attribute"]
+    "selection", ["VIS004", "SMT33", "visibility/internal-public-attribute"]
 )
 def test_rule_is_opt_in_and_supports_explicit_selection(
     tmp_path: Path, selection: str
@@ -284,14 +284,14 @@ def test_rule_is_opt_in_and_supports_explicit_selection(
     )
     assert violations(root) == []
     assert [v.code for v in violations(root, CheckOptions(select=(selection,)))] == [
-        "SMT335"
+        "VIS004"
     ]
 
 
 def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> None:
     source = "class Readiness:\n    initial = 1"
     root = _project(tmp_path, source)
-    assert violations(root, CheckOptions(ignore=("SMT335",))) == []
+    assert violations(root, CheckOptions(ignore=("VIS004",))) == []
     write_policy_project(
         root,
         {
@@ -299,13 +299,13 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
             + "style:\n  overrides:\n    api:\n      match: app\n      rules: {visibility/internal-public-attribute: off}\n"
         },
     )
-    assert violations(root, CheckOptions(select=("SMT335",))) == []
+    assert violations(root, CheckOptions(select=("VIS004",))) == []
     write_policy_project(
         root,
         {
             "smelt.yml": _CONFIG.replace("warning", "error"),
             "app/readiness.py": source
-            + "  # smelt: ignore[SMT335] -- public diagnostic API\n",
+            + "  # smelt: ignore[VIS004] -- public diagnostic API\n",
         },
     )
     outcome = check(root)
@@ -338,11 +338,11 @@ def test_cached_results_follow_external_uses_exports_and_inheritance(
         },
         {"app/other.py": ""},
     ]
-    assert [v.code for v in violations(root)] == ["SMT335"]
+    assert [v.code for v in violations(root)] == ["VIS004"]
     for index, files in enumerate(states):
         write_policy_project(root, files)
         cached = violations(root)
         assert cached == violations(root, CheckOptions(use_cache=False))
         assert [v.code for v in cached] == (
-            ["SMT335"] if index == len(states) - 1 else []
+            ["VIS004"] if index == len(states) - 1 else []
         )

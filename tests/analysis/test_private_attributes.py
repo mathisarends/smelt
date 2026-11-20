@@ -23,7 +23,7 @@ def test_ownership_facts_preserve_definition_and_receiver_provenance(
             "app/client.py": "from .derived import Derived\ndef read(store: Derived):\n    return store._data\n",
         },
     )
-    outcome = check(root, CheckOptions(select=("SMT339",)))
+    outcome = check(root, CheckOptions(select=("VIS005",)))
     module = outcome.context.syntax.for_path("app/client.py")
     assert module is not None
     [fact] = PrivateAttributeIndex(

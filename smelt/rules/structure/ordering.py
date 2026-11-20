@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class PublicDefinitionsFirst(Rule):
-    code = "SMT313"
+    code = "LAY004"
     name = "layout/definition-order"
     category = Category.LAYOUT
     default_severity = Severity.ERROR
@@ -42,7 +42,7 @@ class PublicDefinitionsFirst(Rule):
             " Pinned definitions are listed under coverage.ordering[].barriers with "
             "check --format json --show-coverage. Dependencies take precedence over "
             "public-first order. On Python 3.12/3.13, keep a needed annotations future "
-            "import when the chosen order uses forward references; SMT311 retains it."
+            "import when the chosen order uses forward references; TYP002 retains it."
         ),
         config=("rules", "style.overrides", "project.python_version"),
     )

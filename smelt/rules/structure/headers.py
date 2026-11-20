@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class MisplacedModuleLogger(Rule):
     file_local = True
-    code = "SMT370"
+    code = "LAY011"
     name = "layout/misplaced-module-logger"
     category = Category.LAYOUT
     default_severity = Severity.WARNING
@@ -63,8 +63,8 @@ class MisplacedModuleLogger(Rule):
 
 class ModuleDocstringConvention(Rule):
     file_local = True
-    activation = POLICIES["SMT309"]
-    code = "SMT309"
+    activation = POLICIES["LAY002"]
+    code = "LAY002"
     name = "layout/module-docstring-convention"
     category = Category.LAYOUT
     default_severity = Severity.ERROR
@@ -86,7 +86,7 @@ class ModuleDocstringConvention(Rule):
         ),
         bad="# module_docstrings: require\nVALUE = 1",
         good='"""Constants for the calculation service."""\nVALUE = 1',
-        fix="Add a useful module docstring before imports and other statements under require; remove or move the module introduction under forbid. Mark an intentional file exception with # smelt: ignore-file[SMT309] -- reason. No documentation is generated or deleted automatically.",
+        fix="Add a useful module docstring before imports and other statements under require; remove or move the module introduction under forbid. Mark an intentional file exception with # smelt: ignore-file[LAY002] -- reason. No documentation is generated or deleted automatically.",
         config=("style.module_docstrings", "style.overrides"),
     )
 
@@ -122,14 +122,14 @@ class ModuleDocstringConvention(Rule):
                     column=1,
                     source_module=source.module,
                     expected=expected,
-                    hint="Add a module docstring before imports, or mark a justified file exception with # smelt: ignore-file[SMT309] -- reason.",
+                    hint="Add a module docstring before imports, or mark a justified file exception with # smelt: ignore-file[LAY002] -- reason.",
                 )
 
 
 class ForbiddenFutureAnnotations(Rule):
     file_local = True
-    activation = POLICIES["SMT310"]
-    code = "SMT310"
+    activation = POLICIES["TYP001"]
+    code = "TYP001"
     name = "typing/forbidden-future-annotations"
     category = Category.TYPING
     default_severity = Severity.ERROR
@@ -149,18 +149,18 @@ class ForbiddenFutureAnnotations(Rule):
 
 class RedundantFutureAnnotations(Rule):
     file_local = True
-    activation = POLICIES["SMT311"]
-    code = "SMT311"
+    activation = POLICIES["TYP002"]
+    code = "TYP002"
     name = "typing/redundant-future-annotations"
     category = Category.TYPING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Review an annotations future import with no detected postponement need.",
-        rationale="On targets before Python 3.14 or with an unknown minimum, when-needed mode retains imports for quoted and unresolved forward references, TYPE_CHECKING, runtime annotation inspection, decorated definitions and complex annotation expressions. This includes dataclasses and Pydantic models: decoration can consume annotations, so modern decorated code may receive no hint even when removal happens to work. Other cases get a conservative review hint, not proof of safe removal. Declared Python 3.14+ targets are handled by SMT310.",
+        rationale="On targets before Python 3.14 or with an unknown minimum, when-needed mode retains imports for quoted and unresolved forward references, TYPE_CHECKING, runtime annotation inspection, decorated definitions and complex annotation expressions. This includes dataclasses and Pydantic models: decoration can consume annotations, so modern decorated code may receive no hint even when removal happens to work. Other cases get a conservative review hint, not proof of safe removal. Declared Python 3.14+ targets are handled by TYP001.",
         bad="from __future__ import annotations\n\ndef count(value: int) -> int:\n    return value",
         good="def count(value: int) -> int:\n    return value",
-        fix="Review whether postponement is part of the module's runtime contract, then remove unnecessary boilerplate and verify types and behavior. On Python 3.12/3.13, an annotations future import is appropriate when the chosen public-first order uses forward references; SMT313 preserves eager dependencies when the import is absent. Keep the import if it serves a real purpose; annotate a justified exception if required. Self is only an alternative for methods whose return contract follows the receiver's subclass, such as returning self or constructing cls; a matching class-name annotation alone is insufficient. No Self rewrite is suggested automatically.",
+        fix="Review whether postponement is part of the module's runtime contract, then remove unnecessary boilerplate and verify types and behavior. On Python 3.12/3.13, an annotations future import is appropriate when the chosen public-first order uses forward references; LAY004 preserves eager dependencies when the import is absent. Keep the import if it serves a real purpose; annotate a justified exception if required. Self is only an alternative for methods whose return contract follows the receiver's subclass, such as returning self or constructing cls; a matching class-name annotation alone is insufficient. No Self rewrite is suggested automatically.",
         config=("style.future_annotations", "style.overrides"),
     )
 

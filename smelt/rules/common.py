@@ -29,7 +29,7 @@ def boundary_imports(
 
     Indirect findings retain the first import's location and the final import's
     resolved target/names, plus a shortest chain with source lines for each hop.
-    Public facade visibility is a separate, symbol-aware contract (SMT107).
+    Public facade visibility is a separate, symbol-aware contract (ARC007).
     """
     model = ctx.model
     for detail in ctx.imports.all_imports():
@@ -97,7 +97,7 @@ def import_violation(  # noqa: PLR0913
         path = ctx.files.sources[detail.importer].path
     info = ctx.model.info(detail.importer)
     target_module = (
-        chain[-1].imported if chain and rule.code != "SMT104" else detail.imported
+        chain[-1].imported if chain and rule.code != "ARC004" else detail.imported
     )
     if edge is None:
         target = (

@@ -32,8 +32,8 @@ def test_module_symbol_review_is_opt_in_and_supports_cli_selection(
     root = _project(tmp_path, config="version: 2\nproject: {root_packages: [app]}\n")
     assert violations(root) == []
     assert [
-        item.code for item in violations(root, CheckOptions(select=("SMT320",)))
-    ] == ["SMT320", "SMT320"]
+        item.code for item in violations(root, CheckOptions(select=("VIS002",)))
+    ] == ["VIS002", "VIS002"]
 
 
 def test_findings_expose_scope_locations_and_collision_safe_names(
@@ -42,7 +42,7 @@ def test_findings_expose_scope_locations_and_collision_safe_names(
     root = _project(tmp_path, "_MIN_LENGTH = 2\n" + SOURCE)
     constant, alias = violations(root)
     assert (constant.code, constant.path, constant.line, constant.column) == (
-        "SMT320",
+        "VIS002",
         "app/models.py",
         2,
         1,
@@ -107,7 +107,7 @@ def test_package_override_and_reasoned_suppression_are_respected(
 ) -> None:
     root = _project(
         tmp_path,
-        "MIN_LENGTH = 8  # smelt: ignore[SMT320] -- Supported external constant.\n",
+        "MIN_LENGTH = 8  # smelt: ignore[VIS002] -- Supported external constant.\n",
         config=CONFIG
         + "style:\n  overrides:\n    legacy:\n      match: app.legacy\n      rules: {visibility/internal-public-module-symbol: off}\n",
     )

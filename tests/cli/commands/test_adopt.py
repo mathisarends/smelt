@@ -137,7 +137,7 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
         {
             "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
             "architecture:\n  packages:\n    api: {match: app.api, min_importers_to_export: 2}\n"
-            "rules: {SMT109: warning, SMT104: off}\ndebt: debt.json\n",
+            "rules: {ARC008: warning, ARC004: off}\ndebt: debt.json\n",
             "app/__init__.py": "",
             "app/api/__init__.py": "",
             "app/api/item.py": "class Item: pass\n",
@@ -155,7 +155,7 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
     assert len(data["violations"]) == 1
     assert len(data["violations"][0]["fingerprints"]) == 3
     baseline = Debt.load(path)
-    dormant = DebtEntry("inactive", "SMT104", "app/old.py", "old cycle")
+    dormant = DebtEntry("inactive", "ARC004", "app/old.py", "old cycle")
     baseline.entries.append(dormant)
     if version == 1:
         path.write_text(
@@ -188,8 +188,8 @@ def test_recording_groups_importers_and_pruning_preserves_only_accepted_edges(
     assert len(pruned.entries) == 3
     assert dormant in pruned.entries
     assert json.loads(path.read_text(encoding="utf-8"))["version"] == 2
-    [finding] = check(root, CheckOptions(select=("SMT109",))).report.violations
-    assert finding.code == "SMT109"
+    [finding] = check(root, CheckOptions(select=("ARC008",))).report.violations
+    assert finding.code == "ARC008"
 
 
 @pytest.mark.parametrize("version", [1, 2])
@@ -208,9 +208,9 @@ def test_show_filters_stored_debt_without_analyzing_or_rewriting(
         },
     )
     entries = [
-        DebtEntry("a", "SMT109", "app/api/item.py", "export Item", "app.api.item.Item"),
-        DebtEntry("b", "SMT109", "app/api/item.py", "export Item", "app.api.item.Item"),
-        DebtEntry("c", "SMT313", "app/other.py", "order definitions"),
+        DebtEntry("a", "ARC008", "app/api/item.py", "export Item", "app.api.item.Item"),
+        DebtEntry("b", "ARC008", "app/api/item.py", "export Item", "app.api.item.Item"),
+        DebtEntry("c", "LAY004", "app/other.py", "order definitions"),
     ]
     path = root / "debt.json"
     Debt(entries).write(path)
@@ -238,9 +238,9 @@ def test_show_filters_stored_debt_without_analyzing_or_rewriting(
     output = capsys.readouterr()
     assert not output.err
     assert "1 group, 2 matching entries" in output.out
-    assert "SMT109 app/api/item.py" in output.out
+    assert "ARC008 app/api/item.py" in output.out
     assert "export Item" in output.out
-    assert "SMT313" not in output.out
+    assert "LAY004" not in output.out
     assert '"fingerprints"' not in output.out
     assert main(["debt", "--show", "app/api/item.py", "--format", "json"]) == 0
     data = json.loads(capsys.readouterr().out)

@@ -30,9 +30,9 @@ class TestJson:
             "in_debt": 2,
         }
         assert [v["code"] for v in document["violations"]] == [
-            "SMT101",
+            "ARC001",
             "SMT303",
-            "SMT305",
+            "ARC012",
         ]
 
     def test_violation_fields(self, report: Report) -> None:
@@ -40,7 +40,7 @@ class TestJson:
 
         assert first == {
             "id": report.violations[0].finding_id,
-            "code": "SMT101",
+            "code": "ARC001",
             "rule": "architecture/layer-boundary",
             "severity": "error",
             "category": "architecture",
@@ -65,7 +65,7 @@ class TestJson:
             ],
             "expected": {"may_depend_on": []},
             "hint": "Depend on a port instead.",
-            "docs_url": "https://example.test/rules/SMT101",
+            "docs_url": "https://example.test/rules/ARC001",
         }
 
     def test_clean_report_passes(self, clean_report: Report) -> None:
@@ -114,14 +114,14 @@ class TestSarif:
 
         assert driver["name"] == "smelt"
         assert driver["version"] == "0.1.0"
-        assert [rule["id"] for rule in driver["rules"]] == ["SMT101", "SMT303"]
+        assert [rule["id"] for rule in driver["rules"]] == ["ARC001", "SMT303"]
         assert driver["rules"][1]["properties"] == {"category": "layout"}
 
     def test_result_carries_location_and_hint(self, report: Report) -> None:
         results = _loads(render_sarif(report, "0.1.0"))["runs"][0]["results"]
 
         assert results[0] == {
-            "ruleId": "SMT101",
+            "ruleId": "ARC001",
             "level": "error",
             "message": {
                 "text": "domain must not import infrastructure\nDepend on a port instead."
@@ -164,7 +164,7 @@ class TestGithub:
 
         assert lines[0] == (
             "::error file=gw/features/voice/domain/calls.py,line=1,col=1,"
-            "endLine=1,endColumn=40,title=SMT101 architecture/layer-boundary::"
+            "endLine=1,endColumn=40,title=ARC001 architecture/layer-boundary::"
             "domain must not import infrastructure%0AHint: Depend on a port instead."
         )
         assert lines[2].startswith("::notice file=gw/features/voice/infra/,")

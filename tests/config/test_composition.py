@@ -54,7 +54,7 @@ def test_nested_parent_paths_and_explicit_empty_lists_replace(tmp_path: Path) ->
     write_policy_project(
         tmp_path,
         {
-            "base.yml": "version: 2\nproject: {root_packages: [app], exclude: [generated/**]}\narchitecture:\n  layers:\n    domain: {path: domain, may_depend_on: [application]}\n    application: {path: application}\ntests: {quality_exclude: [tests/generated/**]}\nignore: [{rule: SMT101, paths: ['**']}]\n",
+            "base.yml": "version: 2\nproject: {root_packages: [app], exclude: [generated/**]}\narchitecture:\n  layers:\n    domain: {path: domain, may_depend_on: [application]}\n    application: {path: application}\ntests: {quality_exclude: [tests/generated/**]}\nignore: [{rule: ARC001, paths: ['**']}]\n",
             "policy/team.yml": "extends: ../base.yml\narchitecture: {layers: {domain: {may_depend_on: []}}}\n",
             "smelt.yml": "extends: policy/team.yml\nproject: {exclude: []}\ntests: {quality_exclude: []}\nignore: []\n",
         },

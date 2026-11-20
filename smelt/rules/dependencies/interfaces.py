@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 
 class PrivateModuleImport(Rule):
-    activation = POLICIES["SMT107"]
-    code = "SMT107"
+    activation = POLICIES["ARC007"]
+    code = "ARC007"
     name = "architecture/non-public-module-import"
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR

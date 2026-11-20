@@ -12,7 +12,7 @@ from tests.helpers import check, write_project
 
 CONFIG = "\nversion: 2\nproject:\n  root_packages:\n  - app\narchitecture:\n  shared:\n  - app\nstyle:\n  overrides:\n    order:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
 SOURCE = "def _helper():\n    return 7\n\ndef api():\n    return _helper()\n"
-OPTIONS = CheckOptions(select=("SMT313",))
+OPTIONS = CheckOptions(select=("LAY004",))
 
 
 def _project(tmp_path: Path, *, source: str = SOURCE, config: str = CONFIG) -> Path:
@@ -99,7 +99,7 @@ def test_only_reported_path_scope_is_fixed(tmp_path: Path) -> None:
     write_project(root, {"app/other.py": SOURCE})
 
     fixed = apply_ordering_fixes(
-        check(root, CheckOptions(select=("SMT313",), paths=("app/service.py",)))
+        check(root, CheckOptions(select=("LAY004",), paths=("app/service.py",)))
     )
 
     assert fixed.files == ("app/service.py",)
@@ -109,14 +109,14 @@ def test_only_reported_path_scope_is_fixed(tmp_path: Path) -> None:
 def test_disabled_rule_is_not_fixed(tmp_path: Path) -> None:
     root = _project(tmp_path)
 
-    fixed = apply_ordering_fixes(check(root, CheckOptions(select=("SMT312",))))
+    fixed = apply_ordering_fixes(check(root, CheckOptions(select=("LAY003",))))
 
     assert fixed.files == ()
     assert (root / "app/service.py").read_text() == SOURCE
 
 
 def test_suppressed_findings_are_not_fixed(tmp_path: Path) -> None:
-    source = "# smelt: ignore-file[SMT313] -- legacy declaration order\n" + SOURCE
+    source = "# smelt: ignore-file[LAY004] -- legacy declaration order\n" + SOURCE
     root = _project(tmp_path, source=source)
 
     fixed = apply_ordering_fixes(check(root, OPTIONS))
@@ -136,7 +136,7 @@ def test_accepted_debt_is_not_fixed_without_explicit_no_debt(tmp_path: Path) -> 
 
     assert apply_ordering_fixes(check(root, OPTIONS)).files == ()
     assert apply_ordering_fixes(
-        check(root, CheckOptions(select=("SMT313",), use_debt=False))
+        check(root, CheckOptions(select=("LAY004",), use_debt=False))
     ).files == ("app/service.py",)
 
 

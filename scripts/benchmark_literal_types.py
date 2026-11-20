@@ -1,4 +1,4 @@
-"""Measure SMT338's in-process check overhead with and without the rule.
+"""Measure TYP005's in-process check overhead with and without the rule.
 
 Includes configuration, discovery, content hashing, the production fact cache and
 rule decisions. Excludes CLI startup/IPC, Git capture and report serialization.
@@ -66,8 +66,8 @@ def benchmark(parent: Path, files: int, repeats: int, *, dense: bool) -> dict[st
             (package / f"module_{index:04d}.py").write_text(
                 source(index, dense=dense), encoding="utf-8"
             )
-        enabled = CheckOptions(select=("SMT338",))
-        disabled = replace(enabled, ignore=("SMT338",))
+        enabled = CheckOptions(select=("TYP005",))
+        disabled = replace(enabled, ignore=("TYP005",))
         fresh = replace(enabled, use_cache=False)
         uncached_ms, expected = invoke(root, fresh)
         first_cached_ms, actual = invoke(root, enabled)

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class AsyncMockWithoutAwaitCheck(Rule):
     test_local = True
     scope = "test"
-    code = "SMT428"
+    code = "TST010"
     name = "tests/missing-await-assertion"
     category = Category.TESTS
     default_severity = Severity.WARNING

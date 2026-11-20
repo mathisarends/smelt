@@ -19,7 +19,7 @@ _NEUTRAL_BASES = frozenset({"object", "ABC", "Protocol", "Generic"})
 
 class RedundantPrivateDelegate(Rule):
     file_local = True
-    code = "SMT343"
+    code = "VIS006"
     name = "visibility/redundant-private-delegate"
     category = Category.VISIBILITY
     default_severity = Severity.HINT
@@ -60,7 +60,7 @@ class RedundantPrivateDelegate(Rule):
             "private method. Keep the split with a reasoned suppression when a "
             "subclass overrides the private method. No automatic rewrite is "
             "performed. Enable rules: {visibility/redundant-private-delegate: hint}, or "
-            "select SMT343."
+            "select VIS006."
         ),
         config=("rules",),
     )

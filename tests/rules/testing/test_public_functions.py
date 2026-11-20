@@ -64,7 +64,7 @@ def test_async_gesture_helper_used_locally_and_only_exposed_to_tests(
     )
     [finding] = violations(tmp_path)
     assert (finding.code, finding.path, finding.line) == (
-        "SMT429",
+        "VIS009",
         "app/mouse.py",
         1,
     )
@@ -315,7 +315,7 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
         },
     )
     [finding] = violations(tmp_path)
-    assert finding.code == "SMT429"
+    assert finding.code == "VIS009"
 
 
 @pytest.mark.parametrize(
@@ -327,12 +327,12 @@ def test_excluded_production_is_not_mistaken_for_evidence_of_public_use(
             CheckOptions(select=("ALL",)),
         ),
         (
-            "rules: {SMT429: off}\n",
+            "rules: {VIS009: off}\n",
             CheckOptions(),
         ),
         (
             "rules:\n  visibility/test-only-public-function: warning\n",
-            CheckOptions(ignore=("SMT429",)),
+            CheckOptions(ignore=("VIS009",)),
         ),
         (
             "tests:\n  quality_exclude:\n  - tests/**\nrules:\n  visibility/test-only-public-function: warning\n",
@@ -353,7 +353,7 @@ def test_rule_selection_and_test_evidence_exclusions(
         },
     )
     assert not any(
-        finding.code == "SMT429" for finding in violations(tmp_path, options)
+        finding.code == "VIS009" for finding in violations(tmp_path, options)
     )
 
 

@@ -33,10 +33,10 @@ def test_member_boundary_reports_the_import_and_semantic_edge(tmp_path: Path) ->
         {"packages/core/src/core/model.py": "from api.http import Order\n"},
     )
 
-    [found] = violations(root, CheckOptions(select=("SMT111",)))
+    [found] = violations(root, CheckOptions(select=("ARC009",)))
 
     assert (found.code, found.path, found.line, found.column, found.member) == (
-        "SMT111",
+        "ARC009",
         "packages/core/src/core/model.py",
         1,
         22,
@@ -55,7 +55,7 @@ def test_member_boundary_reports_the_import_and_semantic_edge(tmp_path: Path) ->
     ("policy", "expected"),
     [
         ("members: {'packages/*': {may_depend_on: []}}", []),
-        ("members: {'services/*': {may_depend_on: []}}", ["SMT111"]),
+        ("members: {'services/*': {may_depend_on: []}}", ["ARC009"]),
         (
             "members: {'services/*': {may_depend_on: []}, 'services/api': {may_depend_on: ['packages/*']}}",
             [],
@@ -89,7 +89,7 @@ def test_type_checking_imports_follow_root_policy(tmp_path: Path, mode: str) -> 
     )
 
     assert [v.code for v in violations(root)] == (
-        ["SMT111", "SMT112"] if mode == "include" else []
+        ["ARC009", "ARC010"] if mode == "include" else []
     )
 
 
@@ -103,7 +103,7 @@ def test_missing_declaration_is_separate_from_allowed_boundary(tmp_path: Path) -
 
     [found] = violations(root)
 
-    assert found.code == "SMT112"
+    assert found.code == "ARC010"
     assert found.member == "services/api"
     assert found.hint
     assert "Declare core-lib" in found.hint
@@ -115,7 +115,7 @@ def test_missing_declaration_is_separate_from_allowed_boundary(tmp_path: Path) -
     }
 
 
-@pytest.mark.parametrize("selection", [(), ("SMT112",)])
+@pytest.mark.parametrize("selection", [(), ("ARC010",)])
 def test_forbidden_dependency_repair_does_not_recommend_declaring_it(
     tmp_path: Path, selection: tuple[str, ...]
 ) -> None:
@@ -127,7 +127,7 @@ def test_forbidden_dependency_repair_does_not_recommend_declaring_it(
     found = violations(root, CheckOptions(select=selection))
 
     assert [v.code for v in found] == (
-        ["SMT112"] if selection else ["SMT111", "SMT112"]
+        ["ARC010"] if selection else ["ARC009", "ARC010"]
     )
     hint = found[-1].hint
     assert hint
@@ -180,7 +180,7 @@ def test_member_source_replaces_the_root_source_even_with_a_marker(
 
     [found] = violations(root)
 
-    assert found.code == "SMT112"
+    assert found.code == "ARC010"
     assert found.member == "services/api"
 
 
@@ -196,7 +196,7 @@ def test_undeclared_import_of_a_namespace_package_is_reported(tmp_path: Path) ->
 
     [found] = violations(root)
 
-    assert found.code == "SMT112"
+    assert found.code == "ARC010"
     assert found.target_module == "core"
 
 
@@ -216,7 +216,7 @@ def test_indirect_imports_do_not_require_direct_dependency_declarations(
         },
     )
 
-    assert violations(root, CheckOptions(select=("SMT112",))) == []
+    assert violations(root, CheckOptions(select=("ARC010",))) == []
 
 
 def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
@@ -229,7 +229,7 @@ def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
     cached = check(root).report.violations
     uncached = check(root, CheckOptions(use_cache=False)).report.violations
 
-    assert [v.code for v in cached] == ["SMT112"]
+    assert [v.code for v in cached] == ["ARC010"]
     assert cached == uncached
 
     write_policy_project(
@@ -260,13 +260,13 @@ def test_member_rules_and_suppressions_retain_their_scope(tmp_path: Path) -> Non
         tmp_path,
         {
             "packages/core/smelt.yml": "rules: {architecture/member-boundary: {severity: warning, reason: Reviewing the migration boundary.}}\n",
-            "packages/core/src/core/model.py": "from api.http import Order  # smelt: ignore[SMT112] -- Host provides the API during migration.\n",
+            "packages/core/src/core/model.py": "from api.http import Order  # smelt: ignore[ARC010] -- Host provides the API during migration.\n",
         },
     )
 
     [found] = violations(root)
 
-    assert found.code == "SMT111"
+    assert found.code == "ARC009"
     assert found.severity.value == "warning"
 
 
@@ -284,7 +284,7 @@ def test_root_project_participates_as_dot(tmp_path: Path) -> None:
 
     found = violations(root)
 
-    assert [v.code for v in found] == ["SMT111", "SMT112"]
+    assert [v.code for v in found] == ["ARC009", "ARC010"]
     assert all(v.member == "." for v in found)
 
 
@@ -317,7 +317,7 @@ def test_local_layer_checks_do_not_cross_member_boundaries(
         },
     )
 
-    [finding] = violations(root, CheckOptions(select=("SMT101",)))
+    [finding] = violations(root, CheckOptions(select=("ARC001",)))
 
     assert finding.target_module == "root_app.infra.storage"
 
@@ -337,7 +337,7 @@ def test_explicit_namespace_package_uses_its_member_layers(
         },
     )
 
-    [finding] = violations(root, CheckOptions(select=("SMT101",)))
+    [finding] = violations(root, CheckOptions(select=("ARC001",)))
 
     assert finding.member == "services/api"
     assert finding.target_module == "plugins.infra.adapters.storage"
@@ -365,7 +365,7 @@ def test_transitive_third_party_check_uses_only_paths_inside_the_owner(
         },
     )
 
-    [finding] = violations(root, CheckOptions(select=("SMT103",)))
+    [finding] = violations(root, CheckOptions(select=("ARC003",)))
 
     assert finding.source_module == "api.domain.local"
     assert [link.imported for link in finding.import_chain] == [

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT344",))
+SELECT = CheckOptions(select=("IDM004",))
 
 
 def _project(tmp_path: Path, source: str) -> Path:
@@ -26,7 +26,7 @@ def test_reports_second_name_for_a_local_class(tmp_path: Path) -> None:
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT344",
+        "IDM004",
         "app/autofill.py",
         5,
         1,
@@ -128,6 +128,6 @@ def test_ignores_tests(tmp_path: Path) -> None:
 def test_reasoned_suppression_keeps_compatibility_name(tmp_path: Path) -> None:
     source = (
         "class PasswordData:\n    pass\n\n\n"
-        "AutofillData = PasswordData  # smelt: ignore[SMT344] -- public API until 2.0\n"
+        "AutofillData = PasswordData  # smelt: ignore[IDM004] -- public API until 2.0\n"
     )
     assert violations(_project(tmp_path, source), SELECT) == []

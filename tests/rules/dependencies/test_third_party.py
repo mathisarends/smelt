@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT103 = CheckOptions(select=("SMT103",))
+ONLY_SMT103 = CheckOptions(select=("ARC003",))
 
 
 def _project(
@@ -132,7 +132,7 @@ class TestDefaultDeny:
     def test_parent_of_allowed_submodule_is_denied(self, tmp_path: Path) -> None:
         root = _project(tmp_path, self.policy, "from sqlalchemy import text\n")
 
-        assert [v.code for v in violations(root, ONLY_SMT103)] == ["SMT103"]
+        assert [v.code for v in violations(root, ONLY_SMT103)] == ["ARC003"]
 
     def test_short_form_deny_allows_nothing(self, tmp_path: Path) -> None:
         root = _project(tmp_path, "deny", "import attrs\n")

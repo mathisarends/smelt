@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class NestedConditionalExpression(Rule):
     file_local = True
-    code = "SMT359"
+    code = "CPX005"
     name = "complexity/forbidden-nested-conditional"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
@@ -43,7 +43,7 @@ class NestedConditionalExpression(Rule):
             "Use explicit if/elif or match statements. Preserve branch order, "
             "precedence and lazy evaluation; an eagerly evaluated dictionary can "
             "change behavior. No automatic rewrite is performed. Enable "
-            "rules: {complexity/forbidden-nested-conditional: hint}, or select SMT359. "
+            "rules: {complexity/forbidden-nested-conditional: hint}, or select CPX005. "
             "Package overrides and reasoned suppressions are supported."
         ),
         config=("rules", "style.overrides"),

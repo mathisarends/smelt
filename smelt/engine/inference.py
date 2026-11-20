@@ -24,17 +24,17 @@ if TYPE_CHECKING:
 
     from smelt.analysis.exports import Loader
 _STARTER_RULES = {
-    "SMT313",
-    "SMT314",
-    "SMT316",
-    "SMT320",
-    "SMT335",
-    "SMT424",
-    "SMT425",
-    "SMT426",
-    "SMT428",
-    "SMT429",
-    "SMT430",
+    "LAY004",
+    "IDM001",
+    "VIS001",
+    "VIS002",
+    "VIS004",
+    "TST006",
+    "TST007",
+    "TST008",
+    "TST010",
+    "VIS009",
+    "VIS010",
 }
 
 

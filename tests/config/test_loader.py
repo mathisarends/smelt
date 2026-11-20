@@ -7,7 +7,7 @@ import pytest
 
 from smelt.config import ConfigError, discover_config, load_config, parse_config
 from smelt.config.loader import (
-    _load_yaml,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _load_yaml,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 from tests.helpers import FIXTURES, write_project
 
@@ -118,7 +118,7 @@ class TestParsing:
         "repeated",
         [
             "architecture: {}\narchitecture: {}\n",
-            "rules:\n  SMT101: error\n  SMT101: off\n",
+            "rules:\n  ARC001: error\n  ARC001: off\n",
             "architecture:\n  layers:\n    domain: {path: domain, path: other}\n",
         ],
     )
@@ -218,12 +218,12 @@ class TestParsing:
 
     def test_severity_off_is_not_a_boolean(self) -> None:
         raw = _load_yaml(
-            "version: 2\nproject: {root_packages: [app]}\nrules:\n  SMT101: off\n"
+            "version: 2\nproject: {root_packages: [app]}\nrules:\n  ARC001: off\n"
         )
 
         config, _ = parse_config(raw)
 
-        assert config.rules == {"SMT101": "off"}
+        assert config.rules == {"ARC001": "off"}
 
     def test_rejects_malformed_rule_key(self) -> None:
         with pytest.raises(ConfigError, match='"Layer Boundary" is not a rule code'):

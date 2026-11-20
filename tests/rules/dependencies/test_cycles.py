@@ -10,7 +10,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT104 = CheckOptions(select=("SMT104",))
+ONLY_SMT104 = CheckOptions(select=("ARC004",))
 
 
 def test_aggregated_sibling_cycle_does_not_invent_a_concrete_cycle(
@@ -99,8 +99,8 @@ def test_excluding_annotation_cycles_keeps_annotation_layer_checks(
     )
     assert [
         finding.code
-        for finding in violations(tmp_path, CheckOptions(select=("SMT101", "SMT104")))
-    ] == ["SMT101"]
+        for finding in violations(tmp_path, CheckOptions(select=("ARC001", "ARC004")))
+    ] == ["ARC001"]
 
 
 class TestSiblingCycles:

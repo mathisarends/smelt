@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 
 class MissingRequiredModule(Rule):
-    activation = POLICIES["SMT307"]
-    code = "SMT307"
+    activation = POLICIES["ARC014"]
+    code = "ARC014"
     name = "architecture/missing-required-module"
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR

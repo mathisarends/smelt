@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT349",))
+SELECT = CheckOptions(select=("MOD005",))
 HEADER = (
     "from collections.abc import Iterable\n"
     "from dataclasses import dataclass, field\n"
@@ -64,7 +64,7 @@ def test_reports_accumulating_dataclass_from_the_issue(tmp_path: Path) -> None:
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT349",
+        "MOD005",
         "app/activity.py",
         7,
         1,
@@ -204,7 +204,7 @@ def test_reasoned_suppression_keeps_intentional_mutable_record(
 ) -> None:
     source = HEADER + (
         "@dataclass\n"
-        "class Progress:  # smelt: ignore[SMT349] -- progress shared by workers\n"
+        "class Progress:  # smelt: ignore[MOD005] -- progress shared by workers\n"
         "    done: int = 0\n\n"
         "    def advance(self) -> None:\n        self.done += 1\n"
     )
@@ -219,4 +219,4 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     assert violations(_project(tmp_path / "default", source)) == []
     config = CONFIG + "rules: {modeling/dataclass-field-mutation: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
-    assert (finding.code, finding.severity) == ("SMT349", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("MOD005", Severity.WARNING)

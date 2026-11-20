@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class InternalPublicMember(Rule):
     member_local = True
-    code = "SMT316"
+    code = "VIS001"
     name = "visibility/internal-public-member"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
@@ -22,7 +22,7 @@ class InternalPublicMember(Rule):
     doc = RuleDoc(
         summary="A public module function or instance method has no observed use outside its module or class.",
         rationale=(
-            "An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to SMT429. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe."
+            "An implementation helper should not advertise a public interface solely because it lacks a leading underscore. This opt-in package review includes unused definitions and internally used sync/async functions and ordinary instance methods. Imports and module escapes preserve module functions; known test accesses also count as external use, leaving test-only public functions to VIS009. Explicit module __all__ exports and decorated functions are preserved. Methods on decorated, inherited or subclassed classes, special/private methods, properties and class/static methods are excluded. For methods, even unresolved same-named attribute accesses outside the owning class conservatively preserve visibility. External libraries, frameworks, dynamic reflection and unscanned callers cannot be ruled out. This finding asks for review and does not prove a rename is safe."
             " Excluded files, unselected packages and external consumers are unassessed; findings expose usage_scope so absence of observed callers is not mistaken for a whole-project proof."
             " Classes explicitly exported through __all__ or public package-facade bindings preserve their public methods, including aliased re-export chains. Export evidence participates in incremental cache invalidation."
             " Literal lazy-export tables are recognized only with a matching guarded importlib.import_module/getattr forwarder and optional globals cache. The table may supply __all__ through sorted/list/tuple. Arbitrary __getattr__, mutated/escaped tables and stubs alone do not verify runtime exports."
@@ -30,7 +30,7 @@ class InternalPublicMember(Rule):
         ),
         bad="class Browser:\n    def emit(self, event): ...\n    def run(self):\n        self.emit('ready')\nBrowser().run()",
         good="class Browser:\n    def _emit(self, event): ...\n    def run(self):\n        self._emit('ready')\nBrowser().run()",
-        fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[SMT316] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
+        fix="Review the supported interface and callers. For a genuine internal helper, add a leading underscore and update calls and callback references. Resolve existing private-name collisions before renaming. Preserve deliberate public APIs with __all__ for module functions or append `# smelt: ignore[VIS001] -- <specific API reason>` to the reported definition. Keep the concrete reason beside the code; Smelt cannot verify its truth. No automatic rename is performed.",
         config=(
             "rules",
             "style.overrides",
@@ -75,13 +75,13 @@ class InternalPublicMember(Rule):
                     "internal_references": list(member.internal_references),
                     "automatic_rename": False,
                 },
-                hint=f"Unless public by design, {rename_advice(node.name, suggested_name)}; otherwise export it or add `# smelt: ignore[SMT316] -- <reason>` on the definition.",
+                hint=f"Unless public by design, {rename_advice(node.name, suggested_name)}; otherwise export it or add `# smelt: ignore[VIS001] -- <reason>` on the definition.",
             )
 
 
 class InternalStaticHelper(Rule):
     member_local = True
-    code = "SMT317"
+    code = "LAY005"
     name = "layout/misplaced-static-helper"
     category = Category.LAYOUT
     default_severity = Severity.HINT

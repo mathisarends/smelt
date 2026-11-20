@@ -15,6 +15,7 @@ from time import perf_counter
 from typing import Any
 
 from smelt.config import ConfigError, load_config
+from smelt.engine.check import TEST_QUALITY_CODES
 
 # scripts/evaluate.py is a consumer outside project.root_packages.
 
@@ -40,7 +41,7 @@ class EvaluationOptions:
     candidate: Path
     reports: Path
     python: Path = field(default_factory=lambda: Path(sys.executable))
-    select: tuple[str, ...] = ("SMT42",)
+    select: tuple[str, ...] = TEST_QUALITY_CODES
     timeout_seconds: float = 60
     pytest_targets: tuple[str, ...] = ()
     test_python: Path | None = None
@@ -53,7 +54,7 @@ def evaluate(
     options: EvaluationOptions,
 ) -> dict[
     str, Any
-]:  # smelt: ignore[SMT429] -- Public evaluation entry point called by excluded scripts/evaluate.py.
+]:  # smelt: ignore[VIS009] -- Public evaluation entry point called by excluded scripts/evaluate.py.
     """Never fix sources, alter policy, install packages, suppress findings or record debt."""
     if not math.isfinite(options.timeout_seconds) or options.timeout_seconds <= 0:
         raise ValueError("timeout must be finite and positive")

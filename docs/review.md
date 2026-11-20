@@ -44,7 +44,7 @@ Module-interface contracts currently share this static-import limitation.
 
 ## C04 — No general policy for forbidden imports or side effects
 
-SMT103 excludes the standard library and controls third-party packages per layer.
+ARC003 excludes the standard library and controls third-party packages per layer.
 It therefore cannot express a general ban on networking, process spawning or
 filesystem access in core code. Some such capabilities live in the standard
 library. Package interfaces also do not express arbitrary forbidden API calls.
@@ -156,12 +156,12 @@ performance benchmark.
 | Hermes extension | 180 | 25 | 93 | 68 |
 
 The existing transitive architecture policies account for most raw findings:
-workspace SMT102 has 4,522 messages across 125 distinct edge labels, SMT106 has
-225 across 30, and Hermes SMT102 has 24 across one. These totals are not counts
+workspace ARC002 has 4,522 messages across 125 distinct edge labels, ARC006 has
+225 across 30, and Hermes ARC002 has 24 across one. These totals are not counts
 of independent bugs. Triage the existing grouped witnesses before changing a
 consumer policy or source layout.
 
-With the same review policies, two SMT424 false alarms disappear: both tests
+With the same review policies, two TST006 false alarms disappear: both tests
 execute inline Python assertions with checked subprocess status. Their source
 was inspected to verify the recognition change. Two code-generation loop reviews
 remain; output presence/full-result expectations and helper behavior need review

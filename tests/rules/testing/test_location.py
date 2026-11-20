@@ -11,7 +11,7 @@ from tests.helpers import violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-ONLY_SMT401 = CheckOptions(select=("SMT401",))
+ONLY_SMT401 = CheckOptions(select=("TST001",))
 
 MIRROR_SOURCES = {
     "app/__init__.py": "",

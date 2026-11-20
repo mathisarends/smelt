@@ -36,7 +36,7 @@ def apply_none_default_fixes(
     fixes = NoneDefaultFixes()
     selected: dict[str, set[tuple[int | None, int | None]]] = defaultdict(set)
     for violation in outcome.report.violations:
-        if violation.code == "SMT321" and violation.path is not None:
+        if violation.code == "TYP003" and violation.path is not None:
             selected[violation.path].add((violation.line, violation.column))
     for path, keys in sorted(selected.items()):
         if not unsafe:

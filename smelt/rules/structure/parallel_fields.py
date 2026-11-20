@@ -38,7 +38,7 @@ _MIN_FIELDS = 2
 
 class ParallelRecordFields(Rule):
     file_local = True
-    code = "SMT361"
+    code = "MOD012"
     name = "modeling/parallel-record-fields"
     category = Category.MODELING
     default_severity = Severity.HINT
@@ -86,7 +86,7 @@ class ParallelRecordFields(Rule):
             "    x: list[float]\n"
             "    y: list[float]\n\n"
             "    def points(self):\n"
-            "        # smelt: ignore[SMT361] -- deliberate numerical column storage\n"
+            "        # smelt: ignore[MOD012] -- deliberate numerical column storage\n"
             "        return zip(self.x, self.y, strict=True)"
         ),
         fix=(
@@ -95,7 +95,7 @@ class ParallelRecordFields(Rule):
             "together. Preserve length validation and iteration order. Deliberate "
             "column storage may retain a reasoned suppression. No automatic rewrite "
             "or correctness claim is made. Enable rules: {modeling/parallel-record-fields: hint}, "
-            "or select SMT361."
+            "or select MOD012."
         ),
         config=("rules", "style.overrides"),
     )

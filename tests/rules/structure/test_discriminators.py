@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT324",))
+OPTIONS = CheckOptions(select=("MOD003",))
 SOURCE = """from dataclasses import dataclass, field
 from typing import Literal
 
@@ -39,7 +39,7 @@ def test_reports_the_checkpoint_discriminator_without_changing_source(
 
     [finding] = violations(root, OPTIONS)
 
-    assert finding.code == "SMT324"
+    assert finding.code == "MOD003"
     assert finding.rule == "modeling/prefer-str-enum-discriminator"
     assert finding.severity is Severity.HINT
     assert (finding.path, finding.line, finding.column) == ("app/events.py", 8, 5)
@@ -233,20 +233,20 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT324", "modeling/prefer-str-enum-discriminator"])
+@pytest.mark.parametrize("name", ["MOD003", "modeling/prefer-str-enum-discriminator"])
 def test_explicit_rule_settings_enable_the_hint(tmp_path: Path, name: str) -> None:
     [finding] = violations(
         _project(tmp_path, config=CONFIG + f"rules: {{{name}: hint}}\n")
     )
 
-    assert finding.code == "SMT324"
+    assert finding.code == "MOD003"
 
 
 @pytest.mark.parametrize(
     ("config", "options"),
     [
-        (CONFIG + "rules: {SMT324: off}\n", OPTIONS),
-        (CONFIG, CheckOptions(select=("SMT324",), ignore=("SMT324",))),
+        (CONFIG + "rules: {MOD003: off}\n", OPTIONS),
+        (CONFIG, CheckOptions(select=("MOD003",), ignore=("MOD003",))),
         (
             CONFIG
             + "rules: {modeling/prefer-str-enum-discriminator: error}\n"
@@ -269,7 +269,7 @@ def test_intentional_schema_strings_can_be_suppressed(tmp_path: Path) -> None:
     source = root / "app/events.py"
     source.write_text(
         SOURCE.rstrip()
-        + "  # smelt: ignore[SMT324] -- External schema requires a raw string\n",
+        + "  # smelt: ignore[MOD003] -- External schema requires a raw string\n",
         encoding="utf-8",
     )
 
@@ -301,7 +301,7 @@ def test_python_metadata_changes_invalidate_cached_findings(tmp_path: Path) -> N
     metadata.write_text('[project]\nrequires-python = ">=3.10"\n', encoding="utf-8")
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("SMT324",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("MOD003",), use_cache=False)) == []
 
 
 def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> None:
@@ -315,4 +315,4 @@ def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> 
     )
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("SMT324",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("MOD003",), use_cache=False)) == []

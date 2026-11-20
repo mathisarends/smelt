@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from smelt.analysis.ordering import (
     FileOrder,
-    _analyze_order,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _analyze_order,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
 )
 from smelt.config.models import OrderingConfig
 

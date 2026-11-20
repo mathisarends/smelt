@@ -14,7 +14,7 @@ SOURCES = {
 }
 
 LAYER_VIOLATION = Violation(
-    code="SMT101",
+    code="ARC001",
     rule="architecture/layer-boundary",
     severity=Severity.ERROR,
     message="domain must not import infrastructure",
@@ -33,7 +33,7 @@ LAYER_VIOLATION = Violation(
     expected={"may_depend_on": []},
     hint="Depend on a port instead.",
     edge="voice.domain -> voice.infra",
-    docs_url="https://example.test/rules/SMT101",
+    docs_url="https://example.test/rules/ARC001",
     category=Category.ARCHITECTURE,
 )
 
@@ -54,24 +54,24 @@ ROLE_VIOLATION = Violation(
 )
 
 HINT_VIOLATION = Violation(
-    code="SMT305",
+    code="ARC012",
     rule="crowded-package",
     severity=Severity.HINT,
     message="voice/infra has 12 modules",
     path="gw/features/voice/infra/",
-    docs_url="https://example.test/rules/SMT305",
+    docs_url="https://example.test/rules/ARC012",
     category=Category.LAYOUT,
 )
 
 RULES = [
     RuleMeta(
-        code="SMT101",
+        code="ARC001",
         name="architecture/layer-boundary",
         category=Category.ARCHITECTURE,
         default_severity=Severity.ERROR,
         enabled_by_default=True,
         summary="A module imports a layer it may not depend on.",
-        docs_url="https://example.test/rules/SMT101",
+        docs_url="https://example.test/rules/ARC001",
     ),
     RuleMeta(
         code="SMT303",

@@ -216,7 +216,7 @@ def _update_debt(
         if scope.member is None
         else getattr(loaded.config.members.get(scope.member), "debt", None)
     )
-    if any(v.code == "SMT306" for v in outcome.unfiltered):
+    if any(v.code == "ARC013" for v in outcome.unfiltered):
         raise CliError(
             "Resolve strict coverage gaps before recording or pruning debt; coverage cannot be accepted as debt."
         )
@@ -224,13 +224,13 @@ def _update_debt(
     current = [
         v
         for v in outcome.unfiltered
-        if v.code != "SMT903"
+        if v.code != "MET003"
         and v.severity is not Severity.HINT
         and debt_scope_for_path(targets, v.path) == scope
     ]
     existing = Debt.load(path)
     policy = RuleSettings(outcome.rules, loaded)
-    active = {rule.code: rule for rule, _ in outcome.active if rule.code != "SMT903"}
+    active = {rule.code: rule for rule, _ in outcome.active if rule.code != "MET003"}
     eligible = [
         entry
         for entry in existing.entries

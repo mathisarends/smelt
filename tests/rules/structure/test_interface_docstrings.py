@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT348",))
+SELECT = CheckOptions(select=("IDM005",))
 HEADER = (
     "from abc import ABC, abstractmethod\n"
     "from typing import Protocol\n"
@@ -43,7 +43,7 @@ def test_reports_undocumented_abstract_property_from_the_issue(
     root = _project(tmp_path, source)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT348",
+        "IDM005",
         "app/ports.py",
         11,
         5,
@@ -167,4 +167,4 @@ def test_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> None:
     assert violations(_project(tmp_path / "default", source)) == []
     config = CONFIG + "rules: {idioms/missing-interface-docstring: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
-    assert (finding.code, finding.severity) == ("SMT348", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("IDM005", Severity.WARNING)

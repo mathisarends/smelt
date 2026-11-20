@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-SELECT = CheckOptions(select=("SMT361",))
+SELECT = CheckOptions(select=("MOD012",))
 
 
 def test_groups_zip_sites_and_explains_field_declarations(tmp_path: Path) -> None:
@@ -33,7 +33,7 @@ def test_groups_zip_sites_and_explains_field_declarations(tmp_path: Path) -> Non
     (finding,) = violations(_project(tmp_path, source), SELECT)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT361",
+        "MOD012",
         "app/model.py",
         7,
         29,
@@ -146,10 +146,10 @@ def test_opt_in_and_intentional_column_storage_suppression(tmp_path: Path) -> No
             x: list[float]
             y: list[float]
             def points(self):
-                return zip(self.x, self.y)  # smelt: ignore[SMT361] -- deliberate numerical column storage
+                return zip(self.x, self.y)  # smelt: ignore[MOD012] -- deliberate numerical column storage
     """
     root = _project(tmp_path, source)
-    assert not any(item.code == "SMT361" for item in violations(root))
+    assert not any(item.code == "MOD012" for item in violations(root))
     assert violations(root, SELECT) == []
     (root / "smelt.yml").write_text(
         CONFIG + "rules: {modeling/parallel-record-fields: hint}\n", encoding="utf-8"
@@ -157,7 +157,7 @@ def test_opt_in_and_intentional_column_storage_suppression(tmp_path: Path) -> No
     assert violations(root) == []
     write_project(root, {"app/model.py": source.replace("# smelt:", "# reason:")})
     (finding,) = violations(root)
-    assert finding.code == "SMT361"
+    assert finding.code == "MOD012"
     assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
@@ -197,6 +197,6 @@ def test_old_field_group_cannot_hide_a_replacement_behind_same_zip_aliases(
         current, lambda _: "return zip(models, self.fields)"
     )
 
-    assert [item.code for item in new] == ["SMT361"]
+    assert [item.code for item in new] == ["MOD012"]
     assert known == []
     assert len(resolved) == 1

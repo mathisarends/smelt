@@ -49,8 +49,8 @@ _FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 class PreferDomainException(Rule):
     file_local = True
-    activation = POLICIES["SMT354"]
-    code = "SMT354"
+    activation = POLICIES["MOD008"]
+    code = "MOD008"
     name = "modeling/prefer-domain-exception"
     category = Category.MODELING
     default_severity = Severity.WARNING

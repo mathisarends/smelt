@@ -64,7 +64,7 @@ Smelt catches an import that crosses the declared boundary:
 
 ```python
 # src/app/application/orders.py
-from app.infrastructure.database import SqlOrderRepository  # SMT101
+from app.infrastructure.database import SqlOrderRepository  # ARC001
 ```
 
 Application code should depend on an interface in an allowed layer; wire the
@@ -72,7 +72,7 @@ concrete repository in your composition root. Smelt also flags this fallback:
 
 ```python
 def page_size(limit: int | None = None) -> int:
-    return limit or 100  # SMT321: also replaces an explicit 0
+    return limit or 100  # TYP003: also replaces an explicit 0
 ```
 
 If only `None` means "not supplied", use
@@ -81,7 +81,7 @@ keep it with a reasoned exception.
 
 ```bash
 smelt check --show-hints --fail-on warning
-smelt explain SMT101  # why it fired and how to fix it
+smelt explain ARC001  # why it fired and how to fix it
 ```
 
 The same configuration can describe [feature boundaries and third-party dependencies](docs/architecture.md),
@@ -92,7 +92,7 @@ the rule runs once `rules` names it. See [rule activation](docs/rule-selection.m
 Use the visibility rules to review unnecessarily public definitions and APIs
 whose only observed users are tests.
 
-Enable individual rules in YAML by their `family/finding` names or SMT codes.
+Enable individual rules in YAML by their `family/finding` names or codes.
 `on` uses the named rule's catalog severity. Families and `ALL` can
 disable or cap already-active rules in YAML. Use `smelt check --select modeling`
 to explore a family and `smelt rules --unconfigured` to discover rules to review.

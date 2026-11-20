@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
-OPTIONS = CheckOptions(select=("SMT431",))
+OPTIONS = CheckOptions(select=("TST011",))
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ def test_known_test_data_generators_are_reviewed(
     )
     [finding] = violations(tmp_path, OPTIONS)
     assert (finding.code, finding.path, finding.line) == (
-        "SMT431",
+        "TST011",
         "tests/test_create.py",
         4,
     )
@@ -52,7 +52,7 @@ def test_issue_60_groups_two_ids_and_preserves_falsy_uuid_regression(
         tmp_path,
         {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_create.py": source},
     )
-    assert [(v.code, v.line) for v in violations(tmp_path, OPTIONS)] == [("SMT431", 6)]
+    assert [(v.code, v.line) for v in violations(tmp_path, OPTIONS)] == [("TST011", 6)]
 
 
 def test_fixed_seeded_unknown_shadowed_and_production_calls_are_preserved(
@@ -76,7 +76,7 @@ def test_fixture_setup_is_reviewed_and_quality_exclusions_apply(tmp_path: Path) 
         tmp_path,
         {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/conftest.py": source},
     )
-    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["SMT431"]
+    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["TST011"]
     write_project(
         tmp_path,
         {"smelt.yml": CONFIG + "tests: {quality_exclude: [tests/conftest.py]}\n"},
@@ -101,7 +101,7 @@ def test_opt_in_off_and_reasoned_suppression(tmp_path: Path) -> None:
             "smelt.yml": CONFIG + "rules: {tests/nondeterministic-data: warning}\n",
             "tests/test_create.py": source.replace(
                 "assert uuid4()",
-                "assert uuid4()  # smelt: ignore[SMT431] -- Exercises the UUID generator itself.",
+                "assert uuid4()  # smelt: ignore[TST011] -- Exercises the UUID generator itself.",
             ),
         },
     )

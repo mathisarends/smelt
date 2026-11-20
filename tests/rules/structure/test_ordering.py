@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "\nversion: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    definitions:\n      match: app\n      ordering: {}\n      rules:\n        layout/definition-order: error\n"
-OPTIONS = CheckOptions(select=("SMT313",))
+OPTIONS = CheckOptions(select=("LAY004",))
 
 
 @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ def test_check_exposes_execution_barriers_and_expected_order(tmp_path: Path) -> 
     outcome = check(tmp_path, OPTIONS)
     finding = outcome.report.violations[0]
 
-    assert finding.code == "SMT313"
+    assert finding.code == "LAY004"
     assert finding.expected is not None
     assert finding.expected["original"] == ["_helper", "api"]
     assert finding.expected["order"] == ["api", "_helper"]
@@ -130,7 +130,7 @@ def test_ordering_is_opt_in(tmp_path: Path) -> None:
     )
 
     assert violations(tmp_path) == []
-    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["SMT313"]
+    assert [v.code for v in violations(tmp_path, OPTIONS)] == ["LAY004"]
 
 
 @pytest.mark.parametrize("minimum", ["3.12", "3.13", "3.14"])
@@ -150,7 +150,7 @@ def test_builtin_union_annotations_allow_public_first(
         },
     )
     [finding] = violations(tmp_path, OPTIONS)
-    assert finding.code == "SMT313"
+    assert finding.code == "LAY004"
     assert finding.expected is not None
     assert finding.expected["order"] == ["api", "_helper"]
     assert finding.expected["fixable"]
@@ -243,4 +243,4 @@ def test_public_first_retains_a_needed_future_import(tmp_path: Path) -> None:
             "app/module.py": "from __future__ import annotations\nclass Keyboard:\n    def press(self, value: _Stroke): pass\nclass _Stroke: pass\n",
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT311", "SMT313"))) == []
+    assert violations(tmp_path, CheckOptions(select=("TYP002", "LAY004"))) == []

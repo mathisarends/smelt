@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class PreferCallableInstance(Rule):
-    code = "SMT333"
+    code = "IDM003"
     name = "idioms/prefer-callable-instance"
     category = Category.IDIOMS
     default_severity = Severity.HINT
@@ -56,8 +56,8 @@ class PreferCallableInstance(Rule):
             "and async behavior; do not move constructor dependencies into __call__. Review callers, "
             "dependency injection registrations and public compatibility before changing either name. "
             "No names, arguments or callers are rewritten automatically. Enable rules: "
-            "{idioms/prefer-callable-instance: hint}, globally or in a style override, or --select SMT333. "
-            "Keep an intentional named API with a package rules override set to off or a reasoned SMT333 suppression."
+            "{idioms/prefer-callable-instance: hint}, globally or in a style override, or --select IDM003. "
+            "Keep an intentional named API with a package rules override set to off or a reasoned IDM003 suppression."
         ),
         config=("rules", "style.overrides"),
     )

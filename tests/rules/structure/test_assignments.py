@@ -10,7 +10,7 @@ from tests.helpers import check, violations, write_project
 if TYPE_CHECKING:
     from pathlib import Path
 
-OPTIONS = CheckOptions(select=("SMT314",))
+OPTIONS = CheckOptions(select=("IDM001",))
 CONFIG = "version: 2\nproject:\n  root_packages:\n  - app\nstyle:\n  overrides:\n    fields:\n      match: app\n      rules:\n        idioms/bundled-instance-assignment: error\n"
 
 
@@ -165,7 +165,7 @@ def test_closest_allow_override_wins(tmp_path: Path) -> None:
 def test_inline_suppression_is_respected(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
-        "class Inbox:\n    def __init__(self):\n        self.a, self.b = values  # smelt: ignore[SMT314] -- preserve an atomic swap\n",
+        "class Inbox:\n    def __init__(self):\n        self.a, self.b = values  # smelt: ignore[IDM001] -- preserve an atomic swap\n",
     )
     outcome = check(root, OPTIONS)
     assert outcome.report.violations == []

@@ -38,11 +38,11 @@ def test_async_review_uses_class_specs_from_a_conftest_fixture_and_facade(
             """,
         },
     )
-    found = violations(tmp_path, CheckOptions(select=("SMT428",)))
+    found = violations(tmp_path, CheckOptions(select=("TST010",)))
     assert len(found) == int(enabled)
     if enabled:
         [finding] = found
-        assert finding.code == "SMT428"
+        assert finding.code == "TST010"
         assert finding.line == 2
         assert finding.severity.value == "warning"
         assert finding.expected == {
@@ -64,7 +64,7 @@ def test_async_review_respects_exclusion_and_rule_off(tmp_path: Path) -> None:
             "tests/excluded/test_connect.py": "from unittest.mock import AsyncMock\ndef test_connect():\n    connect = AsyncMock()\n    connect.assert_called_once()",
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT428",))) == []
+    assert violations(tmp_path, CheckOptions(select=("TST010",))) == []
     (tmp_path / "smelt.yml").write_text(
         config.replace(
             "tests/missing-await-assertion: 'off'",
@@ -117,7 +117,7 @@ def test_await_assertion_rejects_the_missing_await_mutation(
         },
     )
     assert [finding.code for finding in violations(tmp_path)] == (
-        [] if check_await else ["SMT428"]
+        [] if check_await else ["TST010"]
     )
     # Capture the mutation's warning as evidence without changing suite policy.
     executed = subprocess.run(

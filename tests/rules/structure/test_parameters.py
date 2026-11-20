@@ -20,7 +20,7 @@ style:
       rules:
         complexity/excess-positional-parameters: {severity: warning, max: {limit}}
 """
-SELECT = CheckOptions(select=("SMT345",))
+SELECT = CheckOptions(select=("CPX003",))
 
 
 def _project(tmp_path: Path, source: str, *, limit: int = 2) -> Path:
@@ -39,7 +39,7 @@ def test_reports_parameters_beyond_the_limit(tmp_path: Path) -> None:
     root = _project(tmp_path, source)
     [finding] = violations(root)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT345",
+        "CPX003",
         "app/browser.py",
         1,
         1,
@@ -232,5 +232,5 @@ def test_contract_activation_is_limited_to_its_package(tmp_path: Path) -> None:
         },
     )
     assert [(v.path, v.code) for v in violations(root)] == [
-        ("app/api/routes.py", "SMT345")
+        ("app/api/routes.py", "CPX003")
     ]

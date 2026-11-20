@@ -9,8 +9,8 @@ import pytest
 
 from smelt.engine.evaluation import (
     EvaluationOptions,
-    _compare_reports,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
-    _run_process,  # smelt: ignore[SMT420] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _compare_reports,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
+    _run_process,  # smelt: ignore[TST002] -- Exercise the private analysis primitive and its safety boundaries directly.
     evaluate,
 )
 from tests.helpers import write_project
@@ -18,7 +18,7 @@ from tests.helpers import write_project
 
 def test_comparison_retains_multiplicity_and_changed_evidence() -> None:
     original: dict[str, Any] = {
-        "code": "SMT422",
+        "code": "TST004",
         "path": "tests/test_run.py",
         "line": 3,
         "expected": {"operation": "unittest.mock.patch"},
@@ -27,8 +27,8 @@ def test_comparison_retains_multiplicity_and_changed_evidence() -> None:
     result = _compare_reports(
         {"violations": [original, original]}, {"violations": [revised]}
     )
-    assert result["before"] == {"SMT422": 2}
-    assert result["after"] == {"SMT422": 1}
+    assert result["before"] == {"TST004": 2}
+    assert result["after"] == {"TST004": 1}
     assert result["removed"] == [original]
     assert result["added"] == []
     assert result["updated"] == [{"before": original, "after": revised}]

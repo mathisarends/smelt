@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class TestOnlyPublicAttribute(Rule):
-    code = "SMT430"
+    code = "VIS010"
     name = "visibility/test-only-public-attribute"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING

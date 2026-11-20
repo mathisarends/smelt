@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-AWAIT = CheckOptions(select=("SMT340",))
+AWAIT = CheckOptions(select=("CPX002",))
 AWAIT_SOURCE = """\
 async def read(browser):
     return ClipboardResult(text=await browser.clipboard.read())
@@ -37,7 +37,7 @@ def test_keyword_argument_reports_location_and_suggests_keyword_name(
     root = _await_project(tmp_path, AWAIT_SOURCE)
     [finding] = violations(root, AWAIT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT340",
+        "CPX002",
         "app/channel.py",
         2,
         33,
@@ -131,10 +131,10 @@ def test_await_rule_is_opt_in_and_uses_configured_severity(tmp_path: Path) -> No
     [finding] = violations(
         _await_project(tmp_path / "enabled", AWAIT_SOURCE, config=config)
     )
-    assert (finding.code, finding.severity) == ("SMT340", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("CPX002", Severity.WARNING)
 
 
-SELECT = CheckOptions(select=("SMT340",))
+SELECT = CheckOptions(select=("CPX002",))
 MAPPING_SOURCE = """\
 def to_start_options_response(result: StartOptionsResult) -> StartOptionsResponse:
     return StartOptionsResponse(
@@ -158,11 +158,11 @@ def test_issue_180_reports_each_transformation_without_rewriting(
     tmp_path: Path,
 ) -> None:
     root = _project(tmp_path, MAPPING_SOURCE)
-    found = violations(root, CheckOptions(select=("SMT363", "SMT340")))
+    found = violations(root, CheckOptions(select=("CPX006", "CPX002")))
     assert [(v.code, v.line, v.column, v.end_line, v.end_column) for v in found] == [
-        ("SMT340", 3, 36, 6, 10),
-        ("SMT340", 7, 36, 10, 10),
-        ("SMT340", 11, 23, 14, 10),
+        ("CPX002", 3, 36, 6, 10),
+        ("CPX002", 7, 36, 10, 10),
+        ("CPX002", 11, 23, 14, 10),
     ]
     assert found[0].severity == Severity.HINT
     assert found[0].expected == {
@@ -382,7 +382,7 @@ def test_rule_is_opt_in_and_configurable(tmp_path: Path) -> None:
         {"smelt.yml": CONFIG + "rules: {complexity/inline-call-argument: warning}\n"},
     )
     [finding] = violations(root)
-    assert (finding.code, finding.severity) == ("SMT340", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("CPX002", Severity.WARNING)
 
 
 def test_package_overrides_suppression_and_uncached_results(tmp_path: Path) -> None:
@@ -402,7 +402,7 @@ style:
             "app/quiet/__init__.py": source,
             "app/strict/__init__.py": source,
             "app/intentional.py": source.rstrip()
-            + "  # smelt: ignore[SMT340] -- preserve the existing argument evaluation order\n",
+            + "  # smelt: ignore[CPX002] -- preserve the existing argument evaluation order\n",
         },
     )
     found = violations(root)

@@ -33,7 +33,7 @@ def test_exported_class_keeps_public_api_but_still_reviews_private_static_helper
     )
 
     [finding] = violations(root)
-    assert finding.code == "SMT317"
+    assert finding.code == "LAY005"
     assert finding.expected is not None
     assert finding.expected["method"] == "_prepare"
 
@@ -61,17 +61,17 @@ def test_composition_root_preserves_runtime_entry_points(tmp_path: Path) -> None
 
     found = violations(root)
     assert {(v.path, v.code) for v in found} == {
-        (helper, "SMT316"),
-        (helper, "SMT320"),
+        (helper, "VIS001"),
+        (helper, "VIS002"),
     }
     assert found == violations(root, CheckOptions(use_cache=False))
 
     write_project(root, {member: "architecture: {wiring: [api.main]}\n"})
     assert {(v.path, v.code) for v in violations(root)} == {
-        (helper, "SMT316"),
-        (helper, "SMT320"),
-        (entry, "SMT316"),
-        (entry, "SMT320"),
+        (helper, "VIS001"),
+        (helper, "VIS002"),
+        (entry, "VIS001"),
+        (entry, "VIS002"),
     }
 
 
@@ -91,7 +91,7 @@ def test_internal_async_public_method_including_callback_reference(
         """,
     )
     [finding] = violations(root)
-    assert (finding.code, finding.path, finding.line) == ("SMT316", "app/browser.py", 2)
+    assert (finding.code, finding.path, finding.line) == ("VIS001", "app/browser.py", 2)
     assert finding.severity == Severity.WARNING
     assert finding.expected is not None
     assert finding.expected["class"] == "Browser"
@@ -106,7 +106,7 @@ def test_unused_public_instance_methods_are_reviewed(
     tmp_path: Path, signature: str
 ) -> None:
     [finding] = violations(_project(tmp_path, f"class Browser:\n    {signature}: pass"))
-    assert finding.code == "SMT316"
+    assert finding.code == "VIS001"
     assert finding.expected is not None
     assert finding.expected["observed_usage"] == "unused"
 
@@ -213,7 +213,7 @@ def test_private_special_decorated_inherited_and_uncertain_methods_are_preserved
     tmp_path: Path, source: str
 ) -> None:
     root = _project(tmp_path, source)
-    found = violations(root, CheckOptions(select=("SMT316",)))
+    found = violations(root, CheckOptions(select=("VIS001",)))
     assert not any(
         finding.expected and finding.expected.get("kind") == "method"
         for finding in found
@@ -251,8 +251,8 @@ def test_local_public_module_helpers_and_unused_functions_are_reviewed(
     )
     found = violations(root)
     assert [(finding.code, finding.line) for finding in found] == [
-        ("SMT316", 2),
-        ("SMT316", 3),
+        ("VIS001", 2),
+        ("VIS001", 3),
     ]
     assert [
         finding.expected["suggested_name"] for finding in found if finding.expected
@@ -304,7 +304,7 @@ def test_test_only_module_function_stays_with_smt429_without_duplicate_findings(
     )
     write_project(root, {"tests/test_browser.py": "from app.browser import normalize"})
     [finding] = violations(root)
-    assert finding.code == "SMT429"
+    assert finding.code == "VIS009"
 
 
 @pytest.mark.parametrize(
@@ -325,7 +325,7 @@ def test_internal_static_helpers_prefer_private_module_functions(
         + f"class Browser:\n    @{decorator}\n    {keyword} normalize(value):\n        return value.strip()\n    def run(self, value):\n        return self.normalize(value)\nBrowser().run('a')",
     )
     [finding] = violations(root)
-    assert finding.code == "SMT317"
+    assert finding.code == "LAY005"
     assert finding.severity == Severity.HINT
     assert finding.expected is not None
     assert finding.expected["suggested_name"] == "_normalize"
@@ -341,7 +341,7 @@ def test_private_static_helper_can_be_unused_or_called_by_class_name(
         "class Browser:\n    @staticmethod\n    def _normalize(value): return value.strip()\n    def run(self): return Browser._normalize('a')\nBrowser().run()",
     )
     [finding] = violations(root)
-    assert finding.code == "SMT317"
+    assert finding.code == "LAY005"
     assert finding.expected is not None
     assert finding.expected["suggested_name"] == "_normalize"
     assert finding.expected["internal_references"] == [4]
@@ -369,9 +369,9 @@ class Query{base}:
 """
     root = _project(tmp_path, source, "version: 2\nproject: {root_packages: [app]}\n")
 
-    found = violations(root, CheckOptions(select=("SMT317",)))
+    found = violations(root, CheckOptions(select=("LAY005",)))
 
-    assert [finding.code for finding in found] == ([] if base else ["SMT317", "SMT317"])
+    assert [finding.code for finding in found] == ([] if base else ["LAY005", "LAY005"])
     if not base:
         assert [
             finding.expected["method"] for finding in found if finding.expected
@@ -405,7 +405,7 @@ def test_static_apis_decorators_class_dependencies_and_shadowed_decorators_are_p
     tmp_path: Path, source: str
 ) -> None:
     assert (
-        violations(_project(tmp_path, source), CheckOptions(select=("SMT317",))) == []
+        violations(_project(tmp_path, source), CheckOptions(select=("LAY005",))) == []
     )
 
 
@@ -417,19 +417,19 @@ def test_static_extraction_suggests_a_name_free_in_the_module_namespace(
         "def _normalize(value): return value\nclass Browser:\n    @staticmethod\n    def _normalize(value): return value.strip()",
     )
     [finding] = violations(root)
-    assert finding.code == "SMT317"
+    assert finding.code == "LAY005"
     assert finding.expected is not None
     assert finding.expected["suggested_name"] == "_normalize_internal"
 
 
-@pytest.mark.parametrize("code", ["SMT316", "SMT317"])
+@pytest.mark.parametrize("code", ["VIS001", "LAY005"])
 @pytest.mark.parametrize(
     ("config", "options"),
     [
         ("version: 2\nproject: {root_packages: [app]}", CheckOptions()),
         (
             CONFIG.replace("warning", "off").replace("hint", "off"),
-            CheckOptions(select=("SMT316", "SMT317")),
+            CheckOptions(select=("VIS001", "LAY005")),
         ),
     ],
 )
@@ -465,12 +465,12 @@ def test_closest_allow_overrides_apply_to_both_member_policies(tmp_path: Path) -
     ("code", "source"),
     [
         (
-            "SMT316",
-            "class Browser:\n    def emit(self): pass  # smelt: ignore[SMT316] -- third-party callback contract",
+            "VIS001",
+            "class Browser:\n    def emit(self): pass  # smelt: ignore[VIS001] -- third-party callback contract",
         ),
         (
-            "SMT317",
-            "class Browser:\n    @staticmethod\n    def normalize(value): return value.strip()  # smelt: ignore[SMT317] -- intentional static API",
+            "LAY005",
+            "class Browser:\n    @staticmethod\n    def normalize(value): return value.strip()  # smelt: ignore[LAY005] -- intentional static API",
         ),
     ],
 )

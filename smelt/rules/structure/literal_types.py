@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class DuplicateLiteralType(Rule):
-    code = "SMT338"
+    code = "TYP005"
     name = "typing/duplicate-literal-type"
     category = Category.TYPING
     default_severity = Severity.HINT

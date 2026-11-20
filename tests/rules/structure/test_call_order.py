@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT329",))
+OPTIONS = CheckOptions(select=("LAY006",))
 
 
 def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
@@ -29,7 +29,7 @@ def test_same_visibility_caller_after_callee_is_reviewed(
     )
     root = _project(tmp_path, source)
     [finding] = violations(root, OPTIONS)
-    assert (finding.code, finding.line) == ("SMT329", 2)
+    assert (finding.code, finding.line) == ("LAY006", 2)
     assert finding.expected is not None
     assert finding.expected["callees"] == [{"name": prefix + "parse", "line": 1}]
     assert (root / "app/service.py").read_text() == source
@@ -40,7 +40,7 @@ def test_ordinary_methods_and_async_calls_are_supported(tmp_path: Path) -> None:
         tmp_path,
         "class Reader:\n    async def parse(self): return 1\n    async def load(self): return await self.parse()\n",
     )
-    assert [(v.code, v.line) for v in violations(root, OPTIONS)] == [("SMT329", 3)]
+    assert [(v.code, v.line) for v in violations(root, OPTIONS)] == [("LAY006", 3)]
 
 
 @pytest.mark.parametrize(
@@ -68,7 +68,7 @@ def test_opt_in_override_and_reasoned_suppression(tmp_path: Path) -> None:
     root = _project(tmp_path, source)
     assert violations(root) == []
     _project(tmp_path, source, CONFIG + "rules: {layout/callee-before-caller: hint}\n")
-    assert [v.code for v in violations(root)] == ["SMT329"]
+    assert [v.code for v in violations(root)] == ["LAY006"]
     _project(
         tmp_path,
         source,
@@ -80,7 +80,7 @@ def test_opt_in_override_and_reasoned_suppression(tmp_path: Path) -> None:
         tmp_path,
         source.replace(
             "def load():",
-            "def load():  # smelt: ignore[SMT329] -- Retains a published narrative order.\n   ",
+            "def load():  # smelt: ignore[LAY006] -- Retains a published narrative order.\n   ",
         ),
     )
     assert violations(root, OPTIONS) == []

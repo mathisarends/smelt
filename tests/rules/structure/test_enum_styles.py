@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 AUTO_CONFIG = CONFIG + "style: {str_enum_values: auto}\n"
-SELECT = CheckOptions(select=("SMT341",))
+SELECT = CheckOptions(select=("MOD004",))
 HEADER = "from enum import StrEnum, auto"
 
 
@@ -44,7 +44,7 @@ def test_auto_style_reports_derivable_strings(tmp_path: Path) -> None:
     root = _project(tmp_path, source, config=AUTO_CONFIG)
     [finding] = violations(root, SELECT)
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT341",
+        "MOD004",
         "app/kinds.py",
         3,
         1,
@@ -87,7 +87,7 @@ def test_auto_style_accepts_auto_and_custom_classes(
 def test_explicit_style_reports_auto_members(tmp_path: Path) -> None:
     source = _enum("DESCRIPTION = auto()", 'CANDIDATE = "candidate"', "READY = auto()")
     [finding] = _explicit(tmp_path, source)
-    assert finding.code == "SMT341"
+    assert finding.code == "MOD004"
     assert finding.expected == {
         "enum": "Kind",
         "members": ["DESCRIPTION", "READY"],
@@ -156,7 +156,7 @@ def test_rule_is_opt_in_and_uses_configured_severity(
     source = _enum(*members)
     # Setting str_enum_values enables the rule; the default convention does not.
     default = violations(_project(tmp_path / "default", source, config=base))
-    assert [v.code for v in default] == (["SMT341"] if base == AUTO_CONFIG else [])
+    assert [v.code for v in default] == (["MOD004"] if base == AUTO_CONFIG else [])
     config = base + "rules: {modeling/str-enum-value-convention: warning}\n"
     [finding] = violations(_project(tmp_path / "enabled", source, config=config))
-    assert (finding.code, finding.severity) == ("SMT341", Severity.WARNING)
+    assert (finding.code, finding.severity) == ("MOD004", Severity.WARNING)

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class InternalPublicModuleSymbol(Rule):
-    code = "SMT320"
+    code = "VIS002"
     name = "visibility/internal-public-module-symbol"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
@@ -56,5 +56,5 @@ class InternalPublicModuleSymbol(Rule):
                     "usage_scope": ctx.member_usage.usage_scope,
                     "automatic_rename": False,
                 },
-                hint=f"Unless public by design, {rename_advice(name, suggested)}; otherwise export it or suppress SMT320 with a reason.",
+                hint=f"Unless public by design, {rename_advice(name, suggested)}; otherwise export it or suppress VIS002 with a reason.",
             )

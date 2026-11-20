@@ -8,10 +8,10 @@ if TYPE_CHECKING:
 
 # winner -> codes it makes redundant when both report the same root cause
 _SPECIFICITY: dict[str, frozenset[str]] = {
-    "SMT306": frozenset({"SMT301", "SMT305"}),
+    "ARC013": frozenset({"ARC011", "ARC012"}),
     # shared or central code importing a feature (also its layer or wiring module):
     # the feature import is the root cause
-    "SMT105": frozenset({"SMT101", "SMT106"}),
+    "ARC005": frozenset({"ARC001", "ARC006"}),
 }
 
 

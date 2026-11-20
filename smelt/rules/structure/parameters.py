@@ -18,7 +18,7 @@ _EXEMPT_DECORATORS = frozenset({"overload", "override"})
 
 class ExcessPositionalParameters(Rule):
     file_local = True
-    code = "SMT345"
+    code = "CPX003"
     name = "complexity/excess-positional-parameters"
     category = Category.COMPLEXITY
     default_severity = Severity.WARNING

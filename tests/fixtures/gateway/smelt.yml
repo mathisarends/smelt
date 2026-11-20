@@ -1,6 +1,6 @@
 version: 2
 rules:
-  SMT104: error
+  ARC004: error
   architecture/layer-boundary: error
   architecture/cross-feature-import: error
   architecture/forbidden-third-party-import: error

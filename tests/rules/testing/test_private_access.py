@@ -41,7 +41,7 @@ def test_private_production_access(tmp_path: Path, source: str, flagged: bool) -
             "tests/test_service.py": source,
         },
     )
-    found = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    found = violations(tmp_path, CheckOptions(select=("TST002",)))
     assert bool(found) is flagged
     if found:
         assert found[0].expected is not None
@@ -51,8 +51,8 @@ def test_private_production_access(tmp_path: Path, source: str, flagged: bool) -
 @pytest.mark.parametrize(
     "source",
     [
-        "from app.service import (\n    _first as first,  # smelt: ignore[SMT420] -- Deliberate parser boundary test.\n    _second as second,\n)\n",
-        "import app._first as first, \\\n    app._second as second  # smelt: ignore[SMT420] -- Deliberate parser boundary test.\n",
+        "from app.service import (\n    _first as first,  # smelt: ignore[TST002] -- Deliberate parser boundary test.\n    _second as second,\n)\n",
+        "import app._first as first, \\\n    app._second as second  # smelt: ignore[TST002] -- Deliberate parser boundary test.\n",
     ],
 )
 def test_multiline_import_exceptions_cover_only_the_named_alias(
@@ -71,7 +71,7 @@ def test_multiline_import_exceptions_cover_only_the_named_alias(
     )
     found = violations(tmp_path)
     assert len(found) == 1
-    assert found[0].code == "SMT420"
+    assert found[0].code == "TST002"
     assert found[0].line == (3 if source.startswith("from") else 1)
     assert found[0].target_module == (
         "app.service._second" if source.startswith("from") else "app._first"
@@ -115,7 +115,7 @@ def test_private_instance_reads_have_explicit_provenance(
             "tests/test_tabs.py": source,
         },
     )
-    [finding] = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    [finding] = violations(tmp_path, CheckOptions(select=("TST002",)))
     assert finding.expected is not None
     assert finding.expected["private_target"] == "app.tabs.Tabs._require_control"
     assert finding.expected["provenance"] == provenance
@@ -144,7 +144,7 @@ def test_unknown_receivers_local_fakes_and_instance_writes_are_excluded(
             + body,
         },
     )
-    assert violations(tmp_path, CheckOptions(select=("SMT420",))) == []
+    assert violations(tmp_path, CheckOptions(select=("TST002",))) == []
 
 
 def test_annotated_conftest_fixture_scope_and_override(tmp_path: Path) -> None:
@@ -161,7 +161,7 @@ def test_annotated_conftest_fixture_scope_and_override(tmp_path: Path) -> None:
             "tests/neighbor/test_tabs.py": "def test_run(tabs): tabs._require_control()",
         },
     )
-    found = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    found = violations(tmp_path, CheckOptions(select=("TST002",)))
     assert {finding.path for finding in found} == {
         "tests/test_tabs.py",
         "tests/neighbor/test_tabs.py",
@@ -190,7 +190,7 @@ def test_returned_fixture_tuple_preserves_known_production_receiver(
             + "\ndef test_run(resource):\n    tabs, _ = resource\n    tabs._require_control()",
         },
     )
-    [finding] = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    [finding] = violations(tmp_path, CheckOptions(select=("TST002",)))
     assert finding.expected is not None
     assert finding.expected["provenance"] in {"fixture-return", "fixture-inferred"}
     assert finding.expected["private_target"].endswith("Tabs._require_control")
@@ -208,7 +208,7 @@ def test_private_class_import_does_not_repeat_for_every_public_instance_operatio
             "tests/test_service.py": "from app.service import _Service\ndef test_run():\n    service = _Service()\n    service.run()\n    assert service.status == 'ready'\n    service.__str__()\n    service._inspect()",
         },
     )
-    found = violations(tmp_path, CheckOptions(select=("SMT420",)))
+    found = violations(tmp_path, CheckOptions(select=("TST002",)))
     assert [(finding.line, finding.target_module) for finding in found] == [
         (1, "app.service._Service"),
         (7, "app.service._Service._inspect"),

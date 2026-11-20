@@ -25,9 +25,9 @@
     },
     "rules": {"prefer-package-import": "error"}
   },
-  "selection": ["SMT108", "SMT109", "SMT319"],
+  "selection": ["IMP001", "ARC008", "IMP004"],
   "use_cache": false,
-  "findings": {"SMT108": 13, "SMT109": 23, "SMT319": 0},
+  "findings": {"IMP001": 13, "ARC008": 23, "IMP004": 0},
   "reviewed_examples": [
     {"definition": "browserrig.browser.base.BrowserEvents", "source_importers": 9, "cycle_check": "no-cycle-found"},
     {"definition": "browserrig.browser.models.TabInfo", "source_importers": 3, "cycle_check": "no-cycle-found"},
@@ -47,6 +47,6 @@
     "Counts aggregate static symbol provenance across regular re-export modules; they need not match the appendix's direct-path grep counts.",
     "count_tests includes files selected by existing test discovery, not arbitrary helpers such as tests/fakes.py.",
     "No-cycle-found only describes the analyzed explicit runtime import graph; dynamic imports, implicit initialization and import order are unproven.",
-    "No facade exports, imports or architecture policies were rewritten; partial SMT319, canonical paths and automatic facade policy proposals remain outside this change."
+    "No facade exports, imports or architecture policies were rewritten; partial IMP004, canonical paths and automatic facade policy proposals remain outside this change."
   ]
 }

@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 class ForbiddenTestMock(Rule):
     test_local = True
     scope = "test"
-    activation = POLICIES["SMT421"]
-    code = "SMT421"
+    activation = POLICIES["TST003"]
+    code = "TST003"
     name = "tests/forbidden-mock"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
@@ -56,7 +56,7 @@ class ForbiddenTestMock(Rule):
 class StringPatchTarget(Rule):
     test_local = True
     scope = "test"
-    code = "SMT422"
+    code = "TST004"
     name = "tests/string-patch-target"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})
@@ -90,8 +90,8 @@ class StringPatchTarget(Rule):
 class ExcessiveTestPatches(Rule):
     test_local = True
     scope = "test"
-    activation = POLICIES["SMT423"]
-    code = "SMT423"
+    activation = POLICIES["TST005"]
+    code = "TST005"
     name = "tests/excess-patches"
     category = Category.TESTS
     requires = frozenset({Index.TESTS})

@@ -3,13 +3,13 @@ from smelt.diagnostics.suppressions import parse_suppressions
 
 class TestParseSuppressions:
     def test_codes_and_reason(self) -> None:
-        source = "import x  # smelt: ignore[smt101, SMT2] -- legacy wiring\n"
+        source = "import x  # smelt: ignore[arc001, VIS] -- legacy wiring\n"
 
         [found] = parse_suppressions("a.py", source)
 
         assert (found.line, found.codes, found.reason, found.file_level) == (
             1,
-            ("SMT101", "SMT2"),
+            ("ARC001", "VIS"),
             "legacy wiring",
             False,
         )
@@ -26,10 +26,10 @@ class TestParseSuppressions:
         source = "x = 1  # smelt: ignore[modeling/dataclass-field-mutation] -- y\n"
         [parsed] = parse_suppressions("a.py", source)
 
-        found = parsed.resolve_names({"modeling/dataclass-field-mutation": "SMT349"})
+        found = parsed.resolve_names({"modeling/dataclass-field-mutation": "MOD005"})
 
-        assert found.covers("SMT349") is True
-        assert found.label("SMT349") == "modeling/dataclass-field-mutation"
+        assert found.covers("MOD005") is True
+        assert found.label("MOD005") == "modeling/dataclass-field-mutation"
 
     def test_file_level_without_codes(self) -> None:
         [found] = parse_suppressions("a.py", "# smelt: ignore-file -- generated\n")
@@ -39,11 +39,17 @@ class TestParseSuppressions:
         assert found.covers("SMT999") is True
 
     def test_marker_inside_string_is_ignored(self) -> None:
-        source = 'text = "# smelt: ignore[SMT101] -- no"\n'
+        source = 'text = "# smelt: ignore[ARC001] -- no"\n'
 
         assert parse_suppressions("a.py", source) == []
 
     def test_unused_codes_by_prefix(self) -> None:
-        [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[SMT1, SMT4]\n")
+        [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[ARC, TST]\n")
 
-        assert found.unused_codes(["SMT104"]) == ("SMT4",)
+        assert found.unused_codes(["ARC004"]) == ("TST",)
+
+    def test_pre_family_codes_and_prefixes_still_apply(self) -> None:
+        [found] = parse_suppressions("a.py", "x = 1  # smelt: ignore[SMT104, SMT4]\n")
+
+        assert (found.covers("ARC004"), found.covers("TST001")) == (True, True)
+        assert found.unused_codes(["ARC004"]) == ("SMT4",)

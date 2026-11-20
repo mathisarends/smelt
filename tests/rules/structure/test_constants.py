@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
-OPTIONS = CheckOptions(select=("SMT334",))
+OPTIONS = CheckOptions(select=("LAY008",))
 DOWNLOADS = """\
 class DownloadController:
     _DOWNLOADABLE_EXTENSIONS = {
@@ -30,7 +30,7 @@ def test_download_extensions_belong_at_module_scope(tmp_path: Path) -> None:
 
     [finding] = violations(root, OPTIONS)
 
-    assert finding.code == "SMT334"
+    assert finding.code == "LAY008"
     assert finding.path == "app/download.py"
     assert (finding.line, finding.column) == (2, 5)
     assert (finding.end_line, finding.end_column) == (2, 29)
@@ -190,7 +190,7 @@ def test_rule_is_opt_in_and_error_severity_blocks(tmp_path: Path) -> None:
     outcome = check(root)
 
     assert outcome.report.failed
-    assert [v.code for v in outcome.report.violations] == ["SMT334"]
+    assert [v.code for v in outcome.report.violations] == ["LAY008"]
 
 
 def test_closest_package_override_can_disable_the_rule(tmp_path: Path) -> None:
@@ -213,7 +213,7 @@ def test_closest_package_override_can_disable_the_rule(tmp_path: Path) -> None:
 def test_reasoned_suppression_and_test_classes_are_supported(tmp_path: Path) -> None:
     root = _project(
         tmp_path,
-        'class DownloadController:\n    _EXTENSIONS = {".pdf"}  # smelt: ignore[SMT334] -- Subclasses override this contract.\n',
+        'class DownloadController:\n    _EXTENSIONS = {".pdf"}  # smelt: ignore[LAY008] -- Subclasses override this contract.\n',
     )
     write_project(root, {"tests/test_download.py": DOWNLOADS})
 
@@ -225,7 +225,7 @@ def test_reasoned_suppression_and_test_classes_are_supported(tmp_path: Path) -> 
 
 def test_moving_constant_invalidates_cached_findings(tmp_path: Path) -> None:
     root = _project(tmp_path, DOWNLOADS)
-    assert [v.code for v in violations(root, OPTIONS)] == ["SMT334"]
+    assert [v.code for v in violations(root, OPTIONS)] == ["LAY008"]
     write_project(
         root,
         {
@@ -237,7 +237,7 @@ def test_moving_constant_invalidates_cached_findings(tmp_path: Path) -> None:
     )
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("SMT334",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("LAY008",), use_cache=False)) == []
 
 
 def _project(tmp_path: Path, source: str) -> Path:

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class IncompleteCoverage(Rule):
     scope = "project"
-    code = "SMT306"
+    code = "ARC013"
     name = "architecture/uncovered-source"
     category = Category.ARCHITECTURE
     default_severity = Severity.ERROR

@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from smelt.engine.check import TEST_QUALITY_CODES
 from smelt.engine.evaluation import EvaluationOptions, evaluate
 
 
@@ -24,7 +25,7 @@ def main() -> int:
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument(
         "--select",
-        default="SMT42",
+        default=",".join(TEST_QUALITY_CODES),
         help="Comma-separated rules; an empty string uses adopted policies.",
     )
     parser.add_argument("--timeout", type=float, default=60)

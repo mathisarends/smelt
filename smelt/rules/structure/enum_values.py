@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class RedundantStrEnumValue(Rule):
-    code = "SMT318"
+    code = "MOD001"
     name = "modeling/redundant-str-enum-value"
     category = Category.MODELING
     default_severity = Severity.HINT

@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from smelt.analysis.ordering import (
-    _analyze_order,  # smelt: ignore[SMT420] -- Unit-test this parser boundary.
+    _analyze_order,  # smelt: ignore[TST002] -- Unit-test this parser boundary.
 )
 from smelt.analysis.ordering_rewrite import rewrite_order
 from smelt.analysis.parsing import AnalysisError

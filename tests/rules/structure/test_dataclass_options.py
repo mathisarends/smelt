@@ -19,7 +19,7 @@ style:
       match: app
       dataclass_options: [frozen, slots]
 """
-SELECT = CheckOptions(select=("SMT351",))
+SELECT = CheckOptions(select=("MOD006",))
 HEADER = "from dataclasses import dataclass\n\n\n"
 
 
@@ -55,7 +55,7 @@ def test_reports_missing_options_from_the_issue(tmp_path: Path) -> None:
     first, second = violations(root)
 
     assert (first.code, first.path, first.line, first.column) == (
-        "SMT351",
+        "MOD006",
         "app/records.py",
         5,
         1,

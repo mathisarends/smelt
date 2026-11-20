@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 
 class ImportStyle(Rule):
-    activation = POLICIES["SMT308"]
-    code = "SMT308"
+    activation = POLICIES["IMP003"]
+    code = "IMP003"
     name = "imports/forbidden-import-style"
     category = Category.IMPORTS
     default_severity = Severity.ERROR

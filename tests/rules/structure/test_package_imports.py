@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
-OPTIONS = CheckOptions(select=("SMT319",))
+OPTIONS = CheckOptions(select=("IMP004",))
 EXPORTS = "from .observe import Observe\nfrom .models import Snapshot\n"
 CLIENT = (
     "from app.observation import Observe\nfrom app.observation.models import Snapshot\n"
@@ -42,7 +42,7 @@ def test_existing_reexports_are_preferred_in_tests(
 
     [finding] = violations(root, OPTIONS)
 
-    assert (finding.code, finding.path, finding.line) == ("SMT319", test_path, 2)
+    assert (finding.code, finding.path, finding.line) == ("IMP004", test_path, 2)
     assert finding.expected is not None
     assert finding.expected["replacement"] == "from app.observation import Snapshot"
 
@@ -84,15 +84,15 @@ def test_cached_test_findings_follow_import_and_export_edits(tmp_path: Path) -> 
     root = _project(tmp_path, client="")
     test_path = "tests/test_observation.py"
     for client, exports, expected in (
-        (CLIENT, EXPORTS, ["SMT319"]),
+        (CLIENT, EXPORTS, ["IMP004"]),
         (CLIENT, "", []),
-        (CLIENT, EXPORTS, ["SMT319"]),
+        (CLIENT, EXPORTS, ["IMP004"]),
         ("from app.observation import Snapshot\n", EXPORTS, []),
     ):
         write_project(root, {test_path: client, "app/observation/__init__.py": exports})
         warm = violations(root, OPTIONS)
         assert warm == violations(
-            root, CheckOptions(select=("SMT319",), use_cache=False)
+            root, CheckOptions(select=("IMP004",), use_cache=False)
         )
         assert [v.code for v in warm] == expected
     (root / test_path).unlink()
@@ -152,7 +152,7 @@ def test_suggests_the_existing_common_package_without_changing_source(
     before = (root / "app/client.py").read_bytes()
     [finding] = violations(root, OPTIONS)
 
-    assert finding.code == "SMT319"
+    assert finding.code == "IMP004"
     assert finding.severity is Severity.HINT
     assert (finding.path, finding.line, finding.column) == ("app/client.py", 2, 1)
     assert finding.source_module == "app.client"
@@ -252,7 +252,7 @@ def test_missing_private_or_uncertain_exports_are_preserved(
 )
 def test_explicit_public_exports_are_supported(tmp_path: Path, exports: str) -> None:
     [finding] = violations(_project(tmp_path, exports=exports), OPTIONS)
-    assert finding.code == "SMT319"
+    assert finding.code == "IMP004"
 
 
 def test_internal_imports_do_not_route_through_their_own_initializer(
@@ -298,7 +298,7 @@ def test_type_checking_policy_is_respected(tmp_path: Path, setting: str) -> None
     )
     found = violations(root, OPTIONS)
     assert [finding.code for finding in found] == (
-        ["SMT319"] if setting == "include" else []
+        ["IMP004"] if setting == "include" else []
     )
 
 
@@ -306,12 +306,12 @@ def test_rule_is_off_by_default(tmp_path: Path) -> None:
     assert violations(_project(tmp_path)) == []
 
 
-@pytest.mark.parametrize("name", ["SMT319", "imports/prefer-package-import"])
+@pytest.mark.parametrize("name", ["IMP004", "imports/prefer-package-import"])
 def test_explicit_settings_enable_the_rule(tmp_path: Path, name: str) -> None:
     [finding] = violations(
         _project(tmp_path, config=CONFIG + f"rules: {{{name}: hint}}")
     )
-    assert finding.code == "SMT319"
+    assert finding.code == "IMP004"
 
 
 def test_closest_package_can_disable_the_rule(tmp_path: Path) -> None:
@@ -329,7 +329,7 @@ def test_deliberate_implementation_import_can_be_suppressed(tmp_path: Path) -> N
     root = _project(
         tmp_path,
         client=CLIENT.rstrip()
-        + "  # smelt: ignore[SMT319] -- avoid initializer side effects here\n",
+        + "  # smelt: ignore[IMP004] -- avoid initializer side effects here\n",
     )
     outcome = check(root, OPTIONS)
     assert outcome.report.violations == []
@@ -341,14 +341,14 @@ def test_cached_findings_follow_export_edits_and_deletion(tmp_path: Path) -> Non
         tmp_path, config=CONFIG + "rules: {imports/prefer-package-import: hint}\n"
     )
     [initial] = violations(root)
-    assert initial.code == "SMT319"
+    assert initial.code == "IMP004"
     initializer = root / "app/observation/__init__.py"
     for exports in ("", EXPORTS):
         initializer.write_text(exports, encoding="utf-8")
         warm = check(root).report.violations
         fresh = check(root, CheckOptions(use_cache=False)).report.violations
         assert warm == fresh
-        assert [finding.code for finding in warm] == (["SMT319"] if exports else [])
+        assert [finding.code for finding in warm] == (["IMP004"] if exports else [])
     initializer.unlink()
     assert violations(root) == []
     assert violations(root, CheckOptions(use_cache=False)) == []

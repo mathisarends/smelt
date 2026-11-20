@@ -75,21 +75,21 @@ class RuleOverride(_Model):
 
 type RuleSetting = RuleSeverity | RuleOverride
 # The guard rule whose root setting enables strict policy coverage, by code and name.
-UNCOVERED_SOURCE = ("SMT306", "architecture/uncovered-source")
+UNCOVERED_SOURCE = ("ARC013", "architecture/uncovered-source")
 # Rules whose entry takes max, by the compiled policy option that carries the limit.
 LIMIT_RULES = {
-    "max_module_imports": ("SMT110", "imports/excess-module-imports"),
+    "max_module_imports": ("IMP002", "imports/excess-module-imports"),
     "max_positional_parameters": (
-        "SMT345",
+        "CPX003",
         "complexity/excess-positional-parameters",
     ),
-    "max_comprehension_loops": ("SMT363", "complexity/excess-comprehension-loops"),
+    "max_comprehension_loops": ("CPX006", "complexity/excess-comprehension-loops"),
     "max_constructor_decisions": (
-        "SMT364",
+        "CPX007",
         "complexity/excess-constructor-decisions",
     ),
-    "max_private_definitions": ("SMT367", "visibility/excess-private-definitions"),
-    "max_patches_per_test": ("SMT423", "tests/excess-patches"),
+    "max_private_definitions": ("VIS007", "visibility/excess-private-definitions"),
+    "max_patches_per_test": ("TST005", "tests/excess-patches"),
 }
 type _PolicyReason = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1)
@@ -245,7 +245,7 @@ class LayerConfig(_Model):
     )
     third_party: ThirdPartyPolicy = Field(
         default_factory=ThirdPartyPolicy,
-        description="Which third-party packages the layer may import (SMT103).",
+        description="Which third-party packages the layer may import (ARC003).",
     )
 
     @field_validator("path")
@@ -384,7 +384,7 @@ class ImportsConfig(_Model):
         description="Also check indirect layer, feature, shared, composition-root and third-party dependencies through all reachable project modules. Reports a shortest import chain; external packages are leaves.",
     )
     cycles: list[CycleScope] = Field(
-        default_factory=_all_cycle_scopes, description="Where SMT104 looks for cycles."
+        default_factory=_all_cycle_scopes, description="Where ARC004 looks for cycles."
     )
     type_checking_cycles: Literal["include", "ignore"] = Field(
         default="include",
@@ -443,21 +443,21 @@ class PackageBoundary(_PackageTarget):
 
     required: list[str] = Field(
         default_factory=list,
-        description="Relative dotted modules or packages that must exist in every matching package (SMT307).",
+        description="Relative dotted modules or packages that must exist in every matching package (ARC014).",
     )
     public: list[str] | None = Field(
         default=None,
-        description="Relative public module patterns (SMT107). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
+        description="Relative public module patterns (ARC007). '.' exposes the package facade; * matches one segment, ** any depth. Omitted: no interface restriction; []: private package. Each pattern must match analyzed code.",
     )
     min_imports_to_bundle: int | None = Field(
         default=None,
         ge=2,
-        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (SMT108, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
+        description="Suggest a package facade when one outside source module imports this many distinct paths within the package, counting a mixed facade/implementation import too (IMP001, hint). Includes proposed exports and runtime cycle evidence; no automatic rewrite.",
     )
     min_importers_to_export: int | None = Field(
         default=None,
         ge=2,
-        description="Review a missing facade export when this many distinct outside modules import a public implementation name (SMT109, hint). Counts runtime source imports by default; no automatic API changes.",
+        description="Review a missing facade export when this many distinct outside modules import a public implementation name (ARC008, hint). Counts runtime source imports by default; no automatic API changes.",
     )
     count_tests: bool = Field(
         default=False,
@@ -535,7 +535,7 @@ class ArchitectureConfig(_Model):
     )
     members: dict[str, MemberBoundaryConfig] = Field(
         default_factory=dict,
-        description="Root-only uv workspace boundaries: source member path glob -> {may_depend_on: [target member globs]}. Unmatched source members are unrestricted; '.' names the root project. SMT111 checks direct imports.",
+        description="Root-only uv workspace boundaries: source member path glob -> {may_depend_on: [target member globs]}. Unmatched source members are unrestricted; '.' names the root project. ARC009 checks direct imports.",
     )
 
     packages: dict[str, PackageBoundary] = Field(
@@ -717,14 +717,14 @@ class TypeDispatchConfig(_Model):
     min_branches: int = Field(
         default=3,
         ge=2,
-        description="Minimum number of type-tested if/elif branches over the same simple name before SMT315 suggests match/case.",
+        description="Minimum number of type-tested if/elif branches over the same simple name before IDM002 suggests match/case.",
     )
 
 
 class ErrorPolicy(_Model):
     base: str | None = Field(
         default=None,
-        description="Fully qualified project exception that production code raises instead of builtin exceptions (SMT354), e.g. app.errors.AppError. Omitted: {} lifts an outer policy.",
+        description="Fully qualified project exception that production code raises instead of builtin exceptions (MOD008), e.g. app.errors.AppError. Omitted: {} lifts an outer policy.",
     )
     allow: list[str] = Field(
         default_factory=list,
@@ -765,35 +765,35 @@ class PackagePolicy(_Model):
 
     imports: ImportStyleConfig | None = Field(
         default=None,
-        description="Import style (SMT308). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style.",
+        description="Import style (IMP003). Setting it enables imports/import-style-convention. The closest package contract overrides the project-wide style.",
     )
     reexports: ReexportStyle | None = Field(
         default=None,
-        description="Package initializer re-export convention (SMT369). all uses __all__; alias uses same-name import aliases. allow permits either spelling. Selecting the rule alone uses all.",
+        description="Package initializer re-export convention (VIS008). all uses __all__; alias uses same-name import aliases. allow permits either spelling. Selecting the rule alone uses all.",
     )
     module_import_exemptions: list[ModuleImportExemption] | None = Field(
         default=None,
-        description="SMT110 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
+        description="IMP002 exemptions: facades skips all package initializers; composition_root skips declared composition roots; [] checks both. Omitted means [facades, composition_root].",
     )
     module_docstrings: Literal["allow", "forbid", "require"] | None = Field(
         default=None,
-        description="Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (SMT309), or allow either. Includes package initializers; function and class documentation is unaffected.",
+        description="Module-docstring convention: require a non-empty initial docstring or forbid any initial docstring (LAY002), or allow either. Includes package initializers; function and class documentation is unaffected.",
     )
     future_annotations: Literal["allow", "forbid", "when-needed"] | None = Field(
         default=None,
-        description="allow: preserve; forbid: reject the annotations future import (SMT310); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (SMT311). No automatic rewriting.",
+        description="allow: preserve; forbid: reject the annotations future import (TYP001); when-needed: reject it for a declared Python 3.14+ minimum, otherwise conservatively suggest review when no postponement need is found (TYP002). No automatic rewriting.",
     )
     private_modules: Literal["allow", "forbid"] | None = Field(
         default=None,
-        description="Naming convention (SMT312): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
+        description="Naming convention (LAY003): forbid module and package names starting with _, except the special __init__.py and __main__.py files. Private functions and methods are unaffected.",
     )
     public_attribute_boundary: PublicAttributeBoundary | None = Field(
         default=None,
-        description="Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables SMT335. SMT430 uses the same boundary when selected separately. Omitted means class.",
+        description="Visibility boundary for public data attributes: class uses the owning class; module also allows other production code in the defining module. Setting it, including class, enables VIS004. VIS010 uses the same boundary when selected separately. Omitted means class.",
     )
     private_attribute_boundary: PrivateAttributeBoundary | None = Field(
         default=None,
-        description="Ownership boundary for private attribute access in visibility/foreign-private-access (SMT339): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module.",
+        description="Ownership boundary for private attribute access in visibility/foreign-private-access (VIS005): module allows same-module cooperation; package allows modules of the same immediate Python package. Private module symbols always use the module boundary. Setting it enables the rule. Omitted means module.",
     )
     ordering: OrderingConfig | None = Field(
         default=None,
@@ -801,28 +801,28 @@ class PackagePolicy(_Model):
     )
     type_dispatch: TypeDispatchConfig | None = Field(
         default=None,
-        description="SMT315 match/case preference for same-subject isinstance chains. No automatic rewrite.",
+        description="IDM002 match/case preference for same-subject isinstance chains. No automatic rewrite.",
     )
     call_argument_kinds: list[CallArgumentKind] | None = Field(
         default=None,
         min_length=1,
-        description="Argument kinds complexity/inline-call-argument (SMT340) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
+        description="Argument kinds complexity/inline-call-argument (CPX002) reports: await expressions, list/set/dict comprehensions and builtin reductions of generators (aggregate). Setting it enables the rule. Omitted means all three.",
     )
     str_enum_values: Literal["auto", "explicit"] | None = Field(
         default=None,
-        description="StrEnum value convention (SMT341): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. Setting it enables modeling/str-enum-value-convention. Omitted means explicit.",
+        description="StrEnum value convention (MOD004): explicit reports auto() members; auto reports explicit strings that auto() derives, except in classes with custom values. Setting it enables modeling/str-enum-value-convention. Omitted means explicit.",
     )
     dataclass_options: list[DataclassOption] | None = Field(
         default=None,
-        description="Dataclass options every production @dataclass must set to True (SMT351): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. No automatic rewrite.",
+        description="Dataclass options every production @dataclass must set to True (MOD006): frozen, slots or kw_only. [] lifts an outer requirement. Missing slots is not reported for classes with a base from outside the project or a functools.cached_property. No automatic rewrite.",
     )
     bases: dict[str, str] | None = Field(
         default=None,
-        description="Map a base class from outside the project to the project base that classes must inherit instead (SMT353), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
+        description="Map a base class from outside the project to the project base that classes must inherit instead (MOD007), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
     )
     errors: ErrorPolicy | None = Field(
         default=None,
-        description="Project exception policy (SMT354): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
+        description="Project exception policy (MOD008): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
     )
 
     @field_validator("dataclass_options")
@@ -968,7 +968,7 @@ class StyleOverride(_ReasonedStyle, _PackageTarget):
 
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Rule severities for production findings in this package. Enable individual rules by name or SMT code. Families and ALL can disable or cap active source rules. Individual entries override broad entries, and the closest package override wins.",
+        description="Rule severities for production findings in this package. Enable individual rules by name or code. Families and ALL can disable or cap active source rules. Individual entries override broad entries, and the closest package override wins.",
     )
 
 
@@ -1001,17 +1001,17 @@ class FileNamingConfig(_Model):
 
     yaml_extension: Literal["yaml", "yml"] | None = Field(
         default=None,
-        description="Canonical YAML extension, without a dot (SMT331). Omitted means either spelling is allowed. Applies below the project root, including hidden configuration directories, subject to project.exclude.",
+        description="Canonical YAML extension, without a dot (LAY007). Omitted means either spelling is allowed. Applies below the project root, including hidden configuration directories, subject to project.exclude.",
     )
     compose_basename: Literal["compose", "docker-compose"] | None = Field(
         default=None,
-        description="Canonical Compose basename (SMT331), including dotted variants such as compose.override.yaml. The extension is controlled only by yaml_extension. Omitted means either basename is allowed.",
+        description="Canonical Compose basename (LAY007), including dotted variants such as compose.override.yaml. The extension is controlled only by yaml_extension. Omitted means either basename is allowed.",
     )
 
 
 class _ProjectStyle(_ReasonedStyle):
     forbidden_names: list[str] = Field(
-        default_factory=list, description="Package and module names to avoid (SMT302)."
+        default_factory=list, description="Package and module names to avoid (LAY001)."
     )
     file_naming: FileNamingConfig = Field(default_factory=FileNamingConfig)
 
@@ -1053,7 +1053,7 @@ class TestsConfig(_Model):
     )
     forbidden_mock_paths: list[str] = Field(
         default_factory=list,
-        description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (SMT421). Environment/mapping setup is not counted as MonkeyPatch mocking.",
+        description="Project-relative test globs forbidding recognized unittest.mock, pytest-mock and MonkeyPatch attribute replacement, including fixtures (TST003). Environment/mapping setup is not counted as MonkeyPatch mocking.",
     )
     assertion_helpers: list[str] = Field(
         default_factory=list,
@@ -1113,7 +1113,7 @@ class TestsConfig(_Model):
 
 class IgnoreEntry(_Model):
     rule: str = Field(
-        description="Rule name, family, SMT code prefix or ALL to ignore within the specified scope."
+        description="Rule name, family, code prefix or ALL to ignore within the specified scope."
     )
     modules: list[str] = Field(default_factory=list)
     paths: list[str] = Field(default_factory=list)
@@ -1252,7 +1252,7 @@ class SmeltConfig(_Model):
     tests: TestsConfig = Field(default_factory=TestsConfig)
     rules: dict[str, RuleSetting] = Field(
         default_factory=dict,
-        description="Enable individual checks by name or SMT code. on uses the catalog severity and off disables the check. Families and ALL can only disable or cap active rules.",
+        description="Enable individual checks by name or code. on uses the catalog severity and off disables the check. Families and ALL can only disable or cap active rules.",
     )
     ignore: list[IgnoreEntry] = Field(
         default_factory=list, description="Rules to skip for modules or paths."
@@ -1434,7 +1434,7 @@ def _check_rule_keys(values: dict[str, RuleSetting]) -> dict[str, RuleSetting]:
     for key in values:
         if key != ALL_RULES and not (_RULE_CODE.match(key) or _RULE_NAME.match(key)):
             msg = (
-                f'"{key}" is not a rule code like "SMT101", '
+                f'"{key}" is not a rule code like "ARC001", '
                 'a rule name like "architecture/layer-boundary", '
                 'a family like "modeling" or ALL'
             )

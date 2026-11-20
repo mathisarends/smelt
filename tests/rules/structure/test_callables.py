@@ -6,7 +6,7 @@ from smelt.engine.check import CheckOptions
 from tests.helpers import check, violations, write_project
 
 CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
-OPTIONS = CheckOptions(select=("SMT333",))
+OPTIONS = CheckOptions(select=("IDM003",))
 SINGLE_METHOD = (
     "class ReportService:\n    def generate(self, report_id): return report_id\n"
 )
@@ -36,7 +36,7 @@ def test_review_keeps_constructor_and_call_arguments_separate(tmp_path: Path) ->
     [finding] = violations(root, OPTIONS)
 
     assert (finding.code, finding.path, finding.line, finding.column) == (
-        "SMT333",
+        "IDM003",
         "app/reports.py",
         1,
         1,
@@ -116,7 +116,7 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
     root = _project(tmp_path, SINGLE_METHOD)
     assert violations(root) == []
     assert [v.code for v in violations(root, CheckOptions(select=("SMT33",)))] == [
-        "SMT333"
+        "IDM003"
     ]
 
     write_project(
@@ -124,7 +124,7 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
         {"smelt.yml": CONFIG + "rules: {idioms/prefer-callable-instance: warning}\n"},
     )
     [finding] = violations(root)
-    assert finding.code == "SMT333"
+    assert finding.code == "IDM003"
     assert finding.severity.value == "warning"
 
     write_project(
@@ -134,7 +134,7 @@ def test_opt_in_selection_and_closest_package_override(tmp_path: Path) -> None:
             + "style:\n  overrides:\n    api: {match: app, rules: {idioms/prefer-callable-instance: hint}}\n"
         },
     )
-    assert [v.code for v in violations(root)] == ["SMT333"]
+    assert [v.code for v in violations(root)] == ["IDM003"]
 
     write_project(
         root,
@@ -152,7 +152,7 @@ def test_reasoned_suppression_and_test_files_are_respected(tmp_path: Path) -> No
         tmp_path,
         SINGLE_METHOD.replace(
             "class ReportService:",
-            "class ReportService:  # smelt: ignore[SMT333] -- Keep the published generate API.",
+            "class ReportService:  # smelt: ignore[IDM003] -- Keep the published generate API.",
         ),
     )
     write_project(root, {"tests/test_reports.py": SINGLE_METHOD})
@@ -173,7 +173,7 @@ def test_cached_review_tracks_method_arguments_and_conversion(tmp_path: Path) ->
         },
     )
     cached = check(root, OPTIONS).report
-    fresh = check(root, CheckOptions(select=("SMT333",), use_cache=False)).report
+    fresh = check(root, CheckOptions(select=("IDM003",), use_cache=False)).report
     assert cached.violations == fresh.violations
     [finding] = cached.violations
     assert finding.expected is not None
@@ -183,4 +183,4 @@ def test_cached_review_tracks_method_arguments_and_conversion(tmp_path: Path) ->
         root, {"app/reports.py": SINGLE_METHOD.replace("generate", "__call__")}
     )
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("SMT333",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("IDM003",), use_cache=False)) == []

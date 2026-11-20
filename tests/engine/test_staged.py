@@ -59,14 +59,14 @@ def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
     monkeypatch.chdir(repo)
 
     for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "SMT112", *flags)
+        status, data = _check(repo, capsys, "--select", "ARC010", *flags)
         assert status == 1
         [found] = data["violations"]
-        assert (found["code"], found["member"]) == ("SMT112", "services/api")
+        assert (found["code"], found["member"]) == ("ARC010", "services/api")
 
     _git(repo, "add", "services/api/pyproject.toml")
     for flags in ((), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "SMT112", *flags)
+        status, data = _check(repo, capsys, "--select", "ARC010", *flags)
         assert status == 0
         assert data["violations"] == []
 
@@ -147,7 +147,7 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     write_policy_project(
         repo,
         {
-            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {SMT338: warning}\n",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {TYP005: warning}\n",
             "app/first.py": source,
         },
     )
@@ -159,14 +159,14 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     write_policy_project(repo, {"app/second.py": "", "smelt.yml": CONFIG})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "SMT338", *flags)
+        status, data = _check(repo, capsys, "--select", "TYP005", *flags)
         assert status == 1
         assert [v["path"] for v in data["violations"]] == [
             "app/first.py",
             "app/second.py",
         ]
     _git(repo, "add", "app/second.py")
-    status, data = _check(repo, capsys, "--select", "SMT338")
+    status, data = _check(repo, capsys, "--select", "TYP005")
     assert status == 0
     assert not data["violations"]
 
@@ -185,10 +185,10 @@ def test_staged_private_symbols_use_index_definitions_and_callers(
     write_policy_project(repo, {"app/service.py": "", "app/caller.py": ""})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "SMT339", *flags)
+        status, data = _check(repo, capsys, "--select", "VIS005", *flags)
         assert status == 1
         [finding] = data["violations"]
-        assert finding["code"] == "SMT339"
+        assert finding["code"] == "VIS005"
         assert finding["path"] == "app/caller.py"
         assert finding["expected"]["private_target"] == "app.service._helper"
 
@@ -200,7 +200,7 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     write_policy_project(
         repo,
         {
-            "smelt.yml": CONFIG + "debt: debt.json\nrules: {SMT321: warning}\n",
+            "smelt.yml": CONFIG + "debt: debt.json\nrules: {TYP003: warning}\n",
             "app/storage.py": original,
         },
     )
@@ -222,10 +222,10 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     write_policy_project(repo, {"app/storage.py": original})
     monkeypatch.chdir(repo)
     for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "SMT321", *flags)
+        status, data = _check(repo, capsys, "--select", "TYP003", *flags)
         assert status == 1
         [finding] = data["violations"]
-        assert finding["code"] == "SMT321"
+        assert finding["code"] == "TYP003"
         assert finding["expected"]["scope"] == "download"
 
 
@@ -299,10 +299,10 @@ rules: {layout/redundant-module-name: warning}
     monkeypatch.chdir(repo)
 
     for flags in ((), (), ("--no-cache",)):
-        code, data = _check(repo, capsys, "--select", "SMT336", *flags)
+        code, data = _check(repo, capsys, "--select", "LAY009", *flags)
         assert code == 1
         [finding] = data["violations"]
-        assert finding["code"] == "SMT336"
+        assert finding["code"] == "LAY009"
         assert finding["path"] == "app/cars/application/car_exporter.py"
         assert finding["expected"]["suggested_name"] == "exporter.py"
 
@@ -330,7 +330,7 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
         code, data = _check(repo, capsys, "--select", "SMT33", *flags)
         assert code == 1
         assert [(v["code"], v["path"]) for v in data["violations"]] == [
-            ("SMT331", "deploy/docker-compose.yaml"),
+            ("LAY007", "deploy/docker-compose.yaml"),
         ]
     _git(repo, "add", "deploy")
     code, data = _check(repo, capsys, "--select", "SMT33")
@@ -380,7 +380,7 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     _git(repo, "add", "app/consumer.py")
     cold = _check(repo, capsys)
     assert cold[0] == 1
-    assert [v["code"] for v in cold[1]["violations"]] == ["SMT316"]
+    assert [v["code"] for v in cold[1]["violations"]] == ["VIS001"]
 
     # The warm result must ignore unstaged (even malformed) parent edits.
     (repo / "policy/base.yml").write_text("invalid: [", encoding="utf-8")
@@ -434,7 +434,7 @@ def test_changed_inheritance_checks_old_and_new_sources_with_current_policy(
     report = json.loads(capsys.readouterr().out)
     assert code == 1
     assert [(v["code"], v["path"]) for v in report["violations"]] == [
-        ("SMT316", "app/browser.py")
+        ("VIS001", "app/browser.py")
     ]
 
 
@@ -460,20 +460,20 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     write_policy_project(
         repo, {"app/api/__init__.py": "from .impl import Item\n", "app/second.py": ""}
     )
-    code, report = _check(repo, capsys, "--select", "SMT109")
+    code, report = _check(repo, capsys, "--select", "ARC008")
     assert code == 0
     [finding] = report["violations"]
     assert finding["path"] == "app/api/impl.py"
     assert finding["expected"]["count"] == 2
-    _, fresh = _check(repo, capsys, "--select", "SMT109", "--no-cache")
+    _, fresh = _check(repo, capsys, "--select", "ARC008", "--no-cache")
     assert fresh["violations"] == report["violations"]
     _git(repo, "add", "app/api/__init__.py")
-    _, exported = _check(repo, capsys, "--select", "SMT109")
+    _, exported = _check(repo, capsys, "--select", "ARC008")
     assert exported["violations"] == []
 
 
 @pytest.mark.parametrize(
-    ("code", "count"), [("SMT107", 2), ("SMT108", 1), ("SMT319", 1)]
+    ("code", "count"), [("ARC007", 2), ("IMP001", 1), ("IMP004", 1)]
 )
 def test_staged_test_imports_use_index_callers_policy_and_exports(
     repo: Path, capsys: pytest.CaptureFixture[str], code: str, *, count: int
@@ -536,7 +536,7 @@ def test_staged_change_finds_unchanged_definition_and_matches_uncached(
     code, report = cold
     assert code == 1
     assert [(v["code"], v["path"]) for v in report["violations"]] == [
-        ("SMT316", "app/browser.py")
+        ("VIS001", "app/browser.py")
     ]
     assert report["scope"]["mode"] == "staged"
     assert report["comparison"]["working_tree"] is False
@@ -562,7 +562,7 @@ def test_reasoned_api_exception_survives_caching_and_staging(
 ) -> None:
     (repo / "app/consumer.py").write_text("")
     (repo / "app/browser.py").write_text(
-        "class Browser:\n    def emit(self):  # smelt: ignore[SMT316] -- Called by plugin hosts.\n        pass\n"
+        "class Browser:\n    def emit(self):  # smelt: ignore[VIS001] -- Called by plugin hosts.\n        pass\n"
     )
     _git(repo, "add", "app")
     for _ in range(2):
@@ -578,12 +578,12 @@ def test_exception_without_reason_blocks_the_commit(
 ) -> None:
     (repo / "app/consumer.py").write_text("")
     (repo / "app/browser.py").write_text(
-        "class Browser:\n    def emit(self):  # smelt: ignore[SMT316]\n        pass\n"
+        "class Browser:\n    def emit(self):  # smelt: ignore[VIS001]\n        pass\n"
     )
     _git(repo, "add", "app")
     code, report = _check(repo, capsys)
     assert code == 1
-    assert [v["code"] for v in report["violations"]] == ["SMT902"]
+    assert [v["code"] for v in report["violations"]] == ["MET002"]
 
 
 def test_first_commit_and_removed_working_config(
@@ -607,7 +607,7 @@ def test_first_commit_and_removed_working_config(
     report = json.loads(capsys.readouterr().out)
     assert code == 1
     assert report["comparison"]["head"] is None
-    assert [v["code"] for v in report["violations"]] == ["SMT316"]
+    assert [v["code"] for v in report["violations"]] == ["VIS001"]
 
 
 def test_nested_config_and_sibling_source_roots(
@@ -671,7 +671,7 @@ def test_staged_python_metadata_determines_version_aware_findings(
     (repo / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.12"\n')
     code, report = _check(repo, capsys)
     assert code == 1
-    assert [v["code"] for v in report["violations"]] == ["SMT310"]
+    assert [v["code"] for v in report["violations"]] == ["TYP001"]
 
 
 def test_staged_debt_with_arbitrary_filename_is_used(
@@ -951,7 +951,7 @@ def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working
     (repo / "app/application/service.py").unlink()
     cached = _check(repo, capsys)
     assert any(
-        v["code"] == "SMT101" and v["path"] == "app/domain/leak.py"
+        v["code"] == "ARC001" and v["path"] == "app/domain/leak.py"
         for v in cached[1]["violations"]
     )
     assert cached == _check(repo, capsys, "--no-cache")
@@ -1001,7 +1001,7 @@ def test_text_feedback_names_the_decision_and_shows_the_staged_source(
         output = capsys.readouterr().out
         assert code == 1
         assert "def callback(self)" in output
-        assert "smelt: ignore[SMT316]" in output
+        assert "smelt: ignore[VIS001]" in output
         assert "staged Git index" in output
 
 

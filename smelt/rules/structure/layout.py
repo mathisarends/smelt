@@ -31,7 +31,7 @@ def _child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
 
 class UnknownLayer(Rule):
     enabled_by_default = True
-    code = "SMT301"
+    code = "ARC011"
     name = "architecture/unknown-layer"
     architecture_scoped = True
     category = Category.ARCHITECTURE
@@ -148,7 +148,7 @@ class UnknownLayer(Rule):
 
 
 class UnclassifiedModule(Rule):
-    code = "SMT305"
+    code = "ARC012"
     name = "architecture/unclassified-module"
     architecture_scoped = True
     category = Category.ARCHITECTURE
