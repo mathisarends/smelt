@@ -15,9 +15,10 @@ use std::time::{Duration, Instant};
 mod git;
 mod worker;
 
-const PROTOCOL: u32 = 2;
+const PROTOCOL: u32 = 3;
 const LIMIT: u64 = 64 * 1024 * 1024;
 const ACCEPT_TIMEOUT: Duration = Duration::from_millis(250);
+const MAX_ANALYSIS: Duration = Duration::from_secs(300);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn trace(message: impl std::fmt::Display) {
@@ -179,7 +180,12 @@ fn read_frame(reader: &mut BufReader<TcpStream>, deadline: Instant) -> io::Resul
     }
 }
 
-fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response> {
+fn request(
+    path: &Path,
+    cwd: &str,
+    arguments: &[String],
+    accept_timeout: Duration,
+) -> io::Result<Response> {
     trace(format!("connecting via {}", path.display()));
     let metadata: Endpoint = serde_json::from_slice(&fs::read(path)?)?;
     if metadata.protocol != PROTOCOL {
@@ -204,10 +210,14 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
     trace("request sent");
     let mut reader = BufReader::new(stream);
     let accepted: Accepted =
-        serde_json::from_slice(&read_frame(&mut reader, Instant::now() + ACCEPT_TIMEOUT)?)?;
+        serde_json::from_slice(&read_frame(&mut reader, Instant::now() + accept_timeout)?)?;
     if !accepted.accepted || accepted.pid != metadata.pid {
         return Err(io::Error::other("unexpected worker acceptance"));
     }
+    // The worker starts analysis only when we acknowledge its acceptance. A
+    // timed-out handshake cannot race a foreground check against an orphan job.
+    reader.get_mut().write_all(b"start\n")?;
+    trace("worker accepted and dispatch confirmed");
     // Once accepted, any failure must go straight to foreground checking. A
     // watchdog disconnect must not start a second five-second worker attempt.
     receive_response(&mut reader, metadata.pid)
@@ -215,7 +225,18 @@ fn request(path: &Path, cwd: &str, arguments: &[String]) -> io::Result<Response>
 }
 
 fn receive_response(reader: &mut BufReader<TcpStream>, pid: u32) -> io::Result<Response> {
-    let line = read_frame(reader, Instant::now() + REQUEST_TIMEOUT)?;
+    let hard_deadline = Instant::now() + MAX_ANALYSIS;
+    let mut frame_timeout = REQUEST_TIMEOUT;
+    let line = loop {
+        let frame = read_frame(reader, hard_deadline.min(Instant::now() + frame_timeout))?;
+        if frame != b"{\"progress\":true}\n" {
+            break frame;
+        }
+        trace("worker reports progress");
+        // A native analysis step can hold the GIL and briefly prevent the Python
+        // watchdog from sending frames. Its idle deadline still applies.
+        frame_timeout = Duration::from_secs(20);
+    };
     let response: Response = serde_json::from_slice(&line)?;
     trace(format!("received {} bytes", line.len()));
     if response.pid != pid || !(0..=2).contains(&response.code) {
@@ -230,7 +251,7 @@ fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
         .to_str()
         .ok_or_else(|| io::Error::other("non-UTF-8 cwd"))?;
     let path = endpoint(python, &cwd)?;
-    match request(&path, name, arguments) {
+    match request(&path, name, arguments, ACCEPT_TIMEOUT) {
         Ok(response) if !response.restart => return Ok(response),
         Err(error) if error.kind() == io::ErrorKind::ConnectionAborted => return Err(error),
         Err(error)
@@ -294,7 +315,16 @@ fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
             thread::sleep(Duration::from_millis(10));
         }
     }
-    request(&path, name, arguments)
+    request(
+        &path,
+        name,
+        arguments,
+        if owner {
+            Duration::from_secs(2)
+        } else {
+            ACCEPT_TIMEOUT
+        },
+    )
 }
 
 fn run() -> io::Result<i32> {
@@ -331,15 +361,21 @@ fn run() -> io::Result<i32> {
         && !text.iter().any(|value| {
             value.starts_with("--fi") || matches!(value.as_str(), "--f" | "--help" | "-h")
         })
-        && let Ok(response) = check(&python, &text)
-        && !response.restart
     {
-        io::stdout().write_all(response.out.as_bytes())?;
-        io::stdout().flush()?;
-        io::stderr().write_all(response.err.as_bytes())?;
-        io::stderr().flush()?;
-        trace("returning result");
-        return Ok(response.code);
+        match check(&python, &text) {
+            Ok(response) if !response.restart => {
+                io::stdout().write_all(response.out.as_bytes())?;
+                io::stdout().flush()?;
+                io::stderr().write_all(response.err.as_bytes())?;
+                io::stderr().flush()?;
+                trace("returning result");
+                return Ok(response.code);
+            }
+            Ok(_) => trace("worker requested restart; checking in foreground"),
+            Err(error) => trace(format!(
+                "worker unavailable: {error}; checking in foreground"
+            )),
+        }
     }
     direct(&python, &arguments)
 }

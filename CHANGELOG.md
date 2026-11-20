@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Native checks keep waiting for a busy analyzer after five seconds. An idle or
+  disconnected worker still falls back, with a five-minute limit on active requests.
+
 - `smelt context` reuses the persistent analysis cache populated by `smelt check`.
 
 - Enable [SMT371](docs/rules/SMT371.md) with `typing/prefer-inline-type-parameters: hint`
