@@ -31,8 +31,8 @@ smelt check --strict-coverage         # enable architecture/uncovered-source for
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
 smelt context user                   # what applies to a feature, module or path
-smelt explain ARC001                 # rationale, examples and config keys of a rule
-smelt rules                          # full catalog with activation and severity
+smelt explain ARC001                 # how to enable it, options, status, rationale and examples
+smelt rules                          # full catalog with project status and severity
 smelt debt                           # record today's violations as known debt
 smelt debt --prune                   # drop debt entries that were fixed
 smelt debt --show src/app            # inspect stored debt for a file/directory

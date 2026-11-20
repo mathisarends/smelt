@@ -19,6 +19,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   Existing debt baselines keep matching. See the
   [upgrade guide](docs/upgrading.md#use-the-family-rule-codes).
 
+- `smelt rules` shows a `status` column for the current project instead of
+  the activation mode: `on` (with the effective severity), `scoped` (enabled
+  only in style overrides or members), `off` or `needs policy`. Without a
+  `smelt.yml` it reports the catalog status. JSON entries add `status` and
+  `severity`.
+- `smelt explain` opens with fixed `Enable`, `Options`, `Requires` and, inside
+  a project, `Status` lines. JSON adds `enable`, `options`,
+  `requires_policy` and `status`.
 - **Breaking:** `rules` is the only switch that enables a rule. Declared
   policies such as `architecture.layers`, `tests.layout: mirror` or
   `style.imports` no longer enable their rules. A policy whose rule no `rules`

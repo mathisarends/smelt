@@ -1450,7 +1450,7 @@ class TestInfoCommands:
 
         assert code == 0
         assert out.startswith(
-            "ARC001 architecture/layer-boundary  [architecture, activation: explicit, severity: error]"
+            "ARC001 architecture/layer-boundary  [architecture, error]\n"
         )
 
     def test_explain_unknown_rule(self, capsys: pytest.CaptureFixture[str]) -> None:

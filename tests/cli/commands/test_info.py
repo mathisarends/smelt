@@ -75,10 +75,72 @@ def test_unconfigured_rules_skip_named_decisions_and_policy_activation(
     assert "TYP007" in found
 
 
-def test_rule_listing_explains_its_columns(capsys: pytest.CaptureFixture[str]) -> None:
+def test_rule_listing_explains_its_columns_without_a_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
     assert main(["rules"]) == 0
 
     out = capsys.readouterr().out
-    assert out.splitlines()[0].split() == ["code", "rule", "enabled", "severity"]
-    assert "policy:" not in out
-    assert "explicit: runs only when listed under rules: in smelt.yml" in out
+    assert out.splitlines()[0].split() == ["code", "rule", "status", "severity"]
+    assert "status without a smelt.yml:" in out
+    assert "needs policy: declare its policy before enabling it" in out
+
+
+def test_rule_listing_reports_the_status_in_the_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "app/__init__.py": "",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
+            "rules: {complexity/excess-positional-parameters: error}\n",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["rules", "--format", "json"]) == 0
+
+    listed = {rule["code"]: rule for rule in json.loads(capsys.readouterr().out)}
+    assert (listed["CPX003"]["status"], listed["CPX003"]["severity"]) == ("on", "error")
+    assert (listed["TYP007"]["status"], listed["TYP007"]["severity"]) == ("off", None)
+
+
+def test_explain_shows_how_to_enable_and_the_project_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "app/__init__.py": "",
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["explain", "architecture/layer-boundary"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[3:7] == [
+        "Enable:    rules: {architecture/layer-boundary: error}",
+        "Options:   architecture.layers.<layer>.may_depend_on, "
+        "architecture.layers.<layer>.modules, architecture.import_graph.transitive, "
+        "architecture.import_graph.type_checking",
+        "Requires:  architecture.layers defines layer dependencies.",
+        "Status:    needs policy in smelt.yml",
+    ]
+
+
+def test_explain_json_omits_the_status_outside_a_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["explain", "CPX003", "--format", "json"]) == 0
+
+    data = json.loads(capsys.readouterr().out)
+    assert data["status"] is None
+    assert data["options"] == ["max (default 5)", "style.overrides"]
+    assert data["requires_policy"] is None

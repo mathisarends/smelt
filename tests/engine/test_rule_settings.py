@@ -5,15 +5,28 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.config import ConfigError, parse_config
+from smelt.config import ConfigError, load_config, parse_config
 from smelt.config.errors import UPGRADE_GUIDE_URL
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.briefing import build_briefing, resolve_target
 from smelt.engine.check import CheckOptions, snippet_reader
-from smelt.engine.rule_settings import unknown_selectors
+from smelt.engine.rule_settings import (
+    RuleSettings,
+    RuleStatus,
+    RuleUsage,
+    catalog_status,
+    rule_usage,
+    unknown_selectors,
+)
 from smelt.rules.registry import build_rule_set
-from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_policy_project
+from tests.helpers import (
+    MEMBER_BOUNDARIES,
+    check,
+    violations,
+    write_policy_project,
+    write_project,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -923,3 +936,92 @@ def test_retired_smt_code_is_a_config_error_naming_its_family_code(
 
     with pytest.raises(ConfigError, match="renamed to VIS001"):
         check(root)
+
+
+def test_status_tells_project_wide_scoped_off_and_missing_policy_apart(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """\
+version: 2
+project: {root_packages: [app]}
+rules: {complexity/excess-positional-parameters: error}
+style:
+  overrides:
+    api: {match: app, rules: {visibility/internal-public-member: warning}}
+""",
+            "app/__init__.py": "",
+        },
+    )
+    rules = build_rule_set()
+    settings = RuleSettings(rules, load_config(tmp_path / "smelt.yml"))
+
+    statuses = {
+        code: settings.status(rule)
+        for code in ("CPX003", "VIS001", "TYP007", "ARC001")
+        if (rule := rules.lookup(code)) is not None
+    }
+
+    assert statuses == {
+        "CPX003": RuleStatus("on", "error"),
+        "VIS001": RuleStatus("scoped"),
+        "TYP007": RuleStatus("off"),
+        "ARC001": RuleStatus("needs policy"),
+    }
+
+
+def test_catalog_status_applies_without_a_configuration() -> None:
+    rules = build_rule_set()
+
+    statuses = [
+        catalog_status(rule)
+        for code in ("ARC011", "ARC001", "TYP007")
+        if (rule := rules.lookup(code)) is not None
+    ]
+
+    assert statuses == [
+        RuleStatus("on", "error"),
+        RuleStatus("needs policy"),
+        RuleStatus("off"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("code", "usage"),
+    [
+        (
+            "CPX003",
+            RuleUsage(
+                "rules: {complexity/excess-positional-parameters: "
+                "{severity: warning, max: 5}}",
+                ("max (default 5)", "style.overrides"),
+                None,
+            ),
+        ),
+        (
+            "TST005",
+            RuleUsage(
+                "rules: {tests/excess-patches: {severity: error, max: <n>}}",
+                ("max (required)", "tests.quality_exclude"),
+                "The tests/excess-patches entry sets max, including zero.",
+            ),
+        ),
+        (
+            "ARC011",
+            RuleUsage(
+                "on by default; turn it off with rules: {architecture/unknown-layer: off}",
+                ("architecture.layers", "architecture.layers.<layer>.modules"),
+                None,
+            ),
+        ),
+    ],
+)
+def test_rule_usage_names_the_entry_options_and_required_policy(
+    code: str, usage: RuleUsage
+) -> None:
+    rule = build_rule_set().lookup(code)
+    assert rule is not None
+
+    assert rule_usage(rule) == usage
