@@ -94,6 +94,24 @@ def test_unresolved_key_keeps_original_and_reports_location(
     assert path.read_text(encoding="utf-8") == before
 
 
+def test_migrate_keeps_a_comment_only_base(tmp_path: Path) -> None:
+    comment = "# This base has no shared settings yet.\n"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nextends: base.yml\nproject: {root_packages: [app]}\n",
+            "base.yml": comment,
+            "app/__init__.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert load_config(path).config.version == 2
+    assert (tmp_path / "base.yml").read_text(encoding="utf-8") == comment
+
+
 def test_migrate_converts_the_bases_and_members_of_a_workspace_together(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

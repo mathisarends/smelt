@@ -100,6 +100,8 @@ def _load(text: str) -> tuple[YAML, CommentedMap]:
         root = yaml.load(text)
     except YAMLError as exc:
         raise ConfigError([ConfigIssue("", str(exc))]) from exc
+    if root is None:
+        return yaml, CommentedMap()
     if not isinstance(root, CommentedMap):
         raise ConfigError([ConfigIssue("", "expected a YAML mapping")])
     return yaml, root
