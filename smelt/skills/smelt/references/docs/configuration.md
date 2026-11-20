@@ -561,7 +561,8 @@ This section covers the 0.1.x to 0.2.0 configuration migration. For upgrading to
 
 Removed switches are errors, not silent aliases. Move fixed-check activation to
 the rule map; use `off` instead of a former `false`/`allow` exception. Existing
-numeric codes keep their meanings. The configuration format remains `version: 1`.
+numeric codes keep their meanings. That migration kept `version: 1`; 0.14 moved
+the format to `version: 2` (see [Upgrading Smelt](upgrading.md#013-to-014)).
 
 | Removed setting | Explicit rule |
 | --- | --- |
