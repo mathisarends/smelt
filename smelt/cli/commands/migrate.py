@@ -10,7 +10,12 @@ from smelt.cli.support import EXIT_OK, CliError
 from smelt.config import load_config
 from smelt.config.loader import config_files, discover_config
 from smelt.config.source import SourceStore
-from smelt.engine.migration import Migration, enable_rules, migrate_policy
+from smelt.engine.migration import (
+    Migration,
+    enable_rules,
+    migrate_policy,
+    project_limit_rules,
+)
 from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.registry import build_rule_set
 
@@ -114,13 +119,19 @@ class _File:
 
 def _migrate_files(path: Path) -> dict[Path, _File]:
     inputs = config_files(path)
-    files = {}
+    files = {source: _File(source) for source in (*inputs.project, *inputs.members)}
+    project_limits = project_limit_rules(
+        files[source].before for source in inputs.project
+    )
+    bases = set(inputs.project[:-1])
     inherited_rules: frozenset[str] = frozenset()
-    for source in (*inputs.project, *inputs.members):
-        file = _File(source)
-        migration = migrate_policy(file.before, inherited_rules=inherited_rules)
+    for source, file in files.items():
+        migration = migrate_policy(
+            file.before,
+            inherited_rules=inherited_rules,
+            project_limits=project_limits if source in bases else frozenset(),
+        )
         file.apply(migration)
-        files[source] = file
         if source in inputs.project:
             inherited_rules = migration.configured_rules
     return files
