@@ -58,6 +58,8 @@ class Rule:
     activation: ClassVar[PolicyActivation | None] = None
     scope: ClassVar[str] = "source"
     file_local: ClassVar[bool] = False
+    # Cross-module decisions fully determined by production sources, packages and policy.
+    production_only: ClassVar[bool] = False
     test_local: ClassVar[bool] = False
     member_local: ClassVar[bool] = False
     architecture_scoped: ClassVar[bool] = False

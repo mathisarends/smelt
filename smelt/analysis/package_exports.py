@@ -23,14 +23,13 @@ def direct_package_exports(module: ModuleSyntax) -> dict[str, str]:
     if exports is None:
         return {}
     declares_all = any(
-        isinstance(node, ast.Name) and node.id == "__all__"
-        for node in ast.walk(module.tree)
+        isinstance(node, ast.Name) and node.id == "__all__" for node in module.nodes
     )
     definitions = definition_bindings(module.tree)
     if "__getattr__" in definitions:
         return {}
     imports: dict[str, list[ast.AST]] = {}
-    for node in ast.walk(module.tree):
+    for node in module.nodes:
         if isinstance(node, ast.Import | ast.ImportFrom):
             for alias in node.names:
                 if alias.name == "*":

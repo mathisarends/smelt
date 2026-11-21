@@ -72,11 +72,14 @@ class ModuleSyntax:
     bindings: dict[str, str] = field(default_factory=dict)
 
     @cached_property
+    def nodes(self) -> tuple[ast.AST, ...]:
+        """Breadth-first syntax inventory shared by readers of this immutable tree."""
+        return tuple(ast.walk(self.tree))
+
+    @cached_property
     def imports(self) -> tuple[ast.Import | ast.ImportFrom, ...]:
         return tuple(
-            node
-            for node in ast.walk(self.tree)
-            if isinstance(node, ast.Import | ast.ImportFrom)
+            node for node in self.nodes if isinstance(node, ast.Import | ast.ImportFrom)
         )
 
     @cached_property

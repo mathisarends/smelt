@@ -131,6 +131,7 @@ class _LazyRule:
         self.scope = str(metadata["scope"])
         self.enabled_by_default = bool(metadata["enabled_by_default"])
         self.activation = POLICIES.get(self.code)
+        self.production_only = bool(metadata["production_only"])
         self.file_local = bool(metadata["file_local"])
         self.test_local = bool(metadata["test_local"])
         self.member_local = bool(metadata["member_local"])
@@ -162,6 +163,7 @@ def catalog_metadata() -> list[dict[str, Any]]:
                 for flag in (
                     "enabled_by_default",
                     "file_local",
+                    "production_only",
                     "test_local",
                     "member_local",
                     "architecture_scoped",

@@ -631,7 +631,7 @@ def _file_facts(
 ) -> _FileFacts:
     visitor = _UseVisitor(module)
     visitor.visit(module.tree)
-    nodes = list(ast.walk(module.tree))
+    nodes = module.nodes
     result = _FileFacts(
         module.module,
         module.path,

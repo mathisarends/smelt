@@ -28,7 +28,7 @@ def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[st
     imports: set[str] = set()
     loads: set[str] = set()
     stars: set[str] = set()
-    nodes = list(ast.walk(module.tree))
+    nodes = module.nodes
     # Preserve every possible import binding. A same-named import in a different
     # local scope must not hide a real production consumer elsewhere in the file.
     bindings: dict[str, set[str]] = {}

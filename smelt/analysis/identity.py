@@ -39,20 +39,27 @@ def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] 
 
 
 @cache
-def analyzer_identity() -> str:
+def analyzer_identity(*, include_rules: bool = True) -> str:
     """Invalidate editable checkouts too, even without a package version bump."""
     digest = hashlib.sha256()
     package = Path(__file__).resolve().parent.parent
     record = _installed_sources(package)
     if record is not None:
         digest.update(b"wheel-record\0")
+        if not include_rules:
+            record = [
+                row for row in record if Path(row[0]).parts[:2] != ("smelt", "rules")
+            ]
         digest.update(json.dumps(record).encode())
     else:
         digest.update(b"source\0")
         for path in sorted(
             path for path in package.rglob("*") if path.suffix in {".py", ".json"}
         ):
-            digest.update(path.relative_to(package).as_posix().encode())
+            relative = path.relative_to(package)
+            if not include_rules and relative.parts[0] == "rules":
+                continue
+            digest.update(relative.as_posix().encode())
             digest.update(path.read_bytes())
     digest.update(str(sys.version_info).encode())
     for dependency in ("smelt-cli", "grimp", "pydantic", "packaging", "pyyaml"):

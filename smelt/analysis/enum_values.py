@@ -29,7 +29,7 @@ def str_enum_value_accesses(syntax: SyntaxIndex) -> Iterator[StrEnumValueAccess]
     enums = _Enums(syntax)
     for module in enums.modules.values():
         namespace = enums.namespaces[module.module]
-        for node in ast.walk(module.tree):
+        for node in module.nodes:
             if not (
                 isinstance(node, ast.Attribute)
                 and isinstance(node.ctx, ast.Load)

@@ -35,7 +35,7 @@ from smelt.engine.cache import ANALYSIS, CachedAnalysis, analysis_inputs
 from smelt.engine.changes import Comparison, export_base, resolve_comparison
 from smelt.engine.coverage import effective_coverage
 from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
-from smelt.engine.file_checks import rule_findings
+from smelt.engine.file_checks import file_findings, rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_policy import missing_rule_policies
@@ -224,7 +224,7 @@ def _run_check(
         ctx.store.cache = cache
     _validate_ownership(ctx, loaded)
     key = (
-        cache.key(
+        cache.decision_key(
             "index-analysis",
             [
                 options.snapshot_id,
@@ -244,7 +244,7 @@ def _run_check(
             raise ConfigError(issues, loaded.path.name)
         RuleSettings(rules, loaded).validate_packages(ctx)
         key = key or (
-            cache.key("analysis", analysis_inputs(ctx, active, options.select))
+            cache.decision_key("analysis", analysis_inputs(ctx, active, options.select))
             if cache
             else None
         )
@@ -444,7 +444,7 @@ def _introduced(
     ):
         cache = None
     key = (
-        cache.key(
+        cache.decision_key(
             "baseline",
             [root.relative_to(repository).as_posix(), comparison.revision, cache_key],
         )
@@ -503,10 +503,21 @@ def _collect(
 
     policy = RuleSettings(rules, loaded)
     violations: list[Violation] = []
+    grouped = file_findings(
+        [
+            rule
+            for rule, _ in active
+            if getattr(rule, "file_local", False)
+            and not getattr(rule, "architecture_scoped", False)
+        ],
+        ctx,
+    )
     for rule, _ in active:
         if rule.code in _META:
             continue
-        for violation in rule_findings(rule, ctx):
+        for violation in (
+            grouped[rule.code] if rule.code in grouped else rule_findings(rule, ctx)
+        ):
             severity = policy.severity(
                 rule,
                 ctx,
@@ -675,7 +686,9 @@ def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
     found: list[Suppression] = []
     keys = (
         {
-            path: ctx.cache.key("suppressions-v2", [path, ctx.files.content_id(path)])
+            path: ctx.cache.decision_key(
+                "suppressions-v2", [path, ctx.files.content_id(path)]
+            )
             for path in ctx.files.all_python_paths()
         }
         if ctx.cache

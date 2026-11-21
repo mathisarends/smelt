@@ -5,15 +5,22 @@ from __future__ import annotations
 import ast
 from collections import Counter
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING, Literal
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.function_usage import explicit_exports
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from smelt.analysis.files import SourceFile
     from smelt.analysis.members import MemberUsageIndex
     from smelt.analysis.syntax import SyntaxIndex
+
+
+_NAMES = TypeAdapter(list[str])
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,10 +37,28 @@ def internal_module_symbols(
     syntax: SyntaxIndex, usage: MemberUsageIndex
 ) -> Iterator[ModuleSymbol]:
     for source in sorted(syntax.files.sources.values(), key=lambda item: item.path):
-        module = syntax.for_path(source.path)
-        if module is None or module.is_package:
+        if source.is_package:
             continue
-        candidates = list(_candidates(module.tree))
+        if syntax.cache is not None:
+            names = syntax.cache.get(
+                "public-symbol-candidates",
+                syntax.files.content_id(source.path),
+                _NAMES,
+                build=partial(_public_candidates, syntax, source),
+            )
+            if all(
+                usage.module_name_used_externally(source.module, name) for name in names
+            ):
+                continue
+        module = syntax.for_path(source.path)
+        if module is None:
+            continue
+        candidates = [
+            (target, kind)
+            for target, kind in _candidates(module.tree)
+            if not target.id.startswith("_")
+            and not usage.module_name_used_externally(module.module, target.id)
+        ]
         if not candidates or _reflective(module.tree):
             continue
         exports = explicit_exports(module.tree)
@@ -41,18 +66,13 @@ def internal_module_symbols(
             continue
         bindings = _bindings(module.tree)
         loads: dict[str, set[int]] = {}
-        for child in ast.walk(module.tree):
+        for child in module.nodes:
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
                 loads.setdefault(child.id, set()).add(child.lineno)
         api = _api_names(module.tree, module.module, exports, usage=usage)
         for target, kind in candidates:
             name = target.id
-            if (
-                name.startswith("_")
-                or bindings[name] != 1
-                or name in api
-                or usage.module_name_used_externally(module.module, name)
-            ):
+            if bindings[name] != 1 or name in api:
                 continue
             yield ModuleSymbol(
                 module.module,
@@ -62,6 +82,19 @@ def internal_module_symbols(
                 tuple(sorted(loads.get(name, ()))),
                 frozenset(bindings),
             )
+
+
+def _public_candidates(syntax: SyntaxIndex, source: SourceFile) -> list[str]:
+    module = syntax.for_path(source.path)
+    return (
+        []
+        if module is None
+        else [
+            node.id
+            for node, _ in _candidates(module.tree)
+            if not node.id.startswith("_")
+        ]
+    )
 
 
 def _api_names(

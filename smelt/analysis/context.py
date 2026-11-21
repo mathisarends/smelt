@@ -82,6 +82,28 @@ class AnalysisContext:
         return view
 
     @cached_property
+    def production_key(self) -> str:
+        """Identity for rules reading the complete production graph and its policy."""
+        if self.cache is None:
+            raise RuntimeError("production_key needs a fact cache")
+        return self.cache.key(
+            "production-inputs",
+            [
+                self.config.model_dump(mode="json"),
+                sorted(self.files.packages),
+                [
+                    (
+                        source.module,
+                        source.path,
+                        source.is_package,
+                        self.files.content_id(source.path),
+                    )
+                    for source in self.files.sources.values()
+                ],
+            ],
+        )
+
+    @cached_property
     def files(self) -> FileIndex:
         # Load indexes only when the selected checks need them.
         from smelt.analysis.files import FileIndex  # noqa: PLC0415

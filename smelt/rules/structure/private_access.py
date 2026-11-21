@@ -27,6 +27,7 @@ class ForeignPrivateAccess(Rule):
     name = "visibility/foreign-private-access"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
+    production_only = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary=(
@@ -136,14 +137,19 @@ class ForeignPrivateAccess(Rule):
                     and not alias.asname.startswith("_")
                 ):
                     continue
-                accesses.append((alias, base, alias.name, "import"))
-        for attribute, qualified in module_attributes(module, ignored):
+                if _private(alias.name):
+                    accesses.append((alias, base, alias.name, "import"))
+        for attribute, qualified in (
+            module_attributes(module, ignored)
+            if ctx.syntax.attribute_candidates(source.path).private
+            else ()
+        ):
+            if not _private(attribute.attr):
+                continue
             resolved = resolve_dotted(qualified, ctx.syntax.namespace)
             if resolved is not None and resolved[1] is None:
                 accesses.append((attribute, resolved[0], attribute.attr, "read"))
         for location, base, name, access in accesses:
-            if not _private(name):
-                continue
             target = resolve_export(base, name, ctx.syntax.namespace)
             if target is None or target[1] is None or target[0] == source.module:
                 continue

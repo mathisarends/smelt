@@ -109,7 +109,13 @@ resolution; direct `Path` reads can accidentally inspect unstaged files during a
 Git-index check. Keep configured paths inside the captured repository. Cached
 facts must include content identity and any module, inventory, metadata or policy
 inputs that affect their meaning. Verify results against `--no-cache` after edits,
-deletions, re-exports and fixture changes. Mark a rule `file_local` only when its
+deletions, re-exports and fixture changes. Mark a rule `production_only` only when the complete production module and package
+inventory, production file contents and effective config determine its raw findings.
+Test evidence, external metadata and Python targets are outside that key.
+The analysis layer caches source facts separately from rule decisions so an edit
+under `smelt/rules/` can reuse those facts. Cache rule outputs with
+`FactCache.decision_key` to include the rule implementation identity.
+Mark a rule `file_local` only when its
 source contents, resolved policy and Python target fully determine its decision.
 `test_local` rules additionally receive resolved constructor, fixture and module
 inventory inputs. `member_local` rules consume resolved member facts, including
@@ -352,6 +358,13 @@ old/new result, valid counterexample, default/configuration behavior, false-posi
 boundaries and validation. Link related issues or prerequisite PRs. A new report
 format or configuration default deserves explicit compatibility notes. The PR
 template captures these decisions without duplicating the generated rule catalog.
+
+The PR hook-latency job compares the complete pre-commit chain on five fresh
+test, rule and core edits per revision and the strict full check after a test edit in disposable source installations. To
+reproduce it locally with committed changes, run
+`uv run python scripts/benchmark_staged_edits.py --base origin/main --output hook-times.json`.
+Setup and the first edit per workload are outside the median. The job fails
+when the candidate median exceeds the base by both 25% and 0.35 seconds.
 
 ## Publishing a release
 

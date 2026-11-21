@@ -19,6 +19,7 @@ class DeepObjectNavigation(Rule):
     name = "complexity/excess-attribute-depth"
     category = Category.COMPLEXITY
     default_severity = Severity.HINT
+    production_only = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Review a method call reached through multiple instance attributes.",

@@ -24,22 +24,39 @@ def rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violatio
         yield from _architecture_findings(rule, ctx)
         return
     cache = ctx.cache
+    if cache is not None and getattr(rule, "production_only", False):
+        key = cache.decision_key("production-check", [rule.code, ctx.production_key])
+        findings = cache.read(key, _VIOLATIONS)
+        if findings is None:
+            findings = list(rule.check(ctx))
+            cache.write(key, findings, _VIOLATIONS)
+        yield from findings
+        return
     if cache is not None and getattr(rule, "member_local", False):
         yield from _member_findings(rule, ctx)
         return
     if cache is not None and getattr(rule, "test_local", False):
         yield from _test_findings(rule, ctx)
         return
-    if cache is None or not getattr(rule, "file_local", False):
-        yield from rule.check(ctx)
-        return
-    policy = cache.key("file-policy", ctx.config.model_dump(mode="json"))
+    yield from rule.check(ctx)
+
+
+def file_findings(
+    rules: list[RuleContract], ctx: AnalysisContext
+) -> dict[str, list[Violation]]:
+    """Store one set of decisions per source for the selected file-local rules."""
+    cache = ctx.cache
+    if cache is None or not rules:
+        return {}
+    by_rule: dict[str, list[Violation]] = {rule.code: [] for rule in rules}
+    policy = cache.decision_key(
+        "file-policy", [list(by_rule), ctx.config.model_dump(mode="json")]
+    )
     entries: list[tuple[SourceFile, str, list[Violation] | None]] = []
     for source in ctx.files.sources.values():
         key = cache.key(
-            "file-check",
+            "file-decisions",
             [
-                rule.code,
                 policy,
                 source.module,
                 source.path,
@@ -55,9 +72,12 @@ def rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violatio
     for source, key, cached in entries:
         findings = cached
         if findings is None:
-            findings = list(rule.check(ctx.file_view(source)))
+            view = ctx.file_view(source)
+            findings = [finding for rule in rules for finding in rule.check(view)]
             cache.write(key, findings, _VIOLATIONS)
-        yield from findings
+        for finding in findings:
+            by_rule[finding.code].append(finding)
+    return by_rule
 
 
 def _architecture_findings(
@@ -76,7 +96,7 @@ def _test_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violati
     if cache is None:
         yield from rule.check(ctx)
         return
-    policy = cache.key(
+    policy = cache.decision_key(
         "test-policy",
         [
             ctx.config.model_dump(mode="json"),
@@ -85,7 +105,9 @@ def _test_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violati
         ],
     )
     for path in ctx.test_syntax.modules:
-        key = cache.key("test-check", [rule.code, policy, ctx.test_syntax.inputs(path)])
+        key = cache.decision_key(
+            "test-check", [rule.code, policy, ctx.test_syntax.inputs(path)]
+        )
         findings = cache.read(key, _VIOLATIONS)
         if findings is None:
             findings = list(rule.check(ctx.test_view(path)))
@@ -98,10 +120,12 @@ def _member_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Viola
     if cache is None:
         yield from rule.check(ctx)
         return
-    policy = cache.key("member-policy", ctx.config.model_dump(mode="json"))
+    policy = cache.decision_key("member-policy", ctx.config.model_dump(mode="json"))
     index = ctx.member_usage
     for path in index.local_paths():
-        key = cache.key("member-check", [rule.code, policy, index.decision_key(path)])
+        key = cache.decision_key(
+            "member-check", [rule.code, policy, index.decision_key(path)]
+        )
         findings = cache.read(key, _VIOLATIONS)
         if findings is None:
             findings = list(rule.check(ctx.member_view(path)))

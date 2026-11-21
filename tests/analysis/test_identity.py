@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.analysis import identity
+from smelt.analysis.cache import FactCache
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -89,3 +90,26 @@ def test_pythonpath_override_does_not_use_another_installations_record(
     source.write_text("VALUE = 2\n")
     identity.analyzer_identity.cache_clear()
     assert identity.analyzer_identity() != first
+
+
+def test_rule_edit_preserves_fact_namespace_and_invalidates_decisions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package, metadata = install(tmp_path, monkeypatch)
+    (metadata / "direct_url.json").write_text(
+        json.dumps({"dir_info": {"editable": True}})
+    )
+    rules = package / "rules"
+    rules.mkdir()
+    rule = rules / "example.py"
+    rule.write_text("LIMIT = 1")
+    before = FactCache(tmp_path / "cache")
+    first = before.decision_key("file-check", ["EX001", "input"])
+    rule.write_text("LIMIT = 2")
+    identity.analyzer_identity.cache_clear()
+    after = FactCache(tmp_path / "cache")
+    assert before.directory == after.directory
+    assert after.decision_key("file-check", ["EX001", "input"]) != first
+    (package / "value.py").write_text("VALUE = 2")
+    identity.analyzer_identity.cache_clear()
+    assert FactCache(tmp_path / "cache").directory != after.directory
