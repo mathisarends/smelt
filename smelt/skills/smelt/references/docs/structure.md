@@ -42,12 +42,31 @@ Options configure rules; they never enable them:
 | `public_attribute_boundary` | VIS004 | `class` |
 | `private_attribute_boundary` | VIS005 | `module` |
 | `type_dispatch` | IDM002 | none |
+| `navigation` | CPX001 | none |
 | `call_argument_kinds` | CPX002 | `[await, comprehension, aggregate]` |
 | `str_enum_values` | MOD004 | `explicit` |
 | `dataclass_options` | MOD006 | none |
 | `bases` | MOD007 | none |
 | `third_party_reexports` | IMP004 | none |
 | `errors` | MOD008 | none |
+
+[CPX001](rules/CPX001.md) only accepts namespace evidence it can read in analyzed
+code. `navigation` declares it for code Smelt cannot analyze, using the qualified
+names the project imports:
+
+```yaml
+style:
+  navigation:
+    # Every attribute of an SDK client is a domain API: client.target.close_target()
+    namespace_types: [cdpify.CdpClient]
+    # State(Counts) and needs(Service) return an instance of their first argument
+    instance_factories: [framework.State, framework.needs]
+```
+
+With `instance_factories`, a class attribute `_state = State(Counts)` or a
+constructor assignment `self.state = State[Counts](https://github.com/mathisarends/smelt/blob/main/docs/Counts)` has the type `Counts`,
+so the record and container rules apply to it. A service made by `needs(Service)`
+stays a collaborator.
 
 `architecture.packages` sets `required`, `public`, `min_imports_to_bundle`,
 `min_importers_to_export` and `count_tests`. Use `style.overrides` for

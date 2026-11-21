@@ -38,6 +38,7 @@ type PolicyOption = Literal[
     "bases",
     "third_party_reexports",
     "errors",
+    "navigation",
 ]
 
 
@@ -266,6 +267,11 @@ class ContractIndex:
                 **(
                     {"errors": contract.spec.errors.model_dump(mode="json")}
                     if contract.spec.errors
+                    else {}
+                ),
+                **(
+                    {"navigation": contract.spec.navigation.model_dump(mode="json")}
+                    if contract.spec.navigation
                     else {}
                 ),
                 **(

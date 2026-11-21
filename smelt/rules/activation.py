@@ -170,6 +170,11 @@ POLICIES = {
         "style or a package override sets private_attribute_boundary.",
         required=False,
     ),
+    "CPX001": _option(
+        "navigation",
+        "style or a package override sets navigation.",
+        required=False,
+    ),
     "CPX002": _option(
         "call_argument_kinds",
         "style or a package override sets call_argument_kinds.",

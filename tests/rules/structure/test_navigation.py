@@ -352,3 +352,83 @@ def test_cached_and_uncached_results_agree_after_source_and_policy_changes(
     assert cached == violations(root, CheckOptions(use_cache=False))
     write_project(root, {"smelt.yml": CONFIG.replace(": hint", ": 'off'")})
     assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+
+
+_SDK_SOURCE = (
+    "from sdk import Client\n\n"
+    "class Tabs:\n"
+    "    def __init__(self, client: Client) -> None:\n"
+    "        self.client = client\n\n"
+    "    def close(self, target):\n"
+    "        return self.client.target.close_target(target)\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("navigation", "reported"),
+    [("", True), ("style: {navigation: {namespace_types: [sdk.Client]}}\n", False)],
+)
+def test_declared_namespace_types_exempt_sdk_domain_navigation(
+    tmp_path: Path, navigation: str, reported: bool
+) -> None:
+    root = _project(tmp_path, _SDK_SOURCE, CONFIG + navigation)
+
+    assert bool(violations(root, OPTIONS)) is reported
+
+
+_FACTORY_SOURCE = (
+    "from dataclasses import dataclass, field\n"
+    "from framework import State, needs\n\n"
+    "@dataclass\n"
+    "class Counts:\n"
+    "    seen: set[str] = field(default_factory=set)\n\n"
+    "class Service:\n"
+    "    def ping(self) -> None: ...\n\n"
+    "class Plugin:\n"
+    "    _state = State[Counts](Counts)\n"
+    "    _service = needs(Service)\n\n"
+    "    def run(self, name):\n"
+    "        self._state.seen.add(name)\n"
+    "        self._service.helper.ping()\n"
+)
+
+
+def test_instance_factories_type_class_attributes_they_make(tmp_path: Path) -> None:
+    config = CONFIG + (
+        "style:\n  navigation:\n"
+        "    instance_factories: [framework.State, framework.needs]\n"
+    )
+    root = _project(tmp_path, _FACTORY_SOURCE, config)
+
+    found = violations(root, OPTIONS)
+
+    # The record of containers is a namespace; the service it injects is not.
+    assert [v.expected["stored_path"] for v in found if v.expected] == [
+        "self._service.helper"
+    ]
+
+
+def test_undeclared_factories_leave_class_attributes_unresolved(
+    tmp_path: Path,
+) -> None:
+    root = _project(tmp_path, _FACTORY_SOURCE)
+
+    assert [v.line for v in violations(root, OPTIONS)] == [16, 17]
+
+
+def test_closest_package_override_sets_navigation(tmp_path: Path) -> None:
+    config = CONFIG + (
+        "style:\n  navigation: {namespace_types: [sdk.Client]}\n"
+        "  overrides:\n    app: {match: app, navigation: {}}\n"
+    )
+    root = _project(tmp_path, _SDK_SOURCE, config)
+
+    assert len(violations(root, OPTIONS)) == 1
+
+
+def test_navigation_names_must_be_qualified(tmp_path: Path) -> None:
+    config = CONFIG + "style: {navigation: {namespace_types: [Client]}}\n"
+    root = _project(tmp_path, _SDK_SOURCE, config)
+
+    with pytest.raises(Exception, match="qualified name"):
+        check(root, OPTIONS)
