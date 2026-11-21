@@ -348,3 +348,58 @@ def test_one_package_pattern_enforces_interfaces_across_sibling_slices(
     assert [(v.source_module, v.target_module) for v in found] == [
         ("app.parts.one.api", "app.parts.two.private")
     ]
+
+
+_FACADE_CONFIG = CONFIG.replace("public: [api]", "public: ['.']")
+_SAME_NAMED_FACADE = {
+    "app/orders/__init__.py": (
+        "from .capture import capture\nfrom .storage import OrderStore\n"
+    ),
+    "app/orders/capture.py": "def capture() -> None: pass\n",
+}
+
+
+@pytest.mark.parametrize(
+    "caller", ["app/client.py", "tests/test_client.py", "tests/orders/test_capture.py"]
+)
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "from app.orders import capture\n",
+        "from app.orders import (\n    OrderStore,\n    capture,\n)\n",
+    ],
+)
+def test_facade_symbol_named_like_its_submodule_is_public(
+    tmp_path: Path, caller: str, statement: str
+) -> None:
+    _project(tmp_path, "", config=_FACADE_CONFIG)
+    write_project(tmp_path, {**_SAME_NAMED_FACADE, caller: statement})
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+def test_relative_facade_symbol_named_like_its_submodule_is_public(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path, "from .orders import capture\n", config=_FACADE_CONFIG)
+    write_project(tmp_path, _SAME_NAMED_FACADE)
+
+    assert violations(tmp_path, OPTIONS) == []
+
+
+@pytest.mark.parametrize(
+    ("statement", "target"),
+    [
+        # A plain import loads the module whatever the facade binds.
+        ("import app.orders.capture\n", "app.orders.capture"),
+        # Without a facade binding, the name is the submodule itself.
+        ("from app.orders import storage\n", "app.orders.storage"),
+    ],
+)
+def test_same_named_module_stays_private_without_facade_binding(
+    tmp_path: Path, statement: str, target: str
+) -> None:
+    _project(tmp_path, statement, config=_FACADE_CONFIG)
+    write_project(tmp_path, _SAME_NAMED_FACADE)
+
+    assert [v.target_module for v in violations(tmp_path, OPTIONS)] == [target]

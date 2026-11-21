@@ -20,6 +20,7 @@ from grimp.domain.valueobjects import Module
 from grimp.exceptions import SourceSyntaxError
 from pydantic import TypeAdapter
 
+from smelt.analysis.exports import resolve_dotted
 from smelt.analysis.import_cache import import_cache_type, resolution_identity
 from smelt.analysis.parsing import (
     AnalysisError,
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from grimp.application.ports.filesystem import AbstractFileSystem, BasicFileSystem
 
     from smelt.analysis.cache import FactCache
+    from smelt.analysis.exports import Loader
     from smelt.analysis.files import FileIndex
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
     from smelt.config.source import SourceStore
@@ -100,6 +102,26 @@ class ImportDetail:
     @property
     def top_level(self) -> str:
         return self.imported.split(".")[0]
+
+    def bound_module(self, load: Loader) -> str:
+        """The module whose attribute a ``from`` import binds.
+
+        Grimp resolves ``from app.billing import invoice`` to the submodule
+        ``app.billing.invoice`` whenever one exists. When the facade binds
+        ``invoice`` to another object, as ``from .invoice import invoice`` does,
+        the statement reads that attribute of ``app.billing`` instead.
+        """
+        package = self.imported.rpartition(".")[0]
+        if (
+            not package
+            or self.imported not in self.names
+            or not self.line_contents.lstrip().startswith("from ")
+        ):
+            return self.imported
+        resolved = resolve_dotted(self.imported, load)
+        if resolved is None or resolved[1] is None:
+            return self.imported
+        return package
 
 
 _DETAILS = TypeAdapter(list[ImportDetail])

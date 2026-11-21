@@ -74,10 +74,11 @@ class PackageImportFanout(Rule):
                         is_within(detail.importer, contract.package)
                         and not ctx.files.is_test_path(path)
                     )
-                    or not is_within(detail.imported, contract.package)
                 ):
                     continue
-                callers[path].setdefault(detail.imported, detail)
+                imported = detail.bound_module(ctx.syntax.namespace)
+                if is_within(imported, contract.package):
+                    callers[path].setdefault(imported, detail)
             for path, targets in sorted(callers.items()):
                 if len(targets) < threshold:
                     continue
