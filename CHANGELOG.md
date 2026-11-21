@@ -12,6 +12,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are
   recognized by convention.
 
+- A check in a linked Git worktree reads and writes the fact cache of the same
+  project in the main checkout, so new agent worktrees skip the cold analysis.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13

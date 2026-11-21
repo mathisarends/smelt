@@ -254,6 +254,24 @@ class FactCache:
             self._connection = None
 
 
+def cache_directory(root: Path) -> Path:
+    """Where the fact cache of the project at ``root`` lives.
+
+    A linked Git worktree uses the cache of the same project directory in the
+    repository's main checkout. Facts are content-addressed, so a fresh worktree
+    starts from the facts its siblings already computed. Every other project,
+    and a worktree whose project directory does not exist in the main checkout,
+    keeps ``<root>/.smelt_cache``.
+    """
+    local = root / ".smelt_cache"
+    linked = _linked_worktree(root)
+    if linked is None:
+        return local
+    top, main = linked
+    shared = main / root.relative_to(top)
+    return shared / ".smelt_cache" if shared.is_dir() else local
+
+
 def _add_used_column(connection: sqlite3.Connection, table: str, today: int) -> None:
     """Upgrade an older cache in place; its entries count as used today."""
     columns = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -261,3 +279,29 @@ def _add_used_column(connection: sqlite3.Connection, table: str, today: int) -> 
         connection.execute(
             f"ALTER TABLE {table} ADD COLUMN used INTEGER NOT NULL DEFAULT {today:d}"
         )
+
+
+def _linked_worktree(root: Path) -> tuple[Path, Path] | None:
+    """The top of the linked worktree containing ``root`` and its main checkout."""
+    for top in (root, *root.parents):
+        marker = top / ".git"
+        if marker.is_dir():
+            return None
+        if not marker.is_file():
+            continue
+        try:
+            text = marker.read_text(encoding="utf-8").strip()
+            if not text.startswith("gitdir:"):
+                return None
+            git_dir = top / text.removeprefix("gitdir:").strip()
+            common = (
+                git_dir / (git_dir / "commondir").read_text(encoding="utf-8").strip()
+            ).resolve()
+        except OSError:
+            # Submodules have no commondir; unreadable metadata keeps the local cache.
+            return None
+        # A bare repository has no main checkout to share.
+        if common.name != ".git":
+            return None
+        return top, common.parent
+    return None

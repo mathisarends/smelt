@@ -4,7 +4,7 @@ import json
 from contextlib import closing
 from typing import TYPE_CHECKING
 
-from smelt.analysis.cache import FactCache
+from smelt.analysis.cache import FactCache, cache_directory
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    with closing(FactCache(loaded.root / ".smelt_cache")) as cache:
+    with closing(FactCache(cache_directory(loaded.root))) as cache:
         ctx = AnalysisContext(
             loaded.root, loaded.config, store=loaded.source, cache=cache
         )
