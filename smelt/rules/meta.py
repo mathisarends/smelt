@@ -112,3 +112,43 @@ class MissingRulePolicy(_EngineRule):
         config=("rules", "style.imports", "style.overrides", "architecture.packages"),
         example_language="yaml",
     )
+
+
+class UncoveredPackageFacade(_EngineRule):
+    code = "MET005"
+    name = "meta/uncovered-package-facade"
+    default_severity = Severity.HINT
+    doc = RuleDoc(
+        summary="A package facade cannot supply names that IMP004 is enabled to check.",
+        rationale=(
+            "imports/prefer-package-import only reports an implementation import "
+            "when an ancestor initializer already re-exports every imported name. "
+            "Where the facade is empty or partial, an enabled IMP004 passes without "
+            "checking anything. On full checks, this hint counts distinct outside "
+            "production modules whose effective IMP004 setting is explicit and that "
+            "import public names from an implementation module that no eligible "
+            "facade can supply. The evidence goes to the nearest enclosing package "
+            "with an initializer outside the caller; package-internal, test, "
+            "initializer, private, star and facade imports do not count, and "
+            "IMP004 ignore entries exclude their callers. It reports the package once "
+            "its callers exceed max (default 2). Packages governed by an active "
+            "architecture/missing-facade-export threshold are left to that rule. "
+            "Changed, staged and path-scoped checks skip this hint."
+        ),
+        bad=(
+            "# app/jobs/__init__.py is empty\n"
+            "# app/api.py, app/cli.py and app/web.py each contain:\n"
+            "from app.jobs.worker import start, stop"
+        ),
+        good=(
+            "# app/jobs/__init__.py\nfrom .worker import start, stop\n\n"
+            '__all__ = ["start", "stop"]'
+        ),
+        fix=(
+            "Decide the package API: re-export the names deliberately, since a "
+            "re-export can change import-time behavior, or turn IMP004 off for the "
+            "package or ignore this hint with a reason when the package has no facade "
+            "on purpose."
+        ),
+        config=("rules", "ignore"),
+    )

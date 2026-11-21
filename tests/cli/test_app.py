@@ -632,6 +632,7 @@ class TestCheckCommand:
             "MET002",
             "MET003",
             "MET004",
+            "MET005",
         }
         assert report["violations"] == []
 

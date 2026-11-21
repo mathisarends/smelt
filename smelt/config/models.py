@@ -90,6 +90,7 @@ LIMIT_RULES = {
     ),
     "max_private_definitions": ("VIS007", "visibility/excess-private-definitions"),
     "max_patches_per_test": ("TST005", "tests/excess-patches"),
+    "max_uncovered_facade_callers": ("MET005", "meta/uncovered-package-facade"),
 }
 type _PolicyReason = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1)
@@ -901,6 +902,7 @@ class PolicyDefaults:
     max_comprehension_loops: int = 1
     max_constructor_decisions: int = 2
     max_private_definitions: int = 12
+    max_uncovered_facade_callers: int = 2
     call_argument_kinds: tuple[CallArgumentKind, ...] = (
         "await",
         "comprehension",
@@ -1334,6 +1336,14 @@ class SmeltConfig(_Model):
     def max_patches_per_test(self) -> int | None:
         """The max of the root tests/excess-patches entry."""
         return _rule_limits(self.rules).get("max_patches_per_test")
+
+    @property
+    def max_uncovered_facade_callers(self) -> int:
+        """The max of the root meta/uncovered-package-facade entry, or its default."""
+        return _rule_limits(self.rules).get(
+            "max_uncovered_facade_callers",
+            POLICY_DEFAULTS.max_uncovered_facade_callers,
+        )
 
     @property
     def strict_coverage(self) -> bool:
