@@ -850,6 +850,11 @@ class _UseVisitor(ast.NodeVisitor):
         self.instance = instance
 
     def visit_FunctionDef(self, node: Function) -> None:
+        # Only a class establishes receiver roots. Nested classes still visit
+        # their own methods with the usual shadowing and rebinding checks.
+        if self.owner is None:
+            self.generic_visit(node)
+            return
         previous = self.roots
         previous_instance = self.instance
         args = [*node.args.posonlyargs, *node.args.args]

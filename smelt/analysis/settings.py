@@ -48,8 +48,18 @@ class SecretSetting:
 
 
 def secret_settings(tree: ast.Module) -> Iterator[SecretSetting]:
+    imports = _imports(tree)
+    if not any(
+        qualified_name(base, imports) in _SETTINGS
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        for base in node.bases
+    ):
+        return
     bound = binding_counts(tree)
-    bindings = _imports(tree, bound)
+    if bound["*"]:
+        return
+    bindings = {name: target for name, target in imports.items() if bound[name] == 1}
     classes = {
         node.name: node
         for node in tree.body
@@ -88,21 +98,17 @@ def secret_settings(tree: ast.Module) -> Iterator[SecretSetting]:
                 yield SecretSetting(node, name, node.target.id, tuple(sorted(plain)))
 
 
-def _imports(tree: ast.Module, bound: Counter[str]) -> dict[str, str]:
+def _imports(tree: ast.Module) -> dict[str, str]:
     result: dict[str, str] = {}
-    if bound["*"]:
-        return result
     for node in tree.body:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 local = alias.asname or alias.name.split(".")[0]
-                if bound[local] == 1:
-                    result[local] = alias.name if alias.asname else local
+                result[local] = alias.name if alias.asname else local
         elif isinstance(node, ast.ImportFrom) and node.level == 0:
             for alias in node.names:
                 local = alias.asname or alias.name
-                if bound[local] == 1:
-                    result[local] = f"{node.module}.{alias.name}"
+                result[local] = f"{node.module}.{alias.name}"
     return result
 
 

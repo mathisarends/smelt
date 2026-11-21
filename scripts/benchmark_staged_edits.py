@@ -158,13 +158,29 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="smelt-hook-edits-") as temporary:
         samples = benchmark(args, Path(temporary))
     args.output.write_text(json.dumps(samples, indent=2) + "\n", encoding="utf-8")
+    summary = [
+        "## Staged edit latency",
+        "",
+        f"Median of {args.repeats} fresh edits per revision, in seconds.",
+        "",
+        "| Workload | Base | Candidate | Time saved |",
+        "| --- | ---: | ---: | ---: |",
+    ]
     failures = []
     for workload, pair in samples.items():
         base = statistics.median(pair["base"])
         candidate = statistics.median(pair["candidate"])
-        sys.stdout.write(f"{workload}: {base:.2f}s -> {candidate:.2f}s\n")
+        saved = base - candidate
+        summary.append(
+            f"| {workload} | {base:.2f} | {candidate:.2f} | {saved:+.2f} s ({saved / base:+.1%}) |"
+        )
         if candidate - base > _MIN_REGRESSION_SECONDS and candidate > base * 1.25:
             failures.append(workload)
+    table = "\n".join(summary) + "\n"
+    sys.stdout.write(table)
+    if summary_path := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with Path(summary_path).open("a", encoding="utf-8") as output:
+            output.write(table)
     if failures:
         sys.exit("Hook latency regressed: " + ", ".join(failures))
 
