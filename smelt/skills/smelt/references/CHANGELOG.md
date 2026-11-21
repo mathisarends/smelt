@@ -23,6 +23,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 - A check in a linked Git worktree reads and writes the fact cache of the same
   project in the main checkout, so new agent worktrees skip the cold analysis.
 
+- [TST012](docs/rules/TST012.md) can report a source module with behaviour that
+  has no test at its mirrored path under `tests.layout: mirror`. Enable
+  `tests/missing-mirror-test` in `rules`.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13
