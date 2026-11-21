@@ -26,7 +26,11 @@ _RANK = {"off": 0, "hint": 1, "warning": 2, "error": 3}
 _LIMIT_CODES = dict(LIMIT_RULES.values())
 # The comprehension limit counts for clauses, so a comprehension has at least one.
 _MINIMUM_MAX = {"CPX006": 1}
-_PATCH_LIMIT = LIMIT_RULES["max_patches_per_test"][0]
+# Project-wide limits: package and member entries cannot refine them.
+_ROOT_LIMITS = frozenset(
+    LIMIT_RULES[option][0]
+    for option in ("max_patches_per_test", "max_uncovered_facade_callers")
+)
 _LIMIT_OPTIONS = {code: option for option, (code, _) in LIMIT_RULES.items()}
 
 
@@ -172,7 +176,7 @@ class RuleSettings:
         }
         pending.extend(self._root_limit_issues(loaded))
         pending.extend(
-            ConfigIssue(f"{location}.{key}.max", _PATCH_SCOPE)
+            ConfigIssue(f"{location}.{key}.max", _ROOT_SCOPE)
             for location, settings in (
                 *(
                     (f"style.overrides.{name}.rules", contract.rules)
@@ -184,7 +188,7 @@ class RuleSettings:
                 ),
             )
             for key, value in settings.items()
-            if self.codes.get(key) == _PATCH_LIMIT
+            if self.codes.get(key) in _ROOT_LIMITS
             and isinstance(value, RuleOverride)
             and value.max is not None
         )
@@ -962,7 +966,7 @@ def _limit_issues(code: str, value: int, location: str) -> list[ConfigIssue]:
     return []
 
 
-_PATCH_SCOPE = "the patch limit applies to the whole project; set it in the root rules"
+_ROOT_SCOPE = "this limit applies to the whole project; set it in the root rules"
 
 
 def _raw_value(setting: RuleSetting) -> str | None:

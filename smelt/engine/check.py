@@ -34,6 +34,7 @@ from smelt.diagnostics.violation import (
 from smelt.engine.cache import ANALYSIS, CachedAnalysis, analysis_inputs
 from smelt.engine.changes import Comparison, export_base, resolve_comparison
 from smelt.engine.coverage import effective_coverage
+from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
 from smelt.engine.file_checks import rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
@@ -43,10 +44,12 @@ from smelt.rules.meta import (
     MissingRulePolicy,
     ResolvedDebt,
     SuppressionWithoutReason,
+    UncoveredPackageFacade,
     UnusedSuppression,
 )
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
+from smelt.rules.structure.package_imports import PreferPackageImport
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -68,7 +71,15 @@ TEST_QUALITY_CODES = (
     "TST009",
     "TST010",
 )
-_META = frozenset({"MET001", "MET002", "MET003", MissingRulePolicy.code})
+_META = frozenset(
+    {
+        "MET001",
+        "MET002",
+        "MET003",
+        MissingRulePolicy.code,
+        UncoveredPackageFacade.code,
+    }
+)
 _COVERAGE = "ARC013"
 _BASELINE = TypeAdapter(list[DebtEntry])
 _SUPPRESSIONS = TypeAdapter(list[Suppression])
@@ -369,24 +380,25 @@ def _configured_policy_findings(
 ) -> list[Violation]:
     if options.paths or options.changed or options.staged:
         return []
-    severity = next(
-        (s for rule, s in active if rule.code == MissingRulePolicy.code), None
-    )
-    if severity is None:
-        return []
+    severity_of = {rule.code: severity for rule, severity in active}
     configured = (
         _resolve_active_rules(rules, loaded, replace(options, select=()))
         if options.select
         else active
     )
-    findings = missing_rule_policies(
-        ctx,
-        loaded,
-        RuleSettings(rules, loaded),
-        codes={rule.code for rule, _ in configured},
-        severity=severity,
-    )
-    return _apply_ignores(ctx, list(findings), rules)
+    codes = {rule.code for rule, _ in configured}
+    settings = RuleSettings(rules, loaded)
+    findings: list[Violation] = []
+    if (severity := severity_of.get(MissingRulePolicy.code)) is not None:
+        findings.extend(
+            missing_rule_policies(ctx, loaded, settings, codes=codes, severity=severity)
+        )
+    if (
+        severity := severity_of.get(UncoveredPackageFacade.code)
+    ) is not None and PreferPackageImport.code in codes:
+        evidence = _apply_ignores(ctx, list(uncovered_imports(ctx, settings)), rules)
+        findings.extend(uncovered_facades(ctx, evidence, settings, severity=severity))
+    return _apply_ignores(ctx, findings, rules)
 
 
 def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:

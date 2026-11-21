@@ -4,10 +4,9 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.package_exports import direct_package_exports
+from smelt.analysis.package_exports import covering_package, direct_package_exports
 from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import is_within
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -87,43 +86,40 @@ class PreferPackageImport(Rule):
                 )
                 if base not in ctx.files.sources:
                     continue
-                package = base.rpartition(".")[0]
-                while package:
-                    exports = facades.get(package, {})
-                    if (
-                        not is_within(source.module, package)
-                        or ctx.files.is_test_path(path)
-                    ) and all(
-                        exports.get(alias.name) == f"{base}.{alias.name}"
-                        for alias in node.names
-                    ):
-                        import_from = package
-                        if node.level:
-                            parts = node.module.split(".") if node.module else []
-                            removed = len(base.split(".")) - len(package.split("."))
-                            remaining = len(parts) - removed
-                            import_from = "." * (
-                                node.level + max(0, -remaining)
-                            ) + ".".join(parts[: max(0, remaining)])
-                        replacement = f"from {import_from} import " + ", ".join(
-                            ast.unparse(alias) for alias in node.names
-                        )
-                        yield self.violation(
-                            f"import these names from the existing {package} package API",
-                            path=source.path,
-                            line=node.lineno,
-                            column=node.col_offset + 1,
-                            end_line=node.end_lineno,
-                            end_column=(node.end_col_offset or node.col_offset) + 1,
-                            source_module=source.module,
-                            target_module=base,
-                            expected={
-                                "package": package,
-                                "names": [alias.name for alias in node.names],
-                                "replacement": replacement,
-                                "automatic_rewrite": False,
-                            },
-                            hint=f"Use {replacement}; combine imports from {package} in the same scope and guard, preserving aliases and comments.",
-                        )
-                        break
-                    package = package.rpartition(".")[0]
+                package = covering_package(
+                    facades,
+                    base,
+                    caller=source.module,
+                    names=[alias.name for alias in node.names],
+                    from_test=ctx.files.is_test_path(path),
+                )
+                if package is None:
+                    continue
+                import_from = package
+                if node.level:
+                    parts = node.module.split(".") if node.module else []
+                    removed = len(base.split(".")) - len(package.split("."))
+                    remaining = len(parts) - removed
+                    import_from = "." * (node.level + max(0, -remaining)) + ".".join(
+                        parts[: max(0, remaining)]
+                    )
+                replacement = f"from {import_from} import " + ", ".join(
+                    ast.unparse(alias) for alias in node.names
+                )
+                yield self.violation(
+                    f"import these names from the existing {package} package API",
+                    path=source.path,
+                    line=node.lineno,
+                    column=node.col_offset + 1,
+                    end_line=node.end_lineno,
+                    end_column=(node.end_col_offset or node.col_offset) + 1,
+                    source_module=source.module,
+                    target_module=base,
+                    expected={
+                        "package": package,
+                        "names": [alias.name for alias in node.names],
+                        "replacement": replacement,
+                        "automatic_rewrite": False,
+                    },
+                    hint=f"Use {replacement}; combine imports from {package} in the same scope and guard, preserving aliases and comments.",
+                )

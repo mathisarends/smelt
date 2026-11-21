@@ -112,6 +112,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.meta:SuppressionWithoutReason",
     "smelt.rules.meta:ResolvedDebt",
     "smelt.rules.meta:MissingRulePolicy",
+    "smelt.rules.meta:UncoveredPackageFacade",
 )
 
 

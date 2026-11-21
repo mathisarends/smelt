@@ -879,7 +879,7 @@ def test_unknown_selectors_of_an_unvalidated_config() -> None:
             "rules: {tests/excess-patches: error}\nstyle:\n  overrides:\n"
             "    api: {match: app, rules: {tests/excess-patches: {max: 1}}}",
             "style.overrides.api.rules.tests/excess-patches.max",
-            "the patch limit applies to the whole project",
+            "this limit applies to the whole project",
         ),
     ],
 )

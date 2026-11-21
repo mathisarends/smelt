@@ -16,7 +16,7 @@ from smelt.rules.activation import PolicyActivation
 from smelt.rules.base import Rule
 from smelt.rules.registry import build_rule_set
 
-BASELINE = {"ARC011", "MET001", "MET002", "MET003", "MET004"}
+BASELINE = {"ARC011", "MET001", "MET002", "MET003", "MET004", "MET005"}
 
 
 def _loaded(extra: dict[str, object]) -> LoadedConfig:

@@ -7,8 +7,11 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
 from smelt.analysis.parsing import resolve_relative
+from smelt.model import is_within
 
 if TYPE_CHECKING:
+    from collections.abc import Collection, Mapping
+
     from smelt.analysis.syntax import ModuleSyntax
 
 
@@ -56,3 +59,26 @@ def direct_package_exports(module: ModuleSyntax) -> dict[str, str]:
                 continue
             result[name] = f"{base}.{alias.name}"
     return result
+
+
+def covering_package(
+    facades: Mapping[str, Mapping[str, str]],
+    base: str,
+    *,
+    caller: str,
+    names: Collection[str],
+    from_test: bool = False,
+) -> str | None:
+    """The nearest ancestor of ``base`` whose facade re-exports all ``names``.
+
+    Production callers inside a package never route through its own initializer.
+    """
+    package = base.rpartition(".")[0]
+    while package:
+        exports = facades.get(package, {})
+        if (from_test or not is_within(caller, package)) and all(
+            exports.get(name) == f"{base}.{name}" for name in names
+        ):
+            return package
+        package = package.rpartition(".")[0]
+    return None

@@ -797,6 +797,20 @@
     "scope": "project"
   },
   {
+    "target": "smelt.rules.meta:UncoveredPackageFacade",
+    "code": "MET005",
+    "name": "meta/uncovered-package-facade",
+    "category": "meta",
+    "default_severity": "hint",
+    "requires": [],
+    "enabled_by_default": true,
+    "file_local": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "project"
+  },
+  {
     "target": "smelt.rules.structure.enum_values:RedundantStrEnumValue",
     "code": "MOD001",
     "name": "modeling/redundant-str-enum-value",

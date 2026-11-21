@@ -19,6 +19,15 @@ current configuration and complete rule contracts, see the [README](README.md),
   Existing debt baselines keep matching. See the
   [upgrade guide](docs/upgrading.md#use-the-family-rule-codes).
 
+- `meta/uncovered-package-facade` (MET005, hint, on by default) reports a package
+  initializer on full checks when an explicitly enabled
+  `imports/prefer-package-import` has nothing to check there: more than `max`
+  (default 2) outside production modules import public names from its
+  implementation modules that no facade re-exports. Packages under an active
+  `architecture/missing-facade-export` threshold are skipped. Set `max` in the
+  root entry, e.g. `meta/uncovered-package-facade: {severity: hint, max: 4}`.
+  Closes the remaining part of #169.
+
 - `smelt rules` shows a `status` column for the current project instead of
   the activation mode: `on` (with the effective severity), `scoped` (enabled
   only in style overrides or members), `off` or `needs policy`. Without a
