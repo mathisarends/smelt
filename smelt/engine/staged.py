@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from smelt.analysis.cache import FactCache
+from smelt.analysis.cache import FactCache, cache_directory
 from smelt.analysis.errors import AnalysisError
 from smelt.config import discover_config, load_config
 from smelt.config.errors import ConfigError, ConfigIssue
@@ -53,7 +53,7 @@ def staged_project(
     # immutable blobs here too, instead of starting cat-file for the same config
     # after every source edit. Close this transaction before analysis opens its
     # own cache connection, including when policy validation fails.
-    cache = FactCache(path.parent / ".smelt_cache") if use_cache else None
+    cache = FactCache(cache_directory(path.parent)) if use_cache else None
     store.cache = cache
     try:
         loaded = load_config(path, store=store)

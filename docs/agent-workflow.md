@@ -83,6 +83,14 @@ written for 14 days. Caches of other Smelt versions that no run has opened for 7
 days are deleted, so a pinned pre-commit version and a newer local version can
 share one checkout.
 
+A linked Git worktree uses the `.smelt_cache/` of the same project directory in
+the repository's main checkout. Facts are keyed by file content, so a fresh
+agent worktree reuses everything the main checkout and its sibling worktrees
+already analyzed. When two checks write at the same time, one of them runs
+without the cache instead of waiting. The main checkout, a worktree of a bare
+repository and a project directory that exists only in the worktree keep their
+own `.smelt_cache/`.
+
 Staged checks read source and metadata directly from the captured Git blobs,
 including the historical comparison. They do not create temporary source trees.
 Cached blob bytes are checked against Git's object ID before use. File discovery,
