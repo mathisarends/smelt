@@ -169,6 +169,42 @@ def test_migrate_preserves_a_family_severity_cap(tmp_path: Path) -> None:
     ] == [("ARC001", "hint")]
 
 
+def test_migrate_preserves_inherited_severity_for_a_scoped_limit(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {complexity/excess-positional-parameters: error}\n",
+            "smelt.yml": """
+                version: 1
+                extends: base.yml
+                project: {root_packages: [app]}
+                style:
+                  overrides:
+                    domain:
+                      match: app.domain
+                      max_positional_parameters: 2
+                """,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "def build(a, b, c): pass\n",
+            "app/api.py": "def handle(a, b, c): pass\n",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert data["style"]["overrides"]["domain"]["rules"] == {
+        "complexity/excess-positional-parameters": {"max": 2}
+    }
+    assert [
+        (finding.code, finding.path, finding.severity.value)
+        for finding in violations(tmp_path)
+    ] == [("CPX003", "app/domain/__init__.py", "error")]
+
+
 def test_migrate_converts_the_bases_and_members_of_a_workspace_together(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

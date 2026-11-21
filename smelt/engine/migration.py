@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ruamel.yaml import YAML
@@ -29,9 +29,12 @@ _LEVELS = ("off", "hint", "warning", "error")
 class Migration:
     text: str
     notes: tuple[str, ...]
+    configured_rules: frozenset[str] = frozenset()
 
 
-def migrate_policy(text: str) -> Migration:
+def migrate_policy(
+    text: str, *, inherited_rules: frozenset[str] = frozenset()
+) -> Migration:
     yaml, root = _load(text)
     before = deepcopy(root)
     notes: list[str] = []
@@ -46,7 +49,7 @@ def migrate_policy(text: str) -> Migration:
         for policy in overrides.values():
             if isinstance(policy, dict):
                 _rules(policy.get("rules"), catalog, notes)
-    _limits(root, catalog, notes)
+    _limits(root, catalog, notes, inherited_rules=inherited_rules)
     if root.get("version") == 1:
         root["version"] = 2
         notes.append("Updated version 1 to version 2.")
@@ -65,7 +68,10 @@ def migrate_policy(text: str) -> Migration:
                     extra = deepcopy(entry)
                     extra["rule"] = new
                     ignore.insert(index + 1, extra)
-    return _dump(yaml, root, before, text=text, notes=notes)
+    configured = inherited_rules | _configured_rules(root.get("rules"), catalog)
+    return replace(
+        _dump(yaml, root, before, text=text, notes=notes), configured_rules=configured
+    )
 
 
 def enable_rules(
@@ -108,7 +114,12 @@ def _load(text: str) -> tuple[YAML, CommentedMap]:
 
 
 def _dump(
-    yaml: YAML, root: CommentedMap, before: CommentedMap, *, text: str, notes: list[str]
+    yaml: YAML,
+    root: CommentedMap,
+    before: CommentedMap,
+    *,
+    text: str,
+    notes: list[str],
 ) -> Migration:
     if root == before:
         return Migration(text, tuple(notes))
@@ -141,28 +152,33 @@ class _LimitScope(NamedTuple):
     location: str
     options: Any
     owner: CommentedMap
-    refines: bool
 
 
-def _limits(root: CommentedMap, catalog: RuleSet, notes: list[str]) -> None:
+def _limits(
+    root: CommentedMap,
+    catalog: RuleSet,
+    notes: list[str],
+    *,
+    inherited_rules: frozenset[str],
+) -> None:
     """Move each max_* option into the max of its rule entry in the same scope."""
     style = root.get("style")
     scopes = [
-        _LimitScope("style", style, root, refines=False),
-        _LimitScope("tests", root.get("tests"), root, refines=False),
+        _LimitScope("style", style, root),
+        _LimitScope("tests", root.get("tests"), root),
     ]
-    enabled = _enabled(root.get("rules"))
     if isinstance(style, CommentedMap) and isinstance(
         overrides := style.get("overrides"), CommentedMap
     ):
         scopes.extend(
-            _LimitScope(f"style.overrides.{name}", policy, policy, refines=True)
+            _LimitScope(f"style.overrides.{name}", policy, policy)
             for name, policy in overrides.items()
             if isinstance(policy, CommentedMap)
         )
-    for location, options, owner, refines in scopes:
+    for location, options, owner in scopes:
         if not isinstance(options, CommentedMap):
             continue
+        configured = inherited_rules | _configured_rules(root.get("rules"), catalog)
         for option, (code, name) in LIMIT_RULES.items():
             if option not in options:
                 continue
@@ -174,9 +190,8 @@ def _limits(root: CommentedMap, catalog: RuleSet, notes: list[str]) -> None:
             key = next((k for k in (name, code) if k in rules), None)
             if key is None:
                 entry = CommentedMap()
-                # An override refines a rule the root enables; otherwise the
-                # option enabled the rule in its own scope.
-                if not (refines and (name in enabled or code in enabled)):
+                # An inherited severity, including off, still governs a local limit.
+                if code not in configured:
                     rule = catalog.lookup(code)
                     entry["severity"] = (
                         rule.default_severity.value if rule else "warning"
@@ -199,14 +214,14 @@ def _limits(root: CommentedMap, catalog: RuleSet, notes: list[str]) -> None:
             del root[location]
 
 
-def _enabled(settings: Any) -> set[str]:
+def _configured_rules(settings: Any, catalog: RuleSet) -> set[str]:
     if not isinstance(settings, dict):
         return set()
     return {
-        key
+        rule.code
         for key, value in settings.items()
-        if (value.get("severity") if isinstance(value, dict) else value)
-        not in (None, "off")
+        if (value.get("severity") if isinstance(value, dict) else value) is not None
+        if isinstance(key, str) and (rule := catalog.lookup(key)) is not None
     }
 
 

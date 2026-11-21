@@ -37,9 +37,7 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
             "no smelt.yml found in this directory or its parents", kind="config"
         )
     # A version 2 file cannot load beside version 1 bases or members, so all migrate together.
-    files = {file: _File(file) for file in config_files(path)}
-    for file in files.values():
-        file.apply(migrate_policy(file.before))
+    files = _migrate_files(path)
     rules = build_rule_set(lazy=True)
     loaded = load_config(path, store=_preview(files))
     # A broad selector can depend on an implicit activation we have yet to name.
@@ -112,6 +110,20 @@ class _File:
     @property
     def changed(self) -> bool:
         return self.content != self.original
+
+
+def _migrate_files(path: Path) -> dict[Path, _File]:
+    inputs = config_files(path)
+    files = {}
+    inherited_rules: frozenset[str] = frozenset()
+    for source in (*inputs.project, *inputs.members):
+        file = _File(source)
+        migration = migrate_policy(file.before, inherited_rules=inherited_rules)
+        file.apply(migration)
+        files[source] = file
+        if source in inputs.project:
+            inherited_rules = migration.configured_rules
+    return files
 
 
 def _preview(files: Mapping[Path, _File]) -> _Preview:

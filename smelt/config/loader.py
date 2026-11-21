@@ -151,8 +151,14 @@ def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig
         raise shown from exc
 
 
-def config_files(path: Path, *, store: SourceStore | None = None) -> tuple[Path, ...]:
-    """Every file a load of ``path`` reads: the root config, its bases and member configs.
+@dataclass(frozen=True, slots=True)
+class ConfigFiles:
+    project: tuple[Path, ...]
+    members: tuple[Path, ...]
+
+
+def config_files(path: Path, *, store: SourceStore | None = None) -> ConfigFiles:
+    """Configuration files in inheritance order: bases, root, then workspace members.
 
     Only the YAML is read, so a version 1 workspace can be migrated as a whole.
     """
@@ -161,10 +167,13 @@ def config_files(path: Path, *, store: SourceStore | None = None) -> tuple[Path,
     if (workspace := _workspace_of(path, view)) is not None:
         path = workspace[0]
     composed = compose_config(path, view, _load_yaml)
-    files = list(composed.files)
-    if _declares_workspace(composed.raw):
-        files.extend(member_config_files(path.parent, store=view).values())
-    return tuple(dict.fromkeys(files))
+    project = tuple(dict.fromkeys(composed.files))
+    members = (
+        member_config_files(path.parent, store=view).values()
+        if _declares_workspace(composed.raw)
+        else ()
+    )
+    return ConfigFiles(project, tuple(file for file in members if file not in project))
 
 
 def parse_config(
