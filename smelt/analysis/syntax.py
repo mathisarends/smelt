@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING
 from pydantic import TypeAdapter
 
 from smelt.analysis.exports import Namespace, namespace_of
-from smelt.analysis.parsing import AstCache, resolve_relative, type_checking_lines
+from smelt.analysis.parsing import (
+    AstCache,
+    resolve_relative,
+    tree_nodes,
+    type_checking_lines,
+)
 
 if TYPE_CHECKING:
     from smelt.analysis.cache import FactCache
@@ -74,7 +79,7 @@ class ModuleSyntax:
     @cached_property
     def nodes(self) -> tuple[ast.AST, ...]:
         """Breadth-first syntax inventory shared by readers of this immutable tree."""
-        return tuple(ast.walk(self.tree))
+        return tree_nodes(self.tree)
 
     @cached_property
     def imports(self) -> tuple[ast.Import | ast.ImportFrom, ...]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
     definitions: dict[str, list[ast.AST]] = {}
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
             definitions.setdefault(node.id, []).append(node)
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
@@ -107,7 +107,7 @@ def explicit_exports(tree: ast.Module) -> frozenset[str] | None:
         handled.update(names)
     if any(
         isinstance(node, ast.Name) and node.id == "__all__" and node not in handled
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     ):
         return None
     return frozenset(exports)

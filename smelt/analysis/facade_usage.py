@@ -76,19 +76,17 @@ class FacadeGap:
 
 
 class FacadeUsage:
+    """Facade demand shared by every rule and check of one analysis run."""
+
     def __init__(
-        self,
-        syntax: SyntaxIndex,
-        imports: ImportIndex,
-        *,
-        files: FileIndex,
-        count_tests: bool,
+        self, syntax: SyntaxIndex, imports: ImportIndex, *, files: FileIndex
     ) -> None:
         self._syntax = syntax
         self._files = files
         self._bindings: dict[str, _Bindings] = {}
         self._resolved: dict[_Symbol, _Definition | None] = {}
-        self._uses = tuple(self._collect_uses(count_tests=count_tests))
+        # Uses collected with tests are a superset; queries filter test uses.
+        self._uses: dict[bool, tuple[_Use, ...]] = {}
         self._exports = self._collect_exports()
         self._adjacency = imports.first_party_edges(include_type_checking=False)
 
@@ -143,9 +141,9 @@ class FacadeUsage:
         exports = _public_names(facade.tree)
         if bindings.opaque or exports is None:
             return
-        declares_all = _declares_all(facade.tree)
+        declares_all = _declares_all(facade)
         callers: dict[_Definition, _Importers] = {}
-        for use in self._uses:
+        for use in self._uses_for(count_tests=count_tests):
             definition = use.definition
             if (
                 (use.test and not count_tests)
@@ -183,6 +181,13 @@ class FacadeUsage:
                 self._cycle(package, definition.module),
                 existing != definition,
             )
+
+    def _uses_for(self, *, count_tests: bool) -> tuple[_Use, ...]:
+        if True in self._uses:
+            return self._uses[True]
+        if count_tests not in self._uses:
+            self._uses[count_tests] = tuple(self._collect_uses(count_tests=count_tests))
+        return self._uses[count_tests]
 
     def _collect_uses(self, *, count_tests: bool) -> Iterator[_Use]:
         files = self._files
@@ -225,14 +230,11 @@ class FacadeUsage:
             if syntax is None:
                 continue
             exports = _public_names(syntax.tree)
-            if exports is None or (
-                not source.is_package and not _declares_all(syntax.tree)
-            ):
+            declares_all = _declares_all(syntax)
+            if exports is None or (not source.is_package and not declares_all):
                 continue
             for name in self._for_module(source.module).known:
-                if name.startswith("_") or (
-                    _declares_all(syntax.tree) and name not in exports
-                ):
+                if name.startswith("_") or (declares_all and name not in exports):
                     continue
                 definition = self._resolve(source.module, name)
                 if definition is not None:
@@ -293,9 +295,9 @@ class FacadeUsage:
         return ()
 
 
-def _declares_all(tree: ast.Module) -> bool:
+def _declares_all(module: ModuleSyntax) -> bool:
     return any(
-        isinstance(node, ast.Name) and node.id == "__all__" for node in ast.walk(tree)
+        isinstance(node, ast.Name) and node.id == "__all__" for node in module.nodes
     )
 
 

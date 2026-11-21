@@ -44,39 +44,10 @@ def str_enum_value_accesses(syntax: SyntaxIndex) -> Iterator[StrEnumValueAccess]
                 )
 
 
-def _bound_names(node: ast.AST) -> tuple[str, ...]:
-    match node:
-        case (
-            ast.Name(id=name, ctx=ast.Store() | ast.Del())
-            | ast.arg(arg=name)
-            | ast.FunctionDef(name=name)
-            | ast.AsyncFunctionDef(name=name)
-            | ast.ClassDef(name=name)
-            | ast.TypeVar(name=name)
-            | ast.ParamSpec(name=name)
-            | ast.TypeVarTuple(name=name)
-        ):
-            return (name,)
-        case ast.Import() | ast.ImportFrom():
-            return tuple(
-                alias.asname or alias.name.split(".")[0] for alias in node.names
-            )
-        case (
-            ast.ExceptHandler(name=name)
-            | ast.MatchAs(name=name)
-            | ast.MatchStar(name=name)
-            | ast.MatchMapping(rest=name)
-        ):
-            return (name,) if name else ()
-        case ast.Global(names=names) | ast.Nonlocal(names=names):
-            return tuple(names)
-    return ()
-
-
 def _namespace(module: ModuleSyntax) -> Namespace:
     # A binding shadowed even in another scope is unknown. This intentionally
     # trades some recognition for avoiding guesses about Python name resolution.
-    bound = _binding_counts(module.tree)
+    bound = _binding_counts(module)
     imported: dict[str, str] = {}
     if not bound["*"]:
         for node in module.tree.body:
@@ -100,9 +71,10 @@ def _namespace(module: ModuleSyntax) -> Namespace:
     return Namespace(module.module, imported, frozenset(bound.keys() - imported.keys()))
 
 
-def _binding_counts(tree: ast.Module) -> Counter[str]:
-    bound = Counter(name for node in ast.walk(tree) for name in _bound_names(node))
-    for node in ast.walk(tree):
+def _binding_counts(module: ModuleSyntax) -> Counter[str]:
+    bound: Counter[str] = Counter()
+    for node in module.nodes:
+        bound.update(_bound_names(node))
         if isinstance(node, ast.Attribute | ast.Subscript) and isinstance(
             node.ctx, ast.Store | ast.Del
         ):
@@ -133,7 +105,7 @@ class _Enums:
         )
         self.members: dict[str, frozenset[str]] = {}
         for module in self.modules.values():
-            bound = _binding_counts(module.tree)
+            bound = _binding_counts(module)
             if bound["*"]:
                 continue
             for node in module.tree.body:
@@ -215,3 +187,32 @@ class _Enums:
                     if isinstance(target, ast.Name) and not target.id.startswith("_")
                 )
         return frozenset(members)
+
+
+def _bound_names(node: ast.AST) -> tuple[str, ...]:
+    match node:
+        case (
+            ast.Name(id=name, ctx=ast.Store() | ast.Del())
+            | ast.arg(arg=name)
+            | ast.FunctionDef(name=name)
+            | ast.AsyncFunctionDef(name=name)
+            | ast.ClassDef(name=name)
+            | ast.TypeVar(name=name)
+            | ast.ParamSpec(name=name)
+            | ast.TypeVarTuple(name=name)
+        ):
+            return (name,)
+        case ast.Import() | ast.ImportFrom():
+            return tuple(
+                alias.asname or alias.name.split(".")[0] for alias in node.names
+            )
+        case (
+            ast.ExceptHandler(name=name)
+            | ast.MatchAs(name=name)
+            | ast.MatchStar(name=name)
+            | ast.MatchMapping(rest=name)
+        ):
+            return (name,) if name else ()
+        case ast.Global(names=names) | ast.Nonlocal(names=names):
+            return tuple(names)
+    return ()

@@ -80,6 +80,7 @@ class FileIndex:
     )
     _relative_paths: dict[Path, str] = field(default_factory=dict, repr=False)
     _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
+    _test_root_paths: dict[str, bool] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "root", self.store.resolve(self.root))
@@ -141,9 +142,7 @@ class FileIndex:
 
     def is_test_path(self, path: str) -> bool:
         """Recognize tests even when a test root overlaps a source package."""
-        return path in self.tests or any(
-            Path(path).is_relative_to(root) for root in self.config.project.test_roots
-        )
+        return path in self.tests or self._under_test_root(path)
 
     def path_for_module(self, module: str) -> str | None:
         source = self.sources.get(module)
@@ -261,6 +260,17 @@ class FileIndex:
         parts = [p for p in root.strip("/").split("/") if p and p != "."]
         parts.extend(module.split("."))
         return "/".join(parts) + ("/" if package else ".py")
+
+    def _under_test_root(self, path: str) -> bool:
+        # Import-policy rules ask once per import and contract.
+        under = self._test_root_paths.get(path)
+        if under is None:
+            under = any(
+                Path(path).is_relative_to(root)
+                for root in self.config.project.test_roots
+            )
+            self._test_root_paths[path] = under
+        return under
 
 
 def python_files(
