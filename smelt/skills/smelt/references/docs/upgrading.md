@@ -2,10 +2,18 @@
 
 ## 0.13 to 0.14
 
-Run `smelt config migrate` to preview the changes below and add `--write` to
-apply them. The configuration format is now `version: 2`; Smelt no longer
-reads `version: 1`. In a workspace, the command converts the root, its
-`extends` bases and every member config together.
+Upgrade the config and existing suppressions together:
+
+1. Run `smelt config migrate` with Smelt 0.14. If a rule lacks its required
+   policy, configure it where the rule should run or remove the entry if it was
+   intentionally inactive. Review the diff and apply it with
+   `smelt config migrate --write`. The command upgrades to `version: 2` and
+   converts the workspace root, its `extends` bases and every member together.
+2. Replace old `SMT?` identifiers in inline `# smelt: ignore[?]` comments by
+   hand. For example, replace `SMT420` with `tests/private-access` or `TST002`,
+   and keep the comment's reason. Use the [code table below](#use-the-family-rule-codes).
+3. Update the [hook and CI pins](integrations.md) and run the full check with
+   `smelt check --fail-on warning`.
 
 ### Use the family rule codes
 

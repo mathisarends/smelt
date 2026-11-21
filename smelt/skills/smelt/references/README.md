@@ -22,8 +22,8 @@ uv tool install smelt-cli
 smelt init --maintainability
 ```
 
-Upgrading to 0.13.0? Follow the [upgrade checklist](docs/upgrading.md#012-to-013)
-for configuration keys, rule names and hook pins.
+Upgrading to 0.14.0? Follow the [upgrade guide](docs/upgrading.md#013-to-014)
+for configuration changes, inline suppressions and hook pins.
 
 Review the generated `smelt.yml`: it proposes a starting policy from your layout
 and selects source and test checks. You decide which conventions to adopt.
@@ -115,7 +115,7 @@ repos:
         name: smelt
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.13.0]
+        additional_dependencies: [smelt-cli==0.14.0]
         pass_filenames: false
         always_run: true
         require_serial: true
