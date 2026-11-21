@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import subprocess
 import time
 from typing import TYPE_CHECKING
 
+import pytest
 from pydantic import TypeAdapter
 
-from smelt.analysis.cache import FactCache
+from smelt.analysis.cache import FactCache, cache_directory
+from tests.helpers import check, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,3 +102,90 @@ def test_older_caches_are_upgraded_and_keep_their_entries(tmp_path: Path) -> Non
     cache.close()
 
     assert _keys(cache.directory / "facts.sqlite3") == ["old"]
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(  # noqa: S603
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+        cwd=root,
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+
+
+@pytest.fixture
+def main(tmp_path: Path) -> Path:
+    """A main checkout with a nested project and one commit."""
+    root = tmp_path / "main"
+    (root / "service").mkdir(parents=True)
+    (root / "service" / "smelt.yml").write_text("version: 2\n", encoding="utf-8")
+    _git(root, "init", "-q")
+    _git(root, "add", ".")
+    _git(root, "commit", "-q", "-m", "init")
+    return root
+
+
+def _worktree(main: Path, name: str = "linked") -> Path:
+    path = main.parent / name
+    _git(main, "worktree", "add", "-q", "--detach", str(path))
+    return path
+
+
+@pytest.mark.parametrize("project", [".", "service"])
+def test_linked_worktree_shares_the_main_checkout_cache(
+    main: Path, project: str
+) -> None:
+    linked = _worktree(main)
+
+    assert cache_directory(linked / project) == main / project / ".smelt_cache"
+
+
+def test_main_checkout_keeps_its_own_cache(main: Path) -> None:
+    _worktree(main)
+
+    assert cache_directory(main / "service") == main / "service" / ".smelt_cache"
+
+
+def test_project_missing_from_the_main_checkout_keeps_a_local_cache(
+    main: Path,
+) -> None:
+    linked = _worktree(main)
+    (linked / "added").mkdir()
+
+    assert cache_directory(linked / "added") == linked / "added" / ".smelt_cache"
+
+
+def test_directory_outside_git_keeps_a_local_cache(tmp_path: Path) -> None:
+    assert cache_directory(tmp_path) == tmp_path / ".smelt_cache"
+
+
+def test_worktree_of_a_bare_repository_keeps_a_local_cache(
+    main: Path, tmp_path: Path
+) -> None:
+    bare = tmp_path / "bare.git"
+    _git(tmp_path, "clone", "-q", "--bare", str(main), str(bare))
+    linked = tmp_path / "from-bare"
+    _git(bare, "worktree", "add", "-q", "--detach", str(linked))
+
+    assert cache_directory(linked) == linked / ".smelt_cache"
+
+
+def test_check_in_a_linked_worktree_writes_facts_to_the_main_checkout(
+    main: Path,
+) -> None:
+    write_project(
+        main,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+        },
+    )
+    _git(main, "add", ".")
+    _git(main, "commit", "-q", "-m", "app")
+    linked = _worktree(main)
+
+    check(linked)
+
+    assert (main / ".smelt_cache").is_dir()
+    assert not (linked / ".smelt_cache").exists()

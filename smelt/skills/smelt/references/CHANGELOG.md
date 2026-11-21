@@ -20,6 +20,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   still count as the submodule. Suppressions written for this false positive are
   now reported by `meta/unused-suppression`.
 
+- A check in a linked Git worktree reads and writes the fact cache of the same
+  project in the main checkout, so new agent worktrees skip the cold analysis.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13

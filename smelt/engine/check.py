@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
-from smelt.analysis.cache import FactCache
+from smelt.analysis.cache import FactCache, cache_directory
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
@@ -152,7 +152,7 @@ def run_check(
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
     owned_cache = (
-        FactCache(options.cache_dir or loaded.root / ".smelt_cache")
+        FactCache(options.cache_dir or cache_directory(loaded.root))
         if options.use_cache and rules is None and context is None
         else None
     )
