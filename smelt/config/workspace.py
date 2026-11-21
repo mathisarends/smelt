@@ -465,9 +465,10 @@ def _compile_members(
         if options:
             for package in names:
                 name = path if len(names) == 1 else f"{path}:{package}"
-                contracts[name] = PackageContract(
+                contract = PackageContract(
                     match=package, reasons=member.structure.reasons, **options
-                ).with_style_location(f"{location}.style")
+                )
+                contracts[name] = contract.with_style_location(f"{location}.style")
         inherited_style = config.structure.model_copy(update=options)
         for name, contract in member.structure.contracts.items():
             qualified = f"{path}:{name}"

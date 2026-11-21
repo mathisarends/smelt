@@ -108,6 +108,7 @@ def _relative_source(source: str | None, root: Path) -> str | None:
     if source is None or not Path(source).is_absolute():
         return source
     try:
-        return Path(os.path.relpath(source, root)).as_posix()
+        relative_path = Path(os.path.relpath(source, root))
+        return relative_path.as_posix()
     except ValueError:
         return source

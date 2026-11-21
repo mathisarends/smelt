@@ -120,7 +120,8 @@ class LoadedConfig:
 
     def source_for(self, location: str) -> str | None:
         """The nearest explicitly declared key's file."""
-        return ConfigComposition(origins=self.origins).source_for(location)
+        composition = ConfigComposition(origins=self.origins)
+        return composition.source_for(location)
 
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:

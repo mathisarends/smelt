@@ -51,7 +51,8 @@ def rewrite_none_defaults(source: str, candidates: list[NoneDefault]) -> str:
         )
         keys.add((node.lineno, node.col_offset))
     rewritten = _render(data, 0, len(data), edits=edits).decode("utf-8")
-    expected = _Expected(keys).visit(ast.parse(source))
+    transformer = _Expected(keys)
+    expected = transformer.visit(ast.parse(source))
     parsed = ast.parse(rewritten)
     if ast.dump(parsed) != ast.dump(expected):
         raise AnalysisError("rewrite changed more than the approved None defaults")

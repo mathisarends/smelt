@@ -68,6 +68,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.literal_types:DuplicateLiteralType",
     "smelt.rules.structure.private_access:ForeignPrivateAccess",
     "smelt.rules.structure.call_arguments:InlineCallArgument",
+    "smelt.rules.structure.call_receivers:InlineConstructorReceiver",
     "smelt.rules.structure.enum_styles:StrEnumValueConvention",
     "smelt.rules.structure.aliases:RedundantNameAlias",
     "smelt.rules.structure.parameters:ExcessPositionalParameters",

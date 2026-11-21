@@ -245,7 +245,8 @@ def _update_debt(
         _, known, resolved = checked.match(current, snippet)
         # Upgrade legacy import fingerprints without accepting any new debt.
         updated = Debt.from_violations(known, snippet)
-        Debt([*updated.entries, *dormant]).write(path)
+        combined = Debt([*updated.entries, *dormant])
+        combined.write(path)
         remaining = len(existing.entries) - len(resolved)
         console.print(
             f"Removed {len(resolved)} resolved entr{'y' if len(resolved) == 1 else 'ies'} "
@@ -253,7 +254,8 @@ def _update_debt(
         )
     else:
         updated = Debt.from_violations(current, snippet)
-        Debt([*updated.entries, *dormant]).write(path)
+        combined = Debt([*updated.entries, *dormant])
+        combined.write(path)
         console.print(
             f"Wrote {relative} ({len(current)} violation{'s' * (len(current) != 1)}, "
             f"{len(updated.entries)} matching entr{'y' if len(updated.entries) == 1 else 'ies'})"

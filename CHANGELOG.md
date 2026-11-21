@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- [CPX008](docs/rules/CPX008.md) can flag a direct method call on an inline
+  constructor, so the instance can be named first. Enable
+  `complexity/inline-constructor-receiver` in `rules`. Imported class names are
+  recognized by convention.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13

@@ -72,7 +72,8 @@ def capture(root: Path) -> tuple[Path, str | None] | None:
     if response is None:
         return None
     try:
-        repository = Path(response["repository"]).resolve()
+        repository_path = Path(response["repository"])
+        repository = repository_path.resolve()
         head = response["head"]
         if head is not None and not isinstance(head, str):
             return None

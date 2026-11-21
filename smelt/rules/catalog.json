@@ -361,6 +361,23 @@
     "scope": "source"
   },
   {
+    "target": "smelt.rules.structure.call_receivers:InlineConstructorReceiver",
+    "code": "CPX008",
+    "name": "complexity/inline-constructor-receiver",
+    "category": "complexity",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": true,
+    "production_only": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "source"
+  },
+  {
     "target": "smelt.rules.structure.settings:SecretSettingsField",
     "code": "FWK001",
     "name": "frameworks/prefer-secret-type",
