@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -68,6 +68,13 @@ class ExcessPrivateDefinitions(Rule):
         ),
         config=("rules", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        limit, _ = ctx.contracts.threshold(target.module, "max_private_definitions")
+        return (
+            f"Keep at most {limit} private definitions per module; "
+            "move cohesive groups into their own module"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

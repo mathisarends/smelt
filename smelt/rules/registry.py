@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
     from smelt.diagnostics.violation import Violation
-    from smelt.rules.base import RuleContract, RuleDoc
+    from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
 _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.layers:LayerBoundary",
@@ -151,6 +151,9 @@ class _LazyRule:
 
     def explain(self) -> RuleDoc:
         return self._implementation.explain()
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        return self._implementation.guide(ctx, target)
 
 
 def catalog_metadata() -> list[dict[str, Any]]:

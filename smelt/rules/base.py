@@ -14,8 +14,10 @@ from smelt.diagnostics.violation import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from pathlib import Path
 
     from smelt.analysis.context import AnalysisContext, Index
+    from smelt.model import ModuleInfo
     from smelt.rules.activation import PolicyActivation
 
 
@@ -33,6 +35,18 @@ class RuleDoc:
     example_language: str = "python"
 
 
+@dataclass(frozen=True, slots=True)
+class GuideTarget:
+    """The module a guide is written for; ``module`` is empty for the project."""
+
+    module: str
+    path: str | None = None
+    info: ModuleInfo | None = None
+
+    def absolute(self, root: Path) -> Path | None:
+        return root / self.path if self.path else None
+
+
 @runtime_checkable
 class RuleContract(Protocol):
     """Metadata and checking interface, including lazy rule implementations."""
@@ -48,6 +62,9 @@ class RuleContract(Protocol):
 
     def explain(self) -> RuleDoc:
         """Return the documentation shown by `smelt explain` and the rule pages."""
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        """Return the instruction for writing ``target``; None when nothing applies."""
 
 
 class Rule:
@@ -78,6 +95,11 @@ class Rule:
 
     def explain(self) -> RuleDoc:
         return self.doc
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        """The static instruction; rules whose options change it override this."""
+        del ctx, target
+        return self.doc.canonical
 
     def violation(  # noqa: PLR0913 - mirrors the Violation fields
         self,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.annotations import has_postponement_evidence
@@ -8,10 +9,14 @@ from smelt.analysis.bindings import qualified_name, unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
+
+    from smelt.analysis.contracts import ResolvedContract
+    from smelt.analysis.python_version import PythonTarget
 
 
 class MisplacedModuleLogger(Rule):
@@ -92,6 +97,15 @@ class ModuleDocstringConvention(Rule):
         config=("style.module_docstrings", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "module_docstrings")
+        mode = contract.spec.module_docstrings if contract else None
+        if mode == "require":
+            return "Start every module with a docstring that states its purpose"
+        if mode == "forbid":
+            return "Do not write module docstrings"
+        return None
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
             contract = ctx.contracts.policy_for(source.module, "module_docstrings")
@@ -146,6 +160,12 @@ class ForbiddenFutureAnnotations(Rule):
         config=("style.future_annotations", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        policy = _future_policy(ctx, target.module, target.absolute(ctx.root))
+        if policy is None or not policy.prohibited:
+            return None
+        return "Never write from __future__ import annotations"
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         yield from _future_findings(self, ctx, forbid=True)
 
@@ -171,6 +191,15 @@ class RedundantFutureAnnotations(Rule):
         config=("style.future_annotations", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        policy = _future_policy(ctx, target.module, target.absolute(ctx.root))
+        if policy is None or policy.prohibited:
+            return None
+        return (
+            "Write from __future__ import annotations only when an annotation "
+            "needs postponing"
+        )
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         yield from _future_findings(self, ctx, forbid=False)
 
@@ -179,18 +208,10 @@ def _future_findings(
     rule: Rule, ctx: AnalysisContext, *, forbid: bool
 ) -> Iterator[Violation]:
     for source in ctx.files.sources.values():
-        contract = ctx.contracts.policy_for(source.module, "future_annotations")
-        if contract is None:
+        policy = _future_policy(ctx, source.module, source.absolute)
+        if policy is None or policy.prohibited != forbid:
             continue
-        mode = contract.spec.future_annotations
-        if mode not in {"forbid", "when-needed"}:
-            continue
-        python_target = ctx.python_targets.for_path(source.absolute)
-        prohibited = mode == "forbid" or (
-            mode == "when-needed" and python_target.deferred_annotations
-        )
-        if prohibited != forbid:
-            continue
+        prohibited = policy.prohibited
         tree = ctx.asts.parse(source.path)
         imports = [
             node
@@ -201,12 +222,12 @@ def _future_findings(
             and any(alias.name == "annotations" for alias in node.names)
         ]
         if not imports or (
-            not prohibited and has_postponement_evidence(tree, python_target.minimum)
+            not prohibited and has_postponement_evidence(tree, policy.python.minimum)
         ):
             continue
         for node in imports:
             yield rule.violation(
-                f"{contract.origin} forbids the annotations future import"
+                f"{policy.contract.origin} forbids the annotations future import"
                 if prohibited
                 else "no static postponement need found; review the annotations future import",
                 path=source.path,
@@ -216,10 +237,10 @@ def _future_findings(
                 end_column=(node.end_col_offset or 0) + 1,
                 source_module=source.module,
                 expected={
-                    "contract": contract.name,
-                    "future_annotations": mode,
+                    "contract": policy.contract.name,
+                    "future_annotations": policy.contract.spec.future_annotations,
                     "automatic_removal": False,
-                    "python": python_target.to_json(),
+                    "python": policy.python.to_json(),
                 },
                 hint="Follow the package convention and verify forward references, runtime annotation consumers and tests before removing the import.",
             )
@@ -288,3 +309,25 @@ def _is_header_import(statement: ast.stmt) -> bool:
             )
         case _:
             return False
+
+
+@dataclass(frozen=True, slots=True)
+class _FuturePolicy:
+    contract: ResolvedContract
+    python: PythonTarget
+    prohibited: bool
+
+
+def _future_policy(
+    ctx: AnalysisContext, module: str, path: Path | None
+) -> _FuturePolicy | None:
+    """The governing future-annotations policy; None when it allows the import."""
+    contract = ctx.contracts.policy_for(module, "future_annotations")
+    if contract is None:
+        return None
+    mode = contract.spec.future_annotations
+    if mode not in {"forbid", "when-needed"}:
+        return None
+    python = ctx.python_targets.for_path(path)
+    prohibited = mode == "forbid" or python.deferred_annotations
+    return _FuturePolicy(contract, python, prohibited=prohibited)

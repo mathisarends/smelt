@@ -8,7 +8,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -106,6 +106,15 @@ class ExcessiveTestPatches(Rule):
         canonical="Keep patches per test within the limit; inject fakes instead",
         config=("rules", "tests.quality_exclude"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        del target
+        maximum = ctx.config.max_patches_per_test
+        if maximum is None:
+            return None
+        if maximum == 0:
+            return "Do not patch in tests; inject fakes instead"
+        return f"Use at most {maximum} patches per test; inject fakes instead"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         maximum = ctx.config.max_patches_per_test

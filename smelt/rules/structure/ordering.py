@@ -7,7 +7,7 @@ from smelt.analysis.ordering_rewrite import rewrite_order
 from smelt.analysis.parsing import AnalysisError
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -56,6 +56,15 @@ class PublicDefinitionsFirst(Rule):
         ),
         config=("rules", "style.overrides", "project.python_version"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        policy = ctx.contracts.ordering_brief(target.module or None)
+        if policy is None:
+            return self.doc.canonical
+        return (
+            f"Order modules as {', '.join(policy['module'])}; "
+            f"classes as {', '.join(policy['class'])}"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for result in ctx.ordering.files.values():

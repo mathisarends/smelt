@@ -9,7 +9,7 @@ from smelt.analysis.function_usage import explicit_exports
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -55,14 +55,19 @@ class ReexportConvention(Rule):
         config=("rules", "style.reexports", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        style = _reexport_style(ctx, target.module)
+        if style == "all":
+            return "Re-export in __init__.py with plain imports listed in __all__"
+        if style == "alias":
+            return "Re-export in __init__.py with same-name aliases (from .x import A as A)"
+        return None
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
             if not source.is_package:
                 continue
-            contract = ctx.contracts.policy_for(source.module, "reexports")
-            style = (
-                contract.spec.reexports if contract else None
-            ) or POLICY_DEFAULTS.reexports
+            style = _reexport_style(ctx, source.module)
             if style == "allow":
                 continue
             using_all = style == "all"
@@ -111,3 +116,8 @@ def _mismatched_reexports(
                 style == "alias" and alias.asname is None and alias.name in exports
             ):
                 yield alias
+
+
+def _reexport_style(ctx: AnalysisContext, module: str) -> ReexportStyle:
+    contract = ctx.contracts.policy_for(module, "reexports")
+    return (contract.spec.reexports if contract else None) or POLICY_DEFAULTS.reexports

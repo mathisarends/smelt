@@ -9,7 +9,8 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.common import readable_list
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -32,6 +33,11 @@ _CONDITIONAL_SCOPES = (
     ast.GeneratorExp,
 )
 _CALLEE_PREVIEW = 60
+_KIND_NAMES = {
+    "await": "awaited results",
+    "comprehension": "comprehensions",
+    "aggregate": "builtin reductions",
+}
 
 
 class InlineCallArgument(Rule):
@@ -103,14 +109,17 @@ class InlineCallArgument(Rule):
         config=("rules", "style.call_argument_kinds", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        kinds = _argument_kinds(ctx, target.module)
+        names = (name for kind, name in _KIND_NAMES.items() if kind in kinds)
+        return (
+            f"Bind {readable_list(names)} to a local name "
+            "before passing them as arguments"
+        )
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            contract = ctx.contracts.policy_for(source.module, "call_argument_kinds")
-            kinds = frozenset(
-                contract.spec.call_argument_kinds
-                if contract and contract.spec.call_argument_kinds
-                else POLICY_DEFAULTS.call_argument_kinds
-            )
+            kinds = _argument_kinds(ctx, source.module)
             tree = ctx.asts.parse(source.path)
             if "await" in kinds:
                 for call, awaited, keyword in _awaited_arguments(
@@ -302,4 +311,13 @@ def _is_aggregate_reduction(node: ast.expr, aggregates: frozenset[str]) -> bool:
         and not any(isinstance(arg, ast.Starred) for arg in node.args)
         and not any(keyword.arg is None for keyword in node.keywords)
         and not any(comprehension.is_async for comprehension in generator.generators)
+    )
+
+
+def _argument_kinds(ctx: AnalysisContext, module: str) -> frozenset[str]:
+    contract = ctx.contracts.policy_for(module, "call_argument_kinds")
+    return frozenset(
+        contract.spec.call_argument_kinds
+        if contract and contract.spec.call_argument_kinds
+        else POLICY_DEFAULTS.call_argument_kinds
     )

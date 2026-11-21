@@ -277,6 +277,12 @@ allocations when concurrent PRs introduce rules.
    location and relevant policy payload rather than entire incidental messages.
 6. Regenerate documentation/schema and run the checks below.
 
+`RuleDoc.canonical` is one imperative line, without a final period, that tells
+an author how to write conforming code; `smelt context --guide`, `explain` and
+the rule page show it. A rule whose options change that instruction overrides
+`Rule.guide(ctx, target)` and resolves the target's policy through the same
+helper as `check`, returning `None` when the policy does not reach the target.
+
 `RuleDoc` is the documentation source. `engine.check.rule_meta()` supplies the CLI
 and report metadata; there is no separate hand-maintained catalog manifest.
 `rules --format json` exposes analysis requirements and config paths;

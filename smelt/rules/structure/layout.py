@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind, is_within
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import display_module_path, join, last_segment
 
 if TYPE_CHECKING:
@@ -59,6 +59,12 @@ class UnknownLayer(Rule):
             "architecture.layers.<layer>.modules",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        info = target.info
+        if info is None:
+            return self.doc.canonical if ctx.model.has_features else None
+        return self.doc.canonical if info.feature is not None else None
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model

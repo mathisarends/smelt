@@ -8,7 +8,7 @@ from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import skip_import
 
 if TYPE_CHECKING:
@@ -62,6 +62,13 @@ class ModuleImportFanout(Rule):
             "architecture.import_graph.type_checking",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        limit, _ = ctx.contracts.threshold(target.module, "max_module_imports")
+        return (
+            f"Import at most {limit} project modules per module; "
+            "split by responsibility or import package facades"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

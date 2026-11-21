@@ -7,7 +7,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.type_dispatch import type_dispatches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -37,6 +37,16 @@ class PreferMatchTypeDispatch(Rule):
             "project.python_version",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "type_dispatch")
+        policy = contract.spec.type_dispatch if contract else None
+        if policy is None or policy.style != "match":
+            return None
+        return (
+            "Dispatch on one subject's type with match/case once an isinstance chain "
+            f"reaches {policy.min_branches} branches"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.member_names import private_name, rename_advice
 
 if TYPE_CHECKING:
@@ -40,6 +40,10 @@ class InternalPublicAttribute(Rule):
             "project.test_roots",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        boundary = ctx.contracts.public_attribute_boundary(target.module)
+        return f"Make data attributes used only inside their {boundary} private"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         boundary_for = ctx.contracts.public_attribute_boundary

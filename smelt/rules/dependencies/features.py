@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import boundary_imports, import_violation, join, skip_import
 
 if TYPE_CHECKING:
@@ -141,6 +141,14 @@ class SharedImportsFeature(Rule):
             "architecture.import_graph.type_checking",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        info = target.info
+        if info is None:
+            return self.doc.canonical if ctx.model.has_features else None
+        if info.kind is ModuleKind.SHARED or info.central:
+            return "Import no feature module from this shared or central module"
+        return None
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model

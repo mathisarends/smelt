@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import last_segment
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.common import last_segment, readable_list
 from smelt.rules.structure.layout import package_location
 
 if TYPE_CHECKING:
@@ -39,6 +39,16 @@ class ForbiddenPackageName(Rule):
         ),
         config=("style.forbidden_names",),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        del target
+        names = ctx.config.structure.forbidden_names
+        if not names:
+            return None
+        return (
+            f"Never name a module or package {readable_list(names, conjunction='or')}; "
+            "name it after what it does"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         forbidden = set(ctx.config.structure.forbidden_names)
@@ -102,6 +112,12 @@ class ForbiddenPrivateModule(Rule):
         config=("style.private_modules", "style.overrides"),
         example_language="text",
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "private_modules")
+        if contract is None or contract.spec.private_modules != "forbid":
+            return None
+        return self.doc.canonical
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         files = ctx.files

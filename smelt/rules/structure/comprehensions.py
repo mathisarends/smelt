@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -50,6 +50,14 @@ class ComplexComprehension(Rule):
         ),
         config=("rules", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        limit, _ = ctx.contracts.threshold(target.module, "max_comprehension_loops")
+        noun = "for clause" if limit == 1 else "for clauses"
+        return (
+            f"Use at most {limit} {noun} and one simple filter per comprehension; "
+            "write a loop or name the per-item decision otherwise"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

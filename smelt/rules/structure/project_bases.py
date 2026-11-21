@@ -8,7 +8,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -63,6 +63,15 @@ class PreferProjectBaseClass(Rule):
         ),
         config=("style.bases", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "bases")
+        if contract is None or not contract.spec.bases:
+            return None
+        return "; ".join(
+            f"Inherit {project} instead of {outside}"
+            for outside, project in sorted(contract.spec.bases.items())
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
