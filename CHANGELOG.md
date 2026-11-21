@@ -27,8 +27,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   initializer on full checks when an explicitly enabled
   `imports/prefer-package-import` has nothing to check there: more than `max`
   (default 2) outside production modules import public names from its
-  implementation modules that no facade re-exports. Packages under an active
-  `architecture/missing-facade-export` threshold are skipped. Set `max` in the
+  implementation modules that no facade re-exports. A facade with its own active
+  `architecture/missing-facade-export` threshold is skipped. Set `max` in the
   root entry, e.g. `meta/uncovered-package-facade: {severity: hint, max: 4}`.
   Closes the remaining part of #169.
 

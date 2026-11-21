@@ -135,9 +135,9 @@ def uncovered_facades(
                 "max": limit,
             },
             hint=(
-                "Decide the package API: re-export these names deliberately (this can "
-                "change import-time behavior), or turn imports/prefer-package-import "
-                "off for this package or ignore this hint with a reason."
+                "Review whether to re-export these names. Re-exports can change "
+                "import-time behavior. For an intentionally facade-less package, "
+                f"add a reasoned MET005 ignore entry for {package}."
             ),
             edge=f"{diagnostic.code}:{package}",
         ).with_severity(severity)
@@ -175,7 +175,7 @@ def _governed_by_export_gap(
         rule is not None
         and any(
             contract.spec.min_importers_to_export is not None
-            and is_within(package, contract.package)
+            and contract.package == package
             for contract in ctx.contracts.resolved
         )
         and settings.severity(rule, ctx, package, path=path) is not None
