@@ -775,12 +775,13 @@ class TestCheckCommand:
 
         assert code == 0
         assert err == ""
-        assert report["fixes"]["ordering"]["files"] == ["app/service.py"]
+        assert report["fixes"]["files"] == ["app/service.py"]
+        assert report["fixes"]["applied"] == 1
         assert source.read_text().lstrip().startswith("def api")
 
         code, out, _ = _run(capsys, *arguments, "--fix")
         assert code == 0
-        assert json.loads(out)["fixes"]["ordering"]["files"] == []
+        assert json.loads(out)["fixes"]["files"] == []
 
     def test_private_module_name_has_a_machine_readable_finding(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -2093,9 +2094,9 @@ def test_optional_default_cli_requires_both_fix_flags(
     report = json.loads(output.out)
     if flags == ("--fix", "--unsafe-fixes"):
         assert code == 0
-        assert report["fixes"]["none_defaults"] == {
+        assert report["fixes"] == {
+            "applied": 1,
             "files": ["app/service.py"],
-            "expressions": 1,
             "skipped": [],
         }
         assert (
@@ -2103,18 +2104,13 @@ def test_optional_default_cli_requires_both_fix_flags(
             in (root / "app/service.py").read_text()
         )
         assert main([*arguments, *flags]) == 0
-        assert (
-            json.loads(capsys.readouterr().out)["fixes"]["none_defaults"]["files"] == []
-        )
+        assert json.loads(capsys.readouterr().out)["fixes"]["files"] == []
     else:
         assert code == 1
         assert report["violations"][0]["code"] == "TYP003"
         assert (root / "app/service.py").read_text() == OPTIONAL_DEFAULT_SOURCE
         if "--fix" in flags:
-            assert (
-                "--unsafe-fixes"
-                in report["fixes"]["none_defaults"]["skipped"][0]["reason"]
-            )
+            assert "--unsafe-fixes" in report["fixes"]["skipped"][0]["reason"]
 
 
 def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
@@ -2147,11 +2143,55 @@ def test_ordering_and_optional_defaults_are_rechecked_between_fixers(
         == 0
     )
     report = json.loads(capsys.readouterr().out)
-    assert report["fixes"]["ordering"]["files"] == ["app/service.py"]
-    assert report["fixes"]["none_defaults"]["files"] == ["app/service.py"]
+    assert report["fixes"]["files"] == ["app/service.py"]
+    assert report["fixes"]["applied"] == 2
     rewritten = (root / "app/service.py").read_text()
     assert rewritten.startswith("def create")
     assert "options if options is not None else" in rewritten
+
+
+def test_diff_previews_fixes_and_findings_mark_their_fix(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+            "app/service.py": OPTIONAL_DEFAULT_SOURCE,
+        },
+    )
+    arguments = ["check", "--config", str(root / "smelt.yml"), "--select", "TYP003"]
+
+    assert main([*arguments, "--format", "concise"]) == 0
+    concise = capsys.readouterr().out
+    assert "TYP003 typing/implicit-optional-default [unsafe fix] " in concise
+    assert "1 fixable with --fix --unsafe-fixes" in concise
+
+    assert main([*arguments, "--format", "json"]) == 0
+    fix = json.loads(capsys.readouterr().out)["violations"][0]["fix"]
+    assert fix["applicability"] == "unsafe"
+    assert fix["edits"] == [
+        {
+            "line": 2,
+            "column": 12,
+            "end_line": 2,
+            "end_column": 24,
+            "original": "options or 7",
+            "replacement": "(options if options is not None else (7))",
+        }
+    ]
+
+    assert main([*arguments, "--diff"]) == 0
+    assert capsys.readouterr().out == ""
+    assert main([*arguments, "--diff", "--unsafe-fixes"]) == 1
+    assert "+    return (options if options is not None else (7))" in (
+        capsys.readouterr().out
+    )
+    assert (root / "app/service.py").read_text() == OPTIONAL_DEFAULT_SOURCE
+
+    assert main([*arguments, "--diff", "--fix"]) == 2
+    assert "either --fix or --diff" in capsys.readouterr().err
 
 
 def test_explain_points_a_retired_smt_code_to_its_family_code(

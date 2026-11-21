@@ -6,6 +6,8 @@ from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any, Self
 
+from smelt.diagnostics.fixes import Fix  # noqa: TC001 - persistent JSON validation
+
 DOCS_BASE_URL = "https://github.com/mathisarends/smelt/blob/main/docs/rules"
 
 
@@ -72,6 +74,7 @@ class Violation:
     docs_url: str | None = None
     category: Category | None = field(default=None, compare=False)
     member: str | None = None
+    fix: Fix | None = field(default=None, compare=False)
 
     def with_severity(self, severity: Severity) -> Self:
         return replace(self, severity=severity)
@@ -123,6 +126,7 @@ class Violation:
             data["import_chain"] = [link.to_json() for link in self.import_chain]
         data["expected"] = dict(self.expected) if self.expected is not None else None
         data["hint"] = self.hint
+        data["fix"] = self.fix.to_json() if self.fix is not None else None
         data["docs_url"] = self.docs_url
         return data
 

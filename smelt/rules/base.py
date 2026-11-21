@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
+from smelt.diagnostics.fixes import Fix, FixAvailability
 from smelt.diagnostics.violation import (
     Category,
     ImportLink,
@@ -62,6 +63,8 @@ class Rule:
     production_only: ClassVar[bool] = False
     test_local: ClassVar[bool] = False
     member_local: ClassVar[bool] = False
+    fix_availability: ClassVar[FixAvailability] = FixAvailability.NONE
+    """Whether findings carry a machine-readable Fix; published in the catalog."""
     architecture_scoped: ClassVar[bool] = False
     """Reads architecture policy beyond module classification, so a workspace
     with member architectures runs it once per architecture."""
@@ -90,6 +93,7 @@ class Rule:
         expected: Mapping[str, Any] | None = None,
         hint: str | None = None,
         edge: str | None = None,
+        fix: Fix | None = None,
     ) -> Violation:
         return Violation(
             code=self.code,
@@ -111,6 +115,7 @@ class Rule:
             edge=edge,
             docs_url=docs_url(self.code),
             category=self.category,
+            fix=fix,
         )
 
 

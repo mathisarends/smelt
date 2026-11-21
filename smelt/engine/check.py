@@ -18,6 +18,7 @@ from smelt.config.patterns import module_matches, path_matches
 from smelt.config.workspace import debt_scope_for_path, debt_scopes
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
+from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.report import ConfigurationDiagnostic, Report, RuleMeta
 from smelt.diagnostics.suppressions import (
     Suppression,
@@ -145,6 +146,7 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
             else "Enable by rule setting or --select.",
         },
         scope=getattr(rule, "scope", "source"),
+        fix=getattr(rule, "fix_availability", FixAvailability.NONE),
     )
 
 

@@ -7,6 +7,19 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Findings can carry a machine-readable fix: text edits with an `original` and a
+  `replacement` plus an applicability (`safe`, `unsafe` or `display`). JSON
+  findings include it under `fix`, the concise and text formats mark fixable
+  findings with `[fix]` or `[unsafe fix]` and count them in the summary, and
+  `smelt check --diff` previews the fixes as a unified diff without writing.
+  `smelt rules --format json` and the rule pages state whether a rule's findings
+  carry a fix. [LAY004](docs/rules/LAY004.md) and [TYP003](docs/rules/TYP003.md)
+  now use this model and one shared `--fix` engine.
+  **Migration:** with `--fix`, JSON `fixes` now holds `applied`, `files` and
+  `skipped` (each with `path`, `code`, `line` and `reason`) instead of
+  `fixes.ordering` and `fixes.none_defaults`. A LAY004 finding whose section
+  cannot be rewritten safely reports the reason in `fix_reason` and has no fix.
+
 - [IMP004](docs/rules/IMP004.md) can suggest the public package import of an
   installed dependency, such as `from fastapi import APIRouter` instead of
   `from fastapi.routing import APIRouter`. List the top-level import names in
