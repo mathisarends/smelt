@@ -13,14 +13,19 @@ from ruamel.yaml.error import YAMLError
 from ruamel.yaml.tokens import CommentToken
 
 from smelt.config.errors import ConfigError, ConfigIssue
-from smelt.config.models import LIMIT_RULES, UNCOVERED_SOURCE, PackageBoundary
+from smelt.config.models import (
+    ALL_RULES,
+    LIMIT_RULES,
+    UNCOVERED_SOURCE,
+    PackageBoundary,
+)
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import replacement_selectors
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
-    from smelt.rules.base import RuleSet
+    from smelt.rules.base import RuleContract, RuleSet
 
 _LEVELS = ("off", "hint", "warning", "error")
 
@@ -33,7 +38,10 @@ class Migration:
 
 
 def migrate_policy(
-    text: str, *, inherited_rules: frozenset[str] = frozenset()
+    text: str,
+    *,
+    inherited_rules: frozenset[str] = frozenset(),
+    project_limits: frozenset[str] = frozenset(),
 ) -> Migration:
     yaml, root = _load(text)
     before = deepcopy(root)
@@ -49,6 +57,10 @@ def migrate_policy(
         for policy in overrides.values():
             if isinstance(policy, dict):
                 _rules(policy.get("rules"), catalog, notes)
+    if project_limits and isinstance(rules := root.get("rules"), CommentedMap):
+        _preserve_limit_caps(
+            rules, catalog, project_limits - inherited_rules, notes=notes
+        )
     _limits(root, catalog, notes, inherited_rules=inherited_rules)
     if root.get("version") == 1:
         root["version"] = 2
@@ -72,6 +84,19 @@ def migrate_policy(
     return replace(
         _dump(yaml, root, before, text=text, notes=notes), configured_rules=configured
     )
+
+
+def project_limit_rules(texts: Iterable[str]) -> frozenset[str]:
+    """Identify the legacy limits that implicitly enabled rules project-wide."""
+    codes: set[str] = set()
+    for text in texts:
+        _, root = _load(text)
+        for section in ("style", "structure", "tests"):
+            if isinstance(options := root.get(section), dict):
+                codes.update(
+                    code for key, (code, _) in LIMIT_RULES.items() if key in options
+                )
+    return frozenset(codes)
 
 
 def enable_rules(
@@ -194,7 +219,9 @@ def _limits(
                 if code not in configured:
                     rule = catalog.lookup(code)
                     entry["severity"] = (
-                        rule.default_severity.value if rule else "warning"
+                        _limit_severity(rule, root.get("rules"), rules)
+                        if rule
+                        else "warning"
                     )
                 entry["max"] = value
                 if reason is not None:
@@ -212,6 +239,43 @@ def _limits(
             notes.append(f"Moved {location}.{option} to {prefix}rules.{key}.max.")
         if not options and owner is root:
             del root[location]
+
+
+def _preserve_limit_caps(
+    rules: CommentedMap, catalog: RuleSet, codes: frozenset[str], *, notes: list[str]
+) -> None:
+    """Name an implicit rule in the base where a cap first applied to it."""
+    pending = codes - _configured_rules(rules, catalog)
+    for rule in catalog.rules:
+        if rule.code in pending and _limit_cap(rule, rules) is not None:
+            severity = _limit_severity(rule, rules)
+            key = next(
+                (key for key in (rule.name, rule.code) if key in rules), rule.name
+            )
+            if isinstance(entry := rules.get(key), dict):
+                entry["severity"] = severity
+            else:
+                _append(rules, key, severity)
+            notes.append(
+                f"Preserved {rule.name} severity {severity} from a broad selector."
+            )
+
+
+def _limit_severity(rule: RuleContract, *layers: object) -> str:
+    """Keep the caps that applied before the limit's rule was named."""
+    default = rule.default_severity.value
+    rank = _severity(default, default)
+    for settings in layers:
+        if not isinstance(settings, dict):
+            continue
+        cap = _limit_cap(rule, settings)
+        if cap is not None:
+            rank = min(rank, _severity(cap, default))
+    return _LEVELS[rank]
+
+
+def _limit_cap(rule: RuleContract, rules: dict[str, object]) -> object:
+    return rules.get(rule.category.value, rules.get(ALL_RULES))
 
 
 def _configured_rules(settings: Any, catalog: RuleSet) -> set[str]:

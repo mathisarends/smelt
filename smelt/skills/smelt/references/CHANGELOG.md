@@ -48,8 +48,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   no longer read; the error points to `smelt config migrate --write`, which
   converts the root, its bases and workspace members together.
 - `smelt config migrate` accepts empty policy bases and preserves root rule
-  activation with local exceptions, family severity caps and inherited
-  severities when moving package limits.
+  activation with local exceptions. Moving limits preserves severity caps set
+  by families or `ALL`, including in `extends` bases, and keeps inherited
+  severities for package limits.
 - **Breaking:** Limits moved into their rule entries as
   `rules: {name: {severity, max}}`. `style.max_module_imports`,
   `max_positional_parameters`, `max_comprehension_loops`,

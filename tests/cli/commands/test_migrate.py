@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 import yaml
 
 from smelt.cli import main
@@ -10,8 +11,6 @@ from tests.helpers import MEMBER_BOUNDARIES, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def test_migrate_previews_and_writes_a_mixed_contract(
@@ -167,6 +166,44 @@ def test_migrate_preserves_a_family_severity_cap(tmp_path: Path) -> None:
     assert [
         (finding.code, finding.severity.value) for finding in violations(tmp_path)
     ] == [("ARC001", "hint")]
+
+
+@pytest.mark.parametrize(
+    ("rules", "expected"),
+    [
+        ("{complexity: off}", []),
+        ("{complexity: hint}", ["hint"]),
+        ("{ALL: off}", []),
+        ("{ALL: off, complexity: hint}", ["hint"]),
+    ],
+)
+@pytest.mark.parametrize("use_base", [False, True], ids=["root", "base"])
+def test_migrate_preserves_broad_severity_for_a_moved_limit(
+    tmp_path: Path, rules: str, expected: list[str], *, use_base: bool
+) -> None:
+    root_setting = "extends: base.yml" if use_base else f"rules: {rules}"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": f"""
+                version: 1
+                project: {{root_packages: [app]}}
+                style: {{max_positional_parameters: 2}}
+                {root_setting}
+                """,
+            "base.yml": f"rules: {rules}\n",
+            "app/__init__.py": "def build(a, b, c): pass\n",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert [
+        finding.severity.value
+        for finding in violations(tmp_path)
+        if finding.code == "CPX003"
+    ] == expected
 
 
 def test_migrate_preserves_inherited_severity_for_a_scoped_limit(
