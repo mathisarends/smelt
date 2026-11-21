@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -13,12 +12,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.files import SourceFile
+    from smelt.analysis.syntax import ClassDefinition
 
 
 @dataclass(frozen=True, slots=True)
 class _Definition:
     source: SourceFile
-    node: ast.ClassDef
+    node: ClassDefinition
 
 
 class DuplicateClassName(Rule):
@@ -74,14 +74,11 @@ class DuplicateClassName(Rule):
             lambda: defaultdict(list)
         )
         for source in ctx.files.sources.values():
-            syntax = ctx.syntax.for_path(source.path)
-            if syntax is None:
-                continue
             package = (
                 source.module if source.is_package else source.module.rpartition(".")[0]
             )
-            for node in syntax.tree.body:
-                if isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
+            for node in ctx.syntax.class_definitions(source.path):
+                if not node.name.startswith("_"):
                     groups[package][node.name].append(_Definition(source, node))
         for package, names in sorted(groups.items()):
             for name, definitions in sorted(names.items()):
@@ -102,7 +99,7 @@ class DuplicateClassName(Rule):
         definitions: list[_Definition],
     ) -> Violation:
         others = [
-            {"module": other.source.module, "line": other.node.lineno}
+            {"module": other.source.module, "line": other.node.line}
             for other in definitions
             if other.source.module != definition.source.module
         ]
@@ -110,8 +107,8 @@ class DuplicateClassName(Rule):
         return self.violation(
             f"Class {name} is also defined in {where}",
             path=definition.source.path,
-            line=definition.node.lineno,
-            column=definition.node.col_offset + 1,
+            line=definition.node.line,
+            column=definition.node.column,
             source_module=definition.source.module,
             expected={
                 "class": name,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
@@ -29,16 +28,14 @@ class RedundantStrEnumValue(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for access in str_enum_value_accesses(ctx.syntax):
-            replacement = ast.unparse(access.node.value)
+            replacement = access.replacement
             yield self.violation(
                 f"consider {replacement} directly; StrEnum members are already strings",
                 path=access.path,
-                line=access.node.lineno,
-                column=access.node.col_offset + 1,
-                end_line=access.node.end_lineno,
-                end_column=(access.node.end_col_offset + 1)
-                if access.node.end_col_offset is not None
-                else None,
+                line=access.line,
+                column=access.column,
+                end_line=access.end_line,
+                end_column=access.end_column,
                 source_module=access.module,
                 expected={
                     "enum": access.enum,

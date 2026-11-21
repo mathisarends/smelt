@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict, deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.exports import MAX_HOPS
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
@@ -25,6 +27,11 @@ if TYPE_CHECKING:
 class _Symbol:
     module: str
     name: str
+
+
+class _Location(NamedTuple):
+    line: int
+    column: int
 
 
 class _CanonicalExportIssue(NamedTuple):
@@ -47,11 +54,24 @@ class _Definition:
     column: int
 
 
-@dataclass(slots=True)
-class _Bindings:
-    known: dict[str, ast.stmt | str] = field(default_factory=dict)
-    bound: set[str] = field(default_factory=set)
+@dataclass(frozen=True, slots=True)
+class _ModuleFacts:
+    """Facade inputs of one module, a pure function of its path and content."""
+
+    module: str
     opaque: bool = False
+    # name -> the location of its single top-level definition
+    definitions: dict[str, _Location] = field(default_factory=dict)
+    # name -> the qualified name it statically re-exports
+    reexports: dict[str, str] = field(default_factory=dict)
+    bound: frozenset[str] = frozenset()
+    public: frozenset[str] | None = None
+    declares_all: bool = False
+    # runtime ``from base import names`` statements, without private names
+    imports: tuple[tuple[str, tuple[str, ...]], ...] = ()
+
+
+_FACTS = TypeAdapter(_ModuleFacts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +103,7 @@ class FacadeUsage:
     ) -> None:
         self._syntax = syntax
         self._files = files
-        self._bindings: dict[str, _Bindings] = {}
+        self._facts: dict[str, _ModuleFacts | None] = {}
         self._resolved: dict[_Symbol, _Definition | None] = {}
         # Uses collected with tests are a superset; queries filter test uses.
         self._uses: dict[bool, tuple[_Use, ...]] = {}
@@ -134,14 +154,11 @@ class FacadeUsage:
         source = self._files.sources.get(package)
         if source is None or not source.is_package:
             return
-        facade = self._syntax.for_path(source.path)
-        if facade is None:
+        facade = self._facts_for(source.path)
+        if facade is None or facade.opaque or facade.public is None:
             return
-        bindings = self._for_module(package)
-        exports = _public_names(facade.tree)
-        if bindings.opaque or exports is None:
-            return
-        declares_all = _declares_all(facade)
+        exports = facade.public
+        declares_all = facade.declares_all
         callers: dict[_Definition, _Importers] = {}
         for use in self._uses_for(count_tests=count_tests):
             definition = use.definition
@@ -165,7 +182,7 @@ class FacadeUsage:
             if existing == definition and (not declares_all or name in exports):
                 continue
             # A conflicting/uncertain binding must never suggest overwriting an API.
-            if existing != definition and (name in bindings.bound or name in exports):
+            if existing != definition and (name in facade.bound or name in exports):
                 continue
             yield FacadeGap(
                 definition.module,
@@ -200,40 +217,29 @@ class FacadeUsage:
         for path, test in paths:
             if test and not count_tests:
                 continue
-            syntax = self._syntax.for_path(path)
-            if syntax is None:
+            facts = self._facts_for(path)
+            if facts is None:
                 continue
-            guarded = syntax.guarded_lines
-            for node in syntax.imports:
-                if not isinstance(node, ast.ImportFrom) or node.lineno in guarded:
-                    continue
-                base = resolve_relative(
-                    syntax.module,
-                    is_package=syntax.is_package,
-                    level=node.level,
-                    target=node.module,
-                )
+            for base, names in facts.imports:
                 source = files.sources.get(base)
                 if source is None or source.is_package:
                     continue  # published facade imports do not represent deep coupling
-                for alias in node.names:
-                    if alias.name.startswith("_") or alias.name == "*":
-                        continue
-                    definition = self._resolve(base, alias.name)
+                for name in names:
+                    definition = self._resolve(base, name)
                     if definition is not None and not definition.name.startswith("_"):
-                        yield _Use(definition, syntax.module, test)
+                        yield _Use(definition, facts.module, test)
 
     def _collect_exports(self) -> dict[_Definition, set[str]]:
         result: dict[_Definition, set[str]] = defaultdict(set)
         for source in self._files.sources.values():
-            syntax = self._syntax.for_path(source.path)
-            if syntax is None:
+            facts = self._facts_for(source.path)
+            if facts is None or facts.opaque:
                 continue
-            exports = _public_names(syntax.tree)
-            declares_all = _declares_all(syntax)
+            exports = facts.public
+            declares_all = facts.declares_all
             if exports is None or (not source.is_package and not declares_all):
                 continue
-            for name in self._for_module(source.module).known:
+            for name in (*facts.definitions, *facts.reexports):
                 if name.startswith("_") or (declares_all and name not in exports):
                     continue
                 definition = self._resolve(source.module, name)
@@ -251,31 +257,55 @@ class FacadeUsage:
         seen: set[_Symbol] = set()
         while len(seen) < MAX_HOPS and _Symbol(module, name) not in seen:
             seen.add(_Symbol(module, name))
-            bindings = self._for_module(module)
-            if bindings.opaque:
+            source = self._files.sources.get(module)
+            if source is None:
                 return None
-            binding = bindings.known.get(name)
-            if isinstance(binding, str):
-                if binding in self._files.sources or binding in self._files.packages:
-                    return None  # a module, rather than a symbol
-                module, _, name = binding.rpartition(".")
-            elif binding is not None:
-                source = self._files.sources[module]
-                return _Definition(
-                    module, name, source.path, binding.lineno, binding.col_offset + 1
-                )
-            else:
+            facts = self._facts_for(source.path)
+            if facts is None or facts.opaque:
                 return None
+            if name in facts.definitions:
+                line, column = facts.definitions[name]
+                return _Definition(module, name, source.path, line, column)
+            target = facts.reexports.get(name)
+            if target is None:
+                return None
+            if target in self._files.sources or target in self._files.packages:
+                return None  # a module, rather than a symbol
+            module, _, name = target.rpartition(".")
         return None
 
-    def _for_module(self, module: str) -> _Bindings:
-        if module not in self._bindings:
-            source = self._files.sources.get(module)
-            syntax = self._syntax.for_path(source.path) if source else None
-            self._bindings[module] = (
-                _static_bindings(syntax) if syntax else _Bindings(opaque=True)
-            )
-        return self._bindings[module]
+    def _facts_for(self, path: str) -> _ModuleFacts | None:
+        """Cached per content, so unchanged modules are never parsed again."""
+        if path not in self._facts:
+            self._facts[path] = self._load_facts(path)
+        return self._facts[path]
+
+    def _load_facts(self, path: str) -> _ModuleFacts | None:
+        files = self._files
+        source = files.source_for_path(path)
+        if source is None and path not in files.tests:
+            return None
+
+        def build() -> _ModuleFacts:
+            syntax = self._syntax.for_path(path)
+            if syntax is None:
+                raise LookupError(path)
+            return _module_facts(syntax)
+
+        cache = self._syntax.cache
+        if cache is None:
+            return build()
+        return cache.get(
+            "facade-module",
+            [
+                path,
+                source.module if source else None,
+                source.is_package if source else None,
+                files.content_id(path),
+            ],
+            _FACTS,
+            build=build,
+        )
 
     def _cycle(self, package: str, module: str) -> tuple[str, ...]:
         previous: dict[str, str | None] = {module: None}
@@ -295,13 +325,41 @@ class FacadeUsage:
         return ()
 
 
-def _declares_all(module: ModuleSyntax) -> bool:
-    return any(
-        isinstance(node, ast.Name) and node.id == "__all__" for node in module.nodes
+def _module_facts(module: ModuleSyntax) -> _ModuleFacts:
+    bindings = _static_bindings(module)
+    tree = module.tree
+    return replace(
+        bindings,
+        public=_public_names(tree),
+        declares_all=any(
+            isinstance(node, ast.Name) and node.id == "__all__" for node in module.nodes
+        ),
+        imports=tuple(_runtime_imports(module)),
     )
 
 
-def _static_bindings(module: ModuleSyntax) -> _Bindings:
+def _runtime_imports(module: ModuleSyntax) -> Iterator[tuple[str, tuple[str, ...]]]:
+    guarded = module.guarded_lines
+    for node in module.imports:
+        if not isinstance(node, ast.ImportFrom) or node.lineno in guarded:
+            continue
+        base = resolve_relative(
+            module.module,
+            is_package=module.is_package,
+            level=node.level,
+            target=node.module,
+        )
+        yield (
+            base,
+            tuple(
+                alias.name
+                for alias in node.names
+                if not alias.name.startswith("_") and alias.name != "*"
+            ),
+        )
+
+
+def _static_bindings(module: ModuleSyntax) -> _ModuleFacts:
     lazy = static_lazy_exports(module.tree)
     definitions = definition_bindings(module.tree)
     imports: dict[str, list[ast.AST]] = defaultdict(list)
@@ -312,21 +370,18 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
             and node.func.id in {"exec", "eval", "globals", "locals", "vars"}
             and lazy is None
         ):
-            return _Bindings(opaque=True)
+            return _ModuleFacts(module.module, opaque=True)
         if isinstance(node, ast.Import | ast.ImportFrom):
             for alias in node.names:
                 if alias.name == "*":
-                    return _Bindings(opaque=True)
+                    return _ModuleFacts(module.module, opaque=True)
                 name = alias.asname or (
                     alias.name.split(".")[0]
                     if isinstance(node, ast.Import)
                     else alias.name
                 )
                 imports[name].append(node)
-    result = _Bindings(
-        bound=set(definitions) | set(imports) | set(lazy or {}),
-        opaque="__getattr__" in definitions and lazy is None,
-    )
+    known: dict[str, _Location | str] = {}
     for node in module.tree.body:
         if isinstance(node, ast.ImportFrom):
             base = resolve_relative(
@@ -338,21 +393,29 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
             for alias in node.names:
                 name = alias.asname or alias.name
                 if name not in definitions and len(imports[name]) == 1:
-                    result.known[name] = f"{base}.{alias.name}"
+                    known[name] = f"{base}.{alias.name}"
         else:
             for name in _definition_names(node):
                 if len(definitions.get(name, ())) == 1 and name not in imports:
-                    result.known[name] = node
-    result.known.update(
+                    known[name] = _Location(node.lineno, node.col_offset + 1)
+    known.update(
         {
             name: target
             for name, target in (lazy or {}).items()
-            if name not in result.known
-            and name not in definitions
-            and name not in imports
+            if name not in known and name not in definitions and name not in imports
         }
     )
-    return result
+    return _ModuleFacts(
+        module.module,
+        opaque="__getattr__" in definitions and lazy is None,
+        definitions={
+            name: value for name, value in known.items() if isinstance(value, _Location)
+        },
+        reexports={
+            name: value for name, value in known.items() if isinstance(value, str)
+        },
+        bound=frozenset(definitions) | frozenset(imports) | frozenset(lazy or {}),
+    )
 
 
 def _public_names(tree: ast.Module) -> frozenset[str] | None:

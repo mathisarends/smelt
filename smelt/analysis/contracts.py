@@ -77,7 +77,7 @@ class ResolvedContract:
 class ContractIndex:
     def __init__(self, files: FileIndex) -> None:
         self.files = files
-        self.known = frozenset(files.sources) | frozenset(files.packages)
+        self._known = frozenset(files.sources) | frozenset(files.packages)
         self.resolved = tuple(
             ResolvedContract(name, package, spec)
             for name, spec in sorted(files.config.structure.contracts.items())
@@ -222,14 +222,14 @@ class ContractIndex:
         return [
             contract.qualify(entry)
             for entry in contract.spec.required
-            if contract.qualify(entry) not in self.known
+            if contract.qualify(entry) not in self._known
         ]
 
     def missing_public(self, contract: ResolvedContract) -> list[str]:
         return [
             pattern
             for pattern in contract.public or ()
-            if not any(module_matches(pattern, module) for module in self.known)
+            if not any(module_matches(pattern, module) for module in self._known)
         ]
 
     def describe(self, module: str | None = None) -> list[dict[str, Any]]:

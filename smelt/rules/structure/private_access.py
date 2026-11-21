@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import ast
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.exports import resolve_dotted, resolve_export
@@ -18,7 +17,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.files import SourceFile
-    from smelt.analysis.syntax import ModuleSyntax
+    from smelt.analysis.module_access import ModuleAttributeRead
+    from smelt.analysis.syntax import ImportName
 
 
 class ForeignPrivateAccess(Rule):
@@ -102,24 +102,14 @@ class ForeignPrivateAccess(Rule):
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         index = PrivateAttributeIndex(ctx.syntax, ctx.files)
         for source in ctx.files.sources.values():
-            module = ctx.syntax.for_path(source.path)
-            if module is None:
-                continue
-            yield from self._symbols(ctx, source, module)
-            yield from self._attributes(ctx, source, module, index=index)
+            yield from self._symbols(ctx, source)
+            yield from self._attributes(ctx, source, index=index)
 
-    def _symbols(
-        self, ctx: AnalysisContext, source: SourceFile, module: ModuleSyntax
-    ) -> Iterator[Violation]:
-        ignored = (
-            module.guarded_lines
-            if ctx.config.architecture.import_graph.type_checking == "ignore"
-            else frozenset()
-        )
-        reexports = set(_module_imports(module.tree)) if source.is_package else set()
-        accesses: list[tuple[ast.alias | ast.Attribute, str, str, str]] = []
-        for node in module.imports:
-            if not isinstance(node, ast.ImportFrom) or node.lineno in ignored:
+    def _symbols(self, ctx: AnalysisContext, source: SourceFile) -> Iterator[Violation]:
+        ignore_guarded = ctx.config.architecture.import_graph.type_checking == "ignore"
+        accesses: list[_SymbolAccess] = []
+        for node in ctx.syntax.import_statements(source.path):
+            if not node.from_import or (ignore_guarded and node.guarded):
                 continue
             base = resolve_relative(
                 source.module,
@@ -130,7 +120,7 @@ class ForeignPrivateAccess(Rule):
             for alias in node.names:
                 if (
                     source.is_package
-                    and node in reexports
+                    and node.module_scope
                     and base != source.module
                     and is_within(base, source.module)
                     and alias.asname
@@ -138,17 +128,19 @@ class ForeignPrivateAccess(Rule):
                 ):
                     continue
                 if _private(alias.name):
-                    accesses.append((alias, base, alias.name, "import"))
-        for attribute, qualified in (
-            module_attributes(module, ignored)
+                    accesses.append(_SymbolAccess(alias, base, alias.name, "import"))
+        for attribute in (
+            module_attributes(ctx.syntax, source.path, ignore_guarded=ignore_guarded)
             if ctx.syntax.attribute_candidates(source.path).private
             else ()
         ):
-            if not _private(attribute.attr):
+            if not _private(attribute.attribute):
                 continue
-            resolved = resolve_dotted(qualified, ctx.syntax.namespace)
+            resolved = resolve_dotted(attribute.qualified, ctx.syntax.namespace)
             if resolved is not None and resolved[1] is None:
-                accesses.append((attribute, resolved[0], attribute.attr, "read"))
+                accesses.append(
+                    _SymbolAccess(attribute, resolved[0], attribute.attribute, "read")
+                )
         for location, base, name, access in accesses:
             target = resolve_export(base, name, ctx.syntax.namespace)
             if target is None or target[1] is None or target[0] == source.module:
@@ -177,7 +169,6 @@ class ForeignPrivateAccess(Rule):
         self,
         ctx: AnalysisContext,
         source: SourceFile,
-        module: ModuleSyntax,
         *,
         index: PrivateAttributeIndex,
     ) -> Iterator[Violation]:
@@ -188,7 +179,7 @@ class ForeignPrivateAccess(Rule):
             and contract.spec.private_attribute_boundary is not None
         ):
             boundary = contract.spec.private_attribute_boundary
-        for access in index.accesses(module):
+        for access in index.accesses(source):
             if access.owner_module == source.module:
                 continue
             owner_source = ctx.files.sources[access.owner_module]
@@ -196,14 +187,14 @@ class ForeignPrivateAccess(Rule):
                 _package(access.owner_module, owner_source.is_package)
             ):
                 continue
-            target = f"{access.owner_class}.{access.node.attr}"
+            target = f"{access.owner_class}.{access.attribute}"
             yield self.violation(
                 f"{source.module} performs a private {access.operation} on {target}, owned by {access.owner_module}; expose an operation on its owner",
                 path=source.path,
-                line=access.node.lineno,
-                column=access.node.col_offset + 1,
-                end_line=access.node.end_lineno,
-                end_column=(access.node.end_col_offset or 0) + 1,
+                line=access.line,
+                column=access.column,
+                end_line=access.end_line,
+                end_column=access.end_column,
                 source_module=source.module,
                 target_module=target,
                 expected={
@@ -212,7 +203,7 @@ class ForeignPrivateAccess(Rule):
                     "owner_module": access.owner_module,
                     "owner_class": access.owner_class,
                     "receiver_type": access.receiver_type,
-                    "attribute": access.node.attr,
+                    "attribute": access.attribute,
                     "operation": access.operation,
                     "automatic_rewrite": False,
                 },
@@ -228,9 +219,8 @@ def _private(name: str) -> bool:
     return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
-def _module_imports(node: ast.AST) -> Iterator[ast.ImportFrom]:
-    if isinstance(node, ast.ImportFrom):
-        yield node
-    if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-        for child in ast.iter_child_nodes(node):
-            yield from _module_imports(child)
+class _SymbolAccess(NamedTuple):
+    location: ImportName | ModuleAttributeRead
+    base: str
+    name: str
+    access: str

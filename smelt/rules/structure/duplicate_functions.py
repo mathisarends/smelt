@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import ast
-import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.function_fingerprints import (
+    FunctionFingerprint,
+    function_fingerprints,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-type _Function = ast.FunctionDef | ast.AsyncFunctionDef
-
-# Smaller bodies are too generic to be worth a shared module.
-_MIN_STATEMENTS = 3
 _MAX_LOCATIONS = 5
 
 
@@ -81,13 +79,10 @@ class DuplicateFunction(Rule):
         )
         for source in sorted(ctx.files.sources.values(), key=lambda item: item.path):
             package = source.module.split(".", maxsplit=1)[0]
-            for function in ctx.asts.parse(source.path).body:
-                if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
-                    continue
-                if (fingerprint := _fingerprint(function)) is not None:
-                    groups[package][fingerprint].append(
-                        _Copy(source.path, source.module, function)
-                    )
+            for function in function_fingerprints(ctx.asts, source.path):
+                groups[package][function.fingerprint].append(
+                    _Copy(source.path, source.module, function)
+                )
         for package in sorted(groups):
             for fingerprint, copies in sorted(groups[package].items()):
                 if len(copies) >= 2:  # noqa: PLR2004 - a duplicate needs two copies
@@ -99,22 +94,22 @@ class DuplicateFunction(Rule):
             others = [other for other in copies if other is not copy]
             first = others[0]
             yield self.violation(
-                f"Function {copy.node.name} repeats {first.node.name} in "
+                f"Function {copy.function.name} repeats {first.function.name} in "
                 f"{first.path}"
                 + (f" and {len(others) - 1} more" if len(others) > 1 else ""),
                 path=copy.path,
-                line=copy.node.lineno,
-                column=copy.node.col_offset + 1,
+                line=copy.function.line,
+                column=copy.function.column,
                 source_module=copy.module,
                 expected={
-                    "function": copy.node.name,
+                    "function": copy.function.name,
                     "fingerprint": fingerprint,
                     "count": len(copies),
                     "copies": [
                         {
                             "path": other.path,
-                            "line": other.node.lineno,
-                            "function": other.node.name,
+                            "line": other.function.line,
+                            "function": other.function.name,
                         }
                         for other in others[:_MAX_LOCATIONS]
                     ],
@@ -133,33 +128,7 @@ class DuplicateFunction(Rule):
 class _Copy:
     path: str
     module: str
-    node: _Function
-
-
-def _fingerprint(function: _Function) -> str | None:
-    body = function.body
-    if (
-        body
-        and isinstance(body[0], ast.Expr)
-        and isinstance(body[0].value, ast.Constant)
-        and isinstance(body[0].value.value, str)
-    ):
-        body = body[1:]
-    statements = sum(
-        isinstance(node, ast.stmt) for statement in body for node in ast.walk(statement)
-    )
-    if statements < _MIN_STATEMENTS:
-        return None
-    # Names, docstrings and positions do not change what the function does.
-    shape = type(function)(
-        name="",
-        args=function.args,
-        body=body,
-        decorator_list=function.decorator_list,
-        returns=function.returns,
-        type_params=function.type_params,
-    )
-    return hashlib.sha256(ast.dump(shape).encode()).hexdigest()[:16]
+    function: FunctionFingerprint
 
 
 def _common_package(modules: list[str]) -> str:

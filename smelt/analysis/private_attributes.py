@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
 from collections import Counter
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from functools import cached_property
+from typing import TYPE_CHECKING, NamedTuple
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.bindings import binding_counts, qualified_name
 from smelt.analysis.exports import MAX_HOPS, resolve_export
@@ -13,19 +18,91 @@ from smelt.analysis.exports import MAX_HOPS, resolve_export
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from smelt.analysis.files import FileIndex
+    from smelt.analysis.exports import Namespace
+    from smelt.analysis.files import FileIndex, SourceFile
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
 type _Function = ast.FunctionDef | ast.AsyncFunctionDef
 
+_RECEIVER_DECORATORS = frozenset(
+    {"builtins.property", "builtins.classmethod", "functools.cached_property"}
+)
+
 
 @dataclass(frozen=True, slots=True)
 class PrivateAttributeAccess:
-    node: ast.Attribute
+    attribute: str
+    line: int
+    column: int
+    end_line: int | None
+    end_column: int
     owner_module: str
     owner_class: str
     receiver_type: str
     operation: str
+
+
+@dataclass(frozen=True, slots=True)
+class _FieldFacts:
+    """A receiver attribute a method assigns, with the source of its type evidence."""
+
+    attribute: str
+    annotation: str | None = None
+    # only recorded for ``__init__``, the one method whose values type fields
+    value: str | None = None
+
+
+class _Parameter(NamedTuple):
+    name: str
+    annotation: str
+
+
+@dataclass(frozen=True, slots=True)
+class _MethodFacts:
+    name: str
+    # qualified decorator names; unknown decorators are None
+    decorators: tuple[str | None, ...]
+    returns: str | None
+    fields: tuple[_FieldFacts, ...] = ()
+    # unwritten parameters and the source of their annotations
+    parameters: tuple[_Parameter, ...] = ()
+    # names written in the method that its field values mention
+    blocked: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _BodyFacts:
+    """One class-body statement that can define members, in source order."""
+
+    names: tuple[str, ...] = ()
+    annotation: str | None = None
+    value: str | None = None
+    method: _MethodFacts | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _ClassFacts:
+    dataclass_only: bool
+    # the source of the only base, if the class has exactly one
+    base: str | None
+    body: tuple[_BodyFacts, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ModuleFacts:
+    """Ownership inputs of one module: a function of its path and contents only.
+
+    Expressions are kept as source so that edits elsewhere in a class, such
+    as most method bodies, leave the facts and every dependent decision intact.
+    """
+
+    bindings: dict[str, str]
+    # uniquely defined top-level classes
+    classes: dict[str, _ClassFacts]
+
+
+_FACTS = TypeAdapter(_ModuleFacts)
+_ACCESSES = TypeAdapter(tuple[PrivateAttributeAccess, ...])
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,13 +121,57 @@ class PrivateAttributeIndex:
     def __init__(self, syntax: SyntaxIndex, files: FileIndex) -> None:
         self._syntax = syntax
         self._files = files
-        self._bindings_cache: dict[str, dict[str, str]] = {}
-        self._classes: dict[str, tuple[str, ast.ClassDef] | None] = {}
+        self._facts: dict[str, _ModuleFacts | None] = {}
+        self._classes: dict[str, tuple[str, _ClassFacts] | None] = {}
         self._members_cache: dict[str, dict[str, _Member]] = {}
 
-    def accesses(self, module: ModuleSyntax) -> Iterator[PrivateAttributeAccess]:
-        if self._syntax.attribute_candidates(module.path).private:
-            yield from self._scope(module, module.tree.body, {}, module_scope=True)
+    def accesses(self, source: SourceFile) -> tuple[PrivateAttributeAccess, ...]:
+        """Accesses in ``source``, reused while it and every module's facts hold."""
+        if not self._syntax.attribute_candidates(source.path).private:
+            return ()
+
+        def build() -> tuple[PrivateAttributeAccess, ...]:
+            module = self._syntax.for_path(source.path)
+            if module is None:
+                raise LookupError(source.path)
+            return tuple(self._scope(module, module.tree.body, {}, module_scope=True))
+
+        cache = self._syntax.cache
+        if cache is None:
+            return build()
+        return cache.get(
+            "private-accesses",
+            [
+                source.module,
+                source.path,
+                source.is_package,
+                self._files.content_id(source.path),
+                self._project,
+            ],
+            _ACCESSES,
+            build=build,
+        )
+
+    @cached_property
+    def _project(self) -> str:
+        """Every input that resolution may read beyond the accessing module."""
+        digest = hashlib.sha256()
+        digest.update(json.dumps(sorted(self._files.packages)).encode())
+        for source in sorted(self._files.sources.values(), key=lambda item: item.path):
+            namespace = self._syntax.namespace(source.module)
+            digest.update(
+                json.dumps(
+                    [
+                        source.module,
+                        source.path,
+                        source.is_package,
+                        _namespace_inputs(namespace),
+                    ]
+                ).encode()
+            )
+            facts = self._module_facts(source.module)
+            digest.update(b"" if facts is None else _FACTS.dump_json(facts))
+        return digest.hexdigest()
 
     def _scope(
         self,
@@ -145,7 +266,11 @@ class PrivateAttributeIndex:
                     }
                 owner_module, _, _ = member.owner.rpartition(".")
                 yield PrivateAttributeAccess(
-                    node,
+                    node.attr,
+                    node.lineno,
+                    node.col_offset + 1,
+                    node.end_lineno,
+                    (node.end_col_offset or 0) + 1,
                     owner_module,
                     member.owner,
                     receiver_type=receiver.name,
@@ -184,17 +309,20 @@ class PrivateAttributeIndex:
     def _member(self, name: str, attribute: str, *, depth: int = 0) -> _Member | None:
         if depth >= MAX_HOPS or (definition := self._class(name)) is None:
             return None
-        module, owner = definition
-        members = self._members(module, owner)
+        qualified, owner = definition
+        module = qualified.rpartition(".")[0]
+        members = self._members(qualified, owner)
         if attribute in members:
             return members[attribute]
         # Do not guess a method resolution order across multiple or unknown bases.
-        if len(owner.bases) == 1 and (base := self._annotation(module, owner.bases[0])):
+        if owner.base is not None and (
+            base := self._annotation(module, _expression(owner.base))
+        ):
             return self._member(base, attribute, depth=depth + 1)
         return None
 
-    def _members(self, module: str, owner: ast.ClassDef) -> dict[str, _Member]:
-        name = f"{module}.{owner.name}"
+    def _members(self, name: str, owner: _ClassFacts) -> dict[str, _Member]:
+        module = name.rpartition(".")[0]
         if name in self._members_cache:
             return self._members_cache[name]
         members: dict[str, _Member] = {}
@@ -210,70 +338,50 @@ class PrivateAttributeIndex:
             )
 
         for statement in owner.body:
-            if isinstance(statement, ast.AnnAssign) and isinstance(
-                statement.target, ast.Name
-            ):
-                record(
-                    statement.target.id, self._annotation(module, statement.annotation)
-                )
-            elif isinstance(statement, ast.Assign):
-                for target in statement.targets:
-                    if isinstance(target, ast.Name):
-                        value = self._value(module, statement.value, {}, blocked=set())
-                        record(target.id, value.name if value else None)
-            elif isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
-                decorators = {
-                    qualified_name(node, self._bindings(module))
-                    for node in statement.decorator_list
-                }
+            if statement.method is not None:
+                method = statement.method
                 returned = (
-                    self._annotation(module, statement.returns)
-                    if decorators & {"builtins.property", "functools.cached_property"}
+                    self._annotation(module, _expression(method.returns))
+                    if method.returns is not None
+                    and {"builtins.property", "functools.cached_property"}
+                    & set(method.decorators)
                     else None
                 )
-                record(statement.name, returned)
-                for attribute, value_type in self._method_fields(
-                    module, statement, decorators
-                ):
+                record(method.name, returned)
+                for attribute, value_type in self._method_fields(module, method):
                     record(attribute, value_type)
+            elif statement.annotation is not None:
+                record(
+                    statement.names[0],
+                    self._annotation(module, _expression(statement.annotation)),
+                )
+            elif statement.value is not None:
+                for target in statement.names:
+                    value = self._value(
+                        module, _expression(statement.value), {}, blocked=set()
+                    )
+                    record(target, value.name if value else None)
         return members
 
     def _method_fields(
-        self, module: str, method: _Function, decorators: set[str | None]
+        self, module: str, method: _MethodFacts
     ) -> Iterator[tuple[str, str | None]]:
-        args = [*method.args.posonlyargs, *method.args.args]
-        if not args or decorators - {
-            "builtins.property",
-            "builtins.classmethod",
-            "functools.cached_property",
-        }:
-            return
-        receiver = args[0].arg
-        nodes = list(_scope_nodes(method.body))
-        writes = _writes(nodes)
-        if receiver in writes:
-            return
-        parameters = self._parameters(module, method, writes)
-        for node in nodes:
-            for target in _targets(node):
-                if (
-                    not isinstance(target, ast.Attribute)
-                    or not isinstance(target.value, ast.Name)
-                    or target.value.id != receiver
-                ):
-                    continue
-                value_type = None
-                if isinstance(node, ast.AnnAssign):
-                    value_type = self._annotation(module, node.annotation)
-                elif isinstance(node, ast.Assign) and method.name == "__init__":
-                    value = self._value(
-                        module,
-                        node.value,
-                        parameters,
-                        blocked=set(writes) | parameters.keys(),
-                    )
-                    value_type = value.name if value else None
-                yield target.attr, value_type
+        parameters = {
+            argument: _Value(name)
+            for argument, annotation in method.parameters
+            if (name := self._annotation(module, _expression(annotation)))
+        }
+        blocked = set(method.blocked) | parameters.keys()
+        for field in method.fields:
+            value_type = None
+            if field.annotation is not None:
+                value_type = self._annotation(module, _expression(field.annotation))
+            elif field.value is not None:
+                value = self._value(
+                    module, _expression(field.value), parameters, blocked=blocked
+                )
+                value_type = value.name if value else None
+            yield field.attribute, value_type
 
     def _parameters(
         self, module: str, function: _Function, writes: Counter[str]
@@ -314,9 +422,10 @@ class PrivateAttributeIndex:
             qualified_name(node, self._bindings(module)) if node is not None else None
         )
         definition = self._class(name) if name else None
-        return f"{definition[0]}.{definition[1].name}" if definition else None
+        return definition[0] if definition else None
 
-    def _class(self, name: str) -> tuple[str, ast.ClassDef] | None:
+    def _class(self, name: str) -> tuple[str, _ClassFacts] | None:
+        """The qualified name and facts of the class ``name`` resolves to."""
         if name not in self._classes:
             self._classes[name] = None
             parts = name.split(".")
@@ -329,60 +438,174 @@ class PrivateAttributeIndex:
             module, symbol = resolved
             if symbol is None:
                 return None
-            syntax = self._module(module)
+            facts = self._module_facts(module)
             if (
-                syntax is not None
-                and self._bindings(module).get(symbol) == f"{module}.{symbol}"
+                facts is not None
+                and facts.bindings.get(symbol) == f"{module}.{symbol}"
+                and (owner := facts.classes.get(symbol)) is not None
+                and owner.dataclass_only
             ):
-                definitions = [
-                    node
-                    for node in syntax.tree.body
-                    if isinstance(node, ast.ClassDef) and node.name == symbol
-                ]
-                if len(definitions) == 1:
-                    node = definitions[0]
-                    if all(
-                        qualified_name(
-                            decorator.func
-                            if isinstance(decorator, ast.Call)
-                            else decorator,
-                            self._bindings(module),
-                        )
-                        == "dataclasses.dataclass"
-                        for decorator in node.decorator_list
-                    ):
-                        self._classes[name] = module, node
+                self._classes[name] = f"{module}.{symbol}", owner
         return self._classes[name]
 
     def _bindings(self, module: str) -> dict[str, str]:
-        if module not in self._bindings_cache:
-            syntax = self._module(module)
-            namespace = self._syntax.namespace(module)
-            if syntax is None or namespace is None:
-                return {}
-            counts = binding_counts(syntax.tree)
-            self._bindings_cache[module] = {
-                **{
-                    name: target
-                    for name, target in namespace.imported.items()
-                    if counts[name] == 1
-                },
-                **{
-                    name: f"{module}.{name}"
-                    for name in namespace.defined
-                    if counts[name] == 1
-                },
-                **{
-                    name: f"builtins.{name}"
-                    for name in ("property", "classmethod", "staticmethod")
-                    if not counts[name]
-                },
-            }
-        return self._bindings_cache[module]
+        facts = self._module_facts(module)
+        return {} if facts is None else facts.bindings
 
-    def _module(self, name: str) -> ModuleSyntax | None:
-        source = self._files.sources.get(name)
-        return self._syntax.for_path(source.path) if source is not None else None
+    def _module_facts(self, module: str) -> _ModuleFacts | None:
+        if module not in self._facts:
+            source = self._files.sources.get(module)
+            self._facts[module] = None if source is None else self._load(source)
+        return self._facts[module]
+
+    def _load(self, source: SourceFile) -> _ModuleFacts:
+        def build() -> _ModuleFacts:
+            syntax = self._syntax.for_path(source.path)
+            namespace = self._syntax.namespace(source.module)
+            if syntax is None or namespace is None:
+                raise LookupError(source.path)
+            return _module_facts(syntax, namespace)
+
+        cache = self._syntax.cache
+        if cache is None:
+            return build()
+        return cache.get(
+            "private-ownership",
+            [
+                source.module,
+                source.path,
+                source.is_package,
+                self._files.content_id(source.path),
+            ],
+            _FACTS,
+            build=build,
+        )
+
+
+def _module_facts(syntax: ModuleSyntax, namespace: Namespace) -> _ModuleFacts:
+    module = syntax.module
+    counts = binding_counts(syntax.tree)
+    bindings = {
+        **{
+            name: target
+            for name, target in namespace.imported.items()
+            if counts[name] == 1
+        },
+        **{name: f"{module}.{name}" for name in namespace.defined if counts[name] == 1},
+        **{
+            name: f"builtins.{name}"
+            for name in ("property", "classmethod", "staticmethod")
+            if not counts[name]
+        },
+    }
+    classes = [node for node in syntax.tree.body if isinstance(node, ast.ClassDef)]
+    defined = Counter(node.name for node in classes)
+    return _ModuleFacts(
+        bindings,
+        {
+            node.name: _class_facts(node, bindings)
+            for node in classes
+            if defined[node.name] == 1
+        },
+    )
+
+
+def _class_facts(node: ast.ClassDef, bindings: dict[str, str]) -> _ClassFacts:
+    body: list[_BodyFacts] = []
+    for statement in node.body:
+        if isinstance(statement, ast.AnnAssign) and isinstance(
+            statement.target, ast.Name
+        ):
+            body.append(
+                _BodyFacts(
+                    (statement.target.id,), annotation=ast.unparse(statement.annotation)
+                )
+            )
+        elif isinstance(statement, ast.Assign):
+            names = tuple(
+                target.id
+                for target in statement.targets
+                if isinstance(target, ast.Name)
+            )
+            if names:
+                body.append(_BodyFacts(names, value=ast.unparse(statement.value)))
+        elif isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+            body.append(_BodyFacts(method=_method_facts(statement, bindings)))
+    return _ClassFacts(
+        dataclass_only=all(
+            qualified_name(
+                decorator.func if isinstance(decorator, ast.Call) else decorator,
+                bindings,
+            )
+            == "dataclasses.dataclass"
+            for decorator in node.decorator_list
+        ),
+        base=ast.unparse(node.bases[0]) if len(node.bases) == 1 else None,
+        body=tuple(body),
+    )
+
+
+def _method_facts(method: _Function, bindings: dict[str, str]) -> _MethodFacts:
+    decorators = tuple(qualified_name(node, bindings) for node in method.decorator_list)
+    returns = ast.unparse(method.returns) if method.returns is not None else None
+    args = [*method.args.posonlyargs, *method.args.args]
+    if not args or set(decorators) - _RECEIVER_DECORATORS:
+        return _MethodFacts(method.name, decorators, returns)
+    receiver = args[0].arg
+    nodes = list(_scope_nodes(method.body))
+    writes = _writes(nodes)
+    if receiver in writes:
+        return _MethodFacts(method.name, decorators, returns)
+    fields: list[_FieldFacts] = []
+    mentioned: set[str] = set()
+    for node in nodes:
+        for target in _targets(node):
+            if (
+                not isinstance(target, ast.Attribute)
+                or not isinstance(target.value, ast.Name)
+                or target.value.id != receiver
+            ):
+                continue
+            if isinstance(node, ast.AnnAssign):
+                fields.append(
+                    _FieldFacts(target.attr, annotation=ast.unparse(node.annotation))
+                )
+            elif isinstance(node, ast.Assign) and method.name == "__init__":
+                fields.append(_FieldFacts(target.attr, value=ast.unparse(node.value)))
+                mentioned.update(
+                    part.id
+                    for part in ast.walk(node.value)
+                    if isinstance(part, ast.Name)
+                )
+            else:
+                fields.append(_FieldFacts(target.attr))
+    return _MethodFacts(
+        method.name,
+        decorators,
+        returns,
+        tuple(fields),
+        tuple(
+            _Parameter(argument.arg, ast.unparse(argument.annotation))
+            for argument in (*args, *method.args.kwonlyargs)
+            if not writes[argument.arg] and argument.annotation is not None
+        ),
+        tuple(sorted(mentioned & writes.keys())),
+    )
+
+
+def _expression(source: str) -> ast.expr:
+    # Parentheses admit every expression ``ast.unparse`` can produce, like yield.
+    return ast.parse(f"({source})", mode="eval").body
+
+
+def _namespace_inputs(namespace: Namespace | None) -> object:
+    if namespace is None:
+        return None
+    return [
+        sorted(namespace.imported.items()),
+        sorted(namespace.defined),
+        sorted(namespace.references.items()),
+    ]
 
 
 def _scope_nodes(body: list[ast.stmt]) -> Iterator[ast.AST]:

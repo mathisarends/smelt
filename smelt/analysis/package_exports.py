@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from pydantic import TypeAdapter
+
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
 from smelt.analysis.parsing import resolve_relative
 from smelt.model import is_within
@@ -12,10 +14,60 @@ from smelt.model import is_within
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
 
-    from smelt.analysis.syntax import ModuleSyntax
+    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
+
+_EXPORTS = TypeAdapter(dict[str, str])
 
 
-def direct_package_exports(module: ModuleSyntax) -> dict[str, str]:
+def package_facades(syntax: SyntaxIndex) -> dict[str, dict[str, str]]:
+    """Direct re-exports of every analyzed package, cached per initializer content."""
+    files = syntax.files
+    facades: dict[str, dict[str, str]] = {}
+    for source in files.sources.values():
+        if not source.is_package:
+            continue
+
+        def build(path: str = source.path) -> dict[str, str]:
+            module = syntax.for_path(path)
+            return {} if module is None else _direct_exports(module)
+
+        facades[source.module] = (
+            build()
+            if syntax.cache is None
+            else syntax.cache.get(
+                "package-exports",
+                [source.module, source.path, files.content_id(source.path)],
+                _EXPORTS,
+                build=build,
+            )
+        )
+    return facades
+
+
+def covering_package(
+    facades: Mapping[str, Mapping[str, str]],
+    base: str,
+    *,
+    caller: str,
+    names: Collection[str],
+    from_test: bool = False,
+) -> str | None:
+    """The nearest ancestor of ``base`` whose facade re-exports all ``names``.
+
+    Production callers inside a package never route through its own initializer.
+    """
+    package = base.rpartition(".")[0]
+    while package:
+        exports = facades.get(package, {})
+        if (from_test or not is_within(caller, package)) and all(
+            exports.get(name) == f"{base}.{name}" for name in names
+        ):
+            return package
+        package = package.rpartition(".")[0]
+    return None
+
+
+def _direct_exports(module: ModuleSyntax) -> dict[str, str]:
     """Public name -> imported name, excluding conditional or rebound bindings."""
     if not module.is_package:
         return {}
@@ -58,26 +110,3 @@ def direct_package_exports(module: ModuleSyntax) -> dict[str, str]:
                 continue
             result[name] = f"{base}.{alias.name}"
     return result
-
-
-def covering_package(
-    facades: Mapping[str, Mapping[str, str]],
-    base: str,
-    *,
-    caller: str,
-    names: Collection[str],
-    from_test: bool = False,
-) -> str | None:
-    """The nearest ancestor of ``base`` whose facade re-exports all ``names``.
-
-    Production callers inside a package never route through its own initializer.
-    """
-    package = base.rpartition(".")[0]
-    while package:
-        exports = facades.get(package, {})
-        if (from_test or not is_within(caller, package)) and all(
-            exports.get(name) == f"{base}.{name}" for name in names
-        ):
-            return package
-        package = package.rpartition(".")[0]
-    return None

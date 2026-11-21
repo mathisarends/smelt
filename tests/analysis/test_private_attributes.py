@@ -24,15 +24,15 @@ def test_ownership_facts_preserve_definition_and_receiver_provenance(
         },
     )
     outcome = check(root, CheckOptions(select=("VIS005",)))
-    module = outcome.context.syntax.for_path("app/client.py")
-    assert module is not None
+    source = outcome.context.files.source_for_path("app/client.py")
+    assert source is not None
     [fact] = PrivateAttributeIndex(
         outcome.context.syntax, outcome.context.files
-    ).accesses(module)
+    ).accesses(source)
     assert (
         fact.owner_module,
         fact.owner_class,
         fact.receiver_type,
         fact.operation,
     ) == ("app.base", "app.base.Store", "app.derived.Derived", "read")
-    assert (fact.node.lineno, fact.node.attr) == (3, "_data")
+    assert (fact.line, fact.attribute) == (3, "_data")

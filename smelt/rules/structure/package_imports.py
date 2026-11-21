@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.installed_exports import InstalledPackages
-from smelt.analysis.package_exports import covering_package, direct_package_exports
+from smelt.analysis.package_exports import covering_package, package_facades
 from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -70,27 +69,22 @@ class PreferPackageImport(Rule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        facades = {
-            source.module: direct_package_exports(module)
-            for source in ctx.files.sources.values()
-            if source.is_package
-            and (module := ctx.syntax.for_path(source.path)) is not None
-        }
+        facades = package_facades(ctx.syntax)
         first_party = {module.partition(".")[0] for module in ctx.files.sources}
         installed = InstalledPackages()
         for path in ctx.files.all_python_paths():
-            source = ctx.syntax.for_path(path)
+            source = ctx.syntax.module_identity(path)
             if source is None or source.is_package:
                 continue
-            for node in source.imports:
-                if not isinstance(node, ast.ImportFrom) or any(
+            for node in ctx.syntax.import_statements(path):
+                if not node.from_import or any(
                     alias.name.startswith("_") or alias.name == "*"
                     for alias in node.names
                 ):
                     continue
                 if (
                     ctx.config.architecture.import_graph.type_checking == "ignore"
-                    and node.lineno in source.guarded_lines
+                    and node.guarded
                 ):
                     continue
                 base = resolve_relative(
@@ -125,11 +119,11 @@ class PreferPackageImport(Rule):
                         parts[: max(0, remaining)]
                     )
                 replacement = f"from {import_from} import " + ", ".join(
-                    ast.unparse(alias) for alias in node.names
+                    alias.spelling for alias in node.names
                 )
                 yield self.violation(
                     f"import these names from the existing {package} package API",
-                    path=source.path,
+                    path=path,
                     line=node.lineno,
                     column=node.col_offset + 1,
                     end_line=node.end_lineno,
