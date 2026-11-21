@@ -4,22 +4,75 @@ from __future__ import annotations
 
 import ast
 from collections import Counter
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.parsing import resolve_relative
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
-    from smelt.analysis.syntax import ModuleSyntax
+
+@dataclass(frozen=True, slots=True)
+class ModuleAttributeRead:
+    """``module.attribute`` read through a stable import binding."""
+
+    attribute: str
+    lineno: int
+    col_offset: int
+    end_lineno: int | None
+    end_col_offset: int | None
+    # the dotted module the receiver is bound to
+    qualified: str
+
+
+_READS = TypeAdapter(tuple[ModuleAttributeRead, ...])
 
 
 def module_attributes(
-    module: ModuleSyntax, ignored: frozenset[int]
-) -> Iterator[tuple[ast.Attribute, str]]:
-    visitor = _Attributes(module, ignored)
-    visitor.visit(module.tree)
-    yield from visitor.reads
+    syntax: SyntaxIndex, path: str, *, ignore_guarded: bool
+) -> tuple[ModuleAttributeRead, ...]:
+    """Module-qualified reads in ``path``, cached per module and contents."""
+    identity = syntax.module_identity(path)
+    if identity is None:
+        return ()
+
+    def build() -> tuple[ModuleAttributeRead, ...]:
+        module = syntax.for_path(path)
+        if module is None:
+            raise LookupError(path)
+        visitor = _Attributes(
+            module, module.guarded_lines if ignore_guarded else frozenset()
+        )
+        visitor.visit(module.tree)
+        return tuple(
+            ModuleAttributeRead(
+                node.attr,
+                node.lineno,
+                node.col_offset,
+                node.end_lineno,
+                node.end_col_offset,
+                qualified,
+            )
+            for node, qualified in visitor.reads
+        )
+
+    if syntax.cache is None:
+        return build()
+    return syntax.cache.get(
+        "module-attributes",
+        [
+            path,
+            identity.module,
+            identity.is_package,
+            syntax.files.content_id(path),
+            ignore_guarded,
+        ],
+        _READS,
+        build=build,
+    )
 
 
 class _Attributes(ast.NodeVisitor):

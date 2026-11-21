@@ -75,6 +75,10 @@ class ModuleIdentity(NamedTuple):
 class ImportName(NamedTuple):
     name: str
     asname: str | None
+    lineno: int
+    col_offset: int
+    end_lineno: int | None
+    end_col_offset: int | None
 
     @property
     def spelling(self) -> str:
@@ -97,22 +101,39 @@ class ImportStatement:
     end_col_offset: int | None
     # inside an ``if TYPE_CHECKING:`` block
     guarded: bool
+    # outside every function and class body
+    module_scope: bool
 
     @classmethod
     def of(
-        cls, node: ast.Import | ast.ImportFrom, *, guarded: frozenset[int]
+        cls,
+        node: ast.Import | ast.ImportFrom,
+        *,
+        guarded: frozenset[int],
+        module_scope: bool,
     ) -> ImportStatement:
         from_import = isinstance(node, ast.ImportFrom)
         return cls(
             from_import=from_import,
             level=node.level if isinstance(node, ast.ImportFrom) else 0,
             module=node.module if isinstance(node, ast.ImportFrom) else None,
-            names=tuple(ImportName(alias.name, alias.asname) for alias in node.names),
+            names=tuple(
+                ImportName(
+                    alias.name,
+                    alias.asname,
+                    alias.lineno,
+                    alias.col_offset,
+                    alias.end_lineno,
+                    alias.end_col_offset,
+                )
+                for alias in node.names
+            ),
             lineno=node.lineno,
             col_offset=node.col_offset,
             end_lineno=node.end_lineno,
             end_col_offset=node.end_col_offset,
             guarded=node.lineno in guarded,
+            module_scope=module_scope,
         )
 
 
@@ -197,8 +218,11 @@ class SyntaxIndex:
             def build() -> tuple[ImportStatement, ...]:
                 tree = self._asts.parse(path)
                 guarded = type_checking_lines(tree)
+                scoped = _module_scope_imports(tree)
                 return tuple(
-                    ImportStatement.of(node, guarded=guarded)
+                    ImportStatement.of(
+                        node, guarded=guarded, module_scope=node in scoped
+                    )
                     for node in tree_nodes(tree)
                     if isinstance(node, ast.Import | ast.ImportFrom)
                 )
@@ -310,3 +334,17 @@ def _collect_bindings(syntax: ModuleSyntax) -> None:
                 if alias.name != "*":
                     qualified = f"{base}.{alias.name}" if base else alias.name
                     syntax.bindings[alias.asname or alias.name] = qualified
+
+
+def _module_scope_imports(tree: ast.Module) -> set[ast.AST]:
+    found: set[ast.AST] = set()
+    pending: list[ast.AST] = [tree]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            found.add(node)
+        elif not isinstance(
+            node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+        ):
+            pending.extend(ast.iter_child_nodes(node))
+    return found
