@@ -12,6 +12,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are
   recognized by convention.
 
+- [TST012](docs/rules/TST012.md) can report a source module with behaviour that
+  has no test at its mirrored path under `tests.layout: mirror`. Enable
+  `tests/missing-mirror-test` in `rules`.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13
