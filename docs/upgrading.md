@@ -214,8 +214,9 @@ errors and cannot be enabled in a workspace member.
 
 ### Move layer assignments into layers
 
-`architecture.modules` is deprecated and will be removed in 0.15.0. List each
-module or package prefix under the layer it belongs to:
+Smelt 0.14 removes `architecture.modules`. Run `smelt config migrate` to
+preview the assignments grouped by layer, then apply the migration with
+`--write`.
 
 ```yaml
 # before
@@ -231,9 +232,11 @@ architecture:
       modules: [app.core]
 ```
 
-Keep a layer's `path` when it also matches packages inside features. Until you
-migrate, checks report a `hint` on `architecture.modules` that contains this
-snippet for your configuration. The hint does not fail `--fail-on warning`.
+The migration retains existing layer settings, including `path` for packages
+inside features. It preserves assignments from the selected `extends` chain
+and migrates workspace member architectures in their own files. Resolve
+conflicting layer assignments before writing the migration. If several projects
+share a base, review each project's effective layer lists after migrating it.
 
 ## 0.12 to 0.13
 

@@ -42,15 +42,6 @@
           "title": "Wiring",
           "type": "array"
         },
-        "modules": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "deprecated": true,
-          "description": "Deprecated module-to-layer map, removed in 0.15.0. List each module under its layer's modules instead.",
-          "title": "Modules",
-          "type": "object"
-        },
         "layers": {
           "additionalProperties": {
             "$ref": "#/$defs/LayerConfig"

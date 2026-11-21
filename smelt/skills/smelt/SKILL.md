@@ -21,7 +21,7 @@ installed skill records the CLI version that installed it.
    For architecture placement, inspect `layer_assignment` in `--format json`.
    A matching parent already covers the planned file. For a deliberate layer
    change in central code, add the narrowest qualified prefix to the intended
-   layer's `modules` list. Never add to the deprecated `architecture.modules` map.
+   layer's `modules` list.
    For inherited policy, inspect `smelt config show --sources --format json`.
    A planned path is valid for `context`; explicit `check` paths must already exist.
 3. After editing, run `smelt check --changed --fail-on warning --format concise`

@@ -331,12 +331,13 @@ project:
 architecture:
   features:
     root: gw.features
-  modules:
-    gw.platform: infrastructure
   layers:
     domain: {path: domain}
     application: {path: application, may_depend_on: [domain]}
-    infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
+    infrastructure:
+      path: infrastructure
+      may_depend_on: [domain, application]
+      modules: [gw.platform]
 """
 
 

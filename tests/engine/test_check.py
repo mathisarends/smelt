@@ -88,20 +88,20 @@ class TestRuleSelection:
 
         assert check(root, CheckOptions(fail_on=Severity.WARNING)).report.failed is True
 
-    def test_legacy_module_map_is_a_deprecation_hint(self, tmp_path: Path) -> None:
+    def test_legacy_module_map_points_to_the_migration(self, tmp_path: Path) -> None:
         config = LAYERED_CONFIG.replace(
             "architecture:\n",
             "architecture:\n  modules: {app.infra.db: infrastructure}\n",
         )
         root = _layered(tmp_path, "", config)
 
-        report = check(root, CheckOptions(fail_on=Severity.WARNING)).report
+        with pytest.raises(ConfigError, match="smelt config migrate") as caught:
+            check(root)
 
-        assert [
-            (diagnostic.key, diagnostic.severity)
-            for diagnostic in report.configuration_diagnostics
-        ] == [("architecture.modules", Severity.HINT)]
-        assert report.failed is False
+        [issue] = caught.value.issues
+        assert issue.path == "architecture.modules"
+        assert "architecture.layers.<layer>.modules" in issue.message
+        assert "docs/upgrading.md" in str(caught.value)
 
     def test_rule_turned_off(self, tmp_path: Path) -> None:
         root = _layered(

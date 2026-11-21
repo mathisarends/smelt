@@ -519,11 +519,6 @@ class ArchitectureConfig(_Model):
         default_factory=list,
         description="Provider modules (whole-segment * allowed) that may import across layers and features; they keep their feature and layer.",
     )
-    modules: dict[str, str] = Field(
-        default_factory=dict,
-        description="Deprecated module-to-layer map, removed in 0.15.0. List each module under its layer's modules instead.",
-        json_schema_extra={"deprecated": True},
-    )
     layers: dict[str, LayerConfig] = Field(
         default_factory=dict, description="The layers and what each may import."
     )
@@ -558,22 +553,14 @@ class ArchitectureConfig(_Model):
 
     @property
     def has_module_bindings(self) -> bool:
-        return bool(
-            self.modules or any(layer.modules for layer in self.layers.values())
-        )
+        return any(layer.modules for layer in self.layers.values())
 
     def module_bindings(self) -> list[LayerBinding]:
         """The explicit bindings and their keys relative to the architecture."""
         return [
-            *(
-                LayerBinding(prefix, layer, f"modules.{prefix}")
-                for prefix, layer in self.modules.items()
-            ),
-            *(
-                LayerBinding(prefix, layer, f"layers.{layer}.modules[{index}]")
-                for layer, spec in self.layers.items()
-                for index, prefix in enumerate(spec.modules)
-            ),
+            LayerBinding(prefix, layer, f"layers.{layer}.modules[{index}]")
+            for layer, spec in self.layers.items()
+            for index, prefix in enumerate(spec.modules)
         ]
 
     @field_validator("canonical_exports")
@@ -602,12 +589,6 @@ class ArchitectureConfig(_Model):
     @classmethod
     def _modules_are_dotted(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
-
-    @field_validator("modules")
-    @classmethod
-    def _module_keys_are_dotted(cls, values: dict[str, str]) -> dict[str, str]:
-        _check_dotted(list(values))
-        return values
 
     @field_validator("wiring")
     @classmethod

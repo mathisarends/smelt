@@ -8,11 +8,11 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 from ruamel.yaml.tokens import CommentToken
 
-from smelt.config.errors import ConfigError, ConfigIssue
+from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.models import (
     ALL_RULES,
     LIMIT_RULES,
@@ -23,7 +23,7 @@ from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import replacement_selectors
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     from smelt.rules.base import RuleContract, RuleSet
 
@@ -35,6 +35,150 @@ class Migration:
     text: str
     notes: tuple[str, ...]
     configured_rules: frozenset[str] = frozenset()
+
+
+class LayerModuleMigration:
+    """Rewrite one architecture per inheritance chain, from base to derived."""
+
+    def __init__(self) -> None:
+        self._inherited: dict[str, list[str]] = {}
+
+    def migrate(
+        self, text: str, effective: Mapping[str, object], *, final: bool
+    ) -> Migration:
+        raw = effective.get("architecture")
+        previous = self._inherited
+        self._inherited = _legacy_layer_modules(raw, final=final)
+        if (
+            not previous
+            and not self._inherited
+            and (not isinstance(raw, dict) or "modules" not in raw)
+        ):
+            return Migration(text, ())
+
+        yaml, root = _load(text)
+        architecture = root.get("architecture")
+        if not isinstance(architecture, CommentedMap):
+            return Migration(text, ())
+        before = deepcopy(root)
+        architecture = _detach_merged_modules(root, architecture)
+        legacy = architecture.pop("modules", None)
+        if isinstance(legacy, CommentedMap):
+            # Even an empty map declared an architecture in a workspace member.
+            _mapping(architecture, "layers")
+            if comment := architecture.ca.items.pop("modules", None):
+                architecture.ca.items.setdefault("layers", comment)
+        layers = raw.get("layers", {}) if isinstance(raw, dict) else {}
+        if isinstance(layers, dict):
+            for layer in dict.fromkeys((*previous, *self._inherited)):
+                spec = layers.get(layer)
+                if not isinstance(spec, dict):
+                    continue
+                explicit = spec.get("modules", [])
+                if not isinstance(explicit, list):
+                    continue
+                desired = self._inherited.get(layer, explicit)
+                _write_layer_modules(
+                    architecture,
+                    layer,
+                    desired,
+                    inherited=previous.get(layer, explicit),
+                    legacy=legacy,
+                )
+        notes = ["Moved architecture.modules to layer modules lists."]
+        return _dump(
+            yaml, root, before, text=text, notes=notes if root != before else []
+        )
+
+
+def _detach_merged_modules(
+    root: CommentedMap, architecture: CommentedMap
+) -> CommentedMap:
+    # A merged key would still appear through << after removing the local entry.
+    if "modules" not in architecture or not any(
+        "modules" in base for base in architecture.merge
+    ):
+        return architecture
+    explicit = CommentedMap(architecture.items())
+    explicit.ca.comment = architecture.ca.comment
+    explicit.ca.items.update(architecture.ca.items)
+    if architecture.fa.flow_style():
+        explicit.fa.set_flow_style()
+    root["architecture"] = explicit
+    return explicit
+
+
+def _legacy_layer_modules(raw: object, *, final: bool) -> dict[str, list[str]]:
+    if not isinstance(raw, dict) or "modules" not in raw:
+        return {}
+    legacy = raw["modules"]
+    if not isinstance(legacy, dict) or any(
+        not isinstance(module, str) or not isinstance(layer, str)
+        for module, layer in legacy.items()
+    ):
+        raise ConfigError(
+            [ConfigIssue("architecture.modules", "expected a module-to-layer mapping")]
+        )
+    layers = raw.get("layers", {})
+    if not isinstance(layers, dict):
+        return {}  # The regular loader diagnoses an invalid layers value.
+    converted: dict[str, list[str]] = {}
+    for module, layer in legacy.items():
+        if layer not in layers:
+            if final:
+                raise ConfigError(
+                    [
+                        ConfigIssue(
+                            f"architecture.modules.{module}",
+                            f'unknown layer "{layer}"{did_you_mean(layer, layers)}',
+                        )
+                    ]
+                )
+            continue  # A derived config may declare this layer.
+        spec = layers[layer]
+        if not isinstance(spec, dict) or not isinstance(
+            explicit := spec.get("modules", []), list
+        ):
+            raise ConfigError(
+                [
+                    ConfigIssue(
+                        f"architecture.layers.{layer}",
+                        "expected a layer mapping with a modules list",
+                    )
+                ]
+            )
+        modules = converted.setdefault(layer, list(explicit))
+        if module not in modules:
+            modules.append(module)
+    return converted
+
+
+def _write_layer_modules(
+    architecture: CommentedMap,
+    layer: str,
+    desired: list[str],
+    *,
+    inherited: list[str],
+    legacy: object,
+) -> None:
+    # A declaration in this file replaces the list, even if the list is empty.
+    layers = architecture.get("layers", {})
+    spec = layers.get(layer, {}) if isinstance(layers, dict) else {}
+    local = spec.get("modules") if isinstance(spec, dict) else None
+    if desired == (inherited if local is None else local):
+        return
+    modules = deepcopy(local) if isinstance(local, CommentedSeq) else CommentedSeq()
+    modules.extend(desired[len(modules) :])
+    if isinstance(legacy, CommentedMap):
+        for index, module in enumerate(modules):
+            if comments := legacy.ca.items.get(module):
+                modules.ca.items.setdefault(index, [comments[2], None, None, None])
+    destinations = _mapping(architecture, "layers")
+    destination = deepcopy(_mapping(destinations, layer))
+    # Other layer definitions may use the original mapping through a YAML alias.
+    destination.yaml_set_anchor(None)
+    destination["modules"] = modules
+    destinations[layer] = destination
 
 
 def migrate_policy(

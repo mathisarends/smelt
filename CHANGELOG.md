@@ -83,10 +83,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   replace the file after validation.
 - Enable [TYP008](docs/rules/TYP008.md) with `typing/prefer-inline-type-parameters: hint`
   to review explicit `Generic[...]` bases for PEP 695 class syntax on Python 3.12+.
-- `architecture.modules` is deprecated and will be removed in 0.15.0. List each
-  assignment under `architecture.layers.<layer>.modules` instead. Checks report
-  a non-failing hint containing the equivalent YAML, and the schema marks the
-  key as deprecated. See the [upgrade guide](docs/upgrading.md#013-to-014).
+- **Breaking:** `architecture.modules` was removed. `smelt config migrate`
+  moves assignments to `architecture.layers.<layer>.modules` across the
+  selected project, its bases and workspace members. See the
+  [upgrade guide](docs/upgrading.md#move-layer-assignments-into-layers).
 - `.smelt_cache/` no longer grows without bound. Facts unused for 14 days are
   pruned once a day, and caches of other Smelt versions unused for 7 days are
   removed. Existing caches are upgraded in place. See
@@ -110,9 +110,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   `explicit` activation modes. Text reports render boolean details as yes/no
   and hide constant `automatic_*` flags.
 - Declare explicit package prefixes or module names in each layer's `modules`
-  list. Legacy `architecture.modules` assignments continue to work. Smelt warns
-  about redundant descendants, `smelt init` writes grouped assignments, and
-  `smelt context` reports which assignment a planned module inherits. ARC011
+  list. Smelt warns about redundant descendants, `smelt init` writes grouped
+  assignments, and `smelt context` reports which assignment a planned module
+  inherits. ARC011
   now respects explicit assignments when checking layout. See the
   [library layout guide](docs/architecture.md#libraries-and-mixed-package-layouts).
 - Enable [LAY011](docs/rules/LAY011.md) with `layout/misplaced-module-logger: warning`
