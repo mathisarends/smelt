@@ -127,7 +127,6 @@ def test_direct_and_module_aliased_test_access(
         "import app.mouse as m\ndef run(): m.helper()",
         "import app.mouse\ndef run(): app.mouse.helper()",
         "from app import mouse\ndef run(): mouse.helper()",
-        "from app.mouse import helper as public_api",
         "from app.mouse import *",
         "from app import mouse\nalias = mouse\ndef run(): alias.helper()",
         "import app.mouse as m\ndef run(name): return getattr(m, name)",

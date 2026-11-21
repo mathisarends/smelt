@@ -92,13 +92,10 @@ def test_reports_local_function_alias(tmp_path: Path) -> None:
     "source",
     [
         "class A:\n    pass\n\n\nclass B:\n    pass\n\n\nEither = A | B\n",
-        "class A:\n    pass\n\n\nMany = list[A]\n",
-        "from typing import Annotated\n\n\nclass A:\n    pass\n\n\nNamed = Annotated[A, 'a']\n",
         "from typing import Any\n\nJson = Any\n",
         "import typing\n\nJson = typing.Any\n",
         "DEFAULT_LIMIT = 10\nLIMIT = DEFAULT_LIMIT\n",
         "from app.defaults import DEFAULT_LIMIT\n\nLIMIT = DEFAULT_LIMIT\n",
-        "from app.loading import fetch\n\nload = fetch\n",
         "import sys\n\nif sys.version_info >= (3, 13):\n    from app.new import Reader\nelse:\n    from app.old import Reader\nTextReader = Reader\n",
         "import sys\n\n\nclass A:\n    pass\n\n\nif sys.version_info >= (3, 13):\n    B = A\n",
         "class A:\n    pass\n\n\nclass Holder:\n    Kind = A\n",

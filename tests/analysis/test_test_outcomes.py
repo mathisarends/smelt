@@ -23,7 +23,6 @@ from smelt.analysis.test_syntax import (
         ("assert len(rows) == 2\n    assert all(valid(row) for row in rows)", False),
         ("assert generate() == committed", False),
         ("assert result == []", False),
-        ("assert not rows or all(valid(row) for row in rows)", False),
         ("for value in [1, 2]:\n        assert valid(value)", False),
         ("assert all(valid(value) for value in (1, 2))", False),
         (

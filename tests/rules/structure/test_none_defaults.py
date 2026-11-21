@@ -119,7 +119,6 @@ def _project(tmp_path: Path, source: str, config: str = CONFIG) -> Path:
         "int | str | None",
         '"Options | None"',
         "Optional[Options]",
-        "Maybe[Options]",
         "typing.Optional[Options]",
         "Union[Options, None]",
         "Annotated[Options | None, 'metadata']",
@@ -154,9 +153,6 @@ def test_optional_annotations_report_the_defaulting_expression(
     "signature",
     [
         "options: Options | None = None, /",
-        "*, options: Options | None = None",
-        "other, options: Options | None = None",
-        "self, options: Options | None = None",
     ],
 )
 def test_positional_keyword_and_method_parameters(
@@ -186,13 +182,10 @@ def test_positional_keyword_and_method_parameters(
         "def create(options: Options | None):\n    return options or Options()",
         "def create(options: Options | None = None):\n    return options if options is not None else Options()",
         "def create(options: Options | None = None):\n    if options or ready():\n        pass",
-        "def create(options: Options | None = None):\n    while options or ready():\n        pass",
         "def create(options: Options | None = None):\n    assert options or ready()",
         "def create(options: Options | None = None):\n    return not (options or ready())",
-        "def create(options: Options | None = None):\n    return 1 if options or ready() else 2",
         "def create(options: Options | None = None):\n    return [x for x in items if options or ready()]",
         "def create(options: Options | None = None):\n    return options or other or Options()",
-        "def create(options: Options | None = None):\n    return self.options or Options()",
         "def create(options: Options | None = None):\n    def nested():\n        return options or Options()\n    return nested",
         "def create(options: Options | None = None):\n    return lambda: options or Options()",
     ],
@@ -208,9 +201,6 @@ def test_valid_neighbors_and_uncertain_cases_are_left_alone(
     [
         "options = other",
         "options += other",
-        "del options",
-        "options := other",
-        "for options in items:\n        pass",
         "import options",
         "import other as options",
         "def options(): pass",

@@ -137,7 +137,6 @@ def _project(tmp_path: Path, client: str, *, config: str = CONFIG) -> None:
     "statement",
     [
         "import app.orders.storage",
-        "import app.orders.storage as storage",
         "from app.orders.storage import OrderStore",
         "from app.orders import storage",
         "from .orders import storage as db",

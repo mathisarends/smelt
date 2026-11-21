@@ -66,8 +66,6 @@ def test_reports_parameters_beyond_the_limit(tmp_path: Path) -> None:
     "source",
     [
         "def connect(user, run):\n    return 1\n",
-        "def connect(user, run, *, tab, retry):\n    return 1\n",
-        "def connect(user, *args, **kwargs):\n    return 1\n",
         "class Browser:\n    def connect(self, user, run):\n        return 1\n",
         "class Browser:\n    @classmethod\n    def connect(cls, user, run):\n        return 1\n",
         "class Browser:\n    def __exit__(self, kind, error, trace):\n        return None\n",

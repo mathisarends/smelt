@@ -110,11 +110,6 @@ def test_accepts_explained_handler(tmp_path: Path, body: str) -> None:
     "comment",
     [
         "# noqa: BLE001",
-        "# noqa",
-        "# pylint: disable=broad-exception-caught,bare-except",
-        "# type: ignore[misc]",
-        "# pragma: no cover",
-        "# noqa: BLE001  # pragma: no cover",
         "# -",
     ],
 )

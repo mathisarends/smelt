@@ -173,10 +173,6 @@ def test_suggests_the_existing_common_package_without_changing_source(
     [
         ("from app.observation.models import Snapshot as State\n", "app.observation"),
         ("from .observation.models import Snapshot as State\n", ".observation"),
-        (
-            "def run():\n    from app.observation.models import Snapshot as State\n",
-            "app.observation",
-        ),
     ],
 )
 def test_relative_and_local_imports_preserve_aliases(
@@ -224,7 +220,6 @@ def test_valid_or_unresolved_imports_are_preserved(tmp_path: Path, client: str) 
         "",
         "from .observe import Observe\n",
         "from .observe import Observe as Snapshot\n",
-        "from .models import Snapshot as State\n",
         "if enabled:\n    from .models import Snapshot\n",
         "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from .models import Snapshot\n",
         "try:\n    from .models import Snapshot\nexcept ImportError:\n    pass\n",

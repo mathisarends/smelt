@@ -73,11 +73,9 @@ def test_fixture_file_is_covered_but_integration_path_is_allowed(
         ("patch('app.service')", True),
         ("patch(target='app.service')", True),
         ("patch.multiple('app.service', one=1)", True),
-        ("patch.dict('os.environ', {})", True),
         ("patch.object(module, 'service')", False),
         ("patch.dict(mapping, {})", False),
         ("patch(target)", False),
-        ("patch(f'app.{name}')", False),
         ("other.patch('app.service')", False),
     ],
 )

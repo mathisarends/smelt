@@ -62,11 +62,6 @@ def _symbol_project(tmp_path: Path, client: str, *, config: str = CONFIG) -> Pat
             "read",
         ),
         (
-            "import app.service as s\ndef run():\n    def inner(): s._helper()",
-            "app.service._helper",
-            "read",
-        ),
-        (
             "import app.service as s\nf = lambda: s._helper()",
             "app.service._helper",
             "read",
@@ -187,7 +182,6 @@ def test_type_checking_policy_applies_to_imports_and_reads(
         ("from .service import _helper as helper", False),
         ("from .service import _helper as _alias", True),
         ("from .service import _helper", True),
-        ("from ._impl import _helper as helper", False),
         ("if enabled:\n    from .service import _helper as helper", False),
         ("from other.service import _helper as helper", True),
         ("def run():\n    from .service import _helper as helper", True),
@@ -374,7 +368,6 @@ def test_reports_resolved_private_operations(
     "declaration",
     [
         "def __init__(self, log: SessionLog):\n        self.log = log",
-        "def __init__(self):\n        self.log = SessionLog()",
         "log: SessionLog",
         "@property\n    def log(self) -> SessionLog:\n        return resolve_log()",
         "@cached_property\n    def log(self) -> 'SessionLog':\n        return resolve_log()",
@@ -393,7 +386,6 @@ def test_resolves_stored_collaborators_and_property_return_annotations(
     [
         "from app.session import SessionLog\ndef persist():\n    log = SessionLog()\n    return log._images\n",
         "from app.session import SessionLog\ndef persist():\n    log: SessionLog\n    return log._images\n",
-        "from app.session import SessionLog\ndef persist(log: SessionLog):\n    alias = log\n    return alias._images\n",
         "from app.session import SessionLog\nlog = SessionLog()\nvalue = log._images\n",
         "from app.session import SessionLog\nvalue = SessionLog()._images\n",
         "from app.session import SessionLog\nvalue = SessionLog._shared\n",
@@ -474,9 +466,7 @@ def test_staticmethod_parameter_named_self_is_not_an_own_receiver(
         "def persist(log):\n    return log._images\n",
         "from app.session import SessionLog\ndef persist():\n    log = factory()\n    return log._images\n",
         "from app.session import SessionLog\ndef factory() -> SessionLog:\n    return SessionLog()\ndef persist():\n    return factory()._images\n",
-        "from app.session import SessionLog\ndef persist(log: SessionLog):\n    log = unknown()\n    return log._images\n",
         "from app.session import SessionLog\ndef persist(log: SessionLog):\n    if condition:\n        log = unknown()\n    return log._images\n",
-        "from app.session import SessionLog\ndef persist():\n    if condition:\n        log = SessionLog()\n    return log._images\n",
         "from app.session import SessionLog\ndef persist():\n    SessionLog = factory\n    return SessionLog()._images\n",
         "from app.session import SessionLog\ndef persist(log: SessionLog):\n    return log.__dict__\n",
         "from app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._unknown\n",

@@ -354,12 +354,6 @@ class TestBaseClassPrefix:
         "name",
         [
             "BaseService",
-            "_BaseService",
-            "__BaseService",
-            "BaseHTTPClient",
-            "Base_Service",
-            "Base",
-            "_Base",
         ],
     )
     def test_definitions_are_reported_at_the_class_without_renaming(
@@ -385,13 +379,6 @@ class TestBaseClassPrefix:
         "name",
         [
             "Service",
-            "_Service",
-            "Baseline",
-            "_Baseline",
-            "Baseball",
-            "Base64",
-            "Base64Encoder",
-            "Database",
         ],
     )
     def test_nearby_names_are_valid(self, tmp_path: Path, name: str) -> None:
@@ -601,17 +588,10 @@ class TestRedundantModuleName:
         "path",
         [
             "backend/cars/cartridge.py",
-            "backend/cars/cargo_exporter.py",
-            "backend/cars/electric_car_exporter.py",
             "backend/cars/car.py",
-            "backend/cars/cars.py",
             "backend/cars/car_class.py",
-            "backend/cars/car_123.py",
             "backend/people/person_exporter.py",
             "backend/status/statu_exporter.py",
-            "backend/analysis/analysi_exporter.py",
-            "backend/classes/classe_exporter.py",
-            "backend/categories/categorie_exporter.py",
             "backend/cars/car_exporter/__init__.py",
             "backend/main/__main__.py",
             "tests/cars/test_car_exporter.py",

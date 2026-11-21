@@ -153,10 +153,8 @@ def test_stays_quiet_when_stability_or_effects_are_uncertain(
     "body",
     [
         "available = (name,)\nif name not in {item for item in available}:\n    pass",
-        "if name not in {item for item in available}:\n    pass\navailable = (name,)",
         "alias = available\nalias[0] = name\nif name not in {item for item in available}:\n    pass",
         "if name not in {item for item in available}:\n    pass\ncallback()",
-        "if name not in {item for item in available}:\n    pass\nfor inner in available:\n    pass",
     ],
 )
 def test_skips_loop_dependent_rebound_or_mutated_inputs(

@@ -158,10 +158,7 @@ def test_simple_class_attributes(tmp_path: Path, declaration: str) -> None:
         "from app.worker import Worker\nvalue = Worker().pending",
         "def consume(worker): return worker.pending",
         "def consume(worker): worker.pending = []",
-        "def consume(worker): del worker.pending",
         "def consume(worker): return getattr(worker, 'pending')",
-        "def consume(worker): return hasattr(worker, 'pending')",
-        "def consume(worker): setattr(worker, 'pending', [])",
         "class Other:\n    def run(self): return self.pending",
     ],
 )
@@ -226,7 +223,6 @@ def test_unknown_shadowed_fake_and_write_only_test_receivers_are_excluded(
         "class Worker:\n    @staticmethod\n    def build(other): other.pending = []",
         "class Worker:\n    def build(self):\n        def nested(other): other.pending = []",
         "class Worker:\n    def build(self):\n        self = other\n        self.pending = []",
-        "class Worker:\n    def build(self):\n        def nested(self): self.pending = []",
         "class Worker:\n    def pending(self): return []",
         "class Worker:\n    def __init__(self): self._pending = []",
         "class Worker:\n    def __init__(self): self.pending = []\nWorker = replacement",

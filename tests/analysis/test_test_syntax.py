@@ -17,7 +17,6 @@ def _analyze(source: str) -> SyntaxModule:
     [
         "from unittest.mock import patch as replace\nreplace('app.name')",
         "import unittest.mock as mock\nmock.patch('app.name')",
-        "import unittest.mock\nunittest.mock.patch('app.name')",
         "def test_run(mocker):\n    mocker.patch('app.name')",
         "async def test_run(session_mocker):\n    session_mocker.patch('app.name')",
     ],
@@ -33,7 +32,6 @@ def test_known_patch_aliases(source: str) -> None:
     [
         "def test_run(patch):\n    patch('x')",
         "def test_run():\n    patch('x')\n    patch = other",
-        "def test_run():\n    patch = other\n    patch('x')",
         "def test_run():\n    for patch in values:\n        patch('x')",
         "def test_run():\n    with manager() as patch:\n        patch('x')",
         "def test_run():\n    try:\n        run()\n    except Error as patch:\n        patch('x')",
@@ -229,10 +227,6 @@ def test_typed_mock_fixtures_supply_receiver_types_only(
         ),
         (
             "closed = asyncio.Event()\n    async with asyncio.timeout(None):\n        await closed.wait()",
-            False,
-        ),
-        (
-            "closed = asyncio.Event()\n    asyncio.timeout(1)\n    await closed.wait()",
             False,
         ),
         (

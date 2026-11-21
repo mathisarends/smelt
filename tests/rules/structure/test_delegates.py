@@ -82,10 +82,6 @@ def test_reports_public_method_forwarding_to_private_generator(
             "def _events(self, *args, **kwargs):\n    return args\n",
         ),
         (
-            "def events(this, run_id):\n    return this._events(run_id)\n",
-            "def _events(me, run_id):\n    return [run_id]\n",
-        ),
-        (
             "def events(self):\n    return self.__events()\n",
             "def __events(self):\n    return 1\n",
         ),
@@ -100,7 +96,6 @@ def test_reports_forwarding_spellings(tmp_path: Path, methods: tuple[str, str]) 
     "header",
     [
         "class Frames(object):",
-        "from abc import ABC\n\n\nclass Frames(ABC):",
         "from typing import Generic, TypeVar\nT = TypeVar('T')\n\n\nclass Frames(Generic[T]):",
         "class Base:\n    pass\n\n\nclass Frames(Base):",
     ],

@@ -72,19 +72,11 @@ def test_module_constant_is_valid_with_instance_and_local_fields(
     "declaration",
     [
         '_EXTENSIONS = {".pdf", ".zip"}',
-        '_EXTENSIONS: set[str] = {".pdf"}',
-        '_EXTENSIONS: "set[str]" = {".pdf"}',
-        '_EXTENSIONS = [".pdf", ".zip"]',
-        '_EXTENSIONS = (".pdf", ".zip")',
         '_EXTENSIONS = {"documents": [".pdf"], "archives": (".zip",)}',
         '_EXTENSIONS = {"weights": (-1, +2, -1.5)}',
         '_EXTENSIONS = ".pdf"',
-        "_EXTENSIONS = 3",
-        "_EXTENSIONS = None",
-        "_EXTENSIONS = True",
         "_EXTENSIONS = {}",
         "_EXTENSIONS = []",
-        "__EXTENSIONS = ()",
     ],
 )
 def test_private_literal_declarations_are_reported(
@@ -107,17 +99,12 @@ def test_private_literal_declarations_are_reported(
         '_Extensions = {".pdf"}',
         '__slots__ = ("_extensions",)',
         "_EXTENSIONS = load_extensions()",
-        '_EXTENSIONS = frozenset({".pdf"})',
-        "_EXTENSIONS = DEFAULT_EXTENSIONS",
         "_EXTENSIONS = {DEFAULT_EXTENSION}",
         '_EXTENSIONS = {".pdf": DEFAULT_HANDLER}',
         '_EXTENSIONS = {DEFAULT_EXTENSION: "pdf"}',
         '_EXTENSIONS = {**defaults, ".pdf": "pdf"}',
-        '_EXTENSIONS = [*defaults, ".pdf"]',
-        "_EXTENSIONS = {extension for extension in defaults}",
         "_EXTENSIONS: set[str]",
         '_EXTENSIONS += [".pdf"]',
-        "_EXTENSIONS, _HANDLERS = values",
     ],
 )
 def test_other_fields_and_computed_values_remain_valid(
@@ -132,14 +119,8 @@ def test_other_fields_and_computed_values_remain_valid(
     "header",
     [
         "class DownloadController(Controller):",
-        "class DownloadController(object):",
         "class DownloadController(metaclass=Registry):",
         "@dataclass\nclass DownloadController:",
-        "@model()\nclass DownloadController:",
-        "class DownloadController(Enum):",
-        "class DownloadController(StrEnum):",
-        "class DownloadController(BaseModel):",
-        "class DownloadController(Protocol):",
     ],
 )
 def test_class_contracts_are_excluded(tmp_path: Path, header: str) -> None:

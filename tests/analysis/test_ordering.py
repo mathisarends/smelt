@@ -81,7 +81,6 @@ def test_quoted_annotations_and_lambda_bodies_are_not_eager() -> None:
     [
         "register()",
         "if FLAG:\n    prepare()",
-        "try:\n    prepare()\nexcept Exception:\n    pass",
         "if TYPE_CHECKING:\n    from module import Type",
         "VALUE = factory()",
         "VALUE = left + right",

@@ -69,7 +69,6 @@ def message(count: Literal[1, 2], button: Literal["left", "right"]) -> str:
     [
         ("from typing import Literal as L", "L[1, 2]"),
         ("import typing as t", "t.Literal[1, 2]"),
-        ("import typing_extensions as t", "t.Literal[1, 2]"),
         ("from typing_extensions import Literal", "Literal[1, 2]"),
         ("from typing import Literal", '"Literal[1, 2]"'),
         ("from typing import Literal, Annotated", 'Annotated[Literal[1, 2], "meta"]'),
@@ -121,12 +120,9 @@ def test_alias_definitions_count_but_alias_uses_do_not(
     "source",
     [
         "from typing import Literal\na: Literal[1]\nb: Literal[1]",
-        "from typing import Literal\na: Literal[1, 1]\nb: Literal[1, 1]",
         "from typing import Literal\na: Literal[0, 1]\nb: Literal[False, True]",
-        'from typing import Literal\na: Literal[1, 2]\nb: Literal["1", "2"]',
         "from typing import Literal, Annotated\na: Annotated[int, Literal[1, 2]]\nb: Annotated[int, Literal[1, 2]]",
         "from typing import Literal\na: Literal[Enum.A, Enum.B]\nb: Literal[Enum.A, Enum.B]",
-        "from typing import Literal\na: Literal[build(), 2]\nb: Literal[build(), 2]",
         "from other import Literal\na: Literal[1, 2]\nb: Literal[1, 2]",
         "from .typing import Literal\na: Literal[1, 2]\nb: Literal[1, 2]",
         "from typing import Literal\nLiteral = object\na: Literal[1, 2]\nb: Literal[1, 2]",

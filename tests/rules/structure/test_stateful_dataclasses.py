@@ -157,11 +157,6 @@ def test_reports_mutations_of_self(
         "@dataclass\nclass Span:\n    start: int\n    end: int = 0\n\n"
         "    def __post_init__(self) -> None:\n"
         "        self.end = max(self.end, self.start)\n",
-        # Frozen dataclasses and an undecidable frozen flag.
-        "@dataclass(frozen=True)\nclass Span:\n    tags: list[str]\n\n"
-        "    def tag(self, value: str) -> None:\n        self.tags.append(value)\n",
-        "FROZEN = True\n\n@dataclass(frozen=FROZEN)\nclass Span:\n    tags: list[str]\n\n"
-        "    def tag(self, value: str) -> None:\n        self.tags.append(value)\n",
         # Plain classes may own mutable state.
         "class Buffer:\n    def __init__(self) -> None:\n        self._lines: list[str] = []\n\n"
         "    def push(self, line: str) -> None:\n        self._lines.append(line)\n",

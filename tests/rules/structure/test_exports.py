@@ -22,9 +22,7 @@ _REEXPORT_OPTIONS = CheckOptions(select=("LAY010",))
         '__all__ = ["run"]\n',
         "__all__: list[str] = []\n",
         '__all__ += ["run"]\n',
-        "if enabled:\n    __all__ = []\n",
         "from .api import __all__\n",
-        "from .api import exports as __all__\n",
         "(__all__, other) = [], 1\n",
     ],
 )

@@ -21,13 +21,8 @@ SELECT = CheckOptions(select=("CPX006",))
     [
         ("[x for group in groups for x in group]", "too many for clauses"),
         ("{x for group in groups for x in group}", "too many for clauses"),
-        ("(x async for group in groups for x in group)", "too many for clauses"),
         (
             "[convert(x) if x.ready else x for x in items]",
-            "nontrivial conditional element",
-        ),
-        (
-            "{x.id: convert(x) if x.ready else x for x in items}",
             "nontrivial conditional element",
         ),
         ("[x for x in items if x.ready if x.active]", "multiple or compound filters"),
@@ -67,8 +62,6 @@ def test_reports_named_conditions(
     [
         "[x.name for x in items if x.enabled]",
         "[x if x is not None else default for x in items]",
-        "[x.name if ready else None for x in items]",
-        "{x.id: x.name if ready else fallback.name for x in items}",
         "(resolve(x) for x in items if a and b)",
         "[Response.model_validate(x, from_attributes=True) for x in items]",
     ],

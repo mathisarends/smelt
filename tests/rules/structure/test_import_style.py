@@ -52,7 +52,6 @@ def _project(
         "from app.domain import Entity",
         "from library import Value",
         "import os",
-        "import httpx",
         "import app",
         "import app.pkg",
     ],

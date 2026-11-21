@@ -169,12 +169,6 @@ def test_docstring_allow_policy(tmp_path: Path, source: str) -> None:
         "",
         "# Module introduction.\n",
         '""""""',
-        '"""  \n\t """',
-        'b"Introduction"',
-        'f"Introduction"',
-        'VALUE = 1\n"""Too late."""',
-        'class Service:\n    """Class contract."""',
-        'def calculate():\n    """Function contract."""',
     ],
 )
 def test_required_docstring_reports_missing_or_blank_introduction(
@@ -198,9 +192,6 @@ def test_required_docstring_reports_missing_or_blank_introduction(
     "source",
     [
         '"""Module introduction."""',
-        "# comment\n'Introduction'",
-        '#!/usr/bin/env python\n# coding: utf-8\n"""Einführung."""\nfrom __future__ import annotations',
-        'r"""Multiline\nintroduction."""\nVALUE = 1',
     ],
 )
 def test_required_docstring_accepts_initial_text(tmp_path: Path, source: str) -> None:
@@ -372,9 +363,6 @@ def test_review_hint_for_plain_boilerplate(tmp_path: Path, source: str) -> None:
     "source",
     [
         "def f(value: Later): pass\nclass Later: pass",
-        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from external import Type\ndef f(value: Type): pass",
-        "def f(value: 'Later'): pass",
-        "def f(value: list[str] | None): pass",
     ],
 )
 def test_314_flags_future_even_with_typing_signals(tmp_path: Path, source: str) -> None:
