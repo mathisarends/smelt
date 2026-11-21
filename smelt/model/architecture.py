@@ -150,7 +150,8 @@ class ArchitectureModel:
                 if part is not self
                 else ModuleInfo(module, ModuleKind.UNCLASSIFIED)
             )
-        return _Classifier(self.config, self.packages, self.scope).classify(module)
+        classifier = _Classifier(self.config, self.packages, self.scope)
+        return classifier.classify(module)
 
     def planned_info(self, module: str, *, is_package: bool) -> ModuleInfo | None:
         """Classify a prospective source path with its implied package parents."""
@@ -160,9 +161,8 @@ class ArchitectureModel:
         package = module if is_package else module.rpartition(".")[0]
         segments = package.split(".")
         parents = {".".join(segments[:end]) for end in range(1, len(segments) + 1)}
-        return _Classifier(part.config, part.packages | parents, part.scope).classify(
-            module
-        )
+        classifier = _Classifier(part.config, part.packages | parents, part.scope)
+        return classifier.classify(module)
 
     def is_first_party(self, module: str) -> bool:
         return any(

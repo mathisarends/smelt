@@ -198,7 +198,8 @@ def relative_scope(
             store.resolve(root) if store else root.resolve()
         ).as_posix()
     except ValueError:
-        return Path(raw).as_posix()
+        path = Path(raw)
+        return path.as_posix()
 
 
 def _run_check(
@@ -239,10 +240,10 @@ def _run_check(
     )
     analyzed = cache.read(key, ANALYSIS) if cache and key else None
     if analyzed is None:
-        issues = missing_paths(ctx)
-        if issues:
+        if issues := missing_paths(ctx):
             raise ConfigError(issues, loaded.path.name)
-        RuleSettings(rules, loaded).validate_packages(ctx)
+        settings = RuleSettings(rules, loaded)
+        settings.validate_packages(ctx)
         key = key or (
             cache.decision_key("analysis", analysis_inputs(ctx, active, options.select))
             if cache
@@ -405,9 +406,8 @@ def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
     declarations = ctx.config.structure.canonical_exports
     if not declarations:
         return
-    _, issues = FacadeUsage(
-        ctx.syntax, ctx.imports, files=ctx.files, count_tests=False
-    ).canonical_exports(declarations)
+    usage = FacadeUsage(ctx.syntax, ctx.imports, files=ctx.files, count_tests=False)
+    _, issues = usage.canonical_exports(declarations)
     if issues:
         raise ConfigError(
             [
@@ -453,7 +453,8 @@ def _introduced(
     )
     entries = cache.read(key, _BASELINE) if cache and key else None
     if entries is not None:
-        introduced, _, _ = Debt(entries).match(violations, snippet_reader(ctx))
+        baseline = Debt(entries)
+        introduced, _, _ = baseline.match(violations, snippet_reader(ctx))
         return introduced, comparison
     if isinstance(ctx.store, GitSourceStore):
         if comparison.revision is None:

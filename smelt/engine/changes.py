@@ -17,9 +17,10 @@ def lexical_path(path: Path) -> Path:
 def git_repository(cwd: Path, requested: Path | None = None) -> Path:
     """Prefer the caller's repository, including staged directories deleted on disk."""
     try:
-        repository = Path(
+        repository_path = Path(
             os.fsdecode(run_git(cwd, "rev-parse", "--show-toplevel")).strip()
-        ).resolve()
+        )
+        repository = repository_path.resolve()
     except AnalysisError:
         if requested is None:
             raise
@@ -31,9 +32,10 @@ def git_repository(cwd: Path, requested: Path | None = None) -> Path:
     anchor = next(
         (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
     )
-    return Path(
+    repository_path = Path(
         os.fsdecode(run_git(anchor, "rev-parse", "--show-toplevel")).strip()
-    ).resolve()
+    )
+    return repository_path.resolve()
 
 
 def _head(root: Path) -> str | None:

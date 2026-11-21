@@ -106,6 +106,13 @@ lazy. Each finding carries its `kind` in the machine-readable payload. No
 automatic rewrite is performed; preserve callable lookup and argument evaluation
 order when extracting a variable.
 
+Opt-in [CPX008 `complexity/inline-constructor-receiver`](rules/CPX008.md) reviews
+direct calls such as `PointerTools().tool(...)`. To require a named instance
+before the method call, enable
+`rules: {complexity/inline-constructor-receiver: warning}`. It checks call
+statements, assignments and returns in production code, using same-module class
+declarations or class-like import names as evidence.
+
 Opt-in [VIS004 `visibility/internal-public-attribute`](rules/VIS004.md) reviews
 public data attributes whose observed use stays within the owning class. Set
 `public_attribute_boundary: module` under `style` or in a style override to

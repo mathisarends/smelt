@@ -72,6 +72,7 @@ rules:
   typing/deprecated-async-contextmanager-return: warning
   visibility/foreign-private-access: warning
   complexity/inline-call-argument: warning
+  complexity/inline-constructor-receiver: warning
   visibility/redundant-private-delegate: warning
   idioms/redundant-name-alias: warning
   typing/prefer-deferred-annotations: warning

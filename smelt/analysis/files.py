@@ -118,7 +118,8 @@ class FileIndex:
             relative = absolute.relative_to(self.root).as_posix()
         except ValueError:
             try:
-                relative = Path(os.path.relpath(absolute, self.root)).as_posix()
+                relative_path = Path(os.path.relpath(absolute, self.root))
+                relative = relative_path.as_posix()
             except ValueError:  # different Windows drives
                 relative = absolute.as_posix()
         self._relative_paths[path] = relative
