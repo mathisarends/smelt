@@ -116,9 +116,7 @@ _MERGED_CODES: dict[str, str] = {
 }
 
 
-_CODES_GUIDE_URL = UPGRADE_GUIDE_URL.replace(
-    "#012-to-013", "#use-the-family-rule-codes"
-)
+_CODES_GUIDE_URL = f"{UPGRADE_GUIDE_URL.partition('#')[0]}#use-the-family-rule-codes"
 _SMT_PREFIX = re.compile(r"SMT\d*")
 
 _INFORMATION_HIDING_RULES = (

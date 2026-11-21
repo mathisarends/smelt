@@ -7,6 +7,22 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-21
+
+### Upgrade from 0.13
+
+1. Run `smelt config migrate` with Smelt 0.14. Supply any required policy it
+   reports, or remove the rule entry if it was intentionally inactive. Review
+   the diff and apply it with `smelt config migrate --write`.
+2. Update inline `# smelt: ignore[?]` comments by hand. For example, replace
+   `SMT420` with `tests/private-access` or `TST002` and keep the original reason.
+   The [upgrade guide](docs/upgrading.md#use-the-family-rule-codes) lists the
+   replacement codes.
+3. Update your [hook and CI pins](docs/integrations.md) and run
+   `smelt check --fail-on warning`.
+
+### Changes
+
 - Staged checks reuse production-only rule results after test edits. Editing a
   rule in a source installation preserves parsed analysis facts while refreshing
   rule decisions and the worker.
@@ -79,8 +95,6 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 - `smelt context` reuses the persistent analysis cache populated by `smelt check`.
 
-- Preview a 0.12 policy upgrade with `smelt config migrate`. Add `--write` to
-  replace the file after validation.
 - Enable [TYP008](docs/rules/TYP008.md) with `typing/prefer-inline-type-parameters: hint`
   to review explicit `Generic[...]` bases for PEP 695 class syntax on Python 3.12+.
 - **Breaking:** `architecture.modules` was removed. `smelt config migrate`
@@ -106,14 +120,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 - `smelt context` shows where a rule's setting comes from as
   `(smelt.yml: rules.<name>); reason: ...` instead of a separator that read
   like a question.
-- `smelt rules` labels its columns and explains the `default`, `policy` and
-  `explicit` activation modes. Text reports render boolean details as yes/no
-  and hide constant `automatic_*` flags.
+- Text rule explanations render boolean details as yes or no and omit
+  constant `automatic_*` flags.
 - Declare explicit package prefixes or module names in each layer's `modules`
   list. Smelt warns about redundant descendants, `smelt init` writes grouped
   assignments, and `smelt context` reports which assignment a planned module
-  inherits. ARC011
-  now respects explicit assignments when checking layout. See the
+  inherits. ARC011 respects explicit assignments when checking layout. See the
   [library layout guide](docs/architecture.md#libraries-and-mixed-package-layouts).
 - Enable [LAY011](docs/rules/LAY011.md) with `layout/misplaced-module-logger: warning`
   to keep module loggers immediately after imports and before constants.
@@ -124,9 +136,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   to review ordinary modules made entirely of explicit re-exports.
 - The `smelt.engine.workspace` import path was removed. Import `WorkspaceMember`,
   `import_root` and `workspace_members` from `smelt.analysis.workspace`.
-- Full checks warn with [MET004](docs/rules/MET004.md) when explicitly enabled
-  ARC007, IMP001, ARC008 or IMP003 has no required policy in the setting's scope.
-  Follow the reported configuration entry to supply the policy or turn off the rule.
+- Full checks warn with [MET004](docs/rules/MET004.md) when an explicit setting
+  for ARC007, IMP001, ARC008 or IMP003 lacks its required policy in that scope
+  but the policy exists elsewhere in the project. An enabled rule with no
+  required policy anywhere is a configuration error.
 - Set `style.public_attribute_boundary: module` to let [VIS004](docs/rules/VIS004.md)
   suggest private names for fields used by same-module helpers and classes.
   The default is `class`. [VIS010](docs/rules/VIS010.md) uses the same boundary
@@ -1527,7 +1540,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/mathisarends/smelt/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mathisarends/smelt/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mathisarends/smelt/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mathisarends/smelt/compare/v0.11.0...v0.11.1
