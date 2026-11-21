@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from functools import partial
 from typing import TYPE_CHECKING
 
 from smelt import __version__
@@ -18,6 +19,7 @@ from smelt.diagnostics.render.machine import render_github, render_json, render_
 from smelt.diagnostics.render.text import render_concise, render_text
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, relative_scope, run_check
+from smelt.engine.fixes import apply_fixes, fix_diff
 from smelt.engine.paths import project_metadata
 from smelt.engine.staged import staged_project
 
@@ -26,7 +28,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.config import LoadedConfig
-    from smelt.engine.check import CheckOutcome
     from smelt.engine.staged import StagedProject
 
 
@@ -35,11 +36,18 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
         raise CliError(
             "--by member requires --statistics", option="--by", value=args.by
         )
+    if args.fix and args.diff:
+        raise CliError(
+            "--diff previews the fixes without writing; use either --fix or --diff",
+            option="--diff",
+            value="--fix",
+        )
     if args.staged:
-        if args.fix:
+        if args.fix or args.diff:
+            option = "--fix" if args.fix else "--diff"
             raise CliError(
-                "--staged cannot be combined with --fix; fix and stage the working files first",
-                option="--fix",
+                f"--staged cannot be combined with {option}; fix and stage the working files first",
+                option=option,
                 value="--staged",
             )
         with staged_project(
@@ -91,8 +99,19 @@ def _check_loaded(
         comparison=getattr(args, "_comparison", None),
     )
     outcome = run_check(loaded, options)
+    if args.diff:
+        diff = fix_diff(outcome, unsafe=args.unsafe_fixes)
+        console.print(diff, end="")
+        return EXIT_VIOLATIONS if diff else EXIT_OK
     if args.fix:
-        outcome = _fix_outcome(args, console, loaded, options=options, outcome=outcome)
+        outcome, fixes = apply_fixes(
+            outcome, partial(run_check, loaded, options), unsafe=args.unsafe_fixes
+        )
+        outcome.report.fixes = fixes.to_json()
+        if args.format == "text":
+            console.print(
+                f"Fixed {_plural(fixes.applied, 'finding')} in {_plural(len(fixes.files), 'file')}; {len(fixes.skipped)} skipped."
+            )
     report = outcome.report
     if args.staged:
         report.project = project_metadata(origin)
@@ -168,34 +187,5 @@ def _scope(loaded: LoadedConfig, cwd: Path, raw: list[str]) -> tuple[str, ...]:
     return () if config in paths else paths
 
 
-def _fix_outcome(
-    args: argparse.Namespace,
-    console: Console,
-    loaded: LoadedConfig,
-    *,
-    options: CheckOptions,
-    outcome: CheckOutcome,
-) -> CheckOutcome:
-    from smelt.engine import none_default_fixes  # noqa: PLC0415
-    from smelt.engine.ordering_fixes import apply_ordering_fixes  # noqa: PLC0415
-
-    fixes = apply_ordering_fixes(outcome)
-    if fixes.files:
-        outcome = run_check(loaded, options)
-    defaults = none_default_fixes.apply_none_default_fixes(
-        outcome, unsafe=args.unsafe_fixes
-    )
-    if defaults.files:
-        outcome = run_check(loaded, options)
-    outcome.report.fixes = {
-        "ordering": fixes.to_json(),
-        "none_defaults": defaults.to_json(),
-    }
-    if args.format == "text":
-        console.print(
-            f"Ordering fixes: {len(fixes.files)} file(s), {fixes.sections} section(s); {len(fixes.skipped)} skipped."
-        )
-        console.print(
-            f"Optional-default fixes: {len(defaults.files)} file(s), {defaults.expressions} expression(s); {len(defaults.skipped)} skipped."
-        )
-    return outcome
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"

@@ -3,11 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.ordering_rewrite import rewrite_order
+from smelt.analysis.parsing import AnalysisError
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from smelt.analysis.ordering import FileOrder
 
 
 class PublicDefinitionsFirst(Rule):
@@ -16,6 +21,7 @@ class PublicDefinitionsFirst(Rule):
     category = Category.LAYOUT
     default_severity = Severity.ERROR
     requires = frozenset({Index.ORDERING})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="Definitions are out of public-first order within modeled execution boundaries.",
         rationale=(
@@ -49,13 +55,49 @@ class PublicDefinitionsFirst(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for result in ctx.ordering.files.values():
+            fixes = _SectionFixes(ctx, result.path)
             for finding in result.findings:
-                reason = finding.expected["fix_reason"]
+                expected = dict(finding.expected)
+                fix = None
+                if expected["fixable"]:
+                    try:
+                        fix = fixes.for_section(str(expected["section"]))
+                    except AnalysisError as exc:
+                        expected["fix_reason"] = str(exc)
+                    expected["fixable"] = fix is not None
+                reason = expected["fix_reason"]
                 yield self.violation(
                     finding.message,
                     path=result.path,
                     line=finding.line,
                     source_module=result.module,
-                    expected=finding.expected,
+                    expected=expected,
                     hint=f"Keep execution boundaries and prerequisite definitions in place. {reason or 'Use the expected order; bounded fixes require explicit --fix.'}",
+                    fix=fix,
                 )
+
+
+class _SectionFixes:
+    """Rebuild a file's ordering sections only when one of its findings is fixable."""
+
+    def __init__(self, ctx: AnalysisContext, path: str) -> None:
+        self._ordering = ctx.ordering
+        self._files = ctx.files
+        self._path = path
+        self._order: FileOrder | None = None
+
+    def for_section(self, key: str) -> Fix | None:
+        if self._order is None:
+            self._order = self._ordering.for_rewrite(self._path)
+        section = next(
+            (s for s in self._order.sections if s.key == key and s.edges), None
+        )
+        if section is None:
+            return None
+        text = self._files.read_text(self._path)
+        rewritten = rewrite_order(text, self._order, [section])
+        return Fix(
+            Applicability.SAFE,
+            "Move the section's definitions into the expected order",
+            (TextEdit.between(text, rewritten, whole_lines=True),),
+        )

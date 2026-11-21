@@ -65,6 +65,7 @@ class TestJson:
             ],
             "expected": {"may_depend_on": []},
             "hint": "Depend on a port instead.",
+            "fix": None,
             "docs_url": "https://example.test/rules/ARC001",
         }
 

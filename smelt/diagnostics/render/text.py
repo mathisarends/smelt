@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from smelt.diagnostics.fixes import Applicability
 from smelt.diagnostics.groups import group_findings
 from smelt.diagnostics.violation import Severity, Violation
 
@@ -376,14 +377,18 @@ def _render_violation(
         if violation.column:
             location += f":{violation.column}"
     shown_hint = violation.hint if show_hint else None
+    marker = _fix_marker(violation)
     if style.concise:
         if violation.line and not violation.column:
             location += ":1"
         hint = f" -> {' '.join(shown_hint.split())}" if shown_hint else ""
         message = " ".join(violation.message.split())
-        return f"{location} {violation.code} {violation.rule} {message}{hint}"
+        tag = f" {marker}" if marker else ""
+        return f"{location} {violation.code} {violation.rule}{tag} {message}{hint}"
     severity = style(f"[{violation.severity.value}]", _COLORS[violation.severity])
     header = f"{style(location, _BOLD)}  {style(violation.code, _BOLD)} {violation.rule}  {severity}"
+    if marker:
+        header += f" {style(marker, _GREEN)}"
     out = [header, f"  {violation.message}"]
     out.extend(_snippet(violation, read_line, style))
     out.extend(_chain(violation))
@@ -392,6 +397,17 @@ def _render_violation(
     if shown_hint:
         out.append(_wrap("Hint: ", shown_hint))
     return "\n".join(out)
+
+
+def _fix_marker(violation: Violation) -> str:
+    """`--fix` applies a safe fix, `--fix --unsafe-fixes` an unsafe one."""
+    match violation.fix.applicability if violation.fix else None:
+        case Applicability.SAFE:
+            return "[fix]"
+        case Applicability.UNSAFE:
+            return "[unsafe fix]"
+        case _:
+            return ""
 
 
 def _chain(violation: Violation) -> list[str]:
@@ -506,6 +522,7 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     if report.in_debt:
         tail.append(f"{report.in_debt} in debt{scope}")
     tail.append(_plural(report.modules, "module") + scope)
+    tail.extend(_fixable(report.violations))
 
     if errors == 0 and warnings == 0:
         checks = " ".join(style(f"✓ {c.value}", _GREEN) for c in report.categories)
@@ -516,6 +533,18 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
     mark = style("✗", _RED) if report.failed else style("!", _YELLOW)
     counts = [_plural(errors, "error"), _plural(warnings, "warning"), hint_text]
     return f"{mark} " + " · ".join([*counts, *tail])
+
+
+def _fixable(violations: list[Violation]) -> list[str]:
+    counts = Counter(v.fix.applicability for v in violations if v.fix)
+    safe, unsafe = counts[Applicability.SAFE], counts[Applicability.UNSAFE]
+    if safe and unsafe:
+        return [f"{safe} fixable with --fix, {unsafe} more with --unsafe-fixes"]
+    if safe:
+        return [f"{safe} fixable with --fix"]
+    if unsafe:
+        return [f"{unsafe} fixable with --fix --unsafe-fixes"]
+    return []
 
 
 def _plural(count: int, word: str) -> str:

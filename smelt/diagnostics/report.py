@@ -2,6 +2,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 
 type LineReader = Callable[[str, int], str]
@@ -36,6 +37,7 @@ class RuleMeta:
     config: tuple[str, ...] = ()
     activation: dict[str, str] = field(default_factory=dict)
     scope: str = "source"
+    fix: FixAvailability = FixAvailability.NONE
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -50,6 +52,7 @@ class RuleMeta:
             "config": list(self.config),
             "activation": self.activation,
             "scope": self.scope,
+            "fix": self.fix.value,
         }
 
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from smelt.analysis.context import Index
+from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import RuleSet
@@ -138,6 +139,7 @@ class _LazyRule:
         self.test_local = bool(metadata["test_local"])
         self.member_local = bool(metadata["member_local"])
         self.architecture_scoped = bool(metadata["architecture_scoped"])
+        self.fix_availability = FixAvailability(metadata["fix_availability"])
         self._target = str(metadata["target"])
 
     @cached_property
@@ -172,6 +174,9 @@ def catalog_metadata() -> list[dict[str, Any]]:
                 )
             },
             "scope": getattr(rule, "scope", "source"),
+            "fix_availability": getattr(
+                rule, "fix_availability", FixAvailability.NONE
+            ).value,
         }
         for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
     ]
