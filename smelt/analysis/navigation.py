@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.exports import MAX_HOPS, resolve_dotted
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from smelt.analysis.files import FileIndex
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
@@ -55,6 +55,14 @@ class _Type:
 
 
 @dataclass(frozen=True, slots=True)
+class DeclaredTypes:
+    """Namespace evidence a project declares for types Smelt cannot analyze."""
+
+    namespaces: frozenset[str] = frozenset()
+    factories: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True, slots=True)
 class NamespaceEvidence:
     root_type: str | None
     unresolved_at: tuple[str, ...] | None
@@ -66,9 +74,15 @@ class NamespaceEvidence:
 
 
 class NavigationNamespaces:
-    def __init__(self, syntax: SyntaxIndex, files: FileIndex) -> None:
+    def __init__(
+        self,
+        syntax: SyntaxIndex,
+        files: FileIndex,
+        declared: Callable[[str], DeclaredTypes] = lambda _module: DeclaredTypes(),
+    ) -> None:
         self._syntax = syntax
         self._files = files
+        self._declared = declared
         self._definitions: dict[str, tuple[str, ast.ClassDef] | None] = {}
         self._records: dict[str, bool] = {}
         self._owners: dict[tuple[str, int], dict[str, _Type | None]] = {}
@@ -76,23 +90,30 @@ class NavigationNamespaces:
     def assess(
         self, module: str, owner: ast.ClassDef, attributes: tuple[str, ...]
     ) -> NamespaceEvidence:
+        declared = self._declared(module)
         key = module, owner.lineno
         if key not in self._owners:
-            self._owners[key] = self._instance_fields(module, owner)
+            self._owners[key] = self._instance_fields(
+                module, owner, factories=declared.factories
+            )
         value = self._owners[key].get(attributes[0])
         root_type = value.name if value else None
         for depth, attribute in enumerate(attributes[1:], start=1):
-            if value is None or not self._namespace(value):
+            if value is None or not self._namespace(value, declared.namespaces):
                 return NamespaceEvidence(
                     root_type, attributes[:depth], value.name if value else None
                 )
-            value = self._attribute(value, attribute)
-        if value is not None and self._namespace(value):
+            value = (
+                value
+                if value.name in declared.namespaces
+                else self._attribute(value, attribute)
+            )
+        if value is not None and self._namespace(value, declared.namespaces):
             return NamespaceEvidence(root_type, None, None)
         return NamespaceEvidence(root_type, attributes, value.name if value else None)
 
-    def _namespace(self, value: _Type) -> bool:
-        return value.name in _VALUES | {
+    def _namespace(self, value: _Type, declared: frozenset[str]) -> bool:
+        return value.name in _VALUES | declared | {
             "types.ModuleType",
             "types.SimpleNamespace",
             "subprocess.Popen",
@@ -179,7 +200,7 @@ class NavigationNamespaces:
         return self._definitions[name]
 
     def _instance_fields(  # noqa: PLR0912 - distinguish declarations, constructor writes and rebinding
-        self, module: str, owner: ast.ClassDef
+        self, module: str, owner: ast.ClassDef, *, factories: frozenset[str]
     ) -> dict[str, _Type | None]:
         declared: dict[str, _Type | None] = {}
         inferred: dict[str, _Type | None] = {}
@@ -190,6 +211,15 @@ class NavigationNamespaces:
                 declared[statement.target.id] = self._annotation(
                     module, statement.annotation
                 )
+            if (
+                isinstance(statement, ast.Assign)
+                and len(statement.targets) == 1
+                and isinstance(statement.targets[0], ast.Name)
+            ):
+                # A class attribute holds an instance only when a declared factory made it.
+                made = self._made(module, statement.value, factories)
+                if made is not None:
+                    declared[statement.targets[0].id] = made
             if not isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
             args = [
@@ -252,7 +282,11 @@ class NavigationNamespaces:
                     elif isinstance(node, ast.Assign):
                         value = (
                             self._expression(
-                                module, node.value, parameters, shadowed=shadowed
+                                module,
+                                node.value,
+                                parameters,
+                                shadowed=shadowed,
+                                factories=factories,
                             )
                             if statement.name == "__init__"
                             else None
@@ -265,31 +299,6 @@ class NavigationNamespaces:
                         inferred[target.attr] = None
         return inferred | declared
 
-    def _annotation(self, module: str, node: ast.AST) -> _Type | None:  # noqa: PLR0911 - bounded annotation syntax
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            try:
-                return self._annotation(module, ast.parse(node.value, mode="eval").body)
-            except SyntaxError:
-                return None
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            if isinstance(node.right, ast.Constant) and node.right.value is None:
-                return self._annotation(module, node.left)
-            if isinstance(node.left, ast.Constant) and node.left.value is None:
-                return self._annotation(module, node.right)
-            return None
-        if isinstance(node, ast.Subscript):
-            origin = self._qualified(module, node.value)
-            if origin in {"typing.Optional", "typing.Annotated"}:
-                argument = (
-                    node.slice.elts[0]
-                    if isinstance(node.slice, ast.Tuple)
-                    else node.slice
-                )
-                return self._annotation(module, argument)
-            return self._annotation(module, node.value)
-        name = self._qualified(module, node)
-        return _Type(_ALIASES.get(name, name)) if name else None
-
     def _expression(  # noqa: PLR0911 - only explicit constructor and module evidence is accepted
         self,
         module: str,
@@ -297,6 +306,7 @@ class NavigationNamespaces:
         parameters: dict[str, _Type | None],
         *,
         shadowed: set[str],
+        factories: frozenset[str] = frozenset(),
     ) -> _Type | None:
         if isinstance(node, ast.Name):
             if node.id in shadowed:
@@ -340,9 +350,46 @@ class NavigationNamespaces:
                         if keyword.arg
                     },
                 )
-            if qualified:
-                return _Type(qualified)
+            return self._made(module, node, factories) or (
+                _Type(qualified) if qualified else None
+            )
         return None
+
+    def _made(
+        self, module: str, node: ast.expr, factories: frozenset[str]
+    ) -> _Type | None:
+        """The class ``factory(Class)`` or ``factory[T](Class)`` makes an instance of."""
+        if not factories or not isinstance(node, ast.Call) or not node.args:
+            return None
+        func = node.func.value if isinstance(node.func, ast.Subscript) else node.func
+        if self._qualified(module, func) not in factories:
+            return None
+        return self._annotation(module, node.args[0])
+
+    def _annotation(self, module: str, node: ast.AST) -> _Type | None:  # noqa: PLR0911 - bounded annotation syntax
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            try:
+                return self._annotation(module, ast.parse(node.value, mode="eval").body)
+            except SyntaxError:
+                return None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            if isinstance(node.right, ast.Constant) and node.right.value is None:
+                return self._annotation(module, node.left)
+            if isinstance(node.left, ast.Constant) and node.left.value is None:
+                return self._annotation(module, node.right)
+            return None
+        if isinstance(node, ast.Subscript):
+            origin = self._qualified(module, node.value)
+            if origin in {"typing.Optional", "typing.Annotated"}:
+                argument = (
+                    node.slice.elts[0]
+                    if isinstance(node.slice, ast.Tuple)
+                    else node.slice
+                )
+                return self._annotation(module, argument)
+            return self._annotation(module, node.value)
+        name = self._qualified(module, node)
+        return _Type(_ALIASES.get(name, name)) if name else None
 
     def _qualified(self, module: str, node: ast.AST) -> str | None:
         if isinstance(node, ast.Name):

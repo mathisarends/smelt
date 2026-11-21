@@ -12,6 +12,12 @@ current configuration and complete rule contracts, see the [README](README.md),
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are
   recognized by convention.
 
+- `style.navigation` declares namespace evidence for
+  [CPX001](docs/rules/CPX001.md) about code Smelt cannot analyze:
+  `namespace_types` for SDK clients whose attributes group domain APIs and
+  `instance_factories` for typed descriptors or dependency markers such as
+  `State(Counts)`. Package overrides can set or lift it.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13
