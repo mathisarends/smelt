@@ -428,22 +428,29 @@ class RuleSettings:
             for code, setting in layer.items()
             if not setting.broad or setting.value == "off"
         }
+        root = self.config.workspace_base or self.config
         result: list[tuple[RuleContract, tuple[tuple[str, ...], ...]]] = []
         for rule in self.rules.rules:
             activation = POLICIES.get(rule.code)
             if (
                 activation is None
-                or rule.code in named
                 or getattr(rule, "enabled_by_default", False)
                 or not any(activation.matches(policy) for policy in self._policies)
             ):
                 continue
             option = activation.option
-            if activation.required or option is None:
-                result.append((rule, (("rules",),)))
-                continue
             accept = activation.accept or (lambda value: value is not None)
-            if accept(getattr(self.config.structure, option)):
+            root_declares_policy = (
+                activation.matches(root)
+                if option is None
+                else accept(getattr(root.structure, option))
+            )
+            # A member or package exception leaves the root's policy in effect elsewhere.
+            if rule.code in named and (
+                not root_declares_policy or self.global_value(rule) is not None
+            ):
+                continue
+            if root_declares_policy or activation.required or option is None:
                 result.append((rule, (("rules",),)))
                 continue
             result.append(
@@ -457,6 +464,16 @@ class RuleSettings:
                 )
             )
         return result
+
+    def migration_severity(self, rule: RuleContract, location: tuple[str, ...]) -> str:
+        """Resolve caps on the old implicit activation before naming the rule."""
+        default = rule.default_severity.value
+        severity = self._apply_layers(rule.code, default)
+        match location:
+            case ("style", "overrides", name, "rules"):
+                if (setting := self._packages[name].get(rule.code)) is not None:
+                    severity = setting.apply(severity)
+        return severity or default
 
     def global_value(self, rule: RuleContract) -> str | None:
         default = rule.default_severity.value if self._default_enabled(rule) else None

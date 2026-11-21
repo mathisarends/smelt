@@ -38,6 +38,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 - **Breaking:** The configuration format is `version: 2`, and `version: 1` is
   no longer read; the error points to `smelt config migrate --write`, which
   converts the root, its bases and workspace members together.
+- `smelt config migrate` accepts empty policy bases and preserves root rule
+  activation with local exceptions, family severity caps and inherited
+  severities when moving package limits.
 - **Breaking:** Limits moved into their rule entries as
   `rules: {name: {severity, max}}`. `style.max_module_imports`,
   `max_positional_parameters`, `max_comprehension_loops`,

@@ -6,7 +6,7 @@ import yaml
 
 from smelt.cli import main
 from smelt.config import load_config
-from tests.helpers import MEMBER_BOUNDARIES, write_project
+from tests.helpers import MEMBER_BOUNDARIES, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -92,6 +92,117 @@ def test_unresolved_key_keeps_original_and_reports_location(
     assert main(["--config", str(path), "config", "migrate", "--write"]) == 2
     assert "style.unknown_option" in capsys.readouterr().err
     assert path.read_text(encoding="utf-8") == before
+
+
+def test_migrate_keeps_a_comment_only_base(tmp_path: Path) -> None:
+    comment = "# This base has no shared settings yet.\n"
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 1\nextends: base.yml\nproject: {root_packages: [app]}\n",
+            "base.yml": comment,
+            "app/__init__.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert load_config(path).config.version == 2
+    assert (tmp_path / "base.yml").read_text(encoding="utf-8") == comment
+
+
+def test_migrate_keeps_a_rule_active_outside_its_local_exception(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+                version: 1
+                project: {root_packages: [app]}
+                style:
+                  module_docstrings: require
+                  overrides:
+                    domain:
+                      match: app.domain
+                      rules: {layout/module-docstring-convention: off}
+                """,
+            "app/__init__.py": '"""Application package."""\n',
+            "app/domain/__init__.py": "",
+            "app/api.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert [(finding.code, finding.path) for finding in violations(tmp_path)] == [
+        ("LAY002", "app/api.py")
+    ]
+
+
+def test_migrate_preserves_a_family_severity_cap(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+                version: 1
+                project: {root_packages: [app]}
+                architecture:
+                  layers:
+                    domain: {path: domain}
+                    api: {path: api, may_depend_on: [domain]}
+                rules: {architecture: hint}
+                """,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "from app.api import handle\n",
+            "app/api/__init__.py": "def handle(): pass\n",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert [
+        (finding.code, finding.severity.value) for finding in violations(tmp_path)
+    ] == [("ARC001", "hint")]
+
+
+def test_migrate_preserves_inherited_severity_for_a_scoped_limit(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "rules: {complexity/excess-positional-parameters: error}\n",
+            "smelt.yml": """
+                version: 1
+                extends: base.yml
+                project: {root_packages: [app]}
+                style:
+                  overrides:
+                    domain:
+                      match: app.domain
+                      max_positional_parameters: 2
+                """,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "def build(a, b, c): pass\n",
+            "app/api.py": "def handle(a, b, c): pass\n",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert data["style"]["overrides"]["domain"]["rules"] == {
+        "complexity/excess-positional-parameters": {"max": 2}
+    }
+    assert [
+        (finding.code, finding.path, finding.severity.value)
+        for finding in violations(tmp_path)
+    ] == [("CPX003", "app/domain/__init__.py", "error")]
 
 
 def test_migrate_converts_the_bases_and_members_of_a_workspace_together(
