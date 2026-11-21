@@ -50,6 +50,10 @@ class ModuleImportFanout(Rule):
             "override's rules refines it for that package. module_import_exemptions "
             "defaults to [facades, composition_root]; [] checks both."
         ),
+        canonical=(
+            "Keep project imports per module within the limit; split modules "
+            "by responsibility"
+        ),
         config=(
             "style.module_import_exemptions",
             "style.overrides",

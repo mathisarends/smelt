@@ -41,6 +41,7 @@ class ImportStyle(Rule):
             "an absolute import. Preserve aliases and update references if converting "
             "an import statement changes its binding. There is no automatic rewrite."
         ),
+        canonical="Follow the package's relative/absolute import style",
         config=(
             "style.imports",
             "style.overrides",

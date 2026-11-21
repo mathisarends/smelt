@@ -48,6 +48,7 @@ class PrivateModuleImport(Rule):
             "Public entries are exact module patterns; add .** only when the whole "
             "subtree is intentionally public."
         ),
+        canonical="Import a contracted package only through its public entry points",
         config=(
             "architecture.packages",
             "architecture.import_graph.type_checking",

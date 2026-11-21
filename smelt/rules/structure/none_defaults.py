@@ -36,6 +36,10 @@ class ImplicitOptionalDefault(Rule):
         bad="def create(options: Options | None = None):\n    self.options = options or Options()",
         good="def create(options: Options | None = None):\n    self.options = options if options is not None else Options()",
         fix="Review whether only None should select the fallback. If so, use parameter if parameter is not None else fallback. smelt check --select TYP003 --fix --unsafe-fixes applies this behavior-changing rewrite only to visible findings. Plain --fix leaves it unchanged. The rewrite preserves fallback laziness and source outside each expression; inline comments or explicit line continuations within an expression require manual editing. Intentional truthiness fallback should remain unchanged. Debt and changed comparisons distinguish enclosing functions, including class and nested-function names. Older debt without a function identity requires review and explicit re-recording; debt --prune does not accept it under a new function.",
+        canonical=(
+            "Check optional parameters with is not None, not truthiness, "
+            "before falling back"
+        ),
         config=("rules", "style.overrides"),
     )
 

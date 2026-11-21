@@ -44,6 +44,10 @@ class CompositionRootLeak(Rule):
             "Receive dependencies through constructor parameters and register them in the "
             "composition root."
         ),
+        canonical=(
+            "Receive dependencies as parameters; never import the composition"
+            " root or wiring modules"
+        ),
         config=(
             "architecture.composition_root",
             "architecture.wiring",

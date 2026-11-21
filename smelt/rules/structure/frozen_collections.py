@@ -65,6 +65,10 @@ class MutableFieldInFrozenDataclass(Rule):
             "freezing may change behavior, so no automatic rewrite is performed. "
             "Enable rules: {modeling/mutable-field-in-frozen-dataclass: warning}, or select MOD011."
         ),
+        canonical=(
+            "Use tuple, frozenset or a read-only mapping for fields of frozen"
+            " dataclasses"
+        ),
         config=("rules", "style.overrides"),
     )
 

@@ -50,6 +50,10 @@ class PreferInlineTypeParameters(Rule):
             "explicit variance can use a reasoned Smelt suppression. Enable "
             "rules: {typing/prefer-inline-type-parameters: hint}, or select TYP008."
         ),
+        canonical=(
+            "Declare type parameters inline (class Box[T]:) instead of a "
+            "Generic[T] base"
+        ),
         config=("rules", "style.overrides", "project.python_version"),
     )
 

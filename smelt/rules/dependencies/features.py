@@ -39,6 +39,9 @@ class CrossFeatureImport(Rule):
             "(`allow: [{from: orders.application, to: billing.application}]`), move the "
             "shared concept into a `shared` package, or merge the features."
         ),
+        canonical=(
+            "Import another feature only through an allowed cross-feature relationship"
+        ),
         config=(
             "architecture.cross_feature.default",
             "architecture.cross_feature.allow",
@@ -130,6 +133,7 @@ class SharedImportsFeature(Rule):
         bad="# gateway/shared/money.py\nfrom gateway.features.billing.domain import Currency",
         good="# gateway/shared/money.py\nclass Currency: ...",
         fix="Move the needed concept into shared, or move the shared code into the feature.",
+        canonical="Keep shared and central modules independent of feature modules",
         config=(
             "architecture.shared",
             "architecture.layers.<layer>.modules",

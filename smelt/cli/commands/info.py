@@ -68,6 +68,7 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             "bad": doc.bad,
             "good": doc.good,
             "fix": doc.fix,
+            "canonical": doc.canonical,
             "config": list(doc.config),
             "example_language": doc.example_language,
         }
@@ -83,6 +84,7 @@ def explain(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     ]
     if settings is not None and status is not None:
         lines.append(f"Status:    {_status_text(status)} in {settings.source}")
+    lines.append(f"Guide:     {doc.canonical}")
     lines.extend(
         [
             "",

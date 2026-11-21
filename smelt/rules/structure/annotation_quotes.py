@@ -56,6 +56,7 @@ class PreferDeferredAnnotations(Rule):
             "No automatic rewrite is performed. Enable rules: "
             "{typing/prefer-deferred-annotations: hint}, or select TYP006."
         ),
+        canonical="Write annotations without quotes and rely on deferred evaluation",
         config=("rules", "style.overrides", "project.python_version"),
     )
 

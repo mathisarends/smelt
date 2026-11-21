@@ -40,6 +40,9 @@ class MemberBoundary(Rule):
             "# root policy: architecture.members: {'services/*': {may_depend_on: ['packages/*']}}"
         ),
         fix="Move the dependency to an allowed member or invert it behind an interface; change the root allowlist only if the dependency belongs in the intended design.",
+        canonical=(
+            "Import other workspace members only as architecture.members allows"
+        ),
         config=(
             "project.workspace",
             "architecture.members",
@@ -92,6 +95,9 @@ class UndeclaredMemberDependency(Rule):
             "in project.dependencies and configure its uv workspace source. "
             "If architecture.members forbids the dependency, remove the import "
             "or move the dependency behind an allowed member boundary."
+        ),
+        canonical=(
+            "Declare a workspace member as a project dependency before importing it"
         ),
         config=(
             "project.workspace",

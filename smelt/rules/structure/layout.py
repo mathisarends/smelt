@@ -53,6 +53,7 @@ class UnknownLayer(Rule):
             "Move the code into a declared layer, or assign its package to the "
             "intended layer. Use the layer's modules list for packages outside features."
         ),
+        canonical="Place feature code inside one of the declared layers",
         config=(
             "architecture.layers",
             "architecture.layers.<layer>.modules",
@@ -167,6 +168,10 @@ class UnclassifiedModule(Rule):
         fix=(
             "Add the package to the intended layer's modules list, list it in "
             "architecture.shared or composition_root, or move it into a feature."
+        ),
+        canonical=(
+            "Place every module in a feature, a layer, the shared set or the "
+            "composition root"
         ),
         config=(
             "architecture.layers.<layer>.modules",

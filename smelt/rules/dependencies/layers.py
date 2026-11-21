@@ -51,6 +51,10 @@ class LayerBoundary(Rule):
             "Depend on an abstraction (a port) owned by the importing layer or an allowed "
             "layer, and wire the concrete implementation in the composition root."
         ),
+        canonical=(
+            "Import only from layers this layer may depend on; reach other "
+            "layers through a port wired in the composition root"
+        ),
         config=(
             "architecture.layers.<layer>.may_depend_on",
             "architecture.layers.<layer>.modules",

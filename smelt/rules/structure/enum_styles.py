@@ -64,6 +64,9 @@ class StrEnumValueConvention(Rule):
             "str_enum_values under style or in a style override. Reasoned "
             "inline suppressions are supported."
         ),
+        canonical=(
+            "Follow the package's StrEnum value convention (explicit strings or auto())"
+        ),
         config=("rules", "style.str_enum_values", "style.overrides"),
     )
 

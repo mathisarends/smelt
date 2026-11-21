@@ -50,6 +50,10 @@ class PublicDefinitionsFirst(Rule):
             "public-first order. On Python 3.12/3.13, keep a needed annotations future "
             "import when the chosen order uses forward references; TYP002 retains it."
         ),
+        canonical=(
+            "Put public definitions before private ones, in the configured "
+            "section order"
+        ),
         config=("rules", "style.overrides", "project.python_version"),
     )
 

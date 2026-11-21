@@ -26,6 +26,9 @@ class RuleDoc:
     bad: str
     good: str
     fix: str
+    canonical: str
+    """One imperative instruction for writing conforming code, shown by
+    ``smelt context --guide``. Rules with options render it from their policy."""
     config: tuple[str, ...] = ()
     example_language: str = "python"
 

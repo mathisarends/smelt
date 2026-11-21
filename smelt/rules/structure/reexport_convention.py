@@ -51,6 +51,7 @@ class ReexportConvention(Rule):
             "For a package that needs either spelling, set reexports to allow "
             "in a style override with a reason. This is a read-only check."
         ),
+        canonical="Follow the package's re-export convention in __init__.py",
         config=("rules", "style.reexports", "style.overrides"),
     )
 

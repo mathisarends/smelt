@@ -87,6 +87,9 @@ class ImportCycle(Rule):
             "Break one edge of the cycle: extract the shared piece into a module both can "
             "import, invert one dependency behind an abstraction, or merge the parts."
         ),
+        canonical=(
+            "Keep imports acyclic: move shared code into a module both sides can import"
+        ),
         config=(
             "architecture.import_graph.cycles",
             "architecture.import_graph.type_checking",

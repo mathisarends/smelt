@@ -66,6 +66,7 @@ class MissingMirrorTest(Rule):
             "Enable rules: "
             "{tests/missing-mirror-test: warning} or select TST012."
         ),
+        canonical="Add a test at the mirrored path for every module with behavior",
         config=(
             "rules",
             "tests.layout",

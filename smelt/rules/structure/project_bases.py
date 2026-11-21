@@ -58,6 +58,9 @@ class PreferProjectBaseClass(Rule):
             "{bases: {pydantic.BaseModel: app.core.Options}}, or for one package "
             "with the same option in a style override."
         ),
+        canonical=(
+            "Inherit the project base class instead of the configured outside base"
+        ),
         config=("style.bases", "style.overrides"),
     )
 

@@ -46,6 +46,10 @@ class NestedConditionalExpression(Rule):
             "rules: {complexity/forbidden-nested-conditional: hint}, or select CPX005. "
             "Package overrides and reasoned suppressions are supported."
         ),
+        canonical=(
+            "Write nested decisions as if/elif or match statements, not "
+            "nested conditional expressions"
+        ),
         config=("rules", "style.overrides"),
     )
 

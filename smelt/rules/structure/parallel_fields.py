@@ -97,6 +97,9 @@ class ParallelRecordFields(Rule):
             "or correctness claim is made. Enable rules: {modeling/parallel-record-fields: hint}, "
             "or select MOD012."
         ),
+        canonical=(
+            "Store one sequence of named records instead of parallel sequence fields"
+        ),
         config=("rules", "style.overrides"),
     )
 

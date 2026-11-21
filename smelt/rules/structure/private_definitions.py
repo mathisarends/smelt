@@ -62,6 +62,10 @@ class ExcessPrivateDefinitions(Rule):
             "set max on the entry, in the root or a style override's rules. "
             "The limit defaults to 12; zero is supported."
         ),
+        canonical=(
+            "Keep private definitions per module within the limit; split "
+            "cohesive groups out"
+        ),
         config=("rules", "style.overrides"),
     )
 

@@ -44,6 +44,10 @@ class ComplexComprehension(Rule):
             "The limit defaults to 1; an entry in a style override's rules can "
             "permit intentional flattening."
         ),
+        canonical=(
+            "Keep comprehensions to the configured number of for/if steps; "
+            "write a loop otherwise"
+        ),
         config=("rules", "style.overrides"),
     )
 

@@ -98,6 +98,9 @@ class PreferDomainException(Rule):
             "app.errors.AppError}}, or for one package with the same option in a "
             "style override."
         ),
+        canonical=(
+            "Raise the project's exception hierarchy instead of builtin exceptions"
+        ),
         config=("style.errors", "style.overrides"),
     )
 

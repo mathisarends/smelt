@@ -54,6 +54,9 @@ class NondeterministicTestData(Rule):
         bad="from uuid import uuid4\n\ndef test_create():\n    lease = create(uuid4(), uuid4())\n    assert lease.active",
         good="from uuid import UUID\n\ndef test_create():\n    lease = create(UUID(int=1), UUID(int=2))\n    assert lease.active",
         fix="Use fixed inputs such as UUID(int=1), or an explicitly seeded local random.Random(seed) when generated variation matters. Keep tests of randomness, entropy and unique-ID behavior with a reasoned suppression. Preserve falsy-ID regression scenarios; change only incidental random setup. No source is rewritten. Enable rules: {tests/nondeterministic-data: warning} or select TST011.",
+        canonical=(
+            "Use fixed test data such as UUID(int=1), not random or time-derived values"
+        ),
         config=("rules", "tests.quality_exclude"),
     )
 

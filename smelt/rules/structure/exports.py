@@ -25,6 +25,7 @@ class PackageOnlyDunderAll(Rule):
         bad='\n# app/events.py\ndef open_events(): ...\n__all__ = ["open_events"]',
         good='\n# app/events.py\ndef open_events(): ...\n\n# app/__init__.py\nfrom .events import open_events\n__all__ = ["open_events"]',
         fix="Review the package API and move the deliberate export list to __init__.py, preserving intended re-exports and checking cycles. Removing __all__ can change star imports and the visibility evidence used by other rules. No list is moved or removed automatically. Enable rules: {visibility/misplaced-dunder-all: error}; closest package overrides can retain compatibility modules.",
+        canonical="Declare __all__ only in package __init__.py files",
         config=("rules", "style.overrides"),
     )
 
@@ -90,6 +91,10 @@ class ReexportOnlyModule(Rule):
             "API. A supported compatibility path can use a reasoned suppression. "
             "Check published import paths, side effects and cycles before removing "
             "a forwarding module. This is a read-only review."
+        ),
+        canonical=(
+            "Import from the defining module or the package API; do not add "
+            "re-export-only modules"
         ),
         config=("rules", "style.overrides"),
     )

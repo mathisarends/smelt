@@ -73,6 +73,10 @@ class ConstructorLogic(Rule):
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."
         ),
+        canonical=(
+            "Keep constructor decisions within the limit; move normalization "
+            "into a named function"
+        ),
         config=("rules", "style.overrides"),
     )
 

@@ -96,6 +96,10 @@ class InlineCallArgument(Rule):
             "style override, which also narrows the review to that scope. "
             "Reasoned inline suppressions are supported."
         ),
+        canonical=(
+            "Bind awaited results, comprehensions and builtin reductions to a"
+            " local name before passing them as arguments"
+        ),
         config=("rules", "style.call_argument_kinds", "style.overrides"),
     )
 

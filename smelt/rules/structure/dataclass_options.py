@@ -61,6 +61,7 @@ class MissingDataclassOption(Rule):
             "style: {dataclass_options: [frozen, slots]}, or for one package "
             "with the same option in a style override."
         ),
+        canonical="Set the dataclass options the package requires",
         config=("style.dataclass_options", "style.overrides"),
     )
 

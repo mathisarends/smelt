@@ -141,6 +141,7 @@ def _rule_page(rule: RuleContract) -> str:
         f"- **Activation:** {meta.activation['mode']} — {meta.activation['description']}",
         f"- **Severity when active:** {meta.default_severity.value}",
         f"- **Automatic fix:** {_FIX_AVAILABILITY[meta.fix]}",
+        f"- **Guide:** {doc.canonical}",
         "",
         "## Why",
         "",

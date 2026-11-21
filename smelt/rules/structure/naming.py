@@ -34,6 +34,9 @@ class ForbiddenPackageName(Rule):
         bad="voice/application/utils.py",
         good="voice/application/durations.py",
         fix="Name the module after what it does, or move each function next to its callers.",
+        canonical=(
+            "Name modules after what they do, never with a forbidden generic name"
+        ),
         config=("style.forbidden_names",),
     )
 
@@ -95,6 +98,7 @@ class ForbiddenPrivateModule(Rule):
             "A more specific package can explicitly allow the convention. "
             "No files or symbols are renamed automatically."
         ),
+        canonical="Name modules and packages without a leading underscore",
         config=("style.private_modules", "style.overrides"),
         example_language="text",
     )
@@ -181,6 +185,9 @@ class ForbiddenBaseClassAffix(Rule):
             "{modeling/forbidden-base-class-affix: error}, globally or in a "
             "style override, or --select MOD002."
         ),
+        canonical=(
+            "Name classes after their responsibility, without a Base prefix or suffix"
+        ),
         config=("rules", "style.overrides"),
     )
 
@@ -243,6 +250,7 @@ class RedundantModuleName(Rule):
             "or --select LAY009. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),
+        canonical="Do not repeat the package name in a module file name",
         config=("rules", "style.overrides"),
         example_language="text",
     )

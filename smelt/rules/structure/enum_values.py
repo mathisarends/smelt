@@ -23,6 +23,7 @@ class RedundantStrEnumValue(Rule):
         bad='from enum import StrEnum\n\nclass MouseEventKind(StrEnum):\n    WHEEL = "mouseWheel"\n\ndispatch_mouse_event(type=MouseEventKind.WHEEL.value)',
         good='from enum import StrEnum\n\nclass MouseEventKind(StrEnum):\n    WHEEL = "mouseWheel"\n\ndispatch_mouse_event(type=MouseEventKind.WHEEL)',
         fix="Prefer the member directly when the consumer accepts string subclasses. Review boundary behavior first: exact str checks, identity, repr and serialization contracts can distinguish the member from its raw value. Literal-typed parameters can also reject the member in a type checker; Smelt has no consumer type information. Keep .value or an explicit str(member) conversion where a plain string is intentional, and suppress the hint with a reason. No automatic rewrite is performed; analyzed code is never executed.",
+        canonical="Use a StrEnum member directly instead of its .value",
         config=("rules",),
     )
 

@@ -53,6 +53,10 @@ class ExcessPositionalParameters(Rule):
             "{severity: warning, max: 3}}; an entry in a style override's rules "
             "refines the limit for that package."
         ),
+        canonical=(
+            "Keep positional parameters within the package limit; make the "
+            "rest keyword-only with *"
+        ),
         config=("rules", "style.overrides"),
     )
 

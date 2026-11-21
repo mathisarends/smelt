@@ -57,6 +57,10 @@ class AnonymousTupleType(Rule):
             "suppression. No automatic rewrite is performed. Enable rules: "
             "{typing/anonymous-tuple-type: hint}, or select TYP007."
         ),
+        canonical=(
+            "Name the fields of fixed-length tuples with a NamedTuple or "
+            "frozen dataclass"
+        ),
         config=("rules",),
     )
 

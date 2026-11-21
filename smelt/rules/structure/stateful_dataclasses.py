@@ -127,6 +127,10 @@ class StatefulDataclass(Rule):
             "or select MOD005. Package overrides and reasoned inline "
             "suppressions are supported."
         ),
+        canonical=(
+            "Compute dataclass values before construction; do not mutate "
+            "fields afterwards"
+        ),
         config=("rules",),
     )
 
