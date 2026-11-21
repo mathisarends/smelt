@@ -87,8 +87,9 @@ class PrivateModuleImport(Rule):
 
 def _module_targets(ctx: AnalysisContext, detail: ImportDetail) -> Iterator[str]:
     """Keep symbol re-exports public, but resolve explicit module-valued aliases."""
-    seen = {detail.imported}
-    yield detail.imported
+    imported = detail.bound_module(ctx.syntax.namespace)
+    seen = {imported}
+    yield imported
     for name in detail.names:
         resolved = resolve_dotted(name, ctx.syntax.namespace)
         if resolved is not None and resolved[1] is None and resolved[0] not in seen:

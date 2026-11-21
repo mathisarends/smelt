@@ -390,3 +390,25 @@ def test_export_proposals_remain_specific_to_each_caller(tmp_path: Path) -> None
         "app.caller": {"GetUser", "UpdateUser"},
         "app.second": {"GetUser", "DeleteUser"},
     }
+
+
+def test_facade_symbols_named_like_submodules_count_as_the_facade(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        "from app.user.application import get_user, update_user\n",
+        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
+    )
+    write_project(
+        tmp_path,
+        {
+            "app/user/application/__init__.py": (
+                "from .get_user import get_user\nfrom .update_user import update_user\n"
+            ),
+            "app/user/application/get_user.py": "def get_user() -> None: pass\n",
+            "app/user/application/update_user.py": "def update_user() -> None: pass\n",
+        },
+    )
+
+    assert violations(tmp_path, OPTIONS) == []
