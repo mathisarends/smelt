@@ -233,10 +233,10 @@ def build_briefing(
     analysis_error: str | None = None,
     loaded: LoadedConfig | None = None,
 ) -> Briefing:
-    ctx, architecture_key = _governing_view(ctx, target)
+    ctx, architecture_key = governing_view(ctx, target)
     model = ctx.model
     arch = ctx.config.architecture
-    info = _target_info(model, target)
+    info = target_info(model, target)
     package = None
     if target.feature is not None:
         package = model.feature_package_for(target.feature)
@@ -391,9 +391,7 @@ def render_briefing(briefing: Briefing, ctx: AnalysisContext) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _governing_view(
-    ctx: AnalysisContext, target: Target
-) -> tuple[AnalysisContext, str]:
+def governing_view(ctx: AnalysisContext, target: Target) -> tuple[AnalysisContext, str]:
     """The governing architecture view and its config key."""
     model = ctx.model
     if not model.parts:
@@ -409,6 +407,16 @@ def _governing_view(
     index = model.parts.index(part)
     scope = ctx.architecture_scopes[index]
     return ctx.architecture_view(scope), scope.location
+
+
+def target_info(model: ArchitectureModel, target: Target) -> ModuleInfo | None:
+    if target.module is None:
+        return None
+    if target.planned and target.path is not None:
+        return model.planned_info(
+            target.module, is_package=PurePosixPath(target.path).name == "__init__.py"
+        )
+    return model.info(target.module)
 
 
 @dataclass(frozen=True, slots=True)
@@ -601,16 +609,6 @@ def _config_source(path: Path, *, root: Path) -> str:
         if path.is_relative_to(root)
         else path.as_posix()
     )
-
-
-def _target_info(model: ArchitectureModel, target: Target) -> ModuleInfo | None:
-    if target.module is None:
-        return None
-    if target.planned and target.path is not None:
-        return model.planned_info(
-            target.module, is_package=PurePosixPath(target.path).name == "__init__.py"
-        )
-    return model.info(target.module)
 
 
 def _coverage_brief(

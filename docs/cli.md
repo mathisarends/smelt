@@ -32,6 +32,7 @@ smelt check --show-coverage --format json  # include the per-file policy invento
 smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
 smelt check --diff                                # preview the safe fixes
 smelt context user                   # what applies to a feature, module or path
+smelt context app/orders/refund.py --guide  # how to write it: one instruction per active rule
 smelt explain ARC001                 # how to enable it, options, status, rationale and examples
 smelt rules                          # full catalog with project status and severity
 smelt debt                           # record today's violations as known debt
@@ -111,6 +112,17 @@ activation source and any exception reason. For production targets, the text
 view focuses on the source policy. It presents package APIs separately from
 style settings. Use `smelt config show --sources` to trace inheritance and
 review the root and member files together.
+
+`smelt context TARGET --guide` turns the same policy into instructions for
+writing the target, without analyzing the project. Each active rule contributes
+one line, rendered from the options that govern the target: the layers it may
+import, its positional-parameter limit, the required dataclass options and so
+on. Rules whose policy does not reach the target are left out. Errors, warnings
+and hints are listed separately; hints are review prompts that apply only where
+their case occurs. A source target also lists the rules for its mirrored test
+file, and a test path lists only test rules. `--format json` returns `target`,
+`layer`, `test_path` and `rules`, each with `code`, `rule`, `family`,
+`severity`, `applies_to` (`source` or `tests`) and `instruction`.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 2, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)

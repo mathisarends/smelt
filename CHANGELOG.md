@@ -7,6 +7,15 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `smelt context <target> --guide` prints one instruction per active rule for
+  writing the target, rendered from `smelt.yml`: allowed layer imports, the
+  package's positional-parameter limit, required dataclass options, the
+  re-export and future-import conventions and so on. Source targets also list
+  the rules for their mirrored test file; test paths are accepted as targets.
+  Errors, warnings and hints are listed separately. The guide skips analysis,
+  and `--format json` returns each rule's code, severity and instruction.
+  `smelt explain` and the rule pages show the rule's instruction as `Guide`.
+
 - Findings can carry a machine-readable fix: text edits with an `original` and a
   `replacement` plus an applicability (`safe`, `unsafe` or `display`). JSON
   findings include it under `fix`, the concise and text formats mark fixable
