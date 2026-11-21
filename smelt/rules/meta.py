@@ -131,8 +131,8 @@ class UncoveredPackageFacade(_EngineRule):
             "with an initializer outside the caller; package-internal, test, "
             "initializer, private, star and facade imports do not count, and "
             "IMP004 ignore entries exclude their callers. It reports the package once "
-            "its callers exceed max (default 2). Packages governed by an active "
-            "architecture/missing-facade-export threshold are left to that rule. "
+            "its callers exceed max (default 2). A facade with its own active "
+            "architecture/missing-facade-export threshold is left to that rule. "
             "Changed, staged and path-scoped checks skip this hint."
         ),
         bad=(
@@ -145,10 +145,9 @@ class UncoveredPackageFacade(_EngineRule):
             '__all__ = ["start", "stop"]'
         ),
         fix=(
-            "Decide the package API: re-export the names deliberately, since a "
-            "re-export can change import-time behavior, or turn IMP004 off for the "
-            "package or ignore this hint with a reason when the package has no facade "
-            "on purpose."
+            "Review whether to re-export these names. Re-exports can change "
+            "import-time behavior. For an intentionally facade-less package, add an "
+            "ignore entry for MET005 matching the package with a reason."
         ),
         config=("rules", "ignore"),
     )

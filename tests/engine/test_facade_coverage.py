@@ -160,13 +160,19 @@ def test_ignore_entries_exclude_callers_or_the_package(
     assert _findings(_project(tmp_path, config=config)) == []
 
 
-def test_an_active_export_threshold_owns_the_package(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("package", "expected"),
+    [("app.jobs", []), ("app", ["MET005:app/jobs/__init__.py"])],
+)
+def test_an_export_threshold_only_covers_its_own_facade(
+    tmp_path: Path, package: str, expected: list[str]
+) -> None:
     config = (
         _ENABLED + "  architecture/missing-facade-export: warning\n"
         "architecture:\n  packages:\n"
-        "    jobs: {match: app.jobs, min_importers_to_export: 99}\n"
+        f"    facade: {{match: {package}, min_importers_to_export: 99}}\n"
     )
-    assert _findings(_project(tmp_path, config=config)) == []
+    assert _findings(_project(tmp_path, config=config)) == expected
 
 
 @pytest.mark.parametrize(
