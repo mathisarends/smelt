@@ -698,6 +698,26 @@ class OrderingConfig(_Model):
         return values
 
 
+class NavigationConfig(_Model):
+    namespace_types: list[str] = Field(
+        default_factory=list,
+        description="Qualified classes whose instances CPX001 treats as namespaces, together with every attribute reached through them, e.g. an SDK client that groups domain APIs: [sdk.Client].",
+    )
+    instance_factories: list[str] = Field(
+        default_factory=list,
+        description="Qualified callables that return an instance of the class passed as their first positional argument, such as a typed state descriptor or a dependency marker: [framework.State]. CPX001 then types class attributes and constructor assignments made with them.",
+    )
+
+    @field_validator("namespace_types", "instance_factories")
+    @classmethod
+    def _qualified_names(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if not re.fullmatch(r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)+", value):
+                msg = f"{value!r} is not a qualified name such as package.module.Name"
+                raise ValueError(msg)
+        return values
+
+
 class TypeDispatchConfig(_Model):
     style: Literal["allow", "match"] = "match"
     min_branches: int = Field(
@@ -788,6 +808,10 @@ class PackagePolicy(_Model):
     type_dispatch: TypeDispatchConfig | None = Field(
         default=None,
         description="IDM002 match/case preference for same-subject isinstance chains. No automatic rewrite.",
+    )
+    navigation: NavigationConfig | None = Field(
+        default=None,
+        description="Namespace evidence for complexity/excess-attribute-depth (CPX001) about types Smelt cannot analyze, such as third-party SDK clients and typed descriptors. {} lifts an outer policy.",
     )
     call_argument_kinds: list[CallArgumentKind] | None = Field(
         default=None,

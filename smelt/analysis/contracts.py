@@ -37,6 +37,7 @@ type PolicyOption = Literal[
     "dataclass_options",
     "bases",
     "errors",
+    "navigation",
 ]
 
 
@@ -265,6 +266,11 @@ class ContractIndex:
                 **(
                     {"errors": contract.spec.errors.model_dump(mode="json")}
                     if contract.spec.errors
+                    else {}
+                ),
+                **(
+                    {"navigation": contract.spec.navigation.model_dump(mode="json")}
+                    if contract.spec.navigation
                     else {}
                 ),
                 **(
