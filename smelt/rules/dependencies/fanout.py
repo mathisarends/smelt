@@ -11,6 +11,7 @@ from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, skip_import
+from smelt.rules.dependencies.insiders import inside_contract
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -70,10 +71,7 @@ class PackageImportFanout(Rule):
                 if (
                     detail.external
                     or skip_import(ctx, detail)
-                    or (
-                        is_within(detail.importer, contract.package)
-                        and not ctx.files.is_test_path(path)
-                    )
+                    or inside_contract(ctx, path, detail.importer, contract=contract)
                 ):
                     continue
                 imported = detail.bound_module(ctx.syntax.namespace)

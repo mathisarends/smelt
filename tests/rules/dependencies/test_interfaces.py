@@ -403,3 +403,42 @@ def test_same_named_module_stays_private_without_facade_binding(
     write_project(tmp_path, _SAME_NAMED_FACADE)
 
     assert [v.target_module for v in violations(tmp_path, OPTIONS)] == [target]
+
+
+_MIRRORED = CONFIG.replace(
+    "public: [api]", "public: [api]\n      test_access: mirrored"
+)
+
+
+@pytest.mark.parametrize(("config", "reported"), [(CONFIG, True), (_MIRRORED, False)])
+def test_mirrored_tests_may_import_internals_only_with_mirrored_test_access(
+    tmp_path: Path, config: str, reported: bool
+) -> None:
+    _project(tmp_path, "", config=config)
+    write_project(
+        tmp_path,
+        {"tests/orders/test_api.py": "from app.orders.storage import OrderStore\n"},
+    )
+
+    assert bool(violations(tmp_path, OPTIONS)) is reported
+
+
+@pytest.mark.parametrize(
+    "test_path",
+    [
+        "tests/billing/test_invoice.py",
+        "tests/test_client.py",
+        "tests/orders/conftest.py",
+        "tests/integration/test_checkout.py",
+    ],
+    ids=["other-package", "other-module", "conftest", "integration"],
+)
+def test_tests_not_mirroring_a_module_inside_stay_outside_callers(
+    tmp_path: Path, test_path: str
+) -> None:
+    _project(tmp_path, "", config=_MIRRORED)
+    write_project(tmp_path, {test_path: "from app.orders.storage import OrderStore\n"})
+
+    [finding] = violations(tmp_path, OPTIONS)
+
+    assert (finding.code, finding.path) == ("ARC007", test_path)
