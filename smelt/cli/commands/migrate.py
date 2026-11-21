@@ -42,13 +42,15 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
         file.apply(migrate_policy(file.before))
     rules = build_rule_set(lazy=True)
     loaded = load_config(path, store=_preview(files))
+    # A broad selector can depend on an implicit activation we have yet to name.
+    settings = RuleSettings(rules, loaded, validate=False)
     root = files.get(loaded.path) or files.setdefault(loaded.path, _File(loaded.path))
     root.apply(
         enable_rules(
             root.after,
             [
-                (location, rule.name, rule.default_severity.value)
-                for rule, locations in RuleSettings(rules, loaded).policy_enablements()
+                (location, rule.name, settings.migration_severity(rule, location))
+                for rule, locations in settings.policy_enablements()
                 for location in locations
             ],
         )

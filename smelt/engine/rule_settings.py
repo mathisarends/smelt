@@ -465,6 +465,16 @@ class RuleSettings:
             )
         return result
 
+    def migration_severity(self, rule: RuleContract, location: tuple[str, ...]) -> str:
+        """Resolve caps on the old implicit activation before naming the rule."""
+        default = rule.default_severity.value
+        severity = self._apply_layers(rule.code, default)
+        match location:
+            case ("style", "overrides", name, "rules"):
+                if (setting := self._packages[name].get(rule.code)) is not None:
+                    severity = setting.apply(severity)
+        return severity or default
+
     def global_value(self, rule: RuleContract) -> str | None:
         default = rule.default_severity.value if self._default_enabled(rule) else None
         return self._apply_layers(rule.code, default)

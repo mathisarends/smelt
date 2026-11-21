@@ -142,6 +142,33 @@ def test_migrate_keeps_a_rule_active_outside_its_local_exception(
     ]
 
 
+def test_migrate_preserves_a_family_severity_cap(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+                version: 1
+                project: {root_packages: [app]}
+                architecture:
+                  layers:
+                    domain: {path: domain}
+                    api: {path: api, may_depend_on: [domain]}
+                rules: {architecture: hint}
+                """,
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "from app.api import handle\n",
+            "app/api/__init__.py": "def handle(): pass\n",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert [
+        (finding.code, finding.severity.value) for finding in violations(tmp_path)
+    ] == [("ARC001", "hint")]
+
+
 def test_migrate_converts_the_bases_and_members_of_a_workspace_together(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
