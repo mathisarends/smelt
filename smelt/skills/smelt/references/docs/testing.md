@@ -10,7 +10,9 @@ Tests also obey [package API policies](structure.md#suggestions-to-bundle-implem
 ARC007 enforces declared public entry points, IMP001 reviews configured import
 bundling thresholds, and opt-in IMP004 suggests existing package re-exports.
 This includes `conftest.py` and configured test roots inside a source package.
-`tests.quality_exclude` does not exempt these imports. ARC008's `count_tests`
+`tests.quality_exclude` does not exempt these imports; a contract's
+`test_access: mirrored` lets tests that mirror one of its modules import its
+internals. ARC008's `count_tests`
 option remains separate: it controls whether test demand suggests adding exports.
 
 Enable the policies that match your unit-test conventions in the existing YAML

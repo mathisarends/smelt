@@ -110,6 +110,25 @@ def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
     return None
 
 
+def mirrored_modules(ctx: AnalysisContext, path: str) -> list[str]:
+    """The modules a discovered test's path mirrors, one per candidate root package.
+
+    ``tests/billing/test_invoice.py`` mirrors ``app.billing.invoice`` whether or
+    not that module exists. ``conftest.py`` and paths outside tests.mirror mirror
+    nothing.
+    """
+    test = ctx.files.tests.get(path)
+    if test is None or test.is_conftest:
+        return []
+    mirror = _mirror_parts(ctx, test)
+    if mirror is None:
+        return []
+    return [
+        ".".join([root, *mirror.directories, mirror.module])
+        for root in _roots(ctx, mirror, test.test_root)
+    ]
+
+
 def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
     relative = test.path.removeprefix(f"{test.test_root}/")
     match = _mirror_regex(ctx.config.tests.mirror).fullmatch(relative)

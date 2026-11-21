@@ -10,6 +10,7 @@ from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, join, skip_import
+from smelt.rules.dependencies.insiders import inside_contract
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -32,7 +33,10 @@ class PrivateModuleImport(Rule):
             "public facades remain valid. Wiring and composition roots still obey "
             "these contracts. Discovered tests, including conftest.py and tests "
             "inside the contracted package's configured test roots, are outside "
-            "callers and must use the public API. Test-quality exclusions do not "
+            "callers and must use the public API. With `test_access: mirrored`, a "
+            "test whose tests.mirror path mirrors a module of the package counts as "
+            "inside it and may import its private modules; conftest.py and other "
+            "tests stay outside. Test-quality exclusions do not "
             "exempt imports; project exclusions and normal suppressions apply. "
             "Layer and feature policies apply independently."
         ),
@@ -48,6 +52,7 @@ class PrivateModuleImport(Rule):
             "architecture.packages",
             "architecture.import_graph.type_checking",
             "project.test_roots",
+            "tests.mirror",
         ),
     )
 
@@ -62,9 +67,8 @@ class PrivateModuleImport(Rule):
                     if (
                         contract.public is None
                         or not is_within(target, contract.package)
-                        or (
-                            is_within(detail.importer, contract.package)
-                            and not ctx.files.is_test_path(path)
+                        or inside_contract(
+                            ctx, path, detail.importer, contract=contract
                         )
                         or contract.exposes(target)
                     ):
