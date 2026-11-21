@@ -25,6 +25,7 @@ class UnboundedTestWait(Rule):
         bad="def test_import():\n    subprocess.run([sys.executable, '-c', 'import app'], check=True)",
         good="def test_import():\n    result = subprocess.run([sys.executable, '-c', 'import app'], capture_output=True, timeout=10, check=False)\n    assert result.returncode == 0, result.stderr",
         fix="Use a timeout at the blocking process boundary or around a known async wait. When replacing the scheduler clock, retain an independent real-time guard such as a parent-process timeout. Preserve bounded polling at real external boundaries. Findings sharing the same helper operation and diagnosis form a shared_helper presentation group with one repair and every affected test call site. JSON retains individual findings and identities; grouping does not change suppression, debt, severity totals or changed/staged scope.",
+        canonical="Bound every wait in tests with a timeout",
         config=(
             "rules",
             "tests.timeout_helpers",

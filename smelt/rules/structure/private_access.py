@@ -91,6 +91,10 @@ class ForeignPrivateAccess(Rule):
             "Reasoned suppressions on the imported name, read or attribute are "
             "supported."
         ),
+        canonical=(
+            "Use only your own module's private names; expose a public "
+            "operation instead"
+        ),
         config=(
             "rules",
             "style.private_attribute_boundary",

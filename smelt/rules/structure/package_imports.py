@@ -60,6 +60,10 @@ class PreferPackageImport(Rule):
             "effects and dependency cycles. No exports are created and no automatic "
             "rewrite is performed; analyzed code is never executed."
         ),
+        canonical=(
+            "Import names through the package that re-exports them, not their"
+            " implementation module"
+        ),
         config=(
             "rules",
             "architecture.import_graph.type_checking",

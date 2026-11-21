@@ -54,6 +54,7 @@ class BundledInstanceAssignment(Rule):
         bad="class Inbox:\n    def __init__(self, log, control):\n        self.log, self.control = log, control",
         good="class Inbox:\n    def __init__(self, log, control):\n        self.log = log\n        self.control = control",
         fix="Use one direct instance attribute write per statement. Preserve evaluation timing: unpack computed values into locals before assigning fields when appropriate. Parallel assignments, swaps, descriptors and unpacking failures can behave differently when split, so there is no automatic rewrite.",
+        canonical="Assign one instance attribute per statement",
         config=("rules", "style.overrides"),
     )
 

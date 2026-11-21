@@ -27,6 +27,9 @@ class TestOnlyPublicAttribute(Rule):
         bad="class Worker:\n    def __init__(self):\n        self.pending = []\n    def run(self):\n        self.pending.clear()\n# tests/test_worker.py\nfrom app.worker import Worker\ndef test_run():\n    worker = Worker()\n    worker.run()\n    assert worker.pending == []",
         good="class Worker:\n    def __init__(self):\n        self._pending = []\n    def run(self):\n        self._pending.clear()\n        return 'done'\n# tests/test_worker.py\nfrom app.worker import Worker\ndef test_run():\n    assert Worker().run() == 'done'",
         fix="Review whether the attribute belongs to the supported API. For internal state, add a leading underscore, update internal references and test observable public behavior. Keep deliberate external or framework contracts with a reasoned suppression. Suggested names avoid observed collisions. Smelt leaves renaming to the caller.",
+        canonical=(
+            "Do not make attributes public only for tests; test observable behavior"
+        ),
         config=(
             "rules",
             "style.public_attribute_boundary",

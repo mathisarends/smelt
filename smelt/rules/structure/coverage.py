@@ -41,6 +41,10 @@ class IncompleteCoverage(Rule):
             "excluded code needs project.exclude entries with path and reason. "
             "Coverage gaps cannot be hidden by debt, inline ignores or a narrowed check."
         ),
+        canonical=(
+            "Keep new source inside the architecture policy, or exclude it "
+            "with a reason"
+        ),
         config=(
             "project.root_packages",
             "project.source_roots",

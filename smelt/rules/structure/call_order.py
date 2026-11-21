@@ -24,6 +24,10 @@ class CallerBeforeCallee(Rule):
         bad="def parse():\n    return 1\n\ndef load():\n    return parse()",
         good="def load():\n    return parse()\n\ndef parse():\n    return 1",
         fix="Review placing the caller before its helper within the same public/private group. Preserve defaults, decorators, annotations, rebinding and execution barriers. No definitions are reordered automatically; LAY004 independently handles public-first ordering and its bounded fixer. Enable rules: {layout/callee-before-caller: hint} or select LAY006; package overrides and reasoned suppressions apply.",
+        canonical=(
+            "Place a caller before the helpers it calls within the same "
+            "visibility group"
+        ),
         config=("rules", "style.overrides"),
     )
 

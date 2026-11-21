@@ -75,6 +75,10 @@ class MissingInterfaceDocstring(Rule):
             "{idioms/missing-interface-docstring: hint}, or select IDM005. Package "
             "overrides and reasoned inline suppressions are supported."
         ),
+        canonical=(
+            "Give abstract and Protocol methods a docstring body that states "
+            "their contract"
+        ),
         config=("rules",),
     )
 

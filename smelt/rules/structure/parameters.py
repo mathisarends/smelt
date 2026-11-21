@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -53,8 +53,19 @@ class ExcessPositionalParameters(Rule):
             "{severity: warning, max: 3}}; an entry in a style override's rules "
             "refines the limit for that package."
         ),
+        canonical=(
+            "Keep positional parameters within the package limit; make the "
+            "rest keyword-only with *"
+        ),
         config=("rules", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        limit, _ = ctx.contracts.threshold(target.module, "max_positional_parameters")
+        if limit == 0:
+            return "Make every parameter keyword-only with a leading *"
+        noun = "parameter" if limit == 1 else "parameters"
+        return f"Accept at most {limit} positional {noun}; make the rest keyword-only with *"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

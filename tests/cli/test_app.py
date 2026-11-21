@@ -11,6 +11,7 @@ import yaml
 
 from smelt.analysis.imports import ImportIndex
 from smelt.cli import main
+from smelt.cli.commands import discover
 from smelt.config import load_config
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from tests.helpers import (
@@ -1543,6 +1544,37 @@ class TestDiscoveryCommands:
         )
         assert (code, err) == (0, "")
         assert json.loads(out)["module"] == "app.application.service"
+
+    def test_context_guide_skips_analysis(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        clean_project: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def unexpected_check(*args: object, **kwargs: object) -> None:
+            pytest.fail("context --guide ran a check")
+
+        monkeypatch.setattr(discover, "run_check", unexpected_check)
+        monkeypatch.chdir(clean_project)
+
+        code, out, err = _run(
+            capsys, "context", "app/domain/new_entity.py", "--guide", "--format", "json"
+        )
+
+        data = json.loads(out)
+        assert (code, err) == (0, "")
+        assert (data["target"]["module"], data["layer"]) == (
+            "app.domain.new_entity",
+            "domain",
+        )
+        assert {
+            "code": "ARC001",
+            "rule": "architecture/layer-boundary",
+            "family": "architecture",
+            "severity": "error",
+            "applies_to": "source",
+            "instruction": "From layer domain, import no other layer",
+        } in data["rules"]
 
     def test_context_reuses_check_after_a_layer_violation(
         self,

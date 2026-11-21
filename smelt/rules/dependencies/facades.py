@@ -54,6 +54,10 @@ class FacadeExportGap(Rule):
             "Dynamic imports, implicit package initialization and import order are "
             "not proven. No exports, imports or policy are rewritten automatically."
         ),
+        canonical=(
+            "Export implementation names that many outside modules import "
+            "from their package"
+        ),
         config=("architecture.packages", "architecture.canonical_exports"),
     )
 

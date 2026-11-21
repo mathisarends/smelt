@@ -8,7 +8,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -64,17 +64,20 @@ class StrEnumValueConvention(Rule):
             "str_enum_values under style or in a style override. Reasoned "
             "inline suppressions are supported."
         ),
+        canonical=(
+            "Follow the package's StrEnum value convention (explicit strings or auto())"
+        ),
         config=("rules", "style.str_enum_values", "style.overrides"),
     )
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        if _value_style(ctx, target.module) == "auto":
+            return "Use auto() for StrEnum values that equal the lowercased member name"
+        return 'Spell StrEnum values explicitly (RED = "red"), not with auto()'
+
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for enum in _str_enums(ctx):
-            contract = ctx.contracts.policy_for(enum.source.module, "str_enum_values")
-            style = (
-                contract.spec.str_enum_values
-                if contract and contract.spec.str_enum_values
-                else POLICY_DEFAULTS.str_enum_values
-            )
+            style = _value_style(ctx, enum.source.module)
             if (style == "explicit" or enum.custom) and enum.automatic:
                 yield _violation(
                     self,
@@ -215,3 +218,12 @@ def _members(node: ast.ClassDef, names: _EnumNames) -> tuple[list[str], dict[str
         elif isinstance(value, ast.Constant) and isinstance(value.value, str):
             literal[target.id] = value.value
     return automatic, literal
+
+
+def _value_style(ctx: AnalysisContext, module: str) -> str:
+    contract = ctx.contracts.policy_for(module, "str_enum_values")
+    return (
+        contract.spec.str_enum_values
+        if contract and contract.spec.str_enum_values
+        else POLICY_DEFAULTS.str_enum_values
+    )

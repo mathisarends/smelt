@@ -8,7 +8,8 @@ from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.common import readable_list
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -98,8 +99,21 @@ class PreferDomainException(Rule):
             "app.errors.AppError}}, or for one package with the same option in a "
             "style override."
         ),
+        canonical=(
+            "Raise the project's exception hierarchy instead of builtin exceptions"
+        ),
         config=("style.errors", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "errors")
+        errors = contract.spec.errors if contract else None
+        if errors is None or errors.base is None:
+            return None
+        allowed = f" (except {readable_list(errors.allow)})" if errors.allow else ""
+        return (
+            f"Raise subclasses of {errors.base} instead of builtin exceptions{allowed}"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

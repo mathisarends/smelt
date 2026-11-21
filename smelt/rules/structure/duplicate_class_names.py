@@ -65,6 +65,7 @@ class DuplicateClassName(Rule):
             "take a leading underscore. No automatic rewrite is performed. "
             "Enable rules: {modeling/duplicate-class-name: warning}, or select MOD009."
         ),
+        canonical="Give public classes in one package distinct names",
         config=("rules",),
     )
 

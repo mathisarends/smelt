@@ -98,6 +98,7 @@ class LoopInvariantCollection(Rule):
             "check when necessary. No automatic hoisting is provided. Enable "
             "rules: {idioms/loop-invariant-collection: hint}, or select IDM008."
         ),
+        canonical="Build a lookup set from stable inputs once, outside the loop",
         config=("rules", "style.overrides"),
     )
 

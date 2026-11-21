@@ -4,7 +4,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for architecture, rule naming, testing
 and release requirements. Use the bundled
 [Smelt skill](smelt/skills/smelt/SKILL.md) for checker commands and policy repairs.
 
-- Before creating or moving code, run `uv run smelt context <module-or-path>`.
+- Before creating or moving code, run `uv run smelt context <module-or-path>`;
+  add `--guide` for the instructions to write the file by.
 - Follow `smelt.yml`, including the package's positional-parameter limit and
   explicit serialized enum values. Review hints using the rule's inference limits.
 - Edit original guides and rule metadata, then run

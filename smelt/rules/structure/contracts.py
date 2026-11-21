@@ -33,6 +33,9 @@ class MissingRequiredModule(Rule):
             "should follow a different structure, narrow or split the contract. Do "
             "not add empty implementation stubs solely to satisfy the check."
         ),
+        canonical=(
+            "Provide the modules and public entry points the package contract requires"
+        ),
         config=("architecture.packages",),
         example_language="yaml",
     )

@@ -39,6 +39,7 @@ class FileNameConvention(Rule):
         bad="# With yaml_extension: yaml, compose_basename: compose\n# settings.yml\n# docker-compose.override.yaml",
         good="# With yaml_extension: yaml, compose_basename: compose\n# settings.yaml\n# compose.override.yaml",
         fix="Rename the file to the expected path and update references to its old name, including CI, scripts, docker compose -f arguments and extends entries. Check for existing destination files before renaming. No file or reference is changed automatically. Use a reasoned project.exclude or ignore.paths entry for filenames required by another tool.",
+        canonical="Use the project's canonical YAML and Compose file names",
         config=(
             "style.file_naming.yaml_extension",
             "style.file_naming.compose_basename",

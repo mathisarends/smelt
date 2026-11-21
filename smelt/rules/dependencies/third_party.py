@@ -53,6 +53,10 @@ class ThirdPartyDenied(Rule):
             "Move the code that needs the package into a layer that allows it and expose "
             "it through a port, or extend the layer's `third_party` policy."
         ),
+        canonical=(
+            "Import a third-party package only in layers whose third_party "
+            "policy allows it"
+        ),
         config=(
             "architecture.layers.<layer>.third_party.default",
             "architecture.layers.<layer>.third_party.allow",

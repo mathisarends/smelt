@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -41,12 +41,27 @@ class ImportStyle(Rule):
             "an absolute import. Preserve aliases and update references if converting "
             "an import statement changes its binding. There is no automatic rewrite."
         ),
+        canonical="Follow the package's relative/absolute import style",
         config=(
             "style.imports",
             "style.overrides",
             "architecture.import_graph.type_checking",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.style_for(target.module)
+        policy = contract.spec.imports if contract else None
+        if policy is None:
+            return None
+        if policy.style == "absolute":
+            return "Use absolute imports for first-party modules"
+        dots = (
+            "one dot"
+            if policy.max_relative_level == 1
+            else (f"{policy.max_relative_level} dots")
+        )
+        return f"Use relative imports up to {dots} inside the package; absolute beyond"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

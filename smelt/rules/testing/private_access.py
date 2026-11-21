@@ -28,6 +28,9 @@ class PrivateTestAccess(Rule):
         bad="from app.service import _normalize\ndef test_normalize():\n    assert _normalize('A') == 'a'",
         good="from app.service import normalize\ndef test_normalize():\n    assert normalize('A') == 'a'",
         fix="Exercise the supported behavior that uses the helper. Keep a reasoned exception for a deliberate implementation/protocol test; do not expose internals solely to silence a warning. In multiline imports, place the exception on the affected imported name so formatting preserves its scope.",
+        canonical=(
+            "Test public behavior; do not import or read private production names"
+        ),
         config=("rules", "tests.quality_exclude"),
     )
 

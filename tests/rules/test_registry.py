@@ -166,9 +166,19 @@ def _catalog_problems(rule: RuleContract) -> list[str]:
         ),
         "requires must be a frozenset of Index": isinstance(rule.requires, frozenset)
         and all(isinstance(index, Index) for index in rule.requires),
-        "RuleDoc needs summary, rationale, bad, good and fix": all(
+        "RuleDoc needs summary, rationale, bad, good, fix and canonical": all(
             value.strip()
-            for value in (doc.summary, doc.rationale, doc.bad, doc.good, doc.fix)
+            for value in (
+                doc.summary,
+                doc.rationale,
+                doc.bad,
+                doc.good,
+                doc.fix,
+                doc.canonical,
+            )
+        ),
+        "canonical must be one instruction line without a final period": (
+            "\n" not in doc.canonical and not doc.canonical.rstrip().endswith(".")
         ),
         "config paths must name SmeltConfig fields": all(
             path.split(".")[0] in SmeltConfig.model_fields for path in doc.config

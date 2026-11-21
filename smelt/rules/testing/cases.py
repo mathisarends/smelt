@@ -26,6 +26,9 @@ class IndependentTestCaseLoop(Rule):
         bad="def test_select():\n    for path in ['app/a.py', 'app/b.py']:\n        selected = select(path)\n        assert selected == ['app']",
         good="@pytest.mark.parametrize('path', ['app/a.py', 'app/b.py'], ids=['a', 'b'])\ndef test_select(path):\n    assert select(path) == ['app']",
         fix="Review whether cases are independent, then use pytest.mark.parametrize with meaningful IDs. Retain loops when later actions depend on earlier state.",
+        canonical=(
+            "Use pytest.mark.parametrize instead of looping over independent cases"
+        ),
         config=("rules", "tests.quality_exclude"),
     )
 

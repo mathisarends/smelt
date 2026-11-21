@@ -8,7 +8,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
 from smelt.diagnostics.violation import Category, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -28,6 +28,7 @@ class ForbiddenTestMock(Rule):
         bad="from unittest.mock import Mock\ndef test_rule():\n    service = Mock()",
         good="def test_rule():\n    result = calculate_total([10, 20])\n    assert result == 30",
         fix="Use real domain objects or a small fake implementing the port. Keep boundary mocking in explicitly permitted test paths; use a reasoned suppression for an intentional exception.",
+        canonical="Use real objects or small fakes instead of mocks",
         config=("tests.forbidden_mock_paths", "tests.quality_exclude"),
     )
 
@@ -66,6 +67,7 @@ class StringPatchTarget(Rule):
         bad='from unittest.mock import patch\n@patch("app.service.Repository")\ndef test_run(repository): ...',
         good="def test_run():\n    repository = InMemoryRepository()\n    run(repository)\n    assert repository.saved == [42]",
         fix="Prefer an injected collaborator/fake. For deliberate boundary patching, use object-based patching where appropriate and patch the name looked up by the caller. No automatic rewrite is performed.",
+        canonical="Inject fakes or patch objects instead of string targets",
         config=("rules", "tests.quality_exclude"),
     )
 
@@ -101,8 +103,18 @@ class ExcessiveTestPatches(Rule):
         bad='def test_run(mocker):\n    mocker.patch("app.one")\n    mocker.patch("app.two")',
         good="def test_run():\n    result = run(InMemoryRepository())\n    assert result.status == 'active'",
         fix="Reduce the scenario's dependencies or inject a fake. Keep a justified integration scenario with a reasoned exception rather than hiding patches inside helpers.",
+        canonical="Keep patches per test within the limit; inject fakes instead",
         config=("rules", "tests.quality_exclude"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        del target
+        maximum = ctx.config.max_patches_per_test
+        if maximum is None:
+            return None
+        if maximum == 0:
+            return "Do not patch in tests; inject fakes instead"
+        return f"Use at most {maximum} patches per test; inject fakes instead"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         maximum = ctx.config.max_patches_per_test

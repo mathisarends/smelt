@@ -208,6 +208,12 @@ def _add_discovery(sub: _Subparsers) -> None:
     )
     context.add_argument("target", nargs="?", metavar="FEATURE|MODULE|PATH")
     context.add_argument("--format", choices=["text", "json"], default="text")
+    context.add_argument(
+        "--guide",
+        action="store_true",
+        help="print one instruction per active rule for writing the target "
+        "and its tests; skips analysis",
+    )
     context.set_defaults(handler=commands.handler("context"))
 
 

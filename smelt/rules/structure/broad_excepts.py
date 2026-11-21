@@ -81,6 +81,9 @@ class MissingBroadExceptReason(Rule):
             "{idioms/missing-broad-except-reason: hint}, or select IDM006. Package "
             "overrides and reasoned inline suppressions are supported."
         ),
+        canonical=(
+            "Catch specific exceptions; comment why a broad except handler is necessary"
+        ),
         config=("rules",),
     )
 

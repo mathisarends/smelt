@@ -69,6 +69,10 @@ class DuplicateFunction(Rule):
             "suppression. No automatic rewrite is performed. Enable rules: "
             "{complexity/duplicate-function: warning}, or select CPX004."
         ),
+        canonical=(
+            "Reuse an existing function instead of copying it; share one copy"
+            " from a common module"
+        ),
         config=("rules",),
     )
 

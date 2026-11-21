@@ -52,6 +52,10 @@ class PackageImportFanout(Rule):
             "independent dependencies are intentional, retain them or adjust the "
             "advisory threshold. Declare public: ['.'] to enforce facade-only imports."
         ),
+        canonical=(
+            "Import a package's API through its facade instead of several "
+            "submodule paths"
+        ),
         config=(
             "architecture.packages",
             "architecture.import_graph.type_checking",

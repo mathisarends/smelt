@@ -25,6 +25,7 @@ class AsyncMockWithoutAwaitCheck(Rule):
         bad="def test_connect():\n    connect = AsyncMock()\n    run_handler(connect)\n    connect.assert_called_once_with('account')",
         good="def test_connect():\n    connect = AsyncMock()\n    run_handler(connect)\n    connect.assert_awaited_once_with('account')",
         fix="When execution matters, check await arguments/counts or assert_awaited_once_with on this async mock. Preserve intentional scheduling tests with an explicit expectation; keep synchronous interactions unchanged.",
+        canonical="Check async mocks with assert_awaited*, not only assert_called*",
         config=("rules", "tests.quality_exclude"),
     )
 
