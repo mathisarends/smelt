@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import resolve_relative, tree_nodes, type_checking_lines
+from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
@@ -14,6 +13,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.contracts import ResolvedContract
     from smelt.analysis.files import SourceFile
+    from smelt.analysis.syntax import ImportStatement
     from smelt.config.models import ImportStyleConfig
 
 
@@ -53,13 +53,9 @@ class ImportStyle(Rule):
             contract = ctx.contracts.style_for(source.module)
             if contract is None or contract.spec.imports is None:
                 continue
-            tree = ctx.asts.parse(source.path)
-            guarded = type_checking_lines(tree)
-            for node in tree_nodes(tree):
-                if not isinstance(node, ast.Import | ast.ImportFrom):
-                    continue
+            for node in ctx.syntax.import_statements(source.path):
                 if (
-                    node.lineno in guarded
+                    node.guarded
                     and ctx.config.architecture.import_graph.type_checking == "ignore"
                 ):
                     continue
@@ -75,7 +71,7 @@ class ImportStyle(Rule):
         self,
         ctx: AnalysisContext,
         source: SourceFile,
-        node: ast.Import | ast.ImportFrom,
+        node: ImportStatement,
         *,
         policy: ImportStyleConfig,
         contract: ResolvedContract,
@@ -83,7 +79,7 @@ class ImportStyle(Rule):
         package = (
             source.module if source.is_package else source.module.rpartition(".")[0]
         )
-        if isinstance(node, ast.ImportFrom):
+        if node.from_import:
             targets = [
                 resolve_relative(
                     source.module,
@@ -101,11 +97,7 @@ class ImportStyle(Rule):
         for target in targets:
             if not ctx.model.is_first_party(target):
                 continue
-            base = (
-                target
-                if isinstance(node, ast.ImportFrom)
-                else target.rpartition(".")[0]
-            )
+            base = target if node.from_import else target.rpartition(".")[0]
             relative = _relative_base(package, base)
             wants_relative = (
                 policy.style == "relative"

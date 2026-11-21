@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import Index
-from smelt.analysis.package_exports import covering_package, direct_package_exports
+from smelt.analysis.package_exports import covering_package, package_facades
 from smelt.analysis.parsing import resolve_relative
 from smelt.model import is_within
 from smelt.rules.meta import UncoveredPackageFacade
@@ -33,11 +32,7 @@ def uncovered_imports(
     if not settings.has_explicit_activation(rule.code):
         return
     ctx.ensure(frozenset({Index.SYNTAX}))
-    facades = {
-        source.module: direct_package_exports(module)
-        for source in ctx.files.sources.values()
-        if source.is_package and (module := ctx.syntax.for_path(source.path))
-    }
+    facades = package_facades(ctx.syntax)
     ignore_guarded = ctx.config.architecture.import_graph.type_checking == "ignore"
     for source in ctx.files.sources.values():
         if source.is_package or ctx.files.is_test_path(source.path):
@@ -49,15 +44,12 @@ def uncovered_imports(
             is None
         ):
             continue
-        module = ctx.syntax.for_path(source.path)
-        if module is None:
-            continue
-        for node in module.imports:
-            if not isinstance(node, ast.ImportFrom) or any(
+        for node in ctx.syntax.import_statements(source.path):
+            if not node.from_import or any(
                 alias.name.startswith("_") or alias.name == "*" for alias in node.names
             ):
                 continue
-            if ignore_guarded and node.lineno in module.guarded_lines:
+            if ignore_guarded and node.guarded:
                 continue
             base = resolve_relative(
                 source.module, is_package=False, level=node.level, target=node.module

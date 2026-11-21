@@ -4,7 +4,7 @@ import ast
 from bisect import bisect_left
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import TypeAdapter
 
@@ -67,6 +67,67 @@ class AttributeCandidates:
 _ATTRIBUTES = TypeAdapter(AttributeCandidates)
 
 
+class ModuleIdentity(NamedTuple):
+    module: str
+    is_package: bool
+
+
+class ImportName(NamedTuple):
+    name: str
+    asname: str | None
+
+    @property
+    def spelling(self) -> str:
+        """The alias as written, like ``ast.unparse`` of the original alias."""
+        return self.name if self.asname is None else f"{self.name} as {self.asname}"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ImportStatement:
+    """One import statement of a module, independent of where the module lives."""
+
+    from_import: bool
+    level: int
+    # the ``from`` target; ``None`` for plain imports and ``from . import x``
+    module: str | None
+    names: tuple[ImportName, ...]
+    lineno: int
+    col_offset: int
+    end_lineno: int | None
+    end_col_offset: int | None
+    # inside an ``if TYPE_CHECKING:`` block
+    guarded: bool
+
+    @classmethod
+    def of(
+        cls, node: ast.Import | ast.ImportFrom, *, guarded: frozenset[int]
+    ) -> ImportStatement:
+        from_import = isinstance(node, ast.ImportFrom)
+        return cls(
+            from_import=from_import,
+            level=node.level if isinstance(node, ast.ImportFrom) else 0,
+            module=node.module if isinstance(node, ast.ImportFrom) else None,
+            names=tuple(ImportName(alias.name, alias.asname) for alias in node.names),
+            lineno=node.lineno,
+            col_offset=node.col_offset,
+            end_lineno=node.end_lineno,
+            end_col_offset=node.end_col_offset,
+            guarded=node.lineno in guarded,
+        )
+
+
+_IMPORT_STATEMENTS = TypeAdapter(tuple[ImportStatement, ...])
+
+
+class ClassDefinition(NamedTuple):
+    name: str
+    line: int
+    column: int
+
+
+_CLASSES = TypeAdapter(tuple[ClassDefinition, ...])
+
+
 @dataclass
 class ModuleSyntax:
     module: str
@@ -102,23 +163,80 @@ class SyntaxIndex:
         self._by_path: dict[str, ModuleSyntax] = {}
         self._attributes: dict[str, AttributeCandidates] = {}
         self._namespaces: dict[str, Namespace | None] = {}
+        self._imports: dict[str, tuple[ImportStatement, ...]] = {}
+        self._classes: dict[str, tuple[ClassDefinition, ...]] = {}
 
     def for_path(self, path: str) -> ModuleSyntax | None:
         cached = self._by_path.get(path)
         if cached is not None:
             return cached
-        source = self.files.source_for_path(path)
-        if source is not None:
-            name, is_package = source.module, source.is_package
-        elif path in self.files.tests:
-            name = path.removesuffix(".py").replace("/", ".")
-            is_package = name.endswith(".__init__")
-        else:
+        identity = self.module_identity(path)
+        if identity is None:
             return None
-        syntax = ModuleSyntax(name, path, self._asts.parse(path), is_package)
+        syntax = ModuleSyntax(
+            identity.module, path, self._asts.parse(path), identity.is_package
+        )
         _collect_bindings(syntax)
         self._by_path[path] = syntax
         return syntax
+
+    def module_identity(self, path: str) -> ModuleIdentity | None:
+        """The module an analyzed source or test path defines, without parsing it."""
+        source = self.files.source_for_path(path)
+        if source is not None:
+            return ModuleIdentity(source.module, source.is_package)
+        if path in self.files.tests:
+            name = path.removesuffix(".py").replace("/", ".")
+            return ModuleIdentity(name, name.endswith(".__init__"))
+        return None
+
+    def import_statements(self, path: str) -> tuple[ImportStatement, ...]:
+        """Every import statement in ``ast.walk`` order, cached per file content."""
+        if path not in self._imports:
+
+            def build() -> tuple[ImportStatement, ...]:
+                tree = self._asts.parse(path)
+                guarded = type_checking_lines(tree)
+                return tuple(
+                    ImportStatement.of(node, guarded=guarded)
+                    for node in tree_nodes(tree)
+                    if isinstance(node, ast.Import | ast.ImportFrom)
+                )
+
+            self._imports[path] = (
+                build()
+                if self.cache is None
+                else self.cache.get(
+                    "import-statements",
+                    self.files.content_id(path),
+                    _IMPORT_STATEMENTS,
+                    build=build,
+                )
+            )
+        return self._imports[path]
+
+    def class_definitions(self, path: str) -> tuple[ClassDefinition, ...]:
+        """Top-level classes in source order, cached per file content."""
+        if path not in self._classes:
+
+            def build() -> tuple[ClassDefinition, ...]:
+                return tuple(
+                    ClassDefinition(node.name, node.lineno, node.col_offset + 1)
+                    for node in self._asts.parse(path).body
+                    if isinstance(node, ast.ClassDef)
+                )
+
+            self._classes[path] = (
+                build()
+                if self.cache is None
+                else self.cache.get(
+                    "class-definitions",
+                    self.files.content_id(path),
+                    _CLASSES,
+                    build=build,
+                )
+            )
+        return self._classes[path]
 
     def attribute_candidates(self, path: str) -> AttributeCandidates:
         if path not in self._attributes:
