@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-21
+
+See [upgrading from 0.14](docs/upgrading.md#014-to-015) for hook pins,
+third-party import suggestions and facade suppressions.
+
 - [IMP004](docs/rules/IMP004.md) can suggest the public package import of an
   installed dependency, such as `from fastapi import APIRouter` instead of
   `from fastapi.routing import APIRouter`. List the top-level import names in
@@ -29,6 +34,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 - A check in a linked Git worktree reads and writes the fact cache of the same
   project in the main checkout, so new agent worktrees skip the cold analysis.
+
+- Checks share syntax walks and facade usage across rules. After an edit, they
+  reuse unchanged modules' facade bindings, imports, private attribute facts,
+  enum bindings and duplicate-function fingerprints.
+
+- Changed and staged checks refresh IMP004 findings and their historical
+  comparison when a listed dependency changes in the Python environment.
 
 - [TST012](docs/rules/TST012.md) can report a source module with behaviour that
   has no test at its mirrored path under `tests.layout: mirror`. Enable
@@ -1579,7 +1591,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/mathisarends/smelt/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/mathisarends/smelt/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mathisarends/smelt/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/mathisarends/smelt/compare/v0.11.1...v0.12.0

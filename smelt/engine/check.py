@@ -121,6 +121,7 @@ class CheckOutcome:
     # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
     resolved_debt: list[DebtEntry] = field(default_factory=list)
+    installed_inputs: dict[str, str | None] = field(default_factory=dict)
 
 
 def rule_meta(rule: RuleContract) -> RuleMeta:
@@ -220,14 +221,9 @@ def _run_check(
         loaded = replace(loaded, config=config)
     rules = rules or build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
-    ctx = (
-        context
-        if context is not None and context.config == config
-        else AnalysisContext(loaded.root, config, cache=cache, store=loaded.source)
-    )
-    if isinstance(ctx.store, GitSourceStore):
-        ctx.store.cache = cache
+    ctx = _analysis_context(loaded, context, cache=cache)
     _validate_ownership(ctx, loaded)
+    installed = installed_inputs(config, active) if cache else {}
     key = (
         cache.decision_key(
             "index-analysis",
@@ -237,7 +233,7 @@ def _run_check(
                 [(r.code, s.value) for r, s in active],
                 str(options.comparison_root),
                 options.select,
-                installed_inputs(config, active),
+                installed,
             ],
         )
         if cache and options.snapshot_id
@@ -250,7 +246,10 @@ def _run_check(
         settings = RuleSettings(rules, loaded)
         settings.validate_packages(ctx)
         key = key or (
-            cache.decision_key("analysis", analysis_inputs(ctx, active, options.select))
+            cache.decision_key(
+                "analysis",
+                analysis_inputs(ctx, active, options.select, installed=installed),
+            )
             if cache
             else None
         )
@@ -334,6 +333,7 @@ def _run_check(
                 config.model_dump(mode="json"),
                 [(r.code, s.value) for r, s in active],
                 options.select,
+                installed,
             ],
         )
 
@@ -373,7 +373,24 @@ def _run_check(
             )
         ],
     )
-    return CheckOutcome(report, ctx, rules, active, unfiltered, resolved)
+    return CheckOutcome(
+        report, ctx, rules, active, unfiltered, resolved, installed_inputs=installed
+    )
+
+
+def _analysis_context(
+    loaded: LoadedConfig, context: AnalysisContext | None, *, cache: FactCache | None
+) -> AnalysisContext:
+    ctx = (
+        context
+        if context is not None and context.config == loaded.config
+        else AnalysisContext(
+            loaded.root, loaded.config, cache=cache, store=loaded.source
+        )
+    )
+    if isinstance(ctx.store, GitSourceStore):
+        ctx.store.cache = cache
+    return ctx
 
 
 def _configured_policy_findings(

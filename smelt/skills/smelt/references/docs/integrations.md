@@ -54,7 +54,7 @@ repos:
         name: smelt (new staged findings)
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.14.0]
+        additional_dependencies: [smelt-cli==0.15.0]
         pass_filenames: false
         always_run: true
         require_serial: true
@@ -82,8 +82,11 @@ records these workloads on the Smelt corpus.
 
 Projects already depending on Smelt can instead use a local `language: system`
 hook with `entry: uv run --locked smelt check --staged --fail-on warning`.
+Use the project environment when `style.third_party_reexports` lists packages
+for IMP004. Smelt can inspect only the packages available to its interpreter.
+
 To install from source, use `repo: https://github.com/mathisarends/smelt`,
-`rev: v0.14.0` and `id: smelt-staged` (or `id: smelt` for full checks). This source
+`rev: v0.15.0` and `id: smelt-staged` (or `id: smelt` for full checks). This source
 installation requires Rust 1.88+ and a platform linker. Use the release's
 matching `v`-prefixed Git tag. See the [agent workflow](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md) for
 cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
@@ -105,9 +108,9 @@ Install prek in the CI environment before running it (or use `uvx prek run`).
 ```yaml
 - uses: astral-sh/setup-uv@v7
 - run: prek run --all-files --show-diff-on-failure
-- run: uvx --from smelt-cli==0.14.0 smelt check --format github
+- run: uvx --from smelt-cli==0.15.0 smelt check --format github
 # optional: code scanning
-- run: uvx --from smelt-cli==0.14.0 smelt check --format sarif > smelt.sarif || true
+- run: uvx --from smelt-cli==0.15.0 smelt check --format sarif > smelt.sarif || true
 - uses: github/codeql-action/upload-sarif@v3
   with:
     sarif_file: smelt.sarif

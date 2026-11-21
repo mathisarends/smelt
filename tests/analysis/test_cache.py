@@ -10,6 +10,7 @@ import pytest
 from pydantic import TypeAdapter
 
 from smelt.analysis.cache import FactCache, cache_directory
+from smelt.engine.check import CheckOptions
 from tests.helpers import check, write_project
 
 if TYPE_CHECKING:
@@ -189,3 +190,48 @@ def test_check_in_a_linked_worktree_writes_facts_to_the_main_checkout(
 
     assert (main / ".smelt_cache").is_dir()
     assert not (linked / ".smelt_cache").exists()
+
+
+def test_shared_facts_follow_module_renames_and_removals_in_each_worktree(
+    main: Path,
+) -> None:
+    write_project(
+        main,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
+            "rules: {imports/prefer-package-import: warning}\n",
+            "app/__init__.py": "",
+            "app/api/__init__.py": "from .legacy import Client\n",
+            "app/api/legacy.py": "class Client: ...\n",
+            "app/caller.py": "from app.api.legacy import Client\n",
+        },
+    )
+    _git(main, "add", ".")
+    _git(main, "commit", "-qm", "package API and caller")
+    renamed = _worktree(main, "renamed")
+    removed = _worktree(main, "removed")
+    check(main)
+
+    _git(renamed, "mv", "app/api/legacy.py", "app/api/client.py")
+    write_project(
+        renamed,
+        {
+            "app/api/__init__.py": "from .client import Client\n",
+            "app/caller.py": "from app.api.client import Client\n",
+        },
+    )
+    _git(removed, "rm", "app/api/legacy.py")
+    write_project(removed, {"app/api/__init__.py": ""})
+
+    for _ in range(2):
+        renamed_report = check(renamed).report
+        removed_report = check(removed).report
+        assert renamed_report == check(renamed, CheckOptions(use_cache=False)).report
+        assert removed_report == check(removed, CheckOptions(use_cache=False)).report
+        [finding] = renamed_report.violations
+        assert (finding.code, finding.path, finding.target_module) == (
+            "IMP004",
+            "app/caller.py",
+            "app.api.client",
+        )
+        assert removed_report.violations == []

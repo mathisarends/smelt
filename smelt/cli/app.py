@@ -262,7 +262,7 @@ def _add_config(sub: _Subparsers) -> None:
     )
     show.set_defaults(handler=commands.handler("config_show"))
     migrate = config_sub.add_parser(
-        "migrate", help="preview a 0.12 configuration migration"
+        "migrate", help="preview an upgrade to the current configuration format"
     )
     migrate.add_argument(
         "--write", action="store_true", help="apply the validated migration"
@@ -318,6 +318,7 @@ def _run(args: argparse.Namespace, console: Console, handler: _Handler) -> int:
             "".join(out_stream.parts),
             "".join(err_stream.parts),
             dependencies=getattr(args, "_staged_inputs", None),
+            installed=getattr(args, "_installed_inputs", None),
         )
         return code
     except (

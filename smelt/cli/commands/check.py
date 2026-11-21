@@ -95,6 +95,7 @@ def _check_loaded(
         outcome = _fix_outcome(args, console, loaded, options=options, outcome=outcome)
     report = outcome.report
     if args.staged:
+        args._installed_inputs = outcome.installed_inputs
         report.project = project_metadata(origin)
         if report.comparison is not None:
             report.comparison = {**report.comparison, "index_hash": index_hash}

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import argparse
     from pathlib import Path
 
-_RESULT_FIELDS = 5
+_RESULT_FIELDS = 6
 
 
 class RecordingStream(io.TextIOBase):
@@ -93,7 +93,7 @@ class ResultCache:
             if key != "handler" and not key.startswith("_")
         }
         inputs = [
-            2,
+            3,
             str(cwd.resolve()),
             str(config),
             comparison.to_json(),
@@ -136,7 +136,7 @@ class ResultCache:
                     data = json.loads(row[0])
                     if not self._valid(data):
                         continue
-                    code, out, err, previous, dependencies = data
+                    code, out, err, previous, dependencies, installed = data
                     if previous != self.index.identity:
                         if not dependencies or any(
                             self.index.blobs.get(path) != oid
@@ -144,6 +144,15 @@ class ResultCache:
                         ):
                             continue
                         out = self._refresh(out)
+                    if installed:
+                        # Keep the common cache hit free of analysis imports.
+                        from smelt.analysis.installed_exports import (  # noqa: PLC0415
+                            InstalledPackages,
+                        )
+
+                        packages = InstalledPackages()
+                        if packages.identity(installed) != installed:
+                            continue
                     return code, out, err
         except (OSError, ValueError, TypeError, KeyError, IndexError, sqlite3.Error):
             return None
@@ -156,11 +165,12 @@ class ResultCache:
         err: str,
         *,
         dependencies: dict[str, str] | None = None,
+        installed: dict[str, str | None] | None = None,
     ) -> None:
         if code not in {0, 1}:
             return
         payload = json.dumps(
-            [code, out, err, self.index.identity, dependencies or {}]
+            [code, out, err, self.index.identity, dependencies or {}, installed or {}]
         ).encode()
         rows = [(self.key, payload, hashlib.sha256(payload).hexdigest())]
         if dependencies:
@@ -199,6 +209,11 @@ class ResultCache:
             and all(
                 isinstance(path, str) and isinstance(oid, str)
                 for path, oid in data[4].items()
+            )
+            and isinstance(data[5], dict)
+            and all(
+                isinstance(name, str) and (digest is None or isinstance(digest, str))
+                for name, digest in data[5].items()
             )
         )
 
