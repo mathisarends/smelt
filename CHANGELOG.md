@@ -12,6 +12,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are
   recognized by convention.
 
+- `architecture/non-public-module-import` (ARC007) and
+  `imports/excess-package-imports` (IMP001) treat `from app.orders import capture`
+  as an import of the `app.orders` facade when the facade binds `capture` to an
+  object other than its same-named submodule, as `from .capture import capture`
+  does. Plain `import app.orders.capture` and names the facade does not bind
+  still count as the submodule. Suppressions written for this false positive are
+  now reported by `meta/unused-suppression`.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13
