@@ -359,7 +359,7 @@ def _run_check(
                 issue.source or loaded.path.name,
                 issue.path,
                 issue.message,
-                Severity.HINT if issue.deprecated else Severity.WARNING,
+                Severity.WARNING,
             )
             for issue in (
                 *loaded.warnings,

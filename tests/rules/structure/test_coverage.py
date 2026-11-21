@@ -89,8 +89,7 @@ class TestStrictCoverage:
                 architecture:
                   layers:
                     pure: {path: logic}
-                    connectors: {path: drivers, may_depend_on: [pure]}
-                  modules: {persistence: connectors}
+                    connectors: {path: drivers, may_depend_on: [pure], modules: [persistence]}
             """,
                 "python/core/corelib/__init__.py": "",
                 "python/core/corelib/logic/calculate.py": "VALUE = 1\n",
@@ -374,8 +373,9 @@ class TestStrictCoverage:
         root = _project(
             tmp_path,
             {
-                "smelt.yml": CONFIG.replace("[app]", "[app, client]")
-                + "  modules: {client: domain}\n",
+                "smelt.yml": CONFIG.replace("[app]", "[app, client]").replace(
+                    "path: domain", "path: domain, modules: [client]"
+                ),
                 "src/client/api.py": "VALUE = 1\n",
                 "tests/helpers.py": "VALUE = 1\n",
                 "tests/test_system.py": "def test_behavior(): pass\n",
@@ -392,7 +392,7 @@ class TestStrictCoverage:
             if item["path"] == "src/client/api.py"
         )
         assert entry["status"] == "governed"
-        assert "architecture.modules" in entry["policies"]
+        assert "architecture.layers.domain.modules" in entry["policies"]
         assert not any(
             item["path"].startswith("tests/")
             for item in outcome.report.coverage["inventory"]

@@ -22,9 +22,7 @@ def _upgrade_guide_url(version: str, *, checkout: bool) -> str:
         and re.fullmatch(r"\d+\.\d+\.\d+", version)
         else "main"
     )
-    return (
-        f"https://github.com/mathisarends/smelt/blob/{ref}/docs/upgrading.md#012-to-013"
-    )
+    return f"https://github.com/mathisarends/smelt/blob/{ref}/docs/upgrading.md"
 
 
 UPGRADE_GUIDE_URL = _upgrade_guide_url(
@@ -37,8 +35,6 @@ class ConfigIssue:
     path: str
     message: str
     source: str | None = None
-    # Deprecations are reported without failing --fail-on warning.
-    deprecated: bool = False
     semantic: bool = False
 
     def __str__(self) -> str:

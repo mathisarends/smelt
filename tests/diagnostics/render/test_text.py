@@ -335,16 +335,19 @@ class TestSummary:
 
 
 class TestConfigurationDiagnostics:
-    def test_deprecation_hints_are_listed_without_show_hints(
+    def test_configuration_hints_are_listed_without_show_hints(
         self, clean_report: Report
     ) -> None:
         clean_report.configuration_diagnostics = [
             ConfigurationDiagnostic(
-                "smelt.yml", "architecture.modules", "deprecated", Severity.HINT
+                "smelt.yml",
+                "architecture.layers",
+                "review configuration",
+                Severity.HINT,
             )
         ]
 
         out = render_text(clean_report, read_line)
 
-        assert "hint: smelt.yml: architecture.modules: deprecated\n" in out
+        assert "hint: smelt.yml: architecture.layers: review configuration\n" in out
         assert "--show-hints" not in out

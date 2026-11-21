@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext
 from smelt.cli.support import EXIT_OK, CliError
-from smelt.config import load_config
-from smelt.config.loader import config_files, discover_config
+from smelt.config import ConfigError, load_config
+from smelt.config.loader import config_files, discover_config, raw_config
 from smelt.config.source import SourceStore
 from smelt.engine.migration import (
+    LayerModuleMigration,
     Migration,
     enable_rules,
     migrate_policy,
@@ -125,9 +126,24 @@ def _migrate_files(path: Path) -> dict[Path, _File]:
     )
     bases = set(inputs.project[:-1])
     inherited_rules: frozenset[str] = frozenset()
+    original = _preview(files)
+    project_layers = LayerModuleMigration()
     for source, file in files.items():
+        layers = project_layers if source in inputs.project else LayerModuleMigration()
+        try:
+            file.apply(
+                layers.migrate(
+                    file.before,
+                    raw_config(source, store=original),
+                    final=source not in bases,
+                )
+            )
+        except ConfigError as exc:
+            raise ConfigError(
+                exc.issues, _label(source, inputs.project[-1].parent)
+            ) from exc
         migration = migrate_policy(
-            file.before,
+            file.after,
             inherited_rules=inherited_rules,
             project_limits=project_limits if source in bases else frozenset(),
         )

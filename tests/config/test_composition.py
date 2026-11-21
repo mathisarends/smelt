@@ -18,8 +18,8 @@ def test_shared_policy_is_composed_before_defaults_and_workspace_discovery(
         tmp_path,
         {
             "policy/base.yml": "version: 2\nrules: {architecture/import-cycle: error, tests/unbounded-wait: warning}\nsuppressions: {require_reason: false}\nproject: {source_roots: [src], test_roots: [tests]}\n",
-            "first/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/uncovered-source: error}\narchitecture: {modules: {first: domain}, layers: {domain: {path: domain}}}\n",
-            "second/smelt.yml": "extends: ../policy/base.yml\nrules: {tests/unbounded-wait: error}\narchitecture: {modules: {second: domain}, layers: {domain: {path: domain}}}\n",
+            "first/smelt.yml": "extends: ../policy/base.yml\nrules: {architecture/uncovered-source: error}\narchitecture: {layers: {domain: {path: domain, modules: [first]}}}\n",
+            "second/smelt.yml": "extends: ../policy/base.yml\nrules: {tests/unbounded-wait: error}\narchitecture: {layers: {domain: {path: domain, modules: [second]}}}\n",
             "first/src/first/__init__.py": "",
             "second/src/second/__init__.py": "",
         },

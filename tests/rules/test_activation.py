@@ -66,7 +66,14 @@ def test_minimal_configuration_runs_only_the_small_baseline() -> None:
             {"ARC001", "ARC003"},
         ),
         ({"architecture": {"shared": ["app.shared"]}}, {"ARC005"}),
-        ({"architecture": {"modules": {"app.platform": "infrastructure"}}}, {"ARC005"}),
+        (
+            {
+                "architecture": {
+                    "layers": {"infrastructure": {"modules": ["app.platform"]}}
+                }
+            },
+            {"ARC001", "ARC005"},
+        ),
         ({"architecture": {"composition_root": ["app.main"]}}, {"ARC006"}),
         ({"architecture": {"wiring": ["app.di"]}}, {"ARC006"}),
         ({"style": {"forbidden_names": ["utils"]}}, {"LAY001"}),

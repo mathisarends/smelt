@@ -773,10 +773,9 @@ MIRRORED = {
         architecture:
           features: {root: app.features}
           wiring: [app.features.*.infra.di]
-          modules: {app.platform: infra}
           layers:
             domain: {path: domain}
-            infra: {path: infra, may_depend_on: [domain]}
+            infra: {path: infra, may_depend_on: [domain], modules: [app.platform]}
         tests:
           layout: mirror
           mirror: "{root}/{path}/test_{module}.py"

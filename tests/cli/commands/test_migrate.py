@@ -93,6 +93,181 @@ def test_unresolved_key_keeps_original_and_reports_location(
     assert path.read_text(encoding="utf-8") == before
 
 
+@pytest.mark.parametrize("version", [1, 2])
+def test_migrate_moves_legacy_modules_to_their_layer(
+    tmp_path: Path, version: int
+) -> None:
+    path = tmp_path / "smelt.yml"
+    before = f"""version: {version}
+project: {{root_packages: [app]}}
+architecture:
+  modules:
+    app.cli: adapters  # command entry points
+    app.http: adapters
+  layers:
+    adapters:
+      path: adapters
+      modules: [app.http]
+"""
+    write_project(tmp_path, {"smelt.yml": before, "app/__init__.py": ""})
+    args = ["--config", str(path), "config", "migrate"]
+
+    assert main(args) == 0
+    assert path.read_text(encoding="utf-8") == before
+    assert main([*args, "--write"]) == 0
+    after = path.read_text(encoding="utf-8")
+    assert "# command entry points" in after
+    assert yaml.safe_load(after)["architecture"] == {
+        "layers": {"adapters": {"path": "adapters", "modules": ["app.http", "app.cli"]}}
+    }
+    assert main([*args, "--write"]) == 0
+    assert path.read_text(encoding="utf-8") == after
+
+
+def test_migrate_preserves_layer_bindings_with_yaml_merges(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+                version: 2
+                project: {root_packages: [app]}
+                architecture:
+                  <<: {modules: {app.http: domain}}
+                  layers:
+                    domain: &domain {path: domain}
+                    api: {<<: *domain, path: api}
+                """,
+            "app/__init__.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    architecture = load_config(path).config.architecture
+    assert architecture.layers["domain"].modules == ["app.http"]
+    assert architecture.layers["api"].modules == []
+
+
+def test_migrate_preserves_layer_bindings_across_extends(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": """
+                architecture:
+                  modules:
+                    app.retained: domain
+                    app.reassigned: domain
+                    app.runner: tooling
+                  layers:
+                    domain: {path: domain, modules: [app.base_only]}
+                    api: {path: api}
+                """,
+            "middle.yml": """
+                extends: base.yml
+                architecture:
+                  modules: {app.reassigned: api}
+                """,
+            "smelt.yml": """
+                version: 2
+                extends: middle.yml
+                project: {root_packages: [app]}
+                architecture:
+                  modules: {app.client: domain}
+                  layers:
+                    domain: {modules: [app.child_only]}
+                    tooling: {path: scripts}
+                """,
+            "app/__init__.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    architecture = load_config(path).config.architecture
+    assert {
+        binding.prefix: binding.layer for binding in architecture.module_bindings()
+    } == {
+        "app.retained": "domain",
+        "app.reassigned": "api",
+        "app.runner": "tooling",
+        "app.client": "domain",
+        "app.child_only": "domain",
+    }
+    assert yaml.safe_load((tmp_path / "base.yml").read_text(encoding="utf-8"))[
+        "architecture"
+    ]["layers"]["domain"]["modules"] == [
+        "app.base_only",
+        "app.retained",
+        "app.reassigned",
+    ]
+
+
+def test_migrate_keeps_workspace_layer_assignments_with_their_owner(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            **MEMBER_BOUNDARIES,
+            "packages/core/smelt.yml": """
+                architecture:
+                  layers: {domain: {path: model}}
+                  modules: {core.model: domain}
+                """,
+            "services/api/smelt.yml": """
+                architecture:
+                  layers: {domain: {path: http}}
+                  modules: {api.http: domain}
+                """,
+        },
+    )
+    path = tmp_path / "services/api/smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    config = load_config(path).config
+    assert {
+        name: member.architecture.layers["domain"].modules
+        for name, member in config.members.items()
+        if member.architecture is not None
+    } == {"packages/core": ["core.model"], "services/api": ["api.http"]}
+
+
+@pytest.mark.parametrize(
+    ("layer", "message"),
+    [("domain", "also maps to layer"), ("unknown", 'unknown layer "unknown"')],
+)
+def test_migrate_rejects_legacy_layer_conflicts_before_writing(
+    tmp_path: Path, layer: str, message: str, *, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "base.yml": "architecture: {modules: {app.cli: api}}\n",
+            "smelt.yml": f"""
+                version: 2
+                extends: base.yml
+                project: {{root_packages: [app]}}
+                architecture:
+                  modules: {{app.cli: {layer}}}
+                  layers:
+                    domain: {{path: domain}}
+                    api: {{modules: [app.cli]}}
+                """,
+            "app/__init__.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+    base = tmp_path / "base.yml"
+    before = (path.read_bytes(), base.read_bytes())
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 2
+    assert message in capsys.readouterr().err
+    assert (path.read_bytes(), base.read_bytes()) == before
+
+
 def test_migrate_keeps_a_comment_only_base(tmp_path: Path) -> None:
     comment = "# This base has no shared settings yet.\n"
     write_project(

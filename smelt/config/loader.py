@@ -556,6 +556,10 @@ def _unknown_key_message(key: str, known: list[str], loc: tuple[str | int, ...])
 
 
 _RETIRED_POLICY_KEYS: dict[tuple[str, ...], str] = {
+    (
+        "architecture",
+        "modules",
+    ): "architecture.modules was removed; run smelt config migrate to move the assignments to architecture.layers.<layer>.modules",
     ("structure",): "structure was replaced by style and architecture.packages",
     (
         "architecture",

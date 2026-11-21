@@ -52,10 +52,13 @@ class TestParsing:
         _, warnings = parse_config(
             _with(
                 architecture={
-                    "modules": {"app.api": "adapters"},
                     "layers": {
                         "adapters": {
-                            "modules": ["app.api.routes", "app.api.types.codec"]
+                            "modules": [
+                                "app.api.routes",
+                                "app.api",
+                                "app.api.types.codec",
+                            ]
                         },
                         "values": {"modules": ["app.api.types"]},
                     },
@@ -63,34 +66,17 @@ class TestParsing:
             )
         )
 
-        [warning] = [issue for issue in warnings if not issue.deprecated]
+        [warning] = warnings
         assert warning.path == "architecture.layers.adapters.modules[0]"
         assert 'inherits "adapters" from "app.api"' in warning.message
-
-    def test_legacy_module_map_is_deprecated_with_a_layer_snippet(self) -> None:
-        _, warnings = parse_config(
-            _with(
-                architecture={
-                    "modules": {"app.api": "adapters", "app.cli": "adapters"},
-                    "layers": {"adapters": {"path": "adapters"}},
-                }
-            )
-        )
-
-        [warning] = warnings
-        assert (warning.path, warning.deprecated) == ("architecture.modules", True)
-        assert warning.message.endswith(
-            "layers:\n    adapters:\n      modules: [app.api, app.cli]"
-        )
 
     def test_conflicting_layer_bindings_are_config_errors(self) -> None:
         with pytest.raises(ConfigError, match='also maps to layer "values"') as caught:
             parse_config(
                 _with(
                     architecture={
-                        "modules": {"app.api": "adapters"},
                         "layers": {
-                            "adapters": {"path": "adapters"},
+                            "adapters": {"modules": ["app.api"]},
                             "values": {"modules": ["app.api"]},
                         },
                     }

@@ -132,10 +132,6 @@ precedence over relative `path` matching. The most specific prefix wins, and
 conflicting layers for the same prefix are rejected. A child assignment that
 repeats its nearest parent's layer produces an advisory configuration warning.
 
-The legacy `architecture.modules` map is deprecated and will be removed in
-0.15.0. It still resolves together with layer `modules`, and Smelt reports a
-non-failing hint with the equivalent `layers` snippet to paste.
-
 Before adding a file, run `smelt context sdk/error/registry.py --format json`.
 `layer_assignment` identifies the matching prefix, declaring file, config key
 and whether the assignment was inherited. An inherited match needs no extra YAML.

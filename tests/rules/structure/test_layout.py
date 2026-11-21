@@ -51,9 +51,8 @@ class TestUnknownLayer:
 version: 2
 project: {root_packages: [app, scripts]}
 architecture:
-  modules: {scripts: tooling}
   layers:
-    tooling: {path: tooling}
+    tooling: {path: tooling, modules: [scripts]}
     values: {modules: [app.error.values]}
 """,
                 "scripts/__init__.py": "",
