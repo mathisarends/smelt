@@ -12,6 +12,12 @@ current configuration and complete rule contracts, see the [README](README.md),
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are
   recognized by convention.
 
+- Package contracts accept `test_access: mirrored`. A test whose `tests.mirror`
+  path mirrors a module inside the package counts as inside it for
+  [ARC007](docs/rules/ARC007.md) and [IMP001](docs/rules/IMP001.md), so unit
+  tests may import the internals of the package they mirror without
+  suppressions. The default `public` keeps tests outside callers.
+
 ## [0.14.0] - 2026-11-21
 
 ### Upgrade from 0.13

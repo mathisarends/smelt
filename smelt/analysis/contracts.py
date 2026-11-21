@@ -249,6 +249,11 @@ class ContractIndex:
                 else None,
                 "missing_public": self.missing_public(contract),
                 **(
+                    {"test_access": contract.spec.test_access}
+                    if contract.spec.test_access != "public"
+                    else {}
+                ),
+                **(
                     {
                         "type_dispatch": contract.spec.type_dispatch.model_dump(
                             mode="json"

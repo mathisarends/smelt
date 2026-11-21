@@ -464,6 +464,10 @@ class PackageBoundary(_PackageTarget):
         default=False,
         description="Include discovered test files in min_importers_to_export counts. Requires min_importers_to_export; TYPE_CHECKING-only imports never count.",
     )
+    test_access: Literal["public", "mirrored"] = Field(
+        default="public",
+        description="How discovered tests may import this package (ARC007, IMP001). public: through its public entry points, like any outside caller. mirrored: a test whose tests.mirror path mirrors a module inside the package counts as inside it; conftest.py and other tests stay outside callers.",
+    )
 
     @field_validator("required")
     @classmethod

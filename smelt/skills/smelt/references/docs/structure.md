@@ -616,6 +616,23 @@ when their configured test root is inside the package matched by the policy. Thu
 `public: ['.']` rejects deep test imports with [ARC007](rules/ARC007.md), and
 `min_imports_to_bundle` reviews per-test-file fanout with [IMP001](rules/IMP001.md).
 Production implementation imports inside the package remain allowed.
+
+When unit tests deliberately exercise a package's internals, set
+`test_access: mirrored` on its contract. A test whose `tests.mirror` path mirrors a
+module inside the package then counts as inside it for ARC007 and IMP001, so
+`tests/recording/test_timeline.py` may import `app.recording.capture`. Tests that
+mirror another package, integration tests outside the mirror pattern and
+`conftest.py` remain outside callers. The option applies per contract, so an
+overlapping contract keeps its own `test_access`.
+
+```yaml
+architecture:
+  packages:
+    package-facades:
+      match: app.*
+      public: ['.']
+      test_access: mirrored  # default public
+```
 `tests.quality_exclude` only affects test-quality reviews; use ordinary reasoned
 suppressions for deliberate API exceptions. Project exclusions still apply.
 

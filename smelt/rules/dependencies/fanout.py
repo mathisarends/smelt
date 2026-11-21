@@ -11,6 +11,7 @@ from smelt.model import is_within
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.common import import_violation, skip_import
+from smelt.rules.dependencies.insiders import inside_contract
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -38,7 +39,8 @@ class PackageImportFanout(Rule):
             "No-cycle-found covers only explicit runtime imports; dynamic imports "
             "and implicit package initialization remain unproven. Discovered tests "
             "and conftest.py also count as outside callers, including configured "
-            "test roots inside the package. Test-quality exclusions do not exempt "
+            "test roots inside the package, unless the contract's test_access: "
+            "mirrored makes a test mirroring one of its modules an insider. Test-quality exclusions do not exempt "
             "imports; project exclusions and normal suppressions apply. This does "
             "not change ARC008's separate count_tests opt-in for API expansion."
         ),
@@ -56,6 +58,7 @@ class PackageImportFanout(Rule):
             "architecture.packages",
             "architecture.import_graph.type_checking",
             "project.test_roots",
+            "tests.mirror",
         ),
     )
 
@@ -70,10 +73,7 @@ class PackageImportFanout(Rule):
                 if (
                     detail.external
                     or skip_import(ctx, detail)
-                    or (
-                        is_within(detail.importer, contract.package)
-                        and not ctx.files.is_test_path(path)
-                    )
+                    or inside_contract(ctx, path, detail.importer, contract=contract)
                     or not is_within(detail.imported, contract.package)
                 ):
                     continue
