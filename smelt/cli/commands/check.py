@@ -4,6 +4,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from smelt import __version__
+from smelt.analysis.cache import cache_directory
 from smelt.analysis.files import FileIndex
 from smelt.cli.support import (
     EXIT_OK,
@@ -82,7 +83,7 @@ def _check_loaded(
         fail_on=Severity(args.fail_on),
         use_debt=not args.no_debt,
         use_cache=not args.no_cache,
-        cache_dir=origin.root / ".smelt_cache",
+        cache_dir=cache_directory(origin.root),
         comparison_root=origin.root if args.staged else None,
         staged=args.staged,
         snapshot_id=index_hash,
