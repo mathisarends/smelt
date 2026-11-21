@@ -7,6 +7,7 @@ from collections import Counter
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import namespace_of
+from smelt.analysis.parsing import tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -26,7 +27,7 @@ def unshadowed_bindings(
     imports = namespace_of(tree, "", is_package=False).imported
     relative = {
         alias.asname or alias.name
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
         if isinstance(node, ast.ImportFrom) and node.level
         for alias in node.names
     }
@@ -47,7 +48,7 @@ def binding_counts(tree: ast.Module) -> Counter[str]:
     unresolved instead of trusting the import.
     """
     bound: Counter[str] = Counter()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
             bound[node.id] += 1
         elif isinstance(node, ast.arg):

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.facade_usage import FacadeUsage
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
@@ -62,12 +61,7 @@ class FacadeExportGap(Rule):
         contracts = ctx.contracts.facade_policies("min_importers_to_export")
         if not contracts:
             return
-        usage = FacadeUsage(
-            ctx.syntax,
-            ctx.imports,
-            files=ctx.files,
-            count_tests=any(c.spec.count_tests for c in contracts),
-        )
+        usage = ctx.facade_usage
         ownership, _ = usage.canonical_exports(ctx.config.structure.canonical_exports)
         for contract in contracts:
             threshold = contract.spec.min_importers_to_export

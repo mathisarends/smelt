@@ -4,7 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import resolve_relative, type_checking_lines
+from smelt.analysis.parsing import resolve_relative, tree_nodes, type_checking_lines
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
@@ -55,7 +55,7 @@ class ImportStyle(Rule):
                 continue
             tree = ctx.asts.parse(source.path)
             guarded = type_checking_lines(tree)
-            for node in ast.walk(tree):
+            for node in tree_nodes(tree):
                 if not isinstance(node, ast.Import | ast.ImportFrom):
                     continue
                 if (

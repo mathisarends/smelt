@@ -5,6 +5,7 @@ import re
 import sys
 import tomllib
 from typing import TYPE_CHECKING
+from weakref import WeakKeyDictionary
 
 from smelt.analysis.errors import (
     AnalysisError as AnalysisError,  # noqa: PLC0414 - compatibility re-export
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
+
+_WALKS: WeakKeyDictionary[ast.AST, tuple[ast.AST, ...]] = WeakKeyDictionary()
 
 
 class AstCache:
@@ -67,12 +70,23 @@ def python_note(root: Path, *, store: SourceStore | None = None) -> str:
 def type_checking_lines(tree: ast.Module) -> frozenset[int]:
     """Line numbers inside ``if TYPE_CHECKING:`` blocks."""
     lines: set[int] = set()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.If) and _is_type_checking_test(node.test):
             for child in node.body:
                 end = child.end_lineno or child.lineno
                 lines.update(range(child.lineno, end + 1))
     return frozenset(lines)
+
+
+def tree_nodes(tree: ast.AST) -> tuple[ast.AST, ...]:
+    """Every node of ``tree`` in ``ast.walk`` order, walked once per tree object.
+
+    Analyses never mutate parsed trees, so every reader of one tree shares a walk.
+    """
+    nodes = _WALKS.get(tree)
+    if nodes is None:
+        nodes = _WALKS[tree] = tuple(ast.walk(tree))
+    return nodes
 
 
 def resolve_relative(

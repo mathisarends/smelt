@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from smelt.analysis.cache import FactCache
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.coverage import CoverageIndex
+    from smelt.analysis.facade_usage import FacadeUsage
     from smelt.analysis.files import FileIndex, SourceFile
     from smelt.analysis.imports import ImportDetail, ImportIndex
     from smelt.analysis.members import MemberUsageIndex
@@ -178,6 +179,13 @@ class AnalysisContext:
         from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415
 
         return SyntaxIndex(self.files, self.asts, cache=self.cache)
+
+    @cached_property
+    def facade_usage(self) -> FacadeUsage:
+        """Facade demand shared by the export, fan-out and ownership checks."""
+        from smelt.analysis.facade_usage import FacadeUsage  # noqa: PLC0415
+
+        return FacadeUsage(self.syntax, self.imports, files=self.files)
 
     @cached_property
     def member_usage(self) -> MemberUsageIndex:

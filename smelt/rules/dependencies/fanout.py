@@ -4,7 +4,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, TypedDict
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.facade_usage import FacadeUsage
 from smelt.analysis.graphs import shortest_cycle
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import is_within
@@ -61,7 +60,6 @@ class PackageImportFanout(Rule):
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        usage: FacadeUsage | None = None
         for contract in ctx.contracts.facade_policies("min_imports_to_bundle"):
             threshold = contract.spec.min_imports_to_bundle
             if threshold is None:
@@ -84,13 +82,8 @@ class PackageImportFanout(Rule):
                     targets.values(), key=lambda detail: (detail.line, detail.column)
                 )
                 caller = first.importer
-                if usage is None:
-                    usage = FacadeUsage(
-                        ctx.syntax, ctx.imports, files=ctx.files, count_tests=True
-                    )
                 evidence = _bundle_evidence(
                     ctx,
-                    usage,
                     path,
                     package=contract.package,
                     targets=targets,
@@ -131,7 +124,6 @@ class _BundleEvidence(TypedDict):
 
 def _bundle_evidence(
     ctx: AnalysisContext,
-    usage: FacadeUsage,
     path: str,
     *,
     package: str,
@@ -146,7 +138,7 @@ def _bundle_evidence(
             "suggested_import": f"from .{gap.module.removeprefix(package + '.')} import {gap.name}",
             "needs_import": gap.needs_import,
         }
-        for gap in usage.gaps(package, count_tests=True)
+        for gap in ctx.facade_usage.gaps(package, count_tests=True)
         if caller in (gap.test_importers if test else gap.source_importers)
     ]
     adjacency = {

@@ -12,7 +12,6 @@ from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
-from smelt.analysis.facade_usage import FacadeUsage
 from smelt.analysis.files import FileIndex
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
@@ -412,8 +411,7 @@ def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
     declarations = ctx.config.structure.canonical_exports
     if not declarations:
         return
-    usage = FacadeUsage(ctx.syntax, ctx.imports, files=ctx.files, count_tests=False)
-    _, issues = usage.canonical_exports(declarations)
+    _, issues = ctx.facade_usage.canonical_exports(declarations)
     if issues:
         raise ConfigError(
             [
