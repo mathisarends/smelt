@@ -1242,6 +1242,67 @@
             }
           ]
         },
+        "third_party_reexports": {
+          "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+              "title": "Third Party Reexports"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "reason"
+              ],
+              "properties": {
+                "value": {
+                  "allOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+                      "title": "Third Party Reexports"
+                    },
+                    {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              }
+            }
+          ]
+        },
         "errors": {
           "description": "Project exception policy (MOD008): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
           "anyOf": [
@@ -2477,6 +2538,67 @@
             }
           ]
         },
+        "third_party_reexports": {
+          "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+              "title": "Third Party Reexports"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "reason"
+              ],
+              "properties": {
+                "value": {
+                  "allOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+                      "title": "Third Party Reexports"
+                    },
+                    {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              }
+            }
+          ]
+        },
         "errors": {
           "description": "Project exception policy (MOD008): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
           "anyOf": [
@@ -3389,6 +3511,67 @@
             }
           ]
         },
+        "third_party_reexports": {
+          "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+              "title": "Third Party Reexports"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "reason"
+              ],
+              "properties": {
+                "value": {
+                  "allOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+                      "title": "Third Party Reexports"
+                    },
+                    {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                }
+              }
+            }
+          ]
+        },
         "errors": {
           "description": "Project exception policy (MOD008): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
           "anyOf": [
@@ -3949,8 +4132,8 @@
         },
         "imports/prefer-package-import": {
           "title": "IMP004: Prefer an existing package re-export over an implementation import.",
-          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
-          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n# style: {third_party_reexports: [fastapi]}\nfrom fastapi import APIRouter\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
           "examples": [
             "hint"
           ],
@@ -4893,8 +5076,8 @@
         },
         "^IMP004$": {
           "title": "IMP004: Prefer an existing package re-export over an implementation import.",
-          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
-          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n# style: {third_party_reexports: [fastapi]}\nfrom fastapi import APIRouter\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
           "examples": [
             "hint"
           ],
@@ -5737,8 +5920,8 @@
         },
         "imports/prefer-package-import": {
           "title": "IMP004: Prefer an existing package re-export over an implementation import.",
-          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
-          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n# style: {third_party_reexports: [fastapi]}\nfrom fastapi import APIRouter\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
           "examples": [
             "hint"
           ],
@@ -6494,8 +6677,8 @@
         },
         "^IMP004$": {
           "title": "IMP004: Prefer an existing package re-export over an implementation import.",
-          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
-          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains, module imports and unscanned third-party packages are outside this check.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
+          "description": "Prefer an existing package re-export over an implementation import. Importing supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked. Repair: Use the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.",
+          "markdownDescription": "**IMP004 \u2014 imports/prefer-package-import**\n\nPrefer an existing package re-export over an implementation import.\n\nImporting supported names from a common package keeps callers independent of implementation paths and allows related imports to be combined. This opt-in hint requires every name in a from-import to have an unconditional, direct, same-named public re-export in an analyzed ancestor __init__.py. The nearest eligible package is suggested. Static __all__ is respected. Production imports inside that package are excluded to avoid routing its own implementation through its initializer. Discovered tests and conftest.py are checked, including configured test roots inside the package. Test-quality exclusions do not exempt imports; project exclusions and normal suppressions apply. Imports in package initializers also stay unchanged. Conditional, rebound, private, star and dynamic exports, re-export chains and module imports are outside this check. Installed packages listed in third_party_reexports are read from the interpreter Smelt runs in, without importing them: stubs take precedence, star imports count when the target declares a static __all__, and names imported under TYPE_CHECKING count when a module __getattr__ serves them and __all__ lists them. Other third-party packages, and listed packages Smelt cannot find, are not checked.\n\n**Problem**\n```python\n# app/observation/__init__.py exports Observe and Snapshot\n# app/client.py\nfrom app.observation import Observe\nfrom app.observation.models import Snapshot\n```\n\n**Preferred**\n```python\n# app/client.py\nfrom app.observation import Observe, Snapshot\n# style: {third_party_reexports: [fastapi]}\nfrom fastapi import APIRouter\n```\n\nUse the suggested package import and combine it with an existing import there when both are in the same scope and guard. Preserve aliases, comments and relative/absolute import policy. Review initializer side effects and dependency cycles. No exports are created and no automatic rewrite is performed; analyzed code is never executed.\n\nRun `smelt explain imports/prefer-package-import` for details.",
           "examples": [
             "hint"
           ],

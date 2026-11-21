@@ -184,6 +184,12 @@ POLICIES = {
         "dataclass_options",
         "style or a package override sets dataclass_options, including [].",
     ),
+    "IMP004": _option(
+        "third_party_reexports",
+        "style or a package override lists third_party_reexports.",
+        bool,
+        required=False,
+    ),
     "MOD007": _option("bases", "style or a package override sets bases, including {}."),
     "MOD008": _option(
         "errors", "style or a package override sets errors, including {}."

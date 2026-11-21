@@ -31,7 +31,12 @@ from smelt.diagnostics.violation import (
     Violation,
     docs_url,
 )
-from smelt.engine.cache import ANALYSIS, CachedAnalysis, analysis_inputs
+from smelt.engine.cache import (
+    ANALYSIS,
+    CachedAnalysis,
+    analysis_inputs,
+    installed_inputs,
+)
 from smelt.engine.changes import Comparison, export_base, resolve_comparison
 from smelt.engine.coverage import effective_coverage
 from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
@@ -233,6 +238,7 @@ def _run_check(
                 [(r.code, s.value) for r, s in active],
                 str(options.comparison_root),
                 options.select,
+                installed_inputs(config, active),
             ],
         )
         if cache and options.snapshot_id

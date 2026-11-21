@@ -806,6 +806,10 @@ class PackagePolicy(_Model):
         default=None,
         description="Map a base class from outside the project to the project base that classes must inherit instead (MOD007), e.g. {pydantic.BaseModel: app.core.Options}. Keys and values are fully qualified names. Classes in the module that defines the project base are exempt; {} lifts an outer mapping. No automatic rewrite.",
     )
+    third_party_reexports: list[str] | None = Field(
+        default=None,
+        description="Top-level installed import packages, e.g. [fastapi, pydantic], whose initializer re-exports imports/prefer-package-import (IMP004) also suggests. Smelt reads their sources from the interpreter it runs in without importing them; packages it cannot find are skipped. [] lifts an outer list.",
+    )
     errors: ErrorPolicy | None = Field(
         default=None,
         description="Project exception policy (MOD008): production code raises subclasses of base instead of builtin exceptions, except names in allow. Raises inside protocol dunder methods and pydantic validators are exempt. {} lifts an outer policy; no automatic rewrite.",
@@ -822,6 +826,18 @@ class PackagePolicy(_Model):
     @classmethod
     def _unique(cls, values: list[str] | None) -> list[str] | None:
         return None if values is None else list(dict.fromkeys(values))
+
+    @field_validator("third_party_reexports")
+    @classmethod
+    def _third_party_reexports(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        for name in values:
+            if "." in name or not _DOTTED_NAME.fullmatch(name):
+                raise ValueError(
+                    f"third_party_reexports entries must be top-level import names: {name!r}"
+                )
+        return list(dict.fromkeys(values))
 
     @field_validator("bases")
     @classmethod

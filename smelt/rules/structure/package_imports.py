@@ -4,9 +4,11 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.installed_exports import InstalledPackages
 from smelt.analysis.package_exports import covering_package, direct_package_exports
 from smelt.analysis.parsing import resolve_relative
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -19,6 +21,7 @@ class PreferPackageImport(Rule):
     category = Category.IMPORTS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
+    activation = POLICIES["IMP004"]
     doc = RuleDoc(
         summary="Prefer an existing package re-export over an implementation import.",
         rationale=(
@@ -33,15 +36,24 @@ class PreferPackageImport(Rule):
             "package. Test-quality exclusions do not exempt imports; project "
             "exclusions and normal suppressions apply. Imports in package initializers "
             "also stay unchanged. Conditional, rebound, private, "
-            "star and dynamic exports, re-export chains, module imports and unscanned "
-            "third-party packages are outside this check."
+            "star and dynamic exports, re-export chains and module imports are "
+            "outside this check. Installed packages listed in third_party_reexports "
+            "are read from the interpreter Smelt runs in, without importing them: "
+            "stubs take precedence, star imports count when the target declares a "
+            "static __all__, and names imported under TYPE_CHECKING count when a "
+            "module __getattr__ serves them and __all__ lists them. Other "
+            "third-party packages, and listed packages Smelt cannot find, are not "
+            "checked."
         ),
         bad=(
             "# app/observation/__init__.py exports Observe and Snapshot\n"
             "# app/client.py\nfrom app.observation import Observe\n"
             "from app.observation.models import Snapshot"
         ),
-        good="# app/client.py\nfrom app.observation import Observe, Snapshot",
+        good=(
+            "# app/client.py\nfrom app.observation import Observe, Snapshot\n"
+            "# style: {third_party_reexports: [fastapi]}\nfrom fastapi import APIRouter"
+        ),
         fix=(
             "Use the suggested package import and combine it with an existing import "
             "there when both are in the same scope and guard. Preserve aliases, "
@@ -53,6 +65,7 @@ class PreferPackageImport(Rule):
             "rules",
             "architecture.import_graph.type_checking",
             "project.test_roots",
+            "style.third_party_reexports",
         ),
     )
 
@@ -63,6 +76,8 @@ class PreferPackageImport(Rule):
             if source.is_package
             and (module := ctx.syntax.for_path(source.path)) is not None
         }
+        first_party = {module.partition(".")[0] for module in ctx.files.sources}
+        installed = InstalledPackages()
         for path in ctx.files.all_python_paths():
             source = ctx.syntax.for_path(path)
             if source is None or source.is_package:
@@ -84,10 +99,16 @@ class PreferPackageImport(Rule):
                     level=node.level,
                     target=node.module,
                 )
-                if base not in ctx.files.sources:
+                if base in ctx.files.sources:
+                    lookup = facades
+                elif node.level or base.partition(".")[0] in first_party:
                     continue
+                else:
+                    lookup = _installed_facades(
+                        installed, base, third_party=_third_party(ctx, source.module)
+                    )
                 package = covering_package(
-                    facades,
+                    lookup,
                     base,
                     caller=source.module,
                     names=[alias.name for alias in node.names],
@@ -123,3 +144,21 @@ class PreferPackageImport(Rule):
                     },
                     hint=f"Use {replacement}; combine imports from {package} in the same scope and guard, preserving aliases and comments.",
                 )
+
+
+def _third_party(ctx: AnalysisContext, module: str) -> list[str]:
+    contract = ctx.contracts.policy_for(module, "third_party_reexports")
+    return (contract.spec.third_party_reexports or []) if contract else []
+
+
+def _installed_facades(
+    installed: InstalledPackages, base: str, *, third_party: list[str]
+) -> dict[str, dict[str, str]]:
+    """Exports of each installed ancestor of ``base`` in a listed package."""
+    if base.partition(".")[0] not in third_party:
+        return {}
+    parts = base.split(".")
+    return {
+        package: installed.exports(package)
+        for package in (".".join(parts[:end]) for end in range(1, len(parts)))
+    }

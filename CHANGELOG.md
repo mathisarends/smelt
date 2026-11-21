@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- [IMP004](docs/rules/IMP004.md) can suggest the public package import of an
+  installed dependency, such as `from fastapi import APIRouter` instead of
+  `from fastapi.routing import APIRouter`. List the top-level import names in
+  `style.third_party_reexports` (or a style override) and enable
+  `imports/prefer-package-import`. Smelt reads the packages from its own
+  interpreter without importing them; run it in the project environment.
+
 - [CPX008](docs/rules/CPX008.md) can flag a direct method call on an inline
   constructor, so the instance can be named first. Enable
   `complexity/inline-constructor-receiver` in `rules`. Imported class names are

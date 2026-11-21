@@ -36,6 +36,7 @@ type PolicyOption = Literal[
     "str_enum_values",
     "dataclass_options",
     "bases",
+    "third_party_reexports",
     "errors",
 ]
 
@@ -319,6 +320,7 @@ class ContractIndex:
                             "str_enum_values",
                             "dataclass_options",
                             "bases",
+                            "third_party_reexports",
                         )
                         if getattr(contract.spec, key) is not None
                     }
