@@ -32,7 +32,7 @@ class FactCache:
     def __init__(self, directory: Path) -> None:
         self._root = directory
         self._versions = directory / "v1"
-        self.directory = self._versions / analyzer_identity()
+        self.directory = self._versions / analyzer_identity(include_rules=False)
         self._hits = 0
         self._misses = 0
         self._connection: sqlite3.Connection | None = None
@@ -123,6 +123,10 @@ class FactCache:
             result = build()
             self.write(key, result, adapter)
         return result
+
+    def decision_key(self, kind: str, inputs: object) -> str:
+        """Rule outputs depend on rule code in addition to the underlying facts."""
+        return self.key(kind, [analyzer_identity(), inputs])
 
     def key(self, kind: str, inputs: object) -> str:
         payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)

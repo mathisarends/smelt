@@ -131,15 +131,12 @@ def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
 
 
 def _dishka_bindings(tree: ast.Module) -> dict[str, str]:
-    bound = binding_counts(tree)
     result: dict[str, str] = {}
-    if bound["*"]:
-        return result
     for node in tree.body:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 local = alias.asname or alias.name
-                if alias.name == "dishka" and bound[local] == 1:
+                if alias.name == "dishka":
                     result[local] = "dishka"
         elif (
             isinstance(node, ast.ImportFrom)
@@ -148,6 +145,12 @@ def _dishka_bindings(tree: ast.Module) -> dict[str, str]:
         ):
             for alias in node.names:
                 local = alias.asname or alias.name
-                if bound[local] == 1:
-                    result[local] = f"dishka.{alias.name}"
-    return result
+                result[local] = f"dishka.{alias.name}"
+    if not result:
+        return {}
+    bound = binding_counts(tree)
+    return (
+        {}
+        if bound["*"]
+        else {name: target for name, target in result.items() if bound[name] == 1}
+    )

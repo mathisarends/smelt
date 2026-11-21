@@ -62,7 +62,7 @@ class BundledInstanceAssignment(Rule):
             syntax = ctx.syntax.for_path(source.path)
             if syntax is None:
                 continue
-            for cls in ast.walk(syntax.tree):
+            for cls in syntax.nodes:
                 if not isinstance(cls, ast.ClassDef):
                     continue
                 for method in cls.body:

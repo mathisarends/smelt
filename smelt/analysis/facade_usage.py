@@ -303,7 +303,7 @@ def _static_bindings(module: ModuleSyntax) -> _Bindings:
     lazy = static_lazy_exports(module.tree)
     definitions = definition_bindings(module.tree)
     imports: dict[str, list[ast.AST]] = defaultdict(list)
-    for node in ast.walk(module.tree):
+    for node in module.nodes:
         if (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)

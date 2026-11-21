@@ -33,6 +33,7 @@ class DuplicateNarrowingAssert(Rule):
     name = "idioms/duplicate-narrowing-assert"
     category = Category.IDIOMS
     default_severity = Severity.WARNING
+    file_local = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Several methods of a class assert the same narrowing of a self attribute.",
@@ -83,7 +84,7 @@ class DuplicateNarrowingAssert(Rule):
             syntax = ctx.syntax.for_path(source.path)
             if syntax is None:
                 continue
-            for owner in ast.walk(syntax.tree):
+            for owner in syntax.nodes:
                 if isinstance(owner, ast.ClassDef):
                     yield from self._class(source, owner)
 

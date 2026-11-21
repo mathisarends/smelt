@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from smelt.analysis.members import MemberUsageIndex
 from smelt.analysis.parsing import AstCache
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
+from smelt.rules.structure.private_access import ForeignPrivateAccess
 from tests.helpers import (
     LAYERED_CONFIG,
     MEMBER_ARCHITECTURES,
@@ -19,8 +22,6 @@ from tests.helpers import (
 if TYPE_CHECKING:
     import ast
     from pathlib import Path
-
-    import pytest
 
     from smelt.analysis.members import (
         Member,
@@ -245,3 +246,38 @@ def test_root_architecture_only_governs_root_packages(
         ("ARC003", "src/root_app/domain/__init__.py"),
         ("ARC013", "packages/util/src/util/domain/model.py"),
     ]
+
+
+def test_test_edit_reuses_production_graph_but_owner_edit_rechecks_caller(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {visibility/foreign-private-access: warning}\n",
+            "app/__init__.py": "",
+            "app/owner.py": "def _value(): return 1\n",
+            "app/caller.py": "from app.owner import _value\n",
+            "tests/test_owner.py": "def test_size(): assert len([1]) == 1\n",
+        },
+    )
+    assert any(v.code == "VIS005" for v in check(tmp_path).report.violations)
+    (tmp_path / "tests/test_owner.py").write_text(
+        "def test_size(): assert len([]) == 0\n"
+    )
+    with monkeypatch.context() as patch:
+
+        def unexpected(*args: object) -> None:
+            pytest.fail("test-only edit rebuilt production-only decisions")
+
+        patch.setattr(ForeignPrivateAccess, "check", unexpected)
+        warm = check(tmp_path).report
+    assert render_json(warm) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
+    (tmp_path / "app/owner.py").write_text("def public_value(): return 1\n")
+    changed = check(tmp_path).report
+    assert all(v.code != "VIS005" for v in changed.violations)
+    assert render_json(changed) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )

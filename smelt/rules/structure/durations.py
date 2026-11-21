@@ -52,6 +52,7 @@ class ImplicitDurationUnit(Rule):
     name = "modeling/implicit-duration-unit"
     category = Category.MODELING
     default_severity = Severity.WARNING
+    file_local = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary=(
@@ -111,7 +112,7 @@ class ImplicitDurationUnit(Rule):
             found = [
                 self._name(source, duration) for duration in _durations(syntax.tree)
             ]
-            for node in ast.walk(syntax.tree):
+            for node in syntax.nodes:
                 if isinstance(node, ast.Call):
                     literals = _call_literals(node, syntax.bindings)
                 elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):

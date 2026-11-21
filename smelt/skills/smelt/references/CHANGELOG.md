@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Staged checks reuse production-only rule results after test edits. Editing a
+  rule in a source installation preserves parsed analysis facts while refreshing
+  rule decisions and the worker.
+
 - **Breaking:** Rule codes start with their family instead of `SMT`: `ARC`
   architecture, `IMP` imports, `LAY` layout, `VIS` visibility, `MOD` modeling,
   `TYP` typing, `CPX` complexity, `IDM` idioms, `FWK` frameworks, `TST` tests

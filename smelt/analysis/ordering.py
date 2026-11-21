@@ -290,12 +290,10 @@ def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics 
 
 
 def _reflective(tree: ast.Module) -> _FixBlocker | None:
-    unrelated = _local_function_namespaces(tree)
     found = [
         node
         for node in ast.walk(tree)
-        if node not in unrelated
-        and (
+        if (
             isinstance(node, ast.Global)
             or (
                 isinstance(node, ast.Name)
@@ -309,6 +307,14 @@ def _reflective(tree: ast.Module) -> _FixBlocker | None:
             )
         )
     ]
+    # Only these two forms can refer to a nested function's own namespace.
+    if any(
+        (isinstance(node, ast.Name) and node.id == "vars")
+        or (isinstance(node, ast.Attribute) and node.attr == "__dict__")
+        for node in found
+    ):
+        unrelated = _local_function_namespaces(tree)
+        found = [node for node in found if node not in unrelated]
     return (
         _FixBlocker(
             "runtime namespace or annotation introspection requires manual review",
@@ -346,6 +352,14 @@ def _local_function_namespaces(tree: ast.Module) -> set[ast.AST]:
     for function in ast.walk(tree):
         if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
+        nested = [
+            node
+            for node in function.body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and not node.decorator_list
+        ]
+        if not nested:
+            continue
         bindings = definition_bindings(ast.Module(body=function.body, type_ignores=[]))
         unavailable = {
             node.arg for node in ast.walk(function.args) if isinstance(node, ast.arg)
@@ -364,12 +378,11 @@ def _local_function_namespaces(tree: ast.Module) -> set[ast.AST]:
         )
         local = {
             node.name
-            for node in function.body
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            and not node.decorator_list
-            and bindings.get(node.name) == [node]
-            and node.name not in unavailable
+            for node in nested
+            if bindings.get(node.name) == [node] and node.name not in unavailable
         }
+        if not local:
+            continue
         for node in _deferred_body_nodes(function.body):
             if (
                 isinstance(node, ast.Attribute)

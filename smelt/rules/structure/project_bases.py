@@ -74,7 +74,7 @@ class PreferProjectBaseClass(Rule):
                 for outside, project in contract.spec.bases.items()
                 if not _defines(syntax.tree, source.module, project)
             }
-            for owner in ast.walk(syntax.tree):
+            for owner in syntax.nodes:
                 if not isinstance(owner, ast.ClassDef):
                     continue
                 for base in owner.bases:

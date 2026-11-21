@@ -124,11 +124,7 @@ class PrivateAttributeIndex:
         *,
         blocked: set[str],
     ) -> Iterator[PrivateAttributeAccess]:
-        parents = {
-            child: node
-            for node in ast.walk(statement)
-            for child in ast.iter_child_nodes(node)
-        }
+        parents: dict[ast.AST, ast.AST] | None = None
         for node in _scope_nodes([statement]):
             if (
                 not isinstance(node, ast.Attribute)
@@ -141,6 +137,12 @@ class PrivateAttributeIndex:
                 continue
             member = self._member(receiver.name, node.attr)
             if member is not None:
+                if parents is None:
+                    parents = {
+                        child: node
+                        for node in ast.walk(statement)
+                        for child in ast.iter_child_nodes(node)
+                    }
                 owner_module, _, _ = member.owner.rpartition(".")
                 yield PrivateAttributeAccess(
                     node,
