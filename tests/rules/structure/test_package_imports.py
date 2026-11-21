@@ -347,3 +347,141 @@ def test_cached_findings_follow_export_edits_and_deletion(tmp_path: Path) -> Non
     initializer.unlink()
     assert violations(root) == []
     assert violations(root, CheckOptions(use_cache=False)) == []
+
+
+SITE = {
+    "web/__init__.py": "from .routing import APIRouter as APIRouter\n"
+    "from .app import App\n",
+    "web/routing.py": "class APIRouter: ...\n",
+    "web/app.py": "class App: ...\n",
+    "web/orm/__init__.py": "from .session import Session\n",
+    "web/orm/session.py": "class Session: ...\nclass Engine: ...\n",
+}
+THIRD_PARTY = CONFIG + "style: {third_party_reexports: [web]}\n"
+
+
+def _installed_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    client: str,
+    config: str = THIRD_PARTY,
+) -> Path:
+    write_project(tmp_path / "site", SITE)
+    monkeypatch.syspath_prepend(str(tmp_path / "site"))
+    return _project(tmp_path / "project", client=client, config=config)
+
+
+@pytest.mark.parametrize(
+    ("statement", "replacement"),
+    [
+        (
+            "from web.routing import APIRouter as Router",
+            "from web import APIRouter as Router",
+        ),
+        ("from web.orm.session import Session", "from web.orm import Session"),
+        ("from web.app import App", "from web import App"),
+    ],
+)
+def test_listed_installed_packages_suggest_their_nearest_reexport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    statement: str,
+    replacement: str,
+) -> None:
+    root = _installed_project(tmp_path, monkeypatch, client=statement + "\n")
+
+    [finding] = violations(root, OPTIONS)
+
+    assert (finding.code, finding.path, finding.line) == ("IMP004", "app/client.py", 1)
+    assert finding.expected is not None
+    assert finding.expected["replacement"] == replacement
+
+
+@pytest.mark.parametrize(
+    ("statement", "config"),
+    [
+        ("from web.routing import APIRouter", CONFIG),
+        ("from web.routing import APIRouter", THIRD_PARTY.replace("[web]", "[]")),
+        ("from web.orm.session import Engine", THIRD_PARTY),
+        ("from web.orm.session import Session, Engine", THIRD_PARTY),
+        ("from web import App", THIRD_PARTY),
+        ("import web.routing", THIRD_PARTY),
+        ("from absent.core import Thing", THIRD_PARTY.replace("[web]", "[absent]")),
+    ],
+)
+def test_unlisted_unexported_or_missing_installed_names_stay_quiet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, statement: str, config: str
+) -> None:
+    root = _installed_project(
+        tmp_path, monkeypatch, client=statement + "\n", config=config
+    )
+
+    assert violations(root, OPTIONS) == []
+
+
+def test_package_overrides_scope_the_installed_packages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = (
+        CONFIG
+        + "style:\n  overrides:\n    api: {match: app.api, third_party_reexports: [web]}\n"
+    )
+    root = _installed_project(
+        tmp_path,
+        monkeypatch,
+        client="from web.routing import APIRouter\n",
+        config=config,
+    )
+    write_project(
+        root,
+        {
+            "app/api/__init__.py": "",
+            "app/api/routes.py": "from web.routing import APIRouter\n",
+        },
+    )
+
+    assert [finding.path for finding in violations(root, OPTIONS)] == [
+        "app/api/routes.py"
+    ]
+
+
+def test_project_packages_shadow_a_listed_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _installed_project(
+        tmp_path,
+        monkeypatch,
+        client="from lib.vendor.tools import Tool\n",
+        config=THIRD_PARTY.replace("[web]", "[lib]").replace(
+            "root_packages: [app]", "root_packages: [app, lib]"
+        ),
+    )
+    write_project(root, {"lib/__init__.py": ""})
+    write_project(
+        tmp_path / "site", {"lib/__init__.py": "from .vendor.tools import Tool\n"}
+    )
+
+    assert violations(root, OPTIONS) == []
+
+
+def test_cached_findings_follow_installed_package_edits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _installed_project(
+        tmp_path,
+        monkeypatch,
+        client="from web.orm.session import Engine\n",
+        config=THIRD_PARTY + "rules: {imports/prefer-package-import: hint}\n",
+    )
+    assert violations(root) == []
+
+    write_project(
+        tmp_path / "site",
+        {"web/orm/__init__.py": "from .session import Engine, Session\n"},
+    )
+
+    warm = check(root).report.violations
+    fresh = check(root, CheckOptions(use_cache=False)).report.violations
+    assert warm == fresh
+    assert [finding.code for finding in warm] == ["IMP004"]

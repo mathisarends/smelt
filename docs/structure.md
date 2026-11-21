@@ -46,6 +46,7 @@ Options configure rules; they never enable them:
 | `str_enum_values` | MOD004 | `explicit` |
 | `dataclass_options` | MOD006 | none |
 | `bases` | MOD007 | none |
+| `third_party_reexports` | IMP004 | none |
 | `errors` | MOD008 | none |
 
 `architecture.packages` sets `required`, `public`, `min_imports_to_bundle`,
@@ -643,8 +644,27 @@ or `--select IMP004`. For example, if `app.observation.__init__` directly export
 `from app.observation import Observe, Snapshot`. Every imported name must have a
 direct, unconditional public re-export; aliases and relative imports are preserved
 in suggestions. Tests use the same existing-export suggestions. Internal production
-imports, package initializers, uncertain exports and
-unscanned third-party packages are excluded. See [IMP004](rules/IMP004.md).
+imports, package initializers and uncertain exports are excluded. See
+[IMP004](rules/IMP004.md).
+
+Third-party packages are checked only when `style.third_party_reexports` (or a
+style override) lists their top-level import names:
+
+```yaml
+style:
+  third_party_reexports: [fastapi, pydantic]
+rules:
+  imports/prefer-package-import: hint
+```
+
+`from fastapi.routing import APIRouter` then becomes `from fastapi import APIRouter`.
+Smelt reads the listed packages from the interpreter it runs in, so install it in
+the project environment (`uv run smelt`); a package it cannot find is skipped. It
+parses their initializers without importing them. Stubs (`__init__.pyi`) win over
+sources, star imports count when the target declares a static `__all__`, and names
+imported under `TYPE_CHECKING` count when a module `__getattr__` serves them and
+`__all__` lists them, as pydantic does. The listed package sources are part of
+the cache key, so upgrading a dependency refreshes the findings.
 
 To find names that are widely imported but missing from a facade, configure
 [ARC008 `architecture/missing-facade-export`](rules/ARC008.md):

@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter
 
+from smelt.analysis.installed_exports import InstalledPackages
 from smelt.analysis.workspace import workspace_members
 from smelt.diagnostics.violation import Violation  # noqa: TC001 - runtime cache schema
 
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext
+    from smelt.config.models import SmeltConfig
     from smelt.diagnostics.violation import Severity
     from smelt.rules.base import RuleContract
 
@@ -66,4 +68,19 @@ def analysis_inputs(
         ctx.workspace.metadata
         if any(rule.code == "ARC010" for rule, _ in active)
         else None,
+        installed_inputs(ctx.config, active),
     ]
+
+
+def installed_inputs(
+    config: SmeltConfig, active: list[tuple[RuleContract, Severity]]
+) -> object:
+    """Installed third-party sources that IMP004 reads outside the project."""
+    if not any(rule.code == "IMP004" for rule, _ in active):
+        return None
+    packages = {
+        name
+        for policy in (config.structure, *config.structure.contracts.values())
+        for name in policy.third_party_reexports or ()
+    }
+    return InstalledPackages().identity(packages) if packages else None
