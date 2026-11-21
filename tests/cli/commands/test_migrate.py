@@ -6,7 +6,7 @@ import yaml
 
 from smelt.cli import main
 from smelt.config import load_config
-from tests.helpers import MEMBER_BOUNDARIES, write_project
+from tests.helpers import MEMBER_BOUNDARIES, violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -110,6 +110,36 @@ def test_migrate_keeps_a_comment_only_base(tmp_path: Path) -> None:
 
     assert load_config(path).config.version == 2
     assert (tmp_path / "base.yml").read_text(encoding="utf-8") == comment
+
+
+def test_migrate_keeps_a_rule_active_outside_its_local_exception(
+    tmp_path: Path,
+) -> None:
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": """
+                version: 1
+                project: {root_packages: [app]}
+                style:
+                  module_docstrings: require
+                  overrides:
+                    domain:
+                      match: app.domain
+                      rules: {layout/module-docstring-convention: off}
+                """,
+            "app/__init__.py": '"""Application package."""\n',
+            "app/domain/__init__.py": "",
+            "app/api.py": "",
+        },
+    )
+    path = tmp_path / "smelt.yml"
+
+    assert main(["--config", str(path), "config", "migrate", "--write"]) == 0
+
+    assert [(finding.code, finding.path) for finding in violations(tmp_path)] == [
+        ("LAY002", "app/api.py")
+    ]
 
 
 def test_migrate_converts_the_bases_and_members_of_a_workspace_together(
