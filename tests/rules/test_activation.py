@@ -165,6 +165,7 @@ SHARED_OPTIONS = [
     ({"type_dispatch": {}}, {"IDM002"}),
     ({"public_attribute_boundary": "module"}, {"VIS004"}),
     ({"private_attribute_boundary": "package"}, {"VIS005"}),
+    ({"navigation": {}}, {"CPX001"}),
     ({"call_argument_kinds": ["await"]}, {"CPX002"}),
     ({"str_enum_values": "auto"}, {"MOD004"}),
     ({"dataclass_options": []}, {"MOD006"}),

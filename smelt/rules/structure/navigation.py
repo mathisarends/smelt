@@ -4,8 +4,9 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.navigation import NavigationNamespaces
+from smelt.analysis.navigation import DeclaredTypes, NavigationNamespaces
 from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class DeepObjectNavigation(Rule):
+    activation = POLICIES["CPX001"]
     code = "CPX001"
     name = "complexity/excess-attribute-depth"
     category = Category.COMPLEXITY
@@ -35,7 +37,8 @@ class DeepObjectNavigation(Rule):
             "and property return annotations; analyzed imports and re-exports are followed without executing code. "
             "Every intermediate object must be a known namespace or value: a record containing a service does not "
             "exempt navigation into that service. Names such as api, client, get or append alone exempt nothing. "
-            "Unknown SDK types and dynamic property/data flow remain review limitations. Decorated and implicit "
+            "Unknown SDK types and dynamic property/data flow remain review limitations unless the navigation "
+            "option declares namespace_types or instance_factories for them. Decorated and implicit "
             "class/static methods, nested helper bodies, comprehensions, receiver rebinding and navigation through "
             "parameters, aliases or subscripts are outside the review. This is a bounded review, not proof of a design defect."
             " When namespace evidence is incomplete, the finding includes the declared/constructed root type and "
@@ -45,11 +48,20 @@ class DeepObjectNavigation(Rule):
         bad="class Controller:\n    def aim(self, width, height):\n        return self.browser.input.motor().aim(width, height)",
         good="class Controller:\n    def __init__(self, motor):\n        self.motor = motor\n\n    def aim(self, width, height):\n        return self.motor.aim(width, height)",
         fix="Review whether the caller should receive the needed collaborator directly or ask its direct collaborator to perform the operation. A local variable alone does not reduce structural coupling. Preserve factory/property evaluation and object lifetimes; repeated lookups need not return the same object. Keep intentional API navigation with a package rules override set to off or a reasoned CPX001 suppression. No automatic rewrite is performed. Enable with rules: {complexity/excess-attribute-depth: hint}, globally or in a package override, or --select CPX001.",
-        config=("rules", "style.overrides"),
+        config=("rules", "style.navigation", "style.overrides"),
     )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        namespaces = NavigationNamespaces(ctx.syntax, ctx.files)
+        def declared(module: str) -> DeclaredTypes:
+            contract = ctx.contracts.policy_for(module, "navigation")
+            policy = contract.spec.navigation if contract else None
+            if policy is None:
+                return DeclaredTypes()
+            return DeclaredTypes(
+                frozenset(policy.namespace_types), frozenset(policy.instance_factories)
+            )
+
+        namespaces = NavigationNamespaces(ctx.syntax, ctx.files, declared)
         for source in ctx.files.sources.values():
             candidates = ctx.syntax.attribute_candidates(source.path)
             if not candidates.navigation:
