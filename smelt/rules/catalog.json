@@ -1271,6 +1271,24 @@
     "scope": "test"
   },
   {
+    "target": "smelt.rules.testing.untested:MissingMirrorTest",
+    "code": "TST012",
+    "name": "tests/missing-mirror-test",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "files",
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "file_local": false,
+    "production_only": false,
+    "test_local": false,
+    "member_local": false,
+    "architecture_scoped": false,
+    "scope": "test"
+  },
+  {
     "target": "smelt.rules.structure.headers:ForbiddenFutureAnnotations",
     "code": "TYP001",
     "name": "typing/forbidden-future-annotations",

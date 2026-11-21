@@ -250,6 +250,15 @@ workspace each test root mirrors the package of its own member. Deliberately mir
 tests go in `tests.mirror_exclude` (e.g. `["tests/e2e/**"]`); `tests.mirror_suffixes: true`
 also allows `test_invoice_<topic>.py`.
 
+TST001 checks the tests that exist. To also review modules that have none, enable
+`tests/missing-mirror-test` (TST012). It reports a module that defines a function or
+method with a real body and has no test at its mirrored path (or, with
+`mirror_suffixes`, no topic test). Packages, `__main__.py` and modules declaring only
+data, constants, protocols or abstract stubs are skipped. Mark a module that other
+tests cover deliberately with `# smelt: ignore-file[TST012] -- <reason>`.
+In an existing project, record the current gaps with `smelt adopt` so that
+`smelt check --changed` reports only modules added without a test.
+
 Mirroring repeats file names: `auth/presentation/test_router.py` and
 `user/presentation/test_router.py`. pytest's default import mode only tells them apart
 inside packages, so without `__init__.py` in the test directories it stops with "import
