@@ -412,3 +412,21 @@ def test_facade_symbols_named_like_submodules_count_as_the_facade(
     )
 
     assert violations(tmp_path, OPTIONS) == []
+
+
+def test_mirrored_tests_are_insiders_with_mirrored_test_access(
+    tmp_path: Path,
+) -> None:
+    config = CONFIG.replace(
+        "min_imports_to_bundle: 3",
+        "min_imports_to_bundle: 3\n      test_access: mirrored",
+    )
+    _project(tmp_path, "", config=config)
+    write_project(
+        tmp_path,
+        {
+            "tests/user/application/test_get_user.py": "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\nfrom app.user.application.delete_user import DeleteUser\n"
+        },
+    )
+
+    assert violations(tmp_path, OPTIONS) == []
