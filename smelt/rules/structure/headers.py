@@ -11,6 +11,7 @@ from smelt.analysis.bindings import (
     unshadowed_bindings,
 )
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -407,6 +408,6 @@ def _imported_names(tree: ast.Module, annotation: ast.expr) -> bool:
     bindings = unshadowed_bindings(tree)
     return all(
         node.id in bindings
-        for node in ast.walk(annotation)
+        for node in tree_nodes(annotation)
         if isinstance(node, ast.Name)
     )

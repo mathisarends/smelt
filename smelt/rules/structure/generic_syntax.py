@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import binding_counts
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.typing_bindings import typing_bindings, typing_name
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -75,7 +76,7 @@ class PreferInlineTypeParameters(Rule):
             tree = ctx.asts.parse(source.path)
             bindings = typing_bindings(tree)
             text: SourceText | None = None
-            for node in ast.walk(tree):
+            for node in tree_nodes(tree):
                 if not isinstance(node, ast.ClassDef):
                     continue
                 generic = next(

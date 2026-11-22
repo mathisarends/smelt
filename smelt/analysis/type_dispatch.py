@@ -7,6 +7,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -30,10 +32,10 @@ def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
     checkers = _checker_names(tree)
     if not checkers:
         return
-    conditions = [node for node in ast.walk(tree) if isinstance(node, ast.If)]
+    conditions = [node for node in tree_nodes(tree) if isinstance(node, ast.If)]
     parents = {
         child: parent
-        for parent in ast.walk(tree)
+        for parent in tree_nodes(tree)
         for child in ast.iter_child_nodes(parent)
     }
     tails = {id(tail) for node in conditions if (tail := _elif(node)) is not None}
@@ -83,7 +85,7 @@ def _bound_names(node: ast.AST) -> tuple[str, ...]:
 
 def _checker_names(tree: ast.Module) -> set[str]:
     """Reject spellings rebound anywhere in the file rather than guessing scope."""
-    bound = Counter(name for node in ast.walk(tree) for name in _bound_names(node))
+    bound = Counter(name for node in tree_nodes(tree) for name in _bound_names(node))
     if bound["*"]:
         return set()
     names = {"isinstance"} if not bound["isinstance"] else set()
@@ -104,13 +106,13 @@ def _checker_names(tree: ast.Module) -> set[str]:
                 name = alias.asname or alias.name
                 if alias.name == "isinstance" and bound[name] == 1:
                     names.add(name)
-    for candidate in ast.walk(tree):
+    for candidate in tree_nodes(tree):
         if (
             isinstance(candidate, ast.Attribute | ast.Subscript)
             and isinstance(candidate.ctx, ast.Store | ast.Del)
             and any(
                 isinstance(child, ast.Name) and child.id in builtin_modules
-                for child in ast.walk(candidate)
+                for child in tree_nodes(candidate)
             )
         ):
             return set()
@@ -138,7 +140,7 @@ def _head(
         isinstance(node, ast.NamedExpr)
         and isinstance(node.target, ast.Name)
         and node.target.id == subject
-        for node in ast.walk(test)
+        for node in tree_nodes(test)
     ):
         return None
     guard = None

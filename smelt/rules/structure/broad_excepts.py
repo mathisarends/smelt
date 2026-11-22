@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -92,7 +93,7 @@ class MissingBroadExceptReason(Rule):
             tree = ctx.asts.parse(source.path)
             handlers = [
                 node
-                for node in ast.walk(tree)
+                for node in tree_nodes(tree)
                 if isinstance(node, ast.ExceptHandler)
                 and _broad_type(node) is not None
                 and not _always_raises(node)

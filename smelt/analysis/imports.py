@@ -27,6 +27,7 @@ from smelt.analysis.parsing import (
     AstCache,
     python_note,
     resolve_relative,
+    tree_nodes,
     type_checking_lines,
 )
 from smelt.analysis.parsing import (
@@ -512,7 +513,7 @@ def _statements_by_line(
     tree: ast.Module,
 ) -> dict[int, list[ast.Import | ast.ImportFrom]]:
     statements: dict[int, list[ast.Import | ast.ImportFrom]] = defaultdict(list)
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Import | ast.ImportFrom):
             statements[node.lineno].append(node)
     return statements

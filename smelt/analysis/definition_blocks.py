@@ -7,6 +7,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from smelt.config.models import OrderingConfig
 
@@ -246,7 +248,7 @@ def _update_aliases(node: ast.stmt, aliases: dict[str, str]) -> None:
         aliases.clear()
         return
     for expression in _eager_expressions(node, deferred=False):
-        for child in ast.walk(expression):
+        for child in tree_nodes(expression):
             if isinstance(child, ast.NamedExpr) and isinstance(child.target, ast.Name):
                 aliases.pop(child.target.id, None)
     if isinstance(node, ast.ImportFrom) and any(
@@ -271,7 +273,7 @@ def _update_aliases(node: ast.stmt, aliases: dict[str, str]) -> None:
 
 
 def _forget_conditional_aliases(node: ast.stmt, aliases: dict[str, str]) -> None:
-    for child in ast.walk(node):
+    for child in tree_nodes(node):
         if isinstance(child, ast.stmt):
             for name in _bound_names(child):
                 aliases.pop(name, None)
@@ -300,7 +302,7 @@ def _bound_names(node: ast.stmt) -> frozenset[str]:
         return frozenset(
             child.id
             for target in node.targets
-            for child in ast.walk(target)
+            for child in tree_nodes(target)
             if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Store)
         )
     if (
@@ -334,7 +336,7 @@ def _extra_bound_names(node: ast.stmt) -> frozenset[str]:
         return frozenset(
             child.id
             for target in node.targets
-            for child in ast.walk(target)
+            for child in tree_nodes(target)
             if isinstance(child, ast.Name)
         )
     return frozenset()
@@ -351,7 +353,7 @@ def _namespace_mutation(node: ast.stmt) -> bool:
     return any(
         isinstance(child, ast.Attribute | ast.Subscript)
         for target in targets
-        for child in ast.walk(target)
+        for child in tree_nodes(target)
     )
 
 

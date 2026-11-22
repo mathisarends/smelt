@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import last_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -171,7 +172,7 @@ def _expression(text: str) -> bool:
 
 
 def _annotations(tree: ast.Module) -> Iterator[ast.expr]:
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case ast.arg(annotation=ast.expr() as annotation):
                 yield annotation

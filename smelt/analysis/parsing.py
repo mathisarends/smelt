@@ -79,9 +79,11 @@ def type_checking_lines(tree: ast.Module) -> frozenset[int]:
 
 
 def tree_nodes(tree: ast.AST) -> tuple[ast.AST, ...]:
-    """Every node of ``tree`` in ``ast.walk`` order, walked once per tree object.
+    """Every node below ``tree`` in ``ast.walk`` order, walked once per root node.
 
-    Analyses never mutate parsed trees, so every reader of one tree shares a walk.
+    Analyses never mutate parsed trees, so every reader of one module, class or
+    function shares a walk. Use this instead of ``ast.walk``: two dozen rules
+    walk each module. Only code that rewrites the tree it walks needs ``ast.walk``.
     """
     nodes = _WALKS.get(tree)
     if nodes is None:

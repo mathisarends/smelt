@@ -19,6 +19,7 @@ from smelt.analysis.definition_blocks import (
     is_main_guard,
 )
 from smelt.analysis.function_usage import definition_bindings
+from smelt.analysis.parsing import tree_nodes
 from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
@@ -292,7 +293,7 @@ def _analyze_order(  # noqa: PLR0913 - source identity and annotation semantics 
 def _reflective(tree: ast.Module) -> _FixBlocker | None:
     found = [
         node
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
         if (
             isinstance(node, ast.Global)
             or (
@@ -347,9 +348,9 @@ def _local_function_namespaces(tree: ast.Module) -> set[ast.AST]:
                 for alias in node.names
             )
         )
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     )
-    for function in ast.walk(tree):
+    for function in tree_nodes(tree):
         if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
         nested = [
@@ -362,17 +363,17 @@ def _local_function_namespaces(tree: ast.Module) -> set[ast.AST]:
             continue
         bindings = definition_bindings(ast.Module(body=function.body, type_ignores=[]))
         unavailable = {
-            node.arg for node in ast.walk(function.args) if isinstance(node, ast.arg)
+            node.arg for node in tree_nodes(function.args) if isinstance(node, ast.arg)
         }
         unavailable.update(
             name
-            for node in ast.walk(function)
+            for node in tree_nodes(function)
             if isinstance(node, ast.Global | ast.Nonlocal)
             for name in node.names
         )
         unavailable.update(
             alias.asname or alias.name.split(".")[0]
-            for node in ast.walk(function)
+            for node in tree_nodes(function)
             if isinstance(node, ast.Import | ast.ImportFrom)
             for alias in node.names
         )
@@ -648,7 +649,7 @@ def _fixed_positions(result: FileOrder, blocks: list[DefinitionBlock]) -> None:
 def _mutates_builtins(tree: ast.Module) -> bool:
     modules = {"builtins"} | {
         alias.asname or alias.name
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
         if isinstance(node, ast.Import)
         for alias in node.names
         if alias.name == "builtins"
@@ -661,5 +662,5 @@ def _mutates_builtins(tree: ast.Module) -> bool:
             and isinstance(node.value, ast.Name)
             and node.value.id in modules
         )
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     )

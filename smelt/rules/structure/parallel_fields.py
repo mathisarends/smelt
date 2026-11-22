@@ -12,6 +12,7 @@ from smelt.analysis.bindings import (
     unshadowed_bindings,
 )
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -107,7 +108,7 @@ class ParallelRecordFields(Rule):
         for source in ctx.files.sources.values():
             tree = ctx.asts.parse(source.path)
             bindings = unshadowed_bindings(tree, builtin_names=("zip", "list", "tuple"))
-            for owner in ast.walk(tree):
+            for owner in tree_nodes(tree):
                 if not isinstance(owner, ast.ClassDef):
                     continue
                 fields = _fields(owner, bindings)

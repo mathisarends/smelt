@@ -14,6 +14,7 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.bindings import binding_counts, qualified_name
 from smelt.analysis.exports import MAX_HOPS, resolve_export
+from smelt.analysis.parsing import tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -261,7 +262,7 @@ class PrivateAttributeIndex:
                 if parents is None:
                     parents = {
                         child: node
-                        for node in ast.walk(statement)
+                        for node in tree_nodes(statement)
                         for child in ast.iter_child_nodes(node)
                     }
                 owner_module, _, _ = member.owner.rpartition(".")
@@ -293,7 +294,7 @@ class PrivateAttributeIndex:
         candidate = node.func if isinstance(node, ast.Call) else node
         if not any(
             isinstance(part, ast.Name) and part.id in blocked
-            for part in ast.walk(candidate)
+            for part in tree_nodes(candidate)
         ):
             name = self._annotation(module, candidate)
             if name:
@@ -574,7 +575,7 @@ def _method_facts(method: _Function, bindings: dict[str, str]) -> _MethodFacts:
                 fields.append(_FieldFacts(target.attr, value=ast.unparse(node.value)))
                 mentioned.update(
                     part.id
-                    for part in ast.walk(node.value)
+                    for part in tree_nodes(node.value)
                     if isinstance(part, ast.Name)
                 )
             else:

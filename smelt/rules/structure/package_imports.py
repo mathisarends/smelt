@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.installed_exports import InstalledPackages
 from smelt.analysis.package_exports import covering_package, package_facades
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -229,7 +229,7 @@ def _statement(
     tree: ast.Module, node: ImportStatement
 ) -> tuple[ast.ImportFrom, list[ast.stmt]] | None:
     """The from-import at `node`'s position and the block that holds it."""
-    for owner in ast.walk(tree):
+    for owner in tree_nodes(tree):
         for field in ("body", "orelse", "finalbody"):
             block = getattr(owner, field, None)
             if not isinstance(block, list):

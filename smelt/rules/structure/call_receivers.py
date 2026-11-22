@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.bindings import binding_counts, qualified_name
 from smelt.analysis.context import Index
 from smelt.analysis.exports import namespace_of
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
 
@@ -122,7 +123,7 @@ def _constructor_calls(
 
 
 def _direct_receivers(tree: ast.Module) -> Iterator[tuple[ast.Call, str]]:
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case (
                 ast.Assign(value=value)

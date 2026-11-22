@@ -5,6 +5,7 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -36,7 +37,7 @@ class PrivateClassConstant(Rule):
         for source in ctx.files.sources.values():
             tree = ctx.asts.parse(source.path)
             text: SourceText | None = None
-            for cls in ast.walk(tree):
+            for cls in tree_nodes(tree):
                 if (
                     not isinstance(cls, ast.ClassDef)
                     or cls.bases
@@ -168,10 +169,10 @@ def _qualified_reads(
         if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef):
             positional = [*method.args.posonlyargs, *method.args.args]
             if positional:
-                for node in ast.walk(method):
+                for node in tree_nodes(method):
                     receivers[id(node)] = positional[0].arg
     reads: list[ast.Attribute] = []
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if not isinstance(node, ast.Attribute) or node.attr != name:
             continue
         if not isinstance(node.ctx, ast.Load) or not isinstance(node.value, ast.Name):

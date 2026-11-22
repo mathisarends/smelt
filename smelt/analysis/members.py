@@ -21,6 +21,7 @@ from smelt.analysis.member_state import (
     MemberSummary,
     update_members,
 )
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.retained import current
 
 if TYPE_CHECKING:
@@ -791,7 +792,7 @@ def _shadows_staticmethod(owner: ast.ClassDef, module: ModuleSyntax) -> bool:
             and node.name == "staticmethod"
         )
         for root in [module.tree, owner]
-        for node in ast.walk(root)
+        for node in tree_nodes(root)
     )
 
 
@@ -811,14 +812,14 @@ def _class_dependencies(node: Function, owner: ast.ClassDef) -> bool:
         child.id
         for statement in owner.body
         if not isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef)
-        for child in ast.walk(statement)
+        for child in tree_nodes(statement)
         if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Store)
     )
     return any(
         isinstance(child, ast.Name)
         and isinstance(child.ctx, ast.Load)
         and child.id in names
-        for child in ast.walk(node)
+        for child in tree_nodes(node)
     )
 
 
@@ -912,7 +913,7 @@ class _UseVisitor(ast.NodeVisitor):
         bound = {
             item.id
             for generator in node.generators
-            for item in ast.walk(generator.target)
+            for item in tree_nodes(generator.target)
             if isinstance(item, ast.Name)
         }
         self.roots = previous - bound

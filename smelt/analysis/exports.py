@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from smelt.analysis.lazy_exports import static_lazy_exports
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -150,14 +150,14 @@ def _defined_names(node: ast.stmt) -> list[str]:
     return [
         name.id
         for target in targets
-        for name in ast.walk(target)
+        for name in tree_nodes(target)
         if isinstance(name, ast.Name)
     ]
 
 
 def _dotted_names(node: ast.stmt) -> Iterator[tuple[str, ...]]:
     """``chat.feature`` -> ``("chat", "feature")`` for every name the value reads."""
-    for child in ast.walk(node):
+    for child in tree_nodes(node):
         if isinstance(child, ast.Attribute):
             parts: list[str] = []
             current: ast.expr = child

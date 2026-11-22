@@ -9,6 +9,8 @@ from __future__ import annotations
 import ast
 import builtins
 
+from smelt.analysis.parsing import tree_nodes
+
 _GENERICS_VERSION = (3, 9)
 _UNIONS_VERSION = (3, 10)
 _BUILTIN_GENERICS = frozenset({"list", "dict", "tuple", "set", "frozenset", "type"})
@@ -18,7 +20,7 @@ def has_postponement_evidence(
     tree: ast.Module, minimum: tuple[int, int] | None = None
 ) -> bool:
     annotations: list[ast.expr] = []
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.AnnAssign | ast.arg) and node.annotation is not None:
             annotations.append(node.annotation)
         elif (
@@ -32,7 +34,7 @@ def has_postponement_evidence(
         return True
     available = _bindings(tree)
     for annotation in annotations:
-        for node in ast.walk(annotation):
+        for node in tree_nodes(annotation):
             if isinstance(node, ast.Name):
                 if node.id not in vars(builtins) and not any(
                     end < annotation.lineno and name == node.id
@@ -67,7 +69,7 @@ def _supported_expression(node: ast.AST, minimum: tuple[int, int] | None) -> boo
 
 
 def _runtime_sensitive(tree: ast.Module) -> bool:
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Delete):
             return True
         if isinstance(node, ast.Name | ast.Attribute):

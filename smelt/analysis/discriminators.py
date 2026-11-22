@@ -6,6 +6,7 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.typing_bindings import typing_bindings, typing_name
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ class StringDiscriminator:
 
 def string_discriminators(tree: ast.Module) -> Iterator[StringDiscriminator]:
     bindings = typing_bindings(tree)
-    for owner in ast.walk(tree):
+    for owner in tree_nodes(tree):
         if not isinstance(owner, ast.ClassDef):
             continue
         for node in owner.body:

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
@@ -100,7 +100,9 @@ class _Attributes(ast.NodeVisitor):
         if node.returns:
             self.visit(node.returns)
         outer = self.closure if self.in_class else self.env
-        bindings = {arg.arg for arg in ast.walk(node.args) if isinstance(arg, ast.arg)}
+        bindings = {
+            arg.arg for arg in tree_nodes(node.args) if isinstance(arg, ast.arg)
+        }
         bindings.update(_type_parameters(node.type_params))
         self._scope(node.body, outer, bindings)
 
@@ -116,7 +118,9 @@ class _Attributes(ast.NodeVisitor):
     def visit_Lambda(self, node: ast.Lambda) -> None:
         self.visit(node.args)
         outer = self.closure if self.in_class else self.env
-        bindings = {arg.arg for arg in ast.walk(node.args) if isinstance(arg, ast.arg)}
+        bindings = {
+            arg.arg for arg in tree_nodes(node.args) if isinstance(arg, ast.arg)
+        }
         self._scope([node.body], outer, bindings)
 
     def visit_ListComp(
@@ -128,7 +132,7 @@ class _Attributes(ast.NodeVisitor):
         bound = {
             child.id
             for generator in node.generators
-            for child in ast.walk(generator.target)
+            for child in tree_nodes(generator.target)
             if isinstance(child, ast.Name)
         }
         self.env = {name: value for name, value in outer.items() if name not in bound}

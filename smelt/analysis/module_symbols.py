@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import TypeAdapter
 
 from smelt.analysis.function_usage import explicit_exports
+from smelt.analysis.parsing import tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -141,7 +142,7 @@ def _candidates(
 
 def _bindings(tree: ast.Module) -> Counter[str]:
     result: Counter[str] = Counter()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case ast.Name(id=name, ctx=ast.Store() | ast.Del()):
                 result[name] += 1
@@ -180,13 +181,13 @@ def _reflective(tree: ast.Module) -> bool:
             and any(alias.name == "*" for alias in node.names)
         )
         or (isinstance(node, ast.alias) and (node.asname or node.name) == "__all__")
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     )
 
 
 def _references(node: ast.AST) -> set[str]:
     names: set[str] = set()
-    for child in ast.walk(node):
+    for child in tree_nodes(node):
         if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
             names.add(child.id)
         elif isinstance(child, ast.Constant) and isinstance(child.value, str):
@@ -195,7 +196,7 @@ def _references(node: ast.AST) -> set[str]:
             except (SyntaxError, ValueError):
                 continue
             names.update(
-                item.id for item in ast.walk(quoted) if isinstance(item, ast.Name)
+                item.id for item in tree_nodes(quoted) if isinstance(item, ast.Name)
             )
     return names
 
@@ -251,7 +252,7 @@ def _definition_expressions(
         yield from node.bases
         yield from (keyword.value for keyword in node.keywords)
         yield from _api_expressions(node.body, set(), in_class=True)
-        for child in ast.walk(node):
+        for child in tree_nodes(node):
             if (
                 isinstance(child, ast.AnnAssign)
                 and isinstance(child.target, ast.Attribute)

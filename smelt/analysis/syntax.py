@@ -40,7 +40,7 @@ class AttributeCandidates:
     def from_tree(cls, tree: ast.Module) -> AttributeCandidates:
         private: set[int] = set()
         navigation: set[int] = set()
-        for node in ast.walk(tree):
+        for node in tree_nodes(tree):
             if (
                 isinstance(node, ast.Attribute)
                 and node.attr.startswith("_")

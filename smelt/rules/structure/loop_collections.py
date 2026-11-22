@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import binding_counts, qualified_name, unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -257,7 +258,7 @@ def _function_sites(
 ) -> Iterator[tuple[ast.For, list[ast.SetComp]]]:
     if function.decorator_list or any(
         isinstance(node, ast.Await | ast.Yield | ast.YieldFrom)
-        for node in ast.walk(function)
+        for node in tree_nodes(function)
     ):
         return
     env: _Environment = {}
@@ -343,7 +344,7 @@ def _expression(
 ) -> bool:
     if facts.value(node, env) is None:
         return False
-    for part in ast.walk(node):
+    for part in tree_nodes(node):
         if isinstance(part, ast.Compare):
             found.extend(
                 right
@@ -452,7 +453,7 @@ def _passive(kind: _Shape | None) -> bool:
 
 def _writes(node: ast.AST) -> set[str]:
     result: set[str] = set()
-    for part in ast.walk(node):
+    for part in tree_nodes(node):
         if isinstance(part, ast.Name) and isinstance(part.ctx, ast.Store | ast.Del):
             result.add(part.id)
         elif isinstance(part, ast.Attribute | ast.Subscript) and isinstance(
@@ -468,11 +469,11 @@ def _writes(node: ast.AST) -> set[str]:
 
 def _dependencies(node: ast.SetComp) -> set[str]:
     gen = node.generators[0]
-    names = {part.id for part in ast.walk(gen.iter) if isinstance(part, ast.Name)}
+    names = {part.id for part in tree_nodes(gen.iter) if isinstance(part, ast.Name)}
     target = gen.target.id if isinstance(gen.target, ast.Name) else ""
     return names | {
         part.id
-        for part in ast.walk(node.elt)
+        for part in tree_nodes(node.elt)
         if isinstance(part, ast.Name) and part.id != target
     }
 
@@ -481,7 +482,7 @@ def _lookup_key(node: ast.SetComp) -> str:
     gen = node.generators[0]
     target = gen.target.id if isinstance(gen.target, ast.Name) else ""
     projection = ast.parse(ast.unparse(node.elt), mode="eval")
-    for part in ast.walk(projection):
+    for part in tree_nodes(projection):
         if isinstance(part, ast.Name) and part.id == target:
             part.id = "<item>"
     return f"{ast.dump(gen.iter)} -> {ast.dump(projection.body)}"

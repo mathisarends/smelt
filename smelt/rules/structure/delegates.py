@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -105,11 +106,11 @@ class _Module:
     """Classes, defined functions and name references of one module."""
 
     def __init__(self, tree: ast.Module) -> None:
-        self._classes = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+        self._classes = [n for n in tree_nodes(tree) if isinstance(n, ast.ClassDef)]
         self._local_classes = {node.name: node for node in self._classes}
         self.definitions: Counter[str] = Counter()
         self.references: Counter[str] = Counter()
-        for node in ast.walk(tree):
+        for node in tree_nodes(tree):
             match node:
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
                     self.definitions[node.name] += 1

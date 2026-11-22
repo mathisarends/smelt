@@ -15,7 +15,7 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.literals import nonempty_literal
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 from smelt.analysis.test_deadlines import async_deadline
 from smelt.analysis.test_helpers import (
     helper_executes,
@@ -237,7 +237,7 @@ def _analyze_test_syntax(
     for test in module.tests:
         parents = {
             child: parent
-            for parent in ast.walk(test.node)
+            for parent in tree_nodes(test.node)
             for child in ast.iter_child_nodes(parent)
         }
         calls = {call.node: call.qualified for call in test.calls}
@@ -392,7 +392,7 @@ class HelperCall:
     def outcomes(self, helpers: list[str]) -> list[ast.Assert | ast.Call]:
         parents = {
             child: parent
-            for parent in ast.walk(self.function.node)
+            for parent in tree_nodes(self.function.node)
             for child in ast.iter_child_nodes(parent)
         }
         return [
@@ -430,7 +430,7 @@ class TestFunction:
         ]
         parents = {
             child: node
-            for node in ast.walk(self.node)
+            for node in tree_nodes(self.node)
             for child in ast.iter_child_nodes(node)
         }
         evidence.extend(
@@ -491,7 +491,7 @@ class TestModule:
 def _names(node: ast.AST) -> set[str]:
     return {
         child.id
-        for child in ast.walk(node)
+        for child in tree_nodes(node)
         if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Store | ast.Del)
     }
 
