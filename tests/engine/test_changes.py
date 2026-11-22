@@ -10,8 +10,9 @@ import pytest
 from smelt.analysis.parsing import AnalysisError
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
-from smelt.engine.changes import capture_repository, export_base, resolve_comparison
+from smelt.engine.changes import capture_repository, resolve_comparison
 from smelt.engine.check import CheckOptions
+from smelt.engine.git_source import GitSourceStore
 from tests.helpers import (
     LAYERED_CONFIG,
     add_rules,
@@ -415,32 +416,36 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-class TestBaseSnapshot:
-    def test_exports_head(
-        self, repo: Path, tmp_path_factory: pytest.TempPathFactory
-    ) -> None:
+class TestBaseComparison:
+    def test_base_is_head_without_the_working_tree_edit(self, repo: Path) -> None:
         (repo / "app/application/service.py").write_text("x = 1\n")
-        dest = tmp_path_factory.mktemp("base")
 
         repository, comparison = resolve_comparison(repo, None)
-        snapshot = export_base(repo, repository, comparison, dest=dest)
 
-        assert snapshot == dest
-        assert (dest / "app/application/service.py").read_text() == ""
+        assert comparison.revision is not None
+        base = GitSourceStore.from_revision(repository, comparison.revision)
+        assert base.read_text(repository / "app/application/service.py") == ""
         assert comparison.revision == comparison.head
         assert comparison.to_json()["merge_base"] is None
 
-    def test_without_commits_there_is_no_base(
-        self, tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
+    def test_changed_check_does_not_materialize_the_base(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        def unexpected(*args: object, **kwargs: object) -> None:
+            pytest.fail("the base revision must be read from Git objects")
+
+        monkeypatch.setattr("tempfile.TemporaryDirectory", unexpected)
+        monkeypatch.setattr("tempfile.mkdtemp", unexpected)
+        (repo / "app/application/service.py").write_text("x = 1\n")
+
+        assert violations(repo, CheckOptions(changed=True, use_cache=False)) == []
+
+    def test_without_commits_there_is_no_base(self, tmp_path: Path) -> None:
         _git(tmp_path, "init", "-q")
 
-        repository, comparison = resolve_comparison(tmp_path, None)
-        snapshot = export_base(
-            tmp_path, repository, comparison, dest=tmp_path_factory.mktemp("base")
-        )
+        _, comparison = resolve_comparison(tmp_path, None)
 
-        assert snapshot is None
+        assert comparison.revision is None
         assert comparison.to_json() == {
             "mode": "changed",
             "base": None,
