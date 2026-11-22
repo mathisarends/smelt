@@ -186,7 +186,7 @@ def _fix(source: SourceText, owner: ast.ClassDef, missing: list[str]) -> Fix | N
         return None
     if not isinstance(decorator, ast.Call):
         listed = ", ".join(f"{option}=True" for option in missing)
-        edits = [source.insert(source.span(decorator)[1], f"({listed})")]
+        edits = [source.insert(source.span(decorator).end, f"({listed})")]
     else:
         if any(keyword.arg is None for keyword in decorator.keywords):
             return None
@@ -202,10 +202,10 @@ def _fix(source: SourceText, owner: ast.ClassDef, missing: list[str]) -> Fix | N
             *decorator.keywords,
         ]
         if added and arguments:
-            end = max(source.span(argument)[1] for argument in arguments)
+            end = max(source.span(argument).end for argument in arguments)
             edits.append(source.insert(end, ", " + ", ".join(added)))
         elif added:
-            end = source.span(decorator)[1]
+            end = source.span(decorator).end
             if source.text[end - 1] != ")":
                 return None
             edits.append(source.insert(end - 1, ", ".join(added)))

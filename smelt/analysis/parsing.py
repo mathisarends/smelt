@@ -10,6 +10,7 @@ from weakref import WeakKeyDictionary
 from smelt.analysis.errors import (
     AnalysisError as AnalysisError,  # noqa: PLC0414 - compatibility re-export
 )
+from smelt.analysis.python_version import PythonVersion
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
@@ -59,7 +60,7 @@ def python_note(root: Path, *, store: SourceStore | None = None) -> str:
     note = f" (parsed by Python {running[0]}.{running[1]})"
     target = _target_python(root, store=store or SourceStore())
     if target is not None and target > running:
-        version = f"{target[0]}.{target[1]}"
+        version = f"{target.major}.{target.minor}"
         note += (
             f"; the project targets Python {version}, so run smelt on it, "
             f"e.g. `uvx -p {version} --from smelt-cli smelt check`"
@@ -108,21 +109,21 @@ def resolve_relative(
     return base
 
 
-def _target_python(root: Path, *, store: SourceStore) -> tuple[int, int] | None:
-    found: list[tuple[int, int]] = []
+def _target_python(root: Path, *, store: SourceStore) -> PythonVersion | None:
+    found: list[PythonVersion] = []
     try:
         data = tomllib.loads(store.read_text(root / "pyproject.toml"))
     except (OSError, tomllib.TOMLDecodeError):
         data = {}
     requires = data.get("project", {}).get("requires-python", "")
     if isinstance(requires, str) and (match := _VERSION_BOUND.search(requires)):
-        found.append((3, int(match.group(1))))
+        found.append(PythonVersion(3, int(match.group(1))))
     try:
         pinned = store.read_text(root / ".python-version").split()
     except OSError:
         pinned = []
     if pinned and (match := re.match(r"3\.(\d+)", pinned[0])):
-        found.append((3, int(match.group(1))))
+        found.append(PythonVersion(3, int(match.group(1))))
     return max(found, default=None)
 
 

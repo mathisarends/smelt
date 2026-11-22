@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.edits import SourceText
@@ -132,13 +138,13 @@ def _suggestion(source: SourceText, function: _Signature, limit: int) -> Fix | N
     first = parameters[skipped + limit]
     if first in arguments.posonlyargs:
         return None
-    edits = [source.insert(source.span(first)[0], "*, ")]
+    edits = [source.insert(source.span(first).start, "*, ")]
     if arguments.kwonlyargs:
         # The existing bare * moves to the new position.
-        ends = [source.span(parameters[-1])[1]]
-        ends.extend(source.span(default)[1] for default in arguments.defaults[-1:])
-        span = (max(ends), source.span(arguments.kwonlyargs[0])[0])
-        if not _BARE_STAR.fullmatch(source.text[span[0] : span[1]]):
+        ends = [source.span(parameters[-1]).end]
+        ends.extend(source.span(default).end for default in arguments.defaults[-1:])
+        span = TextSpan(max(ends), source.span(arguments.kwonlyargs[0]).start)
+        if not _BARE_STAR.fullmatch(source.text[span.start : span.end]):
             return None
         edits.append(TextEdit.at(source.text, span, ", "))
     return Fix(

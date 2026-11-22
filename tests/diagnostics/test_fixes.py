@@ -1,4 +1,10 @@
-from smelt.diagnostics.fixes import Applicability, Fix, TextEdit, source_offset
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    TextEdit,
+    TextSpan,
+    source_offset,
+)
 
 
 def test_edit_between_texts_covers_only_the_change() -> None:
@@ -14,7 +20,7 @@ def test_span_widens_the_edit_to_the_whole_expression() -> None:
     after = "x = (a if a is not None else ((b)))\n"
 
     assert TextEdit.between(before, after).original == "a or (b"
-    edit = TextEdit.between(before, after, span=(4, 12))
+    edit = TextEdit.between(before, after, span=TextSpan(4, 12))
 
     assert edit.original == "a or (b)"
     assert edit.replacement == "(a if a is not None else ((b)))"
@@ -34,7 +40,9 @@ def test_whole_lines_edit_spans_complete_statements() -> None:
 def test_columns_count_utf8_bytes_like_findings() -> None:
     text = "é = ä or 1\n"
 
-    edit = TextEdit.between(text, "é = (ä if ä is not None else (1))\n", span=(4, 10))
+    edit = TextEdit.between(
+        text, "é = (ä if ä is not None else (1))\n", span=TextSpan(4, 10)
+    )
 
     assert (edit.column, edit.end_column) == (6, 13)
     assert source_offset(text, 1, 5) == 4

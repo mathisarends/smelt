@@ -10,14 +10,15 @@ import ast
 import builtins
 
 from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.python_version import PythonVersion
 
-_GENERICS_VERSION = (3, 9)
-_UNIONS_VERSION = (3, 10)
+_GENERICS_VERSION = PythonVersion(3, 9)
+_UNIONS_VERSION = PythonVersion(3, 10)
 _BUILTIN_GENERICS = frozenset({"list", "dict", "tuple", "set", "frozenset", "type"})
 
 
 def has_postponement_evidence(
-    tree: ast.Module, minimum: tuple[int, int] | None = None
+    tree: ast.Module, minimum: PythonVersion | None = None
 ) -> bool:
     annotations: list[ast.expr] = []
     for node in tree_nodes(tree):
@@ -51,7 +52,7 @@ def has_postponement_evidence(
     return False
 
 
-def _supported_expression(node: ast.AST, minimum: tuple[int, int] | None) -> bool:
+def _supported_expression(node: ast.AST, minimum: PythonVersion | None) -> bool:
     if isinstance(node, ast.Subscript):
         return (
             minimum is not None

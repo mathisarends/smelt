@@ -8,7 +8,7 @@ from smelt.analysis.cache import FactCache
 from smelt.analysis.errors import AnalysisError
 from smelt.analysis.member_state import MEMBER_STATE, MemberIndexState
 from smelt.analysis.members import MemberUsageIndex
-from smelt.analysis.retained import RetainedAnalysis, current, retain
+from smelt.analysis.retained import RetainedAnalysis, StateKey, current, retain
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
 from tests.helpers import check, write_project
@@ -104,9 +104,9 @@ def test_failed_update_discards_borrowed_state(
 def test_retention_budget_and_request_ownership() -> None:
     state = RetainedAnalysis(max_bytes=10, max_entries=2)
     first, second, third = (
-        ("project", "first"),
-        ("project", "second"),
-        ("other", "third"),
+        StateKey("project", "first"),
+        StateKey("project", "second"),
+        StateKey("other", "third"),
     )
     state.put(first, MemberIndexState(), size=4)
     state.put(second, MemberIndexState(), size=4)

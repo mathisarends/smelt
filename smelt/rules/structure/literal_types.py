@@ -47,7 +47,7 @@ class DuplicateLiteralType(Rule):
             count = sum(map(len, files.values()))
             if count < 2:  # noqa: PLR2004 - a duplicate needs at least two occurrences
                 continue
-            label = f"Literal[{', '.join(value for _, value in members)}]"
+            label = f"Literal[{', '.join(member.value for member in members)}]"
             locations = list(
                 islice(
                     (

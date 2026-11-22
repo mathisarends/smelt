@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import ValidationError
 
@@ -17,6 +17,11 @@ if TYPE_CHECKING:
         LayerBinding,
         LayerConfig,
     )
+
+
+class SemanticIssues(NamedTuple):
+    errors: list[ConfigIssue]
+    warnings: list[ConfigIssue]
 
 
 def partial_layer_issues(raw: dict[str, object]) -> list[ConfigIssue]:
@@ -70,9 +75,7 @@ def partial_layer_issues(raw: dict[str, object]) -> list[ConfigIssue]:
     return issues
 
 
-def validate_semantics(
-    config: SmeltConfig,
-) -> tuple[list[ConfigIssue], list[ConfigIssue]]:
+def validate_semantics(config: SmeltConfig) -> SemanticIssues:
     """Errors and warnings; each architecture is checked against its own packages."""
     scopes = architecture_scopes(config)
     validator = _Validator(
@@ -127,7 +130,7 @@ def validate_semantics(
         member.run()
         errors.extend(member.errors)
         warnings.extend(member.warnings)
-    return errors, warnings
+    return SemanticIssues(errors, warnings)
 
 
 class _Validator:
@@ -207,8 +210,8 @@ class _Validator:
     def _cross_feature(self) -> None:
         for index, allowance in enumerate(self.architecture.cross_feature.allow):
             if isinstance(allowance, CrossFeatureAllowance):
-                _, source_layer, _, target_layer = allowance.components()
-                pair = (source_layer, target_layer)
+                edge = allowance.components()
+                pair = (edge.source_layer, edge.target_layer)
             else:
                 source_layer, target_layer = allowance.split("->", maxsplit=1)
                 pair = source_layer.strip(), target_layer.strip()

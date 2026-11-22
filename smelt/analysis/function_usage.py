@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from smelt.analysis.parsing import resolve_relative, tree_nodes
 
@@ -23,7 +23,15 @@ def definition_bindings(tree: ast.Module) -> dict[str, list[ast.AST]]:
     return definitions
 
 
-def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[str]]:
+class ReferenceNames(NamedTuple):
+    """Dotted names a module imports, loads and star-imports, each sorted."""
+
+    imports: list[str]
+    loads: list[str]
+    stars: list[str]
+
+
+def reference_names(module: ModuleSyntax) -> ReferenceNames:
     """Unresolved use evidence, independent of every other module's contents."""
     imports: set[str] = set()
     loads: set[str] = set()
@@ -66,7 +74,7 @@ def reference_names(module: ModuleSyntax) -> tuple[list[str], list[str], list[st
             for qualified in _qualified(node, bindings):
                 # Module-valued loads may escape via aliases, callbacks or reflection.
                 loads.add(qualified)
-    return sorted(imports), sorted(loads), sorted(stars)
+    return ReferenceNames(sorted(imports), sorted(loads), sorted(stars))
 
 
 def explicit_exports(tree: ast.Module) -> frozenset[str] | None:

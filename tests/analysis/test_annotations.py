@@ -3,6 +3,7 @@ import ast
 import pytest
 
 from smelt.analysis.annotations import has_postponement_evidence
+from smelt.analysis.python_version import PythonVersion
 
 
 @pytest.mark.parametrize(
@@ -41,15 +42,15 @@ def test_postponement_or_runtime_uncertainty_is_retained(source: str) -> None:
 @pytest.mark.parametrize(
     ("source", "minimum", "evidence"),
     [
-        ("def f(x: list[str]): pass", (3, 8), True),
-        ("def f(x: list[str]): pass", (3, 9), False),
-        ("def f(x: int | None): pass", (3, 9), True),
-        ("def f(x: int | None): pass", (3, 10), False),
-        ("def f(x: dict[str, list[int]] | None): pass", (3, 13), False),
-        ("def f(x: unknown.Factory[str]): pass", (3, 13), True),
+        ("def f(x: list[str]): pass", PythonVersion(3, 8), True),
+        ("def f(x: list[str]): pass", PythonVersion(3, 9), False),
+        ("def f(x: int | None): pass", PythonVersion(3, 9), True),
+        ("def f(x: int | None): pass", PythonVersion(3, 10), False),
+        ("def f(x: dict[str, list[int]] | None): pass", PythonVersion(3, 13), False),
+        ("def f(x: unknown.Factory[str]): pass", PythonVersion(3, 13), True),
     ],
 )
 def test_modern_builtin_annotations_follow_supported_version(
-    source: str, minimum: tuple[int, int], evidence: bool
+    source: str, minimum: PythonVersion, evidence: bool
 ) -> None:
     assert has_postponement_evidence(ast.parse(source), minimum) is evidence

@@ -6,7 +6,7 @@ import textwrap
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from smelt.diagnostics.fixes import Applicability
 from smelt.diagnostics.groups import group_findings
@@ -88,7 +88,7 @@ def _render(
         f"{diagnostic.severity.value}: {diagnostic.path}: {diagnostic.key}: {diagnostic.message}"
         for diagnostic in report.configuration_diagnostics
     ]
-    shared: dict[tuple[str, str], int] = {}
+    shared: dict[_Repair, int] = {}
     if not statistics:
         findings, shared = _finding_blocks(shown, read_line, style)
         blocks.extend(findings)
@@ -159,7 +159,7 @@ def _render(
 
 def _finding_blocks(
     shown: list[Violation], read_line: LineReader, style: _Style
-) -> tuple[list[str], dict[tuple[str, str], int]]:
+) -> tuple[list[str], dict[_Repair, int]]:
     """Rendered findings and the repairs they share, which are listed once."""
     groups = {
         (finding, group["location"]["column"]): group
@@ -181,7 +181,8 @@ def _finding_blocks(
                     violation,
                     read_line,
                     style,
-                    show_hint=(violation.code, violation.hint or "") not in shared,
+                    show_hint=_Repair(violation.code, violation.hint or "")
+                    not in shared,
                 )
             )
         elif group["key"] not in rendered:
@@ -243,6 +244,11 @@ _YELLOW = "\x1b[33m"
 _RESET = "\x1b[0m"
 # Longer listings end with a per-rule breakdown so the overview survives scrolling.
 _STATISTICS_THRESHOLD = 10
+
+
+class _Repair(NamedTuple):
+    code: str
+    hint: str
 
 
 class _Style:
@@ -348,15 +354,13 @@ def _statistics(violations: list[Violation], style: _Style) -> str:
     )
 
 
-def _shared_repairs(violations: list[Violation]) -> dict[tuple[str, str], int]:
+def _shared_repairs(violations: list[Violation]) -> dict[_Repair, int]:
     """Repair advice repeated verbatim by several findings of one rule."""
-    counts = Counter((v.code, v.hint) for v in violations if v.hint)
+    counts = Counter(_Repair(v.code, v.hint) for v in violations if v.hint)
     return {key: count for key, count in counts.items() if count > 1}
 
 
-def _shared_repair_lines(
-    shared: Mapping[tuple[str, str], int], style: _Style
-) -> list[str]:
+def _shared_repair_lines(shared: Mapping[_Repair, int], style: _Style) -> list[str]:
     lines = ["Repairs shared by several findings (shown once):"]
     for (code, hint), count in sorted(shared.items()):
         label, text = f"{code} ({count}x): ", " ".join(hint.split())

@@ -5,7 +5,7 @@ import json
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
@@ -137,6 +137,21 @@ def _edge_field(violation: Violation) -> str | None:
     }.get(violation.code)
 
 
+class DebtMatch(NamedTuple):
+    """Violations without debt, those debt accepts, and entries nothing matched."""
+
+    new: list[Violation]
+    known: list[Violation]
+    resolved: list[DebtEntry]
+
+
+class _EntryGroup(NamedTuple):
+    path: str | None
+    code: str
+    scope: str | None
+    message: str
+
+
 @dataclass(slots=True)
 class Debt:
     entries: list[DebtEntry]
@@ -199,9 +214,9 @@ class Debt:
 
     def to_json(self) -> dict[str, Any]:
         """Group repeated metadata, retaining every matching token and its count."""
-        groups: dict[tuple[str | None, str, str | None, str], dict[str, Any]] = {}
+        groups: dict[_EntryGroup, dict[str, Any]] = {}
         for entry in self.entries:
-            key = (entry.path, entry.code, entry.scope, entry.message)
+            key = _EntryGroup(entry.path, entry.code, entry.scope, entry.message)
             if key not in groups:
                 groups[key] = {
                     "code": entry.code,
@@ -221,12 +236,12 @@ class Debt:
                 for key in sorted(
                     groups,
                     key=lambda key: (
-                        key[0] is not None,
-                        key[0] or "",
-                        key[1],
-                        key[2] is not None,
-                        key[2] or "",
-                        key[3],
+                        key.path is not None,
+                        key.path or "",
+                        key.code,
+                        key.scope is not None,
+                        key.scope or "",
+                        key.message,
                     ),
                 )
             ],
@@ -234,7 +249,7 @@ class Debt:
 
     def match(
         self, violations: Iterable[Violation], snippet: Callable[[Violation], str]
-    ) -> tuple[list[Violation], list[Violation], list[DebtEntry]]:
+    ) -> DebtMatch:
         """Split into (new, known) violations and the resolved entries."""
         available = Counter(entry.fingerprint for entry in self.entries)
         new: list[Violation] = []
@@ -289,7 +304,7 @@ class Debt:
             if available[entry.fingerprint] > 0:
                 available[entry.fingerprint] -= 1
                 resolved.append(entry)
-        return new, known, resolved
+        return DebtMatch(new, known, resolved)
 
     def without(self, resolved: Iterable[DebtEntry]) -> Debt:
         """A copy without ``resolved`` entries (matched by fingerprint, one per entry)."""

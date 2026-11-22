@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
@@ -15,12 +15,20 @@ if TYPE_CHECKING:
     from smelt.analysis.files import FileIndex
     from smelt.config.source import SourceStore
 
-_DEFERRED_ANNOTATIONS = (3, 14)
+
+class PythonVersion(NamedTuple):
+    """A ``major.minor`` Python release, ordered like ``sys.version_info``."""
+
+    major: int
+    minor: int
+
+
+_DEFERRED_ANNOTATIONS = PythonVersion(3, 14)
 
 
 @dataclass(frozen=True, slots=True)
 class PythonTarget:
-    minimum: tuple[int, int] | None
+    minimum: PythonVersion | None
     source: str | None
     requires_python: str | None = None
     uncertainty: str | None = None
@@ -29,7 +37,7 @@ class PythonTarget:
     def deferred_annotations(self) -> bool:
         return (
             self.minimum is not None
-            and self.minimum[0] == _DEFERRED_ANNOTATIONS[0]
+            and self.minimum.major == _DEFERRED_ANNOTATIONS.major
             and self.minimum >= _DEFERRED_ANNOTATIONS
         )
 
@@ -52,7 +60,9 @@ class PythonTargetIndex:
         override = self.files.config.project.python_version
         if override is not None:
             major, minor = override.split(".")
-            return PythonTarget((int(major), int(minor)), "project.python_version")
+            return PythonTarget(
+                PythonVersion(int(major), int(minor)), "project.python_version"
+            )
         directory = (
             (path.parent if path.suffix == ".py" else path)
             if path is not None
@@ -105,7 +115,11 @@ class PythonTargetIndex:
         return [
             target.to_json()
             for target in sorted(
-                targets, key=lambda item: (item.source or "", item.minimum or (0, 0))
+                targets,
+                key=lambda item: (
+                    item.source or "",
+                    item.minimum or PythonVersion(0, 0),
+                ),
             )
         ]
 
@@ -162,5 +176,5 @@ def _minimum_from_requires_python(spec: str, source: str) -> PythonTarget:
         )
     release = max(bounds).release
     return PythonTarget(
-        (release[0], release[1] if len(release) > 1 else 0), source, spec
+        PythonVersion(release[0], release[1] if len(release) > 1 else 0), source, spec
     )

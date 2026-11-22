@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import yaml
 
-from smelt.engine.migration import enable_rules, migrate_policy
+from smelt.engine.migration import RuleEnablement, enable_rules, migrate_policy
 
 
 def test_strict_coverage_becomes_the_guard_rule() -> None:
@@ -39,8 +39,8 @@ def test_enable_rules_adds_missing_entries_and_keeps_comments() -> None:
     migrated = enable_rules(
         text,
         [
-            (("rules",), "architecture/layer-boundary", "error"),
-            (("style", "overrides", "api", "rules"), "CPX003", "warning"),
+            RuleEnablement(("rules",), "architecture/layer-boundary", "error"),
+            RuleEnablement(("style", "overrides", "api", "rules"), "CPX003", "warning"),
         ],
     )
 
@@ -62,7 +62,7 @@ def test_enable_rules_without_entries_keeps_the_text() -> None:
 def test_enable_rules_appends_before_the_blank_line_closing_the_map() -> None:
     text = "rules:\n  ARC004: error\n\nproject: {}\n"
 
-    migrated = enable_rules(text, [(("rules",), "ARC001", "error")])
+    migrated = enable_rules(text, [RuleEnablement(("rules",), "ARC001", "error")])
 
     assert migrated.text == "rules:\n  ARC004: error\n  ARC001: error\n\nproject: {}\n"
 
@@ -70,7 +70,7 @@ def test_enable_rules_appends_before_the_blank_line_closing_the_map() -> None:
 def test_enable_rules_keeps_the_inline_comment_of_the_last_entry() -> None:
     text = "rules:\n  ARC004: error  # keep\n\nproject: {}\n"
 
-    migrated = enable_rules(text, [(("rules",), "ARC001", "error")])
+    migrated = enable_rules(text, [RuleEnablement(("rules",), "ARC001", "error")])
 
     assert migrated.text == (
         "rules:\n  ARC004: error  # keep\n  ARC001: error\n\nproject: {}\n"

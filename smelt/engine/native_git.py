@@ -11,15 +11,25 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+
+class _CapturedIndex(NamedTuple):
+    """The index records one check read, with the YAML paths they list."""
+
+    repository: Path
+    index_file: str | None
+    records: bytes
+    yaml_paths: tuple[str, ...] | None
+
+
 _LIMIT = 64 * 1024 * 1024
 _ENABLED = ContextVar("native_git_enabled", default=False)
-_CAPTURED: ContextVar[tuple[Path, str | None, bytes, tuple[str, ...] | None] | None] = (
-    ContextVar("native_git_index", default=None)
+_CAPTURED: ContextVar[_CapturedIndex | None] = ContextVar(
+    "native_git_index", default=None
 )
 
 
@@ -79,7 +89,7 @@ def capture(root: Path) -> tuple[Path, str | None] | None:
             return None
         records = base64.b64decode(response["records"], validate=True)
         _CAPTURED.set(
-            (
+            _CapturedIndex(
                 repository,
                 os.environ.get("GIT_INDEX_FILE"),
                 records,
@@ -95,11 +105,12 @@ def index_records(repository: Path) -> bytes | None:
     if not _executable():
         return None
     captured = _CAPTURED.get()
-    if captured is not None and captured[:2] == (
-        repository,
-        os.environ.get("GIT_INDEX_FILE"),
+    if (
+        captured is not None
+        and captured.repository == repository
+        and captured.index_file == os.environ.get("GIT_INDEX_FILE")
     ):
-        return captured[2]
+        return captured.records
     response = request("index", repository)
     try:
         return (
@@ -112,13 +123,14 @@ def index_records(repository: Path) -> bytes | None:
 def yaml_inventory(repository: Path, records: bytes) -> tuple[str, ...] | None:
     """Only reuse candidates belonging to the exact manifest being validated."""
     captured = _CAPTURED.get()
-    if captured is None or captured[:3] != (
-        repository,
-        os.environ.get("GIT_INDEX_FILE"),
-        records,
+    if (
+        captured is None
+        or captured.repository != repository
+        or captured.index_file != os.environ.get("GIT_INDEX_FILE")
+        or captured.records != records
     ):
         return None
-    return captured[3]
+    return captured.yaml_paths
 
 
 def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes] | None:

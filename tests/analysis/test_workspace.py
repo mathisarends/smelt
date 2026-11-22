@@ -95,7 +95,7 @@ class TestImportRoot:
         located = import_root(tmp_path)
 
         assert located is not None
-        assert [p.name for p in located[1]] == ["app"]
+        assert [p.name for p in located.packages] == ["app"]
 
     def test_module_name_selects_the_declared_package(self, tmp_path: Path) -> None:
         write_project(
@@ -110,4 +110,4 @@ class TestImportRoot:
         located = import_root(tmp_path)
 
         assert located is not None
-        assert [p.name for p in located[1]] == ["stack"]
+        assert [p.name for p in located.packages] == ["stack"]
