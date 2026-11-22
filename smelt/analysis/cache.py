@@ -8,6 +8,7 @@ import os
 import shutil
 import sqlite3
 import time
+import zlib
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,11 @@ _DAY = 86400
 _RETENTION_DAYS = 14
 # Caches of other analyzer versions no run has opened for this many days.
 _STALE_VERSION_DAYS = 7
+# Beyond this many, the other versions opened longest ago go first: an editable
+# checkout shared by several worktrees creates a version per analyzer edit.
+_KEPT_OTHER_VERSIONS = 7
+# Facts are repetitive JSON; the fastest level already shrinks them severalfold.
+_COMPRESSION_LEVEL = 1
 _INCREMENTAL_VACUUM = 2
 
 
@@ -82,9 +88,10 @@ class FactCache:
                 query = (
                     f"SELECT oid, payload FROM objects WHERE oid IN ({placeholders})"  # noqa: S608 - placeholders only; IDs are bound
                 )
-                for oid, data in connection.execute(query, batch):
-                    if not isinstance(data, bytes):
+                for oid, stored in connection.execute(query, batch):
+                    if not isinstance(stored, bytes):
                         continue
+                    data = _unpacked(stored)
                     digest = hashlib.new(
                         "sha1" if len(oid) == _SHA1_LENGTH else "sha256",
                         usedforsecurity=False,
@@ -104,7 +111,10 @@ class FactCache:
             try:
                 connection.executemany(
                     "INSERT OR REPLACE INTO objects (oid, payload, used) VALUES (?, ?, ?)",
-                    [(oid, data, self._today) for oid, data in contents.items()],
+                    [
+                        (oid, _packed(data), self._today)
+                        for oid, data in contents.items()
+                    ],
                 )
             except sqlite3.Error:
                 self._disable()
@@ -144,8 +154,8 @@ class FactCache:
             if row is None:
                 self._misses += 1
                 return None
-            result = adapter.validate_json(row[0])
-        except (ValueError, ValidationError, sqlite3.Error):
+            result = adapter.validate_json(_unpacked(row[0]))
+        except (ValueError, TypeError, ValidationError, sqlite3.Error):
             self._misses += 1
             return None
         self._hits += 1
@@ -159,7 +169,7 @@ class FactCache:
         try:
             connection.execute(
                 "INSERT OR REPLACE INTO facts (key, payload, used) VALUES (?, ?, ?)",
-                (key, adapter.dump_json(value), self._today),
+                (key, _packed(adapter.dump_json(value)), self._today),
             )
         except sqlite3.Error:
             # A read-only checkout, concurrent cleaner or full disk cannot make
@@ -200,16 +210,20 @@ class FactCache:
         return self._connection
 
     def _prune_versions(self) -> None:
-        """Mark this version's cache as used and drop versions left unused."""
+        """Mark this version's cache as used and drop stale or surplus versions."""
         cutoff = time.time() - _STALE_VERSION_DAYS * _DAY
         with suppress(OSError):
             os.utime(self.directory)
-            for sibling in self._versions.iterdir():
-                if (
-                    sibling != self.directory
-                    and sibling.is_dir()
-                    and sibling.stat().st_mtime < cutoff
-                ):
+            others = sorted(
+                (
+                    (sibling.stat().st_mtime, sibling)
+                    for sibling in self._versions.iterdir()
+                    if sibling != self.directory and sibling.is_dir()
+                ),
+                reverse=True,
+            )
+            for position, (opened, sibling) in enumerate(others):
+                if opened < cutoff or position >= _KEPT_OTHER_VERSIONS:
                     # A version still open elsewhere keeps its locked files.
                     shutil.rmtree(sibling, ignore_errors=True)
 
@@ -270,6 +284,18 @@ def cache_directory(root: Path) -> Path:
     top, main = linked
     shared = main / root.relative_to(top)
     return shared / ".smelt_cache" if shared.is_dir() else local
+
+
+def _packed(payload: bytes) -> bytes:
+    return zlib.compress(payload, _COMPRESSION_LEVEL)
+
+
+def _unpacked(stored: bytes) -> bytes:
+    """Caches written before compression hold plain payloads; callers validate both."""
+    try:
+        return zlib.decompress(stored)
+    except zlib.error:
+        return stored
 
 
 def _add_used_column(connection: sqlite3.Connection, table: str, today: int) -> None:

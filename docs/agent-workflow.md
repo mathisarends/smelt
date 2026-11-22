@@ -74,14 +74,15 @@ record broad debt merely to obtain a passing commit.
 
 ## Cache behavior
 
-Add `.smelt_cache/` to `.gitignore`. A SQLite database batches validated JSON facts;
-no pickle or executable project objects are deserialized. Removing it is safe. An
+Add `.smelt_cache/` to `.gitignore`. A SQLite database batches validated,
+compressed JSON facts; no pickle or executable project objects are deserialized. Removing it is safe. An
 unreadable, truncated, locked or unwritable cache falls back to analysis.
 
 The cache prunes itself. Once a day, a check drops facts that no run has read or
 written for 14 days. Caches of other Smelt versions that no run has opened for 7
 days are deleted, so a pinned pre-commit version and a newer local version can
-share one checkout.
+share one checkout. At most seven other versions are kept; beyond that, the ones
+opened longest ago are deleted first.
 
 A linked Git worktree uses the `.smelt_cache/` of the same project directory in
 the repository's main checkout. Facts are keyed by file content, so a fresh
