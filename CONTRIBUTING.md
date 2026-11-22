@@ -117,8 +117,12 @@ edit only invalidates what the layer policy lets import the edited code. An edit
 under `smelt/rules/`, `smelt/engine/` or `smelt/diagnostics/` reuses the facts,
 and an edit under `smelt/cli/` reuses the rule decisions as well. Outside
 `analysis`, `config` and `model`, cache entries therefore need
-`FactCache.decision_key`, which includes the rule implementation identity, and
-the CLI must not store decisions at all.
+`FactCache.decision_key`, and the CLI must not store decisions at all.
+In a source checkout, a rule's decisions are keyed by
+`rules.identities.implementation_identity`: the rule's module, the rule modules
+it imports, the modules and catalog at the top of `smelt/rules/`, and every
+layer below the rules. Editing one rule keeps the decisions of the others, so
+pass that identity whenever an entry holds the output of a single rule.
 Mark a rule `file_local` only when its
 source contents, resolved policy and Python target fully determine its decision.
 `test_local` rules additionally receive resolved constructor, fixture and module

@@ -15,6 +15,7 @@ class IdentityScope(StrEnum):
 
     COMPLETE = "complete"
     DECISIONS = "decisions"
+    RULE_HOST = "rule-host"
     FACTS = "facts"
 
 
@@ -25,6 +26,8 @@ class IdentityScope(StrEnum):
 _UNREACHABLE = {
     IdentityScope.COMPLETE: frozenset[str](),
     IdentityScope.DECISIONS: frozenset({"cli"}),
+    # What a rule decision depends on besides the rules; those are hashed per rule.
+    IdentityScope.RULE_HOST: frozenset({"cli", "rules"}),
     IdentityScope.FACTS: frozenset({"cli", "diagnostics", "engine", "rules"}),
 }
 
@@ -64,6 +67,11 @@ def _installed_sources(package: Path) -> list[_RecordedFile] | None:
         ]
     except (OSError, ValueError, TypeError, AttributeError, PackageNotFoundError):
         return None
+
+
+def hashes_sources() -> bool:
+    """Whether identities read the analyzer's sources, as editable checkouts do."""
+    return _installed_sources(Path(__file__).resolve().parent.parent) is None
 
 
 @cache

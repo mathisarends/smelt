@@ -188,11 +188,7 @@ def test_installed_wheel_keeps_facts_across_a_decision_layer_change(
 
 
 def test_layers_outside_the_facts_do_not_store_plain_keyed_entries() -> None:
-    """Facts survive edits to these layers, so their entries need a decision key.
-
-    ``file-decisions`` is the reviewed exception: its inputs start with a
-    policy that is itself a decision key.
-    """
+    """Facts survive edits to these layers, so their entries need a decision key."""
     plain = re.compile(r"cache\.(?:get|key)\(\s*\"([a-z-]+)\"")
     found = {
         (source.relative_to(REPOSITORY / "smelt").as_posix(), kind)
@@ -201,7 +197,7 @@ def test_layers_outside_the_facts_do_not_store_plain_keyed_entries() -> None:
         for kind in plain.findall(source.read_text(encoding="utf-8"))
     }
 
-    assert found == {("engine/file_checks.py", "file-decisions")}
+    assert found == set()
 
 
 def test_layers_above_the_engine_do_not_store_decisions() -> None:

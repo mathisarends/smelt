@@ -141,6 +141,7 @@ class _LazyRule:
         self.architecture_scoped = bool(metadata["architecture_scoped"])
         self.fix_availability = FixAvailability(metadata["fix_availability"])
         self._target = str(metadata["target"])
+        self.implementation_module = self._target.partition(":")[0]
 
     @cached_property
     def _implementation(self) -> RuleContract:

@@ -134,13 +134,17 @@ class FactCache:
             self.write(key, result, adapter)
         return result
 
-    def decision_key(self, kind: str, inputs: object) -> str:
+    def decision_key(
+        self, kind: str, inputs: object, *, identity: str | None = None
+    ) -> str:
         """Rule outputs depend on rule code in addition to the underlying facts.
 
         Every layer outside analysis, config and model must key its entries
-        through this method: an edit there keeps the plain-keyed facts.
+        through this method: an edit there keeps the plain-keyed facts. A
+        narrower ``identity`` names the one rule implementation that decides.
         """
-        return self.key(kind, [analyzer_identity(IdentityScope.DECISIONS), inputs])
+        identity = identity or analyzer_identity(IdentityScope.DECISIONS)
+        return self.key(kind, [identity, inputs])
 
     def key(self, kind: str, inputs: object) -> str:
         payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)
