@@ -43,7 +43,7 @@ def test_bundled_instance_fields_are_reported(tmp_path: Path, assignment: str) -
     assert finding.column == 9
     assert finding.expected is not None
     assert finding.expected["attributes"] == ["self.log", "self.control"]
-    assert finding.expected["automatic_split"] is False
+    assert finding.expected["automatic_split"] is (finding.fix is not None)
 
 
 @pytest.mark.parametrize(

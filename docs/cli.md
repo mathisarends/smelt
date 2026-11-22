@@ -31,6 +31,7 @@ smelt check --strict-coverage         # enable architecture/uncovered-source for
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
 smelt check --diff                                # preview the safe fixes
+smelt check --diff --suggestions                  # also show suggested edits --fix never applies
 smelt context user                   # what applies to a feature, module or path
 smelt context app/orders/refund.py --guide  # how to write it: one instruction per active rule
 smelt explain ARC001                 # how to enable it, options, status, rationale and examples
@@ -61,9 +62,10 @@ Normal checks are read-only. A finding can carry a fix: concrete text edits
 with an applicability. `--fix` applies the `safe` fixes of visible findings,
 `--fix --unsafe-fixes` also applies `unsafe` ones, and `display` fixes are
 suggestions that are never applied. `--diff` prints the same fixes as a unified
-diff without writing and exits `1` when there is one. The concise and text
-formats mark fixable findings with `[fix]` or `[unsafe fix]` and count them in
-the summary; JSON findings include `fix` with `applicability`, `description` and
+diff without writing and exits `1` when there is one; `--diff --suggestions`
+adds the `display` fixes for review. The concise and text formats mark fixable
+findings with `[fix]`, `[unsafe fix]` or `[suggestion]` and count them in the
+summary; JSON findings include `fix` with `applicability`, `description` and
 `edits` (`line`, `column`, `end_line`, `end_column`, `original`, `replacement`,
 positions as in the finding). An agent can apply an edit as a string
 replacement of `original`. `smelt rules --format json` reports per rule whether
@@ -74,11 +76,12 @@ applied completely or not at all; a fix whose source changed since the check is
 skipped, and the result must parse. A fix that overlaps another one is applied
 after the next check, then Smelt checks again. JSON reports include `fixes` with
 the number of applied fixes, the modified files and skipped fixes with reasons.
-For example, opt-in [TYP003](rules/TYP003.md) rewrites `parameter or fallback`
+Which rules carry fixes, and when a fix is unsafe or only a suggestion, is part
+of each rule page. For example, opt-in [TYP003](rules/TYP003.md) rewrites `parameter or fallback`
 to an explicit `is not None` conditional only with `--unsafe-fixes`: falsy
 values will be preserved and custom truthiness will no longer be called. Review
 intent first. `--unsafe-fixes` alone performs no writes; `--staged` cannot be
-combined with `--fix` or `--diff`.
+combined with `--fix` or `--diff`, and `--suggestions` requires `--diff`.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 A config entry that points at nothing (a mistyped package, a missing test root) is a

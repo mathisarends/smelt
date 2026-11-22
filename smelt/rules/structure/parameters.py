@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.edits import SourceText
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -14,6 +17,9 @@ if TYPE_CHECKING:
 type _Function = ast.FunctionDef | ast.AsyncFunctionDef
 
 _EXEMPT_DECORATORS = frozenset({"overload", "override"})
+
+# The separator between the last positional and the first keyword-only parameter.
+_BARE_STAR = re.compile(r"\s*,\s*\*\s*,\s*")
 
 
 class ExcessPositionalParameters(Rule):
@@ -23,6 +29,7 @@ class ExcessPositionalParameters(Rule):
     category = Category.COMPLEXITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="A function accepts more positional parameters than its package allows.",
         rationale=(
@@ -48,7 +55,10 @@ class ExcessPositionalParameters(Rule):
             "Insert * after the last allowed positional parameter, then pass the "
             "remaining arguments by keyword at every call site. Callbacks whose "
             "positional signature is fixed by a framework keep it with a reasoned "
-            "suppression. No automatic rewrite is performed. Enable it with "
+            "suppression. Findings carry the * insertion as a suggestion that "
+            "check --diff --suggestions shows and --fix never applies, because "
+            "call sites must change too; positional-only parameters and "
+            "functions with *args get none. Enable it with "
             "rules: {complexity/excess-positional-parameters: "
             "{severity: warning, max: 3}}; an entry in a style override's rules "
             "refines the limit for that package."
@@ -73,9 +83,12 @@ class ExcessPositionalParameters(Rule):
                 source.module, "max_positional_parameters"
             )
             origin = contract.origin if contract else "default"
+            text: SourceText | None = None
             for function in _functions(ctx.asts.parse(source.path)):
                 if len(function.positional) <= limit:
                     continue
+                text = text or SourceText(ctx.files.read_text(source.path))
+                fix = _suggestion(text, function, limit)
                 excess = function.positional[limit:]
                 anchor = (
                     f"after {function.positional[limit - 1]}"
@@ -96,12 +109,43 @@ class ExcessPositionalParameters(Rule):
                         "positional": function.positional,
                         "keyword_only_candidates": excess,
                         "automatic_rewrite": False,
+                        "suggested_rewrite": fix is not None,
                     },
                     hint=(
                         f"Make {', '.join(excess)} keyword-only by placing * "
                         f"{anchor}; pass them by keyword at call sites."
                     ),
+                    fix=fix,
                 )
+
+
+def _suggestion(source: SourceText, function: _Signature, limit: int) -> Fix | None:
+    """Insert * before the first excess parameter; shown, never applied.
+
+    Every call site that passes those arguments positionally has to change too.
+    """
+    arguments = function.node.args
+    if arguments.vararg is not None:
+        return None
+    parameters = [*arguments.posonlyargs, *arguments.args]
+    skipped = len(parameters) - len(function.positional)
+    first = parameters[skipped + limit]
+    if first in arguments.posonlyargs:
+        return None
+    edits = [source.insert(source.span(first)[0], "*, ")]
+    if arguments.kwonlyargs:
+        # The existing bare * moves to the new position.
+        ends = [source.span(parameters[-1])[1]]
+        ends.extend(source.span(default)[1] for default in arguments.defaults[-1:])
+        span = (max(ends), source.span(arguments.kwonlyargs[0])[0])
+        if not _BARE_STAR.fullmatch(source.text[span[0] : span[1]]):
+            return None
+        edits.append(TextEdit.at(source.text, span, ", "))
+    return Fix(
+        Applicability.DISPLAY,
+        f"Make {first.arg} and the parameters after it keyword-only",
+        tuple(edits),
+    )
 
 
 @dataclass(frozen=True, slots=True)

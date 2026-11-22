@@ -8,9 +8,11 @@ from typing import TYPE_CHECKING
 from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import is_stdlib
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.edits import SourceText
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -27,6 +29,7 @@ class MissingDataclassOption(Rule):
     category = Category.MODELING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="A dataclass does not set an option its package requires.",
         rationale=(
@@ -56,8 +59,9 @@ class MissingDataclassOption(Rule):
         fix=(
             "Add the missing options to the decorator. A dataclass that must "
             "stay mutable or unslotted keeps a reasoned suppression, or lives "
-            "in a package whose contract sets its own dataclass_options. No "
-            "automatic rewrite is performed. Enable it for the project with "
+            "in a package whose contract sets its own dataclass_options. "
+            "check --fix --unsafe-fixes sets the missing options to True, unless "
+            "the decorator passes **options. Enable it for the project with "
             "style: {dataclass_options: [frozen, slots]}, or for one package "
             "with the same option in a style override."
         ),
@@ -83,6 +87,7 @@ class MissingDataclassOption(Rule):
             required = contract.spec.dataclass_options
             tree = ctx.asts.parse(source.path)
             external = _external_names(tree, roots)
+            text: SourceText | None = None
             for owner in ast.walk(tree):
                 if not isinstance(owner, ast.ClassDef):
                     continue
@@ -90,6 +95,8 @@ class MissingDataclassOption(Rule):
                 if not missing:
                     continue
                 options = ", ".join(f"{option}=True" for option in missing)
+                text = text or SourceText(ctx.files.read_text(source.path))
+                fix = _fix(text, owner, missing)
                 yield self.violation(
                     f"Dataclass {owner.name} is missing {options}; "
                     f"{contract.origin} requires it",
@@ -102,9 +109,10 @@ class MissingDataclassOption(Rule):
                         "class": owner.name,
                         "dataclass_options": list(required),
                         "missing": missing,
-                        "automatic_rewrite": False,
+                        "automatic_rewrite": fix is not None,
                     },
                     hint=f"Add {options} to the @dataclass decorator of {owner.name}.",
+                    fix=fix,
                 )
 
 
@@ -157,16 +165,59 @@ def _caches_properties(owner: ast.ClassDef) -> bool:
 
 
 def _dataclass_keywords(owner: ast.ClassDef) -> dict[str, ast.expr] | None:
+    decorator = _dataclass_decorator(owner)
+    if decorator is None:
+        return None
+    return {
+        item.arg: item.value
+        for item in (decorator.keywords if isinstance(decorator, ast.Call) else [])
+        if item.arg is not None
+    }
+
+
+def _fix(source: SourceText, owner: ast.ClassDef, missing: list[str]) -> Fix | None:
+    """Set each missing option to True on the dataclass decorator.
+
+    Unsafe: freezing, slotting or keyword-only construction breaks callers that
+    mutate instances, add attributes or pass fields positionally.
+    """
+    decorator = _dataclass_decorator(owner)
+    if decorator is None:
+        return None
+    if not isinstance(decorator, ast.Call):
+        listed = ", ".join(f"{option}=True" for option in missing)
+        edits = [source.insert(source.span(decorator)[1], f"({listed})")]
+    else:
+        if any(keyword.arg is None for keyword in decorator.keywords):
+            return None
+        present = {keyword.arg: keyword.value for keyword in decorator.keywords}
+        edits = [
+            source.replace(present[option], "True")
+            for option in missing
+            if option in present
+        ]
+        added = [f"{option}=True" for option in missing if option not in present]
+        arguments: list[ast.expr | ast.keyword] = [
+            *decorator.args,
+            *decorator.keywords,
+        ]
+        if added and arguments:
+            end = max(source.span(argument)[1] for argument in arguments)
+            edits.append(source.insert(end, ", " + ", ".join(added)))
+        elif added:
+            end = source.span(decorator)[1]
+            if source.text[end - 1] != ")":
+                return None
+            edits.append(source.insert(end - 1, ", ".join(added)))
+    options = ", ".join(f"{option}=True" for option in missing)
+    return Fix(Applicability.UNSAFE, f"Set {options} on {owner.name}", tuple(edits))
+
+
+def _dataclass_decorator(owner: ast.ClassDef) -> ast.expr | None:
     for decorator in owner.decorator_list:
-        call = decorator if isinstance(decorator, ast.Call) else None
-        target = call.func if call else decorator
-        if dotted_name(target).rpartition(".")[2] != "dataclass":
-            continue
-        return {
-            item.arg: item.value
-            for item in (call.keywords if call else [])
-            if item.arg is not None
-        }
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if dotted_name(target).rpartition(".")[2] == "dataclass":
+            return decorator
     return None
 
 

@@ -175,6 +175,11 @@ def _add_check(sub: _Subparsers) -> None:
         help="with --fix or --diff, also apply fixes marked unsafe because they can change behavior",
     )
     check.add_argument(
+        "--suggestions",
+        action="store_true",
+        help="with --diff, also show suggested edits that --fix never applies",
+    )
+    check.add_argument(
         "--strict-coverage",
         action="store_true",
         help="require every discovered production source to have a policy or a reasoned exclusion",

@@ -400,12 +400,17 @@ def _render_violation(
 
 
 def _fix_marker(violation: Violation) -> str:
-    """`--fix` applies a safe fix, `--fix --unsafe-fixes` an unsafe one."""
+    """`--fix` applies a safe fix, `--fix --unsafe-fixes` an unsafe one.
+
+    A suggestion is never applied; `--diff --suggestions` shows it.
+    """
     match violation.fix.applicability if violation.fix else None:
         case Applicability.SAFE:
             return "[fix]"
         case Applicability.UNSAFE:
             return "[unsafe fix]"
+        case Applicability.DISPLAY:
+            return "[suggestion]"
         case _:
             return ""
 
@@ -538,13 +543,17 @@ def _summary(report: Report, style: _Style, *, show_hints: bool) -> str:
 def _fixable(violations: list[Violation]) -> list[str]:
     counts = Counter(v.fix.applicability for v in violations if v.fix)
     safe, unsafe = counts[Applicability.SAFE], counts[Applicability.UNSAFE]
+    suggested = counts[Applicability.DISPLAY]
+    parts: list[str] = []
     if safe and unsafe:
-        return [f"{safe} fixable with --fix, {unsafe} more with --unsafe-fixes"]
-    if safe:
-        return [f"{safe} fixable with --fix"]
-    if unsafe:
-        return [f"{unsafe} fixable with --fix --unsafe-fixes"]
-    return []
+        parts.append(f"{safe} fixable with --fix, {unsafe} more with --unsafe-fixes")
+    elif safe:
+        parts.append(f"{safe} fixable with --fix")
+    elif unsafe:
+        parts.append(f"{unsafe} fixable with --fix --unsafe-fixes")
+    if suggested:
+        parts.append(f"{_plural(suggested, 'suggestion')} with --diff --suggestions")
+    return parts
 
 
 def _plural(count: int, word: str) -> str:

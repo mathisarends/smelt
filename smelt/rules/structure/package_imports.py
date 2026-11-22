@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.installed_exports import InstalledPackages
 from smelt.analysis.package_exports import covering_package, package_facades
 from smelt.analysis.parsing import resolve_relative
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.edits import SourceText, rewrite_from_module
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from smelt.analysis.syntax import ImportStatement
 
 
 class PreferPackageImport(Rule):
@@ -21,6 +26,7 @@ class PreferPackageImport(Rule):
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
     activation = POLICIES["IMP004"]
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="Prefer an existing package re-export over an implementation import.",
         rationale=(
@@ -57,8 +63,10 @@ class PreferPackageImport(Rule):
             "Use the suggested package import and combine it with an existing import "
             "there when both are in the same scope and guard. Preserve aliases, "
             "comments and relative/absolute import policy. Review initializer side "
-            "effects and dependency cycles. No exports are created and no automatic "
-            "rewrite is performed; analyzed code is never executed."
+            "effects and dependency cycles. No exports are created and analyzed "
+            "code is never executed. check --fix --unsafe-fixes imports from the "
+            "package, merging into an import of it in the same block when neither "
+            "statement carries a comment."
         ),
         canonical=(
             "Import names through the package that re-exports them, not their"
@@ -125,6 +133,7 @@ class PreferPackageImport(Rule):
                 replacement = f"from {import_from} import " + ", ".join(
                     alias.spelling for alias in node.names
                 )
+                fix = _fix(ctx, path, node, import_from=import_from)
                 yield self.violation(
                     f"import these names from the existing {package} package API",
                     path=path,
@@ -138,9 +147,10 @@ class PreferPackageImport(Rule):
                         "package": package,
                         "names": [alias.name for alias in node.names],
                         "replacement": replacement,
-                        "automatic_rewrite": False,
+                        "automatic_rewrite": fix is not None,
                     },
                     hint=f"Use {replacement}; combine imports from {package} in the same scope and guard, preserving aliases and comments.",
+                    fix=fix,
                 )
 
 
@@ -160,3 +170,75 @@ def _installed_facades(
         package: installed.exports(package)
         for package in (".".join(parts[:end]) for end in range(1, len(parts)))
     }
+
+
+def _fix(
+    ctx: AnalysisContext, path: str, node: ImportStatement, *, import_from: str
+) -> Fix | None:
+    """Import from the package, joining an import of it in the same block.
+
+    Unsafe: the package initializer now runs first, which can change import
+    order, side effects and cycles.
+    """
+    text = SourceText(ctx.files.read_text(path))
+    tree = ctx.asts.parse(path)
+    found = _statement(tree, node)
+    if found is None:
+        return None
+    statement, siblings = found
+    current = "." * node.level + (node.module or "")
+    level = len(import_from) - len(import_from.lstrip("."))
+    module = import_from.lstrip(".") or None
+    target = next(
+        (
+            sibling
+            for sibling in siblings
+            if sibling is not statement
+            and isinstance(sibling, ast.ImportFrom)
+            and sibling.level == level
+            and sibling.module == module
+            and sibling.names[0].name != "*"
+            and "#" not in text.segment(sibling)
+        ),
+        None,
+    )
+    description = f"Import from {import_from}"
+    if target is not None and text.stands_alone(statement):
+        if "#" in text.text[slice(*text.lines(statement))]:
+            return None
+        present = {text.segment(alias) for alias in target.names}
+        added = [
+            spelling
+            for alias in statement.names
+            if (spelling := text.segment(alias)) not in present
+        ]
+        edits = [text.delete_lines(statement)]
+        if added:
+            end = text.span(target.names[-1])[1]
+            edits.append(text.insert(end, ", " + ", ".join(added)))
+        return Fix(Applicability.UNSAFE, description, tuple(edits))
+    edit = rewrite_from_module(
+        text, text.span(statement)[0], current=current, spelling=import_from
+    )
+    if edit is None:
+        return None
+    return Fix(Applicability.UNSAFE, description, (edit,))
+
+
+def _statement(
+    tree: ast.Module, node: ImportStatement
+) -> tuple[ast.ImportFrom, list[ast.stmt]] | None:
+    """The from-import at `node`'s position and the block that holds it."""
+    for owner in ast.walk(tree):
+        for field in ("body", "orelse", "finalbody"):
+            block = getattr(owner, field, None)
+            if not isinstance(block, list):
+                continue
+            for statement in block:
+                if (
+                    isinstance(statement, ast.ImportFrom)
+                    and statement.lineno == node.lineno
+                    and statement.col_offset == node.col_offset
+                ):
+                    return statement, block
+    return None

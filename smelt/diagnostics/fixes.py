@@ -39,6 +39,14 @@ class TextEdit:
     replacement: str
 
     @classmethod
+    def at(cls, text: str, span: tuple[int, int], replacement: str) -> TextEdit:
+        """Replace the character offsets `span` of `text` with `replacement`."""
+        start, end = span
+        line, column = _position(text, start)
+        end_line, end_column = _position(text, end)
+        return cls(line, column, end_line, end_column, text[start:end], replacement)
+
+    @classmethod
     def between(
         cls,
         before: str,

@@ -42,6 +42,11 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             option="--diff",
             value="--fix",
         )
+    if args.suggestions and not args.diff:
+        raise CliError(
+            "--suggestions previews edits that are never applied; combine it with --diff",
+            option="--suggestions",
+        )
     if args.staged:
         if args.fix or args.diff:
             option = "--fix" if args.fix else "--diff"
@@ -100,7 +105,7 @@ def _check_loaded(
     )
     outcome = run_check(loaded, options)
     if args.diff:
-        diff = fix_diff(outcome, unsafe=args.unsafe_fixes)
+        diff = fix_diff(outcome, unsafe=args.unsafe_fixes, suggestions=args.suggestions)
         console.print(diff, end="")
         return EXIT_VIOLATIONS if diff else EXIT_OK
     if args.fix:

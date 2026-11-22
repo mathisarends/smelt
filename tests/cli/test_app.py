@@ -2226,6 +2226,39 @@ def test_diff_previews_fixes_and_findings_mark_their_fix(
     assert "either --fix or --diff" in capsys.readouterr().err
 
 
+def test_suggestions_are_marked_counted_and_shown_only_with_diff(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = "def connect(user_id: int, run_id: int) -> None:\n    ...\n"
+    root = write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {complexity/excess-positional-parameters: {severity: warning, max: 1}}\n",
+            "app/__init__.py": "",
+            "app/service.py": source,
+        },
+    )
+    arguments = ["check", "--config", str(root / "smelt.yml"), "--select", "CPX003"]
+
+    assert main([*arguments, "--format", "concise"]) == 0
+    concise = capsys.readouterr().out
+    assert "CPX003 complexity/excess-positional-parameters [suggestion] " in concise
+    assert "1 suggestion with --diff --suggestions" in concise
+
+    assert main([*arguments, "--diff", "--unsafe-fixes"]) == 0
+    assert capsys.readouterr().out == ""
+    assert main([*arguments, "--diff", "--suggestions"]) == 1
+    assert "+def connect(user_id: int, *, run_id: int) -> None:" in (
+        capsys.readouterr().out
+    )
+    assert main([*arguments, "--fix", "--unsafe-fixes"]) == 0
+    capsys.readouterr()
+    assert (root / "app/service.py").read_text() == source
+
+    assert main([*arguments, "--suggestions"]) == 2
+    assert "combine it with --diff" in capsys.readouterr().err
+
+
 def test_explain_points_a_retired_smt_code_to_its_family_code(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

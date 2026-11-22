@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.suppressions import DIRECTIVE, is_rule_name
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.edits import SourceText
+from smelt.rules.renames import replacement_selectors
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
 
     from smelt.analysis.context import AnalysisContext
+    from smelt.diagnostics.suppressions import Suppression
     from smelt.diagnostics.violation import Violation
 
 
@@ -27,6 +32,7 @@ class UnusedSuppression(_EngineRule):
     code = "MET001"
     name = "meta/unused-suppression"
     default_severity = Severity.WARNING
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="An inline suppression is unused or names an unknown identifier.",
         rationale=(
@@ -36,7 +42,14 @@ class UnusedSuppression(_EngineRule):
         ),
         bad="import os  # smelt: ignore[architecture/layer-boundary] -- legacy",
         good="import os",
-        fix="Remove the comment, or the unused codes from it.",
+        fix=(
+            "Remove the comment, or the unused codes from it. check --fix removes "
+            "unused suppressions and unused identifiers, keeping the reason while "
+            "other identifiers remain, and replaces retired rule names and codes "
+            "with their successors. Other unknown identifiers carry a suggested "
+            "removal that --fix never applies: correct a misspelled identifier "
+            "instead where the comment is still needed."
+        ),
         canonical="Remove suppressions that no longer match a finding",
         config=("suppressions.require_reason",),
     )
@@ -156,3 +169,84 @@ class UncoveredPackageFacade(_EngineRule):
         canonical="Re-export from package facades the names other modules import",
         config=("rules", "ignore"),
     )
+
+
+def unused_suppression_fix(
+    text: str, suppression: Suppression, *, unused: tuple[str, ...]
+) -> Fix | None:
+    """Drop the unused identifiers, or the whole directive when `unused` is empty.
+
+    Safe: the removed identifiers suppress nothing in a run that evaluated them.
+    """
+    drop = {_key(suppression.label(code)): () for code in unused}
+    edit = _directive_edit(text, suppression, drop=drop or None)
+    if edit is None:
+        return None
+    return Fix(
+        Applicability.SAFE,
+        "Remove the unused suppression"
+        if not unused
+        else "Remove the unused identifiers from the suppression",
+        (edit,),
+    )
+
+
+def unknown_identifier_fix(
+    text: str, suppression: Suppression, *, unknown: list[str]
+) -> Fix | None:
+    """Replace retired identifiers with their successors and drop the others.
+
+    Replacing a retired name is safe. Dropping an identifier nothing knows is only
+    suggested: it is often a typo of the rule the comment means to suppress.
+    """
+    drop = {_key(label): replacement_selectors(label) for label in unknown}
+    edit = _directive_edit(text, suppression, drop=drop)
+    if edit is None:
+        return None
+    if all(drop.values()):
+        return Fix(
+            Applicability.SAFE,
+            "Replace retired identifiers with their current names",
+            (edit,),
+        )
+    return Fix(
+        Applicability.DISPLAY,
+        "Remove unknown identifiers that match no rule",
+        (edit,),
+    )
+
+
+def _directive_edit(
+    text: str, suppression: Suppression, *, drop: Mapping[str, tuple[str, ...]] | None
+) -> TextEdit | None:
+    """Rewrite the directive's identifiers through `drop`, or remove it entirely.
+
+    `drop` maps identifiers to their replacements, () removing them; None, or
+    nothing left, removes the directive and whitespace before it, or its whole
+    line when nothing else is on it.
+    """
+    source = SourceText(text)
+    start, end = source.line_start(suppression.line), source.line_end(suppression.line)
+    line = text[start:end].rstrip("\r\n")
+    match = DIRECTIVE.match(line, suppression.column)
+    if match is None:
+        return None
+    if drop is not None and match.group("codes") is not None:
+        kept = [
+            spelling
+            for item in match.group("codes").split(",")
+            if item.strip()
+            for spelling in drop.get(_key(item.strip()), (item.strip(),))
+        ]
+        if kept:
+            span = (start + match.start("codes"), start + match.end("codes"))
+            return TextEdit.at(text, span, ", ".join(kept))
+    cut = len(line[: match.start()].rstrip(" \t"))
+    if not line[:cut].strip() and not line[match.end() :].strip():
+        return TextEdit.at(text, (start, end), "")
+    return TextEdit.at(text, (start + cut, start + match.end()), "")
+
+
+def _key(identifier: str) -> str:
+    """Rule names keep their spelling; codes and code prefixes ignore case."""
+    return identifier if is_rule_name(identifier) else identifier.upper()

@@ -6,8 +6,16 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.edits import (
+    SourceText,
+    add_from_import,
+    name_used,
+    remove_import,
+    top_level_import,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -20,12 +28,13 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
     category = Category.TYPING
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="An @asynccontextmanager function annotates its return as AsyncIterator[T].",
         rationale="The contextlib.asynccontextmanager decorator remains supported. Typeshed deprecates its AsyncIterator overload because the decorator consumes an async generator, including its athrow/aclose methods. Use AsyncGenerator[T, None] to express that contract explicitly; the second argument also works on Python 3.12. This opt-in check provides the same guidance without requiring a type checker. It recognizes async functions and methods with direct AsyncIterator[T] annotations from collections.abc or typing, including quoted annotations, module/import aliases and guarded module-level imports such as TYPE_CHECKING. It conservatively skips names rebound anywhere in the file, wildcard imports, local imports, re-exports, user-defined types, type aliases and wrapped annotations. Ordinary async iterators and functions already annotated as AsyncGenerator remain valid. See https://github.com/python/typeshed/blob/main/stdlib/contextlib.pyi for the deprecated overload.",
         bad="from collections.abc import AsyncIterator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncIterator[None]:\n    yield",
         good="from collections.abc import AsyncGenerator\nfrom contextlib import asynccontextmanager\n\n@asynccontextmanager\nasync def exclusive() -> AsyncGenerator[None, None]:\n    yield",
-        fix="Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. No automatic rewrite is performed. Enable rules: {typing/deprecated-async-contextmanager-return: warning}, or select TYP004. Package overrides and reasoned inline suppressions are supported.",
+        fix="Replace AsyncIterator[T] with AsyncGenerator[T, None] and import AsyncGenerator from collections.abc. Preserve the yielded type and the decorator, and remove the AsyncIterator import only if unused elsewhere. check --fix rewrites the annotation, reuses or adds the AsyncGenerator import from the same module and removes a module-level AsyncIterator import that nothing else names. Enable rules: {typing/deprecated-async-contextmanager-return: warning}, or select TYP004. Package overrides and reasoned inline suppressions are supported.",
         canonical=(
             "Annotate @asynccontextmanager functions as AsyncGenerator[T, None]"
         ),
@@ -36,6 +45,7 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
         for source in ctx.files.sources.values():
             tree = ctx.asts.parse(source.path)
             bindings = _stable_imports(tree)
+            text = SourceText(ctx.files.read_text(source.path))
             for function in ast.walk(tree):
                 if not isinstance(function, ast.AsyncFunctionDef) or not any(
                     qualified_name(decorator, bindings)
@@ -47,6 +57,7 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
                 replacement = _replacement(annotation, bindings)
                 if replacement is None or annotation is None:
                     continue
+                fix = _fix(text, tree, annotation=annotation, bindings=bindings)
                 yield self.violation(
                     f"use {replacement} for @asynccontextmanager function {function.name}",
                     path=source.path,
@@ -61,10 +72,110 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
                         "annotation": ast.unparse(annotation),
                         "suggested_annotation": replacement,
                         "suggested_import": "from collections.abc import AsyncGenerator",
-                        "automatic_rewrite": False,
+                        "automatic_rewrite": fix is not None,
                     },
                     hint=f"Annotate as {replacement} and import AsyncGenerator from collections.abc; keep @asynccontextmanager.",
+                    fix=fix,
                 )
+
+
+def _fix(
+    source: SourceText,
+    tree: ast.Module,
+    *,
+    annotation: ast.expr,
+    bindings: Mapping[str, str],
+) -> Fix | None:
+    """Annotate as AsyncGenerator[T, None], importing it like AsyncIterator.
+
+    Safe: the decorator's contract is unchanged and only the annotation differs.
+    """
+    node = _parsed(annotation)
+    if not isinstance(node, ast.Subscript):
+        return None
+    edits: list[TextEdit] = []
+    match node.value:
+        case ast.Attribute(value=owner):
+            # typing.AsyncIterator and abc.AsyncIterator name their module already.
+            spelling: str | None = f"{ast.unparse(owner)}.AsyncGenerator"
+        case ast.Name() as local:
+            spelling = _generator_name(
+                source,
+                tree,
+                local=local.id,
+                context=(annotation, bindings),
+                edits=edits,
+            )
+        case _:
+            spelling = None
+    if spelling is None:
+        return None
+    if isinstance(annotation, ast.Constant):
+        quote = source.segment(annotation)[0]
+        value = f"{spelling}[{ast.unparse(node.slice)}, None]"
+        edits.append(source.replace(annotation, f"{quote}{value}{quote}"))
+    else:
+        edits.append(source.replace(node.value, spelling))
+        edits.append(source.insert(source.span(node.slice)[1], ", None"))
+    return Fix(
+        Applicability.SAFE,
+        "Annotate the context manager as AsyncGenerator[T, None]",
+        tuple(edits),
+    )
+
+
+def _parsed(annotation: ast.expr) -> ast.expr | None:
+    if not isinstance(annotation, ast.Constant):
+        return annotation
+    try:
+        return ast.parse(str(annotation.value).strip(), mode="eval").body
+    except SyntaxError:
+        return None
+
+
+def _generator_name(
+    source: SourceText,
+    tree: ast.Module,
+    *,
+    local: str,
+    context: tuple[ast.expr, Mapping[str, str]],
+    edits: list[TextEdit],
+) -> str | None:
+    """The local name for AsyncGenerator; adds the import edits it needs.
+
+    `context` holds the annotation being replaced and the stable imports. An
+    existing AsyncGenerator import is reused. Otherwise the AsyncIterator alias
+    is renamed when nothing else names it, or AsyncGenerator joins its import.
+    """
+    annotation, bindings = context
+    module = bindings[local].rpartition(".")[0]
+    existing = next(
+        (
+            name
+            for name, target in bindings.items()
+            if target == f"{module}.AsyncGenerator"
+        ),
+        None,
+    )
+    found = top_level_import(tree, local)
+    unused = found is not None and not name_used(tree, local, ignore=[annotation])
+    if existing is not None:
+        if found is not None and unused and (removal := remove_import(source, *found)):
+            edits.append(removal)
+        return existing
+    if found is None or name_used(tree, "AsyncGenerator"):
+        return None
+    statement, alias = found
+    if unused and alias.asname is None and isinstance(statement, ast.ImportFrom):
+        start = source.span(alias)[0]
+        edits.append(
+            TextEdit.at(source.text, (start, start + len(alias.name)), "AsyncGenerator")
+        )
+    else:
+        edits.append(
+            add_from_import(source, tree, module=module, name="AsyncGenerator")
+        )
+    return "AsyncGenerator"
 
 
 def _replacement(node: ast.expr | None, bindings: Mapping[str, str]) -> str | None:

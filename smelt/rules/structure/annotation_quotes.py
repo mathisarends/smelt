@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import last_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.edits import SourceText, add_from_import
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -19,6 +21,7 @@ class PreferDeferredAnnotations(Rule):
     category = Category.TYPING
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="An annotation is quoted where deferred evaluation makes quotes unnecessary.",
         rationale=(
@@ -53,7 +56,11 @@ class PreferDeferredAnnotations(Rule):
             "every annotation in the module a string at runtime, so verify "
             "runtime annotation consumers (dataclasses, Pydantic, FastAPI, "
             "dependency injection) and names imported only under TYPE_CHECKING. "
-            "No automatic rewrite is performed. Enable rules: "
+            "check --fix removes the quotes when the future import already defers "
+            "the module's annotations; adding the import, and unquoting on 3.14+ "
+            "targets where annotations are evaluated on access, needs "
+            "--unsafe-fixes. Quoted text that is not a single-line expression is "
+            "left for a manual edit. Enable rules: "
             "{typing/prefer-deferred-annotations: hint}, or select TYP006."
         ),
         canonical="Write annotations without quotes and rely on deferred evaluation",
@@ -91,6 +98,12 @@ class PreferDeferredAnnotations(Rule):
                     "an annotations future import defers them",
                 )
             first = quoted[0]
+            fix = _fix(
+                SourceText(ctx.files.read_text(source.path)),
+                tree,
+                quoted=quoted,
+                action=action,
+            )
             yield self.violation(
                 f"{len(quoted)} quoted annotation(s); {reason}",
                 path=source.path,
@@ -104,7 +117,7 @@ class PreferDeferredAnnotations(Rule):
                     ],
                     "future_annotations": policy,
                     "python": target.to_json(),
-                    "automatic_rewrite": False,
+                    "automatic_rewrite": fix is not None,
                 },
                 hint=(
                     "Remove the quotes."
@@ -112,7 +125,49 @@ class PreferDeferredAnnotations(Rule):
                     else "Add from __future__ import annotations and remove the "
                     "quotes; verify runtime annotation consumers."
                 ),
+                fix=fix,
             )
+
+
+def _fix(
+    source: SourceText, tree: ast.Module, *, quoted: list[ast.Constant], action: str
+) -> Fix | None:
+    """Unquote every annotation, adding the future import first when needed.
+
+    Safe only under an existing future import: annotations stay strings at runtime.
+    """
+    edits = []
+    for node in quoted:
+        text = node.value
+        if not isinstance(text, str) or "\n" in text or not _expression(text):
+            return None
+        edits.append(source.replace(node, text.strip()))
+    if action == "add-future-import":
+        edits.insert(
+            0, add_from_import(source, tree, module="__future__", name="annotations")
+        )
+        return Fix(
+            Applicability.UNSAFE,
+            "Add from __future__ import annotations and remove the quotes",
+            tuple(edits),
+        )
+    future = _has_future_import(tree)
+    return Fix(
+        Applicability.SAFE if future else Applicability.UNSAFE,
+        "Remove the quotes from deferred annotations",
+        tuple(edits),
+    )
+
+
+def _expression(text: str) -> bool:
+    try:
+        node = ast.parse(text.strip(), mode="eval").body
+    except SyntaxError:
+        return False
+    # Operators that bind looser than a subscript or | would need parentheses.
+    return not isinstance(
+        node, ast.Lambda | ast.IfExp | ast.NamedExpr | ast.Yield | ast.Await
+    )
 
 
 def _annotations(tree: ast.Module) -> Iterator[ast.expr]:

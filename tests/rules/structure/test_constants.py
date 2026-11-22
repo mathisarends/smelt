@@ -40,7 +40,7 @@ def test_download_extensions_belong_at_module_scope(tmp_path: Path) -> None:
         "constant": "_DOWNLOADABLE_EXTENSIONS",
         "placement": "module",
         "visibility": "private",
-        "automatic_rewrite": False,
+        "automatic_rewrite": True,
     }
     assert finding.hint is not None
     assert "module scope" in finding.hint

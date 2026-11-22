@@ -307,7 +307,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.duplicate_functions:DuplicateFunction",
@@ -451,7 +451,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.type_dispatch:PreferMatchTypeDispatch",
@@ -632,7 +632,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.package_imports:PreferPackageImport",
@@ -650,7 +650,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.naming:ForbiddenPackageName",
@@ -758,7 +758,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.file_naming:FileNameConvention",
@@ -794,7 +794,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.naming:RedundantModuleName",
@@ -848,7 +848,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.meta:UnusedSuppression",
@@ -864,7 +864,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.meta:SuppressionWithoutReason",
@@ -1000,7 +1000,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.stateful_dataclasses:StatefulDataclass",
@@ -1036,7 +1036,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.project_bases:PreferProjectBaseClass",
@@ -1434,7 +1434,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.literal_types:DuplicateLiteralType",
@@ -1470,7 +1470,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.tuples:AnonymousTupleType",
@@ -1506,7 +1506,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.structure.members:InternalPublicMember",
@@ -1653,7 +1653,7 @@
     "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
-    "fix_availability": "none"
+    "fix_availability": "sometimes"
   },
   {
     "target": "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
