@@ -13,6 +13,7 @@ from smelt.config.source import SourceStore
 from smelt.engine.migration import (
     LayerModuleMigration,
     Migration,
+    RuleEnablement,
     enable_rules,
     migrate_policy,
     project_limit_rules,
@@ -53,7 +54,9 @@ def config_migrate(args: argparse.Namespace, console: Console, cwd: Path) -> int
         enable_rules(
             root.after,
             [
-                (location, rule.name, settings.migration_severity(rule, location))
+                RuleEnablement(
+                    location, rule.name, settings.migration_severity(rule, location)
+                )
                 for rule, locations in settings.policy_enablements()
                 for location in locations
             ],

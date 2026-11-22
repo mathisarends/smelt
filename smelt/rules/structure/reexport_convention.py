@@ -7,7 +7,13 @@ from smelt.analysis.bindings import binding_counts
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.function_usage import explicit_exports
 from smelt.config.models import POLICY_DEFAULTS
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
@@ -114,7 +120,7 @@ def _alias_fix(source: SourceText, alias: ast.alias) -> Fix:
     return Fix(
         Applicability.SAFE,
         f"Re-export {alias.name} as {alias.name}",
-        (source.insert(source.span(alias)[1], f" as {alias.name}"),),
+        (source.insert(source.span(alias).end, f" as {alias.name}"),),
     )
 
 
@@ -134,7 +140,7 @@ def _all_fix(
     if exports is None:
         return None
     start, end = source.span(alias)
-    edits = [TextEdit.at(source.text, (start + len(alias.name), end), "")]
+    edits = [TextEdit.at(source.text, TextSpan(start + len(alias.name), end), "")]
     if alias.name in exports:
         return Fix(
             Applicability.SAFE, f"Import {alias.name} without the alias", tuple(edits)
@@ -177,7 +183,7 @@ def _export_edit(source: SourceText, tree: ast.Module, names: list[str]) -> Text
     quote = source.segment(value.elts[0])[0] if value.elts else '"'
     listed = ", ".join(f"{quote}{name}{quote}" for name in names)
     if value.elts:
-        return source.insert(source.span(value.elts[-1])[1], f", {listed}")
+        return source.insert(source.span(value.elts[-1]).end, f", {listed}")
     match value:
         case ast.Tuple():
             return source.replace(value, f"({listed},)")

@@ -30,6 +30,14 @@ if TYPE_CHECKING:
 _LEVELS = ("off", "hint", "warning", "error")
 
 
+class RuleEnablement(NamedTuple):
+    """A rule a policy enabled implicitly, the rules map path and its severity."""
+
+    path: tuple[str, ...]
+    name: str
+    severity: str
+
+
 @dataclass(frozen=True, slots=True)
 class Migration:
     text: str
@@ -243,9 +251,7 @@ def project_limit_rules(texts: Iterable[str]) -> frozenset[str]:
     return frozenset(codes)
 
 
-def enable_rules(
-    text: str, entries: Sequence[tuple[tuple[str, ...], str, str]]
-) -> Migration:
+def enable_rules(text: str, entries: Sequence[RuleEnablement]) -> Migration:
     """Add ``name: severity`` to each rules map, at its path, that lacks the rule.
 
     A declared policy no longer enables its rule, so a migration names every

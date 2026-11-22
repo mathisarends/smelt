@@ -7,6 +7,7 @@ from enum import StrEnum
 from functools import cache
 from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
+from typing import NamedTuple
 
 
 class IdentityScope(StrEnum):
@@ -28,7 +29,14 @@ _UNREACHABLE = {
 }
 
 
-def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] | None:
+class _RecordedFile(NamedTuple):
+    path: str
+    hash_mode: str
+    hash_value: str
+    size: int | None
+
+
+def _installed_sources(package: Path) -> list[_RecordedFile] | None:
     """Use the installed wheel's build hashes, never those of another checkout."""
     try:
         installed = distribution("smelt-cli")
@@ -50,7 +58,7 @@ def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] 
         if not files or any(file.hash is None for file in files):
             return None
         return [
-            (str(file), file.hash.mode, file.hash.value, file.size)
+            _RecordedFile(str(file), file.hash.mode, file.hash.value, file.size)
             for file in files
             if file.hash is not None
         ]
@@ -71,7 +79,7 @@ def analyzer_identity(scope: IdentityScope = IdentityScope.COMPLETE) -> str:
     record = _installed_sources(package)
     if record is not None:
         digest.update(b"wheel-record\0")
-        record = [row for row in record if Path(row[0]).parts[1] not in unreachable]
+        record = [row for row in record if Path(row.path).parts[1] not in unreachable]
         digest.update(json.dumps(record).encode())
     else:
         digest.update(b"source\0")

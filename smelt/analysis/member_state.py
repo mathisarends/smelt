@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import TypeAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-type NamespaceIdentity = tuple[str, str, bool] | None
+
+class NamespaceIdentity(NamedTuple):
+    """The indexed file behind a module name; a namespace package has no content."""
+
+    path: str
+    content: str
+    is_package: bool
 
 
 @dataclass(slots=True)
 class MemberSummary:
     identity: str
-    namespaces: dict[str, NamespaceIdentity]
+    namespaces: dict[str, NamespaceIdentity | None]
     contributions: dict[str, int]
     queries: list[str]
     has_members: bool
@@ -26,7 +32,7 @@ class MemberSummary:
 @dataclass(slots=True)
 class MemberIndexState:
     files: dict[str, MemberSummary] = field(default_factory=dict)
-    namespaces: dict[str, NamespaceIdentity] = field(default_factory=dict)
+    namespaces: dict[str, NamespaceIdentity | None] = field(default_factory=dict)
     totals: dict[str, int] = field(default_factory=dict)
     readers: dict[str, set[str]] = field(default_factory=dict)
     resolvers: dict[str, set[str]] = field(default_factory=dict)
@@ -38,7 +44,7 @@ MEMBER_STATE = TypeAdapter(MemberIndexState)
 def update_members(
     state: MemberIndexState,
     identities: dict[str, str],
-    namespaces: dict[str, NamespaceIdentity],
+    namespaces: dict[str, NamespaceIdentity | None],
     *,
     build: Callable[[str], MemberSummary],
     decision: Callable[[MemberSummary, dict[str, int]], str],

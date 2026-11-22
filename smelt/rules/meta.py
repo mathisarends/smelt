@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.suppressions import DIRECTIVE, is_rule_name
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
@@ -239,12 +245,12 @@ def _directive_edit(
             for spelling in drop.get(_key(item.strip()), (item.strip(),))
         ]
         if kept:
-            span = (start + match.start("codes"), start + match.end("codes"))
+            span = TextSpan(start + match.start("codes"), start + match.end("codes"))
             return TextEdit.at(text, span, ", ".join(kept))
     cut = len(line[: match.start()].rstrip(" \t"))
     if not line[:cut].strip() and not line[match.end() :].strip():
-        return TextEdit.at(text, (start, end), "")
-    return TextEdit.at(text, (start + cut, start + match.end()), "")
+        return TextEdit.at(text, TextSpan(start, end), "")
+    return TextEdit.at(text, TextSpan(start + cut, start + match.end()), "")
 
 
 def _key(identifier: str) -> str:

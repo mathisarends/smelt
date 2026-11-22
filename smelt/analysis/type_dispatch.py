@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections import Counter
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from smelt.analysis.parsing import tree_nodes
 
@@ -28,6 +28,12 @@ class TypeDispatch:
     scope: str
 
 
+class _DispatchHead(NamedTuple):
+    subject: str
+    types: tuple[str, ...]
+    guard: str | None
+
+
 def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
     checkers = _checker_names(tree)
     if not checkers:
@@ -48,11 +54,11 @@ def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
         supported = True
         while node is not None:
             head = _head(node.test, checkers)
-            if head is None or (subject is not None and head[0] != subject):
+            if head is None or (subject is not None and head.subject != subject):
                 supported = False
                 break
-            subject, types, guard = head
-            branches.append(DispatchBranch(node.lineno, types, guard))
+            subject = head.subject
+            branches.append(DispatchBranch(node.lineno, head.types, head.guard))
             node = _elif(node)
         if supported and subject is not None and len(branches) >= minimum:
             yield TypeDispatch(root, subject, tuple(branches), _scope(root, parents))
@@ -119,9 +125,7 @@ def _checker_names(tree: ast.Module) -> set[str]:
     return names
 
 
-def _head(
-    test: ast.expr, checkers: set[str]
-) -> tuple[str, tuple[str, ...], str | None] | None:
+def _head(test: ast.expr, checkers: set[str]) -> _DispatchHead | None:
     values = (
         test.values
         if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And)
@@ -149,7 +153,7 @@ def _head(
         guard = ast.unparse(
             guards[0] if len(guards) == 1 else ast.BoolOp(op=ast.And(), values=guards)
         )
-    return subject, names, guard
+    return _DispatchHead(subject, names, guard)
 
 
 def _type_names(node: ast.expr) -> tuple[str, ...] | None:

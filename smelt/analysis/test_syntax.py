@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from copy import copy
 from dataclasses import dataclass, field, replace
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import TypeAdapter
 
@@ -406,6 +406,14 @@ class HelperCall:
         ]
 
 
+class AwaitedTask(NamedTuple):
+    """A test awaiting an ``asyncio.Task`` or ``Future`` instance."""
+
+    node: ast.Await
+    qualified: str
+    provenance: str
+
+
 @dataclass(slots=True)
 class TestFunction:
     node: Function
@@ -413,7 +421,7 @@ class TestFunction:
     calls: list[TestCall] = field(default_factory=list)
     assertions: list[ast.Assert] = field(default_factory=list)
     clock_replacements: list[ast.Attribute | ast.Call] = field(default_factory=list)
-    awaited_tasks: list[tuple[ast.Await, str, str]] = field(default_factory=list)
+    awaited_tasks: list[AwaitedTask] = field(default_factory=list)
     nonempty_iterables: set[ast.expr] = field(default_factory=set)
     mock_observations: list[MockObservation] = field(default_factory=list)
     child_assertions: list[ast.Call] = field(default_factory=list)
@@ -475,6 +483,14 @@ class TestFunction:
         return evidence
 
 
+class InstanceAttribute(NamedTuple):
+    """An attribute loaded from an instance whose class a test imported."""
+
+    node: ast.Attribute
+    qualified: str
+    provenance: str
+
+
 @dataclass(slots=True)
 class TestModule:
     path: str
@@ -483,9 +499,7 @@ class TestModule:
     calls: list[TestCall] = field(default_factory=list)
     tests: list[TestFunction] = field(default_factory=list)
     helpers: dict[int, TestFunction] = field(default_factory=dict)
-    instance_attributes: list[tuple[ast.Attribute, str, str]] = field(
-        default_factory=list
-    )
+    instance_attributes: list[InstanceAttribute] = field(default_factory=list)
 
 
 def _names(node: ast.AST) -> set[str]:
@@ -957,7 +971,7 @@ class _Visitor(ast.NodeVisitor):
         if qualified and receiver and receiver.kind == "instance":
             if isinstance(node.ctx, ast.Load):
                 self.result.instance_attributes.append(
-                    (node, qualified, receiver.provenance)
+                    InstanceAttribute(node, qualified, receiver.provenance)
                 )
         elif qualified:
             self.result.attributes.append((node, qualified))
@@ -982,7 +996,7 @@ class _Visitor(ast.NodeVisitor):
             and binding.qualified in {"asyncio.Task", "asyncio.Future"}
         ):
             self.test.awaited_tasks.append(
-                (node, binding.qualified, binding.provenance)
+                AwaitedTask(node, binding.qualified, binding.provenance)
             )
         self.generic_visit(node)
 
@@ -1286,11 +1300,17 @@ def _declared_fixtures(
     return visitor.defined_fixtures
 
 
+class AttributeReference(NamedTuple):
+    line: int
+    qualified: str
+    load: bool
+
+
 @dataclass(slots=True)
 class TestReferences:
     imports: list[tuple[int, str]]
-    attributes: list[tuple[int, str, bool]]
-    instance_attributes: list[tuple[int, str, bool]]
+    attributes: list[AttributeReference]
+    instance_attributes: list[AttributeReference]
 
 
 _REFERENCES = TypeAdapter(TestReferences)
@@ -1495,12 +1515,18 @@ class TestSyntaxIndex:
             return TestReferences(
                 [(node.lineno, name) for node, name in module.imports],
                 [
-                    (node.lineno, name, isinstance(node.ctx, ast.Load))
+                    AttributeReference(
+                        node.lineno, name, isinstance(node.ctx, ast.Load)
+                    )
                     for node, name in module.attributes
                 ],
                 [
-                    (node.lineno, name, isinstance(node.ctx, ast.Load))
-                    for node, name, _ in module.instance_attributes
+                    AttributeReference(
+                        use.node.lineno,
+                        use.qualified,
+                        isinstance(use.node.ctx, ast.Load),
+                    )
+                    for use in module.instance_attributes
                 ],
             )
 

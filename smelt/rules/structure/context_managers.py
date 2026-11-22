@@ -7,7 +7,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.edits import (
@@ -117,7 +123,7 @@ def _fix(
         edits.append(source.replace(annotation, f"{quote}{value}{quote}"))
     else:
         edits.append(source.replace(node.value, spelling))
-        edits.append(source.insert(source.span(node.slice)[1], ", None"))
+        edits.append(source.insert(source.span(node.slice).end, ", None"))
     return Fix(
         Applicability.SAFE,
         "Annotate the context manager as AsyncGenerator[T, None]",
@@ -168,9 +174,11 @@ def _generator_name(
         return None
     statement, alias = found
     if unused and alias.asname is None and isinstance(statement, ast.ImportFrom):
-        start = source.span(alias)[0]
+        start = source.span(alias).start
         edits.append(
-            TextEdit.at(source.text, (start, start + len(alias.name)), "AsyncGenerator")
+            TextEdit.at(
+                source.text, TextSpan(start, start + len(alias.name)), "AsyncGenerator"
+            )
         )
     else:
         edits.append(

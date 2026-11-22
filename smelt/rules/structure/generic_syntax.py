@@ -8,7 +8,13 @@ from smelt.analysis.bindings import binding_counts
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.typing_bindings import typing_bindings, typing_name
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.edits import SourceText, name_used, remove_aliases, top_level_import
@@ -230,7 +236,7 @@ def _header(
     name_end = match.end()
     listed = f"[{', '.join(parameters)}]"
     arguments: list[ast.expr | ast.keyword] = sorted(
-        [*node.bases, *node.keywords], key=lambda item: source.span(item)[0]
+        [*node.bases, *node.keywords], key=lambda item: source.span(item).start
     )
     base_start, base_end = source.span(generic)
     if len(arguments) == 1:
@@ -238,21 +244,21 @@ def _header(
         closing = source.text.find(")", base_end)
         if opening.strip() != "(" or source.text[base_end:closing].strip(", \t\n"):
             return None
-        return TextEdit.at(source.text, (name_end, closing + 1), listed)
+        return TextEdit.at(source.text, TextSpan(name_end, closing + 1), listed)
     index = arguments.index(generic)
     if index + 1 < len(arguments):
-        span = (base_start, source.span(arguments[index + 1])[0])
+        span = TextSpan(base_start, source.span(arguments[index + 1]).start)
     else:
-        span = (source.span(arguments[index - 1])[1], base_end)
-    if "#" in source.text[span[0] : span[1]]:
+        span = TextSpan(source.span(arguments[index - 1]).end, base_end)
+    if "#" in source.text[span.start : span.end]:
         return None
-    if source.text[name_end : source.span(arguments[0])[0]].strip() != "(":
+    if source.text[name_end : source.span(arguments[0]).start].strip() != "(":
         return None
     # One edit keeps the insertion and the base removal from overlapping.
     return TextEdit.at(
         source.text,
-        (name_end, span[1]),
-        listed + source.text[name_end : span[0]],
+        TextSpan(name_end, span.end),
+        listed + source.text[name_end : span.start],
     )
 
 

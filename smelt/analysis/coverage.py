@@ -99,7 +99,7 @@ class CoverageIndex:
                 if files.store.is_dir(directory / "src")
                 else directory
             )
-            roots.add(files.resolve_path(located[0] if located else fallback))
+            roots.add(files.resolve_path(located.base if located else fallback))
             test_roots.update(
                 files.resolve_path(directory / name) for name in ("tests", "test")
             )

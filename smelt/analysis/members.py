@@ -5,12 +5,13 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field, replace
 from functools import cached_property, partial
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from pydantic import TypeAdapter
 
 from smelt.analysis.exports import Namespace, resolve_dotted, resolve_export
 from smelt.analysis.function_usage import (
+    ReferenceNames,
     definition_bindings,
     explicit_exports,
     reference_names,
@@ -19,10 +20,11 @@ from smelt.analysis.member_state import (
     MEMBER_STATE,
     MemberIndexState,
     MemberSummary,
+    NamespaceIdentity,
     update_members,
 )
 from smelt.analysis.parsing import tree_nodes
-from smelt.analysis.retained import current
+from smelt.analysis.retained import StateKey, current
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -83,11 +85,31 @@ class AttributeMember:
     occupied_names: frozenset[str]
 
 
+class _AttributeLine(NamedTuple):
+    line: int
+    # The line of the class whose method makes the access, if any.
+    owner: int | None
+    internal: bool
+
+
+class _ModuleAttributeLine(NamedTuple):
+    module: str
+    line: int
+    owner: int | None
+    internal: bool
+    production: bool
+
+
+class _AttributeCounts(NamedTuple):
+    total: int
+    production: int
+
+
 @dataclass(slots=True)
 class _UsageEvidence:
     module_uses: dict[tuple[str, str | None], set[str]]
     production_uses: dict[tuple[str, str | None], set[str]]
-    attributes: dict[str, list[tuple[str, int, int | None, bool, bool]]]
+    attributes: dict[str, list[_ModuleAttributeLine]]
     inherited: set[tuple[str, str | None]]
     public_exports: set[tuple[str, str | None]] = field(default_factory=set)
 
@@ -98,8 +120,8 @@ class _FileFacts:
     path: str
     production: bool
     candidates: list[Member]
-    references: tuple[list[str], list[str], list[str]]
-    attributes: dict[str, list[tuple[int, int | None, bool]]]
+    references: ReferenceNames
+    attributes: dict[str, list[_AttributeLine]]
     bases: list[str]
     attribute_candidates: list[AttributeMember] = field(default_factory=list)
     public_exports: list[str] = field(default_factory=list)
@@ -112,13 +134,19 @@ _FACTS = TypeAdapter(_FileFacts)
 class _ResolvedReferences:
     targets: list[tuple[str, str | None]]
     inherited: list[tuple[str, str | None]]
-    dependencies: dict[str, tuple[str, str, bool] | None]
+    dependencies: dict[str, NamespaceIdentity | None]
     public_exports: list[tuple[str, str | None]] = field(default_factory=list)
 
 
 _REFERENCES = TypeAdapter(_ResolvedReferences)
 _MEMBERS = TypeAdapter(list[Member])
-type MemberState = tuple[bool, bool, tuple[int, ...], bool]
+
+
+class MemberState(NamedTuple):
+    external_use: bool
+    production_external_use: bool
+    internal_references: tuple[int, ...]
+    inherited: bool
 
 
 class MemberUsageIndex:
@@ -152,7 +180,7 @@ class MemberUsageIndex:
             [str(syntax.files.root), syntax.files.config.model_dump(mode="json")],
         )
         retained = current()
-        state_key = str(cache.directory), key
+        state_key = StateKey(str(cache.directory), key)
         previous = retained.take(state_key) if retained is not None else None
         previous = previous or cache.read(key, MEMBER_STATE) or MemberIndexState()
         identities = {
@@ -198,7 +226,7 @@ class MemberUsageIndex:
                 owner = candidate.owner
                 if owner is None:
                     states.append(
-                        (
+                        MemberState(
                             self._counted_external(file.module, candidate.node.name),
                             self._counted_external(
                                 file.module, candidate.node.name, production=True
@@ -217,7 +245,7 @@ class MemberUsageIndex:
                 ]
                 name = candidate.node.name
                 states.append(
-                    (
+                    MemberState(
                         state.totals.get(f"a:{name}", 0) > len(local),
                         state.totals.get(f"p:{name}", 0) > len(local),
                         tuple(sorted(set(local))),
@@ -318,20 +346,26 @@ class MemberUsageIndex:
                     evidence.production_uses.setdefault(target, set()).add(file.module)
             for name, uses in file.attributes.items():
                 evidence.attributes.setdefault(name, []).extend(
-                    (file.module, line, owner, internal, file.production)
-                    for line, owner, internal in uses
+                    _ModuleAttributeLine(
+                        file.module, use.line, use.owner, use.internal, file.production
+                    )
+                    for use in uses
                 )
             evidence.inherited.update(references.inherited)
             evidence.public_exports.update(references.public_exports)
         return evidence
 
-    def _namespace_identity(self, module: str) -> tuple[str, str, bool] | None:
+    def _namespace_identity(self, module: str) -> NamespaceIdentity | None:
         files = self._syntax.files
         source = files.sources.get(module)
         if source is not None:
-            return source.path, files.content_id(source.path), source.is_package
+            return NamespaceIdentity(
+                source.path, files.content_id(source.path), source.is_package
+            )
         package = files.packages.get(module)
-        return (package.path, "namespace", False) if package is not None else None
+        if package is None:
+            return None
+        return NamespaceIdentity(package.path, "namespace", is_package=False)
 
     def _references(self, file: _FileFacts) -> _ResolvedReferences:
         syntax = self._syntax
@@ -355,7 +389,7 @@ class MemberUsageIndex:
             for module, identity in cached.dependencies.items()
         ):
             return cached
-        dependencies: dict[str, tuple[str, str, bool] | None] = {}
+        dependencies: dict[str, NamespaceIdentity | None] = {}
 
         def namespace(module: str) -> Namespace | None:
             dependencies[module] = self._namespace_identity(module)
@@ -368,15 +402,15 @@ class MemberUsageIndex:
                 resolved[name] = resolve_dotted(name, namespace)
             return resolved[name]
 
-        imports, loads, stars = file.references
-        targets: list[tuple[str, str | None]] = [(star, None) for star in stars]
+        names = file.references
+        targets: list[tuple[str, str | None]] = [(star, None) for star in names.stars]
         targets.extend(
             target
-            for name in imports
+            for name in names.imports
             if (target := resolve(name)) is not None and target[1] is not None
         )
         targets.extend(
-            target for name in loads if (target := resolve(name)) is not None
+            target for name in names.loads if (target := resolve(name)) is not None
         )
         inherited = [
             target
@@ -394,9 +428,9 @@ class MemberUsageIndex:
         return result
 
     @cached_property
-    def _attribute_counts(self) -> dict[str, tuple[int, int]]:
+    def _attribute_counts(self) -> dict[str, _AttributeCounts]:
         return {
-            name: (len(uses), sum(production for _, _, _, _, production in uses))
+            name: _AttributeCounts(len(uses), sum(use.production for use in uses))
             for name, uses in self._evidence.attributes.items()
         }
 
@@ -433,7 +467,9 @@ class MemberUsageIndex:
                     )
                     external = total > len(local)
                     production_external = production > len(local)
-                states.append((external, production_external, references, inherited))
+                states.append(
+                    MemberState(external, production_external, references, inherited)
+                )
             cache = self._syntax.cache
             if cache is None:
                 members.extend(self._resolve_file(file, states))
@@ -529,14 +565,12 @@ class MemberUsageIndex:
         return [
             replace(
                 candidate,
-                external_use=external,
-                production_external_use=production,
-                internal_references=references,
+                external_use=state.external_use,
+                production_external_use=state.production_external_use,
+                internal_references=state.internal_references,
             )
-            for candidate, (external, production, references, inherited) in zip(
-                file.candidates, states, strict=True
-            )
-            if not inherited
+            for candidate, state in zip(file.candidates, states, strict=True)
+            if not state.inherited
         ]
 
     def _facts(self, path: str) -> _FileFacts:
@@ -641,7 +675,9 @@ def _file_facts(
         reference_names(module),
         {
             name: [
-                (use.line, use.owner.lineno if use.owner else None, use.internal)
+                _AttributeLine(
+                    use.line, use.owner.lineno if use.owner else None, use.internal
+                )
                 for use in uses
             ]
             for name, uses in visitor.attributes.items()
