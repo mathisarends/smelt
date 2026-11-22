@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-22
+
+See [upgrading from 0.15](docs/upgrading.md#015-to-016) for hook pins and
+previewing the new fixes.
+
 - The README presents Smelt as a programmatically enforced style guide, and the
   documentation starts with a six-level learning path, from a
   [first check](docs/01-first-check.md) to
@@ -14,18 +19,18 @@ current configuration and complete rule contracts, see the [README](README.md),
   existing guides remain as reference material behind the
   [documentation index](docs/README.md).
 - More rules carry machine-readable fixes for `check --fix` and `check --diff`.
-  Safe, applied by `--fix`: [MET001](docs/rules/MET001.md) removes unused
-  suppressions or identifiers and replaces retired rule names,
-  [TYP004](docs/rules/TYP004.md), [IMP003](docs/rules/IMP003.md),
-  [IDM001](docs/rules/IDM001.md), [LAY006](docs/rules/LAY006.md),
-  [LAY011](docs/rules/LAY011.md), [MOD004](docs/rules/MOD004.md) and the
-  `as` alias of [VIS008](docs/rules/VIS008.md). Unsafe, applied only with
-  `--unsafe-fixes`: [TYP006](docs/rules/TYP006.md) when it has to add the future
+  `--fix` applies the safe edits from [MET001](docs/rules/MET001.md) for unused
+  suppressions or identifiers and retired rule names. It also applies safe edits
+  from [TYP004](docs/rules/TYP004.md), [IMP003](docs/rules/IMP003.md),
+  [LAY006](docs/rules/LAY006.md), [LAY011](docs/rules/LAY011.md),
+  [MOD004](docs/rules/MOD004.md) and the `as` alias of [VIS008](docs/rules/VIS008.md).
+  Add `--unsafe-fixes` to apply [TYP006](docs/rules/TYP006.md) when it has to add the future
   import, [TYP008](docs/rules/TYP008.md), [IMP004](docs/rules/IMP004.md),
-  [MOD006](docs/rules/MOD006.md), [LAY008](docs/rules/LAY008.md) and VIS008
-  entries added to `__all__`. Findings that cannot be rewritten without losing
-  comments or changing behavior carry no fix, and `expected.automatic_rewrite`
-  says which ones do.
+  [MOD006](docs/rules/MOD006.md), [LAY008](docs/rules/LAY008.md),
+  [IDM001](docs/rules/IDM001.md) and VIS008 entries added to `__all__`.
+  IDM001 can change when values are evaluated and attributes are written.
+  The JSON report's `fix.applicability` field identifies which edits require
+  opt-in.
 - Fixes with the `display` applicability are suggestions: the concise and text
   formats mark them `[suggestion]` and count them in the summary, and
   `check --diff --suggestions` previews them; `--fix` never applies them.
@@ -1639,7 +1644,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/mathisarends/smelt/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/mathisarends/smelt/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/mathisarends/smelt/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mathisarends/smelt/compare/v0.12.0...v0.13.0

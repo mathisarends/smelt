@@ -56,7 +56,7 @@ class BundledInstanceAssignment(Rule):
         rationale="Separate field assignments make object initialization easy to scan and extend. This opt-in package convention reports tuple/list unpacking and chained assignments that write multiple direct attributes of a method's first positional parameter, regardless of its name. It leaves local unpacking and single-field assignments alone. Recognized static/class methods and nested helper bodies are excluded; nested classes are inspected with their own receiver. This is a readability policy, not a logic error.",
         bad="class Inbox:\n    def __init__(self, log, control):\n        self.log, self.control = log, control",
         good="class Inbox:\n    def __init__(self, log, control):\n        self.log = log\n        self.control = control",
-        fix="Use one direct instance attribute write per statement. Preserve evaluation timing: unpack computed values into locals before assigning fields when appropriate. Parallel assignments, swaps, descriptors and unpacking failures can behave differently when split. check --fix splits chained writes of one name or constant, and unpacking of a same-length tuple or list of names and constants into direct fields; other forms are left for a manual edit.",
+        fix="Use one direct instance attribute write per statement. Preserve evaluation timing by unpacking into locals before assigning fields when appropriate. check --fix --unsafe-fixes can split chained writes of a name or constant and same-length tuple or list unpacking into direct fields. Review the change: splitting can repeat a name lookup or write a field before a later value is evaluated.",
         canonical="Assign one instance attribute per statement",
         config=("rules", "style.overrides"),
     )
@@ -123,11 +123,10 @@ class BundledInstanceAssignment(Rule):
 
 
 def _fix(source: SourceText, assignment: ast.Assign, receiver: str) -> Fix | None:
-    """Write one field per statement where splitting keeps the evaluation order.
+    """Propose one assignment per field for simple values and direct targets.
 
-    Safe for chained writes of one simple value and for unpacking a display of
-    names and constants into direct fields: no write can change what a later
-    value reads, and the writes keep their left-to-right order.
+    Splitting can repeat a lookup in a chain or start writing before all the
+    unpacked values have been evaluated.
     """
     pairs = _pairs(assignment, receiver)
     if pairs is None or not source.stands_alone(assignment):
@@ -139,7 +138,7 @@ def _fix(source: SourceText, assignment: ast.Assign, receiver: str) -> Fix | Non
         f"{source.segment(target)} = {source.segment(value)}" for target, value in pairs
     ]
     return Fix(
-        Applicability.SAFE,
+        Applicability.UNSAFE,
         "Assign each instance attribute in its own statement",
         (source.replace(assignment, f"\n{indentation}".join(lines)),),
     )
@@ -148,7 +147,7 @@ def _fix(source: SourceText, assignment: ast.Assign, receiver: str) -> Fix | Non
 def _pairs(
     assignment: ast.Assign, receiver: str
 ) -> list[tuple[ast.expr, ast.expr]] | None:
-    """The (field, value) writes in order, or None when splitting could differ."""
+    """The (field, value) writes in order for supported assignment shapes."""
     value = assignment.value
     if len(assignment.targets) > 1:
         if not _simple(value) or not all(
@@ -177,5 +176,4 @@ def _field(target: ast.expr, receiver: str) -> bool:
 
 
 def _simple(value: ast.expr) -> bool:
-    """A value that no attribute write can change: a name or a constant."""
     return isinstance(value, ast.Name | ast.Constant)

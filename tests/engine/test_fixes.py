@@ -620,6 +620,25 @@ def test_diff_shows_suggestions_only_when_asked(tmp_path: Path) -> None:
     assert (root / "app/service.py").read_text() == source
 
 
+def test_assignment_fix_requires_opt_in_to_partial_writes(tmp_path: Path) -> None:
+    source = """class Inbox:
+    def populate(self):
+        try:
+            self.first, self.second = 1, missing
+        except NameError:
+            pass
+"""
+    root = _project(tmp_path, source=source, config=_EXAMPLES["IDM001"].config)
+    options = CheckOptions(select=("IDM001",))
+    outcome = check(root, options)
+
+    assert _fix(root, options, outcome=outcome).applied == 0
+    assert (root / "app/service.py").read_text() == source
+    assert fix_diff(outcome) == ""
+    assert "+            self.first = 1\n" in fix_diff(outcome, unsafe=True)
+    assert _fix(root, options, unsafe=True).applied == 1
+
+
 @pytest.mark.parametrize(
     ("code", "source"),
     [
