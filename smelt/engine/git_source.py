@@ -5,7 +5,6 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import os
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -144,13 +143,8 @@ class GitSourceStore(SourceStore):
             return None
         oid = identity.removeprefix("git:")
         if oid not in self._digests:
-            build = partial(self._text_digest, path)
             try:
-                self._digests[oid] = (
-                    build()
-                    if self.cache is None
-                    else self.cache.get("text-digest", oid, _DIGEST, build=build)
-                )
+                self._digests[oid] = self._cached_digest(path, oid)
             except UnicodeError:
                 # Reading the source reports the error; the ID only has to be stable.
                 self._digests[oid] = identity
@@ -185,6 +179,17 @@ class GitSourceStore(SourceStore):
         if oid not in self._contents:
             self.prefetch([path])
         return self._contents[oid]
+
+    def _cached_digest(self, path: Path, oid: str) -> str:
+        if self.cache is None:
+            return self._text_digest(path)
+        # Computed outside the analysis layer, so it is keyed like a decision.
+        key = self.cache.decision_key("text-digest", oid)
+        digest = self.cache.read(key, _DIGEST)
+        if digest is None:
+            digest = self._text_digest(path)
+            self.cache.write(key, digest, _DIGEST)
+        return digest
 
     def _text_digest(self, path: Path) -> str:
         text = self.read_text(path, encoding="utf-8-sig")
