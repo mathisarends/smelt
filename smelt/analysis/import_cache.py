@@ -21,16 +21,12 @@ _IMPORTS = TypeAdapter(list[DirectImport])
 
 
 def resolution_identity(files: FileIndex) -> str:
-    inventory = files.store.inventory()
+    """The same walk for disk and Git views, so both reuse each other's scans."""
     paths = (
-        inventory
-        if inventory is not None
-        else (
-            path
-            for roots in files.package_roots.values()
-            for root in roots
-            for path in files.python_files(root)
-        )
+        path
+        for roots in files.package_roots.values()
+        for root in roots
+        for path in files.python_files(root)
     )
     inputs = [
         sorted(files.relative(path) for path in paths if path.suffix == ".py"),
