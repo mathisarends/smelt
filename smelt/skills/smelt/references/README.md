@@ -1,46 +1,86 @@
 # smelt
 
-**A linter for Python architecture boundaries and code smells.**
+**Turn recurring review comments into checks your coding agents run themselves.**
 
-If the same feedback keeps coming up in code review, make it a rule. Smelt puts
-those decisions in `smelt.yml`, where coding agents can read them, check their
-changes and fix findings before opening a PR. Commit hooks and CI enforce the
-same policy.
+Coding agents write code that passes the tests and the type checker and still
+erodes the structure your team agreed on. An application service imports the
+database. A test lands where nobody will look for it. A helper becomes public
+API by accident. `limit or 100` quietly throws away a valid `0`. Reviewers write
+the same comment for the tenth time, and the next agent session repeats the
+mistake, because the decision only lives in someone's head or an old PR thread.
 
-Keep database imports out of application code. Keep package internals behind
-their public API. Catch truthiness fallbacks that discard valid values, or tests
-that wait without a timeout. Choose the checks that match your project from the
-[rule catalog](docs/rules/README.md), or [add a rule](https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md) for a
-recurring pattern.
+Smelt makes those decisions explicit. You write them down once in `smelt.yml`;
+Smelt checks them statically before an agent edits, after every edit, at commit
+time and in CI. Each finding names the rule, explains why it matters and says how
+to fix it, so the agent repairs it before a human reviews the PR.
 
-## Get started
+**Without Smelt:** a review comment, after the PR is open.
 
-Requires Python 3.12+. Install **`smelt-cli`** from PyPI:
+```text
+> Please don't import the SQL repository from the application layer.
+> Depend on a port and wire the repository in bootstrap.py.
+```
+
+**With Smelt:** a finding, before the commit exists.
+
+```text
+src/shop/application/checkout.py:2:42  ARC001 architecture/layer-boundary  [error]
+  application must not depend on infrastructure
+    from shop.infrastructure.database import SqlOrderRepository
+                                             ^^^^^^^^^^^^^^^^^^
+  Allowed: application → domain
+  Hint: Move what application needs into a layer it may depend on (domain), or invert
+        the dependency behind an abstraction.
+```
+
+## Why Smelt?
+
+- **Your policy, written down.** Rules only run when `smelt.yml` names them, so
+  the file is the complete, reviewable list of your conventions. New rules in a
+  Smelt release stay off until you name them.
+- **Architecture first.** Layers, features, shared code, composition roots,
+  third-party dependencies and tests that mirror the source tree are first-class
+  policy, not regex lints.
+- **Built for agent loops.** `smelt context` tells an agent what applies *before*
+  it writes a file; `--changed` and `--staged` checks report only what the edit
+  introduced; a bundled skill gives agents the full reference offline.
+- **Adoptable today.** A debt baseline accepts existing findings so a legacy
+  codebase fails only on new violations.
+- **Fast enough to run between edits.** Checks reuse a worker and cache analysis
+  by content; an unchanged staged retry took about 50 ms in the
+  [agent workflow benchmark](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#native-git-retained-worker-state-and-bounded-failure-handling).
+
+## Installation
 
 ```bash
 uv tool install smelt-cli
-smelt init --maintainability
 ```
+
+Requires Python 3.12+. The command is `smelt`; release wheels include the native
+client.
 
 Upgrading to 0.15.0? Follow the [upgrade guide](docs/upgrading.md#014-to-015)
 for configuration changes, inline suppressions and hook pins.
 
-Review the generated `smelt.yml`: it proposes a starting policy from your layout
-and selects source and test checks. You decide which conventions to adopt.
-Small libraries can use individual rules without declaring layers or features.
+## Quick start
 
-## Turn review feedback into policy
+For a project with `src/shop/{domain,application,infrastructure}` and `tests/`:
 
-For a project with `src/app/` and `tests/`, this policy encodes two recurring
-review comments: application code must not depend on infrastructure, and optional
-defaults should distinguish `None` from valid falsy values.
+```bash
+smelt init     # infer layers from your layout and write smelt.yml
+smelt check    # check the project against it
+```
+
+`smelt init` proposes a starting policy. Review it: you decide which conventions
+to adopt. This one encodes three review comments: application code must not
+depend on infrastructure, `None` defaults must not swallow valid falsy values,
+and tests mirror the source tree.
 
 ```yaml
 # smelt.yml
 version: 2
 
 project:
-  root_packages: [app]
   source_roots: [src]
   test_roots: [tests]
 
@@ -50,62 +90,46 @@ architecture:
     application: {path: application, may_depend_on: [domain]}
     infrastructure: {path: infrastructure, may_depend_on: [domain, application]}
 
+tests:
+  layout: mirror
+
 rules:
-  visibility/internal-public-member: warning
-  visibility/internal-public-module-symbol: warning
-  visibility/internal-public-attribute: warning
-  visibility/test-only-public-function: warning
-  visibility/test-only-public-attribute: warning
+  architecture/layer-boundary: error
   typing/implicit-optional-default: warning
-  tests/unbounded-wait: warning
+  tests/misplaced-test: error
 ```
 
-Smelt catches an import that crosses the declared boundary:
-
-```python
-# src/app/application/orders.py
-from app.infrastructure.database import SqlOrderRepository  # ARC001
+```text
+src/shop/application/checkout.py:2:42  ARC001 architecture/layer-boundary  [error]
+src/shop/application/checkout.py:10:12  TYP003 typing/implicit-optional-default  [warning]
+tests/test_checkout.py  TST001 tests/misplaced-test  [error]
+✗ 2 errors · 1 warning · 0 hints · 7 modules
 ```
 
-Application code should depend on an interface in an allowed layer; wire the
-concrete repository in your composition root. Smelt also flags this fallback:
+Each finding also shows the offending code, the evidence and a repair hint, as
+in the example above.
 
-```python
-def page_size(limit: int | None = None) -> int:
-    return limit or 100  # TYP003: also replaces an explicit 0
-```
+Fix the code, record a deliberate exception with a reason, or accept today's
+findings as debt and fail only on new ones.
 
-If only `None` means "not supplied", use
-`limit if limit is not None else 100`. If treating zero as missing is deliberate,
-keep it with a reasoned exception.
+## Core commands at a glance
 
-```bash
-smelt check --show-hints --fail-on warning
-smelt explain ARC001  # why it fired and how to fix it
-```
-
-The same configuration can describe [feature boundaries and third-party dependencies](docs/architecture.md),
-[package APIs and source conventions](docs/structure.md), and
-[test conventions](docs/testing.md). A policy describes what a rule checks;
-the rule runs once `rules` names it. See [rule activation](docs/rule-selection.md).
-
-Use the visibility rules to review unnecessarily public definitions and APIs
-whose only observed users are tests.
-
-Enable individual rules in YAML by their `family/finding` names or codes.
-`on` uses the named rule's catalog severity. Families and `ALL` can
-disable or cap already-active rules in YAML. Use `smelt check --select modeling`
-to explore a family and `smelt rules --unconfigured` to discover rules to review.
-
-In a uv workspace, `project: {workspace: uv}` in the root `smelt.yml` checks
-every member as one project. A member can add its own `smelt.yml` with rule and
-convention exceptions for its files; see
-[uv workspaces](docs/configuration.md#uv-workspaces).
+| You want to… | Command |
+| --- | --- |
+| Draft a policy from your layout | `smelt init` (add `--maintainability` for source and test reviews) |
+| Check the project | `smelt check --fail-on warning` |
+| Check only what you just changed | `smelt check --changed` (`--base origin/main` for a branch) |
+| Check the commit you are about to make | `smelt check --staged --fail-on warning` |
+| See what applies before writing a file | `smelt context src/shop/application/refunds.py --guide` |
+| Understand a finding | `smelt explain ARC001` |
+| Find rules you have not decided on | `smelt rules --unconfigured` |
+| Adopt Smelt in an existing codebase | `smelt debt` |
+| Give agents the offline reference | `smelt skill install` |
 
 ## Catch it at commit time
 
 Smelt uses the pre-commit hook format. With [prek](https://prek.j178.dev/installation/),
-add this to `.pre-commit-config.yaml`:
+add this to `.pre-commit-config.yaml` and run `prek install`:
 
 ```yaml
 repos:
@@ -121,79 +145,33 @@ repos:
         require_serial: true
 ```
 
-```bash
-prek install
-```
+The hook checks the Git index, including partial staging, deletions and policy
+changes, and blocks new warnings and errors. Run `smelt check --fail-on warning`
+in CI for the full project. See [integrations](docs/integrations.md) for GitHub
+Actions and other installation options.
 
-The hook installs a pinned wheel in its own environment and checks the Git index,
-including partial staging, deletions and policy changes. New warnings and errors
-block the commit. The agent gets a finding, fixes it, stages the change and retries.
-Existing pre-commit setups can use the same configuration.
+## Documentation
 
-Use `smelt check --fail-on warning` in CI for the full project check. See
-[integrations](docs/integrations.md) for GitHub Actions, source hooks and other
-installation options. `prek run --all-files` runs the hook too, but the staged
-hook still checks the index; use `smelt check` to review the working tree.
+The docs are a learning path: each level builds on the previous one.
 
-## Give agents a short feedback loop
+| Level | Guide | You learn |
+| --- | --- | --- |
+| 1 | [First check](https://github.com/mathisarends/smelt/blob/main/docs/01-first-check.md) | Install, `init`, reading findings, fixing or suppressing them |
+| 2 | [Architecture boundaries](https://github.com/mathisarends/smelt/blob/main/docs/02-architecture-boundaries.md) | Layers, features, shared code, composition roots, third-party imports |
+| 3 | [Tests that mirror the source](https://github.com/mathisarends/smelt/blob/main/docs/03-test-layout.md) | Mirrored test layout and opt-in test quality checks |
+| 4 | [The agent loop](https://github.com/mathisarends/smelt/blob/main/docs/04-agent-loop.md) | `context`, changed and staged checks, the skill, hooks and CI |
+| 5 | [Existing codebases](https://github.com/mathisarends/smelt/blob/main/docs/05-existing-codebases.md) | Grouped findings, debt baselines, strict policy coverage |
+| 6 | [Scaling the policy](https://github.com/mathisarends/smelt/blob/main/docs/06-scaling-the-policy.md) | Package APIs, transitive imports, shared configs, uv workspaces |
 
-Install the official Smelt skill in your project:
+The [documentation index](https://github.com/mathisarends/smelt/blob/main/docs/README.md) lists the reference guides behind
+each level: [configuration](docs/configuration.md), [rule activation](docs/rule-selection.md),
+the [rule catalog](docs/rules/README.md) and the [CLI and reports](docs/cli.md).
+See also the [upgrade guide](docs/upgrading.md), the [changelog](CHANGELOG.md)
+and [contributing](https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md).
 
-```bash
-smelt skill install
-```
+## Scope and limits
 
-Each `smelt-cli` release bundles the skill with its complete offline rule,
-configuration and command reference. It installs in `.agents/skills/smelt`;
-use `--destination <skill-directory>` for another location. After upgrading
-Smelt, run `smelt skill install --force` to replace the previous skill and remove
-obsolete references. Replacement includes local edits, so keep project-specific
-instructions in `AGENTS.md` or `CLAUDE.md`. Installation works before `smelt init`
-and leaves project policy unchanged. See [CLI and reports](docs/cli.md#agent-skill).
-
-Add this to your `AGENTS.md` or `CLAUDE.md`:
-
-```md
-Before editing, run `smelt context <feature-or-path>` to read the applicable policy
-and `smelt context <path> --guide` for the instructions to write the file by.
-After editing, run `smelt check --changed --format concise` and address new findings.
-Use `smelt explain <code>` for the rule's intent and repair advice.
-Run focused tests, stage your changes, then run `prek run --all-files`.
-Inspect and stage any hook fixes, and rerun until the checks pass.
-Do not disable rules or record debt just to pass a check.
-```
-
-Findings include locations, evidence and repair advice. Changed checks compare
-with `HEAD` by default; use `--changed --base origin/main` to review a branch.
-For an existing codebase, [debt baselines](docs/adoption.md) let you adopt a policy
-without requiring every old finding to be fixed in the first PR.
-
-### Fast enough to run between edits
-
-Local checks reuse a worker and cache analysis by content. Staged checks read Git
-objects directly, including partially staged files, and reuse unchanged results.
-An edit still checks its effects on other modules.
-
-One documented benchmark used 250 modules with 12 methods each on Windows 11 /
-Python 3.14. Warm medians, including process startup:
-
-| Check | Unchanged retry | After a Python edit |
-| --- | ---: | ---: |
-| Staged CLI, transitive imports + member checks | 49 ms | 380 ms |
-| Complete prek hook, member checks | 227 ms | 612 ms |
-
-These are measured examples, not a latency guarantee. The first cache build took
-about 2.6–3.9 seconds in that run; installation and other hooks are excluded.
-See the [setup, raw samples and reproduction commands](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#native-git-retained-worker-state-and-bounded-failure-handling)
-for the exact policies and timings.
-
-## Learn more
-
-- [Configuration](docs/configuration.md) and [rule catalog](docs/rules/README.md)
-- [Upgrading](docs/upgrading.md) and [changelog](CHANGELOG.md)
-- [Documentation index](https://github.com/mathisarends/smelt/blob/main/docs/README.md) and [contributing](https://github.com/mathisarends/smelt/blob/main/CONTRIBUTING.md)
-
-Smelt analyzes Python source statically. Use it alongside tests, a type checker
-and Ruff; advisory findings still need review. See [scope and limits](https://github.com/mathisarends/smelt/blob/main/docs/vision.md).
-Run Smelt with a Python version that can parse your code. Release wheels include
-the native client; building from source requires Rust 1.88+ and a platform linker.
+Smelt analyzes Python source statically and never executes your code. Use it
+alongside tests, a type checker and Ruff; advisory findings still need review.
+See [scope and limits](https://github.com/mathisarends/smelt/blob/main/docs/vision.md). Run Smelt with a Python version that can
+parse your code. Building from source requires Rust 1.88+ and a platform linker.

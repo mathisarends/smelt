@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- The README states the problem Smelt solves and what it promises, and the
+  documentation starts with a six-level learning path, from a
+  [first check](https://github.com/mathisarends/smelt/blob/main/docs/01-first-check.md) to
+  [scaling the policy](https://github.com/mathisarends/smelt/blob/main/docs/06-scaling-the-policy.md) across uv workspaces. The
+  existing guides remain as reference material behind the
+  [documentation index](https://github.com/mathisarends/smelt/blob/main/docs/README.md).
 - More rules carry machine-readable fixes for `check --fix` and `check --diff`.
   Safe, applied by `--fix`: [MET001](docs/rules/MET001.md) removes unused
   suppressions or identifiers and replaces retired rule names,
