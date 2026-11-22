@@ -31,10 +31,11 @@ class _RuleDecision(TypedDict):
 
 @dataclass(frozen=True, slots=True)
 class _SourceDecisions:
-    """The cached entry of one source and the rules that must decide again."""
+    """One source's reusable decisions and the rules that must decide again."""
 
     source: SourceFile
-    key: str
+    exact: str
+    latest: str
     decisions: dict[str, _RuleDecision]
     stale: list[RuleContract]
 
@@ -72,10 +73,12 @@ def rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violatio
 def file_findings(
     rules: list[RuleContract], ctx: AnalysisContext
 ) -> dict[str, list[Violation]]:
-    """Store one entry per source with each selected file-local rule's decision.
+    """Store each source's decisions of the selected file-local rules.
 
-    A decision carries the identity of the implementation that made it, so an
-    edited rule decides again while the other rules' decisions are reused.
+    One entry holds the decisions of one state of all those rules, so another
+    checkout or a reverted edit finds its own entry again. When that entry is
+    missing, the source's latest entry supplies every decision whose rule
+    implementation is unchanged, and only the edited rules decide again.
     """
     cache = ctx.cache
     if cache is None or not rules:
@@ -84,28 +87,33 @@ def file_findings(
     identities = {rule.code: implementation_identity(rule, cache) for rule in rules}
     policy = _digest([list(by_rule), ctx.config.model_dump(mode="json")])
     host = analyzer_identity(IdentityScope.RULE_HOST)
+    state = _digest([host, sorted(identities.items())])
     entries: list[_SourceDecisions] = []
     for source in ctx.files.sources.values():
-        key = cache.decision_key(
-            "file-rule-decisions",
-            [
-                policy,
-                source.module,
-                source.path,
-                source.is_package,
-                ctx.files.content_id(source.path),
-                ctx.python_targets.for_path(source.absolute).to_json(),
-            ],
-            identity=host,
-        )
-        decisions = cache.read(key, _FILE_DECISIONS) or {}
-        stale = [
-            rule
-            for rule in rules
-            if rule.code not in decisions
-            or decisions[rule.code]["identity"] != identities[rule.code]
+        inputs = [
+            policy,
+            source.module,
+            source.path,
+            source.is_package,
+            ctx.files.content_id(source.path),
+            ctx.python_targets.for_path(source.absolute).to_json(),
         ]
-        entries.append(_SourceDecisions(source, key, decisions, stale))
+        exact = cache.decision_key("file-decisions", inputs, identity=state)
+        latest = cache.decision_key("latest-file-decisions", inputs, identity=host)
+        decisions = cache.read(exact, _FILE_DECISIONS)
+        stale: list[RuleContract] = []
+        if decisions is None:
+            decisions = cache.read(latest, _FILE_DECISIONS) or {}
+            stale = [
+                rule
+                for rule in rules
+                if rule.code not in decisions
+                or decisions[rule.code]["identity"] != identities[rule.code]
+            ]
+            # The reused decisions become this state's entry even if none is stale.
+            if not stale:
+                cache.write(exact, decisions, _FILE_DECISIONS)
+        entries.append(_SourceDecisions(source, exact, latest, decisions, stale))
     ctx.store.prefetch(entry.source.absolute for entry in entries if entry.stale)
     for entry in entries:
         decisions = entry.decisions
@@ -116,7 +124,9 @@ def file_findings(
                     "identity": identities[rule.code],
                     "findings": list(rule.check(view)),
                 }
-            cache.write(entry.key, decisions, _FILE_DECISIONS)
+            decisions = {code: decisions[code] for code in by_rule}
+            for key in (entry.exact, entry.latest):
+                cache.write(key, decisions, _FILE_DECISIONS)
         for rule in rules:
             for finding in decisions[rule.code]["findings"]:
                 by_rule[finding.code].append(finding)

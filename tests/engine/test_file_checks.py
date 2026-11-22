@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from smelt.analysis.cache import FactCache
+    from smelt.analysis.context import AnalysisContext
     from smelt.analysis.members import (
         Member,
         MemberState,
@@ -330,3 +331,43 @@ def test_edited_file_local_rule_decides_again_and_other_rules_reuse_decisions(
     assert render_json(after) == render_json(
         check(tmp_path, CheckOptions(use_cache=False)).report
     )
+
+
+def test_reverted_rule_edit_finds_its_earlier_file_decisions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {idioms/redundant-name-alias: warning}\n",
+            "app/__init__.py": "",
+            "app/a.py": "def run(value):\n    alias = value\n    return alias\n",
+        },
+    )
+    check(tmp_path)
+    (tmp_path / "tests").mkdir()
+
+    def edited(rule: RuleContract, cache: FactCache | None) -> str:
+        return implementation_identity(rule, cache) + "-edited"
+
+    with monkeypatch.context() as edit:
+        edit.setattr("smelt.engine.file_checks.implementation_identity", edited)
+        (tmp_path / "tests/test_edit.py").write_text(
+            "def test_edit():\n    assert True\n"
+        )
+        check(tmp_path)
+    checked: list[str] = []
+    original = RedundantNameAlias.check
+
+    def recorded(self: RedundantNameAlias, ctx: AnalysisContext) -> object:
+        checked.append(self.code)
+        return original(self, ctx)
+
+    monkeypatch.setattr(RedundantNameAlias, "check", recorded)
+    (tmp_path / "tests/test_revert.py").write_text(
+        "def test_revert():\n    assert True\n"
+    )
+
+    check(tmp_path)
+
+    assert checked == []
