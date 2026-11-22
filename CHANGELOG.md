@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Edits recheck private attribute accesses only in modules whose resolution
+  read the edited module. Previously any change to a module's names, such as a
+  new function, resolved the accesses of every module again.
+- Test analysis collects fixtures without analyzing every other function body
+  a second time, which shortens the first check of a project with many tests.
 - `check`, `check --staged` and `check --changed` reuse each other's cached
   facts. Git-backed checks identified a file by its object ID and listed every
   tracked Python file for import resolution, so the first staged or changed
