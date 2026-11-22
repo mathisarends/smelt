@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import tempfile
 from dataclasses import dataclass, field, replace
 from functools import partial
 from pathlib import Path
@@ -39,7 +38,7 @@ from smelt.engine.cache import (
     analysis_inputs,
     installed_inputs,
 )
-from smelt.engine.changes import Comparison, export_base, resolve_comparison
+from smelt.engine.changes import Comparison, resolve_comparison
 from smelt.engine.coverage import effective_coverage
 from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
 from smelt.engine.file_checks import file_findings, rule_findings
@@ -484,36 +483,31 @@ def _introduced(
         baseline = Debt(entries)
         introduced, _, _ = baseline.match(violations, snippet_reader(ctx))
         return introduced, comparison
-    if isinstance(ctx.store, GitSourceStore):
-        if comparison.revision is None:
-            return violations, comparison
-        before_store = GitSourceStore.from_revision(
-            repository, comparison.revision, cache=ctx.cache
-        )
-        if not before_store.is_dir(root):
-            return violations, comparison
-        before_ctx = AnalysisContext(
-            root, ctx.config, cache=ctx.cache, store=before_store
-        )
-        before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
-        known = Debt.from_violations(before, snippet_reader(before_ctx))
-        if cache and key:
-            cache.write(key, known.entries, _BASELINE)
-        introduced, _, _ = known.match(violations, snippet_reader(ctx))
-        return introduced, comparison
-    with tempfile.TemporaryDirectory(prefix="smelt-base-") as tmp:
-        base_root = export_base(root, repository, comparison, dest=Path(tmp))
-        if base_root is None:
-            return violations, comparison
-        before_ctx = AnalysisContext(base_root, ctx.config, cache=ctx.cache)
-        # A committed README (or a newly added workspace package) is an empty
-        # historical inventory, not an analysis failure. Existing source still
-        # goes through normal parsing so corrupt baselines do not pass silently.
-        before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
-        known = Debt.from_violations(before, snippet_reader(before_ctx))
-        if cache and key:
-            cache.write(key, known.entries, _BASELINE)
-        introduced, _, _ = known.match(violations, snippet_reader(ctx))
+    if comparison.revision is None:
+        return violations, comparison
+    # The base is read from Git objects in every mode. Its facts are keyed like
+    # the working tree's, so only sources that differ are analyzed again.
+    before_store = GitSourceStore.from_revision(
+        repository, comparison.revision, cache=ctx.cache
+    )
+    before_root = (
+        root
+        if isinstance(ctx.store, GitSourceStore)
+        else repository / root.resolve().relative_to(repository.resolve())
+    )
+    if not before_store.is_dir(before_root):
+        return violations, comparison
+    before_ctx = AnalysisContext(
+        before_root, ctx.config, cache=ctx.cache, store=before_store
+    )
+    # A committed README (or a newly added workspace package) is an empty
+    # historical inventory, not an analysis failure. Existing source still
+    # goes through normal parsing so corrupt baselines do not pass silently.
+    before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
+    known = Debt.from_violations(before, snippet_reader(before_ctx))
+    if cache and key:
+        cache.write(key, known.entries, _BASELINE)
+    introduced, _, _ = known.match(violations, snippet_reader(ctx))
     return introduced, comparison
 
 

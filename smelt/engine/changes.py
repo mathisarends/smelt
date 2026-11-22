@@ -170,36 +170,6 @@ def resolve_comparison(
     return toplevel, Comparison(base, ref, head)
 
 
-def export_base(
-    root: Path, toplevel: Path, comparison: Comparison, *, dest: Path
-) -> Path | None:
-    ref = comparison.revision
-    if ref is None:
-        return None
-    prefix = root.resolve().relative_to(toplevel.resolve())
-    selected: list[tuple[str, Path]] = []
-    # Read the tree itself: git archive can silently omit export-ignore sources
-    # or substitute export-subst contents. Sibling workspace roots matter too.
-    for record in run_git(toplevel, "ls-tree", "-rz", "--full-tree", ref).split(b"\0"):
-        if not record:
-            continue
-        metadata, raw_path = record.split(b"\t", 1)
-        mode, kind, object_id = metadata.split()
-        path = Path(os.fsdecode(raw_path))
-        if kind != b"blob":
-            continue
-        if mode == b"120000":
-            raise AnalysisError(
-                f"changed/staged snapshots do not support symbolic links: {path}"
-            )
-        target = _snapshot_path(dest, path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        selected.append((object_id.decode("ascii"), target))
-    _copy_blobs(toplevel, selected)
-    project = dest / prefix
-    return project if project.is_dir() else None
-
-
 def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     if not identifiers:
         return {}
@@ -258,11 +228,3 @@ def _snapshot_path(dest: Path, path: Path) -> Path:
     if path.drive or path.is_absolute() or ".." in path.parts:
         raise AnalysisError(f"unsafe path in Git snapshot: {path}")
     return dest / path
-
-
-def _copy_blobs(repository: Path, files: list[tuple[str, Path]]) -> None:
-    if not files:
-        return
-    contents = read_blobs(repository, list(dict.fromkeys(oid for oid, _ in files)))
-    for object_id, path in files:
-        path.write_bytes(contents[object_id])

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from pydantic import TypeAdapter
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.source import SourceStore
@@ -16,6 +19,8 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.engine.changes import GitIndex
+
+_DIGEST = TypeAdapter(str)
 
 
 class GitSourceStore(SourceStore):
@@ -32,6 +37,7 @@ class GitSourceStore(SourceStore):
         self.cache = cache
         self._yaml_paths = yaml_paths
         self._contents: dict[str, bytes] = {}
+        self._digests: dict[str, str] = {}
         self._dependencies: dict[str, str] = {}
         self._children: dict[Path, set[Path]] = {repository: set()}
         self._objects = {repository / path: oid for path, oid in blobs.items()}
@@ -127,6 +133,23 @@ class GitSourceStore(SourceStore):
             self._dependencies[resolved.relative_to(self.repository).as_posix()] = oid
         return f"git:{oid}" if oid is not None else None
 
+    def content_digest(self, path: Path) -> str | None:
+        """Map the object ID to the text digest a disk check uses for the same text.
+
+        The mapping is cached, so a warm check still needs no blob contents.
+        """
+        identity = self.identity(path)
+        if identity is None:
+            return None
+        oid = identity.removeprefix("git:")
+        if oid not in self._digests:
+            try:
+                self._digests[oid] = self._cached_digest(path, oid)
+            except UnicodeError:
+                # Reading the source reports the error; the ID only has to be stable.
+                self._digests[oid] = identity
+        return self._digests[oid]
+
     def dependencies(self) -> dict[str, str]:
         return self._dependencies
 
@@ -156,3 +179,18 @@ class GitSourceStore(SourceStore):
         if oid not in self._contents:
             self.prefetch([path])
         return self._contents[oid]
+
+    def _cached_digest(self, path: Path, oid: str) -> str:
+        if self.cache is None:
+            return self._text_digest(path)
+        # Computed outside the analysis layer, so it is keyed like a decision.
+        key = self.cache.decision_key("text-digest", oid)
+        digest = self.cache.read(key, _DIGEST)
+        if digest is None:
+            digest = self._text_digest(path)
+            self.cache.write(key, digest, _DIGEST)
+        return digest
+
+    def _text_digest(self, path: Path) -> str:
+        text = self.read_text(path, encoding="utf-8-sig")
+        return hashlib.sha256(text.encode()).hexdigest()

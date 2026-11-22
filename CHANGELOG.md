@@ -7,6 +7,14 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `check`, `check --staged` and `check --changed` reuse each other's cached
+  facts. Git-backed checks identified a file by its object ID and listed every
+  tracked Python file for import resolution, so the first staged or changed
+  check after a full check analyzed the unchanged project again. All modes now
+  identify a file by its decoded text and the same package inventory.
+- `check --changed` reads its base revision from Git objects instead of
+  exporting the whole repository to a temporary directory, so the base reuses
+  the facts of unchanged files as well.
 - `.smelt_cache/` takes far less disk space. Cached facts are stored compressed,
   about a quarter of their former size, and at most seven caches of other Smelt
   versions are kept besides the current one. Previously an editable checkout

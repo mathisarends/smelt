@@ -176,7 +176,8 @@ class FileIndex:
 
     def content_id(self, path: str) -> str:
         if path not in self._content_ids:
-            self._content_ids[path] = self.store.identity(
+            # One ID per text, so disk, index and revision views share their facts.
+            self._content_ids[path] = self.store.content_digest(
                 self.root / path
             ) or self.sha256(path)
         return self._content_ids[path]

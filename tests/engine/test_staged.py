@@ -697,7 +697,8 @@ def test_staged_analyses_do_not_materialize_sources(
     def unexpected(*args: Any, **kwargs: Any) -> None:
         pytest.fail("staged analysis must not create a temporary source tree")
 
-    monkeypatch.setattr("smelt.engine.check.tempfile.TemporaryDirectory", unexpected)
+    monkeypatch.setattr("tempfile.TemporaryDirectory", unexpected)
+    monkeypatch.setattr("tempfile.mkdtemp", unexpected)
     (repo / "app/consumer.py").write_text("")
     _git(repo, "add", "app/consumer.py")
     code, report = _check(repo, capsys, "--no-cache")
