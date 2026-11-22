@@ -1,55 +1,26 @@
 # Level 6: Scaling the policy
 
-The earlier levels described one project with layers, features and tests. This
-guide covers what larger codebases need: package APIs that hide internals,
-indirect dependencies, shared source conventions, policy shared between
-projects and uv workspaces with several members.
+Grow the style guide beyond one project: package APIs, indirect imports, code
+conventions and shared configuration.
 
 ## Package APIs
-
-Layers say which parts may import each other. A package API says *through
-which modules*. Declare the public entry points of a package, and callers
-outside it may import only those:
 
 ```yaml
 architecture:
   packages:
     feature-shape:
-      match: app.features.*          # one package segment
+      match: app.features.*
       required: [application.api, domain]
       public: [application.api]
-    toolkit:
-      match: toolkit
-      public: ['.']                  # only the package facade
 
 rules:
-  architecture/non-public-module-import: error   # ARC007
-  architecture/missing-required-module: error    # ARC014
+  architecture/non-public-module-import: error   # ARC007: import only public entry points
+  architecture/missing-required-module: error    # ARC014: every feature has the same shape
 ```
 
-```python
-# app/client.py
-from app.orders.storage import OrderStore   # ARC007: private module of a contracted package
-from app.orders.api import place_order      # fine: a public entry point
-```
+See [package APIs](structure.md).
 
-ARC014 reports features that lack a required module, so every feature keeps the
-same shape. Tests count as outside callers; `test_access: mirrored` lets the
-mirrored tests of a package import its internals. See
-[package APIs and source conventions](structure.md) for public patterns,
-bundling thresholds and facade exports.
-
-## Indirect dependencies
-
-By default, boundary rules check each module's own imports. A helper can hide a
-forbidden dependency one hop away:
-
-```text
-app.domain.model → app.shared.utils → sqlalchemy
-```
-
-Turn on transitive checking to apply every layer, feature and third-party policy
-to all reachable modules:
+## Indirect imports
 
 ```yaml
 architecture:
@@ -57,114 +28,61 @@ architecture:
     transitive: true
 ```
 
-Findings point at the originating import and include the shortest chain. This
-is a module-graph check: importing one name from a facade makes all of that
-facade's imports reachable, so expect to narrow facades or widen
-`may_depend_on` when you first enable it. See
-[architecture as code](architecture.md) for the details.
+Now `app.domain.model → app.shared.utils → sqlalchemy` is a finding too, with
+the full chain.
 
-## Source conventions
+## Code conventions
 
-Rules beyond architecture and tests cover modeling, typing, idioms, imports,
-complexity and visibility. Some take options, set once under `style` and
-overridden for matching packages:
+Options live under `style` and can differ per package:
 
 ```yaml
 style:
   dataclass_options: [slots]
   overrides:
-    legacy:
-      match: app.legacy
-      dataclass_options: []
+    legacy: {match: app.legacy, dataclass_options: []}
 
 rules:
   modeling/missing-dataclass-option: warning
   complexity/excess-positional-parameters: {severity: warning, max: 3}
 ```
 
-Options configure rules but never enable them; an option without its rule is a
-configuration warning. Browse the [rule catalog](rules/README.md) or run
-`smelt rules --unconfigured` for candidates, and see
-[project-wide options](structure.md#project-wide-options-and-package-overrides)
-for every option and its default.
+Browse the [rule catalog](rules/README.md) for typing, idioms, imports,
+visibility and modeling rules.
 
-## Exceptions for a part of the codebase
-
-Silence a rule for whole paths with a reason, instead of one comment per line:
+## Path exceptions
 
 ```yaml
 ignore:
-  - rule: tests/excess-patches
-    paths: ["tests/legacy/**"]
-    reason: Migrating the legacy test suite.
+  - {rule: tests/excess-patches, paths: ["tests/legacy/**"], reason: Migrating.}
 ```
 
-## Shared policy across projects
-
-Independent projects in one repository can share explicit policy through a
-local `extends` file:
-
-```yaml
-# smelt.base.yml
-version: 2
-rules:
-  architecture/import-cycle: error
-  tests/unbounded-wait: warning
-```
+## Shared policy
 
 ```yaml
 # runtime/smelt.yml
 extends: ../smelt.base.yml
-project:
-  source_roots: [src]
-  test_roots: [tests]
-rules:
-  tests/unbounded-wait: error   # a later named setting replaces the base
 ```
 
-Mappings merge, lists replace, and each file is its own rules layer. Use
-`smelt config show --sources` to see where every effective value came from. See
-[shared local policy](configuration.md#shared-local-policy).
+Mappings merge, lists replace. `smelt config show --sources` shows where each
+value came from. See [shared local policy](configuration.md#shared-local-policy).
 
 ## uv workspaces
 
-A uv workspace is checked as one project with one import graph. The root config
-declares the workspace, shared rules and member boundaries:
-
 ```yaml
 # smelt.yml at the workspace root
-version: 2
-project:
-  workspace: uv
-  test_roots: [tests]
+project: {workspace: uv}
 architecture:
   members:
     "services/*": {may_depend_on: ["packages/*"]}
     "packages/*": {may_depend_on: []}
 rules:
   architecture/member-boundary: error   # ARC009
-  tests/missing-outcome-check: warning
 ```
 
-Each member can keep its own architecture and reasoned exceptions in its own
-`smelt.yml`. Lowering an inherited severity needs a reason:
+Members can add their own `smelt.yml`; lowering an inherited severity needs a
+reason. See [uv workspaces](configuration.md#uv-workspaces).
 
-```yaml
-# packages/legacy/smelt.yml
-rules:
-  complexity: {severity: off, reason: Migrating the legacy service.}
-```
+## Reference
 
-`smelt init` drafts the root and every member; `smelt debt` keeps one baseline
-per member. See [uv workspaces](configuration.md#uv-workspaces) and
-[workspace members](rule-selection.md#workspace-members).
-
-## Where to go from here
-
-You now know every layer of a Smelt policy. The reference guides cover each one
-completely:
-
-- [Configuration](configuration.md): every key, inheritance and editor support.
-- [Rule activation](rule-selection.md): selectors, severities and precedence.
-- [CLI and reports](cli.md): every command and the JSON report schema.
-- [Rule catalog](rules/README.md): every rule with its rationale and examples.
+[Configuration](configuration.md) · [Rule activation](rule-selection.md) ·
+[CLI and reports](cli.md) · [Rule catalog](rules/README.md)

@@ -7,7 +7,7 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- The README states the problem Smelt solves and what it promises, and the
+- The README presents Smelt as a programmatically enforced style guide, and the
   documentation starts with a six-level learning path, from a
   [first check](docs/01-first-check.md) to
   [scaling the policy](docs/06-scaling-the-policy.md) across uv workspaces. The
