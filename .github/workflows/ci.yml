@@ -17,6 +17,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # Clippy adds debug artifacts, so lint keeps its own cache.
+      - uses: Swatinem/rust-cache@v2
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -38,6 +40,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+      # The release build of the native client is the same in these jobs.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -68,6 +74,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      # The release build of the native client is the same in these jobs.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -81,6 +91,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      # The release build of the native client is the same in these jobs.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
