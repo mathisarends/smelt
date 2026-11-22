@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
+from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.violation import DOCS_BASE_URL
 from smelt.engine.check import rule_meta
 from smelt.engine.schema import config_json_schema
@@ -139,6 +140,8 @@ def _rule_page(rule: RuleContract) -> str:
         f"- **Category:** {meta.category.value}",
         f"- **Activation:** {meta.activation['mode']} — {meta.activation['description']}",
         f"- **Severity when active:** {meta.default_severity.value}",
+        f"- **Automatic fix:** {_FIX_AVAILABILITY[meta.fix]}",
+        f"- **Guide:** {doc.canonical}",
         "",
         "## Why",
         "",
@@ -164,6 +167,13 @@ def _rule_page(rule: RuleContract) -> str:
         lines += ["", "## Config", "", *(f"- `{key}`" for key in doc.config)]
     lines += ["", f"Explain it in the terminal with `smelt explain {rule.code}`."]
     return "\n".join(lines) + "\n"
+
+
+_FIX_AVAILABILITY = {
+    FixAvailability.ALWAYS: "every finding carries a fix",
+    FixAvailability.SOMETIMES: "some findings carry a fix",
+    FixAvailability.NONE: "none; repair by hand",
+}
 
 
 def _rule_index(rules: list[RuleContract]) -> str:

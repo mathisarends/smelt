@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from smelt.analysis.context import Index
+from smelt.diagnostics.fixes import FixAvailability
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import RuleSet
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
     from smelt.diagnostics.violation import Violation
-    from smelt.rules.base import RuleContract, RuleDoc
+    from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
 _IMPLEMENTATIONS = (
     "smelt.rules.dependencies.layers:LayerBoundary",
@@ -138,6 +139,7 @@ class _LazyRule:
         self.test_local = bool(metadata["test_local"])
         self.member_local = bool(metadata["member_local"])
         self.architecture_scoped = bool(metadata["architecture_scoped"])
+        self.fix_availability = FixAvailability(metadata["fix_availability"])
         self._target = str(metadata["target"])
 
     @cached_property
@@ -149,6 +151,9 @@ class _LazyRule:
 
     def explain(self) -> RuleDoc:
         return self._implementation.explain()
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        return self._implementation.guide(ctx, target)
 
 
 def catalog_metadata() -> list[dict[str, Any]]:
@@ -172,6 +177,9 @@ def catalog_metadata() -> list[dict[str, Any]]:
                 )
             },
             "scope": getattr(rule, "scope", "source"),
+            "fix_availability": getattr(
+                rule, "fix_availability", FixAvailability.NONE
+            ).value,
         }
         for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
     ]

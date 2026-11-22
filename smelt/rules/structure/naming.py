@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import last_segment
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.common import last_segment, readable_list
 from smelt.rules.structure.layout import package_location
 
 if TYPE_CHECKING:
@@ -34,8 +34,21 @@ class ForbiddenPackageName(Rule):
         bad="voice/application/utils.py",
         good="voice/application/durations.py",
         fix="Name the module after what it does, or move each function next to its callers.",
+        canonical=(
+            "Name modules after what they do, never with a forbidden generic name"
+        ),
         config=("style.forbidden_names",),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        del target
+        names = ctx.config.structure.forbidden_names
+        if not names:
+            return None
+        return (
+            f"Never name a module or package {readable_list(names, conjunction='or')}; "
+            "name it after what it does"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         forbidden = set(ctx.config.structure.forbidden_names)
@@ -95,9 +108,16 @@ class ForbiddenPrivateModule(Rule):
             "A more specific package can explicitly allow the convention. "
             "No files or symbols are renamed automatically."
         ),
+        canonical="Name modules and packages without a leading underscore",
         config=("style.private_modules", "style.overrides"),
         example_language="text",
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "private_modules")
+        if contract is None or contract.spec.private_modules != "forbid":
+            return None
+        return self.doc.canonical
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         files = ctx.files
@@ -181,6 +201,9 @@ class ForbiddenBaseClassAffix(Rule):
             "{modeling/forbidden-base-class-affix: error}, globally or in a "
             "style override, or --select MOD002."
         ),
+        canonical=(
+            "Name classes after their responsibility, without a Base prefix or suffix"
+        ),
         config=("rules", "style.overrides"),
     )
 
@@ -243,6 +266,7 @@ class RedundantModuleName(Rule):
             "or --select LAY009. Use a package off override or a reasoned "
             "file suppression for intentional public names."
         ),
+        canonical="Do not repeat the package name in a module file name",
         config=("rules", "style.overrides"),
         example_language="text",
     )

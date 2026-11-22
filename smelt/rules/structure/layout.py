@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind, is_within
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import display_module_path, join, last_segment
 
 if TYPE_CHECKING:
@@ -53,11 +53,18 @@ class UnknownLayer(Rule):
             "Move the code into a declared layer, or assign its package to the "
             "intended layer. Use the layer's modules list for packages outside features."
         ),
+        canonical="Place feature code inside one of the declared layers",
         config=(
             "architecture.layers",
             "architecture.layers.<layer>.modules",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        info = target.info
+        if info is None:
+            return self.doc.canonical if ctx.model.has_features else None
+        return self.doc.canonical if info.feature is not None else None
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model
@@ -167,6 +174,10 @@ class UnclassifiedModule(Rule):
         fix=(
             "Add the package to the intended layer's modules list, list it in "
             "architecture.shared or composition_root, or move it into a feature."
+        ),
+        canonical=(
+            "Place every module in a feature, a layer, the shared set or the "
+            "composition root"
         ),
         config=(
             "architecture.layers.<layer>.modules",

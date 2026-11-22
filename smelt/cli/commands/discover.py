@@ -16,6 +16,7 @@ from smelt.engine.briefing import (
     resolve_target,
 )
 from smelt.engine.check import CheckOptions, relative_scope, run_check
+from smelt.engine.guide import build_guide, render_guide, resolve_guide_target
 from smelt.engine.paths import missing_paths
 
 if TYPE_CHECKING:
@@ -39,10 +40,18 @@ def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
             and ctx.files.path_for_module(raw) is None
         ):
             raw = relative_scope(loaded.root, cwd, raw)
+        resolve = resolve_guide_target if args.guide else resolve_target
         try:
-            target = resolve_target(ctx, raw)
+            target = resolve(ctx, raw)
         except TargetError as exc:
             raise CliError(str(exc), option="target", value=args.target) from exc
+        if args.guide:
+            guide = build_guide(ctx, target, loaded)
+            if args.format == "json":
+                console.print(json.dumps(guide.to_json(), indent=2))
+            else:
+                console.print(render_guide(guide), end="")
+            return EXIT_OK
         try:
             outcome = run_check(loaded, CheckOptions(), context=ctx)
         except (AnalysisError, ConfigError) as exc:

@@ -101,6 +101,10 @@ class ImplicitDurationUnit(Rule):
             "rewrite is performed. Enable rules: {modeling/implicit-duration-unit: "
             "warning}, or select MOD010."
         ),
+        canonical=(
+            "Put the unit in duration names (timeout_seconds) or use "
+            "timedelta; avoid inline numbers"
+        ),
         config=("rules",),
     )
 

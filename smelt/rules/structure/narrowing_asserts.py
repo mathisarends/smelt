@@ -76,6 +76,10 @@ class DuplicateNarrowingAssert(Rule):
             "performed. Enable rules: {idioms/duplicate-narrowing-assert: warning}, or "
             "select IDM007."
         ),
+        canonical=(
+            "Set required attributes at construction instead of asserting "
+            "them in every method"
+        ),
         config=("rules",),
     )
 

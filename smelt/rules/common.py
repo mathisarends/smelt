@@ -7,12 +7,18 @@ from smelt.diagnostics.violation import ImportLink
 from smelt.model import ArchitectureModel, ModuleInfo, ModuleKind, is_within
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from smelt.analysis.context import AnalysisContext
     from smelt.analysis.imports import ImportDetail
     from smelt.diagnostics.violation import Violation
     from smelt.rules.base import Rule
+
+
+def readable_list(items: Iterable[str], *, conjunction: str = "and") -> str:
+    """Join names for prose: ``a``, ``a and b``, ``a, b and c``."""
+    *leading, last = list(items) or [""]
+    return f"{', '.join(leading)} {conjunction} {last}" if leading else last
 
 
 def skip_import(ctx: AnalysisContext, detail: ImportDetail) -> bool:

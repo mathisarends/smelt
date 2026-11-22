@@ -7,7 +7,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.type_dispatch import type_dispatches
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,12 +27,26 @@ class PreferMatchTypeDispatch(Rule):
         bad="if isinstance(event, Started):\n    start(event)\nelif isinstance(event, Delta | Progress):\n    update(event)\nelif isinstance(event, Finished) and event.ok:\n    finish(event)",
         good="match event:\n    case Started():\n        start(event)\n    case Delta() | Progress():\n        update(event)\n    case Finished() if event.ok:\n        finish(event)",
         fix="Review class patterns, guards and subclass ordering. Preserve independent if statements, and keep nested body conditions inside their case: moving them into a case guard can introduce fallthrough. Match evaluates its subject once; custom instance checks, dynamic type expressions and side effects may differ. No automatic rewrite is performed. Declared Python minima before 3.10 are excluded; unknown minima require version review.",
+        canonical=(
+            "Dispatch on the type of one subject with match/case instead of "
+            "an isinstance chain"
+        ),
         config=(
             "style.type_dispatch",
             "style.overrides",
             "project.python_version",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "type_dispatch")
+        policy = contract.spec.type_dispatch if contract else None
+        if policy is None or policy.style != "match":
+            return None
+        return (
+            "Dispatch on one subject's type with match/case once an isinstance chain "
+            f"reaches {policy.min_branches} branches"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

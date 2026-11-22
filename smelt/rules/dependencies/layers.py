@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import (
     boundary_imports,
     import_violation,
     join,
+    readable_list,
     skip_import,
 )
 
@@ -51,6 +52,10 @@ class LayerBoundary(Rule):
             "Depend on an abstraction (a port) owned by the importing layer or an allowed "
             "layer, and wire the concrete implementation in the composition root."
         ),
+        canonical=(
+            "Import only from layers this layer may depend on; reach other "
+            "layers through a port wired in the composition root"
+        ),
         config=(
             "architecture.layers.<layer>.may_depend_on",
             "architecture.layers.<layer>.modules",
@@ -58,6 +63,18 @@ class LayerBoundary(Rule):
             "architecture.import_graph.type_checking",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        layer = target.info.layer if target.info else None
+        if layer is None or layer not in ctx.model.layers:
+            return self.doc.canonical
+        allowed = ctx.model.layers[layer].may_depend_on
+        if not allowed:
+            return f"From layer {layer}, import no other layer"
+        return (
+            f"From layer {layer}, import only {readable_list(allowed, conjunction='or')}; "
+            "reach other layers through a port"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model

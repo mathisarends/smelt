@@ -62,6 +62,9 @@ class InlineConstructorReceiver(Rule):
             "rules: {complexity/inline-constructor-receiver: warning} globally "
             "or in a package override, or select CPX008."
         ),
+        canonical=(
+            "Bind a newly constructed instance to a name before calling methods on it"
+        ),
         config=("rules", "style.overrides"),
     )
 

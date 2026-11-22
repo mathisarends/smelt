@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.member_names import private_name, rename_advice
 
 if TYPE_CHECKING:
@@ -30,6 +30,9 @@ class InternalPublicAttribute(Rule):
         bad="class Readiness:\n    def __init__(self, initial):\n        self.initial = initial\n    def select(self):\n        return self.initial",
         good="class Readiness:\n    def __init__(self, initial):\n        self._initial = initial\n    def select(self):\n        return self._initial",
         fix="Review whether the attribute belongs to the supported API. For internal state, add a leading underscore and update internal reads and writes, including same-module accesses in module mode. Check name collisions and dynamic consumers. If external callers need to read the value and writes should stay local, consider a read-only property backed by a private field. Preserve deliberate public contracts with a reasoned VIS004 suppression on the declaration or a package rule override. Suggested names avoid observed collisions. Smelt leaves renaming to the caller. Enable the rule in rules, select VIS004, or set public_attribute_boundary under style or in a style override.",
+        canonical=(
+            "Make data attributes used only inside their visibility boundary private"
+        ),
         config=(
             "rules",
             "style.public_attribute_boundary",
@@ -37,6 +40,10 @@ class InternalPublicAttribute(Rule):
             "project.test_roots",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        boundary = ctx.contracts.public_attribute_boundary(target.module)
+        return f"Make data attributes used only inside their {boundary} private"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         boundary_for = ctx.contracts.public_attribute_boundary

@@ -7,10 +7,32 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-## [0.15.0] - 2026-11-21
+## [0.15.0] - 2026-11-22
 
 See [upgrading from 0.14](docs/upgrading.md#014-to-015) for hook pins,
-third-party import suggestions and facade suppressions.
+the JSON fix report, third-party import suggestions and facade suppressions.
+
+- `smelt context <target> --guide` prints one instruction per active rule for
+  writing the target, rendered from `smelt.yml`: allowed layer imports, the
+  package's positional-parameter limit, required dataclass options, the
+  re-export and future-import conventions and so on. Source targets also list
+  the rules for their mirrored test file; test paths are accepted as targets.
+  Errors, warnings and hints are listed separately. The guide skips analysis,
+  and `--format json` returns each rule's code, severity and instruction.
+  `smelt explain` and the rule pages show the rule's instruction as `Guide`.
+
+- Findings can carry a machine-readable fix: text edits with an `original` and a
+  `replacement` plus an applicability (`safe`, `unsafe` or `display`). JSON
+  findings include it under `fix`, the concise and text formats mark fixable
+  findings with `[fix]` or `[unsafe fix]` and count them in the summary, and
+  `smelt check --diff` previews the fixes as a unified diff without writing.
+  `smelt rules --format json` and the rule pages state whether a rule's findings
+  carry a fix. [LAY004](docs/rules/LAY004.md) and [TYP003](docs/rules/TYP003.md)
+  now use this model and one shared `--fix` engine.
+  **Migration:** with `--fix`, JSON `fixes` now holds `applied`, `files` and
+  `skipped` (each with `path`, `code`, `line` and `reason`) instead of
+  `fixes.ordering` and `fixes.none_defaults`. A LAY004 finding whose section
+  cannot be rewritten safely reports the reason in `fix_reason` and has no fix.
 
 - [IMP004](docs/rules/IMP004.md) can suggest the public package import of an
   installed dependency, such as `from fastapi import APIRouter` instead of

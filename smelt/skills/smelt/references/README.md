@@ -154,7 +154,8 @@ and leaves project policy unchanged. See [CLI and reports](docs/cli.md#agent-ski
 Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md
-Before editing, run `smelt context <feature-or-path>` to read the applicable policy.
+Before editing, run `smelt context <feature-or-path>` to read the applicable policy
+and `smelt context <path> --guide` for the instructions to write the file by.
 After editing, run `smelt check --changed --format concise` and address new findings.
 Use `smelt explain <code>` for the rule's intent and repair advice.
 Run focused tests, stage your changes, then run `prek run --all-files`.

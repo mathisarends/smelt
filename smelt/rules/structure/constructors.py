@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -73,8 +73,20 @@ class ConstructorLogic(Rule):
             "The limit defaults to 2; 0 forbids any counted decision. Reasoned "
             "suppressions and package off overrides are supported."
         ),
+        canonical=(
+            "Keep constructor decisions within the limit; move normalization "
+            "into a named function"
+        ),
         config=("rules", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        limit, _ = ctx.contracts.threshold(target.module, "max_constructor_decisions")
+        noun = "decision" if limit == 1 else "decisions"
+        return (
+            f"Keep constructors to {limit} {noun}; "
+            "move normalization into a named function or classmethod"
+        )
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():

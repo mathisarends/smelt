@@ -29,6 +29,7 @@ class TestWithoutOutcomeCheck(Rule):
         bad="def test_deactivate():\n    deactivate_user(1)",
         good="def test_deactivate():\n    user = deactivate_user(1)\n    assert user.status == 'inactive'",
         fix="Assert a concrete result or observable state, check the expected exception/warning, or configure a known assertion helper. Use a reasoned exception for deliberate smoke/interaction tests. Do not add a meaningless assertion to silence the finding. helper_review gives call locations and known reasons for missing evidence: imported bodies, unexecuted local coroutines, possible swallowing, or no recognized evidence within one hop. These explain an inference boundary, not proof that a helper contains no assertions.",
+        canonical="Assert a concrete outcome in every test",
         config=(
             "rules",
             "tests.assertion_helpers",
@@ -95,6 +96,10 @@ class TestOnlyChecksPossiblyEmptyData(Rule):
         bad="def test_codegen():\n    for name, content in generate().items():\n        assert committed[name] == content",
         good="def test_codegen():\n    assert generate() == independently_loaded_committed_files()",
         fix="Compare the complete result with an independent expectation, or check expected presence/cardinality before universal checks. Keep intentional empty-result cases explicit; do not add cosmetic assertions.",
+        canonical=(
+            "Check expected presence or the complete result, not only checks "
+            "that pass on empty data"
+        ),
         config=(
             "rules",
             "tests.assertion_helpers",

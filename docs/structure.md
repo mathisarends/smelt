@@ -903,8 +903,9 @@ changed comparisons track inversion identities, so adding a new inversion cannot
 hide behind an existing aggregate finding.
 
 Bounded fixes move source blocks, comments and their leading whitespace together;
-they preserve UTF-8/BOM, newline convention and file permissions. Nested edits
-are rendered together and the resulting AST must equal the approved permutations.
+they preserve UTF-8/BOM, newline convention and file permissions. Each section's
+rewrite must equal its approved permutation. A section nested in another
+reordered section is applied after the next check of the same `--fix` run.
 Use the project's formatter afterwards to normalize spacing. Symlinks, external
 source roots, concurrent edits, formatter/suppression regions, tab indentation,
 runtime introspection and uncertain class/decorator behavior require manual
@@ -914,9 +915,9 @@ reflection or hidden runtime effects equivalent; verify types and behavior.
 
 JSON includes expected/original order, semantic inversions, fixability and reasons.
 `coverage.ordering` identifies the analyzed files and barriers; `context` exposes
-the effective `ordering_policy`, including planned placement. With `--fix`, JSON
-also includes `fixes.ordering` with modified files, section counts and skipped
-reasons. Every other rule keeps its existing behavior; no visibility or module
+the effective `ordering_policy`, including planned placement. A fixable finding
+carries the move as a `safe` fix; `smelt check --diff` previews it. With `--fix`,
+JSON also includes `fixes` with modified files and skipped fixes with reasons. Every other rule keeps its existing behavior; no visibility or module
 rename fixer is implied by this option.
 
 ## Internal public functions, methods and static helpers

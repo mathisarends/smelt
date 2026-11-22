@@ -27,6 +27,10 @@ class TestOnlyPublicFunction(Rule):
         bad="__all__ = ['drag']\nasync def drag_gesture(tab): ...\nasync def drag(tab):\n    await drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag_gesture",
         good="__all__ = ['drag']\nasync def _drag_gesture(tab): ...\nasync def drag(tab):\n    await _drag_gesture(tab)\n# tests/test_mouse.py\nfrom app.mouse import drag",
         fix="If this is an internal helper, add a leading underscore and update internal references. Prefer testing the public behavior that calls it. If direct helper tests are deliberate, keep a reasoned private-access exception; if it is a supported external API, declare it in __all__ or document a reasoned suppression. Review callers before renaming.",
+        canonical=(
+            "Do not make functions public only for tests; test them through "
+            "public behavior"
+        ),
         config=("rules", "tests.quality_exclude"),
     )
 

@@ -53,6 +53,9 @@ class RedundantNameAlias(Rule):
             "a reasoned suppression. No automatic rewrite is performed. Enable "
             "rules: {idioms/redundant-name-alias: hint}, or select IDM004."
         ),
+        canonical=(
+            "Use the original class or function name instead of a module-level alias"
+        ),
         config=("rules",),
     )
 

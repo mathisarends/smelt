@@ -12,6 +12,11 @@
    the packages in `style.third_party_reexports` and enable
    `imports/prefer-package-import`. Run Smelt in the environment that has
    those dependencies installed, including when invoking it from a hook.
+4. If a script reads the JSON report from `smelt check --fix`, replace accesses
+   to `fixes.ordering` and `fixes.none_defaults` with the shared `fixes.applied`
+   count, `fixes.files` list and `fixes.skipped` entries. Each skipped entry
+   has `path`, `code`, `line` and `reason`. Use the finding's `fix_reason`
+   for LAY004 sections that Smelt cannot safely rewrite.
 
 ## 0.13 to 0.14
 

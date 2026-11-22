@@ -378,6 +378,7 @@ class MisplacedTestFile(Rule):
             "the imported modules with their names and mirrored test paths to choose "
             "from, and two imported modules of the test's name stay undecided."
         ),
+        canonical="Put test files where tests.layout expects them",
         config=(
             "tests.layout",
             "tests.mirror",

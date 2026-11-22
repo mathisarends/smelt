@@ -18,7 +18,8 @@ platform linker; release wheels include the compiled client.
 Add this to your `AGENTS.md` or `CLAUDE.md`:
 
 ```md
-Before implementing, run `smelt context <feature-or-path>` to see what applies.
+Before implementing, run `smelt context <feature-or-path>` to see what applies
+and `smelt context <path> --guide` for the instructions to write the file by.
 After editing, run `smelt check --changed --format concise` and fix new findings.
 Use `smelt explain <code>` when unsure, then run focused tests. Stage the intended
 changes and run `smelt check --staged --fail-on warning` and `prek run --all-files`.

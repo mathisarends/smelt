@@ -24,6 +24,7 @@ class SecretSettingsField(Rule):
         bad="from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: str\n    database_password: str | None = None",
         good="from pydantic import SecretStr\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    api_key: SecretStr\n    database_password: SecretStr | None = None",
         fix="Use SecretStr for textual credentials or SecretBytes for binary credentials. Update deliberate plaintext consumers to unwrap explicitly and verify serialization. Keep nonsecret fields unchanged or suppress a misleading field name with a reason. No type annotations or consumers are rewritten automatically. Enable rules: {frameworks/prefer-secret-type: warning}; package overrides can restrict adoption.",
+        canonical="Type secret settings fields as SecretStr or SecretBytes",
         config=("rules", "style.overrides"),
     )
 

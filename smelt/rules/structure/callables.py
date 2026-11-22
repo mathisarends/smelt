@@ -59,6 +59,10 @@ class PreferCallableInstance(Rule):
             "{idioms/prefer-callable-instance: hint}, globally or in a style override, or --select IDM003. "
             "Keep an intentional named API with a package rules override set to off or a reasoned IDM003 suppression."
         ),
+        canonical=(
+            "Prefer an operation-named class with __call__ over a class with "
+            "a single public method"
+        ),
         config=("rules", "style.overrides"),
     )
 

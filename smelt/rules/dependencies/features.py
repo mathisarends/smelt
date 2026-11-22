@@ -6,7 +6,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.model import ModuleKind
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import boundary_imports, import_violation, join, skip_import
 
 if TYPE_CHECKING:
@@ -38,6 +38,9 @@ class CrossFeatureImport(Rule):
             "Go through an allowed relationship, declare an intended one explicitly "
             "(`allow: [{from: orders.application, to: billing.application}]`), move the "
             "shared concept into a `shared` package, or merge the features."
+        ),
+        canonical=(
+            "Import another feature only through an allowed cross-feature relationship"
         ),
         config=(
             "architecture.cross_feature.default",
@@ -130,6 +133,7 @@ class SharedImportsFeature(Rule):
         bad="# gateway/shared/money.py\nfrom gateway.features.billing.domain import Currency",
         good="# gateway/shared/money.py\nclass Currency: ...",
         fix="Move the needed concept into shared, or move the shared code into the feature.",
+        canonical="Keep shared and central modules independent of feature modules",
         config=(
             "architecture.shared",
             "architecture.layers.<layer>.modules",
@@ -137,6 +141,14 @@ class SharedImportsFeature(Rule):
             "architecture.import_graph.type_checking",
         ),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        info = target.info
+        if info is None:
+            return self.doc.canonical if ctx.model.has_features else None
+        if info.kind is ModuleKind.SHARED or info.central:
+            return "Import no feature module from this shared or central module"
+        return None
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         model = ctx.model

@@ -30,7 +30,9 @@ smelt check --statistics --by member  # findings per uv workspace member, hints 
 smelt check --strict-coverage         # enable architecture/uncovered-source for this run
 smelt check --show-coverage --format json  # include the per-file policy inventory
 smelt check --select TYP003 --fix --unsafe-fixes  # use None-only defaults after review
+smelt check --diff                                # preview the safe fixes
 smelt context user                   # what applies to a feature, module or path
+smelt context app/orders/refund.py --guide  # how to write it: one instruction per active rule
 smelt explain ARC001                 # how to enable it, options, status, rationale and examples
 smelt rules                          # full catalog with project status and severity
 smelt debt                           # record today's violations as known debt
@@ -55,15 +57,28 @@ new member scope. Workspace-wide `debt --show --format json` returns one object
 with a `files` map when several baselines are selected; one selected file retains
 the normal version-2 document. Stored paths remain workspace-relative.
 
-Normal checks are read-only. `--fix` applies permitted safe ordering fixes.
-Opt-in [TYP003](rules/TYP003.md) reviews `parameter or fallback` for optional
-parameters with a `None` default. Its rewrite to an explicit `is not None`
-conditional also requires `--unsafe-fixes`: falsy values will be preserved and
-custom truthiness will no longer be called. Use this only after reviewing intent.
-Fixes respect selection, scope, suppressions and accepted debt, then check again.
-JSON reports include `fixes.ordering` and `fixes.none_defaults` with modified
-files, counts and skip reasons. `--unsafe-fixes` alone performs no writes;
-`--staged` cannot be combined with `--fix`.
+Normal checks are read-only. A finding can carry a fix: concrete text edits
+with an applicability. `--fix` applies the `safe` fixes of visible findings,
+`--fix --unsafe-fixes` also applies `unsafe` ones, and `display` fixes are
+suggestions that are never applied. `--diff` prints the same fixes as a unified
+diff without writing and exits `1` when there is one. The concise and text
+formats mark fixable findings with `[fix]` or `[unsafe fix]` and count them in
+the summary; JSON findings include `fix` with `applicability`, `description` and
+`edits` (`line`, `column`, `end_line`, `end_column`, `original`, `replacement`,
+positions as in the finding). An agent can apply an edit as a string
+replacement of `original`. `smelt rules --format json` reports per rule whether
+its findings carry a fix (`fix`: `always`, `sometimes` or `none`).
+
+Fixes respect selection, scope, suppressions and accepted debt. Each fix is
+applied completely or not at all; a fix whose source changed since the check is
+skipped, and the result must parse. A fix that overlaps another one is applied
+after the next check, then Smelt checks again. JSON reports include `fixes` with
+the number of applied fixes, the modified files and skipped fixes with reasons.
+For example, opt-in [TYP003](rules/TYP003.md) rewrites `parameter or fallback`
+to an explicit `is not None` conditional only with `--unsafe-fixes`: falsy
+values will be preserved and custom truthiness will no longer be called. Review
+intent first. `--unsafe-fixes` alone performs no writes; `--staged` cannot be
+combined with `--fix` or `--diff`.
 
 Exit codes: `0` clean, `1` violations at or above `--fail-on`, `2` config or usage error.
 A config entry that points at nothing (a mistyped package, a missing test root) is a
@@ -97,6 +112,17 @@ activation source and any exception reason. For production targets, the text
 view focuses on the source policy. It presents package APIs separately from
 style settings. Use `smelt config show --sources` to trace inheritance and
 review the root and member files together.
+
+`smelt context TARGET --guide` turns the same policy into instructions for
+writing the target, without analyzing the project. Each active rule contributes
+one line, rendered from the options that govern the target: the layers it may
+import, its positional-parameter limit, the required dataclass options and so
+on. Rules whose policy does not reach the target are left out. Errors, warnings
+and hints are listed separately; hints are review prompts that apply only where
+their case occurs. A source target also lists the rules for its mirrored test
+file, and a test path lists only test rules. `--format json` returns `target`,
+`layer`, `test_path` and `rules`, each with `code`, `rule`, `family`,
+`severity`, `applies_to` (`source` or `tests`) and `instruction`.
 With `--format json`, an exit `2` prints a JSON document as well, so an agent needs no
 text parser: `{"schema_version": 2, "status": "error", "error": {...}}` with `kind`
 (`usage`, `config` or `analysis`), `message`, the rejected `input` (`option`, `value`)

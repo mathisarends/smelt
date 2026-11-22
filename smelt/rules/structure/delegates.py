@@ -62,6 +62,9 @@ class RedundantPrivateDelegate(Rule):
             "performed. Enable rules: {visibility/redundant-private-delegate: hint}, or "
             "select VIS006."
         ),
+        canonical=(
+            "Do not wrap a private method in a public method that only forwards to it"
+        ),
         config=("rules",),
     )
 

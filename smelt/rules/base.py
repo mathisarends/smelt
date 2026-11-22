@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
+from smelt.diagnostics.fixes import Fix, FixAvailability
 from smelt.diagnostics.violation import (
     Category,
     ImportLink,
@@ -13,8 +14,10 @@ from smelt.diagnostics.violation import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from pathlib import Path
 
     from smelt.analysis.context import AnalysisContext, Index
+    from smelt.model import ModuleInfo
     from smelt.rules.activation import PolicyActivation
 
 
@@ -25,8 +28,23 @@ class RuleDoc:
     bad: str
     good: str
     fix: str
+    canonical: str
+    """One imperative instruction for writing conforming code, shown by
+    ``smelt context --guide``. Rules with options render it from their policy."""
     config: tuple[str, ...] = ()
     example_language: str = "python"
+
+
+@dataclass(frozen=True, slots=True)
+class GuideTarget:
+    """The module a guide is written for; ``module`` is empty for the project."""
+
+    module: str
+    path: str | None = None
+    info: ModuleInfo | None = None
+
+    def absolute(self, root: Path) -> Path | None:
+        return root / self.path if self.path else None
 
 
 @runtime_checkable
@@ -45,6 +63,9 @@ class RuleContract(Protocol):
     def explain(self) -> RuleDoc:
         """Return the documentation shown by `smelt explain` and the rule pages."""
 
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        """Return the instruction for writing ``target``; None when nothing applies."""
+
 
 class Rule:
     """A diagnostic rule with shared metadata and violation construction."""
@@ -62,6 +83,8 @@ class Rule:
     production_only: ClassVar[bool] = False
     test_local: ClassVar[bool] = False
     member_local: ClassVar[bool] = False
+    fix_availability: ClassVar[FixAvailability] = FixAvailability.NONE
+    """Whether findings carry a machine-readable Fix; published in the catalog."""
     architecture_scoped: ClassVar[bool] = False
     """Reads architecture policy beyond module classification, so a workspace
     with member architectures runs it once per architecture."""
@@ -72,6 +95,11 @@ class Rule:
 
     def explain(self) -> RuleDoc:
         return self.doc
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        """The static instruction; rules whose options change it override this."""
+        del ctx, target
+        return self.doc.canonical
 
     def violation(  # noqa: PLR0913 - mirrors the Violation fields
         self,
@@ -90,6 +118,7 @@ class Rule:
         expected: Mapping[str, Any] | None = None,
         hint: str | None = None,
         edge: str | None = None,
+        fix: Fix | None = None,
     ) -> Violation:
         return Violation(
             code=self.code,
@@ -111,6 +140,7 @@ class Rule:
             edge=edge,
             docs_url=docs_url(self.code),
             category=self.category,
+            fix=fix,
         )
 
 

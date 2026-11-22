@@ -10,7 +10,7 @@ from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import is_stdlib
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
-from smelt.rules.base import Rule, RuleDoc
+from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -61,8 +61,18 @@ class MissingDataclassOption(Rule):
             "style: {dataclass_options: [frozen, slots]}, or for one package "
             "with the same option in a style override."
         ),
+        canonical="Set the dataclass options the package requires",
         config=("style.dataclass_options", "style.overrides"),
     )
+
+    def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
+        contract = ctx.contracts.policy_for(target.module, "dataclass_options")
+        if contract is None or not contract.spec.dataclass_options:
+            return None
+        options = ", ".join(
+            f"{option}=True" for option in contract.spec.dataclass_options
+        )
+        return f"Declare dataclasses as @dataclass({options})"
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         roots = frozenset(ctx.config.project.root_packages)

@@ -37,6 +37,7 @@ class UnusedSuppression(_EngineRule):
         bad="import os  # smelt: ignore[architecture/layer-boundary] -- legacy",
         good="import os",
         fix="Remove the comment, or the unused codes from it.",
+        canonical="Remove suppressions that no longer match a finding",
         config=("suppressions.require_reason",),
     )
 
@@ -54,6 +55,7 @@ class SuppressionWithoutReason(_EngineRule):
         bad="from app.infra import Db  # smelt: ignore[ARC001]",
         good="from app.infra import Db  # smelt: ignore[ARC001] -- migration tracked in #123",
         fix="Append ` -- <reason>` to the comment.",
+        canonical="Give every smelt suppression comment a -- reason",
         config=("suppressions.require_reason",),
     )
 
@@ -71,6 +73,7 @@ class ResolvedDebt(_EngineRule):
         bad='{"code": "ARC001", "path": "app/application/old.py", ...}',
         good="(entry removed after the violation was fixed)",
         fix="Run `smelt debt --prune`.",
+        canonical="Prune resolved debt with smelt debt --prune",
         config=("debt",),
     )
 
@@ -109,6 +112,7 @@ class MissingRulePolicy(_EngineRule):
             "Configure the named policy for the intended scope. Remove the explicit "
             "rule setting or set it to off where the convention should not apply."
         ),
+        canonical="Configure the policy that an explicitly enabled rule needs",
         config=("rules", "style.imports", "style.overrides", "architecture.packages"),
         example_language="yaml",
     )
@@ -149,5 +153,6 @@ class UncoveredPackageFacade(_EngineRule):
             "import-time behavior. For an intentionally facade-less package, add an "
             "ignore entry for MET005 matching the package with a reason."
         ),
+        canonical="Re-export from package facades the names other modules import",
         config=("rules", "ignore"),
     )

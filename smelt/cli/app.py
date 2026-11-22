@@ -165,9 +165,14 @@ def _add_check(sub: _Subparsers) -> None:
         help="apply permitted source fixes, then check again (unsafe fixes need --unsafe-fixes)",
     )
     check.add_argument(
+        "--diff",
+        action="store_true",
+        help="print the permitted fixes as a unified diff without writing; exit 1 when there are any",
+    )
+    check.add_argument(
         "--unsafe-fixes",
         action="store_true",
-        help="with --fix, also apply fixes marked unsafe because they can change behavior",
+        help="with --fix or --diff, also apply fixes marked unsafe because they can change behavior",
     )
     check.add_argument(
         "--strict-coverage",
@@ -203,6 +208,12 @@ def _add_discovery(sub: _Subparsers) -> None:
     )
     context.add_argument("target", nargs="?", metavar="FEATURE|MODULE|PATH")
     context.add_argument("--format", choices=["text", "json"], default="text")
+    context.add_argument(
+        "--guide",
+        action="store_true",
+        help="print one instruction per active rule for writing the target "
+        "and its tests; skips analysis",
+    )
     context.set_defaults(handler=commands.handler("context"))
 
 
