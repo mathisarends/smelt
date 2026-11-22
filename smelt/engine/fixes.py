@@ -81,10 +81,15 @@ def apply_fixes(
     return outcome, report
 
 
-def fix_diff(outcome: CheckOutcome, *, unsafe: bool = False) -> str:
-    """The permitted fixes of visible findings as a unified diff, without writing."""
+def fix_diff(
+    outcome: CheckOutcome, *, unsafe: bool = False, suggestions: bool = False
+) -> str:
+    """The permitted fixes of visible findings as a unified diff, without writing.
+
+    `suggestions` adds the display fixes that are never applied, for review.
+    """
     chunks: list[str] = []
-    for plan in _plan(outcome, unsafe=unsafe):
+    for plan in _plan(outcome, unsafe=unsafe, suggestions=suggestions):
         if plan.edit is None:
             continue
         before = _lines(plan.edit.original)
@@ -122,14 +127,20 @@ class _StaleEditError(AnalysisError):
     pass
 
 
-def _plan(outcome: CheckOutcome, *, unsafe: bool) -> list[_FilePlan]:
+def _plan(
+    outcome: CheckOutcome, *, unsafe: bool, suggestions: bool = False
+) -> list[_FilePlan]:
     allowed = {Applicability.SAFE} | ({Applicability.UNSAFE} if unsafe else set())
+    if suggestions:
+        allowed.add(Applicability.DISPLAY)
     by_path: dict[str, list[tuple[Violation, Fix]]] = defaultdict(list)
     plans: dict[str, _FilePlan] = {}
     seen: set[tuple[str, tuple[TextEdit, ...]]] = set()
     for violation in outcome.report.violations:
         fix, path = violation.fix, violation.path
-        if fix is None or path is None or fix.applicability is Applicability.DISPLAY:
+        if fix is None or path is None:
+            continue
+        if fix.applicability is Applicability.DISPLAY and not suggestions:
             continue
         if fix.applicability not in allowed:
             plans.setdefault(path, _FilePlan(path)).skipped.append(

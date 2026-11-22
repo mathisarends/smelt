@@ -161,7 +161,7 @@ def test_suggests_the_existing_common_package_without_changing_source(
         "package": "app.observation",
         "names": ["Snapshot"],
         "replacement": "from app.observation import Snapshot",
-        "automatic_rewrite": False,
+        "automatic_rewrite": True,
     }
     assert finding.hint is not None
     assert "combine imports" in finding.hint

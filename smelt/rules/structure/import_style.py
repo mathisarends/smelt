@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import resolve_relative
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.edits import SourceText, rewrite_from_module
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -24,6 +26,7 @@ class ImportStyle(Rule):
     category = Category.IMPORTS
     default_severity = Severity.ERROR
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="An import does not follow the package's declared relative/absolute style.",
         rationale=(
@@ -39,7 +42,9 @@ class ImportStyle(Rule):
         fix=(
             "Use a relative import within the configured dot limit, otherwise use "
             "an absolute import. Preserve aliases and update references if converting "
-            "an import statement changes its binding. There is no automatic rewrite."
+            "an import statement changes its binding. check --fix rewrites the "
+            "module of a from-import, which keeps every binding; a plain import "
+            "statement is left for a manual edit."
         ),
         canonical="Follow the package's relative/absolute import style",
         config=(
@@ -129,6 +134,7 @@ class ImportStyle(Rule):
                 if wants_relative and relative is not None
                 else f"Use an absolute import from {target}."
             )
+            spelling = relative[1] if wants_relative and relative else target
             yield self.violation(
                 f"{contract.origin} expects {'a' if wants_relative else 'an'} {expected_style} import of {target}",
                 path=source.path,
@@ -147,7 +153,26 @@ class ImportStyle(Rule):
                     else None,
                 },
                 hint=hint,
+                fix=_fix(ctx, source, node, spelling=spelling)
+                if node.from_import
+                else None,
             )
+
+
+def _fix(
+    ctx: AnalysisContext, source: SourceFile, node: ImportStatement, *, spelling: str
+) -> Fix | None:
+    """Safe: both spellings of a from-import bind the same names to the same objects."""
+    text = SourceText(ctx.files.read_text(source.path))
+    edit = rewrite_from_module(
+        text,
+        text.offset(node.lineno, node.col_offset),
+        current="." * node.level + (node.module or ""),
+        spelling=spelling,
+    )
+    if edit is None:
+        return None
+    return Fix(Applicability.SAFE, f"Import from {spelling}", (edit,))
 
 
 def _relative_base(package: str, target: str) -> tuple[int, str] | None:

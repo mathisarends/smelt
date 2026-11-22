@@ -54,6 +54,7 @@ def test_reports_parameters_beyond_the_limit(tmp_path: Path) -> None:
         "positional": ["user", "run", "tab", "retry"],
         "keyword_only_candidates": ["tab", "retry"],
         "automatic_rewrite": False,
+        "suggested_rewrite": True,
     }
     assert finding.hint == (
         "Make tab, retry keyword-only by placing * after run; "

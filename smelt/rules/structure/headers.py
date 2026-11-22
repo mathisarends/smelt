@@ -5,11 +5,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.annotations import has_postponement_evidence
-from smelt.analysis.bindings import qualified_name, unshadowed_bindings
+from smelt.analysis.bindings import (
+    binding_counts,
+    qualified_name,
+    unshadowed_bindings,
+)
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.edits import SourceText, is_docstring
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -26,6 +32,7 @@ class MisplacedModuleLogger(Rule):
     category = Category.LAYOUT
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="A module logger is declared outside the block immediately after imports.",
         rationale=(
@@ -45,7 +52,8 @@ class MisplacedModuleLogger(Rule):
             "constants and other code. Review initialization dependencies before moving "
             "it, and use a reasoned suppression for intentional exceptions. "
             "Enable rules: {layout/misplaced-module-logger: warning} to check the convention. "
-            "No automatic move is performed."
+            "check --fix moves a logger that stands on its own lines and is bound "
+            "once; an annotation must only read imports."
         ),
         canonical="Declare the module logger directly after the imports",
         config=("rules", "style.overrides"),
@@ -53,7 +61,10 @@ class MisplacedModuleLogger(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            for target in _misplaced_loggers(ctx.asts.parse(source.path)):
+            tree = ctx.asts.parse(source.path)
+            text: SourceText | None = None
+            for statement, target in _misplaced_loggers(tree):
+                text = text or SourceText(ctx.files.read_text(source.path))
                 yield self.violation(
                     f"place module logger {target.id} immediately after imports",
                     path=source.path,
@@ -64,6 +75,7 @@ class MisplacedModuleLogger(Rule):
                     source_module=source.module,
                     expected={"logger": target.id, "placement": "after-imports"},
                     hint="Group module loggers after imports and before constants. Review initialization dependencies before moving them.",
+                    fix=_logger_fix(text, tree, statement, name=target.id),
                 )
 
 
@@ -246,7 +258,7 @@ def _future_findings(
             )
 
 
-def _misplaced_loggers(tree: ast.Module) -> Iterator[ast.Name]:
+def _misplaced_loggers(tree: ast.Module) -> Iterator[tuple[ast.stmt, ast.Name]]:
     bindings = unshadowed_bindings(tree)
     if not {"logging", "logging.getLogger"}.intersection(bindings.values()):
         return
@@ -255,7 +267,7 @@ def _misplaced_loggers(tree: ast.Module) -> Iterator[ast.Name]:
         tree.body[1:] if ast.get_docstring(tree, clean=False) is not None else tree.body
     )
     in_header = True
-    pending: list[ast.Name] = []
+    pending: list[tuple[ast.stmt, ast.Name]] = []
     for statement in body:
         if in_header and _is_header_import(statement):
             yield from pending
@@ -263,9 +275,66 @@ def _misplaced_loggers(tree: ast.Module) -> Iterator[ast.Name]:
         elif (target := _module_logger_target(statement, bindings)) is None:
             in_header = False
         elif in_header:
-            pending.append(target)
+            pending.append((statement, target))
         else:
-            yield target
+            yield statement, target
+
+
+def _logger_fix(
+    source: SourceText, tree: ast.Module, statement: ast.stmt, *, name: str
+) -> Fix | None:
+    """Move the logger statement directly after the imports.
+
+    Safe: it only reads imports and __name__, and binding it earlier lets later
+    module code see it no later than before.
+    """
+    if binding_counts(tree)[name] != 1 or not source.stands_alone(statement):
+        return None
+    if isinstance(statement, ast.AnnAssign) and not _imported_names(
+        tree, statement.annotation
+    ):
+        return None
+    anchor = _header_end(tree)
+    if anchor is None or anchor is statement:
+        return None
+    offset = source.line_end(anchor.end_lineno or anchor.lineno)
+    if not isinstance(anchor, ast.Assign | ast.AnnAssign):
+        # Keep the blank lines that separate the imports from the code.
+        while (
+            offset < len(source.text)
+            and not source.text[offset : source.line_end_at(offset)].strip()
+        ):
+            offset = source.line_end_at(offset)
+    start, end = source.lines(statement)
+    if offset >= start:
+        return None
+    moved = source.text[start:end]
+    if not moved.endswith("\n"):
+        moved += "\n"
+    if not isinstance(anchor, ast.Assign | ast.AnnAssign):
+        # Separate the moved logger from the code it now precedes.
+        moved += "\n"
+    return Fix(
+        Applicability.SAFE,
+        f"Move module logger {name} directly after the imports",
+        (source.insert(offset, moved), source.delete_lines(statement)),
+    )
+
+
+def _header_end(tree: ast.Module) -> ast.stmt | None:
+    """The last import, or logger right after the imports, that opens the module."""
+    bindings = unshadowed_bindings(tree)
+    anchor: ast.stmt | None = None
+    for index, statement in enumerate(tree.body):
+        if (
+            (index == 0 and is_docstring(statement))
+            or _is_header_import(statement)
+            or (anchor is not None and _module_logger_target(statement, bindings))
+        ):
+            anchor = statement
+        else:
+            break
+    return anchor
 
 
 def _module_logger_target(
@@ -331,3 +400,13 @@ def _future_policy(
     python = ctx.python_targets.for_path(path)
     prohibited = mode == "forbid" or python.deferred_annotations
     return _FuturePolicy(contract, python, prohibited=prohibited)
+
+
+def _imported_names(tree: ast.Module, annotation: ast.expr) -> bool:
+    """Whether an eagerly evaluated annotation only reads module imports."""
+    bindings = unshadowed_bindings(tree)
+    return all(
+        node.id in bindings
+        for node in ast.walk(annotation)
+        if isinstance(node, ast.Name)
+    )

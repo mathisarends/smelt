@@ -7,9 +7,11 @@ from smelt.analysis.bindings import binding_counts
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.function_usage import explicit_exports
 from smelt.config.models import POLICY_DEFAULTS
+from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
+from smelt.rules.edits import SourceText, import_insertion
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -25,6 +27,7 @@ class ReexportConvention(Rule):
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
     requires = frozenset({Index.SYNTAX})
+    fix_availability = FixAvailability.SOMETIMES
     doc = RuleDoc(
         summary="A package initializer spells a re-export against its configured convention.",
         rationale=(
@@ -49,7 +52,11 @@ class ReexportConvention(Rule):
             "belongs to the public API. With alias, use a same-name alias such as "
             "Event as Event and preserve an intentional runtime export list. "
             "For a package that needs either spelling, set reexports to allow "
-            "in a style override with a reason. This is a read-only check."
+            "in a style override with a reason. check --fix adds the same-name "
+            "alias, or drops it where __all__ already lists the name; adding the "
+            "name to __all__, or creating __all__, changes what star imports "
+            "export and needs --unsafe-fixes. A dynamic __all__ is left for a "
+            "manual edit."
         ),
         canonical="Follow the package's re-export convention in __init__.py",
         config=("rules", "style.reexports", "style.overrides"),
@@ -71,9 +78,19 @@ class ReexportConvention(Rule):
             if style == "allow":
                 continue
             using_all = style == "all"
-            for alias in _mismatched_reexports(
-                ctx.asts.parse(source.path), style=style
-            ):
+            tree = ctx.asts.parse(source.path)
+            mismatched = list(_mismatched_reexports(tree, style=style))
+            text = SourceText(ctx.files.read_text(source.path)) if mismatched else None
+            for alias in mismatched:
+                fix = (
+                    (
+                        _all_fix(text, tree, alias=alias, mismatched=mismatched)
+                        if using_all
+                        else _alias_fix(text, alias)
+                    )
+                    if text is not None
+                    else None
+                )
                 yield self.violation(
                     f"use a plain import for {alias.name} under the __all__ convention"
                     if using_all
@@ -88,7 +105,86 @@ class ReexportConvention(Rule):
                         if using_all
                         else f"Use {alias.name} as {alias.name}. Keep __all__ where callers rely on that list."
                     ),
+                    fix=fix,
                 )
+
+
+def _alias_fix(source: SourceText, alias: ast.alias) -> Fix:
+    """Safe: a same-name alias binds the same object and only marks the export."""
+    return Fix(
+        Applicability.SAFE,
+        f"Re-export {alias.name} as {alias.name}",
+        (source.insert(source.span(alias)[1], f" as {alias.name}"),),
+    )
+
+
+def _all_fix(
+    source: SourceText,
+    tree: ast.Module,
+    *,
+    alias: ast.alias,
+    mismatched: list[ast.alias],
+) -> Fix | None:
+    """Drop the same-name alias and make sure __all__ lists the name.
+
+    Safe when __all__ already lists it. Otherwise every mismatched name joins
+    __all__ in one edit, which widens or narrows what star imports export.
+    """
+    exports = explicit_exports(tree)
+    if exports is None:
+        return None
+    start, end = source.span(alias)
+    edits = [TextEdit.at(source.text, (start + len(alias.name), end), "")]
+    if alias.name in exports:
+        return Fix(
+            Applicability.SAFE, f"Import {alias.name} without the alias", tuple(edits)
+        )
+    missing = list(
+        dict.fromkeys(item.name for item in mismatched if item.name not in exports)
+    )
+    edits.append(_export_edit(source, tree, missing))
+    return Fix(
+        Applicability.UNSAFE,
+        f"Import {alias.name} without the alias and list it in __all__",
+        tuple(edits),
+    )
+
+
+def _export_edit(source: SourceText, tree: ast.Module, names: list[str]) -> TextEdit:
+    """Append `names` to the static __all__, or create one after the imports."""
+    value = next(
+        (
+            statement.value
+            for statement in reversed(tree.body)
+            if isinstance(statement, ast.Assign | ast.AnnAssign | ast.AugAssign)
+            and isinstance(statement.value, ast.List | ast.Tuple | ast.Set)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in (
+                    statement.targets
+                    if isinstance(statement, ast.Assign)
+                    else [statement.target]
+                )
+            )
+        ),
+        None,
+    )
+    if value is None:
+        listed = ", ".join(f'"{name}"' for name in names)
+        return source.insert_line(
+            import_insertion(source, tree), f"\n__all__ = [{listed}]"
+        )
+    quote = source.segment(value.elts[0])[0] if value.elts else '"'
+    listed = ", ".join(f"{quote}{name}{quote}" for name in names)
+    if value.elts:
+        return source.insert(source.span(value.elts[-1])[1], f", {listed}")
+    match value:
+        case ast.Tuple():
+            return source.replace(value, f"({listed},)")
+        case ast.Set():
+            return source.replace(value, f"{{{listed}}}")
+        case _:
+            return source.replace(value, f"[{listed}]")
 
 
 def _mismatched_reexports(

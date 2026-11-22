@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from smelt.diagnostics.violation import Violation
 
-_PATTERN = re.compile(
+DIRECTIVE = re.compile(
     r"#\s*smelt:\s*(?P<kind>ignore-file|ignore)\b"
     r"(?:\[(?P<codes>[^\]]*)\])?"
     r"(?:\s*--\s*(?P<reason>.*))?"
@@ -103,7 +103,7 @@ def parse_suppressions(path: str, source: str) -> list[Suppression]:
     for token in tokens:
         if token.type != tokenize.COMMENT:
             continue
-        match = _PATTERN.search(token.string)
+        match = DIRECTIVE.search(token.string)
         if match is None:
             continue
         codes = tuple(

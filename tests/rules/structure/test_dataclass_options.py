@@ -65,7 +65,7 @@ def test_reports_missing_options_from_the_issue(tmp_path: Path) -> None:
         "class": "Hooks",
         "dataclass_options": ["frozen", "slots"],
         "missing": ["slots"],
-        "automatic_rewrite": False,
+        "automatic_rewrite": True,
     }
     assert second.expected is not None
     assert second.expected["missing"] == ["frozen", "slots"]

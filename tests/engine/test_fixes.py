@@ -5,12 +5,13 @@ import os
 import stat
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from smelt.diagnostics.debt import Debt
-from smelt.diagnostics.fixes import FixAvailability
+from smelt.diagnostics.fixes import Applicability, FixAvailability
 from smelt.engine.check import CheckOptions, CheckOutcome, snippet_reader
 from smelt.engine.fixes import FixReport, apply_fixes, fix_diff
 from smelt.rules.base import RuleContract
@@ -426,8 +427,104 @@ def test_diff_previews_permitted_fixes_without_writing(tmp_path: Path) -> None:
     assert (root / "app/service.py").read_text() == DEFAULT_SOURCE
 
 
-# Every rule whose findings carry a fix, with a config that activates it.
-_FIXABLE_CONFIGS = {"LAY004": ORDER_CONFIG, "TYP003": DEFAULT_CONFIG}
+@dataclass(frozen=True, slots=True)
+class _Example:
+    """How to turn a rule's documented bad example into its good one."""
+
+    config: str = ""
+    path: str = "app/service.py"
+    files: tuple[tuple[str, str], ...] = ()
+    source: str | None = None
+    expected: str | None = None
+
+
+def _rules(entry: str, *, project: str = "") -> str:
+    return (
+        f"version: 2\nproject: {{root_packages: [app]{project}}}\nrules: {{{entry}}}\n"
+    )
+
+
+_PACKAGE_API = (
+    ("app/observation/__init__.py", "from .models import Observe, Snapshot\n"),
+    ("app/observation/models.py", "class Observe: ...\n\n\nclass Snapshot: ...\n"),
+)
+
+# Every rule whose findings carry a fix, with what its doc example needs.
+_EXAMPLES = {
+    "LAY004": _Example(ORDER_CONFIG),
+    "TYP003": _Example(DEFAULT_CONFIG),
+    "MET001": _Example(DEFAULT_CONFIG),
+    "TYP004": _Example(
+        _rules("typing/deprecated-async-contextmanager-return: warning")
+    ),
+    "TYP006": _Example(_rules("typing/prefer-deferred-annotations: hint")),
+    "VIS008": _Example(
+        _rules("visibility/reexport-convention: warning") + "style: {reexports: all}\n",
+        path="app/events/__init__.py",
+    ),
+    "IMP003": _Example(
+        _rules("imports/forbidden-import-style: error")
+        + "style:\n  imports: {style: relative, max_relative_level: 1}\n",
+        path="app/storage/service.py",
+        files=(
+            ("app/storage/__init__.py", ""),
+            ("app/storage/models.py", "class Record: ...\n"),
+            ("app/domain/__init__.py", "class Entity: ...\n"),
+        ),
+    ),
+    "TYP008": _Example(
+        _rules(
+            "typing/prefer-inline-type-parameters: hint",
+            project=', python_version: "3.12"',
+        )
+    ),
+    "IDM001": _Example(_rules("idioms/bundled-instance-assignment: warning")),
+    "LAY006": _Example(_rules("layout/callee-before-caller: hint")),
+    "LAY011": _Example(_rules("layout/misplaced-module-logger: warning")),
+    "MOD004": _Example(
+        _rules("modeling/str-enum-value-convention: hint"),
+        source="from enum import StrEnum, auto\n\n\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = auto()\n    READY = auto()\n",
+        expected='from enum import StrEnum\n\n\nclass SignalingMessageType(StrEnum):\n    DESCRIPTION = "description"\n    READY = "ready"\n',
+    ),
+    "IMP004": _Example(
+        _rules("imports/prefer-package-import: hint"),
+        path="app/client.py",
+        files=_PACKAGE_API,
+        source="from app.observation import Observe\nfrom app.observation.models import Snapshot\n",
+        expected="from app.observation import Observe, Snapshot\n",
+    ),
+    "MOD006": _Example(
+        _rules("modeling/missing-dataclass-option: warning")
+        + "style: {dataclass_options: [frozen, slots]}\n"
+    ),
+    "LAY008": _Example(_rules("layout/misplaced-private-constant: warning")),
+    "CPX003": _Example(
+        _rules("complexity/excess-positional-parameters: {severity: warning, max: 1}")
+    ),
+}
+
+
+def _suggested(root: Path, outcome: CheckOutcome) -> int:
+    """Apply the display fixes that --fix never writes, as a reader would."""
+    count = 0
+    for violation in outcome.report.violations:
+        fix = violation.fix
+        if fix is None or violation.path is None:
+            continue
+        assert fix.applicability is Applicability.DISPLAY
+        path = root / violation.path
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        for edit in sorted(fix.edits, key=lambda e: (e.line, e.column), reverse=True):
+            start = sum(map(len, lines[: edit.line - 1])) + edit.column - 1
+            end = sum(map(len, lines[: edit.end_line - 1])) + edit.end_column - 1
+            text = "".join(lines)
+            assert text[start:end] == edit.original
+            lines = (text[:start] + edit.replacement + text[end:]).splitlines(
+                keepends=True
+            )
+        path.write_text("".join(lines), encoding="utf-8")
+        count += 1
+    return count
 
 
 @pytest.mark.parametrize(
@@ -444,13 +541,127 @@ def test_fix_turns_the_bad_example_into_the_good_one(
     tmp_path: Path, rule: RuleContract
 ) -> None:
     doc = rule.explain()
-    root = _project(tmp_path, source=doc.bad, config=_FIXABLE_CONFIGS[rule.code])
+    example = _EXAMPLES[rule.code]
+    files = {
+        "smelt.yml": example.config,
+        "app/__init__.py": "",
+        **dict(example.files),
+        example.path: doc.bad if example.source is None else example.source,
+    }
+    root = write_project(tmp_path, files)
     options = CheckOptions(select=(rule.code,))
 
     fixed = _fix(root, options, unsafe=True)
-    rewritten = (root / "app/service.py").read_text()
+    if not fixed.applied:
+        fixed.applied = _suggested(root, check(root, options))
+    rewritten = (root / example.path).read_text()
 
     assert fixed.applied >= 1
-    assert ast.dump(ast.parse(rewritten)) == ast.dump(ast.parse(doc.good))
+    expected = doc.good if example.expected is None else example.expected
+    assert ast.dump(ast.parse(rewritten)) == ast.dump(ast.parse(expected))
     assert check(root, options).report.violations == []
     assert _fix(root, options, unsafe=True).files == []
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        (
+            "    return options or 7  # smelt: ignore[TYP003, LAY006] -- legacy",
+            "    return options or 7  # smelt: ignore[TYP003] -- legacy",
+        ),
+        (
+            "    return options or 7  # smelt: ignore[complexity/constructor-logic] -- x",
+            "    return options or 7  # smelt: ignore[complexity/excess-constructor-decisions] -- x",
+        ),
+        (
+            "    return options or 7  # smelt: ignore[LAY006] -- legacy",
+            "    return options or 7",
+        ),
+    ],
+    ids=["unused-identifier", "retired-name", "whole-directive"],
+)
+def test_suppression_fixes_keep_what_is_still_needed(
+    tmp_path: Path, line: str, expected: str
+) -> None:
+    root = _defaults(tmp_path, f"def create(options: int | None = None):\n{line}\n")
+    options = CheckOptions(select=("TYP003", "LAY006", "MET001"))
+
+    report = _fix(root, CheckOptions(select=("MET001",)), outcome=check(root, options))
+
+    assert report.applied == 1
+    assert (root / "app/service.py").read_text().splitlines()[1] == expected
+
+
+def test_unknown_suppression_identifier_is_only_suggested(tmp_path: Path) -> None:
+    source = "x = 1  # smelt: ignore[TYP999] -- legacy\n"
+    root = _defaults(tmp_path, source)
+    outcome = check(root, CheckOptions(select=("MET001",)))
+
+    [violation] = outcome.report.violations
+    assert violation.fix is not None
+    assert violation.fix.applicability is Applicability.DISPLAY
+    assert _fix(root, CheckOptions(select=("MET001",)), unsafe=True).applied == 0
+    assert "-x = 1  # smelt: ignore[TYP999] -- legacy\n+x = 1\n" in fix_diff(
+        outcome, suggestions=True
+    )
+    assert (root / "app/service.py").read_text() == source
+
+
+def test_diff_shows_suggestions_only_when_asked(tmp_path: Path) -> None:
+    source = "def connect(user_id: int, run_id: int) -> None:\n    ...\n"
+    root = _project(tmp_path, source=source, config=_EXAMPLES["CPX003"].config)
+    outcome = check(root, CheckOptions(select=("CPX003",)))
+
+    assert fix_diff(outcome, unsafe=True) == ""
+    assert "+def connect(user_id: int, *, run_id: int) -> None:\n" in fix_diff(
+        outcome, suggestions=True
+    )
+    assert (root / "app/service.py").read_text() == source
+
+
+@pytest.mark.parametrize(
+    ("code", "source"),
+    [
+        ("CPX003", "def connect(user_id, run_id, *rest):\n    ...\n"),
+        ("CPX003", "def connect(user_id, run_id, /):\n    ...\n"),
+        (
+            "LAY008",
+            "class Client:\n    _LIMIT = 3\n\n    def run(self):\n        return self._LIMIT\n\n\nprint(Client()._LIMIT)\n",
+        ),
+        (
+            "MOD006",
+            "from dataclasses import dataclass\n\nOPTIONS = {}\n\n\n@dataclass(**OPTIONS)\nclass Point:\n    x: int\n",
+        ),
+        (
+            "MOD004",
+            "from enum import StrEnum, auto\n\n\nclass Kind(StrEnum):\n    @staticmethod\n    def _generate_next_value_(name, start, count, last_values):\n        return name\n\n    FIRST = auto()\n    SECOND = 'second'\n",
+        ),
+        (
+            "IDM001",
+            "class Point:\n    def __init__(self, x, y):\n        self.x, self.y = x(), y()\n",
+        ),
+        (
+            "LAY006",
+            "def parse():\n    return 1\n\nLIMIT = 3\n\ndef load(limit=LIMIT):\n    return parse()\n",
+        ),
+    ],
+    ids=[
+        "star-args",
+        "positional-only",
+        "outside-access",
+        "unpacked-options",
+        "custom-values",
+        "call-values",
+        "bound-default",
+    ],
+)
+def test_findings_that_cannot_be_rewritten_carry_no_fix(
+    tmp_path: Path, code: str, source: str
+) -> None:
+    root = _project(tmp_path, source=source, config=_EXAMPLES[code].config)
+
+    found = check(root, CheckOptions(select=(code,))).report.violations
+
+    assert found
+    assert [violation.fix for violation in found] == [None] * len(found)

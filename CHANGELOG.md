@@ -7,6 +7,26 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- More rules carry machine-readable fixes for `check --fix` and `check --diff`.
+  Safe, applied by `--fix`: [MET001](docs/rules/MET001.md) removes unused
+  suppressions or identifiers and replaces retired rule names,
+  [TYP004](docs/rules/TYP004.md), [IMP003](docs/rules/IMP003.md),
+  [IDM001](docs/rules/IDM001.md), [LAY006](docs/rules/LAY006.md),
+  [LAY011](docs/rules/LAY011.md), [MOD004](docs/rules/MOD004.md) and the
+  `as` alias of [VIS008](docs/rules/VIS008.md). Unsafe, applied only with
+  `--unsafe-fixes`: [TYP006](docs/rules/TYP006.md) when it has to add the future
+  import, [TYP008](docs/rules/TYP008.md), [IMP004](docs/rules/IMP004.md),
+  [MOD006](docs/rules/MOD006.md), [LAY008](docs/rules/LAY008.md) and VIS008
+  entries added to `__all__`. Findings that cannot be rewritten without losing
+  comments or changing behavior carry no fix, and `expected.automatic_rewrite`
+  says which ones do.
+- Fixes with the `display` applicability are suggestions: the concise and text
+  formats mark them `[suggestion]` and count them in the summary, and
+  `check --diff --suggestions` previews them; `--fix` never applies them.
+  [CPX003](docs/rules/CPX003.md) suggests the `*` that makes the excess
+  parameters keyword-only, because every call site has to change too, and
+  MET001 suggests removing unknown suppression identifiers.
+
 ## [0.15.0] - 2026-11-22
 
 See [upgrading from 0.14](docs/upgrading.md#014-to-015) for hook pins,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 from dataclasses import dataclass, field, replace
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
 from smelt.analysis.files import FileIndex
+from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
 from smelt.config.workspace import debt_scope_for_path, debt_scopes
@@ -51,6 +53,8 @@ from smelt.rules.meta import (
     SuppressionWithoutReason,
     UncoveredPackageFacade,
     UnusedSuppression,
+    unknown_identifier_fix,
+    unused_suppression_fix,
 )
 from smelt.rules.registry import build_rule_set
 from smelt.rules.renames import retired_hint
@@ -61,6 +65,7 @@ if TYPE_CHECKING:
 
     from smelt.config.loader import LoadedConfig
     from smelt.config.source import SourceStore
+    from smelt.diagnostics.fixes import Fix
     from smelt.rules.activation import PolicyActivation
     from smelt.rules.base import RuleContract, RuleSet
 
@@ -805,6 +810,11 @@ def _suppression_violations(
                     column=suppression.column + 1,
                     expected={"unknown_identifiers": unknown},
                     hint=_unknown_identifier_hint(unknown, names),
+                    fix=_suppression_fix(
+                        ctx,
+                        suppression,
+                        partial(unknown_identifier_fix, unknown=unknown),
+                    ),
                 ).with_severity(severity_of["MET001"])
             )
         unused = _unused_codes(
@@ -828,9 +838,24 @@ def _suppression_violations(
                 line=suppression.line,
                 column=suppression.column + 1,
                 hint="Remove the suppression; nothing on this line needs it.",
+                fix=_suppression_fix(
+                    ctx, suppression, partial(unused_suppression_fix, unused=unused)
+                ),
             ).with_severity(severity_of["MET001"])
         )
     return results
+
+
+def _suppression_fix(
+    ctx: AnalysisContext,
+    suppression: Suppression,
+    build: Callable[[str, Suppression], Fix | None],
+) -> Fix | None:
+    try:
+        text = ctx.files.read_text(suppression.path)
+    except AnalysisError:
+        return None
+    return build(text, suppression)
 
 
 def _unknown_identifier_hint(unknown: list[str], names: dict[str, str]) -> str:

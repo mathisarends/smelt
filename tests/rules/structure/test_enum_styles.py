@@ -53,7 +53,7 @@ def test_auto_style_reports_derivable_strings(tmp_path: Path) -> None:
         "enum": "Kind",
         "members": ["CLOSED", "READY"],
         "str_enum_values": "auto",
-        "automatic_rewrite": False,
+        "automatic_rewrite": True,
     }
     assert finding.hint == "Use auto() for CLOSED, READY."
     assert (root / "app/kinds.py").read_text() == source
@@ -92,7 +92,7 @@ def test_explicit_style_reports_auto_members(tmp_path: Path) -> None:
         "enum": "Kind",
         "members": ["DESCRIPTION", "READY"],
         "str_enum_values": "explicit",
-        "automatic_rewrite": False,
+        "automatic_rewrite": True,
     }
     assert (
         finding.hint == 'Spell DESCRIPTION = "description", READY = "ready" explicitly.'
