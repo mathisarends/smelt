@@ -10,6 +10,9 @@ from smelt.analysis.members import MemberUsageIndex
 from smelt.analysis.parsing import AstCache
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
+from smelt.rules.identities import implementation_identity
+from smelt.rules.structure.aliases import RedundantNameAlias
+from smelt.rules.structure.assignments import BundledInstanceAssignment
 from smelt.rules.structure.private_access import ForeignPrivateAccess
 from tests.helpers import (
     LAYERED_CONFIG,
@@ -23,11 +26,13 @@ if TYPE_CHECKING:
     import ast
     from pathlib import Path
 
+    from smelt.analysis.cache import FactCache
     from smelt.analysis.members import (
         Member,
         MemberState,
         _FileFacts,  # smelt: ignore[TST002] -- Type the instrumentation hook without exposing cache facts as public API.
     )
+    from smelt.rules.base import RuleContract
 
 
 def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_decisions(
@@ -279,5 +284,49 @@ def test_test_edit_reuses_production_graph_but_owner_edit_rechecks_caller(
     changed = check(tmp_path).report
     assert all(v.code != "VIS005" for v in changed.violations)
     assert render_json(changed) == render_json(
+        check(tmp_path, CheckOptions(use_cache=False)).report
+    )
+
+
+def test_edited_file_local_rule_decides_again_and_other_rules_reuse_decisions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\nrules: {idioms/redundant-name-alias: warning, idioms/bundled-instance-assignment: warning}\n",
+            "app/__init__.py": "",
+            "app/a.py": "def run(value):\n    alias = value\n    return alias\n",
+            "app/b.py": "VALUE = 1\n",
+        },
+    )
+    check(tmp_path)
+    checked: list[str] = []
+    for rule in (RedundantNameAlias, BundledInstanceAssignment):
+        original = rule.check
+
+        def recorded(
+            self: object, ctx: object, *, code: str = rule.code, run: object = original
+        ) -> object:
+            checked.append(code)
+            return run(self, ctx)  # type: ignore[operator]
+
+        monkeypatch.setattr(rule, "check", recorded)
+
+    def edited(rule: RuleContract, cache: FactCache | None) -> str:
+        current = implementation_identity(rule, cache)
+        return current + "-edited" if rule.code == RedundantNameAlias.code else current
+
+    monkeypatch.setattr("smelt.engine.file_checks.implementation_identity", edited)
+    # A new test changes the whole-project result but no source's file decisions.
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_new.py").write_text("def test_new():\n    assert True\n")
+
+    after = check(tmp_path).report
+    rechecked = list(checked)
+
+    assert set(rechecked) == {RedundantNameAlias.code}
+    assert len(rechecked) == len({"app/__init__.py", "app/a.py", "app/b.py"})
+    assert render_json(after) == render_json(
         check(tmp_path, CheckOptions(use_cache=False)).report
     )

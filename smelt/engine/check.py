@@ -13,6 +13,7 @@ from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
 from smelt.analysis.files import FileIndex
+from smelt.analysis.identity import IdentityScope, analyzer_identity
 from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
@@ -709,8 +710,11 @@ def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
     found: list[Suppression] = []
     keys = (
         {
+            # Comments are parsed below the rules, so a rule edit keeps them.
             path: ctx.cache.decision_key(
-                "suppressions-v2", [path, ctx.files.content_id(path)]
+                "suppressions-v2",
+                [path, ctx.files.content_id(path)],
+                identity=analyzer_identity(IdentityScope.RULE_HOST),
             )
             for path in ctx.files.all_python_paths()
         }
