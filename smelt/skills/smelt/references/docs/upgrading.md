@@ -1,5 +1,18 @@
 # Upgrading Smelt
 
+## 0.15 to 0.16
+
+1. Update your [hook and CI pins](integrations.md) to 0.16.0 and refresh the
+   bundled agent reference with `smelt skill install --force`.
+2. Review the additional edits before running `smelt check --fix`. Use
+   `smelt check --diff` to preview safe edits and add `--unsafe-fixes` to
+   include edits that can change behavior. For example, splitting instance
+   assignments ([IDM001](rules/IDM001.md)) can write an attribute before a
+   later value raises an exception.
+3. Use `smelt check --diff --suggestions` to preview fixes with the existing
+   `display` applicability. Text and concise reports now label these fixes
+   `[suggestion]` and count them in the summary.
+
 ## 0.14 to 0.15
 
 1. Update your [hook and CI pins](integrations.md) to 0.15.0 and refresh the
