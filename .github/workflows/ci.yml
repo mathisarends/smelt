@@ -19,6 +19,8 @@ jobs:
           components: rustfmt, clippy
       # Clippy adds debug artifacts, so lint keeps its own cache.
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -44,6 +46,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: native
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -78,6 +81,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: native
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -95,6 +99,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: native
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
