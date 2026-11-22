@@ -5,7 +5,6 @@ import re
 import sys
 import tomllib
 from typing import TYPE_CHECKING
-from weakref import WeakKeyDictionary
 
 from smelt.analysis.errors import (
     AnalysisError as AnalysisError,  # noqa: PLC0414 - compatibility re-export
@@ -18,8 +17,6 @@ if TYPE_CHECKING:
 
     from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
-
-_WALKS: WeakKeyDictionary[ast.AST, tuple[ast.AST, ...]] = WeakKeyDictionary()
 
 
 class AstCache:
@@ -86,9 +83,12 @@ def tree_nodes(tree: ast.AST) -> tuple[ast.AST, ...]:
     function shares a walk. Use this instead of ``ast.walk``: two dozen rules
     walk each module. Only code that rewrites the tree it walks needs ``ast.walk``.
     """
-    nodes = _WALKS.get(tree)
+    # The tuple includes the root. Store it on the tree so the cycle can be
+    # collected once the analysis drops the tree.
+    nodes: tuple[ast.AST, ...] | None = tree.__dict__.get("_smelt_walk")
     if nodes is None:
-        nodes = _WALKS[tree] = tuple(ast.walk(tree))
+        nodes = tuple(ast.walk(tree))
+        tree.__dict__["_smelt_walk"] = nodes
     return nodes
 
 

@@ -75,12 +75,14 @@ record broad debt merely to obtain a passing commit.
 ## Cache behavior
 
 Add `.smelt_cache/` to `.gitignore`. A SQLite database batches validated,
-compressed JSON facts; no pickle or executable project objects are deserialized. Removing it is safe. An
-unreadable, truncated, locked or unwritable cache falls back to analysis.
+compressed JSON facts. Removing the cache is safe. An unreadable, truncated,
+locked or unwritable cache falls back to analysis.
 
 Facts are keyed by a file's decoded text, not by how the check read it. A full
-check, `--staged` and `--changed` therefore reuse each other's facts, and only
-files whose text differs between the compared states are analyzed again.
+check, `--staged` and `--changed` therefore reuse each other's facts when their inputs match.
+Changed checks read the base directly from Git objects, so the base can reuse
+the facts of unchanged files. In editable installations, changing a rule
+refreshes its cached decisions and those of rules that import it.
 
 The cache prunes itself. Once a day, a check drops facts that no run has read or
 written for 14 days. Caches of other Smelt versions that no run has opened for 7

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import posixpath
 import re
+import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -97,20 +98,34 @@ def _generated_files() -> dict[str, str]:
     # Bundle consumer guides explicitly, never research data or proposals.
     root = Path(__file__).resolve().parent.parent
     manual = {name: (root / name).read_text(encoding="utf-8") for name in _SKILL_GUIDES}
+    version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]["version"]
+    repository = DOCS_BASE_URL.removesuffix("/docs/rules")
+    files["README.pypi.md"] = _reference_links(
+        "README.md",
+        manual["README.md"],
+        bundled=set(),
+        repository=repository.removesuffix("/main") + f"/v{version}",
+    )
     manual.update(
         {name: content for name, content in files.items() if name.startswith(DOCS_DIR)}
     )
     files.update(
         {
-            f"{_SKILL_REFERENCES}/{name}": _skill_links(name, content, set(manual))
+            f"{_SKILL_REFERENCES}/{name}": _reference_links(
+                name, content, bundled=set(manual), repository=repository
+            )
             for name, content in manual.items()
         }
     )
     return files
 
 
-def _skill_links(name: str, content: str, bundled: set[str]) -> str:
-    """Keep local guide links; point omitted maintainer material to the repository."""
+def _reference_links(
+    name: str, content: str, *, bundled: set[str], repository: str
+) -> str:
+    """Keep links to bundled pages and point the rest to the repository."""
 
     def target(match: re.Match[str]) -> str:
         original = match.group()
@@ -122,7 +137,6 @@ def _skill_links(name: str, content: str, bundled: set[str]) -> str:
         )
         if resolved in bundled:
             return original
-        repository = DOCS_BASE_URL.removesuffix("/docs/rules")
         return f"{repository}/{resolved}{original[len(parsed.path) :]}"
 
     return re.sub(r"(?<=\]\()[^()\s]+(?=\))", target, content)

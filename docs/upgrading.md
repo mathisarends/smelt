@@ -1,5 +1,13 @@
 # Upgrading Smelt
 
+## 0.16 to 0.16.1
+
+1. Update your [hook and CI pins](integrations.md) to 0.16.1 and refresh the
+   bundled agent reference with `smelt skill install --force`.
+2. The first check with the new version populates its cache. Full, staged and
+   changed checks can then share unchanged source facts. Existing policy and
+   report integrations can be used as-is.
+
 ## 0.15 to 0.16
 
 1. Update your [hook and CI pins](integrations.md) to 0.16.0 and refresh the
