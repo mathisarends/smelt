@@ -35,6 +35,8 @@ def analysis_inputs(
     ctx: AnalysisContext,
     active: list[tuple[RuleContract, Severity]],
     selection: tuple[str, ...],
+    *,
+    installed: dict[str, str | None],
 ) -> object:
     """Inventory and contents, including facts that can affect unchanged modules."""
     return [
@@ -68,19 +70,20 @@ def analysis_inputs(
         ctx.workspace.metadata
         if any(rule.code == "ARC010" for rule, _ in active)
         else None,
-        installed_inputs(ctx.config, active),
+        installed,
     ]
 
 
 def installed_inputs(
     config: SmeltConfig, active: list[tuple[RuleContract, Severity]]
-) -> object:
+) -> dict[str, str | None]:
     """Installed third-party sources that IMP004 reads outside the project."""
     if not any(rule.code == "IMP004" for rule, _ in active):
-        return None
+        return {}
     packages = {
         name
         for policy in (config.structure, *config.structure.contracts.values())
         for name in policy.third_party_reexports or ()
     }
-    return InstalledPackages().identity(packages) if packages else None
+    installed = InstalledPackages()
+    return installed.identity(packages)

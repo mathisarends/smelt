@@ -1,5 +1,23 @@
 # Upgrading Smelt
 
+## 0.14 to 0.15
+
+1. Update your [hook and CI pins](integrations.md) to 0.15.0 and refresh the
+   bundled agent reference with `smelt skill install --force`. Existing
+   `version: 2` configurations remain valid.
+2. Run `smelt check --fail-on warning`. If an ARC007 or IMP001 suppression on
+   a facade import becomes unused after the upgrade, review the import and
+   remove the obsolete suppression.
+3. To get [IMP004](rules/IMP004.md) suggestions for third-party imports, list
+   the packages in `style.third_party_reexports` and enable
+   `imports/prefer-package-import`. Run Smelt in the environment that has
+   those dependencies installed, including when invoking it from a hook.
+4. If a script reads the JSON report from `smelt check --fix`, replace accesses
+   to `fixes.ordering` and `fixes.none_defaults` with the shared `fixes.applied`
+   count, `fixes.files` list and `fixes.skipped` entries. Each skipped entry
+   has `path`, `code`, `line` and `reason`. Use the finding's `fix_reason`
+   for LAY004 sections that Smelt cannot safely rewrite.
+
 ## 0.13 to 0.14
 
 Upgrade the config and existing suppressions together:

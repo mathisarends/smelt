@@ -872,6 +872,54 @@ def test_document_content_edits_reuse_analysis_with_fresh_index_provenance(
     assert cached == _check(repo, capsys, "--no-cache", "--format", output)
 
 
+def test_staged_results_and_baseline_follow_installed_package_exports(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_policy_project(
+        repo,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n"
+            "style: {third_party_reexports: [vendor]}\n"
+            "rules: {imports/prefer-package-import: warning}\n",
+            "app/existing.py": "from vendor.routing import Router\n",
+            "README.md": "Original notes.\n",
+        },
+    )
+    site = repo / "site"
+    package = site / "vendor"
+    package.mkdir(parents=True)
+    facade = package / "__init__.py"
+    facade.write_text("", encoding="utf-8")
+    (package / "routing.py").write_text("class Router: ...\n", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(site))
+    _git(repo, "add", "smelt.yml", "app/existing.py", "README.md")
+    _git(repo, "commit", "-qm", "existing import")
+    (repo / "app/new.py").write_text(
+        "from vendor.routing import Router\n", encoding="utf-8"
+    )
+    _git(repo, "add", "app/new.py")
+    before, _ = _check(repo, capsys)
+    assert before == 0
+
+    # The package changes outside the index, including for the historical source.
+    facade.write_text("from .routing import Router\n", encoding="utf-8")
+    added, report = _check(repo, capsys)
+    assert added == 1
+    assert [(item["code"], item["path"]) for item in report["violations"]] == [
+        ("IMP004", "app/new.py")
+    ]
+    assert (added, report) == _check(repo, capsys, "--no-cache")
+
+    # The README change also exercises reuse across unobserved index changes.
+    facade.write_text("", encoding="utf-8")
+    (repo / "README.md").write_text("Updated notes.\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    removed, report = _check(repo, capsys)
+    assert removed == 0
+    assert report["violations"] == []
+    assert (removed, report) == _check(repo, capsys, "--no-cache")
+
+
 def test_arbitrary_markdown_debt_file_is_an_observed_input(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
