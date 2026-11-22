@@ -7,6 +7,12 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- Edits recheck private attribute accesses only in modules whose resolution
+  read the edited module. Previously any change to a module's names, such as a
+  new function, resolved the accesses of every module again.
+- Test analysis collects fixtures without analyzing every other function body
+  a second time, which shortens the first check of a project with many tests.
+
 ## [0.16.1] - 2026-11-22
 
 See [upgrading from 0.16](docs/upgrading.md#016-to-0161) for hook pins and
