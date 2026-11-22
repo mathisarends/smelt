@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.edits import SourceText, name_used
@@ -147,7 +153,7 @@ def _fix(
     declaration = textwrap.dedent(indentation + source.segment(statement))
     edits = [
         source.insert(source.block_start(owner), f"{declaration}\n\n\n"),
-        TextEdit.at(source.text, (start, end), ""),
+        TextEdit.at(source.text, TextSpan(start, end), ""),
     ]
     edits.extend(source.replace(read, name) for read in reads)
     return Fix(

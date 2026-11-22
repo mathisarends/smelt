@@ -11,6 +11,7 @@ from smelt.diagnostics.fixes import (
     Fix,
     FixAvailability,
     TextEdit,
+    TextSpan,
     source_offset,
 )
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -77,7 +78,7 @@ def _fix(text: str, candidate: NoneDefault) -> Fix | None:
     except AnalysisError:
         # Comments or continuations inside the expression need a human edit.
         return None
-    span = (
+    span = TextSpan(
         source_offset(text, node.lineno, node.col_offset),
         source_offset(text, node.end_lineno or node.lineno, node.end_col_offset or 0),
     )

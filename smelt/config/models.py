@@ -3,7 +3,7 @@ import posixpath
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, NamedTuple, Self
 
 from pydantic import (
     BaseModel,
@@ -268,6 +268,15 @@ class LayerConfig(_Model):
         return self
 
 
+class FeatureLayerEdge(NamedTuple):
+    """The features and layers on both sides of a cross-feature import."""
+
+    source_feature: str
+    source_layer: str
+    target_feature: str
+    target_layer: str
+
+
 class CrossFeatureAllowance(_Model):
     source: str = Field(alias="from")
     target: str = Field(alias="to")
@@ -280,10 +289,12 @@ class CrossFeatureAllowance(_Model):
                 raise ValueError(msg)
         return self
 
-    def components(self) -> tuple[str, str, str, str]:
+    def components(self) -> FeatureLayerEdge:
         source_feature, source_layer = self.source.split(".")
         target_feature, target_layer = self.target.split(".")
-        return source_feature, source_layer, target_feature, target_layer
+        return FeatureLayerEdge(
+            source_feature, source_layer, target_feature, target_layer
+        )
 
 
 class CrossFeatureConfig(_Model):
@@ -328,10 +339,11 @@ class CrossFeatureConfig(_Model):
     ) -> bool:
         if (source_layer, target_layer) in self.pairs():
             return True
+        edge = FeatureLayerEdge(
+            source_feature, source_layer, target_feature, target_layer
+        )
         return any(
-            isinstance(value, CrossFeatureAllowance)
-            and value.components()
-            == (source_feature, source_layer, target_feature, target_layer)
+            isinstance(value, CrossFeatureAllowance) and value.components() == edge
             for value in self.allow
         )
 
@@ -345,24 +357,17 @@ class CrossFeatureConfig(_Model):
         """Each allowance as fields; a ``None`` feature stands for every feature."""
         found: list[dict[str, str | None]] = []
         for value in self.allow:
-            features: tuple[str | None, str | None] = (None, None)
             if isinstance(value, CrossFeatureAllowance):
-                source_feature, source_layer, target_feature, target_layer = (
-                    value.components()
-                )
-                features = (source_feature, target_feature)
+                found.append(value.components()._asdict())
             elif match := _LAYER_PAIR.match(value):
-                source_layer, target_layer = match.group(1), match.group(2)
-            else:
-                continue
-            found.append(
-                {
-                    "source_feature": features[0],
-                    "source_layer": source_layer,
-                    "target_feature": features[1],
-                    "target_layer": target_layer,
-                }
-            )
+                found.append(
+                    {
+                        "source_feature": None,
+                        "source_layer": match.group(1),
+                        "target_feature": None,
+                        "target_layer": match.group(2),
+                    }
+                )
         return found
 
 

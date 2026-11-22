@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.discovery import build_package_settings, packages_in
@@ -31,9 +31,17 @@ class WorkspaceMember:
         }
 
 
+class ImportRoot(NamedTuple):
+    """A source root, the packages it holds and those without ``__init__.py``."""
+
+    base: Path
+    packages: list[Path]
+    namespaces: list[Path]
+
+
 def import_root(
     directory: Path, *, store: SourceStore | None = None
-) -> tuple[Path, list[Path], list[Path]] | None:
+) -> ImportRoot | None:
     """The source root of a project or member, its packages and their namespaces.
 
     ``src/`` wins when it holds a package; it and a project whose build backend
@@ -49,7 +57,7 @@ def import_root(
             found = [p for p in found if p.name in declared] or found
         if found:
             namespaces = [p for p in found if not any(store.glob(p, "*.py"))]
-            return base, found, namespaces
+            return ImportRoot(base, found, namespaces)
     return None
 
 

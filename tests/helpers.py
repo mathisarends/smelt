@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from smelt.config import load_config
 from smelt.config.errors import ConfigError
 from smelt.engine.check import CheckOptions, CheckOutcome, run_check
-from smelt.engine.migration import enable_rules
+from smelt.engine.migration import RuleEnablement, enable_rules
 from smelt.engine.rule_settings import RuleSettings
 from smelt.rules.registry import build_rule_set
 
@@ -41,7 +41,7 @@ def write_policy_project(root: Path, files: dict[str, str]) -> Path:
     except ConfigError:
         return root
     entries = [
-        (location, rule.name, rule.default_severity.value)
+        RuleEnablement(location, rule.name, rule.default_severity.value)
         for rule, locations in enablements
         for location in locations
     ]
@@ -54,7 +54,9 @@ def write_policy_project(root: Path, files: dict[str, str]) -> Path:
 def add_rules(root: Path, rules: dict[str, str]) -> None:
     """Add rule settings to a project's root rules, keeping the ones it names."""
     path = root / "smelt.yml"
-    entries = [(("rules",), name, severity) for name, severity in rules.items()]
+    entries = [
+        RuleEnablement(("rules",), name, severity) for name, severity in rules.items()
+    ]
     path.write_text(
         enable_rules(path.read_text(encoding="utf-8"), entries).text, encoding="utf-8"
     )

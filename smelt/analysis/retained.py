@@ -5,14 +5,19 @@ from __future__ import annotations
 from collections import OrderedDict
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from smelt.analysis.member_state import MemberIndexState
 
-type StateKey = tuple[str, str]
+
+class StateKey(NamedTuple):
+    """A fact cache directory and the dependency-state key inside it."""
+
+    directory: str
+    key: str
 
 
 class RetainedAnalysis:

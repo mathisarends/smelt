@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, NamedTuple
+
+
+class TextSpan(NamedTuple):
+    """Half-open character offsets into a text, like ``re.Match.span()``."""
+
+    start: int
+    end: int
 
 
 class Applicability(StrEnum):
@@ -39,7 +46,7 @@ class TextEdit:
     replacement: str
 
     @classmethod
-    def at(cls, text: str, span: tuple[int, int], replacement: str) -> TextEdit:
+    def at(cls, text: str, span: TextSpan, replacement: str) -> TextEdit:
         """Replace the character offsets `span` of `text` with `replacement`."""
         start, end = span
         line, column = _position(text, start)
@@ -52,7 +59,7 @@ class TextEdit:
         before: str,
         after: str,
         *,
-        span: tuple[int, int] | None = None,
+        span: TextSpan | None = None,
         whole_lines: bool = False,
     ) -> TextEdit:
         """The edit turning `before` into `after`, covering at least `span`.
@@ -71,8 +78,8 @@ class TextEdit:
         ):
             suffix += 1
         if span is not None:
-            prefix = min(prefix, span[0])
-            suffix = min(suffix, len(before) - span[1])
+            prefix = min(prefix, span.start)
+            suffix = min(suffix, len(before) - span.end)
         if whole_lines:
             prefix = before.rfind("\n", 0, prefix) + 1
             stop = len(before) - suffix

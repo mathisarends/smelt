@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.patterns import path_matches
@@ -159,11 +159,17 @@ def _boundary_restriction(
     )
 
 
-def _member_imports(ctx: AnalysisContext) -> Iterator[tuple[ImportDetail, str, str]]:
+class _MemberImport(NamedTuple):
+    detail: ImportDetail
+    source: str
+    target: str
+
+
+def _member_imports(ctx: AnalysisContext) -> Iterator[_MemberImport]:
     for detail in ctx.imports.all_imports():
         if detail.external or skip_import(ctx, detail):
             continue
         source = ctx.workspace.member_for_module(detail.importer)
         target = ctx.workspace.member_for_module(detail.imported)
         if source is not None and target is not None and source != target:
-            yield detail, source, target
+            yield _MemberImport(detail, source, target)

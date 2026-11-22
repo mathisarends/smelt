@@ -214,11 +214,11 @@ def _fix(
         ]
         edits = [text.delete_lines(statement)]
         if added:
-            end = text.span(target.names[-1])[1]
+            end = text.span(target.names[-1]).end
             edits.append(text.insert(end, ", " + ", ".join(added)))
         return Fix(Applicability.UNSAFE, description, tuple(edits))
     edit = rewrite_from_module(
-        text, text.span(statement)[0], current=current, spelling=import_from
+        text, text.span(statement).start, current=current, spelling=import_from
     )
     if edit is None:
         return None

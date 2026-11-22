@@ -146,14 +146,14 @@ def infer_config(root: Path, *, include_members: bool = True) -> InferredConfig 
     packages = (
         [
             package
-            for package in located[1]
+            for package in located.packages
             if package.resolve() not in member_directories
         ]
         if located
         else []
     )
     source_roots = (
-        [located[0].relative_to(root).as_posix()] if located and packages else []
+        [located.base.relative_to(root).as_posix()] if located and packages else []
     )
     member_roots: list[Path] = []
     for member in members:

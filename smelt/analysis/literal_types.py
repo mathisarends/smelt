@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import TypeAdapter
 
@@ -15,7 +15,15 @@ if TYPE_CHECKING:
 
     from smelt.analysis.context import AnalysisContext
 
-type LiteralMembers = tuple[tuple[str, str], ...]
+
+class LiteralValue(NamedTuple):
+    """A Literal member's Python type name and source ``repr``."""
+
+    kind: str
+    value: str
+
+
+type LiteralMembers = tuple[LiteralValue, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,7 +164,7 @@ def _literal_members(
     node: ast.Subscript, bindings: Mapping[str, str]
 ) -> LiteralMembers | None:
     parts = node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
-    members: set[tuple[str, str]] = set()
+    members: set[LiteralValue] = set()
     for part in parts:
         if (
             isinstance(part, ast.Subscript)
@@ -173,7 +181,7 @@ def _literal_members(
             type(None),
         }:
             # Tags distinguish 0/False and 1/True. repr preserves string escapes.
-            members.add((type(part.value).__name__, repr(part.value)))
+            members.add(LiteralValue(type(part.value).__name__, repr(part.value)))
         elif (
             isinstance(part, ast.UnaryOp)
             and isinstance(part.op, ast.USub | ast.UAdd)
@@ -181,7 +189,7 @@ def _literal_members(
             and type(part.operand.value) is int
         ):
             sign = -1 if isinstance(part.op, ast.USub) else 1
-            members.add(("int", repr(sign * part.operand.value)))
+            members.add(LiteralValue("int", repr(sign * part.operand.value)))
         else:
             # Names, enum members and calls need semantic resolution, not eval.
             return None

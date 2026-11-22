@@ -6,7 +6,7 @@ import re
 from collections.abc import Collection
 
 from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.fixes import TextEdit
+from smelt.diagnostics.fixes import TextEdit, TextSpan
 
 type _Import = ast.Import | ast.ImportFrom
 type Located = ast.expr | ast.stmt | ast.alias | ast.arg | ast.keyword | ast.type_param
@@ -40,12 +40,12 @@ class SourceText:
         return not before.strip() and (not after or after.startswith("#"))
 
     def indentation(self, node: ast.stmt) -> str:
-        return self.text[self.line_start(node.lineno) : self.span(node)[0]]
+        return self.text[self.line_start(node.lineno) : self.span(node).start]
 
-    def span(self, node: Located) -> tuple[int, int]:
+    def span(self, node: Located) -> TextSpan:
         start = self.offset(node.lineno, node.col_offset)
         end = self.offset(node.end_lineno or node.lineno, node.end_col_offset or 0)
-        return start, end
+        return TextSpan(start, end)
 
     def offset(self, line: int, column: int) -> int:
         """The character offset of an AST position (1-based line, UTF-8 byte column)."""
@@ -60,7 +60,7 @@ class SourceText:
         return self.insert(offset, f"{lead}{line}\n")
 
     def insert(self, offset: int, insertion: str) -> TextEdit:
-        return TextEdit.at(self.text, (offset, offset), insertion)
+        return TextEdit.at(self.text, TextSpan(offset, offset), insertion)
 
     def line_end_at(self, offset: int) -> int:
         """The end of the line that contains `offset`, its newline included."""
@@ -83,10 +83,10 @@ class SourceText:
     def delete_lines(self, node: ast.stmt) -> TextEdit:
         return TextEdit.at(self.text, self.lines(node), "")
 
-    def lines(self, node: ast.stmt) -> tuple[int, int]:
+    def lines(self, node: ast.stmt) -> TextSpan:
         """The offsets of the whole lines `node` occupies, its newline included."""
-        return self.line_start(node.lineno), self.line_end(
-            node.end_lineno or node.lineno
+        return TextSpan(
+            self.line_start(node.lineno), self.line_end(node.end_lineno or node.lineno)
         )
 
     def line_start(self, line: int) -> int:
@@ -145,7 +145,7 @@ def add_from_import(
             and statement.module == module
             and statement.names[0].name != "*"
         ):
-            return source.insert(source.span(statement.names[-1])[1], f", {name}")
+            return source.insert(source.span(statement.names[-1]).end, f", {name}")
     offset = (
         _future_insertion(source, tree)
         if module == "__future__"
@@ -181,14 +181,14 @@ def remove_aliases(
         return (
             source.delete_lines(statement) if source.stands_alone(statement) else None
         )
-    start = source.span(statement.names[0])[0]
-    end = source.span(statement.names[-1])[1]
+    start = source.span(statement.names[0]).start
+    end = source.span(statement.names[-1]).end
     if "#" in source.text[start:end]:
         return None
     if len(kept) == len(statement.names):
         return None
     listed = ", ".join(source.segment(alias) for alias in kept)
-    return TextEdit.at(source.text, (start, end), listed)
+    return TextEdit.at(source.text, TextSpan(start, end), listed)
 
 
 def import_insertion(source: SourceText, tree: ast.Module) -> int:
@@ -246,4 +246,4 @@ def rewrite_from_module(
     match = _FROM.match(source.text, start)
     if match is None or match.group("module") != current:
         return None
-    return TextEdit.at(source.text, match.span("module"), spelling)
+    return TextEdit.at(source.text, TextSpan(*match.span("module")), spelling)

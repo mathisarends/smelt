@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING
 from smelt.analysis.call_order import call_order_issues
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
+from smelt.diagnostics.fixes import (
+    Applicability,
+    Fix,
+    FixAvailability,
+    TextEdit,
+    TextSpan,
+)
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.edits import SourceText
@@ -109,7 +115,7 @@ def _fix(source: SourceText, tree: ast.Module, issue: CallOrderIssue) -> Fix | N
         f"Move {caller.name} above the helpers it calls",
         (
             source.insert(start, block + gap),
-            TextEdit.at(source.text, (gap_start, caller_end), ""),
+            TextEdit.at(source.text, TextSpan(gap_start, caller_end), ""),
         ),
     )
 
