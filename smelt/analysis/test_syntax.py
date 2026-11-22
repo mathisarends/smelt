@@ -557,6 +557,8 @@ def _expression_bindings(node: ast.AST) -> set[str]:
 
 
 class _Visitor(ast.NodeVisitor):
+    fixtures_only = False
+
     def __init__(
         self,
         module: TestModule,
@@ -771,6 +773,9 @@ class _Visitor(ast.NodeVisitor):
             *(value for value in node.args.kw_defaults if value is not None),
         ]:
             self.visit(expression)
+        if self.fixtures_only and not fixture:
+            self._leave_function(node, test)
+            return
         self.test = function
         self.env = dict(
             self.module_env if self.class_name and self.function_depth == 0 else outer
@@ -843,12 +848,9 @@ class _Visitor(ast.NodeVisitor):
         if fixture:
             self.record_fixture(node, outer)
         self.env = outer
-        self.test = test
         self.fixture_outputs = outer_outputs
         self.fixture_yielded = outer_yielded
-        self.env.pop(node.name, None)
-        if node.lineno in self.helpers:
-            self.env[node.name] = self._helper_binding(node)
+        self._leave_function(node, test)
 
     def record_fixture(self, node: Function, env: Mapping[str, _Binding]) -> None:
         if self.function_depth != 0:
@@ -1232,6 +1234,12 @@ class _Visitor(ast.NodeVisitor):
             f"{module}.{node.name}", "helper", "local-helper", helper_line=node.lineno
         )
 
+    def _leave_function(self, node: Function, test: TestFunction | None) -> None:
+        self.test = test
+        self.env.pop(node.name, None)
+        if node.lineno in self.helpers:
+            self.env[node.name] = self._helper_binding(node)
+
     def _function_context(
         self, node: Function, *, collected: bool
     ) -> TestFunction | None:
@@ -1269,6 +1277,16 @@ class _Visitor(ast.NodeVisitor):
         return binding.text if binding else None
 
 
+class _FixtureVisitor(_Visitor):
+    """Collects fixture bindings only.
+
+    Other function bodies run on a copied environment and record only into the
+    module summary, which fixture collection discards, so they are skipped.
+    """
+
+    fixtures_only = True
+
+
 def _fixture_facts(
     asts: AstCache,
     path: str,
@@ -1295,7 +1313,7 @@ def _declared_fixtures(
     async_specs: Mapping[str, frozenset[str]],
 ) -> dict[str, _Binding]:
     """Annotations or consistent known returns/yields, never fixture execution."""
-    visitor = _Visitor(TestModule(path), constructors, inherited, async_specs)
+    visitor = _FixtureVisitor(TestModule(path), constructors, inherited, async_specs)
     visitor.visit(tree)
     return visitor.defined_fixtures
 
