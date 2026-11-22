@@ -61,7 +61,7 @@ smelt init                  # draft smelt.yml from your layout
 smelt check                 # enforce it
 ```
 
-Upgrading to 0.16.0? See the [upgrade guide](docs/upgrading.md#015-to-016).
+Upgrading to 0.16.1? See the [upgrade guide](docs/upgrading.md#016-to-0161).
 
 | You want to… | Command |
 | --- | --- |
@@ -87,7 +87,7 @@ repos:
         name: smelt
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.16.0]
+        additional_dependencies: [smelt-cli==0.16.1]
         pass_filenames: false
         always_run: true
         require_serial: true

@@ -95,7 +95,9 @@ uv run python scripts/generate.py
 uv run python scripts/generate.py --check
 ```
 
-The first command synchronizes both rule references and removes obsolete files.
+The first command synchronizes both rule references, regenerates
+`README.pypi.md` with links to the package version's tag, and removes obsolete
+files. Edit `README.md` when changing the package description.
 The second is read-only and fails on missing, changed or extra generated files.
 CI and release validation run this drift check explicitly; do not hand-edit the
 generated catalog, rule pages or skill references. Wheels and source
