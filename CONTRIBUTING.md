@@ -112,9 +112,13 @@ inputs that affect their meaning. Verify results against `--no-cache` after edit
 deletions, re-exports and fixture changes. Mark a rule `production_only` only when the complete production module and package
 inventory, production file contents and effective config determine its raw findings.
 Test evidence, external metadata and Python targets are outside that key.
-The analysis layer caches source facts separately from rule decisions so an edit
-under `smelt/rules/` can reuse those facts. Cache rule outputs with
-`FactCache.decision_key` to include the rule implementation identity.
+The analysis layer caches source facts separately from rule decisions, and an
+edit only invalidates what the layer policy lets import the edited code. An edit
+under `smelt/rules/`, `smelt/engine/` or `smelt/diagnostics/` reuses the facts,
+and an edit under `smelt/cli/` reuses the rule decisions as well. Outside
+`analysis`, `config` and `model`, cache entries therefore need
+`FactCache.decision_key`, which includes the rule implementation identity, and
+the CLI must not store decisions at all.
 Mark a rule `file_local` only when its
 source contents, resolved policy and Python target fully determine its decision.
 `test_local` rules additionally receive resolved constructor, fixture and module

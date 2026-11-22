@@ -3,9 +3,29 @@
 import hashlib
 import json
 import sys
+from enum import StrEnum
 from functools import cache
 from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
+
+
+class IdentityScope(StrEnum):
+    """Which analyzer sources a cached value depends on."""
+
+    COMPLETE = "complete"
+    DECISIONS = "decisions"
+    FACTS = "facts"
+
+
+# The layers smelt.yml keeps each scope from importing, so editing them cannot
+# change its cached values. Facts come from analysis, config and model alone.
+# Rule decisions are made below the CLI. Any other source, including a
+# directory added later, invalidates every scope.
+_UNREACHABLE = {
+    IdentityScope.COMPLETE: frozenset[str](),
+    IdentityScope.DECISIONS: frozenset({"cli"}),
+    IdentityScope.FACTS: frozenset({"cli", "diagnostics", "engine", "rules"}),
+}
 
 
 def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] | None:
@@ -39,17 +59,19 @@ def _installed_sources(package: Path) -> list[tuple[str, str, str, int | None]] 
 
 
 @cache
-def analyzer_identity(*, include_rules: bool = True) -> str:
-    """Invalidate editable checkouts too, even without a package version bump."""
+def analyzer_identity(scope: IdentityScope = IdentityScope.COMPLETE) -> str:
+    """Invalidate editable checkouts too, even without a package version bump.
+
+    A narrower scope leaves out the layers that cannot change its values, so
+    editing the CLI keeps rule decisions and editing a rule keeps the facts.
+    """
+    unreachable = _UNREACHABLE[scope]
     digest = hashlib.sha256()
     package = Path(__file__).resolve().parent.parent
     record = _installed_sources(package)
     if record is not None:
         digest.update(b"wheel-record\0")
-        if not include_rules:
-            record = [
-                row for row in record if Path(row[0]).parts[:2] != ("smelt", "rules")
-            ]
+        record = [row for row in record if Path(row[0]).parts[1] not in unreachable]
         digest.update(json.dumps(record).encode())
     else:
         digest.update(b"source\0")
@@ -57,7 +79,7 @@ def analyzer_identity(*, include_rules: bool = True) -> str:
             path for path in package.rglob("*") if path.suffix in {".py", ".json"}
         ):
             relative = path.relative_to(package)
-            if not include_rules and relative.parts[0] == "rules":
+            if relative.parts[0] in unreachable:
                 continue
             digest.update(relative.as_posix().encode())
             digest.update(path.read_bytes())

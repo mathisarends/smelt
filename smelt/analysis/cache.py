@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter, ValidationError
 
-from smelt.analysis.identity import analyzer_identity
+from smelt.analysis.identity import IdentityScope, analyzer_identity
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,7 +38,7 @@ class FactCache:
     def __init__(self, directory: Path) -> None:
         self._root = directory
         self._versions = directory / "v1"
-        self.directory = self._versions / analyzer_identity(include_rules=False)
+        self.directory = self._versions / analyzer_identity(IdentityScope.FACTS)
         self._hits = 0
         self._misses = 0
         self._connection: sqlite3.Connection | None = None
@@ -135,8 +135,12 @@ class FactCache:
         return result
 
     def decision_key(self, kind: str, inputs: object) -> str:
-        """Rule outputs depend on rule code in addition to the underlying facts."""
-        return self.key(kind, [analyzer_identity(), inputs])
+        """Rule outputs depend on rule code in addition to the underlying facts.
+
+        Every layer outside analysis, config and model must key its entries
+        through this method: an edit there keeps the plain-keyed facts.
+        """
+        return self.key(kind, [analyzer_identity(IdentityScope.DECISIONS), inputs])
 
     def key(self, kind: str, inputs: object) -> str:
         payload = json.dumps([kind, inputs], sort_keys=True, ensure_ascii=True)
