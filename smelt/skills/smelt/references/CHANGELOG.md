@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `.smelt_cache/` takes far less disk space. Cached facts are stored compressed,
+  about a quarter of their former size, and at most seven caches of other Smelt
+  versions are kept besides the current one. Previously an editable checkout
+  or several worktrees on different Smelt versions could accumulate gigabytes
+  within the seven-day window. Existing caches remain readable. See
+  [cache behavior](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md#cache-behavior).
+
 ## [0.16.0] - 2026-11-22
 
 See [upgrading from 0.15](docs/upgrading.md#015-to-016) for hook pins and

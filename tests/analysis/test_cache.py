@@ -88,6 +88,55 @@ def test_caches_of_unused_analyzer_versions_are_removed(tmp_path: Path) -> None:
     )
 
 
+def test_surplus_analyzer_versions_are_removed_oldest_first(tmp_path: Path) -> None:
+    versions = tmp_path / "v1"
+    now = time.time()
+    for age in range(10):
+        directory = versions / f"opened-{age}-hours-ago"
+        directory.mkdir(parents=True)
+        (directory / "facts.sqlite3").write_bytes(b"")
+        os.utime(directory, (now - age * 3600, now - age * 3600))
+
+    _write(tmp_path, "fact")
+
+    assert sorted(path.name for path in versions.iterdir()) == sorted(
+        [
+            *(f"opened-{age}-hours-ago" for age in range(7)),
+            FactCache(tmp_path).directory.name,
+        ]
+    )
+
+
+def test_facts_are_stored_compressed(tmp_path: Path) -> None:
+    cache = FactCache(tmp_path)
+    cache.write("repetitive", "fact " * 2000, TEXT)
+    cache.close()
+
+    connection = sqlite3.connect(cache.directory / "facts.sqlite3")
+    (stored,) = connection.execute("SELECT length(payload) FROM facts").fetchone()
+    connection.close()
+    reopened = FactCache(tmp_path)
+    restored = reopened.read("repetitive", TEXT)
+    reopened.close()
+
+    assert stored < 500
+    assert restored == "fact " * 2000
+
+
+def test_uncompressed_payloads_of_older_caches_are_still_read(tmp_path: Path) -> None:
+    database = _write(tmp_path, "plain")
+    connection = sqlite3.connect(database)
+    connection.execute("UPDATE facts SET payload = ?", (b'"fact"',))
+    connection.commit()
+    connection.close()
+
+    cache = FactCache(tmp_path)
+    restored = cache.read("plain", TEXT)
+    cache.close()
+
+    assert restored == "fact"
+
+
 def test_older_caches_are_upgraded_and_keep_their_entries(tmp_path: Path) -> None:
     cache = FactCache(tmp_path)
     cache.directory.mkdir(parents=True)
