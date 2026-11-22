@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from smelt.analysis.parsing import AstCache
 
@@ -62,7 +64,9 @@ def _fingerprint(function: _Function) -> str | None:
     ):
         body = body[1:]
     statements = sum(
-        isinstance(node, ast.stmt) for statement in body for node in ast.walk(statement)
+        isinstance(node, ast.stmt)
+        for statement in body
+        for node in tree_nodes(statement)
     )
     if statements < _MIN_STATEMENTS:
         return None

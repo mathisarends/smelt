@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import MAX_HOPS, resolve_dotted
+from smelt.analysis.parsing import tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -333,7 +334,7 @@ class NavigationNamespaces:
         if isinstance(node, ast.Call):
             if any(
                 isinstance(part, ast.Name) and part.id in shadowed | parameters.keys()
-                for part in ast.walk(node.func)
+                for part in tree_nodes(node.func)
             ):
                 return None
             qualified = self._qualified(module, node.func)

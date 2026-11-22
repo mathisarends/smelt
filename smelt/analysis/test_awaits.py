@@ -6,6 +6,8 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import MockObservation, TestFunction
 
@@ -14,7 +16,7 @@ def call_only_async_mocks(test: TestFunction) -> list[MockObservation]:
     asserted = _asserted_nodes(test)
     parents = {
         child: parent
-        for parent in ast.walk(test.node)
+        for parent in tree_nodes(test.node)
         for child in ast.iter_child_nodes(parent)
     }
     observations = [
@@ -37,15 +39,15 @@ def call_only_async_mocks(test: TestFunction) -> list[MockObservation]:
 def _asserted_nodes(test: TestFunction) -> set[ast.AST]:
     writes = Counter(
         node.id
-        for node in ast.walk(test.node)
+        for node in tree_nodes(test.node)
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del)
     )
     assignments: dict[str, list[ast.expr]] = {}
-    for node in ast.walk(test.node):
+    for node in tree_nodes(test.node):
         if isinstance(node, ast.Assign | ast.AnnAssign) and node.value:
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
-                for name in ast.walk(target):
+                for name in tree_nodes(target):
                     if isinstance(name, ast.Name) and isinstance(name.ctx, ast.Store):
                         assignments.setdefault(name.id, []).append(node.value)
     # Follow only single-assignment local values, such as unpacked call_args.
@@ -59,7 +61,7 @@ def _asserted_nodes(test: TestFunction) -> set[ast.AST]:
     followed: set[str] = set()
     while pending:
         expression = pending.pop()
-        for node in ast.walk(expression):
+        for node in tree_nodes(expression):
             asserted.add(node)
             if isinstance(node, ast.Name) and node.id not in followed:
                 followed.add(node.id)

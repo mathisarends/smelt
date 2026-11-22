@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import TypeAdapter
 
 from smelt.analysis.errors import AnalysisError
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.workspace import import_root, workspace_members
 from smelt.config.models import SourceExclusion
 from smelt.config.patterns import path_matches
@@ -296,7 +297,7 @@ def _facade_syntax(source: SourceFile, asts: AstCache) -> bool:
 
 def _version_calls(tree: ast.Module) -> set[str]:
     calls: set[str] = set()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.ImportFrom) and node.module == "importlib.metadata":
             calls.update(
                 alias.asname or alias.name

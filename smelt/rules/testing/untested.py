@@ -5,6 +5,7 @@ import fnmatch
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 from smelt.rules.testing.location import mirror_path
@@ -30,7 +31,7 @@ def _has_behaviour(tree: ast.Module) -> bool:
     """Whether the module defines a function or method with a real body."""
     return any(
         isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and not _is_stub(node)
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     )
 
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from collections import Counter
 
+from smelt.analysis.parsing import tree_nodes
+
 
 def static_lazy_exports(tree: ast.Module) -> dict[str, str] | None:
     """None means unsupported/dynamic; a stub or a table alone proves nothing.
@@ -127,7 +129,7 @@ def _handler(handler: ast.FunctionDef, table: str, imports: set[str]) -> bool:
                 *(arg.annotation for arg in args if arg.annotation is not None),
                 *([handler.returns] if handler.returns is not None else []),
             ]
-            for node in ast.walk(annotation)
+            for node in tree_nodes(annotation)
         )
     ):
         return False
@@ -183,12 +185,12 @@ def _guard(guard: ast.stmt, argument: str, table: str) -> bool:
                 ast.Constant | ast.Name | ast.Load | ast.JoinedStr | ast.FormattedValue,
             )
             for arg in exception.args
-            for node in ast.walk(arg)
+            for node in tree_nodes(arg)
         )
         or any(
             isinstance(node, ast.Name) and node.id not in {argument, "__name__"}
             for arg in exception.args
-            for node in ast.walk(arg)
+            for node in tree_nodes(arg)
         )
     ):
         return False
@@ -226,7 +228,7 @@ def _stable(
 ) -> bool:
     writes: Counter[str] = Counter()
     imports: Counter[str] = Counter()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
             writes[node.id] += 1
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
@@ -267,7 +269,7 @@ def _stable(
 
 
 def _references_stable(tree: ast.Module, table: str, allowed: set[ast.AST]) -> bool:
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if (
             isinstance(node, ast.Name)
             and node.id in {table, "__all__"}
@@ -297,7 +299,7 @@ def _references_stable(tree: ast.Module, table: str, allowed: set[ast.AST]) -> b
 def _allowed_references(
     tree: ast.Module, handler: ast.FunctionDef, table: str, *, declaration: ast.stmt
 ) -> set[ast.AST]:
-    allowed = set(ast.walk(handler)) | set(ast.walk(declaration))
+    allowed = set(tree_nodes(handler)) | set(tree_nodes(declaration))
     for statement in tree.body:
         if isinstance(statement, ast.FunctionDef) and statement.name == "__dir__":
             # Only the standard side-effect-free discovery expression is supported.
@@ -315,7 +317,7 @@ def _allowed_references(
                 == ast.dump(ast.Module(body=expected, type_ignores=[]))
             ):
                 allowed.update(
-                    node for body in statement.body for node in ast.walk(body)
+                    node for body in statement.body for node in tree_nodes(body)
                 )
         elif isinstance(statement, ast.Assign | ast.AnnAssign):
             targets = (
@@ -327,7 +329,7 @@ def _allowed_references(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in targets
             ):
-                allowed.update(ast.walk(statement))
+                allowed.update(tree_nodes(statement))
     return allowed
 
 
@@ -349,7 +351,7 @@ def _shadows_exports(tree: ast.Module, names: set[str]) -> bool:
                 for alias in node.names
             )
         )
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
     )
 
 

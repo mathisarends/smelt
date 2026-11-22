@@ -6,6 +6,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.literals import nonempty_literal
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.test_helpers import outcome_propagates
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ def helper_outcome_review(
     """Explain existing inference boundaries without following additional bodies."""
     parents = {
         child: parent
-        for parent in ast.walk(test.node)
+        for parent in tree_nodes(test.node)
         for child in ast.iter_child_nodes(parent)
     }
     calls = {call.node: call.qualified for call in test.calls}
@@ -66,7 +67,7 @@ def _vacuous_evidence(
         return []
     parents = {
         child: node
-        for node in ast.walk(test.node)
+        for node in tree_nodes(test.node)
         for child in ast.iter_child_nodes(node)
     }
     universal = {call.node for call in test.calls if call.qualified == "builtins.all"}

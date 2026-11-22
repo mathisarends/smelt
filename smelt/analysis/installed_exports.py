@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.function_usage import definition_bindings
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -79,7 +79,7 @@ class InstalledPackages:
         # A lazy __getattr__ serves names that only type checkers import.
         lazy = "__getattr__" in definitions and declares_all
         bindings: dict[str, int] = {}
-        for node in ast.walk(tree):
+        for node in tree_nodes(tree):
             if isinstance(node, ast.Import | ast.ImportFrom):
                 for alias in node.names:
                     if alias.name != "*":
@@ -166,7 +166,7 @@ def _parse(path: Path) -> ast.Module | None:
 
 def _declares_all(tree: ast.Module) -> bool:
     return any(
-        isinstance(node, ast.Name) and node.id == "__all__" for node in ast.walk(tree)
+        isinstance(node, ast.Name) and node.id == "__all__" for node in tree_nodes(tree)
     )
 
 
@@ -209,7 +209,7 @@ def _static_all(tree: ast.Module) -> frozenset[str] | None:
             names.clear()
         names.update(literals)
         assigned.update(hits)
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if (
             isinstance(node, ast.Name)
             and node.id == "__all__"

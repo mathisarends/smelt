@@ -4,6 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -57,7 +58,7 @@ class NestedConditionalExpression(Rule):
         for source in ctx.files.sources.values():
             tree = ctx.asts.parse(source.path)
             expressions = [
-                node for node in ast.walk(tree) if isinstance(node, ast.IfExp)
+                node for node in tree_nodes(tree) if isinstance(node, ast.IfExp)
             ]
             nested = {
                 branch

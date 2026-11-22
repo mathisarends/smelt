@@ -6,6 +6,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
@@ -210,7 +211,7 @@ class ForbiddenBaseClassAffix(Rule):
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for name, source in sorted(ctx.files.sources.items()):
             info = ctx.model.info(name)
-            for node in ast.walk(ctx.asts.parse(source.path)):
+            for node in tree_nodes(ctx.asts.parse(source.path)):
                 if not isinstance(node, ast.ClassDef):
                     continue
                 affix = _base_affix(node.name)

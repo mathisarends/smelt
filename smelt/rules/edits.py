@@ -5,6 +5,7 @@ import bisect
 import re
 from collections.abc import Collection
 
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import TextEdit
 
 type _Import = ast.Import | ast.ImportFrom
@@ -105,9 +106,9 @@ def name_used(tree: ast.AST, name: str, *, ignore: Collection[ast.AST] = ()) -> 
     Strings count so that quoted annotations, ``__all__`` and docstrings keep an
     import alive; that errs on the side of leaving an unused import behind.
     """
-    skipped = {id(node) for root in ignore for node in ast.walk(root)}
+    skipped = {id(node) for root in ignore for node in tree_nodes(root)}
     word = re.compile(rf"\b{re.escape(name)}\b")
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if id(node) in skipped:
             continue
         match node:

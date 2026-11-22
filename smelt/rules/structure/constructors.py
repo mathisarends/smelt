@@ -5,6 +5,7 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
@@ -93,7 +94,7 @@ class ConstructorLogic(Rule):
             limit, _ = ctx.contracts.threshold(
                 source.module, "max_constructor_decisions"
             )
-            for owner in ast.walk(ctx.asts.parse(source.path)):
+            for owner in tree_nodes(ctx.asts.parse(source.path)):
                 if not isinstance(owner, ast.ClassDef):
                     continue
                 for method in owner.body:

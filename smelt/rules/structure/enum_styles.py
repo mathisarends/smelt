@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
@@ -125,7 +126,7 @@ def _str_enums(ctx: AnalysisContext) -> Iterator[_StrEnum]:
         tree = ctx.asts.parse(source.path)
         names = _EnumNames(tree)
         text: SourceText | None = None
-        for node in ast.walk(tree):
+        for node in tree_nodes(tree):
             if isinstance(node, ast.ClassDef) and names.is_str_enum(node):
                 automatic, literal, values = _members(node, names)
                 text = text or SourceText(ctx.files.read_text(source.path))

@@ -6,6 +6,8 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
@@ -24,10 +26,10 @@ def none_defaults(
 ) -> Iterator[NoneDefault]:
     parents = {
         child: parent
-        for parent in ast.walk(tree)
+        for parent in tree_nodes(tree)
         for child in ast.iter_child_nodes(parent)
     }
-    for function in ast.walk(tree):
+    for function in tree_nodes(tree):
         if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
         positional = [*function.args.posonlyargs, *function.args.args]

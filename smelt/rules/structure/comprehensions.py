@@ -5,6 +5,7 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
 
@@ -96,7 +97,7 @@ def _outermost(node: ast.AST) -> Iterator[_Comprehension]:
 
 def _reasons(root: _Comprehension, limit: int) -> list[str]:
     reasons: set[str] = set()
-    for node in ast.walk(root):
+    for node in tree_nodes(root):
         if not isinstance(
             node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
         ):
@@ -115,7 +116,7 @@ def _reasons(root: _Comprehension, limit: int) -> list[str]:
                 isinstance(expression, ast.BoolOp)
                 and len(expression.values) > _MAX_FILTER_OPERANDS
                 for condition in generator.ifs
-                for expression in ast.walk(condition)
+                for expression in tree_nodes(condition)
             )
             for generator in node.generators
         ):

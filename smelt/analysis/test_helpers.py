@@ -6,6 +6,7 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.test_deadlines import async_deadline
 
 if TYPE_CHECKING:
@@ -19,11 +20,11 @@ def local_helpers(tree: ast.Module) -> dict[int, Function]:
     result: dict[int, Function] = {}
     dynamic_writes = {
         name
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
         if isinstance(node, ast.Global | ast.Nonlocal)
         for name in node.names
     }
-    for scope in ast.walk(tree):
+    for scope in tree_nodes(tree):
         if not isinstance(scope, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef):
             continue
         bindings = _scope_bindings(scope)
@@ -120,7 +121,7 @@ def _scope_bindings(scope: ast.Module | Function) -> Counter[str]:
         elif isinstance(node, ast.MatchMapping) and node.rest:
             bindings[node.rest] += 1
     if isinstance(scope, ast.FunctionDef | ast.AsyncFunctionDef):
-        for argument in ast.walk(scope.args):
+        for argument in tree_nodes(scope.args):
             if isinstance(argument, ast.arg):
                 bindings[argument.arg] += 1
     return bindings

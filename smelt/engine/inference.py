@@ -10,6 +10,7 @@ import yaml
 from pydantic import ValidationError
 
 from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
+from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.models import SmeltConfig
@@ -540,7 +541,7 @@ def _server_targets(packages: list[Path], module: str) -> list[str]:
         return []
     return [
         node.value
-        for node in ast.walk(tree)
+        for node in tree_nodes(tree)
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
         and (match := _SERVER_TARGET.fullmatch(node.value))
@@ -784,7 +785,7 @@ def _imports(path: Path | None, package: str) -> set[str]:
     except SyntaxError:
         return set()
     found: set[str] = set()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.Import):
             found.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):

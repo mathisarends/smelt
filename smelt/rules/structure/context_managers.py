@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -46,7 +47,7 @@ class DeprecatedAsyncContextmanagerReturn(Rule):
             tree = ctx.asts.parse(source.path)
             bindings = _stable_imports(tree)
             text = SourceText(ctx.files.read_text(source.path))
-            for function in ast.walk(tree):
+            for function in tree_nodes(tree):
                 if not isinstance(function, ast.AsyncFunctionDef) or not any(
                     qualified_name(decorator, bindings)
                     == "contextlib.asynccontextmanager"
@@ -215,7 +216,7 @@ def _stable_imports(tree: ast.Module) -> dict[str, str]:
 
 def _binding_counts(tree: ast.Module) -> Counter[str]:
     bound: Counter[str] = Counter()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case ast.Name(id=name, ctx=ast.Store() | ast.Del()) | ast.arg(arg=name):
                 bound[name] += 1

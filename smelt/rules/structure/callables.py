@@ -4,6 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -68,7 +69,7 @@ class PreferCallableInstance(Rule):
 
     def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
         for source in ctx.files.sources.values():
-            for cls in ast.walk(ctx.asts.parse(source.path)):
+            for cls in tree_nodes(ctx.asts.parse(source.path)):
                 if not isinstance(cls, ast.ClassDef):
                     continue
                 methods = _plain_methods(cls)

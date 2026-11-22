@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import TypeAdapter
 
 from smelt.analysis.exports import Namespace, resolve_dotted, resolve_export
-from smelt.analysis.parsing import resolve_relative
+from smelt.analysis.parsing import resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -274,7 +274,7 @@ def _reserves_names(node: ast.ClassDef) -> bool:
         name in _RESERVED
         for child in node.body
         for binding in (
-            ast.walk(child)
+            tree_nodes(child)
             if isinstance(child, ast.Assign | ast.AnnAssign | ast.AugAssign)
             else (child,)
         )

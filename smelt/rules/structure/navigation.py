@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.navigation import DeclaredTypes, NavigationNamespaces
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
@@ -112,7 +113,7 @@ def _instance_methods(
     tree: ast.Module,
     candidates: AttributeCandidates,
 ) -> Iterator[tuple[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef, str]]:
-    for cls in ast.walk(tree):
+    for cls in tree_nodes(tree):
         if not isinstance(cls, ast.ClassDef):
             continue
         for method in cls.body:
@@ -130,7 +131,7 @@ def _instance_methods(
             if any(
                 _rebinds(node, receiver)
                 for statement in method.body
-                for node in ast.walk(statement)
+                for node in tree_nodes(statement)
             ):
                 continue
             yield cls, method, receiver

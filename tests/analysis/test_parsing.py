@@ -1,16 +1,14 @@
 from __future__ import annotations
 
+import ast
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from smelt.analysis.parsing import AnalysisError, python_note
+from smelt.analysis.parsing import AnalysisError, python_note, tree_nodes
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 RUNNING = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
@@ -113,3 +111,32 @@ class TestNewerSyntax:
         found = violations(root, CheckOptions(select=("ARC001",)))
 
         assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
+
+
+def test_tree_nodes_matches_ast_walk_for_a_module_and_its_parts() -> None:
+    tree = ast.parse(
+        "class Service:\n    def run(self, value):\n        return [value]\n"
+    )
+    function = tree.body[0].body[0]  # type: ignore[attr-defined]
+
+    assert list(tree_nodes(tree)) == list(ast.walk(tree))
+    assert list(tree_nodes(function)) == list(ast.walk(function))
+
+
+def test_tree_nodes_walks_a_root_once() -> None:
+    tree = ast.parse("value = 1\n")
+
+    assert tree_nodes(tree) is tree_nodes(tree)
+
+
+def test_analyses_share_walks_instead_of_calling_ast_walk() -> None:
+    """A direct walk repeats work that two dozen rules already did for the module."""
+    package = Path(__file__).resolve().parents[2] / "smelt"
+    rewriting = {"analysis/parsing.py", "analysis/ordering_rewrite.py"}
+    direct = sorted(
+        source.relative_to(package).as_posix()
+        for source in package.rglob("*.py")
+        if "ast.walk(" in source.read_text(encoding="utf-8")
+    )
+
+    assert set(direct) <= rewriting

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.call_order import call_order_issues
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability, TextEdit
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -148,7 +149,7 @@ def _eager_names(function: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return {
         node.id
         for root in roots
-        for node in ast.walk(root)
+        for node in tree_nodes(root)
         if isinstance(node, ast.Name)
     }
 
@@ -157,7 +158,7 @@ def _bound_names(statements: list[ast.stmt]) -> set[str]:
     """Every name the statements could bind, including nested definitions."""
     names: set[str] = set()
     for statement in statements:
-        for node in ast.walk(statement):
+        for node in tree_nodes(statement):
             match node:
                 case ast.Name(id=name, ctx=ast.Store() | ast.Del()):
                     names.add(name)

@@ -6,6 +6,8 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -50,7 +52,7 @@ def typing_name(node: ast.expr, bindings: Mapping[str, str]) -> str | None:
 
 def _binding_counts(tree: ast.Module) -> Counter[str]:
     bound: Counter[str] = Counter()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case (
                 ast.Name(id=name, ctx=ast.Store() | ast.Del())

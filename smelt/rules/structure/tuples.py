@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -99,7 +100,7 @@ class _Tuple:
 
 def _anonymous_tuples(tree: ast.Module) -> Iterator[_Tuple]:
     for annotation in _annotations(tree):
-        for node in ast.walk(annotation):
+        for node in tree_nodes(annotation):
             if (
                 isinstance(node, ast.Subscript)
                 and dotted_name(node.value) in _TUPLES
@@ -118,7 +119,7 @@ def _anonymous_tuples(tree: ast.Module) -> Iterator[_Tuple]:
 
 
 def _annotations(tree: ast.Module) -> Iterator[ast.expr]:
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case ast.FunctionDef() | ast.AsyncFunctionDef() if not _dictated(node):
                 arguments = node.args

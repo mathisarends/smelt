@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.graphs import strongly_connected_components
+from smelt.analysis.parsing import tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -73,7 +74,7 @@ def _scope_issues(
                 ),
                 *([caller.returns] if caller.returns else []),
             ]
-            for node in ast.walk(root)
+            for node in tree_nodes(root)
             if isinstance(node, ast.Name)
         }
         earlier = tuple(

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import annotation_name, qualified_name, unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -76,7 +77,7 @@ class MutableFieldInFrozenDataclass(Rule):
         for source in ctx.files.sources.values():
             tree = ctx.asts.parse(source.path)
             bindings = unshadowed_bindings(tree, builtin_names=("dict", "list", "set"))
-            for owner in ast.walk(tree):
+            for owner in tree_nodes(tree):
                 if not isinstance(owner, ast.ClassDef) or not _is_frozen(
                     owner, bindings
                 ):

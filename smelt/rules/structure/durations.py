@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import last_name, qualified_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -214,7 +215,7 @@ def _zero(node: ast.expr) -> bool:
 
 def _durations(tree: ast.Module) -> Iterator[_Duration]:
     yield from _assignments(tree.body, "constant")
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         if isinstance(node, ast.ClassDef):
             yield from _assignments(node.body, "field")
         elif isinstance(node, _FUNCTIONS) and not _exempt(node):

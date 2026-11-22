@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+from smelt.analysis.parsing import tree_nodes
+
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
 
@@ -42,11 +44,13 @@ def _literal(node: ast.AST) -> bool:
 
 
 def _independent_body(loop: ast.For) -> bool:
-    assigned = {node.id for node in ast.walk(loop.target) if isinstance(node, ast.Name)}
+    assigned = {
+        node.id for node in tree_nodes(loop.target) if isinstance(node, ast.Name)
+    }
     locals_in_loop = {
         node.id
         for statement in loop.body
-        for node in ast.walk(statement)
+        for node in tree_nodes(statement)
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
     }
     action = assertion = False
@@ -65,7 +69,7 @@ def _independent_body(loop: ast.For) -> bool:
         value = statement.test if isinstance(statement, ast.Assert) else statement.value
         if value is None:
             return False
-        for child in ast.walk(value):
+        for child in tree_nodes(value):
             if (
                 isinstance(child, ast.Name)
                 and isinstance(child.ctx, ast.Load)
@@ -79,6 +83,6 @@ def _independent_body(loop: ast.For) -> bool:
                 if not isinstance(receiver, ast.Name) or receiver.id not in assigned:
                     return False
         assertion |= isinstance(statement, ast.Assert)
-        action |= any(isinstance(child, ast.Call) for child in ast.walk(value))
+        action |= any(isinstance(child, ast.Call) for child in tree_nodes(value))
         assigned.update(target.id for target in targets if isinstance(target, ast.Name))
     return action and assertion

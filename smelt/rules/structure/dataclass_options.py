@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import is_stdlib
+from smelt.analysis.parsing import is_stdlib, tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -88,7 +88,7 @@ class MissingDataclassOption(Rule):
             tree = ctx.asts.parse(source.path)
             external = _external_names(tree, roots)
             text: SourceText | None = None
-            for owner in ast.walk(tree):
+            for owner in tree_nodes(tree):
                 if not isinstance(owner, ast.ClassDef):
                     continue
                 missing = _missing(owner, required, external)
@@ -224,7 +224,7 @@ def _dataclass_decorator(owner: ast.ClassDef) -> ast.expr | None:
 def _external_names(tree: ast.Module, roots: frozenset[str]) -> _ExternalNames:
     imported: set[str] = set()
     local: set[str] = set()
-    for node in ast.walk(tree):
+    for node in tree_nodes(tree):
         match node:
             case ast.ImportFrom(module=module, level=0, names=names) if module:
                 target = imported if _is_external(module, roots) else local

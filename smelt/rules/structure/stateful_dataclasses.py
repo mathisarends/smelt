@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -169,7 +170,7 @@ class _StatefulClass:
 
 
 def _stateful_dataclasses(tree: ast.Module) -> Iterator[_StatefulClass]:
-    for owner in ast.walk(tree):
+    for owner in tree_nodes(tree):
         if not isinstance(owner, ast.ClassDef) or not _is_mutable_dataclass(owner):
             continue
         containers = _container_fields(owner)
@@ -254,7 +255,7 @@ def _mutated_attributes(
     containers: frozenset[str],
 ) -> set[str]:
     mutated: set[str] = set()
-    for node in ast.walk(method):
+    for node in tree_nodes(method):
         match node:
             case ast.Assign(targets=targets) | ast.Delete(targets=targets):
                 for target in targets:

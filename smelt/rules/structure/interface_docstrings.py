@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import dotted_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -120,7 +121,7 @@ class _Member:
 
 
 def _undocumented_members(tree: ast.Module) -> Iterator[_Member]:
-    for owner in ast.walk(tree):
+    for owner in tree_nodes(tree):
         if not isinstance(owner, ast.ClassDef):
             continue
         protocol = any(_is_protocol(base) for base in owner.bases)
