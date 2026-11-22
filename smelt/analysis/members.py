@@ -23,7 +23,7 @@ from smelt.analysis.member_state import (
     NamespaceIdentity,
     update_members,
 )
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import SyntaxVisitor, tree_nodes
 from smelt.analysis.retained import StateKey, current
 
 if TYPE_CHECKING:
@@ -859,7 +859,7 @@ def _class_dependencies(node: Function, owner: ast.ClassDef) -> bool:
     )
 
 
-class _UseVisitor(ast.NodeVisitor):
+class _UseVisitor(SyntaxVisitor, ast.NodeVisitor):
     def __init__(self, module: ModuleSyntax) -> None:
         self.module = module.module
         self.syntax = module

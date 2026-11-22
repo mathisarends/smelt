@@ -40,6 +40,14 @@ class AstCache:
         return tree
 
 
+class SyntaxVisitor(ast.NodeVisitor):
+    """A read-only ``ast.NodeVisitor`` that visits children through ``child_nodes``."""
+
+    def generic_visit(self, node: ast.AST) -> None:
+        for child in child_nodes(node):
+            self.visit(child)
+
+
 def is_stdlib(module: str) -> bool:
     return module.split(".", maxsplit=1)[0] in sys.stdlib_module_names
 
@@ -87,9 +95,26 @@ def tree_nodes(tree: ast.AST) -> tuple[ast.AST, ...]:
     # collected once the analysis drops the tree.
     nodes: tuple[ast.AST, ...] | None = tree.__dict__.get("_smelt_walk")
     if nodes is None:
-        nodes = tuple(ast.walk(tree))
+        ordered = [tree]
+        # The list is its own breadth-first queue, which is the order of ast.walk.
+        for node in ordered:
+            ordered.extend(child_nodes(node))
+        nodes = tuple(ordered)
         tree.__dict__["_smelt_walk"] = nodes
     return nodes
+
+
+def child_nodes(node: ast.AST) -> list[ast.AST]:
+    """The children ``ast.iter_child_nodes`` yields, in its order, without its calls."""
+    children: list[ast.AST] = []
+    fields = node.__dict__
+    for name in node._fields:
+        value = fields.get(name)
+        if isinstance(value, list):
+            children += [item for item in value if isinstance(item, ast.AST)]
+        elif isinstance(value, ast.AST):
+            children.append(value)
+    return children
 
 
 def resolve_relative(

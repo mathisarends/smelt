@@ -6,7 +6,7 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import MockObservation, TestFunction
@@ -17,7 +17,7 @@ def call_only_async_mocks(test: TestFunction) -> list[MockObservation]:
     parents = {
         child: parent
         for parent in tree_nodes(test.node)
-        for child in ast.iter_child_nodes(parent)
+        for child in child_nodes(parent)
     }
     observations = [
         item

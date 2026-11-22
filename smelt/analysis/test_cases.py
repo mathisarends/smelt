@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from smelt.analysis.test_syntax import TestFunction
@@ -38,7 +38,7 @@ def _literal(node: ast.AST) -> bool:
         return True
     return isinstance(node, ast.List | ast.Tuple | ast.Dict) and all(
         _literal(child)
-        for child in ast.iter_child_nodes(node)
+        for child in child_nodes(node)
         if not isinstance(child, ast.expr_context)
     )
 

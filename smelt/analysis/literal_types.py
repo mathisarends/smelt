@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import TypeAdapter
 
+from smelt.analysis.parsing import SyntaxVisitor
 from smelt.analysis.typing_bindings import typing_bindings, typing_name
 
 if TYPE_CHECKING:
@@ -61,7 +62,7 @@ def literal_types(ctx: AnalysisContext, path: str) -> tuple[LiteralType, ...]:
     )
 
 
-class _Collector(ast.NodeVisitor):
+class _Collector(SyntaxVisitor, ast.NodeVisitor):
     def __init__(self, bindings: Mapping[str, str]) -> None:
         self.bindings = bindings
         self.found: list[LiteralType] = []

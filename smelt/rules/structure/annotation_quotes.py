@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import last_name
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -199,7 +199,7 @@ def _quoted(node: ast.expr) -> Iterator[ast.Constant]:
             yield from _quoted(value)
             yield from _quoted(index)
         case _:
-            for child in ast.iter_child_nodes(node):
+            for child in child_nodes(node):
                 if isinstance(child, ast.expr):
                     yield from _quoted(child)
 

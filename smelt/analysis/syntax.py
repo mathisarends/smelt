@@ -11,6 +11,7 @@ from pydantic import TypeAdapter
 from smelt.analysis.exports import Namespace, namespace_of
 from smelt.analysis.parsing import (
     AstCache,
+    child_nodes,
     resolve_relative,
     tree_nodes,
     type_checking_lines,
@@ -346,5 +347,5 @@ def _module_scope_imports(tree: ast.Module) -> set[ast.AST]:
         elif not isinstance(
             node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
         ):
-            pending.extend(ast.iter_child_nodes(node))
+            pending.extend(child_nodes(node))
     return found

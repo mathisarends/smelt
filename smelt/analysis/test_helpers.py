@@ -6,7 +6,7 @@ import ast
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.analysis.test_deadlines import async_deadline
 
 if TYPE_CHECKING:
@@ -135,4 +135,4 @@ def _scope_nodes(nodes: list[ast.stmt]) -> Iterator[ast.AST]:
         if not isinstance(
             node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda
         ):
-            pending.extend(ast.iter_child_nodes(node))
+            pending.extend(child_nodes(node))

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import child_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
@@ -180,7 +181,7 @@ def _raises(body: list[ast.stmt], bindings: Mapping[str, str]) -> Iterator[ast.R
             continue
         if isinstance(node, ast.Raise) and node.exc is not None:
             yield node
-        pending.extend(ast.iter_child_nodes(node))
+        pending.extend(child_nodes(node))
 
 
 def _exempt(

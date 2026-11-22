@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import child_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -149,7 +150,7 @@ def _asserts(method: _Function) -> Iterator[ast.Assert]:
             continue
         if isinstance(node, ast.Assert):
             yield node
-        pending.extend(ast.iter_child_nodes(node))
+        pending.extend(child_nodes(node))
 
 
 def _narrowings(test: ast.expr, receiver: str) -> Iterator[str]:

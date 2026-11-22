@@ -12,6 +12,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   new function, resolved the accesses of every module again.
 - Test analysis collects fixtures without analyzing every other function body
   a second time, which shortens the first check of a project with many tests.
+- Cold checks traverse syntax trees faster and walk each statement's scope
+  once for private attribute analysis. Findings are unchanged.
 
 ## [0.16.1] - 2026-11-22
 

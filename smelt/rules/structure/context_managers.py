@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.bindings import qualified_name
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.diagnostics.fixes import (
     Applicability,
     Fix,
@@ -264,5 +264,5 @@ def _module_nodes(node: ast.AST) -> Iterator[ast.AST]:
     if not isinstance(
         node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda
     ):
-        for child in ast.iter_child_nodes(node):
+        for child in child_nodes(node):
             yield from _module_nodes(child)

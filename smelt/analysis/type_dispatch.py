@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -40,9 +40,7 @@ def type_dispatches(tree: ast.Module, minimum: int) -> Iterator[TypeDispatch]:
         return
     conditions = [node for node in tree_nodes(tree) if isinstance(node, ast.If)]
     parents = {
-        child: parent
-        for parent in tree_nodes(tree)
-        for child in ast.iter_child_nodes(parent)
+        child: parent for parent in tree_nodes(tree) for child in child_nodes(parent)
     }
     tails = {id(tail) for node in conditions if (tail := _elif(node)) is not None}
     for root in conditions:

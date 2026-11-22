@@ -14,7 +14,7 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.bindings import binding_counts, qualified_name
 from smelt.analysis.exports import MAX_HOPS, resolve_export
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,6 +27,34 @@ type _Function = ast.FunctionDef | ast.AsyncFunctionDef
 
 _RECEIVER_DECORATORS = frozenset(
     {"builtins.property", "builtins.classmethod", "functools.cached_property"}
+)
+_NESTED_SCOPES = frozenset(
+    {
+        ast.AsyncFunctionDef,
+        ast.ClassDef,
+        ast.DictComp,
+        ast.FunctionDef,
+        ast.GeneratorExp,
+        ast.Lambda,
+        ast.ListComp,
+        ast.SetComp,
+    }
+)
+_WRITE_NODES = frozenset(
+    {
+        ast.AsyncFunctionDef,
+        ast.ClassDef,
+        ast.ExceptHandler,
+        ast.FunctionDef,
+        ast.Global,
+        ast.Import,
+        ast.ImportFrom,
+        ast.MatchAs,
+        ast.MatchMapping,
+        ast.MatchStar,
+        ast.Name,
+        ast.Nonlocal,
+    }
 )
 
 
@@ -310,7 +338,7 @@ class PrivateAttributeIndex:
                     parents = {
                         child: node
                         for node in tree_nodes(statement)
-                        for child in ast.iter_child_nodes(node)
+                        for child in child_nodes(node)
                     }
                 owner_module, _, _ = member.owner.rpartition(".")
                 yield PrivateAttributeAccess(
@@ -717,28 +745,37 @@ def _namespace_inputs(namespace: Namespace | None) -> object:
 
 
 def _scope_nodes(body: list[ast.stmt]) -> Iterator[ast.AST]:
-    pending: list[ast.AST] = list(body)
-    while pending:
-        node = pending.pop()
-        yield node
-        if not isinstance(
-            node,
-            ast.FunctionDef
-            | ast.AsyncFunctionDef
-            | ast.ClassDef
-            | ast.Lambda
-            | ast.ListComp
-            | ast.SetComp
-            | ast.DictComp
-            | ast.GeneratorExp,
-        ):
-            pending.extend(ast.iter_child_nodes(node))
+    for statement in reversed(body):
+        yield from _statement_nodes(statement)
+
+
+def _statement_nodes(statement: ast.stmt) -> tuple[ast.AST, ...]:
+    """A statement's nodes outside nested scopes, walked once per statement.
+
+    Each scope reads its statements for writes, parameters and accesses.
+    """
+    nodes: tuple[ast.AST, ...] | None = statement.__dict__.get("_smelt_scope")
+    if nodes is None:
+        found: list[ast.AST] = []
+        pending: list[ast.AST] = [statement]
+        while pending:
+            node = pending.pop()
+            found.append(node)
+            if node.__class__ not in _NESTED_SCOPES:
+                pending.extend(child_nodes(node))
+        nodes = tuple(found)
+        statement.__dict__["_smelt_scope"] = nodes
+    return nodes
 
 
 def _writes(nodes: Iterator[ast.AST] | list[ast.AST]) -> Counter[str]:
     result: Counter[str] = Counter()
     for node in nodes:
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
+        if node.__class__ not in _WRITE_NODES or (
+            isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+        ):
+            continue
+        if isinstance(node, ast.Name):
             result[node.id] += 1
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
             result[node.name] += 1

@@ -12,6 +12,30 @@ from smelt.analysis.parsing import tree_nodes
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
+# Most nodes of a module bind nothing, so they skip the checks below.
+_BINDING_NODES = frozenset(
+    {
+        ast.arg,
+        ast.AsyncFunctionDef,
+        ast.Attribute,
+        ast.ClassDef,
+        ast.ExceptHandler,
+        ast.FunctionDef,
+        ast.Global,
+        ast.Import,
+        ast.ImportFrom,
+        ast.MatchAs,
+        ast.MatchMapping,
+        ast.MatchStar,
+        ast.Name,
+        ast.Nonlocal,
+        ast.ParamSpec,
+        ast.Subscript,
+        ast.TypeVar,
+        ast.TypeVarTuple,
+    }
+)
+
 
 def unshadowed_bindings(
     tree: ast.Module, *, builtin_names: Iterable[str] = ()
@@ -49,7 +73,12 @@ def binding_counts(tree: ast.Module) -> Counter[str]:
     """
     bound: Counter[str] = Counter()
     for node in tree_nodes(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del):
+        if node.__class__ not in _BINDING_NODES or (
+            isinstance(node, ast.Name | ast.Attribute | ast.Subscript)
+            and isinstance(node.ctx, ast.Load)
+        ):
+            continue
+        if isinstance(node, ast.Name):
             bound[node.id] += 1
         elif isinstance(node, ast.arg):
             bound[node.arg] += 1

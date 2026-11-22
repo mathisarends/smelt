@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
-from smelt.analysis.parsing import resolve_relative, tree_nodes
+from smelt.analysis.parsing import SyntaxVisitor, resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
@@ -75,7 +75,7 @@ def module_attributes(
     )
 
 
-class _Attributes(ast.NodeVisitor):
+class _Attributes(SyntaxVisitor, ast.NodeVisitor):
     def __init__(self, module: ModuleSyntax, ignored: frozenset[int]) -> None:
         self.module = module
         self.ignored = ignored
@@ -210,7 +210,7 @@ def _type_parameters(parameters: list[ast.type_param]) -> set[str]:
     }
 
 
-class _Bindings(ast.NodeVisitor):
+class _Bindings(SyntaxVisitor, ast.NodeVisitor):
     def __init__(self, module: ModuleSyntax, ignored: frozenset[int]) -> None:
         self.module = module
         self.ignored = ignored

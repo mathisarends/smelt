@@ -15,7 +15,12 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.literals import nonempty_literal
-from smelt.analysis.parsing import resolve_relative, tree_nodes
+from smelt.analysis.parsing import (
+    SyntaxVisitor,
+    child_nodes,
+    resolve_relative,
+    tree_nodes,
+)
 from smelt.analysis.test_deadlines import async_deadline
 from smelt.analysis.test_helpers import (
     helper_executes,
@@ -238,7 +243,7 @@ def _analyze_test_syntax(
         parents = {
             child: parent
             for parent in tree_nodes(test.node)
-            for child in ast.iter_child_nodes(parent)
+            for child in child_nodes(parent)
         }
         calls = {call.node: call.qualified for call in test.calls}
         for call in test.calls:
@@ -393,7 +398,7 @@ class HelperCall:
         parents = {
             child: parent
             for parent in tree_nodes(self.function.node)
-            for child in ast.iter_child_nodes(parent)
+            for child in child_nodes(parent)
         }
         return [
             node
@@ -437,9 +442,7 @@ class TestFunction:
             if not (isinstance(node.test, ast.Constant) and node.test.value is True)
         ]
         parents = {
-            child: node
-            for node in tree_nodes(self.node)
-            for child in ast.iter_child_nodes(node)
+            child: node for node in tree_nodes(self.node) for child in child_nodes(node)
         }
         evidence.extend(
             call.node
@@ -528,11 +531,11 @@ def _locals(nodes: Sequence[ast.AST]) -> set[str]:
         ):
             names.update(
                 child.id
-                for child in ast.iter_child_nodes(node)
+                for child in child_nodes(node)
                 if isinstance(child, ast.Name)
                 and isinstance(child.ctx, ast.Store | ast.Del)
             )
-            for child in ast.iter_child_nodes(node):
+            for child in child_nodes(node):
                 if isinstance(child, ast.stmt):
                     names.update(_locals([child]))
                 elif not isinstance(child, ast.expr_context):
@@ -551,12 +554,10 @@ def _expression_bindings(node: ast.AST) -> set[str]:
         {node.id}
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store | ast.Del)
         else set()
-    ) | set().union(
-        *(_expression_bindings(child) for child in ast.iter_child_nodes(node))
-    )
+    ) | set().union(*(_expression_bindings(child) for child in child_nodes(node)))
 
 
-class _Visitor(ast.NodeVisitor):
+class _Visitor(SyntaxVisitor, ast.NodeVisitor):
     fixtures_only = False
 
     def __init__(

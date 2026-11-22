@@ -6,7 +6,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.literals import nonempty_literal
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.analysis.test_helpers import outcome_propagates
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ def helper_outcome_review(
     parents = {
         child: parent
         for parent in tree_nodes(test.node)
-        for child in ast.iter_child_nodes(parent)
+        for child in child_nodes(parent)
     }
     calls = {call.node: call.qualified for call in test.calls}
     followed = {helper.node: helper for helper in test.helpers}
@@ -66,9 +66,7 @@ def _vacuous_evidence(
     if not evidence:
         return []
     parents = {
-        child: node
-        for node in tree_nodes(test.node)
-        for child in ast.iter_child_nodes(node)
+        child: node for node in tree_nodes(test.node) for child in child_nodes(node)
     }
     universal = {call.node for call in test.calls if call.qualified == "builtins.all"}
     executions = {helper.node: helper for helper in test.helpers}

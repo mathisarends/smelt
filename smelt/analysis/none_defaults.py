@@ -6,7 +6,7 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -25,9 +25,7 @@ def none_defaults(
     tree: ast.Module, bindings: Mapping[str, str]
 ) -> Iterator[NoneDefault]:
     parents = {
-        child: parent
-        for parent in tree_nodes(tree)
-        for child in ast.iter_child_nodes(parent)
+        child: parent for parent in tree_nodes(tree) for child in child_nodes(parent)
     }
     for function in tree_nodes(tree):
         if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -117,7 +115,7 @@ def _qualified(node: ast.expr, bindings: Mapping[str, str]) -> str:
 def _scope_nodes(node: ast.AST) -> Iterator[ast.AST]:
     yield node
     if not isinstance(node, _SCOPES):
-        for child in ast.iter_child_nodes(node):
+        for child in child_nodes(node):
             yield from _scope_nodes(child)
 
 
@@ -167,6 +165,6 @@ def _value_nodes(node: ast.AST) -> Iterator[ast.AST]:
         case ast.match_case():
             children = list(node.body)
         case _:
-            children = list(ast.iter_child_nodes(node))
+            children = list(child_nodes(node))
     for child in children:
         yield from _value_nodes(child)

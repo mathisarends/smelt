@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.exports import MAX_HOPS, resolve_dotted
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -422,4 +422,4 @@ def _body_nodes(method: ast.FunctionDef | ast.AsyncFunctionDef) -> Iterator[ast.
         ):
             continue
         yield node
-        pending.extend(ast.iter_child_nodes(node))
+        pending.extend(child_nodes(node))
