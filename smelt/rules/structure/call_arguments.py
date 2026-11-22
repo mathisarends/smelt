@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, TypeGuard
 
 from smelt.analysis.bindings import unshadowed_bindings
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import child_nodes
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
@@ -255,7 +256,7 @@ def _awaited_arguments(
         for keyword in node.keywords:
             if isinstance(keyword.value, ast.Await) and keyword.arg is not None:
                 yield node, keyword.value, keyword.arg
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         if isinstance(child, ast.stmt):
             nested = False
         else:
@@ -281,7 +282,7 @@ def _comprehension_arguments(
         for keyword in node.keywords:
             if keyword.arg is not None and _is_extractable(keyword.value, aggregates):
                 yield _ComprehensionArgument(node, keyword.value, keyword.arg)
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         if isinstance(node, ast.While) and child is node.test:
             continue
         if isinstance(node, ast.Assert) and child is node.msg:

@@ -4,6 +4,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
+from smelt.analysis.parsing import child_nodes
 from smelt.diagnostics.fixes import Applicability, Fix, FixAvailability
 from smelt.diagnostics.violation import Category, Violation
 from smelt.rules.base import Rule, RuleDoc
@@ -20,7 +21,7 @@ def _assignments(node: ast.AST) -> Iterator[ast.Assign]:
         return
     if isinstance(node, ast.Assign):
         yield node
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         yield from _assignments(child)
 
 

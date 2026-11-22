@@ -6,7 +6,7 @@ import ast
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.analysis.test_deadlines import async_deadline, has_timeout
 
 if TYPE_CHECKING:
@@ -46,9 +46,7 @@ class TestWait:
 def unbounded_waits(test: TestFunction, helpers: list[str]) -> list[TestWait]:
     calls = {call.node: call.qualified for call in test.calls}
     parents = {
-        child: node
-        for node in tree_nodes(test.node)
-        for child in ast.iter_child_nodes(node)
+        child: node for node in tree_nodes(test.node) for child in child_nodes(node)
     }
     unbounded: list[TestWait] = []
     waits = [

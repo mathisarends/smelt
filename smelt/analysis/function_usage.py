@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, NamedTuple
 
-from smelt.analysis.parsing import resolve_relative, tree_nodes
+from smelt.analysis.parsing import child_nodes, resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -61,9 +61,7 @@ def reference_names(module: ModuleSyntax) -> ReferenceNames:
                 qualified = f"{base}.{alias.name}"
                 bindings.setdefault(alias.asname or alias.name, set()).add(qualified)
                 imports.add(qualified)
-    parents = {
-        child: parent for parent in nodes for child in ast.iter_child_nodes(parent)
-    }
+    parents = {child: parent for parent in nodes for child in child_nodes(parent)}
     for node in nodes:
         if isinstance(node, ast.Name | ast.Attribute) and isinstance(
             node.ctx, ast.Load

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from smelt.analysis.graphs import strongly_connected_components
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -163,5 +163,5 @@ def _body_nodes(
     ):
         return
     yield node
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         yield from _body_nodes(child, include_definitions=include_definitions)

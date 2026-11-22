@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import SyntaxVisitor, tree_nodes
 
 if TYPE_CHECKING:
     from smelt.config.models import OrderingConfig
@@ -543,7 +543,7 @@ def _annotations(node: _FunctionNode) -> list[ast.expr]:
     ]
 
 
-class _Reads(ast.NodeVisitor):
+class _Reads(SyntaxVisitor, ast.NodeVisitor):
     def __init__(self) -> None:
         self.names: set[str] = set()
 

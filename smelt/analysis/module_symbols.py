@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import TypeAdapter
 
 from smelt.analysis.function_usage import explicit_exports
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -233,7 +233,7 @@ def _api_expressions(
         ):
             yield node.value
         elif not isinstance(node, ast.TypeAlias):
-            for child in ast.iter_child_nodes(node):
+            for child in child_nodes(node):
                 if isinstance(child, ast.stmt):
                     yield from _api_expressions([child], exported, in_class=in_class)
                 elif isinstance(child, ast.ExceptHandler | ast.match_case):
@@ -245,7 +245,7 @@ def _definition_expressions(
 ) -> Iterator[ast.expr]:
     yield from node.decorator_list
     for parameter in node.type_params:
-        for child in ast.iter_child_nodes(parameter):
+        for child in child_nodes(parameter):
             if isinstance(child, ast.expr):
                 yield child
     if isinstance(node, ast.ClassDef):

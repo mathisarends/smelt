@@ -12,7 +12,7 @@ from smelt.analysis.bindings import (
     unshadowed_bindings,
 )
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -261,4 +261,4 @@ def _method_nodes(method: _Method) -> Iterator[ast.AST]:
         if isinstance(node, _SCOPES):
             continue
         yield node
-        pending.extend(ast.iter_child_nodes(node))
+        pending.extend(child_nodes(node))

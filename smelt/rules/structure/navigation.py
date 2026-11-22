@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.navigation import DeclaredTypes, NavigationNamespaces
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
@@ -185,7 +185,7 @@ def _calls(
     elif isinstance(node, ast.Attribute):
         yield from _calls(node.value, receiver, in_receiver=in_receiver)
     else:
-        for child in ast.iter_child_nodes(node):
+        for child in child_nodes(node):
             yield from _calls(child, receiver)
 
 

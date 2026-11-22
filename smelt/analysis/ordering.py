@@ -19,7 +19,7 @@ from smelt.analysis.definition_blocks import (
     is_main_guard,
 )
 from smelt.analysis.function_usage import definition_bindings
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
@@ -415,7 +415,7 @@ def _deferred_body_nodes(body: list[ast.stmt]) -> list[ast.AST]:
         if not isinstance(
             node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda
         ):
-            pending.extend(ast.iter_child_nodes(node))
+            pending.extend(child_nodes(node))
     return nodes
 
 

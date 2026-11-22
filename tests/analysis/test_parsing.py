@@ -8,7 +8,13 @@ from weakref import ref
 
 import pytest
 
-from smelt.analysis.parsing import AnalysisError, python_note, tree_nodes
+from smelt.analysis.parsing import (
+    AnalysisError,
+    SyntaxVisitor,
+    child_nodes,
+    python_note,
+    tree_nodes,
+)
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
 
@@ -123,6 +129,64 @@ def test_tree_nodes_matches_ast_walk_for_a_module_and_its_parts() -> None:
 
     assert list(tree_nodes(tree)) == list(ast.walk(tree))
     assert list(tree_nodes(function)) == list(ast.walk(function))
+
+
+def test_child_nodes_matches_ast_for_every_field_shape() -> None:
+    tree = ast.parse(
+        "@decorator\n"
+        "async def run[T](first: int, *rest, key=None) -> T:\n"
+        "    global state\n"
+        "    values = {name: [item async for item in source] for name in names}\n"
+        "    match values:\n"
+        "        case {'key': found, **others} if found:\n"
+        "            return f'{found!r:>{width}}'\n"
+        "    try:\n"
+        "        del values[0]\n"
+        "    except ValueError as error:\n"
+        "        raise error from None\n"
+        "    return {None: 1}, lambda x=1: x\n"
+    )
+
+    nodes = list(ast.walk(tree))
+
+    assert [child_nodes(node) for node in nodes] == [
+        list(ast.iter_child_nodes(node)) for node in nodes
+    ]
+
+
+def test_child_nodes_reads_a_constructed_node_with_omitted_fields() -> None:
+    value = ast.Name("value")
+
+    assert child_nodes(ast.Return(value)) == [value]
+    assert child_nodes(ast.Return()) == []
+
+
+def test_syntax_visitor_visits_in_node_visitor_order() -> None:
+    class Plain(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.seen: list[ast.AST] = []
+
+        def visit(self, node: ast.AST) -> None:
+            self.seen.append(node)
+            super().visit(node)
+
+    class Shared(SyntaxVisitor, ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.seen: list[ast.AST] = []
+
+        def visit(self, node: ast.AST) -> None:
+            self.seen.append(node)
+            super().visit(node)
+
+    tree = ast.parse(
+        "class Service:\n    def run(self, value=1):\n        return [value]\n"
+    )
+    plain, shared = Plain(), Shared()
+
+    plain.visit(tree)
+    shared.visit(tree)
+
+    assert shared.seen == plain.seen
 
 
 def test_tree_nodes_walks_a_root_once() -> None:

@@ -5,7 +5,7 @@ import textwrap
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.diagnostics.fixes import (
     Applicability,
     Fix,
@@ -90,7 +90,7 @@ def _constant_targets(node: ast.AST) -> Iterator[ast.Name]:
                 ):
                     yield target
         return
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         yield from _constant_targets(child)
 
 

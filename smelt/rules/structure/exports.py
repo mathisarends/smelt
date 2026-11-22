@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.analysis.function_usage import explicit_exports
+from smelt.analysis.parsing import child_nodes
 from smelt.diagnostics.violation import Category, Severity, Violation
 from smelt.rules.base import Rule, RuleDoc
 
@@ -132,7 +133,7 @@ def _module_nodes(node: ast.AST) -> Iterator[ast.AST]:
     ):
         return
     yield node
-    for child in ast.iter_child_nodes(node):
+    for child in child_nodes(node):
         yield from _module_nodes(child)
 
 
