@@ -56,6 +56,18 @@ class TestReleaseMetadata:
         assert set(re.findall(r"smelt-cli==([\d.]+)", integrations)) == {version}
         assert set(re.findall(r"rev: v([\d.]+)", integrations)) == {version}
 
+    def test_package_readme_links_to_the_release(self) -> None:
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
+            "project"
+        ]
+        readme = (ROOT / project["readme"]).read_text(encoding="utf-8")
+        links = re.findall(r"\]\(([^()\s]+)\)", readme)
+        release = f"https://github.com/mathisarends/smelt/blob/v{project['version']}"
+
+        assert any(link.startswith(f"{release}/docs/upgrading.md#") for link in links)
+        assert f"{release}/CHANGELOG.md" in links
+        assert all(link.startswith(("https://", "#")) for link in links)
+
 
 class TestGeneratedFiles:
     def test_committed_files_are_current(self) -> None:

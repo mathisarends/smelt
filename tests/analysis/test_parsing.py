@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
+import gc
 import sys
 from pathlib import Path
+from weakref import ref
 
 import pytest
 
@@ -127,6 +129,21 @@ def test_tree_nodes_walks_a_root_once() -> None:
     tree = ast.parse("value = 1\n")
 
     assert tree_nodes(tree) is tree_nodes(tree)
+
+
+def test_tree_nodes_releases_an_unused_tree() -> None:
+    tree = ast.parse("def run():\n    return 1\n")
+    function = tree.body[0]
+    tree_ref = ref(tree)
+    function_ref = ref(function)
+    tree_nodes(tree)
+    tree_nodes(function)
+
+    del tree, function
+    gc.collect()
+
+    assert tree_ref() is None
+    assert function_ref() is None
 
 
 def test_analyses_share_walks_instead_of_calling_ast_walk() -> None:

@@ -7,6 +7,18 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-22
+
+See [upgrading from 0.16](docs/upgrading.md#016-to-0161) for hook pins and
+cache behavior.
+
+- Cold checks share syntax tree walks across rules. The check worker now
+  releases cached walks when it no longer references the corresponding trees.
+- Editable installations reuse analysis facts after changes to the CLI or
+  rules. An edit to one rule refreshes the decisions that depend on that
+  rule's implementation.
+- Links in the PyPI package description now point to the matching release's
+  documentation and changelog.
 - `check`, `check --staged` and `check --changed` reuse each other's cached
   facts. Git-backed checks identified a file by its object ID and listed every
   tracked Python file for import resolution, so the first staged or changed
@@ -1659,7 +1671,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/mathisarends/smelt/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/mathisarends/smelt/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/mathisarends/smelt/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/mathisarends/smelt/compare/v0.13.0...v0.14.0
