@@ -5,16 +5,40 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import yaml
 
 from smelt.analysis import identity
 from smelt.analysis.cache import FactCache
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
+
+REPOSITORY = Path(__file__).resolve().parents[2]
+_POLICY = yaml.safe_load((REPOSITORY / "smelt.yml").read_text(encoding="utf-8"))
+DEPENDENCIES: dict[str, list[str]] = {
+    name: layer["may_depend_on"]
+    for name, layer in _POLICY["architecture"]["layers"].items()
+}
+DIRECTORIES: dict[str, str] = {
+    name: layer["path"] for name, layer in _POLICY["architecture"]["layers"].items()
+}
+
+
+def _reachable(layer: str) -> set[str]:
+    """A layer and everything smelt.yml lets it import, directly or not."""
+    reachable = {layer}
+    pending = [layer]
+    while pending:
+        for dependency in DEPENDENCIES[pending.pop()]:
+            if dependency not in reachable:
+                reachable.add(dependency)
+                pending.append(dependency)
+    return reachable
 
 
 @pytest.fixture(autouse=True)
@@ -113,3 +137,80 @@ def test_rule_edit_preserves_fact_namespace_and_invalidates_decisions(
     (package / "value.py").write_text("VALUE = 2")
     identity.analyzer_identity.cache_clear()
     assert FactCache(tmp_path / "cache").directory != after.directory
+
+
+@pytest.mark.parametrize("layer", sorted(DEPENDENCIES))
+def test_an_edit_invalidates_only_what_may_import_its_layer(
+    layer: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Facts are built in analysis and decisions in the engine; smelt.yml bounds both."""
+    package, metadata = install(tmp_path, monkeypatch)
+    (metadata / "direct_url.json").write_text(
+        json.dumps({"dir_info": {"editable": True}})
+    )
+    source = package / DIRECTORIES[layer] / "example.py"
+    source.parent.mkdir()
+    source.write_text("LIMIT = 1")
+    before = FactCache(tmp_path / "cache")
+    decision = before.decision_key("file-check", ["EX001", "input"])
+    complete = identity.analyzer_identity()
+
+    source.write_text("LIMIT = 2")
+    identity.analyzer_identity.cache_clear()
+    after = FactCache(tmp_path / "cache")
+
+    assert (after.directory != before.directory) == (layer in _reachable("analysis"))
+    assert (after.decision_key("file-check", ["EX001", "input"]) != decision) == (
+        layer in _reachable("engine")
+    )
+    assert identity.analyzer_identity() != complete
+
+
+def test_installed_wheel_keeps_facts_across_a_decision_layer_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package, metadata = install(tmp_path, monkeypatch)
+    # The record only lists files that exist; their hashes come from the record.
+    (package / "engine").mkdir()
+    (package / "engine/check.py").write_text("")
+    record = metadata / "RECORD"
+    value = record.read_text()
+    record.write_text(value + "smelt/engine/check.py,sha256=AAAA,4\n")
+    before = FactCache(tmp_path / "cache")
+    first = before.decision_key("file-check", ["EX001", "input"])
+
+    record.write_text(value + "smelt/engine/check.py,sha256=BBBB,4\n")
+    identity.analyzer_identity.cache_clear()
+    after = FactCache(tmp_path / "cache")
+
+    assert after.directory == before.directory
+    assert after.decision_key("file-check", ["EX001", "input"]) != first
+
+
+def test_layers_outside_the_facts_do_not_store_plain_keyed_entries() -> None:
+    """Facts survive edits to these layers, so their entries need a decision key.
+
+    ``file-decisions`` is the reviewed exception: its inputs start with a
+    policy that is itself a decision key.
+    """
+    plain = re.compile(r"cache\.(?:get|key)\(\s*\"([a-z-]+)\"")
+    found = {
+        (source.relative_to(REPOSITORY / "smelt").as_posix(), kind)
+        for layer in sorted(set(DEPENDENCIES) - _reachable("analysis"))
+        for source in (REPOSITORY / "smelt" / DIRECTORIES[layer]).rglob("*.py")
+        for kind in plain.findall(source.read_text(encoding="utf-8"))
+    }
+
+    assert found == {("engine/file_checks.py", "file-decisions")}
+
+
+def test_layers_above_the_engine_do_not_store_decisions() -> None:
+    """Decisions survive edits to these layers, so they may not write any."""
+    found = [
+        source.relative_to(REPOSITORY / "smelt").as_posix()
+        for layer in sorted(set(DEPENDENCIES) - _reachable("engine"))
+        for source in (REPOSITORY / "smelt" / DIRECTORIES[layer]).rglob("*.py")
+        if "decision_key(" in source.read_text(encoding="utf-8")
+    ]
+
+    assert found == []

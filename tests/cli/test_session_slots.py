@@ -21,7 +21,9 @@ def test_worker_slots_are_released_after_an_owned_child_crashes(tmp_path: Path) 
         "import sys,time,json,os\nfrom pathlib import Path\n"
         "from smelt.cli.session_slots import worker_slot\n"
         "with worker_slot(Path(sys.argv[1])) as available:\n"
-        " Path(sys.argv[2]).write_text(json.dumps({'available':available,'pid':os.getpid()}))\n"
+        # Renamed into place: the parent must never read a created but empty file.
+        " Path(sys.argv[2]+'.tmp').write_text(json.dumps({'available':available,'pid':os.getpid()}))\n"
+        " os.replace(sys.argv[2]+'.tmp',sys.argv[2])\n"
         " time.sleep(60)\n"
     )
     with contextlib.ExitStack() as slots:
