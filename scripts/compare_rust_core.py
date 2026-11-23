@@ -26,6 +26,7 @@ from smelt.engine.check import CheckOptions, run_check
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
 PORTED = (
+    "CPX002",
     "CPX003",
     "CPX005",
     "CPX006",
@@ -41,11 +42,15 @@ PORTED = (
     "IDM007",
     "LAY010",
     "MOD003",
+    "MOD005",
     "MOD007",
     "MOD008",
+    "MOD010",
     "MOD011",
+    "MOD012",
     "TYP007",
     "VIS003",
+    "VIS006",
     "VIS007",
 )
 # Each limit rule with the smallest `max` its configuration accepts.

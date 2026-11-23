@@ -13,6 +13,15 @@ style:
     external.Base: parity.modeling.base.Options
   errors: {base: parity.domain_errors.base.AppError, allow: [TypeError]}
   overrides:
+    kinds_await:
+      match: parity.call_kinds.awaits
+      call_argument_kinds: [await]
+    kinds_comprehension:
+      match: parity.call_kinds.comprehensions
+      call_argument_kinds: [comprehension]
+    kinds_aggregate:
+      match: parity.call_kinds.aggregates
+      call_argument_kinds: [aggregate]
     errors_lifted:
       match: parity.domain_errors.free
       errors: {}

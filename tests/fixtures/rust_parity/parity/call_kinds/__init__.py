@@ -1,0 +1,1 @@
+"""Argument kinds per package."""

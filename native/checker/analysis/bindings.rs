@@ -38,6 +38,20 @@ impl<'a> BindingCounts<'a> {
         }
     }
 
+    /// `binding_counts(ast.Module(body=statements))`.
+    pub fn of_statements(statements: impl IntoIterator<Item = &'a Stmt>) -> Self {
+        let mut counter = Counter {
+            counts: HashMap::new(),
+            coverage: Coverage::Full,
+        };
+        for statement in statements {
+            counter.visit_stmt(statement);
+        }
+        Self {
+            counts: counter.counts,
+        }
+    }
+
     pub fn get(&self, name: &str) -> usize {
         self.counts.get(name).copied().unwrap_or(0)
     }
@@ -183,6 +197,12 @@ pub fn dotted_name(expression: &Expr) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// The last segment of a name or attribute chain, or `""` for other expressions.
+pub fn dotted_tail(expression: &Expr) -> String {
+    let dotted = dotted_name(expression).unwrap_or_default();
+    dotted.rsplit('.').next().unwrap_or_default().to_owned()
 }
 
 /// The outer type of a direct annotation, including a quoted one.

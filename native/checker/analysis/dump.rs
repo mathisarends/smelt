@@ -7,9 +7,10 @@ use super::unparse::template_text;
 use ruff_python_ast::str_prefix::StringLiteralPrefix;
 use ruff_python_ast::{
     Alias, BoolOp, CmpOp, Comprehension, ConversionFlag, ElifElseClause, ExceptHandler, Expr,
-    ExprContext, FStringPartRef, InterpolatedElement, InterpolatedStringElement,
-    InterpolatedStringElements, Keyword, MatchCase, Number, Operator, Parameter, Parameters,
-    Pattern, Singleton, Stmt, StringLiteral, TypeParam, TypeParams, UnaryOp, WithItem,
+    ExprContext, ExprFString, ExprTString, FStringPartRef, InterpolatedElement,
+    InterpolatedStringElement, InterpolatedStringElements, Keyword, MatchCase, Number, Operator,
+    Parameter, Parameters, Pattern, Singleton, Stmt, StringLiteral, TypeParam, TypeParams, UnaryOp,
+    WithItem,
 };
 use ruff_text_size::Ranged;
 use sha2::{Digest, Sha256};
@@ -262,25 +263,11 @@ impl<'s> Dumper<'s> {
                 self.close();
             }
             Expr::FString(item) => {
-                let mut pieces = Vec::new();
-                for part in &item.value {
-                    match part {
-                        FStringPartRef::Literal(literal) => pieces.push(Piece::Constant {
-                            value: literal.value.to_string(),
-                            unicode: is_unicode_literal(self.source, literal),
-                        }),
-                        FStringPartRef::FString(fstring) => {
-                            push_elements(&mut pieces, &fstring.elements);
-                        }
-                    }
-                }
+                let pieces = fstring_pieces(self.source, item);
                 self.joined("JoinedStr", pieces, false);
             }
             Expr::TString(item) => {
-                let mut pieces = Vec::new();
-                for template in &item.value {
-                    push_elements(&mut pieces, &template.elements);
-                }
+                let pieces = template_pieces(item);
                 self.joined("TemplateStr", pieces, true);
             }
             Expr::StringLiteral(item) => {
@@ -816,6 +803,55 @@ impl<'s> Dumper<'s> {
 fn is_unicode_literal(source: &str, literal: &StringLiteral) -> bool {
     literal.flags.prefix() == StringLiteralPrefix::Unicode
         && source[usize::from(literal.start())..].starts_with('u')
+}
+
+/// The `ast.Constant` strings of an f-string or t-string, including its format specs.
+pub fn joined_constants(source: &str, expression: &Expr) -> Vec<String> {
+    let pieces = match expression {
+        Expr::FString(item) => fstring_pieces(source, item),
+        Expr::TString(item) => template_pieces(item),
+        _ => Vec::new(),
+    };
+    let mut found = Vec::new();
+    collect_constants(pieces, &mut found);
+    found
+}
+
+fn collect_constants(pieces: Vec<Piece<'_>>, found: &mut Vec<String>) {
+    for piece in merge_pieces(pieces) {
+        match piece {
+            Piece::Constant { value, .. } => found.push(value),
+            Piece::Value(element) => {
+                if let Some(spec) = &element.format_spec {
+                    let mut nested = Vec::new();
+                    push_elements(&mut nested, &spec.elements);
+                    collect_constants(nested, found);
+                }
+            }
+        }
+    }
+}
+
+fn fstring_pieces<'a>(source: &str, item: &'a ExprFString) -> Vec<Piece<'a>> {
+    let mut pieces = Vec::new();
+    for part in &item.value {
+        match part {
+            FStringPartRef::Literal(literal) => pieces.push(Piece::Constant {
+                value: literal.value.to_string(),
+                unicode: is_unicode_literal(source, literal),
+            }),
+            FStringPartRef::FString(fstring) => push_elements(&mut pieces, &fstring.elements),
+        }
+    }
+    pieces
+}
+
+fn template_pieces(item: &ExprTString) -> Vec<Piece<'_>> {
+    let mut pieces = Vec::new();
+    for template in &item.value {
+        push_elements(&mut pieces, &template.elements);
+    }
+    pieces
 }
 
 fn push_elements<'a>(pieces: &mut Vec<Piece<'a>>, elements: &'a InterpolatedStringElements) {

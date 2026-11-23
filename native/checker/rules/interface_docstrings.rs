@@ -1,6 +1,6 @@
 //! IDM005: `idioms/missing-interface-docstring`.
 use super::{Finding, RuleInput};
-use crate::checker::analysis::bindings::dotted_name;
+use crate::checker::analysis::bindings::dotted_tail;
 use crate::checker::analysis::nodes::{all_classes, has_docstring};
 use crate::checker::violation::Violation;
 use ruff_python_ast::{Expr, Stmt, StmtFunctionDef};
@@ -76,23 +76,18 @@ fn undocumented(method: &StmtFunctionDef, decorators: &HashSet<String>) -> bool 
         && method.body.iter().all(is_placeholder)
 }
 
-fn last_segment(expression: &Expr) -> String {
-    let dotted = dotted_name(expression).unwrap_or_default();
-    dotted.rsplit('.').next().unwrap_or_default().to_owned()
-}
-
 fn is_protocol(base: &Expr) -> bool {
     let base = match base {
         Expr::Subscript(node) => node.value.as_ref(),
         other => other,
     };
-    last_segment(base) == "Protocol"
+    dotted_tail(base) == "Protocol"
 }
 
 fn decorator_name(decorator: &Expr) -> String {
     match decorator {
-        Expr::Call(call) => last_segment(&call.func),
-        other => last_segment(other),
+        Expr::Call(call) => dotted_tail(&call.func),
+        other => dotted_tail(other),
     }
 }
 
