@@ -131,13 +131,37 @@ jobs:
         run: |
           docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
             quay.io/pypa/manylinux_2_28_x86_64:latest \
-            bash scripts/build_manylinux_wheel.sh
+            bash scripts/build_linux_wheel.sh
       - name: Cross-compile and audit the Linux ARM64 release wheel
         if: runner.os == 'Linux'
         run: |
           docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
             ghcr.io/rust-cross/manylinux_2_28-cross:aarch64 \
-            bash scripts/build_manylinux_wheel.sh aarch64-unknown-linux-gnu dist/arm64
+            bash scripts/build_linux_wheel.sh aarch64-unknown-linux-gnu dist/arm64
       - name: Install and smoke-test the built wheel outside the checkout
         run: |
           uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist
+
+  package-musl:
+    name: Package (musllinux ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and audit the musllinux release wheel
+        run: |
+          docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
+            "quay.io/pypa/musllinux_1_2_${{ matrix.arch }}:latest" \
+            bash scripts/build_linux_wheel.sh "${{ matrix.arch }}-unknown-linux-musl"
+      - name: Install and smoke-test the wheel on Alpine
+        run: |
+          docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
+            python:3.12-alpine \
+            sh -c "python -m pip install --disable-pip-version-check --root-user-action=ignore uv && python scripts/smoke_distribution.py dist"
