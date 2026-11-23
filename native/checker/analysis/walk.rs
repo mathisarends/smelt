@@ -27,6 +27,44 @@ pub enum TreeNode<'a> {
     Spec(&'a InterpolatedStringElements),
 }
 
+/// The identity of one node. The kind is part of it because a struct can share its
+/// address with its first field.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NodeKey(u8, usize);
+
+impl TreeNode<'_> {
+    pub fn key(self) -> NodeKey {
+        match self {
+            Self::Statement(node) => NodeKey(0, std::ptr::from_ref(node).addr()),
+            Self::Expression(node) => NodeKey(1, std::ptr::from_ref(node).addr()),
+            Self::Elif(node) => NodeKey(2, node.as_ptr().addr()),
+            Self::Handler(node) => NodeKey(3, std::ptr::from_ref(node).addr()),
+            Self::Case(node) => NodeKey(4, std::ptr::from_ref(node).addr()),
+            Self::Pattern(node) => NodeKey(5, std::ptr::from_ref(node).addr()),
+            Self::Comprehension(node) => NodeKey(6, std::ptr::from_ref(node).addr()),
+            Self::Keyword(node) => NodeKey(7, std::ptr::from_ref(node).addr()),
+            Self::Item(node) => NodeKey(8, std::ptr::from_ref(node).addr()),
+            Self::Parameters(node) => NodeKey(9, std::ptr::from_ref(node).addr()),
+            Self::Parameter(node) => NodeKey(10, std::ptr::from_ref(node).addr()),
+            Self::TypeParam(node) => NodeKey(11, std::ptr::from_ref(node).addr()),
+            Self::Interpolation(node) => NodeKey(12, std::ptr::from_ref(node).addr()),
+            Self::Spec(node) => NodeKey(13, std::ptr::from_ref(node).addr()),
+        }
+    }
+}
+
+/// The key of an expression node.
+pub fn expression_key(expression: &Expr) -> NodeKey {
+    TreeNode::Expression(expression).key()
+}
+
+/// The children of `node` in `ast.iter_child_nodes` order.
+pub fn children(node: TreeNode<'_>) -> Vec<TreeNode<'_>> {
+    let mut found = Vec::new();
+    push_children(node, &mut found);
+    found
+}
+
 /// Every node of the module in `ast.walk` order.
 pub fn tree_nodes(module: &ModModule) -> Vec<TreeNode<'_>> {
     walk(module.body.iter().map(TreeNode::Statement).collect())

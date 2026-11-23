@@ -9,5 +9,6 @@ pub mod nodes;
 mod printable;
 pub mod python_target;
 pub mod repr;
+pub mod test_syntax;
 pub mod unparse;
 pub mod walk;

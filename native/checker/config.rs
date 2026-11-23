@@ -23,6 +23,7 @@ pub struct Request {
     pub select: Vec<String>,
     pub strict_coverage: bool,
     pub project: Project,
+    pub tests: TestPolicy,
     pub contracts: BTreeMap<String, Contract>,
     pub project_policy: Policy,
     pub rule_layers: Vec<RuleMap>,
@@ -77,11 +78,13 @@ impl Request {
             project: Project {
                 root_packages: string_list(policy["project"].get("root_packages")),
                 source_roots: string_list(policy["project"].get("source_roots")),
+                test_roots: string_list(policy["project"].get("test_roots")),
                 exclude,
                 python_version: policy["project"]["python_version"]
                     .as_str()
                     .map(str::to_owned),
             },
+            tests: TestPolicy::from_config(policy),
             contracts,
             project_policy: Policy::from_value(structure),
             rule_layers,
@@ -106,8 +109,36 @@ fn rule_map(rules: &Value) -> Result<RuleMap, String> {
 pub struct Project {
     pub root_packages: Vec<String>,
     pub source_roots: Vec<String>,
+    pub test_roots: Vec<String>,
     pub exclude: Vec<String>,
     pub python_version: Option<String>,
+}
+
+/// The `tests` section and the project-wide patch limit.
+pub struct TestPolicy {
+    pub quality_exclude: Vec<String>,
+    pub forbidden_mock_paths: Vec<String>,
+    pub assertion_helpers: Vec<String>,
+    pub timeout_helpers: Vec<String>,
+    pub max_patches_per_test: Option<u64>,
+}
+
+impl TestPolicy {
+    fn from_config(policy: &Value) -> Self {
+        let tests = &policy["tests"];
+        let rules = &policy["rules"];
+        Self {
+            quality_exclude: string_list(tests.get("quality_exclude")),
+            forbidden_mock_paths: string_list(tests.get("forbidden_mock_paths")),
+            assertion_helpers: string_list(tests.get("assertion_helpers")),
+            timeout_helpers: string_list(tests.get("timeout_helpers")),
+            // Both spellings may be set; the name is read last, so it wins.
+            max_patches_per_test: ["TST005", "tests/excess-patches"]
+                .iter()
+                .rev()
+                .find_map(|key| rules[*key]["max"].as_u64()),
+        }
+    }
 }
 
 pub struct Contract {

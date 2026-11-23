@@ -4,6 +4,9 @@ use ruff_python_ast::visitor::{self, Visitor};
 use ruff_python_ast::{ExceptHandler, Expr, ModModule, Stmt};
 use std::collections::{HashMap, HashSet};
 
+// Re-export chains are short; a longer one is more likely a cycle than a design.
+const MAX_HOPS: usize = 8;
+
 pub struct Namespace {
     /// Local name to the absolute name it was imported as.
     pub imported: HashMap<String, String>,
@@ -57,6 +60,69 @@ pub fn resolve_relative(
         Some(target) if !target.is_empty() => target.to_owned(),
         _ => base,
     }
+}
+
+/// Where a dotted name such as `app.billing.Invoice` is defined.
+///
+/// The longest module prefix short of the last segment is imported as a module; the
+/// remaining segments are attributes, so a facade binding wins over a submodule.
+pub fn resolve_dotted(
+    qualified: &str,
+    namespaces: &HashMap<&str, Namespace>,
+) -> Option<(String, Option<String>)> {
+    let parts: Vec<&str> = qualified.split('.').collect();
+    let Some(end) = (1..parts.len())
+        .rev()
+        .find(|end| namespaces.contains_key(parts[..*end].join(".").as_str()))
+    else {
+        return namespaces
+            .contains_key(qualified)
+            .then(|| (qualified.to_owned(), None));
+    };
+    let mut current = Some((parts[..end].join("."), None));
+    for attribute in &parts[end..] {
+        current = match current {
+            Some((module, None)) => resolve_export(&module, attribute, namespaces),
+            other => return other,
+        };
+    }
+    current
+}
+
+/// The module defining `module.name` and its name there; `None` as the name when it
+/// is a module itself.
+fn resolve_export(
+    module: &str,
+    name: &str,
+    namespaces: &HashMap<&str, Namespace>,
+) -> Option<(String, Option<String>)> {
+    let (mut module, mut name) = (module.to_owned(), name.to_owned());
+    let mut seen = HashSet::new();
+    while seen.len() < MAX_HOPS && seen.insert((module.clone(), name.clone())) {
+        let namespace = namespaces.get(module.as_str())?;
+        if namespace.defined.contains(&name) {
+            return Some((module, Some(name)));
+        }
+        let own = format!("{module}.{name}");
+        let target = namespace
+            .imported
+            .get(&name)
+            .filter(|target| !target.is_empty())
+            .cloned()
+            .unwrap_or_else(|| own.clone());
+        if namespaces.contains_key(target.as_str()) {
+            return Some((target, None));
+        }
+        if target == own {
+            return None;
+        }
+        let (parent, last) = target.rsplit_once('.')?;
+        if parent.is_empty() {
+            return None;
+        }
+        (module, name) = (parent.to_owned(), last.to_owned());
+    }
+    None
 }
 
 impl Namespace {

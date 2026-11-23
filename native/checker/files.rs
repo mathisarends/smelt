@@ -1,7 +1,7 @@
 //! Source discovery with the package rules of `smelt.analysis.files`.
 use super::config::Request;
 use super::patterns::PathPattern;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
@@ -18,6 +18,8 @@ pub struct SourceFile {
 pub struct FileIndex {
     pub root: PathBuf,
     pub sources: BTreeMap<String, SourceFile>,
+    /// Test files by project-relative path.
+    pub tests: BTreeMap<String, SourceFile>,
     pub packages: Vec<String>,
 }
 
@@ -40,11 +42,13 @@ impl FileIndex {
         for package in &request.project.root_packages {
             discovery.package_root(package, &request.project.source_roots)?;
         }
+        let tests = discovery.tests(&request.project.test_roots);
         let mut packages: Vec<String> = discovery.portions.into_keys().collect();
         packages.sort();
         Ok(Self {
             root: discovery.root,
             sources: discovery.sources,
+            tests,
             packages,
         })
     }
@@ -162,22 +166,116 @@ impl Discovery {
         Ok(())
     }
 
+    /// Test files below the declared roots that are neither sources nor excluded.
+    fn tests(&self, roots: &[String]) -> BTreeMap<String, SourceFile> {
+        let source_paths: HashSet<&str> = self
+            .sources
+            .values()
+            .map(|source| source.path.as_str())
+            .collect();
+        let mut tests = BTreeMap::new();
+        for root in roots {
+            let directory = self.root.join(root);
+            if !directory.is_dir() {
+                continue;
+            }
+            for path in python_files(&directory) {
+                let relative = self.relative(&path);
+                if source_paths.contains(relative.as_str()) || self.excluded(&relative) {
+                    continue;
+                }
+                let stem = path
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or_default();
+                let name = file_name(&path);
+                if name == "conftest.py" || name.starts_with("test_") || stem.ends_with("_test") {
+                    let module = relative
+                        .strip_suffix(".py")
+                        .unwrap_or(&relative)
+                        .replace('/', ".");
+                    tests.insert(
+                        relative.clone(),
+                        SourceFile {
+                            module,
+                            path: relative,
+                            absolute: path,
+                            is_package: false,
+                        },
+                    );
+                }
+            }
+        }
+        tests
+    }
+
     fn excluded(&self, path: &str) -> bool {
         self.exclude.iter().any(|pattern| pattern.matches(path))
     }
 
+    /// The POSIX path from the root, with `..` for a path outside it.
     fn relative(&self, path: &Path) -> String {
         let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        let relative = resolved.strip_prefix(&self.root).unwrap_or(&resolved);
-        relative
+        if let Ok(inside) = resolved.strip_prefix(&self.root) {
+            return posix_parts(inside).join("/");
+        }
+        let shared = resolved
             .components()
-            .filter_map(|component| match component {
-                Component::Normal(part) => Some(part.to_string_lossy().into_owned()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("/")
+            .zip(self.root.components())
+            .take_while(|(left, right)| left == right)
+            .count();
+        if shared == 0 {
+            // A different Windows drive has no relative path.
+            let absolute = resolved.to_string_lossy().replace('\\', "/");
+            return absolute
+                .strip_prefix("//?/")
+                .unwrap_or(&absolute)
+                .to_owned();
+        }
+        let ups = self.root.components().count() - shared;
+        let mut parts = vec!["..".to_owned(); ups];
+        parts.extend(posix_parts(
+            &resolved.components().skip(shared).collect::<PathBuf>(),
+        ));
+        parts.join("/")
     }
+}
+
+fn posix_parts(path: &Path) -> Vec<String> {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(part) => Some(part.to_string_lossy().into_owned()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Python files below a directory, skipping tool directories and symlink cycles.
+fn python_files(directory: &Path) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    let mut visited = HashSet::new();
+    let mut pending = vec![directory.to_path_buf()];
+    while let Some(parent) = pending.pop() {
+        let resolved = fs::canonicalize(&parent).unwrap_or_else(|_| parent.clone());
+        if !visited.insert(resolved) {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(&parent) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let name = file_name(&path);
+                if !SKIP_DIRS.contains(&name) && !name.starts_with('.') {
+                    pending.push(path);
+                }
+            } else if path.extension().is_some_and(|suffix| suffix == "py") {
+                found.push(path);
+            }
+        }
+    }
+    found
 }
 
 fn file_name(path: &Path) -> &str {

@@ -12,15 +12,17 @@ mod suppressions;
 mod violation;
 
 use analysis::python_target::PythonTargets;
+use analysis::test_syntax::{self, TestModule};
 use config::Request;
 use contracts::Contracts;
 use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
+use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::Path;
 use suppressions::Suppression;
@@ -94,8 +96,12 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         &request.project.source_roots,
         request.project.python_version.as_deref(),
     );
+    let (test_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = active
+        .iter()
+        .copied()
+        .partition(|rule| TEST_RULES.contains(&rule.code.as_str()));
     let analysis = Analysis {
-        active: &active,
+        active: &file_rules,
         project: rules::Project {
             contracts: &contracts,
             targets: &targets,
@@ -107,16 +113,49 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         selected: !request.select.is_empty(),
     };
     let sources: Vec<&SourceFile> = files.sources.values().collect();
+    let quality_exclude = path_patterns(&request.tests.quality_exclude)?;
+    let forbidden_mocks = path_patterns(&request.tests.forbidden_mock_paths)?;
+    let tests: Vec<&SourceFile> = files
+        .tests
+        .values()
+        .filter(|test| !quality_exclude.iter().any(|item| item.matches(&test.path)))
+        .collect();
+    let known: HashSet<&str> = files
+        .sources
+        .keys()
+        .chain(&files.packages)
+        .map(String::as_str)
+        .collect();
+    let test_project = TestProject {
+        policy: &request.tests,
+        known: &known,
+        forbidden_mocks: &forbidden_mocks,
+    };
     // AST walks recurse, and a long operator chain nests as deep as it is long.
     let pool = rayon::ThreadPoolBuilder::new()
         .stack_size(ANALYSIS_STACK_BYTES)
         .build()
         .map_err(|error| error.to_string())?;
     let outcomes = pool.install(|| {
-        sources
+        let parsed = parse_all(&sources)?;
+        let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
+            sources.iter().copied().zip(&parsed).collect();
+        let mut outcomes: Vec<_> = source_pairs
             .par_iter()
-            .map(|source| analysis.file(source))
-            .collect::<Result<Vec<_>, String>>()
+            .map(|(source, parsed)| analysis.file(source, parsed))
+            .collect();
+        if !test_rules.is_empty() {
+            let parsed_tests = parse_all(&tests)?;
+            let test_pairs: Vec<(&SourceFile, &ParsedSource)> =
+                tests.iter().copied().zip(&parsed_tests).collect();
+            let modules = test_syntax::analyze(&source_pairs, &test_pairs);
+            outcomes.par_extend(
+                modules
+                    .par_iter()
+                    .map(|module| analysis.test_file(&test_rules, module, &test_project)),
+            );
+        }
+        Ok::<_, String>(outcomes)
     })?;
     let mut suppressed = 0;
     let mut violations = Vec::new();
@@ -139,11 +178,10 @@ struct Analysis<'a> {
 }
 
 impl Analysis<'_> {
-    fn file(&self, source: &SourceFile) -> Result<(Vec<Violation>, usize), String> {
-        let parsed = ParsedSource::read(source)?;
+    fn file(&self, source: &SourceFile, parsed: &ParsedSource) -> (Vec<Violation>, usize) {
         let mut found = Vec::new();
         for rule in self.active {
-            for mut violation in rules::check(rule, source, &parsed, self.project) {
+            for mut violation in rules::check(rule, source, parsed, self.project) {
                 let severity = self.settings.severity(
                     rule,
                     self.project.contracts,
@@ -156,19 +194,61 @@ impl Analysis<'_> {
                 }
             }
         }
+        self.settle(parsed, found)
+    }
+
+    fn test_file(
+        &self,
+        test_rules: &[&CatalogRule],
+        module: &TestModule<'_>,
+        project: &TestProject<'_>,
+    ) -> (Vec<Violation>, usize) {
+        let mut found = Vec::new();
+        for rule in test_rules {
+            // A test belongs to no package, so package settings do not reach it.
+            let severity = self
+                .settings
+                .severity(rule, self.project.contracts, "", self.selected);
+            let Some(severity) = severity else {
+                continue;
+            };
+            for mut violation in testing::check(rule, module, project) {
+                violation.severity = severity.to_owned();
+                found.push(violation);
+            }
+        }
+        self.settle(module.parsed, found)
+    }
+
+    /// Apply ignores and inline suppressions to the findings of one file.
+    fn settle(&self, parsed: &ParsedSource, mut found: Vec<Violation>) -> (Vec<Violation>, usize) {
         found.retain(|violation| !self.ignores.covers(violation));
         if found.is_empty() || !parsed.text.text.contains("smelt:") {
-            return Ok((found, 0));
+            return (found, 0);
         }
-        let suppressions: Vec<Suppression> = suppressions::parse(&parsed)
+        let suppressions: Vec<Suppression> = suppressions::parse(parsed)
             .into_iter()
             .map(|item| item.resolve_names(self.names))
             .collect();
         let before = found.len();
         found.retain(|violation| !suppressions.iter().any(|item| item.matches(violation)));
         let hidden = before - found.len();
-        Ok((found, hidden))
+        (found, hidden)
     }
+}
+
+fn parse_all(files: &[&SourceFile]) -> Result<Vec<ParsedSource>, String> {
+    files
+        .par_iter()
+        .map(|file| ParsedSource::read(file))
+        .collect()
+}
+
+fn path_patterns(patterns: &[String]) -> Result<Vec<PathPattern>, String> {
+    patterns
+        .iter()
+        .map(|pattern| PathPattern::new(pattern))
+        .collect()
 }
 
 struct Ignores {

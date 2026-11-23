@@ -57,6 +57,16 @@ PORTED = (
     "MOD010",
     "MOD011",
     "MOD012",
+    "TST002",
+    "TST003",
+    "TST004",
+    "TST005",
+    "TST006",
+    "TST007",
+    "TST008",
+    "TST009",
+    "TST010",
+    "TST011",
     "TYP001",
     "TYP002",
     "TYP003",
@@ -74,6 +84,7 @@ LIMIT_RULES = {
     "CPX003": ("complexity/excess-positional-parameters", 0),
     "CPX006": ("complexity/excess-comprehension-loops", 1),
     "CPX007": ("complexity/excess-constructor-decisions", 0),
+    "TST005": ("tests/excess-patches", 0),
     "VIS007": ("visibility/excess-private-definitions", 0),
 }
 LIMITS = (None, 0, 1, 2, 3)
@@ -213,28 +224,48 @@ def _order(finding: dict[str, Any]) -> tuple[str, int, int, str, str]:
 def _differences(
     expected: list[dict[str, Any]], actual: list[dict[str, Any]]
 ) -> list[str]:
-    left = {finding["id"]: finding for finding in expected}
-    right = {finding["id"]: finding for finding in actual}
+    left = _by_id(expected)
+    right = _by_id(actual)
     found = [
-        f"only python: {left[key]['path']}:{left[key]['line']} {left[key]['message']}"
+        f"only python: {left[key][0]['path']}:{left[key][0]['line']} "
+        f"{left[key][0]['message']}"
         for key in left.keys() - right.keys()
     ]
     found.extend(
-        f"only rust: {right[key]['path']}:{right[key]['line']} {right[key]['message']}"
+        f"only rust: {right[key][0]['path']}:{right[key][0]['line']} "
+        f"{right[key][0]['message']}"
         for key in right.keys() - left.keys()
     )
     for key in left.keys() & right.keys():
-        fields = [
-            field
-            for field in left[key].keys() | right[key].keys()
-            if left[key].get(field) != right[key].get(field)
-        ]
-        if fields:
-            detail = {
-                field: (left[key].get(field), right[key].get(field)) for field in fields
-            }
-            found.append(f"{left[key]['path']}:{left[key]['line']} {detail}")
+        first = left[key][0]
+        if len(left[key]) != len(right[key]):
+            found.append(
+                f"{first['path']}:{first['line']} {first['code']}: "
+                f"{len(left[key])} in python, {len(right[key])} in rust"
+            )
+            continue
+        for python, rust in zip(left[key], right[key], strict=True):
+            fields = [
+                field
+                for field in python.keys() | rust.keys()
+                if python.get(field) != rust.get(field)
+            ]
+            if fields:
+                detail = {
+                    field: (python.get(field), rust.get(field)) for field in fields
+                }
+                found.append(f"{python['path']}:{python['line']} {detail}")
     return found
+
+
+def _by_id(findings: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Findings by id; repeated ids stay, in an order independent of the engine."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for finding in findings:
+        grouped.setdefault(finding["id"], []).append(finding)
+    for group in grouped.values():
+        group.sort(key=lambda finding: json.dumps(finding, sort_keys=True))
+    return grouped
 
 
 if __name__ == "__main__":
