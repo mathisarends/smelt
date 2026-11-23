@@ -1,0 +1,27 @@
+# Edge cases the Rust core must report exactly like the Python engine.
+version: 2
+
+project:
+  root_packages: [parity]
+  source_roots: ["."]
+  test_roots: []
+
+style:
+  overrides:
+    relaxed:
+      match: parity.relaxed
+      rules:
+        complexity/excess-positional-parameters: {severity: hint, max: 4}
+    silenced:
+      match: parity.silenced
+      rules:
+        complexity/forbidden-nested-conditional: "off"
+
+rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 2}
+  complexity/forbidden-nested-conditional: hint
+
+ignore:
+  - rule: complexity/excess-positional-parameters
+    paths: ["parity/ignored.py"]
+    reason: Exercises path ignores in the parity comparison.
