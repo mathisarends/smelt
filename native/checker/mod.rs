@@ -12,6 +12,8 @@ mod source;
 mod suppressions;
 mod violation;
 
+use analysis::architecture::ArchitectureModel;
+use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
 use config::Request;
@@ -19,11 +21,12 @@ use contracts::Contracts;
 use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
+use rules::dependencies::{self, GraphContext, IMPORT_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::Path;
 use suppressions::Suppression;
@@ -108,10 +111,13 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         &request.project.source_roots,
         request.project.python_version.as_deref(),
     );
-    let (test_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = active
+    let (test_rules, other_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = active
         .iter()
         .copied()
         .partition(|rule| TEST_RULES.contains(&rule.code.as_str()));
+    let (import_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+        .into_iter()
+        .partition(|rule| IMPORT_RULES.contains(&rule.code.as_str()));
     let analysis = Analysis {
         active: &file_rules,
         project: rules::Project {
@@ -151,6 +157,25 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
+        if !import_rules.is_empty() {
+            let imports =
+                ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+            let model = ArchitectureModel::build(
+                &request.architecture,
+                &request.project.root_packages,
+                &files,
+            );
+            let context = GraphContext {
+                imports: &imports,
+                model: &model,
+                files: &files,
+                contracts: &contracts,
+            };
+            let found = dependencies::findings(&import_rules, &context, |rule, module| {
+                settings.severity(rule, &contracts, module, analysis.selected)
+            });
+            outcomes.extend(settle_by_file(&analysis, &source_pairs, found));
+        }
         if !test_rules.is_empty() {
             let parsed_tests = parse_all(&tests)?;
             let test_pairs: Vec<(&SourceFile, &ParsedSource)> =
@@ -271,6 +296,29 @@ impl Analysis<'_> {
         let hidden = before - found.len();
         (found, hidden)
     }
+}
+
+/// Apply ignores and suppressions to project-wide findings, file by file.
+fn settle_by_file(
+    analysis: &Analysis<'_>,
+    sources: &[(&SourceFile, &ParsedSource)],
+    found: Vec<Violation>,
+) -> Vec<(Vec<Violation>, usize)> {
+    let parsed: HashMap<&str, &ParsedSource> = sources
+        .iter()
+        .map(|(source, parsed)| (source.path.as_str(), *parsed))
+        .collect();
+    let mut by_path: BTreeMap<String, Vec<Violation>> = BTreeMap::new();
+    for violation in found {
+        by_path
+            .entry(violation.path.clone())
+            .or_default()
+            .push(violation);
+    }
+    by_path
+        .into_iter()
+        .map(|(path, findings)| analysis.settle(parsed[path.as_str()], findings))
+        .collect()
 }
 
 fn parse_all(files: &[&SourceFile]) -> Result<Vec<ParsedSource>, String> {
