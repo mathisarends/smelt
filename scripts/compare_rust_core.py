@@ -9,6 +9,7 @@ final newline.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -16,13 +17,20 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from smelt.analysis.context import AnalysisContext
 from smelt.config.loader import load_config
 from smelt.engine.check import CheckOptions, run_check
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from smelt.analysis.imports import ImportDetail
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
@@ -129,6 +137,9 @@ def main() -> int:
                 copy = Path(temporary) / f"{index}-{variant}"
                 shutil.copytree(project, copy, ignore=_SKIPPED)
                 _rewrite_sources(copy, variant)
+                failures += _compare_imports(
+                    copy, label=f"{project.name} {variant}", native=native
+                )
                 for limit in LIMITS:
                     label = f"{project.name} {variant} limit={limit}"
                     failures += _compare(copy, limit, label=label, native=native)
@@ -192,6 +203,84 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
     for difference in differences[:5]:
         _emit(f"  {difference}")
     return 1 if differences else 0
+
+
+def _compare_imports(root: Path, *, label: str, native: Path) -> int:
+    """Compare every resolved import and every shortest import chain."""
+    config_path = root / "smelt.yml"
+    loaded = load_config(config_path)
+    context = AnalysisContext(root, loaded.config)
+    index = context.imports
+    roots = tuple(loaded.config.project.root_packages)
+    expected: dict[str, Any] = {
+        "details": [_detail(item) for item in index.all_imports()],
+        "tests": [
+            [path, _detail(item)]
+            for path, item in index.imports_in_tests(context.syntax)
+        ],
+        "chains": {
+            f"{module}|{str(include).lower()}|{label_}": _chain_digest(
+                index.shortest_chains_from(
+                    module, include_type_checking=include, first_party_roots=scope
+                )
+            )
+            for module in index.modules()
+            for include in (True, False)
+            for label_, scope in (("all", None), ("first", roots[:1]))
+        },
+    }
+    result = subprocess.run(  # noqa: S603 - the locally built client
+        [str(native), "--internal-imports", str(config_path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr)
+    actual = json.loads(result.stdout)
+    differences = [
+        f"{section}: {left} != {right}"
+        for section in ("details", "tests")
+        for left, right in zip(expected[section], actual[section], strict=False)
+        if left != right
+    ]
+    differences.extend(
+        f"{section}: {len(expected[section])} in python, {len(actual[section])} in rust"
+        for section in ("details", "tests")
+        if len(expected[section]) != len(actual[section])
+    )
+    differences.extend(
+        f"chains {key}: {expected['chains'].get(key)} != {actual['chains'].get(key)}"
+        for key in expected["chains"].keys() | actual["chains"].keys()
+        if expected["chains"].get(key) != actual["chains"].get(key)
+    )
+    _emit(
+        f"{label} imports: {len(expected['details'])} + {len(expected['tests'])} "
+        f"imports, {len(expected['chains'])} chain sets, "
+        f"{'match' if not differences else f'{len(differences)} DIFFER'}"
+    )
+    for difference in differences[:5]:
+        _emit(f"  {difference}")
+    return 1 if differences else 0
+
+
+def _detail(detail: ImportDetail) -> dict[str, Any]:
+    fields = asdict(detail)
+    fields["names"] = list(detail.names)
+    # Grimp keeps a byte-order mark in the text of the first line.
+    fields["line_contents"] = detail.line_contents.removeprefix("﻿")
+    return fields
+
+
+def _chain_digest(paths: Iterable[tuple[ImportDetail, ...]]) -> list[int | str]:
+    lines = [
+        "|".join(
+            f"{hop.importer}>{hop.imported}:{hop.line}:{hop.column}" for hop in path
+        )
+        for path in paths
+    ]
+    return [len(lines), hashlib.sha256("\n".join(lines).encode()).hexdigest()]
 
 
 def _native_findings(
