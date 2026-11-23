@@ -23,6 +23,19 @@ pub fn dump_expr(source: &str, expression: &Expr) -> String {
     writer.out
 }
 
+/// `ast.dump(expression)` with every `Name` called `name` spelled `replacement`.
+pub fn dump_expr_renamed<'s>(
+    source: &'s str,
+    expression: &Expr,
+    name: &'s str,
+    replacement: &'s str,
+) -> String {
+    let mut writer = Dumper::new(source);
+    writer.rename = Some((name, replacement));
+    writer.expr(expression);
+    writer.out
+}
+
 /// `ast.dump(statement)`.
 pub fn dump_stmt(source: &str, statement: &Stmt) -> String {
     let mut writer = Dumper::new(source);
@@ -52,6 +65,8 @@ struct Dumper<'s> {
     out: String,
     /// The current node has no field yet, so the next one needs no separator.
     fresh: bool,
+    /// A `Name` to print under another identifier.
+    rename: Option<(&'s str, &'s str)>,
 }
 
 /// One value of a `JoinedStr` or `TemplateStr`.
@@ -66,6 +81,7 @@ impl<'s> Dumper<'s> {
             source,
             out: String::new(),
             fresh: false,
+            rename: None,
         }
     }
 
@@ -317,7 +333,11 @@ impl<'s> Dumper<'s> {
             }
             Expr::Name(item) => {
                 self.open("Name");
-                self.text("id", item.id.as_str());
+                let id = match self.rename {
+                    Some((name, replacement)) if item.id.as_str() == name => replacement,
+                    _ => item.id.as_str(),
+                };
+                self.text("id", id);
                 self.context(item.ctx);
                 self.close();
             }

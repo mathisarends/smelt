@@ -165,7 +165,8 @@ impl<'a> Visitor<'a> for Counter<'a> {
     }
 }
 
-fn root_name(expression: &Expr) -> Option<&str> {
+/// The name at the root of an attribute or item chain.
+pub fn root_name(expression: &Expr) -> Option<&str> {
     match expression {
         Expr::Name(node) => Some(node.id.as_str()),
         Expr::Attribute(node) => root_name(&node.value),

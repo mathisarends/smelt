@@ -14,6 +14,7 @@ mod durations;
 mod exports;
 mod frozen_collections;
 mod interface_docstrings;
+mod loop_collections;
 mod narrowing_asserts;
 mod parallel_fields;
 mod parameters;
@@ -34,10 +35,10 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 26] = [
+pub const PORTED: [&str; 27] = [
     "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM002",
-    "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "LAY010", "MOD003", "MOD005", "MOD007",
-    "MOD008", "MOD010", "MOD011", "MOD012", "TYP007", "VIS003", "VIS006", "VIS007",
+    "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY010", "MOD003", "MOD005",
+    "MOD007", "MOD008", "MOD010", "MOD011", "MOD012", "TYP007", "VIS003", "VIS006", "VIS007",
 ];
 
 /// The project-wide facts rules read besides their source.
@@ -123,6 +124,7 @@ pub fn check(
         "IDM005" => interface_docstrings::check(&input),
         "IDM006" => broad_excepts::check(&input),
         "IDM007" => narrowing_asserts::check(&input),
+        "IDM008" => loop_collections::check(&input),
         "LAY010" => exports::check_reexports(&input),
         "MOD003" => discriminators::check(&input),
         "MOD005" => stateful_dataclasses::check(&input),
