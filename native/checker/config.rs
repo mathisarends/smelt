@@ -1,4 +1,5 @@
 //! The configuration loader and the resolved policy the core runs with.
+pub mod architecture;
 mod compose;
 mod discovery;
 pub mod errors;
@@ -10,6 +11,7 @@ mod semantics;
 mod workspace;
 pub mod yaml;
 
+use architecture::Architecture;
 use schema::string_list;
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -23,6 +25,7 @@ pub struct Request {
     pub select: Vec<String>,
     pub strict_coverage: bool,
     pub project: Project,
+    pub architecture: Architecture,
     pub tests: TestPolicy,
     pub contracts: BTreeMap<String, Contract>,
     pub project_policy: Policy,
@@ -84,6 +87,7 @@ impl Request {
                     .as_str()
                     .map(str::to_owned),
             },
+            architecture: Architecture::from_config(&policy["architecture"])?,
             tests: TestPolicy::from_config(policy),
             contracts,
             project_policy: Policy::from_value(structure),

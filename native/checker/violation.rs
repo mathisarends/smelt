@@ -6,6 +6,13 @@ use std::fmt::Write;
 
 const DOCS_BASE_URL: &str = "https://github.com/mathisarends/smelt/blob/main/docs/rules";
 
+#[derive(Clone)]
+pub struct ImportLink {
+    pub importer: String,
+    pub imported: String,
+    pub line: Option<usize>,
+}
+
 pub struct Violation {
     pub code: String,
     pub rule: String,
@@ -19,6 +26,10 @@ pub struct Violation {
     pub end_column: Option<usize>,
     pub source_module: Option<String>,
     pub target_module: Option<String>,
+    pub import_chain: Vec<ImportLink>,
+    pub feature: Option<String>,
+    pub layer: Option<String>,
+    pub edge: Option<String>,
     pub expected: Value,
     pub hint: Option<String>,
     pub fix: Option<Value>,
@@ -43,7 +54,7 @@ impl Violation {
     }
 
     pub fn to_json(&self) -> Value {
-        json!({
+        let mut data = json!({
             "id": self.finding_id(),
             "code": self.code,
             "rule": self.rule,
@@ -55,17 +66,32 @@ impl Violation {
             "column": self.column,
             "end_line": self.end_line,
             "end_column": self.end_column,
-            "feature": null,
-            "layer": null,
+            "feature": self.feature,
+            "layer": self.layer,
             "member": null,
             "source_module": self.source_module,
             "target_module": self.target_module,
-            "edge": null,
+            "edge": self.edge,
             "expected": self.expected,
             "hint": self.hint,
             "fix": self.fix,
             "docs_url": format!("{DOCS_BASE_URL}/{}.md", self.code),
-        })
+        });
+        if !self.import_chain.is_empty() {
+            let chain: Vec<Value> = self
+                .import_chain
+                .iter()
+                .map(|link| {
+                    json!({
+                        "importer": link.importer,
+                        "imported": link.imported,
+                        "line": link.line,
+                    })
+                })
+                .collect();
+            data["import_chain"] = Value::Array(chain);
+        }
+        data
     }
 
     fn finding_id(&self) -> String {

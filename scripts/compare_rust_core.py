@@ -9,6 +9,7 @@ final newline.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -16,17 +17,30 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from smelt.analysis.context import AnalysisContext
 from smelt.config.loader import load_config
 from smelt.engine.check import CheckOptions, run_check
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from smelt.analysis.imports import ImportDetail
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
 PORTED = (
+    "ARC001",
+    "ARC002",
+    "ARC003",
+    "ARC004",
+    "ARC005",
+    "ARC006",
     "CPX002",
     "CPX003",
     "CPX005",
@@ -43,6 +57,7 @@ PORTED = (
     "IDM006",
     "IDM007",
     "IDM008",
+    "IMP002",
     "LAY002",
     "LAY006",
     "LAY008",
@@ -84,10 +99,27 @@ LIMIT_RULES = {
     "CPX003": ("complexity/excess-positional-parameters", 0),
     "CPX006": ("complexity/excess-comprehension-loops", 1),
     "CPX007": ("complexity/excess-constructor-decisions", 0),
+    "IMP002": ("imports/excess-module-imports", 0),
     "TST005": ("tests/excess-patches", 0),
     "VIS007": ("visibility/excess-private-definitions", 0),
 }
 LIMITS = (None, 0, 1, 2, 3)
+ARCHITECTURE_FIXTURES = (
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_architecture",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_layers",
+)
+# Every way the import graph options change what the dependency rules see.
+GRAPH_POLICIES = tuple(
+    {
+        "transitive": transitive,
+        "type_checking": type_checking,
+        "type_checking_cycles": type_checking_cycles,
+        "cycles": ["features", "layers", "siblings", "modules"],
+    }
+    for transitive in (False, True)
+    for type_checking in ("include", "ignore")
+    for type_checking_cycles in ("include", "ignore")
+)
 _SKIPPED = shutil.ignore_patterns(
     ".git",
     ".venv",
@@ -115,7 +147,11 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
-    projects = [path.resolve() for path in args.projects] or [FIXTURE, REPOSITORY]
+    projects = [path.resolve() for path in args.projects] or [
+        FIXTURE,
+        *ARCHITECTURE_FIXTURES,
+        REPOSITORY,
+    ]
     native = args.native.resolve()
     failures = 0
     with tempfile.TemporaryDirectory(prefix="smelt-parity-") as temporary:
@@ -129,9 +165,22 @@ def main() -> int:
                 copy = Path(temporary) / f"{index}-{variant}"
                 shutil.copytree(project, copy, ignore=_SKIPPED)
                 _rewrite_sources(copy, variant)
+                failures += _compare_imports(
+                    copy, label=f"{project.name} {variant}", native=native
+                )
                 for limit in LIMITS:
                     label = f"{project.name} {variant} limit={limit}"
                     failures += _compare(copy, limit, label=label, native=native)
+                if project in ARCHITECTURE_FIXTURES:
+                    for graph in GRAPH_POLICIES:
+                        label = (
+                            f"{project.name} transitive={graph['transitive']} "
+                            f"type_checking={graph['type_checking']} "
+                            f"cycles={graph['type_checking_cycles']}"
+                        )
+                        failures += _compare(
+                            copy, None, label=label, native=native, graph=graph
+                        )
     _emit("parity holds" if not failures else f"{failures} comparisons differ")
     return 1 if failures else 0
 
@@ -153,17 +202,27 @@ def _rewrite_sources(root: Path, variant: str) -> None:
             path.write_bytes(data.rstrip(b"\n"))
 
 
-def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
+def _compare(
+    root: Path,
+    limit: int | None,
+    *,
+    label: str,
+    native: Path,
+    graph: dict[str, Any] | None = None,
+) -> int:
     config_path = root / "smelt.yml"
     original = config_path.read_text(encoding="utf-8")
-    if limit is not None:
+    if limit is not None or graph is not None:
         raw = yaml.safe_load(original)
-        rules = raw.setdefault("rules", {})
-        for code, (name, minimum) in LIMIT_RULES.items():
-            rules.pop(code, None)
-            rules[name] = {"severity": "warning", "max": max(limit, minimum)}
-        # MOD008 only runs under an error policy, which real projects may not set.
-        raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
+        if limit is not None:
+            rules = raw.setdefault("rules", {})
+            for code, (name, minimum) in LIMIT_RULES.items():
+                rules.pop(code, None)
+                rules[name] = {"severity": "warning", "max": max(limit, minimum)}
+            # MOD008 only runs under an error policy, which real projects may not set.
+            raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
+        if graph is not None:
+            raw["architecture"].setdefault("import_graph", {}).update(graph)
         config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     try:
         loaded = load_config(config_path)
@@ -192,6 +251,84 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
     for difference in differences[:5]:
         _emit(f"  {difference}")
     return 1 if differences else 0
+
+
+def _compare_imports(root: Path, *, label: str, native: Path) -> int:
+    """Compare every resolved import and every shortest import chain."""
+    config_path = root / "smelt.yml"
+    loaded = load_config(config_path)
+    context = AnalysisContext(root, loaded.config)
+    index = context.imports
+    roots = tuple(loaded.config.project.root_packages)
+    expected: dict[str, Any] = {
+        "details": [_detail(item) for item in index.all_imports()],
+        "tests": [
+            [path, _detail(item)]
+            for path, item in index.imports_in_tests(context.syntax)
+        ],
+        "chains": {
+            f"{module}|{str(include).lower()}|{label_}": _chain_digest(
+                index.shortest_chains_from(
+                    module, include_type_checking=include, first_party_roots=scope
+                )
+            )
+            for module in index.modules()
+            for include in (True, False)
+            for label_, scope in (("all", None), ("first", roots[:1]))
+        },
+    }
+    result = subprocess.run(  # noqa: S603 - the locally built client
+        [str(native), "--internal-imports", str(config_path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr)
+    actual = json.loads(result.stdout)
+    differences = [
+        f"{section}: {left} != {right}"
+        for section in ("details", "tests")
+        for left, right in zip(expected[section], actual[section], strict=False)
+        if left != right
+    ]
+    differences.extend(
+        f"{section}: {len(expected[section])} in python, {len(actual[section])} in rust"
+        for section in ("details", "tests")
+        if len(expected[section]) != len(actual[section])
+    )
+    differences.extend(
+        f"chains {key}: {expected['chains'].get(key)} != {actual['chains'].get(key)}"
+        for key in expected["chains"].keys() | actual["chains"].keys()
+        if expected["chains"].get(key) != actual["chains"].get(key)
+    )
+    _emit(
+        f"{label} imports: {len(expected['details'])} + {len(expected['tests'])} "
+        f"imports, {len(expected['chains'])} chain sets, "
+        f"{'match' if not differences else f'{len(differences)} DIFFER'}"
+    )
+    for difference in differences[:5]:
+        _emit(f"  {difference}")
+    return 1 if differences else 0
+
+
+def _detail(detail: ImportDetail) -> dict[str, Any]:
+    fields = asdict(detail)
+    fields["names"] = list(detail.names)
+    # Grimp keeps a byte-order mark in the text of the first line.
+    fields["line_contents"] = detail.line_contents.removeprefix("﻿")
+    return fields
+
+
+def _chain_digest(paths: Iterable[tuple[ImportDetail, ...]]) -> list[int | str]:
+    lines = [
+        "|".join(
+            f"{hop.importer}>{hop.imported}:{hop.line}:{hop.column}" for hop in path
+        )
+        for path in paths
+    ]
+    return [len(lines), hashlib.sha256("\n".join(lines).encode()).hexdigest()]
 
 
 def _native_findings(

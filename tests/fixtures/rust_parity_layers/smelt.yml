@@ -1,0 +1,26 @@
+# A layer grid without features, across two root packages.
+version: 2
+
+project:
+  root_packages: [core, extras]
+  source_roots: ["."]
+
+architecture:
+  shared: [core.common]
+  composition_root: [core.boot, extras.boot]
+  wiring: ["core.*.wiring"]
+  layers:
+    model:
+      path: model
+      third_party: {default: deny, allow: [attrs]}
+    logic:
+      path: logic
+      may_depend_on: [model]
+    kernel:
+      modules: [core.kernel, extras.kernel.deep]
+      may_depend_on: [model]
+    web:
+      path: web.api
+      may_depend_on: [logic]
+  import_graph:
+    type_checking: include

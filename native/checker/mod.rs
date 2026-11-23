@@ -4,6 +4,7 @@ mod analysis;
 mod config;
 mod contracts;
 mod files;
+mod import_report;
 mod patterns;
 mod rules;
 mod settings;
@@ -11,6 +12,8 @@ mod source;
 mod suppressions;
 mod violation;
 
+use analysis::architecture::ArchitectureModel;
+use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
 use config::Request;
@@ -18,11 +21,12 @@ use contracts::Contracts;
 use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
+use rules::dependencies::{self, GraphContext, IMPORT_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::Path;
 use suppressions::Suppression;
@@ -50,6 +54,17 @@ pub fn serve_config(path: &Path) -> i32 {
         Err(error) => json!({"ok": false, "error": error.render()}),
     };
     match write_output(&description.to_string()) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// Print the resolved import graph of `config` as JSON.
+pub fn serve_imports(config: &Path) -> i32 {
+    match import_report::run(config).and_then(|text| write_output(&text)) {
         Ok(()) => 0,
         Err(message) => {
             eprintln!("smelt core: {message}");
@@ -96,10 +111,13 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         &request.project.source_roots,
         request.project.python_version.as_deref(),
     );
-    let (test_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = active
+    let (test_rules, other_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = active
         .iter()
         .copied()
         .partition(|rule| TEST_RULES.contains(&rule.code.as_str()));
+    let (import_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+        .into_iter()
+        .partition(|rule| IMPORT_RULES.contains(&rule.code.as_str()));
     let analysis = Analysis {
         active: &file_rules,
         project: rules::Project {
@@ -131,12 +149,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         known: &known,
         forbidden_mocks: &forbidden_mocks,
     };
-    // AST walks recurse, and a long operator chain nests as deep as it is long.
-    let pool = rayon::ThreadPoolBuilder::new()
-        .stack_size(ANALYSIS_STACK_BYTES)
-        .build()
-        .map_err(|error| error.to_string())?;
-    let outcomes = pool.install(|| {
+    let outcomes = with_analysis_pool(|| {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -144,6 +157,25 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
+        if !import_rules.is_empty() {
+            let imports =
+                ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+            let model = ArchitectureModel::build(
+                &request.architecture,
+                &request.project.root_packages,
+                &files,
+            );
+            let context = GraphContext {
+                imports: &imports,
+                model: &model,
+                files: &files,
+                contracts: &contracts,
+            };
+            let found = dependencies::findings(&import_rules, &context, |rule, module| {
+                settings.severity(rule, &contracts, module, analysis.selected)
+            });
+            outcomes.extend(settle_by_file(&analysis, &source_pairs, found));
+        }
         if !test_rules.is_empty() {
             let parsed_tests = parse_all(&tests)?;
             let test_pairs: Vec<(&SourceFile, &ParsedSource)> =
@@ -156,7 +188,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             );
         }
         Ok::<_, String>(outcomes)
-    })?;
+    })??;
     let mut suppressed = 0;
     let mut violations = Vec::new();
     for (found, hidden) in outcomes {
@@ -166,6 +198,35 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     violations.sort_by(Violation::compare);
     let report: Vec<_> = violations.iter().map(Violation::to_json).collect();
     Ok(json!({"violations": report, "suppressed": suppressed}).to_string())
+}
+
+/// Run `work` on a pool whose workers have all exited by the time it returns.
+///
+/// AST walks recurse, and a long operator chain nests as deep as it is long, so
+/// workers get large stacks. Dropping a pool only asks them to stop, and on Windows
+/// `ExitProcess` can then kill one inside the heap allocator, which leaves the
+/// shutdown spinning forever. Scoped threads do not prevent this because a scope
+/// can end before their thread-local teardown, so each OS thread is joined here.
+fn with_analysis_pool<R: Send>(work: impl FnOnce() -> R + Send) -> Result<R, String> {
+    let mut workers = Vec::new();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .spawn_handler(|thread| {
+            let worker = std::thread::Builder::new()
+                .stack_size(ANALYSIS_STACK_BYTES)
+                .spawn(move || thread.run())?;
+            workers.push(worker);
+            Ok(())
+        })
+        .build()
+        .map_err(|error| error.to_string())?;
+    let result = pool.install(work);
+    drop(pool);
+    for worker in workers {
+        worker
+            .join()
+            .map_err(|_| "an analysis worker panicked".to_owned())?;
+    }
+    Ok(result)
 }
 
 struct Analysis<'a> {
@@ -237,6 +298,29 @@ impl Analysis<'_> {
     }
 }
 
+/// Apply ignores and suppressions to project-wide findings, file by file.
+fn settle_by_file(
+    analysis: &Analysis<'_>,
+    sources: &[(&SourceFile, &ParsedSource)],
+    found: Vec<Violation>,
+) -> Vec<(Vec<Violation>, usize)> {
+    let parsed: HashMap<&str, &ParsedSource> = sources
+        .iter()
+        .map(|(source, parsed)| (source.path.as_str(), *parsed))
+        .collect();
+    let mut by_path: BTreeMap<String, Vec<Violation>> = BTreeMap::new();
+    for violation in found {
+        by_path
+            .entry(violation.path.clone())
+            .or_default()
+            .push(violation);
+    }
+    by_path
+        .into_iter()
+        .map(|(path, findings)| analysis.settle(parsed[path.as_str()], findings))
+        .collect()
+}
+
 fn parse_all(files: &[&SourceFile]) -> Result<Vec<ParsedSource>, String> {
     files
         .par_iter()
@@ -291,5 +375,37 @@ impl Ignores {
                     .is_some_and(|module| entry.modules.iter().any(|p| p.matches(module)))
                     || entry.paths.iter().any(|p| p.matches(&violation.path)))
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_analysis_pool;
+    use std::cell::RefCell;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static EXITED: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountOnExit;
+
+    impl Drop for CountOnExit {
+        fn drop(&mut self) {
+            EXITED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    thread_local! {
+        static GUARD: RefCell<Option<CountOnExit>> = const { RefCell::new(None) };
+    }
+
+    #[test]
+    fn analysis_pool_workers_have_exited_when_it_returns() {
+        let workers = with_analysis_pool(|| {
+            rayon::broadcast(|_| GUARD.with(|guard| *guard.borrow_mut() = Some(CountOnExit)));
+            rayon::current_num_threads()
+        })
+        .expect("the pool starts");
+
+        assert_eq!(EXITED.load(Ordering::SeqCst), workers);
     }
 }

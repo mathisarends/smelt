@@ -14,6 +14,7 @@ mod constructors;
 mod context_managers;
 mod dataclass_options;
 mod delegates;
+pub mod dependencies;
 mod discriminators;
 mod domain_exceptions;
 mod durations;
@@ -47,13 +48,14 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 51] = [
-    "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001",
-    "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY002", "LAY006",
-    "LAY008", "LAY010", "LAY011", "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008",
-    "MOD010", "MOD011", "MOD012", "TST002", "TST003", "TST004", "TST005", "TST006", "TST007",
-    "TST008", "TST009", "TST010", "TST011", "TYP001", "TYP002", "TYP003", "TYP004", "TYP006",
-    "TYP007", "TYP008", "VIS003", "VIS006", "VIS007", "VIS008",
+pub const PORTED: [&str; 58] = [
+    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "IMP002", "CPX002", "CPX003",
+    "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001", "IDM002", "IDM003",
+    "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY002", "LAY006", "LAY008", "LAY010",
+    "LAY011", "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008", "MOD010", "MOD011",
+    "MOD012", "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008", "TST009",
+    "TST010", "TST011", "TYP001", "TYP002", "TYP003", "TYP004", "TYP006", "TYP007", "TYP008",
+    "VIS003", "VIS006", "VIS007", "VIS008",
 ];
 
 /// The project-wide facts rules read besides their source.
@@ -107,6 +109,10 @@ impl RuleInput<'_> {
             end_column: finding.end_column,
             source_module: Some(self.source.module.clone()),
             target_module: None,
+            import_chain: Vec::new(),
+            feature: None,
+            layer: None,
+            edge: None,
             expected: finding.expected,
             hint: Some(finding.hint),
             fix: finding.fix,

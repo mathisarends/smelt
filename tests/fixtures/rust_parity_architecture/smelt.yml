@@ -1,0 +1,41 @@
+# Architecture boundaries the Rust core must report exactly like the Python engine.
+version: 2
+
+project:
+  root_packages: [shop]
+  source_roots: ["."]
+
+architecture:
+  features: {root: shop.features}
+  shared: [shop.shared]
+  composition_root: [shop.main]
+  wiring: ["shop.features.*.providers"]
+  layers:
+    domain:
+      path: domain
+      third_party: {default: deny, allow: [pydantic, attrs.validators]}
+    application:
+      path: application
+      may_depend_on: [domain]
+      third_party: {default: allow, deny: [sqlalchemy]}
+    infra:
+      path: infra
+      may_depend_on: [domain, application]
+    alpha:
+      path: alpha
+      may_depend_on: [beta]
+    beta:
+      path: nested.beta
+      may_depend_on: [alpha]
+    platform:
+      modules: [shop.platform]
+      may_depend_on: [domain]
+      third_party: deny
+  cross_feature:
+    default: deny
+    allow:
+      - application -> domain
+      - {from: billing.application, to: orders.application}
+  import_graph:
+    transitive: true
+    cycles: [features, layers, siblings, modules]

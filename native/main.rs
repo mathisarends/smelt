@@ -343,6 +343,11 @@ fn run() -> io::Result<i32> {
     {
         return Ok(checker::serve_config(Path::new(config)));
     }
+    if let [flag, config] = arguments.as_slice()
+        && flag == "--internal-imports"
+    {
+        return Ok(checker::serve_imports(Path::new(config)));
+    }
     if arguments == [OsString::from("--version")] {
         println!("smelt {}", env!("CARGO_PKG_VERSION"));
         return Ok(0);
