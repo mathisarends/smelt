@@ -14,6 +14,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   a second time, which shortens the first check of a project with many tests.
 - Cold checks traverse syntax trees faster and walk each statement's scope
   once for private attribute analysis. Findings are unchanged.
+- Installing from a Git checkout or source distribution now requires Rust 1.93+
+  and network access to fetch the Python parser. Release wheels are unaffected.
 
 ## [0.16.1] - 2026-11-22
 

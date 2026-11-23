@@ -9,7 +9,7 @@ needs smelt on that version, e.g. `uvx -p 3.14 --from smelt-cli smelt check`; th
 
 The installed command uses a native client and reuses a bounded worker for local
 read-only checks. Use `SMELT_DAEMON=0 smelt check` or `python -m smelt check`
-to run directly. A checkout or source distribution requires Rust 1.88+ and a
+to run directly. A checkout or source distribution requires Rust 1.93+ and a
 platform linker; release wheels include the compiled client.
 
 
@@ -88,7 +88,7 @@ for IMP004. Smelt can inspect only the packages available to its interpreter.
 
 To install from source, use `repo: https://github.com/mathisarends/smelt`,
 `rev: v0.16.1` and `id: smelt-staged` (or `id: smelt` for full checks). This source
-installation requires Rust 1.88+ and a platform linker. Use the release's
+installation requires Rust 1.93+ and a platform linker. Use the release's
 matching `v`-prefixed Git tag. See the [agent workflow](https://github.com/mathisarends/smelt/blob/main/docs/agent-workflow.md) for
 cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
 own `.gitignore`; cache files should not enter commits.
