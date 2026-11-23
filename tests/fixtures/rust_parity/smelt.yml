@@ -31,6 +31,12 @@ style:
     dataclass_frozen:
       match: parity.dataclass_policy.only_frozen
       dataclass_options: [frozen]
+    quotes_forbidden:
+      match: parity.quoted_annotations.forbidden
+      future_annotations: forbid
+    quotes_deferred_forbidden:
+      match: parity.quoted_annotations.deferred.forbidden
+      future_annotations: forbid
     errors_lifted:
       match: parity.domain_errors.free
       errors: {}

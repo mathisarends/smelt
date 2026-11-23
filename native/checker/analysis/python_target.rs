@@ -49,6 +49,12 @@ impl PythonTarget {
         self.minimum.is_some_and(|minimum| minimum < (major, minor))
     }
 
+    /// Whether every supported interpreter defers annotations (Python 3.14+).
+    pub fn deferred_annotations(&self) -> bool {
+        self.minimum
+            .is_some_and(|(major, minor)| major == 3 && minor >= 14)
+    }
+
     pub fn to_json(&self) -> Value {
         json!({
             "minimum": self.minimum.map(|(major, minor)| format!("{major}.{minor}")),

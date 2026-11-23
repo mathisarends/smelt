@@ -1,5 +1,7 @@
 //! Ported rules. Each keeps the code, messages and payload of its Python original.
 mod aliases;
+mod annotation_quotes;
+mod assignments;
 mod broad_excepts;
 mod call_arguments;
 mod call_receivers;
@@ -19,6 +21,7 @@ mod generic_syntax;
 mod interface_docstrings;
 mod loop_collections;
 mod narrowing_asserts;
+mod none_defaults;
 mod parallel_fields;
 mod parameters;
 mod private_definitions;
@@ -38,11 +41,11 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 30] = [
-    "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM002",
-    "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY010", "MOD003", "MOD005",
-    "MOD006", "MOD007", "MOD008", "MOD010", "MOD011", "MOD012", "TYP004", "TYP007", "TYP008",
-    "VIS003", "VIS006", "VIS007",
+pub const PORTED: [&str; 33] = [
+    "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001",
+    "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY010", "MOD003",
+    "MOD005", "MOD006", "MOD007", "MOD008", "MOD010", "MOD011", "MOD012", "TYP003", "TYP004",
+    "TYP006", "TYP007", "TYP008", "VIS003", "VIS006", "VIS007",
 ];
 
 /// The project-wide facts rules read besides their source.
@@ -125,6 +128,7 @@ pub fn check(
         "CPX008" => call_receivers::check(&input),
         "FWK001" => secret_settings::check(&input),
         "FWK002" => providers::check(&input),
+        "IDM001" => assignments::check(&input),
         "IDM002" => type_dispatch::check(&input),
         "IDM003" => callables::check(&input),
         "IDM004" => aliases::check(&input),
@@ -141,7 +145,9 @@ pub fn check(
         "MOD010" => durations::check(&input),
         "MOD011" => frozen_collections::check(&input),
         "MOD012" => parallel_fields::check(&input),
+        "TYP003" => none_defaults::check(&input),
         "TYP004" => context_managers::check(&input),
+        "TYP006" => annotation_quotes::check(&input),
         "TYP007" => tuples::check(&input),
         "TYP008" => generic_syntax::check(&input),
         "VIS003" => exports::check_dunder_all(&input),
