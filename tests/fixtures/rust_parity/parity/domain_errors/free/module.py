@@ -1,0 +1,2 @@
+def lifted():
+    raise KeyError

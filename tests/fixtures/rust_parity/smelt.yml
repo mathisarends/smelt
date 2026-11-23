@@ -11,7 +11,14 @@ style:
   bases:
     pydantic.BaseModel: parity.modeling.base.Options
     external.Base: parity.modeling.base.Options
+  errors: {base: parity.domain_errors.base.AppError, allow: [TypeError]}
   overrides:
+    errors_lifted:
+      match: parity.domain_errors.free
+      errors: {}
+    errors_strict:
+      match: parity.domain_errors.strict
+      errors: {base: parity.domain_errors.base.StrictError}
     relaxed:
       match: parity.relaxed
       type_dispatch: {style: match, min_branches: 4}

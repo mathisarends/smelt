@@ -35,10 +35,17 @@ PORTED = (
     "FWK002",
     "IDM002",
     "IDM003",
+    "IDM004",
+    "IDM005",
+    "IDM006",
+    "IDM007",
+    "LAY010",
     "MOD003",
     "MOD007",
+    "MOD008",
     "MOD011",
     "TYP007",
+    "VIS003",
     "VIS007",
 )
 # Each limit rule with the smallest `max` its configuration accepts.
@@ -118,6 +125,8 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
         for code, (name, minimum) in LIMIT_RULES.items():
             rules.pop(code, None)
             rules[name] = {"severity": "warning", "max": max(limit, minimum)}
+        # MOD008 only runs under an error policy, which real projects may not set.
+        raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
         config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     try:
         loaded = load_config(config_path)

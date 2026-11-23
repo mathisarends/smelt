@@ -1,11 +1,17 @@
 //! Ported rules. Each keeps the code, messages and payload of its Python original.
+mod aliases;
+mod broad_excepts;
 mod call_receivers;
 mod callables;
 mod comprehensions;
 mod conditional_expressions;
 mod constructors;
 mod discriminators;
+mod domain_exceptions;
+mod exports;
 mod frozen_collections;
+mod interface_docstrings;
+mod narrowing_asserts;
 mod parameters;
 mod private_definitions;
 mod project_bases;
@@ -23,9 +29,10 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 14] = [
+pub const PORTED: [&str; 21] = [
     "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM002", "IDM003",
-    "MOD003", "MOD007", "MOD011", "TYP007", "VIS007",
+    "IDM004", "IDM005", "IDM006", "IDM007", "LAY010", "MOD003", "MOD007", "MOD008", "MOD011",
+    "TYP007", "VIS003", "VIS007",
 ];
 
 /// The project-wide facts rules read besides their source.
@@ -106,10 +113,17 @@ pub fn check(
         "FWK002" => providers::check(&input),
         "IDM002" => type_dispatch::check(&input),
         "IDM003" => callables::check(&input),
+        "IDM004" => aliases::check(&input),
+        "IDM005" => interface_docstrings::check(&input),
+        "IDM006" => broad_excepts::check(&input),
+        "IDM007" => narrowing_asserts::check(&input),
+        "LAY010" => exports::check_reexports(&input),
         "MOD003" => discriminators::check(&input),
         "MOD007" => project_bases::check(&input),
+        "MOD008" => domain_exceptions::check(&input),
         "MOD011" => frozen_collections::check(&input),
         "TYP007" => tuples::check(&input),
+        "VIS003" => exports::check_dunder_all(&input),
         "VIS007" => private_definitions::check(&input),
         _ => Vec::new(),
     }

@@ -42,6 +42,71 @@ pub fn all_classes(module: &ModModule) -> Vec<&StmtClassDef> {
     collector.found
 }
 
+/// `ast.get_docstring(node) is not None` for the body of `node`.
+pub fn has_docstring(body: &[Stmt]) -> bool {
+    matches!(body.first(), Some(Stmt::Expr(node)) if node.value.is_string_literal_expr())
+}
+
+/// `visitor::walk_stmt` through children in `ast.iter_child_nodes` order.
+///
+/// Ruff visits values before targets. Function and class definitions keep Ruff's order.
+pub fn walk_stmt_in_field_order<'a, V: Visitor<'a>>(walker: &mut V, statement: &'a Stmt) {
+    match statement {
+        Stmt::Assign(node) => {
+            for target in &node.targets {
+                walker.visit_expr(target);
+            }
+            walker.visit_expr(&node.value);
+        }
+        Stmt::AugAssign(node) => {
+            walker.visit_expr(&node.target);
+            walker.visit_expr(&node.value);
+        }
+        Stmt::AnnAssign(node) => {
+            walker.visit_expr(&node.target);
+            walker.visit_annotation(&node.annotation);
+            if let Some(value) = &node.value {
+                walker.visit_expr(value);
+            }
+        }
+        Stmt::For(node) => {
+            walker.visit_expr(&node.target);
+            walker.visit_expr(&node.iter);
+            walker.visit_body(&node.body);
+            walker.visit_body(&node.orelse);
+        }
+        Stmt::TypeAlias(node) => {
+            walker.visit_expr(&node.name);
+            if let Some(parameters) = &node.type_params {
+                walker.visit_type_params(parameters);
+            }
+            walker.visit_expr(&node.value);
+        }
+        other => visitor::walk_stmt(walker, other),
+    }
+}
+
+/// `visitor::walk_expr` through children in `ast.iter_child_nodes` order.
+pub fn walk_expr_in_field_order<'a, V: Visitor<'a>>(walker: &mut V, expression: &'a Expr) {
+    match expression {
+        Expr::Named(node) => {
+            walker.visit_expr(&node.target);
+            walker.visit_expr(&node.value);
+        }
+        Expr::Dict(node) => {
+            for item in &node.items {
+                if let Some(key) = &item.key {
+                    walker.visit_expr(key);
+                }
+            }
+            for item in &node.items {
+                walker.visit_expr(&item.value);
+            }
+        }
+        other => visitor::walk_expr(walker, other),
+    }
+}
+
 /// Whether `expression` is what CPython parses to `ast.Constant`.
 pub fn is_constant(expression: &Expr) -> bool {
     matches!(
