@@ -1,6 +1,6 @@
 //! IDM002: `idioms/prefer-match-type-dispatch`.
 use super::{Finding, RuleInput};
-use crate::checker::analysis::bindings::{BindingCounts, Coverage};
+use crate::checker::analysis::bindings::{BindingCounts, Coverage, dotted_name};
 use crate::checker::analysis::repr::str_tuple_repr;
 use crate::checker::analysis::unparse::{unparse, unparse_and};
 use crate::checker::violation::Violation;
@@ -252,7 +252,7 @@ fn head(test: &Expr, checkers: &HashSet<String>, source: &str) -> Option<Head> {
     else {
         return None;
     };
-    if !dotted(&call.func).is_some_and(|name| checkers.contains(&name)) {
+    if !dotted_name(&call.func).is_some_and(|name| checkers.contains(&name)) {
         return None;
     }
     let names = type_names(types)?;
@@ -290,14 +290,6 @@ impl<'a> Visitor<'a> for WalrusFinder<'_> {
             self.found = true;
         }
         visitor::walk_expr(self, expression);
-    }
-}
-
-fn dotted(expression: &Expr) -> Option<String> {
-    match expression {
-        Expr::Name(node) => Some(node.id.to_string()),
-        Expr::Attribute(node) => dotted(&node.value).map(|owner| format!("{owner}.{}", node.attr)),
-        _ => None,
     }
 }
 

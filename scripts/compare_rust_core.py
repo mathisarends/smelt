@@ -25,8 +25,29 @@ from smelt.engine.check import CheckOptions, run_check
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
-PORTED = ("CPX003", "CPX005", "FWK001", "FWK002", "IDM002", "MOD003")
-LIMIT_RULE = "complexity/excess-positional-parameters"
+PORTED = (
+    "CPX003",
+    "CPX005",
+    "CPX006",
+    "CPX007",
+    "CPX008",
+    "FWK001",
+    "FWK002",
+    "IDM002",
+    "IDM003",
+    "MOD003",
+    "MOD007",
+    "MOD011",
+    "TYP007",
+    "VIS007",
+)
+# Each limit rule with the smallest `max` its configuration accepts.
+LIMIT_RULES = {
+    "CPX003": ("complexity/excess-positional-parameters", 0),
+    "CPX006": ("complexity/excess-comprehension-loops", 1),
+    "CPX007": ("complexity/excess-constructor-decisions", 0),
+    "VIS007": ("visibility/excess-private-definitions", 0),
+}
 LIMITS = (None, 0, 1, 2, 3)
 _SKIPPED = shutil.ignore_patterns(
     ".git",
@@ -94,8 +115,9 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
     if limit is not None:
         raw = yaml.safe_load(original)
         rules = raw.setdefault("rules", {})
-        rules.pop("CPX003", None)
-        rules[LIMIT_RULE] = {"severity": "warning", "max": limit}
+        for code, (name, minimum) in LIMIT_RULES.items():
+            rules.pop(code, None)
+            rules[name] = {"severity": "warning", "max": max(limit, minimum)}
         config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     try:
         loaded = load_config(config_path)

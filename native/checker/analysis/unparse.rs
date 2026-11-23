@@ -50,6 +50,13 @@ pub fn unparse_keyword(source: &str, keyword: &Keyword) -> String {
     writer.out
 }
 
+/// The spelling of a method's parameters without its receiver.
+pub fn unparse_without_receiver(source: &str, parameters: &Parameters) -> String {
+    let mut writer = Unparser::new(source);
+    writer.parameters_from(parameters, 1);
+    writer.out
+}
+
 /// The spelling of `values` joined by `and`, as one `BoolOp`.
 pub fn unparse_and(source: &str, values: &[Expr]) -> String {
     let mut writer = Unparser::new(source);
@@ -397,12 +404,17 @@ impl<'s> Unparser<'s> {
     }
 
     fn parameters(&mut self, parameters: &Parameters) {
+        self.parameters_from(parameters, 0);
+    }
+
+    fn parameters_from(&mut self, parameters: &Parameters, skipped: usize) {
         let mut first = true;
-        let positional_only = parameters.posonlyargs.len();
+        let positional_only = parameters.posonlyargs.len().saturating_sub(skipped);
         for (index, item) in parameters
             .posonlyargs
             .iter()
             .chain(&parameters.args)
+            .skip(skipped)
             .enumerate()
         {
             if !std::mem::take(&mut first) {
@@ -510,7 +522,7 @@ impl<'s> Unparser<'s> {
 }
 
 /// The expression of a template interpolation as written, like `Interpolation.str`.
-fn template_text(source: &str, element: &InterpolatedElement) -> String {
+pub(super) fn template_text(source: &str, element: &InterpolatedElement) -> String {
     let start = usize::from(element.start()) + 1;
     let mut end = usize::from(element.expression.end());
     let tail = end;

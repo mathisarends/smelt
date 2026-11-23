@@ -11,6 +11,8 @@ pub struct SourceFile {
     pub module: String,
     pub path: String,
     pub absolute: PathBuf,
+    /// An `__init__.py`.
+    pub is_package: bool,
 }
 
 pub struct FileIndex {
@@ -154,6 +156,7 @@ impl Discovery {
                 module,
                 path: relative,
                 absolute: entry.to_path_buf(),
+                is_package: name == "__init__.py",
             },
         );
         Ok(())
@@ -210,7 +213,8 @@ fn contains_python(directory: &Path) -> bool {
     false
 }
 
-fn is_identifier(name: &str) -> bool {
+/// `str.isidentifier`.
+pub fn is_identifier(name: &str) -> bool {
     let mut chars = name.chars();
     chars
         .next()

@@ -1,9 +1,13 @@
 //! File-wide name binding counts, as the syntax analyses use them.
+use super::namespace::{namespace_of, resolve_relative};
+use super::nodes::{parse_eval, walk_statements};
 use ruff_python_ast::visitor::{self, Visitor};
 use ruff_python_ast::{
     ExceptHandler, Expr, ExprContext, ModModule, Parameter, Pattern, Stmt, TypeParam,
 };
-use std::collections::HashMap;
+use std::borrow::Borrow;
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 
 const TYPING_MODULES: [&str; 2] = ["typing", "typing_extensions"];
 
@@ -157,7 +161,10 @@ fn root_name(expression: &Expr) -> Option<&str> {
 }
 
 /// The imported dotted name `expression` refers to, if it is known.
-pub fn qualified_name(expression: &Expr, bindings: &Names<'_>) -> Option<String> {
+pub fn qualified_name<K>(expression: &Expr, bindings: &HashMap<K, String>) -> Option<String>
+where
+    K: Borrow<str> + Eq + Hash,
+{
     match expression {
         Expr::Name(node) => bindings.get(node.id.as_str()).cloned(),
         Expr::Attribute(node) => {
@@ -165,6 +172,117 @@ pub fn qualified_name(expression: &Expr, bindings: &Names<'_>) -> Option<String>
         }
         _ => None,
     }
+}
+
+/// A name or attribute chain as written.
+pub fn dotted_name(expression: &Expr) -> Option<String> {
+    match expression {
+        Expr::Name(node) => Some(node.id.to_string()),
+        Expr::Attribute(node) => {
+            dotted_name(&node.value).map(|owner| format!("{owner}.{}", node.attr))
+        }
+        _ => None,
+    }
+}
+
+/// The outer type of a direct annotation, including a quoted one.
+pub fn annotation_name<K>(annotation: &Expr, bindings: &HashMap<K, String>) -> Option<String>
+where
+    K: Borrow<str> + Eq + Hash,
+{
+    if let Expr::StringLiteral(node) = annotation {
+        let parsed = parse_eval(node.value.to_str())?;
+        return outer_name(parsed.expr(), bindings);
+    }
+    outer_name(annotation, bindings)
+}
+
+fn outer_name<K>(node: &Expr, bindings: &HashMap<K, String>) -> Option<String>
+where
+    K: Borrow<str> + Eq + Hash,
+{
+    match node {
+        Expr::Subscript(item) => qualified_name(&item.value, bindings),
+        other => qualified_name(other, bindings),
+    }
+}
+
+/// Module imports and requested builtins, skipping any name bound again in the file.
+///
+/// Wildcard imports are unknown; relative imports and re-exports are not resolved.
+pub fn unshadowed_bindings(
+    source: &str,
+    module: &ModModule,
+    builtin_names: &[&str],
+) -> HashMap<String, String> {
+    let counts = BindingCounts::new(module, Coverage::Full);
+    if counts.get("*") > 0 {
+        return HashMap::new();
+    }
+    let imported = namespace_of(source, module, "", false).imported;
+    let mut relative = HashSet::new();
+    for statement in walk_statements(module) {
+        if let Stmt::ImportFrom(node) = statement
+            && node.level > 0
+        {
+            for alias in &node.names {
+                relative.insert(alias.asname.as_ref().unwrap_or(&alias.name).as_str());
+            }
+        }
+    }
+    let mut bindings: HashMap<String, String> = builtin_names
+        .iter()
+        .filter(|name| counts.get(name) == 0)
+        .map(|name| ((*name).to_owned(), format!("builtins.{name}")))
+        .collect();
+    for (name, target) in imported {
+        if counts.get(&name) == 1 && !relative.contains(name.as_str()) {
+            bindings.insert(name, target);
+        }
+    }
+    bindings
+}
+
+/// Local name to imported name for every import in the file, in `ast.walk` order.
+pub fn import_bindings<'a>(module: &'a ModModule, name: &str, is_package: bool) -> Names<'a> {
+    let mut bindings = Names::new();
+    for statement in walk_statements(module) {
+        match statement {
+            Stmt::Import(node) => {
+                for alias in &node.names {
+                    if let Some(local) = &alias.asname {
+                        bindings.insert(local.as_str(), alias.name.to_string());
+                    } else {
+                        let full = alias.name.as_str();
+                        let top = full.split('.').next().unwrap_or(full);
+                        bindings.entry(top).or_insert_with(|| top.to_owned());
+                    }
+                }
+            }
+            Stmt::ImportFrom(node) => {
+                let base = resolve_relative(
+                    name,
+                    is_package,
+                    node.level,
+                    node.module.as_ref().map(|target| target.as_str()),
+                );
+                for alias in &node.names {
+                    if alias.name.as_str() == "*" {
+                        continue;
+                    }
+                    let qualified = if base.is_empty() {
+                        alias.name.to_string()
+                    } else {
+                        format!("{base}.{}", alias.name)
+                    };
+                    let local = alias.asname.as_ref().unwrap_or(&alias.name).as_str();
+                    bindings.insert(local, qualified);
+                }
+            }
+            _ => {}
+        }
+    }
+    bindings
 }
 
 /// Direct, unshadowed imports of `typing` and `typing_extensions`.

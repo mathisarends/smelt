@@ -8,12 +8,21 @@ project:
 
 style:
   type_dispatch: {style: match, min_branches: 2}
+  bases:
+    pydantic.BaseModel: parity.modeling.base.Options
+    external.Base: parity.modeling.base.Options
   overrides:
     relaxed:
       match: parity.relaxed
       type_dispatch: {style: match, min_branches: 4}
       rules:
         complexity/excess-positional-parameters: {severity: hint, max: 4}
+        complexity/excess-comprehension-loops: {severity: hint, max: 3}
+        complexity/excess-constructor-decisions: {severity: hint, max: 4}
+        visibility/excess-private-definitions: {severity: hint, max: 1}
+    free_bases:
+      match: parity.modeling.free
+      bases: {}
     dispatch_off:
       match: parity.versioned.allowed
       type_dispatch: {style: allow}

@@ -77,6 +77,14 @@ impl<'a> Contracts<'a> {
         })
     }
 
+    /// The effective limit of a policy option, else its built-in default.
+    pub fn threshold(&self, module: &str, option: &str, default: usize) -> usize {
+        self.policy_for(module, option)
+            .and_then(|origin| origin.value.as_u64())
+            .and_then(|limit| usize::try_from(limit).ok())
+            .unwrap_or(default)
+    }
+
     /// The effective positional limit; no origin means the built-in default.
     pub fn max_positional(&self, module: &str) -> (usize, Option<PolicyOrigin<'a>>) {
         match self.policy_for(module, "max_positional_parameters") {
