@@ -176,7 +176,7 @@ fn import_violation(
         severity: rule.default_severity.clone(),
         message: finding.message,
         path: context.files.sources[&detail.importer].path.clone(),
-        line: detail.line,
+        line: Some(detail.line),
         column: Some(detail.column),
         end_line: Some(detail.line),
         end_column: Some(detail.end_column),
@@ -202,14 +202,15 @@ fn join(values: &[String]) -> String {
 
 /// Drop findings that a more specific rule already reports for the same cause.
 fn deduplicate(violations: Vec<Violation>) -> Vec<Violation> {
-    fn key(violation: &Violation) -> (&str, Option<&str>, usize) {
+    type Cause<'a> = (&'a str, Option<&'a str>, Option<usize>);
+    fn key(violation: &Violation) -> Cause<'_> {
         match violation.target_module.as_deref().filter(|t| !t.is_empty()) {
-            Some(target) => (&violation.path, Some(target), 0),
+            Some(target) => (&violation.path, Some(target), None),
             None => (&violation.path, None, violation.line),
         }
     }
     let redundant: Vec<bool> = {
-        let mut codes: HashMap<(&str, Option<&str>, usize), HashSet<&str>> = HashMap::new();
+        let mut codes: HashMap<Cause<'_>, HashSet<&str>> = HashMap::new();
         for violation in &violations {
             codes
                 .entry(key(violation))

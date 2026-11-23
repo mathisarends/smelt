@@ -35,6 +35,7 @@ mod providers;
 mod reexport_convention;
 mod secret_settings;
 mod stateful_dataclasses;
+pub mod structure;
 pub mod testing;
 mod tuples;
 mod type_dispatch;
@@ -48,11 +49,12 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 58] = [
-    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "IMP002", "CPX002", "CPX003",
-    "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001", "IDM002", "IDM003",
-    "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY002", "LAY006", "LAY008", "LAY010",
-    "LAY011", "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008", "MOD010", "MOD011",
+pub const PORTED: [&str; 67] = [
+    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC011", "ARC012", "ARC014",
+    "IMP002", "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002",
+    "IDM001", "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY001",
+    "LAY002", "LAY003", "LAY006", "LAY007", "LAY008", "LAY009", "LAY010", "LAY011", "MOD002",
+    "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008", "MOD009", "MOD010", "MOD011",
     "MOD012", "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008", "TST009",
     "TST010", "TST011", "TYP001", "TYP002", "TYP003", "TYP004", "TYP006", "TYP007", "TYP008",
     "VIS003", "VIS006", "VIS007", "VIS008",
@@ -103,7 +105,7 @@ impl RuleInput<'_> {
             severity: self.rule.default_severity.clone(),
             message: finding.message,
             path: self.source.path.clone(),
-            line: finding.line,
+            line: Some(finding.line),
             column: Some(finding.column),
             end_line: finding.end_line.or(Some(finding.line)),
             end_column: finding.end_column,

@@ -81,6 +81,55 @@ impl<'a> ArchitectureModel<'a> {
         self.config.features.is_some()
     }
 
+    pub fn roots(&self) -> &[String] {
+        self.roots
+    }
+
+    pub fn is_package(&self, module: &str) -> bool {
+        self.packages.contains(module)
+    }
+
+    /// The root packages holding at least one module with an architecture role.
+    pub fn classified_roots(&self) -> HashSet<&str> {
+        self.modules
+            .iter()
+            .filter(|(_, info)| info.kind != ModuleKind::Unclassified)
+            .filter_map(|(name, _)| name.split('.').next())
+            .collect()
+    }
+
+    /// A short path for hints, relative to the feature container or root package.
+    pub fn display_path(&self, module: &str, package: bool) -> String {
+        let spec = self.config.features.as_ref();
+        let container = spec.and_then(|spec| {
+            spec.root.clone().or_else(|| {
+                let pattern = spec.pattern.as_deref()?;
+                Some(
+                    pattern
+                        .rsplit_once('.')
+                        .map_or(pattern, |(head, _)| head)
+                        .to_owned(),
+                )
+            })
+        });
+        let inside = container
+            .as_deref()
+            .and_then(|prefix| module.strip_prefix(prefix)?.strip_prefix('.'));
+        let shown = match (inside, spec) {
+            (Some(rest), _) => rest,
+            (None, None) => match module.split_once('.') {
+                Some((root, rest)) if self.roots.iter().any(|item| item == root) => rest,
+                _ => module,
+            },
+            (None, Some(_)) => module,
+        };
+        format!(
+            "{}{}",
+            shown.replace('.', "/"),
+            if package { "/" } else { ".py" }
+        )
+    }
+
     pub fn feature_packages(&self) -> impl Iterator<Item = &str> {
         self.features.values().map(String::as_str)
     }

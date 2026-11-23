@@ -22,6 +22,7 @@ use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES};
+use rules::structure::{self, STRUCTURE_RULES, StructureContext};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
@@ -115,9 +116,12 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         .iter()
         .copied()
         .partition(|rule| TEST_RULES.contains(&rule.code.as_str()));
-    let (import_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+    let (import_rules, other_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
         .into_iter()
         .partition(|rule| IMPORT_RULES.contains(&rule.code.as_str()));
+    let (structure_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+        .into_iter()
+        .partition(|rule| STRUCTURE_RULES.contains(&rule.code.as_str()));
     let analysis = Analysis {
         active: &file_rules,
         project: rules::Project {
@@ -157,23 +161,37 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
-        if !import_rules.is_empty() {
-            let imports =
-                ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+        if !import_rules.is_empty() || !structure_rules.is_empty() {
             let model = ArchitectureModel::build(
                 &request.architecture,
                 &request.project.root_packages,
                 &files,
             );
-            let context = GraphContext {
-                imports: &imports,
-                model: &model,
-                files: &files,
-                contracts: &contracts,
-            };
-            let found = dependencies::findings(&import_rules, &context, |rule, module| {
-                settings.severity(rule, &contracts, module, analysis.selected)
-            });
+            let severity =
+                |rule, module: &str| settings.severity(rule, &contracts, module, analysis.selected);
+            let mut found = Vec::new();
+            if !import_rules.is_empty() {
+                let imports =
+                    ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+                let context = GraphContext {
+                    imports: &imports,
+                    model: &model,
+                    files: &files,
+                    contracts: &contracts,
+                };
+                found.extend(dependencies::findings(&import_rules, &context, severity));
+            }
+            if !structure_rules.is_empty() {
+                let context = StructureContext {
+                    files: &files,
+                    model: &model,
+                    contracts: &contracts,
+                    sources: &source_pairs,
+                    forbidden_names: &request.forbidden_names,
+                    file_naming: &request.file_naming,
+                };
+                found.extend(structure::findings(&structure_rules, &context, severity));
+            }
             outcomes.extend(settle_by_file(&analysis, &source_pairs, found));
         }
         if !test_rules.is_empty() {
@@ -317,7 +335,14 @@ fn settle_by_file(
     }
     by_path
         .into_iter()
-        .map(|(path, findings)| analysis.settle(parsed[path.as_str()], findings))
+        .map(|(path, mut findings)| match parsed.get(path.as_str()) {
+            Some(source) => analysis.settle(source, findings),
+            // YAML files and package directories hold no suppression comments.
+            None => {
+                findings.retain(|violation| !analysis.ignores.covers(violation));
+                (findings, 0)
+            }
+        })
         .collect()
 }
 

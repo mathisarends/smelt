@@ -1,11 +1,22 @@
 //! Source discovery with the package rules of `smelt.analysis.files`.
 use super::config::Request;
 use super::patterns::PathPattern;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 const SKIP_DIRS: [&str; 5] = ["__pycache__", ".git", ".venv", "venv", "node_modules"];
+const YAML_SKIP_DIRS: [&str; 9] = [
+    ".hg",
+    ".svn",
+    ".smelt_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".tox",
+    ".nox",
+    ".worktrees",
+];
 
 pub struct SourceFile {
     pub module: String,
@@ -25,6 +36,10 @@ pub struct FileIndex {
     pub namespace_packages: Vec<String>,
     /// The root packages that exist under a source root.
     pub found_roots: Vec<String>,
+    /// Source modules in discovery order, which findings listing peers follow.
+    pub source_order: Vec<String>,
+    package_paths: HashMap<String, String>,
+    exclude: Vec<PathPattern>,
 }
 
 impl FileIndex {
@@ -43,6 +58,7 @@ impl FileIndex {
             sources: BTreeMap::new(),
             portions: HashMap::new(),
             found_roots: Vec::new(),
+            source_order: Vec::new(),
         };
         for package in &request.project.root_packages {
             discovery.package_root(package, &request.project.source_roots)?;
@@ -54,7 +70,12 @@ impl FileIndex {
             .filter(|(_, (_, has_init))| !has_init)
             .map(|(module, _)| module.clone())
             .collect();
-        let mut packages: Vec<String> = discovery.portions.into_keys().collect();
+        let package_paths: HashMap<String, String> = discovery
+            .portions
+            .into_iter()
+            .map(|(module, (path, _))| (module, path))
+            .collect();
+        let mut packages: Vec<String> = package_paths.keys().cloned().collect();
         packages.sort();
         Ok(Self {
             root: discovery.root,
@@ -63,7 +84,63 @@ impl FileIndex {
             packages,
             namespace_packages,
             found_roots: discovery.found_roots,
+            source_order: discovery.source_order,
+            package_paths,
+            exclude: discovery.exclude,
         })
+    }
+
+    /// The initializer of a package or the file of a module, else the package directory.
+    pub fn path_for_module(&self, module: &str) -> Option<&str> {
+        self.sources
+            .get(module)
+            .map(|source| source.path.as_str())
+            .or_else(|| self.package_paths.get(module).map(String::as_str))
+    }
+
+    /// YAML files below the root by name alone; their contents are never read.
+    pub fn yaml_paths(&self) -> Vec<String> {
+        let mut found = BTreeSet::new();
+        let mut visited = HashSet::new();
+        let mut pending = vec![self.root.clone()];
+        while let Some(directory) = pending.pop() {
+            let resolved = fs::canonicalize(&directory).unwrap_or_else(|_| directory.clone());
+            if !resolved.starts_with(&self.root) || !visited.insert(resolved) {
+                continue;
+            }
+            let Ok(entries) = fs::read_dir(&directory) else {
+                continue;
+            };
+            let mut entries: Vec<PathBuf> = entries.flatten().map(|entry| entry.path()).collect();
+            entries.sort();
+            for entry in entries {
+                let Ok(inside) = entry.strip_prefix(&self.root) else {
+                    continue;
+                };
+                let relative = posix_parts(inside).join("/");
+                if self
+                    .exclude
+                    .iter()
+                    .any(|pattern| pattern.matches(&relative))
+                {
+                    continue;
+                }
+                if entry.is_dir() {
+                    let name = file_name(&entry);
+                    if !SKIP_DIRS.contains(&name) && !YAML_SKIP_DIRS.contains(&name) {
+                        pending.push(entry);
+                    }
+                } else if entry
+                    .extension()
+                    .is_some_and(|suffix| suffix == "yaml" || suffix == "yml")
+                    && entry.is_file()
+                    && fs::canonicalize(&entry).is_ok_and(|real| real.starts_with(&self.root))
+                {
+                    found.insert(relative);
+                }
+            }
+        }
+        found.into_iter().collect()
     }
 }
 
@@ -73,6 +150,7 @@ struct Discovery {
     sources: BTreeMap<String, SourceFile>,
     portions: HashMap<String, (String, bool)>,
     found_roots: Vec<String>,
+    source_order: Vec<String>,
 }
 
 impl Discovery {
@@ -171,6 +249,7 @@ impl Discovery {
                 previous.path
             ));
         }
+        self.source_order.push(module.clone());
         self.sources.insert(
             module.clone(),
             SourceFile {
