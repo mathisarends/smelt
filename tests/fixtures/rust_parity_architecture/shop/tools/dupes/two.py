@@ -1,0 +1,13 @@
+def decorator(value):
+    return value
+
+
+@decorator
+class Shared: ...
+class Twice: ...
+class _Hidden: ...
+
+
+def nested():
+    class Only: ...
+    return Only
