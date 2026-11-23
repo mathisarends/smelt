@@ -22,6 +22,15 @@ style:
     kinds_aggregate:
       match: parity.call_kinds.aggregates
       call_argument_kinds: [aggregate]
+    dataclass_policy:
+      match: parity.dataclass_policy
+      dataclass_options: [frozen, slots, kw_only]
+    dataclass_lifted:
+      match: parity.dataclass_policy.lifted
+      dataclass_options: []
+    dataclass_frozen:
+      match: parity.dataclass_policy.only_frozen
+      dataclass_options: [frozen]
     errors_lifted:
       match: parity.domain_errors.free
       errors: {}

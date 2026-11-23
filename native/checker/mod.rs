@@ -99,6 +99,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         project: rules::Project {
             contracts: &contracts,
             targets: &targets,
+            roots: &request.project.root_packages,
         },
         settings: &settings,
         ignores: &ignores,

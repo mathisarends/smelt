@@ -1,7 +1,7 @@
 //! One parsed source with CPython-compatible positions.
 use super::files::SourceFile;
 use ruff_python_ast::token::TokenKind;
-use ruff_python_ast::{Expr, ModModule, StmtClassDef, StmtFunctionDef};
+use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef, StmtFunctionDef};
 use ruff_python_parser::{Parsed, parse_module};
 use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
@@ -23,6 +23,21 @@ impl SourceText {
     pub fn position(&self, offset: usize) -> (usize, usize) {
         let line = self.starts.partition_point(|start| *start <= offset);
         (line, offset - self.starts[line - 1])
+    }
+
+    /// The offset where the 1-based `line` starts.
+    pub fn line_start(&self, line: usize) -> usize {
+        self.starts[line - 1]
+    }
+
+    /// The offset after the newline that ends `line`, or the end of the text.
+    pub fn line_end(&self, line: usize) -> usize {
+        self.starts.get(line).copied().unwrap_or(self.text.len())
+    }
+
+    /// The 1-based line that contains `offset`.
+    pub fn line_at(&self, offset: usize) -> usize {
+        self.position(offset).0
     }
 
     /// A `TextEdit` as JSON: 1-based lines and 1-based UTF-8 columns.
@@ -93,6 +108,15 @@ impl ParsedSource {
             .iter()
             .find(|token| token.kind() == TokenKind::Class)
             .map_or(class.start(), Ranged::start)
+    }
+
+    /// Where CPython places a statement, which skips the decorators of a definition.
+    pub fn statement_start(&self, statement: &Stmt) -> TextSize {
+        match statement {
+            Stmt::FunctionDef(node) => self.function_start(node),
+            Stmt::ClassDef(node) => self.class_start(node),
+            other => other.start(),
+        }
     }
 
     /// CPython's span of a comprehension: a bare generator argument owns the
