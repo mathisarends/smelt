@@ -1,0 +1,2 @@
+"""Docstring."""
+VALUE = 1

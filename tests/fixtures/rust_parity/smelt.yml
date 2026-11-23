@@ -37,6 +37,48 @@ style:
     quotes_deferred_forbidden:
       match: parity.quoted_annotations.deferred.forbidden
       future_annotations: forbid
+    reexports_alias:
+      match: parity.reexport_styles.alias
+      reexports: alias
+    reexports_allow:
+      match: parity.reexport_styles.allowed
+      reexports: allow
+    enums_auto:
+      match: parity.enum_styles.derived
+      str_enum_values: auto
+    docs_required:
+      match: parity.doc_policy.required
+      module_docstrings: require
+    docs_required_exempt:
+      match: parity.doc_policy.required.exempt
+      module_docstrings: allow
+    docs_forbidden:
+      match: parity.doc_policy.forbidden
+      module_docstrings: forbid
+    docs_forbidden_exempt:
+      match: parity.doc_policy.forbidden.exempt
+      module_docstrings: allow
+    future_forbidden:
+      match: parity.future_policy.forbidden
+      future_annotations: forbid
+    future_allowed:
+      match: parity.future_policy.allowed
+      future_annotations: allow
+    future_deferred:
+      match: parity.future_policy.deferred
+      future_annotations: when-needed
+    future_needed:
+      match: parity.future_policy.needed
+      future_annotations: when-needed
+    future_old:
+      match: parity.future_policy.old
+      future_annotations: when-needed
+    future_generics:
+      match: parity.future_policy.generics
+      future_annotations: when-needed
+    future_unions:
+      match: parity.future_policy.unions
+      future_annotations: when-needed
     errors_lifted:
       match: parity.domain_errors.free
       errors: {}

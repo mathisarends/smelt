@@ -2,7 +2,8 @@
 
 Every project is copied to a temporary directory, so the originals stay untouched.
 Each copy is checked at several limits to produce many findings. The parity
-fixture also runs with CRLF line endings and a UTF-8 byte-order mark.
+fixture also runs with CRLF line endings, a UTF-8 byte-order mark and without a
+final newline.
 """
 
 from __future__ import annotations
@@ -42,8 +43,13 @@ PORTED = (
     "IDM006",
     "IDM007",
     "IDM008",
+    "LAY002",
+    "LAY006",
+    "LAY008",
     "LAY010",
+    "LAY011",
     "MOD003",
+    "MOD004",
     "MOD005",
     "MOD006",
     "MOD007",
@@ -51,6 +57,8 @@ PORTED = (
     "MOD010",
     "MOD011",
     "MOD012",
+    "TYP001",
+    "TYP002",
     "TYP003",
     "TYP004",
     "TYP006",
@@ -59,6 +67,7 @@ PORTED = (
     "VIS003",
     "VIS006",
     "VIS007",
+    "VIS008",
 )
 # Each limit rule with the smallest `max` its configuration accepts.
 LIMIT_RULES = {
@@ -100,7 +109,11 @@ def main() -> int:
     failures = 0
     with tempfile.TemporaryDirectory(prefix="smelt-parity-") as temporary:
         for index, project in enumerate(projects):
-            variants = ("lf", "crlf", "bom") if project == FIXTURE else ("lf",)
+            variants = (
+                ("lf", "crlf", "bom", "no-final-newline")
+                if project == FIXTURE
+                else ("lf",)
+            )
             for variant in variants:
                 copy = Path(temporary) / f"{index}-{variant}"
                 shutil.copytree(project, copy, ignore=_SKIPPED)
@@ -121,11 +134,12 @@ def _rewrite_sources(root: Path, variant: str) -> None:
         return
     for path in root.rglob("*.py"):
         data = path.read_bytes().replace(b"\r\n", b"\n")
-        path.write_bytes(
-            data.replace(b"\n", b"\r\n")
-            if variant == "crlf"
-            else b"\xef\xbb\xbf" + data
-        )
+        if variant == "crlf":
+            path.write_bytes(data.replace(b"\n", b"\r\n"))
+        elif variant == "bom":
+            path.write_bytes(b"\xef\xbb\xbf" + data)
+        else:
+            path.write_bytes(data.rstrip(b"\n"))
 
 
 def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:

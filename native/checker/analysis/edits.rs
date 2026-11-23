@@ -223,7 +223,7 @@ pub fn remove_aliases(text: &SourceText, statement: &Stmt, aliases: &[&Alias]) -
 }
 
 /// Where a new import line goes: after the leading imports or the docstring.
-fn import_insertion(parsed: &ParsedSource) -> usize {
+pub fn import_insertion(parsed: &ParsedSource) -> usize {
     let text = &parsed.text;
     let body = &parsed.module().body;
     let mut anchor = None;
@@ -258,11 +258,12 @@ fn first_line(parsed: &ParsedSource, statement: &Stmt) -> usize {
     text.line_start(text.line_at(usize::from(parsed.statement_start(statement))))
 }
 
-fn is_docstring(statement: &Stmt) -> bool {
+pub fn is_docstring(statement: &Stmt) -> bool {
     matches!(statement, Stmt::Expr(node) if node.value.is_string_literal_expr())
 }
 
-fn guarded_imports(statement: &Stmt) -> bool {
+/// Whether a statement only imports, possibly inside `if` or `try` blocks.
+pub fn guarded_imports(statement: &Stmt) -> bool {
     match statement {
         Stmt::If(node) => node
             .body
@@ -329,6 +330,27 @@ impl SourceText {
         let before = &self.text[self.line_start(self.line_at(start))..start];
         let after = python_strip(&self.text[end..self.line_end(self.line_at(end))]);
         python_strip(before).is_empty() && (after.is_empty() || after.starts_with('#'))
+    }
+
+    /// The end of the line that contains `offset`, its newline included.
+    pub fn line_end_at(&self, offset: usize) -> usize {
+        self.line_end(self.line_at(offset))
+    }
+
+    /// The start of the line at `offset`, with comment lines directly above.
+    pub fn block_start(&self, offset: usize) -> usize {
+        let mut start = self.line_start(self.line_at(offset));
+        while start > 0 {
+            let previous = self.line_start(self.line_at(start - 1));
+            if !self.text[previous..start]
+                .trim_start_matches(is_python_space)
+                .starts_with('#')
+            {
+                break;
+            }
+            start = previous;
+        }
+        start
     }
 
     /// Remove the whole lines `range` occupies, the last newline included.

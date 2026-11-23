@@ -4,10 +4,12 @@ mod annotation_quotes;
 mod assignments;
 mod broad_excepts;
 mod call_arguments;
+mod call_order;
 mod call_receivers;
 mod callables;
 mod comprehensions;
 mod conditional_expressions;
+mod constants;
 mod constructors;
 mod context_managers;
 mod dataclass_options;
@@ -15,9 +17,11 @@ mod delegates;
 mod discriminators;
 mod domain_exceptions;
 mod durations;
+mod enum_styles;
 mod exports;
 mod frozen_collections;
 mod generic_syntax;
+mod headers;
 mod interface_docstrings;
 mod loop_collections;
 mod narrowing_asserts;
@@ -27,6 +31,7 @@ mod parameters;
 mod private_definitions;
 mod project_bases;
 mod providers;
+mod reexport_convention;
 mod secret_settings;
 mod stateful_dataclasses;
 mod tuples;
@@ -41,11 +46,12 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 33] = [
+pub const PORTED: [&str; 41] = [
     "CPX002", "CPX003", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001",
-    "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY010", "MOD003",
-    "MOD005", "MOD006", "MOD007", "MOD008", "MOD010", "MOD011", "MOD012", "TYP003", "TYP004",
-    "TYP006", "TYP007", "TYP008", "VIS003", "VIS006", "VIS007",
+    "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "LAY002", "LAY006",
+    "LAY008", "LAY010", "LAY011", "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008",
+    "MOD010", "MOD011", "MOD012", "TYP001", "TYP002", "TYP003", "TYP004", "TYP006", "TYP007",
+    "TYP008", "VIS003", "VIS006", "VIS007", "VIS008",
 ];
 
 /// The project-wide facts rules read besides their source.
@@ -136,8 +142,13 @@ pub fn check(
         "IDM006" => broad_excepts::check(&input),
         "IDM007" => narrowing_asserts::check(&input),
         "IDM008" => loop_collections::check(&input),
+        "LAY002" => headers::check_docstring(&input),
+        "LAY006" => call_order::check(&input),
+        "LAY008" => constants::check(&input),
         "LAY010" => exports::check_reexports(&input),
+        "LAY011" => headers::check_logger(&input),
         "MOD003" => discriminators::check(&input),
+        "MOD004" => enum_styles::check(&input),
         "MOD005" => stateful_dataclasses::check(&input),
         "MOD006" => dataclass_options::check(&input),
         "MOD007" => project_bases::check(&input),
@@ -145,6 +156,8 @@ pub fn check(
         "MOD010" => durations::check(&input),
         "MOD011" => frozen_collections::check(&input),
         "MOD012" => parallel_fields::check(&input),
+        "TYP001" => headers::check_forbidden_future(&input),
+        "TYP002" => headers::check_redundant_future(&input),
         "TYP003" => none_defaults::check(&input),
         "TYP004" => context_managers::check(&input),
         "TYP006" => annotation_quotes::check(&input),
@@ -153,6 +166,7 @@ pub fn check(
         "VIS003" => exports::check_dunder_all(&input),
         "VIS006" => delegates::check(&input),
         "VIS007" => private_definitions::check(&input),
+        "VIS008" => reexport_convention::check(&input),
         _ => Vec::new(),
     }
 }

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
 /// `dir(builtins)` on CPython 3.14 with `site` loaded, sorted.
-const BUILTIN_NAMES: [&str; 160] = [
+pub(super) const BUILTIN_NAMES: [&str; 160] = [
     "ArithmeticError",
     "AssertionError",
     "AttributeError",

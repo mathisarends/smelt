@@ -172,7 +172,7 @@ fn is_dunder_all(expression: &Expr) -> bool {
 }
 
 /// The names `__all__` declares; `None` means a dynamic declaration.
-fn explicit_exports(tree: &ModModule) -> Option<HashSet<&str>> {
+pub(super) fn explicit_exports(tree: &ModModule) -> Option<HashSet<&str>> {
     let mut exports = HashSet::new();
     let mut handled = 0;
     for statement in &tree.body {
