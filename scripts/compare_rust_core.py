@@ -1,0 +1,237 @@
+"""Compare the Rust core's findings with the Python engine, finding by finding.
+
+Every project is copied to a temporary directory, so the originals stay untouched.
+Each copy is checked at several limits to produce many findings. The parity
+fixture also runs with CRLF line endings and a UTF-8 byte-order mark.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from smelt.config.loader import LoadedConfig, load_config
+from smelt.config.models import POLICY_DEFAULTS, RuleOverride
+from smelt.engine.check import CheckOptions, run_check
+
+REPOSITORY = Path(__file__).resolve().parent.parent
+FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
+PORTED = ("CPX003", "CPX005")
+LIMIT_RULE = "complexity/excess-positional-parameters"
+LIMITS = (None, 0, 1, 2, 3)
+_SKIPPED = shutil.ignore_patterns(
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "target",
+    "dist",
+    "node_modules",
+    ".claude",
+    ".smelt_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("projects", nargs="*", type=Path)
+    parser.add_argument(
+        "--native",
+        type=Path,
+        default=Path(sys.executable).with_name(
+            "smelt.exe" if os.name == "nt" else "smelt"
+        ),
+    )
+    args = parser.parse_args()
+    projects = [path.resolve() for path in args.projects] or [FIXTURE, REPOSITORY]
+    native = args.native.resolve()
+    failures = 0
+    with tempfile.TemporaryDirectory(prefix="smelt-parity-") as temporary:
+        for index, project in enumerate(projects):
+            variants = ("lf", "crlf", "bom") if project == FIXTURE else ("lf",)
+            for variant in variants:
+                copy = Path(temporary) / f"{index}-{variant}"
+                shutil.copytree(project, copy, ignore=_SKIPPED)
+                _rewrite_sources(copy, variant)
+                for limit in LIMITS:
+                    label = f"{project.name} {variant} limit={limit}"
+                    failures += _compare(copy, limit, label=label, native=native)
+    _emit("parity holds" if not failures else f"{failures} comparisons differ")
+    return 1 if failures else 0
+
+
+def _emit(line: str) -> None:
+    sys.stdout.write(f"{line}\n")
+
+
+def _rewrite_sources(root: Path, variant: str) -> None:
+    if variant == "lf":
+        return
+    for path in root.rglob("*.py"):
+        data = path.read_bytes().replace(b"\r\n", b"\n")
+        path.write_bytes(
+            data.replace(b"\n", b"\r\n")
+            if variant == "crlf"
+            else b"\xef\xbb\xbf" + data
+        )
+
+
+def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
+    config_path = root / "smelt.yml"
+    original = config_path.read_text(encoding="utf-8")
+    if limit is not None:
+        raw = yaml.safe_load(original)
+        rules = raw.setdefault("rules", {})
+        rules.pop("CPX003", None)
+        rules[LIMIT_RULE] = {"severity": "warning", "max": limit}
+        config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
+    try:
+        loaded = load_config(config_path)
+        started = time.perf_counter()
+        outcome = run_check(
+            loaded, CheckOptions(select=PORTED, use_cache=False, use_debt=False)
+        )
+        python_seconds = time.perf_counter() - started
+        expected = sorted(
+            (
+                violation.to_json()
+                for violation in outcome.report.violations
+                if violation.code in PORTED
+            ),
+            key=_order,
+        )
+        actual, native_seconds = _native_findings(loaded, native)
+    finally:
+        config_path.write_text(original, encoding="utf-8")
+    differences = _differences(expected, actual)
+    _emit(
+        f"{label}: {len(expected)} findings, python {python_seconds:.2f}s, "
+        f"rust {native_seconds * 1000:.0f}ms, "
+        f"{'match' if not differences else f'{len(differences)} DIFFER'}"
+    )
+    for difference in differences[:5]:
+        _emit(f"  {difference}")
+    return 1 if differences else 0
+
+
+def _native_findings(
+    loaded: LoadedConfig, native: Path
+) -> tuple[list[dict[str, Any]], float]:
+    request = loaded.root / ".smelt-core-request.json"
+    request.write_text(json.dumps(_request(loaded)), encoding="utf-8")
+    try:
+        started = time.perf_counter()
+        result = subprocess.run(  # noqa: S603 - the locally built client
+            [str(native), "--internal-core", str(request)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        seconds = time.perf_counter() - started
+    finally:
+        request.unlink()
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr)
+    return sorted(json.loads(result.stdout)["violations"], key=_order), seconds
+
+
+def _request(loaded: LoadedConfig) -> dict[str, Any]:
+    config = loaded.config
+    structure = config.structure
+    return {
+        "root": str(loaded.root),
+        "select": list(PORTED),
+        "strict_coverage": config.strict_coverage,
+        "project": {
+            "root_packages": list(config.project.root_packages),
+            "source_roots": list(config.project.source_roots),
+            "exclude": list(config.project.exclude_patterns),
+        },
+        "contracts": {
+            name: {
+                "match": contract.match,
+                "style_override": contract.style_override,
+                "rules": _rules(contract.rules),
+                "max_positional_parameters": contract.max_positional_parameters,
+            }
+            for name, contract in structure.contracts.items()
+        },
+        "project_policy": {
+            "max_positional_parameters": structure.max_positional_parameters
+        },
+        "defaults": {
+            "max_positional_parameters": POLICY_DEFAULTS.max_positional_parameters
+        },
+        "rule_layers": [_rules(layer) for layer in config.rule_layers],
+        "members": {path: {} for path in config.members},
+        "ignore_entries": [
+            {
+                "rule": entry.rule,
+                "modules": list(entry.modules),
+                "paths": list(entry.paths),
+            }
+            for entry in config.ignore
+        ],
+    }
+
+
+def _rules(settings: Any) -> dict[str, Any]:
+    return {
+        key: {"severity": value.severity} if isinstance(value, RuleOverride) else value
+        for key, value in settings.items()
+    }
+
+
+def _order(finding: dict[str, Any]) -> tuple[str, int, int, str, str]:
+    return (
+        finding["path"] or "",
+        finding["line"] or 0,
+        finding["column"] or 0,
+        finding["code"],
+        finding["message"],
+    )
+
+
+def _differences(
+    expected: list[dict[str, Any]], actual: list[dict[str, Any]]
+) -> list[str]:
+    left = {finding["id"]: finding for finding in expected}
+    right = {finding["id"]: finding for finding in actual}
+    found = [
+        f"only python: {left[key]['path']}:{left[key]['line']} {left[key]['message']}"
+        for key in left.keys() - right.keys()
+    ]
+    found.extend(
+        f"only rust: {right[key]['path']}:{right[key]['line']} {right[key]['message']}"
+        for key in right.keys() - left.keys()
+    )
+    for key in left.keys() & right.keys():
+        fields = [
+            field
+            for field in left[key].keys() | right[key].keys()
+            if left[key].get(field) != right[key].get(field)
+        ]
+        if fields:
+            detail = {
+                field: (left[key].get(field), right[key].get(field)) for field in fields
+            }
+            found.append(f"{left[key]['path']}:{left[key]['line']} {detail}")
+    return found
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

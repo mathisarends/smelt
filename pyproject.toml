@@ -38,6 +38,7 @@ cache-keys = [
     { file = "Cargo.toml" },
     { file = "Cargo.lock" },
     { file = "native/**/*.rs" },
+    { file = "smelt/rules/catalog.json" },
 ]
 
 [dependency-groups]

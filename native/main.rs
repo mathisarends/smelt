@@ -12,6 +12,7 @@ use std::process::{self, Command};
 use std::thread;
 use std::time::{Duration, Instant};
 
+mod checker;
 mod git;
 mod worker;
 
@@ -331,6 +332,11 @@ fn run() -> io::Result<i32> {
     let arguments: Vec<OsString> = env::args_os().skip(1).collect();
     if arguments == [OsString::from("--internal-git")] {
         return git::serve();
+    }
+    if let [flag, request] = arguments.as_slice()
+        && flag == "--internal-core"
+    {
+        return Ok(checker::serve(Path::new(request)));
     }
     if arguments == [OsString::from("--version")] {
         println!("smelt {}", env!("CARGO_PKG_VERSION"));

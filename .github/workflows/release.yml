@@ -83,6 +83,14 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             container: ghcr.io/rust-cross/manylinux_2_28-cross:aarch64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            container: quay.io/pypa/musllinux_1_2_x86_64:latest
+            alpine: true
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            container: quay.io/pypa/musllinux_1_2_aarch64:latest
+            alpine: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             smoke: true
@@ -100,7 +108,7 @@ jobs:
         run: |
           docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
             "${{ matrix.container }}" \
-            bash scripts/build_manylinux_wheel.sh "${{ matrix.target }}"
+            bash scripts/build_linux_wheel.sh "${{ matrix.target }}"
       - uses: PyO3/maturin-action@v1
         if: runner.os != 'Linux'
         with:
@@ -115,6 +123,12 @@ jobs:
       - name: Install and smoke-test the release wheel outside the checkout
         if: matrix.smoke
         run: uv run --no-project --python 3.12 python scripts/smoke_distribution.py dist
+      - name: Install and smoke-test the musllinux wheel on Alpine
+        if: matrix.alpine
+        run: |
+          docker run --rm --volume "${{ github.workspace }}:/io" --workdir /io \
+            python:3.12-alpine \
+            sh -c "python -m pip install --disable-pip-version-check --root-user-action=ignore uv && python scripts/smoke_distribution.py dist"
       - uses: actions/upload-artifact@v7
         with:
           name: python-distributions-${{ matrix.target }}

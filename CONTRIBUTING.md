@@ -2,7 +2,7 @@
 
 Use [the vision](docs/vision.md) as the scope and acceptance filter for proposed changes.
 
-Development requires Python 3.12+ and Rust 1.88+ with rustfmt/clippy and a platform
+Development requires Python 3.12+ and Rust 1.98+ with rustfmt/clippy and a platform
 linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
 keys include the Cargo manifests and native Rust sources. `python -m smelt` keeps
 the direct Python entry point for debugging and uncached comparisons. Installed
@@ -458,14 +458,15 @@ environment name must match the workflow exactly.
    Release can be added for an existing published tag; new code needs a new
    version and tag. Do not move a published tag or reuse its PyPI version.
 
-Both Linux release wheels use `scripts/build_manylinux_wheel.sh` in the
-PyPA manylinux 2.28 container (x86_64) or the rust-cross manylinux 2.28 container
-(ARM64). The script installs pinned `maturin[patchelf]` from PyPI,
-avoiding the GitHub Release archive download used by maturin-action. The Linux
-package CI job builds and audits both targets with the same script and
-smoke-tests the native x86_64 wheel before release.
-Keep the explicit manylinux compatibility audit and update the tool pin in the
-script when adopting a new build-tool version.
+All Linux release wheels use `scripts/build_linux_wheel.sh`. The glibc wheels
+build in the PyPA manylinux 2.28 container (x86_64) or the rust-cross manylinux
+2.28 container (ARM64). The musl wheels build natively in the PyPA musllinux 1.2
+containers. The script installs pinned `maturin[patchelf]` from PyPI, avoiding
+the GitHub Release archive download used by maturin-action. CI builds and audits
+all four targets with the same script, smoke-tests the native x86_64 glibc wheel
+and installs both musl wheels on Alpine before release.
+Keep the explicit compatibility audits and update the tool pin in the script
+when adopting a new build-tool version.
 
 Maintainers and coding agents with permission to push release tags can use this
 procedure without local PyPI credentials. Ordinary branch pushes and pull requests
