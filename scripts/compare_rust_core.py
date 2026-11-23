@@ -35,6 +35,12 @@ if TYPE_CHECKING:
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
 PORTED = (
+    "ARC001",
+    "ARC002",
+    "ARC003",
+    "ARC004",
+    "ARC005",
+    "ARC006",
     "CPX002",
     "CPX003",
     "CPX005",
@@ -51,6 +57,7 @@ PORTED = (
     "IDM006",
     "IDM007",
     "IDM008",
+    "IMP002",
     "LAY002",
     "LAY006",
     "LAY008",
@@ -92,10 +99,27 @@ LIMIT_RULES = {
     "CPX003": ("complexity/excess-positional-parameters", 0),
     "CPX006": ("complexity/excess-comprehension-loops", 1),
     "CPX007": ("complexity/excess-constructor-decisions", 0),
+    "IMP002": ("imports/excess-module-imports", 0),
     "TST005": ("tests/excess-patches", 0),
     "VIS007": ("visibility/excess-private-definitions", 0),
 }
 LIMITS = (None, 0, 1, 2, 3)
+ARCHITECTURE_FIXTURES = (
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_architecture",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_layers",
+)
+# Every way the import graph options change what the dependency rules see.
+GRAPH_POLICIES = tuple(
+    {
+        "transitive": transitive,
+        "type_checking": type_checking,
+        "type_checking_cycles": type_checking_cycles,
+        "cycles": ["features", "layers", "siblings", "modules"],
+    }
+    for transitive in (False, True)
+    for type_checking in ("include", "ignore")
+    for type_checking_cycles in ("include", "ignore")
+)
 _SKIPPED = shutil.ignore_patterns(
     ".git",
     ".venv",
@@ -123,7 +147,11 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
-    projects = [path.resolve() for path in args.projects] or [FIXTURE, REPOSITORY]
+    projects = [path.resolve() for path in args.projects] or [
+        FIXTURE,
+        *ARCHITECTURE_FIXTURES,
+        REPOSITORY,
+    ]
     native = args.native.resolve()
     failures = 0
     with tempfile.TemporaryDirectory(prefix="smelt-parity-") as temporary:
@@ -143,6 +171,16 @@ def main() -> int:
                 for limit in LIMITS:
                     label = f"{project.name} {variant} limit={limit}"
                     failures += _compare(copy, limit, label=label, native=native)
+                if project in ARCHITECTURE_FIXTURES:
+                    for graph in GRAPH_POLICIES:
+                        label = (
+                            f"{project.name} transitive={graph['transitive']} "
+                            f"type_checking={graph['type_checking']} "
+                            f"cycles={graph['type_checking_cycles']}"
+                        )
+                        failures += _compare(
+                            copy, None, label=label, native=native, graph=graph
+                        )
     _emit("parity holds" if not failures else f"{failures} comparisons differ")
     return 1 if failures else 0
 
@@ -164,17 +202,27 @@ def _rewrite_sources(root: Path, variant: str) -> None:
             path.write_bytes(data.rstrip(b"\n"))
 
 
-def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
+def _compare(
+    root: Path,
+    limit: int | None,
+    *,
+    label: str,
+    native: Path,
+    graph: dict[str, Any] | None = None,
+) -> int:
     config_path = root / "smelt.yml"
     original = config_path.read_text(encoding="utf-8")
-    if limit is not None:
+    if limit is not None or graph is not None:
         raw = yaml.safe_load(original)
-        rules = raw.setdefault("rules", {})
-        for code, (name, minimum) in LIMIT_RULES.items():
-            rules.pop(code, None)
-            rules[name] = {"severity": "warning", "max": max(limit, minimum)}
-        # MOD008 only runs under an error policy, which real projects may not set.
-        raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
+        if limit is not None:
+            rules = raw.setdefault("rules", {})
+            for code, (name, minimum) in LIMIT_RULES.items():
+                rules.pop(code, None)
+                rules[name] = {"severity": "warning", "max": max(limit, minimum)}
+            # MOD008 only runs under an error policy, which real projects may not set.
+            raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
+        if graph is not None:
+            raw["architecture"].setdefault("import_graph", {}).update(graph)
         config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     try:
         loaded = load_config(config_path)
