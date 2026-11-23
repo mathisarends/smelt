@@ -30,7 +30,7 @@ staged hook, including `prek run --all-files`, still checks the Git index.
 Use `smelt check` for the full working-tree inventory and CI.
 
 Installing this native build from a Git checkout, including the hook's Python
-environment, requires Rust 1.93+ and a platform linker during installation. Release
+environment, requires Rust 1.98+ and a platform linker during installation. Release
 wheels contain the compiled client. The same hook entry works with pre-commit and
 prek; the invoking repository chooses its runner.
 

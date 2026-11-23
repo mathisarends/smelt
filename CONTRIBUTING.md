@@ -2,7 +2,7 @@
 
 Use [the vision](docs/vision.md) as the scope and acceptance filter for proposed changes.
 
-Development requires Python 3.12+ and Rust 1.93+ with rustfmt/clippy and a platform
+Development requires Python 3.12+ and Rust 1.98+ with rustfmt/clippy and a platform
 linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
 keys include the Cargo manifests and native Rust sources. `python -m smelt` keeps
 the direct Python entry point for debugging and uncached comparisons. Installed
