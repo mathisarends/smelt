@@ -4,7 +4,13 @@ version: 2
 project:
   root_packages: [parity]
   source_roots: ["."]
-  test_roots: []
+  test_roots: [parity_tests]
+
+tests:
+  quality_exclude: ["parity_tests/excluded/**"]
+  forbidden_mock_paths: ["parity_tests/domain/**"]
+  assertion_helpers: [parity.test_support.checks.check_result]
+  timeout_helpers: [parity.test_support.checks.guard]
 
 style:
   type_dispatch: {style: match, min_branches: 2}
@@ -107,8 +113,12 @@ style:
 rules:
   complexity/excess-positional-parameters: {severity: warning, max: 2}
   complexity/forbidden-nested-conditional: hint
+  tests/excess-patches: {severity: warning, max: 2}
 
 ignore:
   - rule: complexity/excess-positional-parameters
     paths: ["parity/ignored.py"]
     reason: Exercises path ignores in the parity comparison.
+  - rule: tests/private-access
+    paths: ["parity_tests/nested/service_test.py"]
+    reason: Exercises path ignores for test findings.
