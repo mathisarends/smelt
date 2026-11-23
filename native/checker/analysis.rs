@@ -3,6 +3,7 @@
 pub mod bindings;
 pub mod dump;
 pub mod edits;
+pub mod imports;
 mod lazy_exports;
 pub mod namespace;
 pub mod nodes;

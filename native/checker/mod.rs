@@ -4,6 +4,7 @@ mod analysis;
 mod config;
 mod contracts;
 mod files;
+mod import_report;
 mod patterns;
 mod rules;
 mod settings;
@@ -50,6 +51,17 @@ pub fn serve_config(path: &Path) -> i32 {
         Err(error) => json!({"ok": false, "error": error.render()}),
     };
     match write_output(&description.to_string()) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// Print the resolved import graph of `config` as JSON.
+pub fn serve_imports(config: &Path) -> i32 {
+    match import_report::run(config).and_then(|text| write_output(&text)) {
         Ok(()) => 0,
         Err(message) => {
             eprintln!("smelt core: {message}");

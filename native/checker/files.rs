@@ -21,6 +21,10 @@ pub struct FileIndex {
     /// Test files by project-relative path.
     pub tests: BTreeMap<String, SourceFile>,
     pub packages: Vec<String>,
+    /// Packages without an initializer.
+    pub namespace_packages: Vec<String>,
+    /// The root packages that exist under a source root.
+    pub found_roots: Vec<String>,
 }
 
 impl FileIndex {
@@ -38,11 +42,18 @@ impl FileIndex {
             exclude,
             sources: BTreeMap::new(),
             portions: HashMap::new(),
+            found_roots: Vec::new(),
         };
         for package in &request.project.root_packages {
             discovery.package_root(package, &request.project.source_roots)?;
         }
         let tests = discovery.tests(&request.project.test_roots);
+        let namespace_packages = discovery
+            .portions
+            .iter()
+            .filter(|(_, (_, has_init))| !has_init)
+            .map(|(module, _)| module.clone())
+            .collect();
         let mut packages: Vec<String> = discovery.portions.into_keys().collect();
         packages.sort();
         Ok(Self {
@@ -50,6 +61,8 @@ impl FileIndex {
             sources: discovery.sources,
             tests,
             packages,
+            namespace_packages,
+            found_roots: discovery.found_roots,
         })
     }
 }
@@ -59,6 +72,7 @@ struct Discovery {
     exclude: Vec<PathPattern>,
     sources: BTreeMap<String, SourceFile>,
     portions: HashMap<String, (String, bool)>,
+    found_roots: Vec<String>,
 }
 
 impl Discovery {
@@ -89,6 +103,9 @@ impl Discovery {
         } else {
             regular
         };
+        if !selected.is_empty() {
+            self.found_roots.push(package.to_owned());
+        }
         for directory in selected {
             self.walk_package(&directory, package)?;
         }
