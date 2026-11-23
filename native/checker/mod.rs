@@ -131,12 +131,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         known: &known,
         forbidden_mocks: &forbidden_mocks,
     };
-    // AST walks recurse, and a long operator chain nests as deep as it is long.
-    let pool = rayon::ThreadPoolBuilder::new()
-        .stack_size(ANALYSIS_STACK_BYTES)
-        .build()
-        .map_err(|error| error.to_string())?;
-    let outcomes = pool.install(|| {
+    let outcomes = with_analysis_pool(|| {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -156,7 +151,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             );
         }
         Ok::<_, String>(outcomes)
-    })?;
+    })??;
     let mut suppressed = 0;
     let mut violations = Vec::new();
     for (found, hidden) in outcomes {
@@ -166,6 +161,35 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     violations.sort_by(Violation::compare);
     let report: Vec<_> = violations.iter().map(Violation::to_json).collect();
     Ok(json!({"violations": report, "suppressed": suppressed}).to_string())
+}
+
+/// Run `work` on a pool whose workers have all exited by the time it returns.
+///
+/// AST walks recurse, and a long operator chain nests as deep as it is long, so
+/// workers get large stacks. Dropping a pool only asks them to stop, and on Windows
+/// `ExitProcess` can then kill one inside the heap allocator, which leaves the
+/// shutdown spinning forever. Scoped threads do not prevent this because a scope
+/// can end before their thread-local teardown, so each OS thread is joined here.
+fn with_analysis_pool<R: Send>(work: impl FnOnce() -> R + Send) -> Result<R, String> {
+    let mut workers = Vec::new();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .spawn_handler(|thread| {
+            let worker = std::thread::Builder::new()
+                .stack_size(ANALYSIS_STACK_BYTES)
+                .spawn(move || thread.run())?;
+            workers.push(worker);
+            Ok(())
+        })
+        .build()
+        .map_err(|error| error.to_string())?;
+    let result = pool.install(work);
+    drop(pool);
+    for worker in workers {
+        worker
+            .join()
+            .map_err(|_| "an analysis worker panicked".to_owned())?;
+    }
+    Ok(result)
 }
 
 struct Analysis<'a> {
@@ -291,5 +315,37 @@ impl Ignores {
                     .is_some_and(|module| entry.modules.iter().any(|p| p.matches(module)))
                     || entry.paths.iter().any(|p| p.matches(&violation.path)))
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_analysis_pool;
+    use std::cell::RefCell;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static EXITED: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountOnExit;
+
+    impl Drop for CountOnExit {
+        fn drop(&mut self) {
+            EXITED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    thread_local! {
+        static GUARD: RefCell<Option<CountOnExit>> = const { RefCell::new(None) };
+    }
+
+    #[test]
+    fn analysis_pool_workers_have_exited_when_it_returns() {
+        let workers = with_analysis_pool(|| {
+            rayon::broadcast(|_| GUARD.with(|guard| *guard.borrow_mut() = Some(CountOnExit)));
+            rayon::current_num_threads()
+        })
+        .expect("the pool starts");
+
+        assert_eq!(EXITED.load(Ordering::SeqCst), workers);
     }
 }
