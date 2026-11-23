@@ -14,10 +14,11 @@ pub struct Violation {
     pub message: String,
     pub path: String,
     pub line: usize,
-    pub column: usize,
+    pub column: Option<usize>,
     pub end_line: Option<usize>,
     pub end_column: Option<usize>,
     pub source_module: Option<String>,
+    pub target_module: Option<String>,
     pub expected: Value,
     pub hint: Option<String>,
     pub fix: Option<Value>,
@@ -28,14 +29,14 @@ impl Violation {
         (
             &left.path,
             left.line,
-            left.column,
+            left.column.unwrap_or(0),
             &left.code,
             &left.message,
         )
             .cmp(&(
                 &right.path,
                 right.line,
-                right.column,
+                right.column.unwrap_or(0),
                 &right.code,
                 &right.message,
             ))
@@ -58,7 +59,7 @@ impl Violation {
             "layer": null,
             "member": null,
             "source_module": self.source_module,
-            "target_module": null,
+            "target_module": self.target_module,
             "edge": null,
             "expected": self.expected,
             "hint": self.hint,
@@ -70,7 +71,11 @@ impl Violation {
     fn finding_id(&self) -> String {
         let payload = format!(
             "{}\x1f{}\x1f{}\x1f{}\x1f{}",
-            self.code, self.path, self.line, self.column, self.message
+            self.code,
+            self.path,
+            self.line,
+            self.column.unwrap_or(0),
+            self.message
         );
         let digest = Sha256::digest(payload.as_bytes());
         let mut id = String::with_capacity(12);

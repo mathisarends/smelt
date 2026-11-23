@@ -1,0 +1,4 @@
+[project]
+name = "old"
+version = "0"
+requires-python = ">=3.8"

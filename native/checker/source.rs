@@ -1,9 +1,9 @@
 //! One parsed source with CPython-compatible positions.
 use super::files::SourceFile;
 use ruff_python_ast::token::TokenKind;
-use ruff_python_ast::{ModModule, StmtFunctionDef};
+use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef, StmtFunctionDef};
 use ruff_python_parser::{Parsed, parse_module};
-use ruff_text_size::{Ranged, TextSize};
+use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
 use std::fs;
 
@@ -23,6 +23,21 @@ impl SourceText {
     pub fn position(&self, offset: usize) -> (usize, usize) {
         let line = self.starts.partition_point(|start| *start <= offset);
         (line, offset - self.starts[line - 1])
+    }
+
+    /// The offset where the 1-based `line` starts.
+    pub fn line_start(&self, line: usize) -> usize {
+        self.starts[line - 1]
+    }
+
+    /// The offset after the newline that ends `line`, or the end of the text.
+    pub fn line_end(&self, line: usize) -> usize {
+        self.starts.get(line).copied().unwrap_or(self.text.len())
+    }
+
+    /// The 1-based line that contains `offset`.
+    pub fn line_at(&self, offset: usize) -> usize {
+        self.position(offset).0
     }
 
     /// A `TextEdit` as JSON: 1-based lines and 1-based UTF-8 columns.
@@ -80,5 +95,57 @@ impl ParsedSource {
             .iter()
             .find(|token| matches!(token.kind(), TokenKind::Def | TokenKind::Async))
             .map_or(function.start(), Ranged::start)
+    }
+
+    /// Where CPython places a class: at `class`, after its decorators.
+    pub fn class_start(&self, class: &StmtClassDef) -> TextSize {
+        let Some(decorator) = class.decorator_list.last() else {
+            return class.start();
+        };
+        self.parsed
+            .tokens()
+            .after(decorator.end())
+            .iter()
+            .find(|token| token.kind() == TokenKind::Class)
+            .map_or(class.start(), Ranged::start)
+    }
+
+    /// Where CPython places a statement, which skips the decorators of a definition.
+    pub fn statement_start(&self, statement: &Stmt) -> TextSize {
+        match statement {
+            Stmt::FunctionDef(node) => self.function_start(node),
+            Stmt::ClassDef(node) => self.class_start(node),
+            other => other.start(),
+        }
+    }
+
+    /// CPython's span of a comprehension: a bare generator argument owns the
+    /// parentheses of its call.
+    pub fn comprehension_range(&self, expression: &Expr) -> TextRange {
+        let range = expression.range();
+        let Expr::Generator(generator) = expression else {
+            return range;
+        };
+        if generator.parenthesized {
+            return range;
+        }
+        let tokens = self.parsed.tokens();
+        let open = tokens
+            .before(range.start())
+            .iter()
+            .rev()
+            .find(|token| !token.kind().is_trivia());
+        let close = tokens
+            .after(range.end())
+            .iter()
+            .find(|token| !token.kind().is_trivia());
+        match (open, close) {
+            (Some(open), Some(close))
+                if open.kind() == TokenKind::Lpar && close.kind() == TokenKind::Rpar =>
+            {
+                TextRange::new(open.start(), close.end())
+            }
+            _ => range,
+        }
     }
 }

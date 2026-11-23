@@ -4,14 +4,107 @@ version: 2
 project:
   root_packages: [parity]
   source_roots: ["."]
-  test_roots: []
+  test_roots: [parity_tests]
+
+tests:
+  quality_exclude: ["parity_tests/excluded/**"]
+  forbidden_mock_paths: ["parity_tests/domain/**"]
+  assertion_helpers: [parity.test_support.checks.check_result]
+  timeout_helpers: [parity.test_support.checks.guard]
 
 style:
+  type_dispatch: {style: match, min_branches: 2}
+  bases:
+    pydantic.BaseModel: parity.modeling.base.Options
+    external.Base: parity.modeling.base.Options
+  errors: {base: parity.domain_errors.base.AppError, allow: [TypeError]}
   overrides:
+    kinds_await:
+      match: parity.call_kinds.awaits
+      call_argument_kinds: [await]
+    kinds_comprehension:
+      match: parity.call_kinds.comprehensions
+      call_argument_kinds: [comprehension]
+    kinds_aggregate:
+      match: parity.call_kinds.aggregates
+      call_argument_kinds: [aggregate]
+    dataclass_policy:
+      match: parity.dataclass_policy
+      dataclass_options: [frozen, slots, kw_only]
+    dataclass_lifted:
+      match: parity.dataclass_policy.lifted
+      dataclass_options: []
+    dataclass_frozen:
+      match: parity.dataclass_policy.only_frozen
+      dataclass_options: [frozen]
+    quotes_forbidden:
+      match: parity.quoted_annotations.forbidden
+      future_annotations: forbid
+    quotes_deferred_forbidden:
+      match: parity.quoted_annotations.deferred.forbidden
+      future_annotations: forbid
+    reexports_alias:
+      match: parity.reexport_styles.alias
+      reexports: alias
+    reexports_allow:
+      match: parity.reexport_styles.allowed
+      reexports: allow
+    enums_auto:
+      match: parity.enum_styles.derived
+      str_enum_values: auto
+    docs_required:
+      match: parity.doc_policy.required
+      module_docstrings: require
+    docs_required_exempt:
+      match: parity.doc_policy.required.exempt
+      module_docstrings: allow
+    docs_forbidden:
+      match: parity.doc_policy.forbidden
+      module_docstrings: forbid
+    docs_forbidden_exempt:
+      match: parity.doc_policy.forbidden.exempt
+      module_docstrings: allow
+    future_forbidden:
+      match: parity.future_policy.forbidden
+      future_annotations: forbid
+    future_allowed:
+      match: parity.future_policy.allowed
+      future_annotations: allow
+    future_deferred:
+      match: parity.future_policy.deferred
+      future_annotations: when-needed
+    future_needed:
+      match: parity.future_policy.needed
+      future_annotations: when-needed
+    future_old:
+      match: parity.future_policy.old
+      future_annotations: when-needed
+    future_generics:
+      match: parity.future_policy.generics
+      future_annotations: when-needed
+    future_unions:
+      match: parity.future_policy.unions
+      future_annotations: when-needed
+    errors_lifted:
+      match: parity.domain_errors.free
+      errors: {}
+    errors_strict:
+      match: parity.domain_errors.strict
+      errors: {base: parity.domain_errors.base.StrictError}
     relaxed:
       match: parity.relaxed
+      type_dispatch: {style: match, min_branches: 4}
       rules:
         complexity/excess-positional-parameters: {severity: hint, max: 4}
+        complexity/excess-comprehension-loops: {severity: hint, max: 3}
+        complexity/excess-constructor-decisions: {severity: hint, max: 4}
+        visibility/excess-private-definitions: {severity: hint, max: 1}
+    free_bases:
+      match: parity.modeling.free
+      bases: {}
+    dispatch_off:
+      match: parity.versioned.allowed
+      type_dispatch: {style: allow}
     silenced:
       match: parity.silenced
       rules:
@@ -20,8 +113,12 @@ style:
 rules:
   complexity/excess-positional-parameters: {severity: warning, max: 2}
   complexity/forbidden-nested-conditional: hint
+  tests/excess-patches: {severity: warning, max: 2}
 
 ignore:
   - rule: complexity/excess-positional-parameters
     paths: ["parity/ignored.py"]
     reason: Exercises path ignores in the parity comparison.
+  - rule: tests/private-access
+    paths: ["parity_tests/nested/service_test.py"]
+    reason: Exercises path ignores for test findings.

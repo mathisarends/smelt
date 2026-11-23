@@ -12,11 +12,9 @@ pub mod yaml;
 
 use schema::string_list;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-const DEFAULT_MAX_POSITIONAL_PARAMETERS: usize = 5;
 
 pub type RuleMap = BTreeMap<String, RuleSetting>;
 
@@ -25,9 +23,9 @@ pub struct Request {
     pub select: Vec<String>,
     pub strict_coverage: bool,
     pub project: Project,
+    pub tests: TestPolicy,
     pub contracts: BTreeMap<String, Contract>,
     pub project_policy: Policy,
-    pub defaults: Policy,
     pub rule_layers: Vec<RuleMap>,
     pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
@@ -80,13 +78,15 @@ impl Request {
             project: Project {
                 root_packages: string_list(policy["project"].get("root_packages")),
                 source_roots: string_list(policy["project"].get("source_roots")),
+                test_roots: string_list(policy["project"].get("test_roots")),
                 exclude,
+                python_version: policy["project"]["python_version"]
+                    .as_str()
+                    .map(str::to_owned),
             },
+            tests: TestPolicy::from_config(policy),
             contracts,
             project_policy: Policy::from_value(structure),
-            defaults: Policy {
-                max_positional_parameters: Some(DEFAULT_MAX_POSITIONAL_PARAMETERS),
-            },
             rule_layers,
             members: policy["members"]
                 .as_object()
@@ -109,7 +109,36 @@ fn rule_map(rules: &Value) -> Result<RuleMap, String> {
 pub struct Project {
     pub root_packages: Vec<String>,
     pub source_roots: Vec<String>,
+    pub test_roots: Vec<String>,
     pub exclude: Vec<String>,
+    pub python_version: Option<String>,
+}
+
+/// The `tests` section and the project-wide patch limit.
+pub struct TestPolicy {
+    pub quality_exclude: Vec<String>,
+    pub forbidden_mock_paths: Vec<String>,
+    pub assertion_helpers: Vec<String>,
+    pub timeout_helpers: Vec<String>,
+    pub max_patches_per_test: Option<u64>,
+}
+
+impl TestPolicy {
+    fn from_config(policy: &Value) -> Self {
+        let tests = &policy["tests"];
+        let rules = &policy["rules"];
+        Self {
+            quality_exclude: string_list(tests.get("quality_exclude")),
+            forbidden_mock_paths: string_list(tests.get("forbidden_mock_paths")),
+            assertion_helpers: string_list(tests.get("assertion_helpers")),
+            timeout_helpers: string_list(tests.get("timeout_helpers")),
+            // Both spellings may be set; the name is read last, so it wins.
+            max_patches_per_test: ["TST005", "tests/excess-patches"]
+                .iter()
+                .rev()
+                .find_map(|key| rules[*key]["max"].as_u64()),
+        }
+    }
 }
 
 pub struct Contract {
@@ -119,18 +148,26 @@ pub struct Contract {
     pub policy: Policy,
 }
 
-#[derive(Clone, Copy)]
+/// The policy options one scope sets; options left unset are absent.
 pub struct Policy {
-    pub max_positional_parameters: Option<usize>,
+    values: Map<String, Value>,
 }
 
 impl Policy {
     fn from_value(policy: &Value) -> Self {
-        Self {
-            max_positional_parameters: policy["max_positional_parameters"]
-                .as_u64()
-                .and_then(|limit| usize::try_from(limit).ok()),
-        }
+        let values = models::POLICY_FIELDS
+            .iter()
+            .chain(&models::RULE_LIMITS)
+            .filter_map(|name| {
+                let value = policy.get(*name).filter(|value| !value.is_null())?;
+                Some(((*name).to_owned(), value.clone()))
+            })
+            .collect();
+        Self { values }
+    }
+
+    pub fn option(&self, name: &str) -> Option<&Value> {
+        self.values.get(name)
     }
 }
 
