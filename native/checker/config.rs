@@ -12,11 +12,9 @@ pub mod yaml;
 
 use schema::string_list;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-const DEFAULT_MAX_POSITIONAL_PARAMETERS: usize = 5;
 
 pub type RuleMap = BTreeMap<String, RuleSetting>;
 
@@ -27,7 +25,6 @@ pub struct Request {
     pub project: Project,
     pub contracts: BTreeMap<String, Contract>,
     pub project_policy: Policy,
-    pub defaults: Policy,
     pub rule_layers: Vec<RuleMap>,
     pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
@@ -81,12 +78,12 @@ impl Request {
                 root_packages: string_list(policy["project"].get("root_packages")),
                 source_roots: string_list(policy["project"].get("source_roots")),
                 exclude,
+                python_version: policy["project"]["python_version"]
+                    .as_str()
+                    .map(str::to_owned),
             },
             contracts,
             project_policy: Policy::from_value(structure),
-            defaults: Policy {
-                max_positional_parameters: Some(DEFAULT_MAX_POSITIONAL_PARAMETERS),
-            },
             rule_layers,
             members: policy["members"]
                 .as_object()
@@ -110,6 +107,7 @@ pub struct Project {
     pub root_packages: Vec<String>,
     pub source_roots: Vec<String>,
     pub exclude: Vec<String>,
+    pub python_version: Option<String>,
 }
 
 pub struct Contract {
@@ -119,18 +117,26 @@ pub struct Contract {
     pub policy: Policy,
 }
 
-#[derive(Clone, Copy)]
+/// The policy options one scope sets; options left unset are absent.
 pub struct Policy {
-    pub max_positional_parameters: Option<usize>,
+    values: Map<String, Value>,
 }
 
 impl Policy {
     fn from_value(policy: &Value) -> Self {
-        Self {
-            max_positional_parameters: policy["max_positional_parameters"]
-                .as_u64()
-                .and_then(|limit| usize::try_from(limit).ok()),
-        }
+        let values = models::POLICY_FIELDS
+            .iter()
+            .chain(&models::RULE_LIMITS)
+            .filter_map(|name| {
+                let value = policy.get(*name).filter(|value| !value.is_null())?;
+                Some(((*name).to_owned(), value.clone()))
+            })
+            .collect();
+        Self { values }
+    }
+
+    pub fn option(&self, name: &str) -> Option<&Value> {
+        self.values.get(name)
     }
 }
 

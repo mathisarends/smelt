@@ -1,5 +1,6 @@
 //! The Rust analysis core. It stays behind `--internal-core` until its reports
 //! match the Python engine, which `scripts/compare_rust_core.py` verifies.
+mod analysis;
 mod config;
 mod contracts;
 mod files;
@@ -10,6 +11,7 @@ mod source;
 mod suppressions;
 mod violation;
 
+use analysis::python_target::PythonTargets;
 use config::Request;
 use contracts::Contracts;
 use files::{FileIndex, SourceFile};
@@ -25,6 +27,7 @@ use suppressions::Suppression;
 use violation::Violation;
 
 const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
+const ANALYSIS_STACK_BYTES: usize = 256 * 1024 * 1024;
 
 /// Check the project of `config` with the comma-separated rules and print JSON.
 pub fn serve(config: &Path, select: &str) -> i32 {
@@ -86,19 +89,34 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         .iter()
         .map(|rule| (rule.name.as_str(), rule.code.as_str()))
         .collect();
+    let targets = PythonTargets::new(
+        &files.root,
+        &request.project.source_roots,
+        request.project.python_version.as_deref(),
+    );
     let analysis = Analysis {
         active: &active,
-        contracts: &contracts,
+        project: rules::Project {
+            contracts: &contracts,
+            targets: &targets,
+        },
         settings: &settings,
         ignores: &ignores,
         names: &names,
         selected: !request.select.is_empty(),
     };
     let sources: Vec<&SourceFile> = files.sources.values().collect();
-    let outcomes = sources
-        .par_iter()
-        .map(|source| analysis.file(source))
-        .collect::<Result<Vec<_>, String>>()?;
+    // AST walks recurse, and a long operator chain nests as deep as it is long.
+    let pool = rayon::ThreadPoolBuilder::new()
+        .stack_size(ANALYSIS_STACK_BYTES)
+        .build()
+        .map_err(|error| error.to_string())?;
+    let outcomes = pool.install(|| {
+        sources
+            .par_iter()
+            .map(|source| analysis.file(source))
+            .collect::<Result<Vec<_>, String>>()
+    })?;
     let mut suppressed = 0;
     let mut violations = Vec::new();
     for (found, hidden) in outcomes {
@@ -112,7 +130,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
 
 struct Analysis<'a> {
     active: &'a [&'a CatalogRule],
-    contracts: &'a Contracts<'a>,
+    project: rules::Project<'a>,
     settings: &'a Settings<'a>,
     ignores: &'a Ignores,
     names: &'a HashMap<&'a str, &'a str>,
@@ -124,10 +142,13 @@ impl Analysis<'_> {
         let parsed = ParsedSource::read(source)?;
         let mut found = Vec::new();
         for rule in self.active {
-            for mut violation in rules::check(rule, source, &parsed, self.contracts) {
-                let severity =
-                    self.settings
-                        .severity(rule, self.contracts, &source.module, self.selected);
+            for mut violation in rules::check(rule, source, &parsed, self.project) {
+                let severity = self.settings.severity(
+                    rule,
+                    self.project.contracts,
+                    &source.module,
+                    self.selected,
+                );
                 if let Some(severity) = severity {
                     violation.severity = severity.to_owned();
                     found.push(violation);

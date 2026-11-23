@@ -14,6 +14,7 @@ pub struct SourceFile {
 }
 
 pub struct FileIndex {
+    pub root: PathBuf,
     pub sources: BTreeMap<String, SourceFile>,
     pub packages: Vec<String>,
 }
@@ -40,6 +41,7 @@ impl FileIndex {
         let mut packages: Vec<String> = discovery.portions.into_keys().collect();
         packages.sort();
         Ok(Self {
+            root: discovery.root,
             sources: discovery.sources,
             packages,
         })

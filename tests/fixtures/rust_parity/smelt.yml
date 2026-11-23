@@ -7,11 +7,16 @@ project:
   test_roots: []
 
 style:
+  type_dispatch: {style: match, min_branches: 2}
   overrides:
     relaxed:
       match: parity.relaxed
+      type_dispatch: {style: match, min_branches: 4}
       rules:
         complexity/excess-positional-parameters: {severity: hint, max: 4}
+    dispatch_off:
+      match: parity.versioned.allowed
+      type_dispatch: {style: allow}
     silenced:
       match: parity.silenced
       rules:

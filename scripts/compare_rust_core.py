@@ -25,7 +25,7 @@ from smelt.engine.check import CheckOptions, run_check
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
-PORTED = ("CPX003", "CPX005")
+PORTED = ("CPX003", "CPX005", "FWK001", "FWK002", "IDM002", "MOD003")
 LIMIT_RULE = "complexity/excess-positional-parameters"
 LIMITS = (None, 0, 1, 2, 3)
 _SKIPPED = shutil.ignore_patterns(
