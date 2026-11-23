@@ -20,8 +20,7 @@ from typing import Any
 
 import yaml
 
-from smelt.config.loader import LoadedConfig, load_config
-from smelt.config.models import POLICY_DEFAULTS, RuleOverride
+from smelt.config.loader import load_config
 from smelt.engine.check import CheckOptions, run_check
 
 REPOSITORY = Path(__file__).resolve().parent.parent
@@ -113,7 +112,7 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
             ),
             key=_order,
         )
-        actual, native_seconds = _native_findings(loaded, native)
+        actual, native_seconds = _native_findings(config_path, native)
     finally:
         config_path.write_text(original, encoding="utf-8")
     differences = _differences(expected, actual)
@@ -128,72 +127,20 @@ def _compare(root: Path, limit: int | None, *, label: str, native: Path) -> int:
 
 
 def _native_findings(
-    loaded: LoadedConfig, native: Path
+    config_path: Path, native: Path
 ) -> tuple[list[dict[str, Any]], float]:
-    request = loaded.root / ".smelt-core-request.json"
-    request.write_text(json.dumps(_request(loaded)), encoding="utf-8")
-    try:
-        started = time.perf_counter()
-        result = subprocess.run(  # noqa: S603 - the locally built client
-            [str(native), "--internal-core", str(request)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
-        )
-        seconds = time.perf_counter() - started
-    finally:
-        request.unlink()
+    started = time.perf_counter()
+    result = subprocess.run(  # noqa: S603 - the locally built client
+        [str(native), "--internal-core", str(config_path), ",".join(PORTED)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    seconds = time.perf_counter() - started
     if result.returncode != 0:
         raise RuntimeError(result.stderr)
     return sorted(json.loads(result.stdout)["violations"], key=_order), seconds
-
-
-def _request(loaded: LoadedConfig) -> dict[str, Any]:
-    config = loaded.config
-    structure = config.structure
-    return {
-        "root": str(loaded.root),
-        "select": list(PORTED),
-        "strict_coverage": config.strict_coverage,
-        "project": {
-            "root_packages": list(config.project.root_packages),
-            "source_roots": list(config.project.source_roots),
-            "exclude": list(config.project.exclude_patterns),
-        },
-        "contracts": {
-            name: {
-                "match": contract.match,
-                "style_override": contract.style_override,
-                "rules": _rules(contract.rules),
-                "max_positional_parameters": contract.max_positional_parameters,
-            }
-            for name, contract in structure.contracts.items()
-        },
-        "project_policy": {
-            "max_positional_parameters": structure.max_positional_parameters
-        },
-        "defaults": {
-            "max_positional_parameters": POLICY_DEFAULTS.max_positional_parameters
-        },
-        "rule_layers": [_rules(layer) for layer in config.rule_layers],
-        "members": {path: {} for path in config.members},
-        "ignore_entries": [
-            {
-                "rule": entry.rule,
-                "modules": list(entry.modules),
-                "paths": list(entry.paths),
-            }
-            for entry in config.ignore
-        ],
-    }
-
-
-def _rules(settings: Any) -> dict[str, Any]:
-    return {
-        key: {"severity": value.severity} if isinstance(value, RuleOverride) else value
-        for key, value in settings.items()
-    }
 
 
 def _order(finding: dict[str, Any]) -> tuple[str, int, int, str, str]:

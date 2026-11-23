@@ -19,7 +19,6 @@ use serde_json::json;
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
 use std::collections::{BTreeSet, HashMap};
-use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use suppressions::Suppression;
@@ -27,9 +26,25 @@ use violation::Violation;
 
 const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
 
-/// Run one analysis request and print its findings as JSON.
-pub fn serve(request: &Path) -> i32 {
-    match run(request).and_then(|output| write_output(&output)) {
+/// Check the project of `config` with the comma-separated rules and print JSON.
+pub fn serve(config: &Path, select: &str) -> i32 {
+    let select = select.split(',').map(str::to_owned).collect();
+    match run(config, select).and_then(|output| write_output(&output)) {
+        Ok(()) => 0,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// Load one configuration and print it, or its error, as JSON.
+pub fn serve_config(path: &Path) -> i32 {
+    let description = match config::load::load_config(path) {
+        Ok(loaded) => config::load::describe(&loaded),
+        Err(error) => json!({"ok": false, "error": error.render()}),
+    };
+    match write_output(&description.to_string()) {
         Ok(()) => 0,
         Err(message) => {
             eprintln!("smelt core: {message}");
@@ -46,9 +61,8 @@ fn write_output(output: &str) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-fn run(path: &Path) -> Result<String, String> {
-    let raw = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let request: Request = serde_json::from_str(&raw).map_err(|error| error.to_string())?;
+fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
+    let request = Request::load(config, select)?;
     if !request.members.is_empty() {
         return Err("workspace members are not supported yet".to_owned());
     }

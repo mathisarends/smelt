@@ -333,10 +333,15 @@ fn run() -> io::Result<i32> {
     if arguments == [OsString::from("--internal-git")] {
         return git::serve();
     }
-    if let [flag, request] = arguments.as_slice()
+    if let [flag, config, select] = arguments.as_slice()
         && flag == "--internal-core"
     {
-        return Ok(checker::serve(Path::new(request)));
+        return Ok(checker::serve(Path::new(config), &select.to_string_lossy()));
+    }
+    if let [flag, config] = arguments.as_slice()
+        && flag == "--internal-config"
+    {
+        return Ok(checker::serve_config(Path::new(config)));
     }
     if arguments == [OsString::from("--version")] {
         println!("smelt {}", env!("CARGO_PKG_VERSION"));

@@ -1,11 +1,25 @@
-//! The resolved policy the core receives until the YAML loader is ported.
+//! The configuration loader and the resolved policy the core runs with.
+mod compose;
+mod discovery;
+pub mod errors;
+pub mod load;
+pub mod models;
+mod paths;
+pub mod schema;
+mod semantics;
+mod workspace;
+pub mod yaml;
+
+use schema::string_list;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const DEFAULT_MAX_POSITIONAL_PARAMETERS: usize = 5;
 
 pub type RuleMap = BTreeMap<String, RuleSetting>;
 
-#[derive(Deserialize)]
 pub struct Request {
     pub root: PathBuf,
     pub select: Vec<String>,
@@ -15,30 +29,109 @@ pub struct Request {
     pub project_policy: Policy,
     pub defaults: Policy,
     pub rule_layers: Vec<RuleMap>,
-    pub members: BTreeMap<String, serde_json::Value>,
+    pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
 }
 
-#[derive(Deserialize)]
+impl Request {
+    /// Load `config` and resolve the policy for the selected rules.
+    pub fn load(config: &Path, select: Vec<String>) -> Result<Self, String> {
+        let loaded = load::load_config(config).map_err(|error| error.render())?;
+        let policy = &loaded.config;
+        let structure = &policy["__structure__"];
+        let root = loaded.path.parent().unwrap_or(&loaded.path).to_path_buf();
+        let exclude = policy["project"]["exclude"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| entry.as_str().or_else(|| entry["path"].as_str()))
+            .map(str::to_owned)
+            .collect();
+        let mut contracts = BTreeMap::new();
+        for (name, contract) in structure["contracts"].as_object().into_iter().flatten() {
+            contracts.insert(
+                name.clone(),
+                Contract {
+                    pattern: contract["match"].as_str().unwrap_or_default().to_owned(),
+                    style_override: contract["__style_override__"] == Value::Bool(true),
+                    rules: rule_map(&contract["rules"])?,
+                    policy: Policy::from_value(contract),
+                },
+            );
+        }
+        let rule_layers = load::rule_layers(policy)
+            .into_iter()
+            .map(rule_map)
+            .collect::<Result<_, _>>()?;
+        let ignore_entries = policy["ignore"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|entry| IgnoreEntry {
+                rule: entry["rule"].as_str().unwrap_or_default().to_owned(),
+                modules: string_list(entry.get("modules")),
+                paths: string_list(entry.get("paths")),
+            })
+            .collect();
+        Ok(Self {
+            root,
+            select,
+            strict_coverage: load::strict_coverage(policy),
+            project: Project {
+                root_packages: string_list(policy["project"].get("root_packages")),
+                source_roots: string_list(policy["project"].get("source_roots")),
+                exclude,
+            },
+            contracts,
+            project_policy: Policy::from_value(structure),
+            defaults: Policy {
+                max_positional_parameters: Some(DEFAULT_MAX_POSITIONAL_PARAMETERS),
+            },
+            rule_layers,
+            members: policy["members"]
+                .as_object()
+                .map(|members| {
+                    members
+                        .iter()
+                        .map(|(path, member)| (path.clone(), member.clone()))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            ignore_entries,
+        })
+    }
+}
+
+fn rule_map(rules: &Value) -> Result<RuleMap, String> {
+    serde_json::from_value(rules.clone()).map_err(|error| error.to_string())
+}
+
 pub struct Project {
     pub root_packages: Vec<String>,
     pub source_roots: Vec<String>,
     pub exclude: Vec<String>,
 }
 
-#[derive(Deserialize)]
 pub struct Contract {
-    #[serde(rename = "match")]
     pub pattern: String,
     pub style_override: bool,
     pub rules: RuleMap,
-    #[serde(flatten)]
     pub policy: Policy,
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy)]
 pub struct Policy {
     pub max_positional_parameters: Option<usize>,
+}
+
+impl Policy {
+    fn from_value(policy: &Value) -> Self {
+        Self {
+            max_positional_parameters: policy["max_positional_parameters"]
+                .as_u64()
+                .and_then(|limit| usize::try_from(limit).ok()),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -58,7 +151,6 @@ impl RuleSetting {
     }
 }
 
-#[derive(Deserialize)]
 pub struct IgnoreEntry {
     pub rule: String,
     pub modules: Vec<String>,
