@@ -68,6 +68,7 @@ PORTED = (
     "LAY001",
     "LAY002",
     "LAY003",
+    "LAY005",
     "LAY006",
     "LAY007",
     "LAY008",
@@ -104,11 +105,16 @@ PORTED = (
     "TYP006",
     "TYP007",
     "TYP008",
+    "VIS001",
+    "VIS002",
     "VIS003",
+    "VIS004",
     "VIS005",
     "VIS006",
     "VIS007",
     "VIS008",
+    "VIS009",
+    "VIS010",
 )
 # Each limit rule with the smallest `max` its configuration accepts.
 LIMIT_RULES = {
@@ -128,6 +134,7 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_package_imports",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_navigation",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_private_access",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_members",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

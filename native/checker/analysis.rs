@@ -7,6 +7,7 @@ pub mod edits;
 pub mod imports;
 pub mod installed;
 mod lazy_exports;
+pub mod members;
 pub mod module_access;
 pub mod namespace;
 pub mod nodes;

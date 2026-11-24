@@ -6,6 +6,8 @@ mod file_naming;
 mod import_style;
 mod layout;
 mod literal_types;
+mod members;
+mod module_symbols;
 mod naming;
 mod navigation;
 mod package_imports;
@@ -13,18 +15,27 @@ mod private_access;
 mod required_modules;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
-use crate::checker::config::FileNaming;
+use crate::checker::analysis::members::MemberUsageIndex;
+use crate::checker::analysis::namespace::project_namespaces;
+use crate::checker::analysis::test_syntax::{self, TestModule};
+use crate::checker::config::{FileNaming, Project};
 use crate::checker::contracts::Contracts;
 use crate::checker::files::{FileIndex, SourceFile};
+use crate::checker::patterns::PathPattern;
 use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::Value;
+use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 16] = [
+pub const STRUCTURE_RULES: [&str; 22] = [
     "ARC011", "ARC012", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003",
-    "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TYP005", "VIS005",
+    "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TYP005", "VIS001", "VIS002",
+    "VIS004", "VIS005", "VIS009", "VIS010",
 ];
+
+/// The rules that read the member usage index, which every test file feeds.
+pub const MEMBER_RULES: [&str; 6] = ["LAY005", "VIS001", "VIS002", "VIS004", "VIS009", "VIS010"];
 
 /// The project-wide facts the structure rules read.
 pub struct StructureContext<'a> {
@@ -37,6 +48,39 @@ pub struct StructureContext<'a> {
     pub test_roots: &'a [String],
     pub forbidden_names: &'a [String],
     pub file_naming: &'a FileNaming,
+    pub project: &'a Project,
+    /// Tests the test-quality rules exempt; they still count as use evidence.
+    pub quality_exclude: &'a [PathPattern],
+    pub member_usage: OnceLock<MemberUsageIndex<'a>>,
+    pub test_modules: OnceLock<Vec<TestModule<'a>>>,
+}
+
+impl<'a> StructureContext<'a> {
+    /// Built once, for the first rule that asks.
+    fn member_usage(&self) -> &MemberUsageIndex<'a> {
+        self.member_usage.get_or_init(|| {
+            let namespaces = project_namespaces(self.sources, &self.files.packages);
+            MemberUsageIndex::new(self.sources, self.tests, namespaces)
+        })
+    }
+
+    /// The analyzed tests outside `tests.quality_exclude`.
+    fn test_modules(&self) -> &[TestModule<'a>] {
+        self.test_modules.get_or_init(|| {
+            let tests: Vec<_> = self
+                .tests
+                .iter()
+                .copied()
+                .filter(|(test, _)| {
+                    !self
+                        .quality_exclude
+                        .iter()
+                        .any(|item| item.matches(&test.path))
+                })
+                .collect();
+            test_syntax::analyze(self.sources, &tests)
+        })
+    }
 }
 
 /// The parts of a structure finding that differ between rules.
@@ -48,6 +92,8 @@ struct StructureFinding {
     position: Option<(usize, usize)>,
     end_line: Option<usize>,
     end_column: Option<usize>,
+    /// A finding on a line that reports no column.
+    column_less: bool,
     source_module: Option<String>,
     target_module: Option<String>,
     feature: Option<String>,
@@ -75,13 +121,19 @@ pub fn findings<'r>(
             "IMP004" => package_imports::check(context),
             "LAY001" => naming::check_forbidden_names(context),
             "LAY003" => naming::check_private_modules(context),
+            "LAY005" => members::check_static_helpers(context),
             "LAY007" => file_naming::check(context),
             "LAY009" => naming::check_redundant_names(context),
             "MOD001" => enum_values::check(context),
             "MOD002" => naming::check_base_affixes(context),
             "MOD009" => class_names::check(context),
             "TYP005" => literal_types::check(context),
+            "VIS001" => members::check_internal_members(context),
+            "VIS002" => module_symbols::check(context),
+            "VIS004" => members::check_internal_attributes(context),
             "VIS005" => private_access::check(context),
+            "VIS009" => members::check_test_only_functions(context),
+            "VIS010" => members::check_test_only_attributes(context),
             _ => Vec::new(),
         };
         for finding in raised {
@@ -106,8 +158,11 @@ fn violation(rule: &CatalogRule, finding: StructureFinding) -> Violation {
         message: finding.message,
         path: finding.path,
         line,
-        column: finding.position.map(|(_, column)| column),
-        end_line: finding.end_line.or(line),
+        column: finding
+            .position
+            .filter(|_| !finding.column_less)
+            .map(|(_, column)| column),
+        end_line: finding.end_line.or(line.filter(|_| !finding.column_less)),
         end_column: finding.end_column,
         source_module: finding.source_module,
         target_module: finding.target_module,

@@ -22,7 +22,7 @@ use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES};
-use rules::structure::{self, STRUCTURE_RULES, StructureContext};
+use rules::structure::{self, MEMBER_RULES, STRUCTURE_RULES, StructureContext};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
@@ -30,6 +30,7 @@ use source::ParsedSource;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::OnceLock;
 use suppressions::Suppression;
 use violation::Violation;
 
@@ -153,8 +154,10 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
-        let reads_tests =
-            !test_rules.is_empty() || structure_rules.iter().any(|rule| rule.code == "IMP004");
+        let reads_tests = !test_rules.is_empty()
+            || structure_rules
+                .iter()
+                .any(|rule| rule.code == "IMP004" || MEMBER_RULES.contains(&rule.code.as_str()));
         let parsed_tests = if reads_tests {
             parse_all(&all_tests)?
         } else {
@@ -196,6 +199,10 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     test_roots: &request.project.test_roots,
                     forbidden_names: &request.forbidden_names,
                     file_naming: &request.file_naming,
+                    project: &request.project,
+                    quality_exclude: &quality_exclude,
+                    member_usage: OnceLock::new(),
+                    test_modules: OnceLock::new(),
                 };
                 found.extend(structure::findings(&structure_rules, &context, severity));
             }
