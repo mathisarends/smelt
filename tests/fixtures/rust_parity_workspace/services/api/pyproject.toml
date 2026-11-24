@@ -1,0 +1,6 @@
+[project]
+name = "web-api"
+dependencies = ["core-lib", "Tools_Lib[extra] >=1.0 ; python_version >= '3.12'"]
+
+[tool.uv.sources]
+core-lib = { workspace = true }

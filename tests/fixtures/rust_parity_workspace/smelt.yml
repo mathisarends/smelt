@@ -1,0 +1,12 @@
+# uv workspace members, their boundaries and declared dependencies.
+version: 2
+
+project:
+  workspace: uv
+  source_roots: [src]
+
+architecture:
+  members:
+    services/*: {may_depend_on: [packages/*]}
+    services/admin: {may_depend_on: [libs/*]}
+    packages/*: {may_depend_on: []}

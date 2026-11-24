@@ -1,0 +1,9 @@
+[project]
+name = "admin"
+dependencies = []
+
+[project.optional-dependencies]
+ops = ["core-lib"]
+
+[tool.uv.sources]
+core-lib = { path = "../../packages/core" }

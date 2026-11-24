@@ -1,0 +1,12 @@
+# Test placement with the root package and topic suffixes.
+version: 2
+
+project:
+  root_packages: [app, lib]
+  source_roots: [src]
+  test_roots: [tests, src/lib/tests]
+
+tests:
+  layout: mirror
+  mirror: "{root}/{path}/test_{module}.py"
+  mirror_suffixes: true

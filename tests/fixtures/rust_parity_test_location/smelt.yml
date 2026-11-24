@@ -1,0 +1,11 @@
+# Test placement under the default mirror pattern.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+  test_roots: [tests]
+
+tests:
+  layout: mirror
+  mirror_exclude: ["tests/e2e/**"]
