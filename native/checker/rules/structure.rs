@@ -15,6 +15,7 @@ mod package_imports;
 mod private_access;
 mod required_modules;
 mod test_location;
+mod untested;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
 use crate::checker::analysis::members::MemberUsageIndex;
@@ -31,10 +32,10 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 24] = [
+pub const STRUCTURE_RULES: [&str; 25] = [
     "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001",
-    "LAY003", "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TYP005",
-    "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
+    "LAY003", "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TST012",
+    "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
 ];
 
 /// The structure rules that read discovered tests.
@@ -139,6 +140,7 @@ pub fn findings<'r>(
             "MOD002" => naming::check_base_affixes(context),
             "MOD009" => class_names::check(context),
             "TST001" => test_location::check(context),
+            "TST012" => untested::check(context),
             "TYP005" => literal_types::check(context),
             "VIS001" => members::check_internal_members(context),
             "VIS002" => module_symbols::check(context),
