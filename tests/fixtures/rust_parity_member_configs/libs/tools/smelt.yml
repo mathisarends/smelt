@@ -1,0 +1,7 @@
+# A member that only refines rules.
+version: 2
+
+rules:
+  complexity/excess-positional-parameters: {severity: hint, reason: Tool helpers mirror CLI signatures.}
+  tests/private-access: {severity: warning, reason: Tool tests poke at helpers.}
+  architecture/missing-facade-export: hint

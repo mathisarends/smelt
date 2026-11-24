@@ -1,0 +1,35 @@
+# Workspace members with their own smelt.yml: rules, architecture, style and ignores.
+version: 2
+
+project:
+  workspace: uv
+  source_roots: [src]
+  test_roots: [tests]
+
+architecture:
+  features: {root: app.features}
+  shared: [app.shared]
+  composition_root: [app.main]
+  layers:
+    domain:
+      path: domain
+      third_party: deny
+    application:
+      path: application
+      may_depend_on: [domain]
+  packages:
+    slices:
+      match: app.features.*
+      required: [domain, application]
+      min_importers_to_export: 2
+  import_graph:
+    cycles: [features, layers, siblings, modules]
+
+rules:
+  architecture/unclassified-module: warning
+  complexity/excess-positional-parameters: {severity: warning, max: 2}
+  tests/private-access: error
+  imports/forbidden-import-style: warning
+
+style:
+  imports: {style: absolute}
