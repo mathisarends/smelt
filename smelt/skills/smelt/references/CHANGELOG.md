@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `visibility/redundant-private-delegate` (VIS006) no longer fails with a
+  recursion error on classes whose local bases inherit from each other. Such
+  classes are treated like classes with an external base and are not reported.
 - Edits recheck private attribute accesses only in modules whose resolution
   read the edited module. Previously any change to a module's names, such as a
   new function, resolved the accesses of every module again.
