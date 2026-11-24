@@ -105,6 +105,7 @@ PORTED = (
     "TYP007",
     "TYP008",
     "VIS003",
+    "VIS005",
     "VIS006",
     "VIS007",
     "VIS008",
@@ -126,6 +127,7 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_enum_shadow",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_package_imports",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_navigation",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_private_access",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(
