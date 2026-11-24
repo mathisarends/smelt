@@ -158,6 +158,15 @@ def test_accepts_external_base_that_may_call_the_hook(tmp_path: Path) -> None:
     assert violations(_project(tmp_path, source), SELECT) == []
 
 
+def test_accepts_classes_with_cyclic_local_bases(tmp_path: Path) -> None:
+    source = (
+        _class(FORWARD, TARGET, header="class Frames(Cycle):")
+        + "\n\n"
+        + _class("pass", header="class Cycle(Frames):")
+    )
+    assert violations(_project(tmp_path, source), SELECT) == []
+
+
 def test_accepts_private_method_overridden_in_same_module(tmp_path: Path) -> None:
     source = (
         _class(FORWARD, TARGET) + "\n\n" + _class(TARGET, header="class Live(Frames):")
