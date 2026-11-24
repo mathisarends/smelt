@@ -1,0 +1,38 @@
+# Rules enabled where their policy is missing, and facades too empty for IMP004.
+version: 2
+extends: base.yml
+
+project:
+  root_packages: [shop]
+  test_roots: [tests]
+
+architecture:
+  packages:
+    billing:
+      match: shop.billing
+      min_importers_to_export: 2
+
+style:
+  overrides:
+    billing_style:
+      match: shop.billing
+      imports: {style: absolute}
+      rules:
+        imports/forbidden-import-style: warning
+    legacy:
+      match: shop.legacy
+      rules:
+        "architecture/missing-facade-export": {severity: hint, reason: Legacy exports are reviewed.}
+
+rules:
+  architecture/missing-facade-export: hint
+  imports/prefer-package-import: hint
+  meta/uncovered-package-facade: {severity: hint, max: 1}
+
+ignore:
+  - rule: meta/uncovered-package-facade
+    modules: [shop.hidden]
+    reason: The hidden package is facade-less on purpose.
+  - rule: imports/prefer-package-import
+    paths: ["shop/ignored_caller.py"]
+    reason: Ignored evidence does not count as an uncovered caller.
