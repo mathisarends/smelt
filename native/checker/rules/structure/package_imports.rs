@@ -17,8 +17,8 @@ use ruff_text_size::Ranged;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
-pub fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
-    let facades = package_facades(context);
+pub(super) fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
+    let facades = package_facades(context.sources);
     let first_party: HashSet<&str> = context.files.sources.keys().map(|name| top(name)).collect();
     let include_guarded = context.model.config.import_graph.include_type_checking;
     let mut installed = InstalledPackages::new(&context.files.root);
@@ -177,7 +177,7 @@ fn installed_facades(
 /// The nearest ancestor of `base` whose facade re-exports all `names`.
 ///
 /// Production callers inside a package never route through its own initializer.
-fn covering_package(
+pub fn covering_package(
     facades: &HashMap<String, Exports>,
     base: &str,
     caller: &str,
@@ -200,9 +200,8 @@ fn covering_package(
 }
 
 /// Direct re-exports of every analyzed package initializer.
-fn package_facades(context: &StructureContext<'_>) -> HashMap<String, Exports> {
-    context
-        .sources
+pub fn package_facades(sources: &[(&SourceFile, &ParsedSource)]) -> HashMap<String, Exports> {
+    sources
         .iter()
         .filter(|(source, _)| source.is_package)
         .map(|(source, parsed)| {

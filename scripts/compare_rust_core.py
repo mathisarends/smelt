@@ -85,6 +85,8 @@ PORTED = (
     "LAY011",
     "MET001",
     "MET002",
+    "MET004",
+    "MET005",
     "MOD001",
     "MOD002",
     "MOD003",

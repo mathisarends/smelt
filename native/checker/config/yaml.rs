@@ -491,3 +491,155 @@ fn float(raw: &str) -> Option<f64> {
     };
     Some(sign * magnitude)
 }
+
+/// A composed node that keeps where each mapping key starts, like PyYAML's nodes.
+#[derive(Clone)]
+enum Node {
+    Scalar { value: String, merge: bool },
+    Seq(Vec<Node>),
+    Map(Vec<(Node, (usize, usize), Node)>),
+}
+
+/// The 1-based line and column of the mapping key that `location` names.
+///
+/// Keys may contain dots, so each key either equals the rest of the location or
+/// is a dotted prefix of it; the last matching key wins, as in a Python `dict`.
+pub fn key_position(text: &str, location: &str) -> Option<(usize, usize)> {
+    let mut composer = Composer {
+        events: Parser::new_from_str(text),
+        anchors: HashMap::new(),
+    };
+    find_key(&composer.document()?, location)
+}
+
+fn find_key(node: &Node, location: &str) -> Option<(usize, usize)> {
+    let Node::Map(pairs) = node else {
+        return None;
+    };
+    for (key, position, child) in flattened(pairs).into_iter().rev() {
+        let Node::Scalar { value, .. } = key else {
+            continue;
+        };
+        if value == location {
+            return Some(position);
+        }
+        if let Some(rest) = location
+            .strip_prefix(value.as_str())
+            .and_then(|rest| rest.strip_prefix('.'))
+            && let Some(found) = find_key(&child, rest)
+        {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// Resolve `<<` merge keys: merged pairs come first, later sources first.
+fn flattened(pairs: &[(Node, (usize, usize), Node)]) -> Vec<(Node, (usize, usize), Node)> {
+    let mut merged = Vec::new();
+    let mut own = Vec::new();
+    for (key, position, value) in pairs {
+        if !matches!(key, Node::Scalar { merge: true, .. }) {
+            own.push((key.clone(), *position, value.clone()));
+            continue;
+        }
+        match value {
+            Node::Map(inner) => merged.extend(flattened(inner)),
+            Node::Seq(items) => {
+                for item in items.iter().rev() {
+                    if let Node::Map(inner) = item {
+                        merged.extend(flattened(inner));
+                    }
+                }
+            }
+            Node::Scalar { .. } => {}
+        }
+    }
+    merged.extend(own);
+    merged
+}
+
+struct Composer<'a> {
+    events: Parser<'a, StrInput<'a>>,
+    anchors: HashMap<usize, Node>,
+}
+
+impl<'a> Composer<'a> {
+    fn next(&mut self) -> Option<(Event<'a>, (usize, usize))> {
+        let (event, span) = self.events.next()?.ok()?;
+        Some((event, (span.start.line(), span.start.col() + 1)))
+    }
+
+    fn document(&mut self) -> Option<Node> {
+        let (mut event, _) = self.next()?;
+        if matches!(event, Event::StreamStart) {
+            event = self.next()?.0;
+        }
+        if !matches!(event, Event::DocumentStart(_)) {
+            return None;
+        }
+        let first = self.next()?.0;
+        let node = self.node(first)?;
+        if !matches!(self.next()?.0, Event::DocumentEnd) {
+            return None;
+        }
+        matches!(self.next()?.0, Event::StreamEnd).then_some(node)
+    }
+
+    fn node(&mut self, event: Event<'a>) -> Option<Node> {
+        let (node, anchor) = match event {
+            Event::Alias(id) => return self.anchors.get(&id).cloned(),
+            Event::Scalar(value, style, anchor, tag) => (
+                Node::Scalar {
+                    merge: style == ScalarStyle::Plain && tag.is_none() && value == "<<",
+                    value: value.into_owned(),
+                },
+                anchor,
+            ),
+            Event::SequenceStart(anchor, _) => {
+                let mut items = Vec::new();
+                loop {
+                    let (next, _) = self.next()?;
+                    if matches!(next, Event::SequenceEnd) {
+                        break;
+                    }
+                    items.push(self.node(next)?);
+                }
+                (Node::Seq(items), anchor)
+            }
+            Event::MappingStart(anchor, _) => {
+                let mut pairs = Vec::new();
+                loop {
+                    let (next, position) = self.next()?;
+                    if matches!(next, Event::MappingEnd) {
+                        break;
+                    }
+                    let key = self.node(next)?;
+                    let value = self.next()?.0;
+                    pairs.push((key, position, self.node(value)?));
+                }
+                (Node::Map(pairs), anchor)
+            }
+            _ => return None,
+        };
+        if anchor != 0 {
+            self.anchors.insert(anchor, node.clone());
+        }
+        Some(node)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::key_position;
+
+    #[test]
+    fn key_position_follows_dotted_keys_and_merges() {
+        let text = "base: &base\n  ARC007: error\nrules:\n  <<: *base\n  \"a/b.c\": hint\n";
+        assert_eq!(key_position(text, "rules.a/b.c"), Some((5, 3)));
+        // A merged key keeps the position where the anchor spells it.
+        assert_eq!(key_position(text, "rules.ARC007"), Some((2, 3)));
+        assert_eq!(key_position(text, "rules.missing"), None);
+        assert_eq!(key_position("[unclosed", "rules"), None);
+    }
+}

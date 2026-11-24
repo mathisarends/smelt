@@ -3,11 +3,13 @@
 mod analysis;
 mod config;
 mod contracts;
+mod facade_coverage;
 mod files;
 mod import_report;
 mod meta;
 mod patterns;
 mod renames;
+mod rule_policy;
 mod rules;
 mod settings;
 mod source;
@@ -20,10 +22,12 @@ use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
 use config::Request;
 use contracts::Contracts;
+use facade_coverage::{FacadeInputs, uncovered_facades, uncovered_imports};
 use files::{FileIndex, SourceFile};
 use meta::{META_RULES, SuppressionAudit};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
+use rule_policy::{PolicyInputs, missing_rule_policies};
 use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
 use rules::structure::{self, STRUCTURE_RULES, StructureContext, TEST_READING_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
@@ -392,6 +396,43 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             violations.extend(found);
             suppressed += hidden;
         }
+        // Configuration findings come after suppressions, which cannot reach YAML.
+        let mut configured = Vec::new();
+        if let Some((rule, severity)) = meta_rule("MET004") {
+            let inputs = PolicyInputs {
+                catalog: &catalog,
+                settings: &settings,
+                contracts: &contracts,
+                files: &files,
+                request: &request,
+                configured: &audit.enabled,
+            };
+            configured.extend(missing_rule_policies(&inputs, rule, severity));
+        }
+        if let Some((rule, severity)) = meta_rule("MET005")
+            && audit.enabled.contains("IMP004")
+        {
+            let inputs = FacadeInputs {
+                catalog: &catalog,
+                settings: &settings,
+                contracts: &contracts,
+                files: &files,
+                sources: &source_pairs,
+                test_roots: &request.project.test_roots,
+                include_type_checking: request.architecture.import_graph.include_type_checking,
+                limit: request.max_uncovered_facade_callers,
+            };
+            let evidence: Vec<Violation> = uncovered_imports(&inputs)
+                .into_iter()
+                .filter(|evidence| !ignores.covers(evidence))
+                .collect();
+            configured.extend(uncovered_facades(&inputs, &evidence, rule, severity));
+        }
+        violations.extend(
+            configured
+                .into_iter()
+                .filter(|violation| !ignores.covers(violation)),
+        );
         Ok::<_, String>((violations, suppressed))
     })??;
     violations.sort_by(Violation::compare);

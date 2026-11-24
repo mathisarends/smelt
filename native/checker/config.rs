@@ -1,6 +1,6 @@
 //! The configuration loader and the resolved policy the core runs with.
 pub mod architecture;
-mod compose;
+pub(crate) mod compose;
 pub(crate) mod discovery;
 pub mod errors;
 pub mod load;
@@ -22,6 +22,10 @@ pub type RuleMap = BTreeMap<String, RuleSetting>;
 
 pub struct Request {
     pub root: PathBuf,
+    /// The loaded config file.
+    pub config_path: PathBuf,
+    /// The file that declared each explicitly set key, for composed configs.
+    pub origins: BTreeMap<String, String>,
     pub select: Vec<String>,
     pub strict_coverage: bool,
     /// `suppressions.require_reason`: an inline suppression needs a `-- reason`.
@@ -36,6 +40,10 @@ pub struct Request {
     pub forbidden_names: Vec<String>,
     pub file_naming: FileNaming,
     pub rule_layers: Vec<RuleMap>,
+    /// The file of each rule layer, parallel to `rule_layers`.
+    pub rule_sources: Vec<String>,
+    /// The max of the root `meta/uncovered-package-facade` entry, else 2.
+    pub max_uncovered_facade_callers: usize,
     pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
     /// The top-level packages of the workspace root (`""`) and of each member.
@@ -71,6 +79,7 @@ impl Request {
                 Contract {
                     pattern: contract["match"].as_str().unwrap_or_default().to_owned(),
                     style_override: contract["__style_override__"] == Value::Bool(true),
+                    style_location: contract["__style_location__"].as_str().map(str::to_owned),
                     required: string_list(contract.get("required")),
                     public: contract
                         .get("public")
@@ -99,8 +108,19 @@ impl Request {
                 paths: string_list(entry.get("paths")),
             })
             .collect();
+        // Both spellings may be set; the name is read last, so it wins.
+        let max_uncovered_facade_callers = ["MET005", "meta/uncovered-package-facade"]
+            .iter()
+            .rev()
+            .find_map(|key| policy["rules"][*key]["max"].as_u64())
+            .and_then(|limit| usize::try_from(limit).ok())
+            .unwrap_or(2);
         Ok(Self {
             root,
+            config_path: loaded.path.clone(),
+            origins: loaded.origins.clone(),
+            rule_sources: loaded.rule_sources.clone(),
+            max_uncovered_facade_callers,
             select,
             strict_coverage: load::strict_coverage(policy),
             require_reason: policy["suppressions"]["require_reason"]
@@ -234,6 +254,8 @@ impl TestPolicy {
 pub struct Contract {
     pub pattern: String,
     pub style_override: bool,
+    /// Where the style part of the contract is configured, if not `style.overrides.<name>`.
+    pub style_location: Option<String>,
     pub required: Vec<String>,
     /// Public entry points relative to the package; `None` leaves it unrestricted.
     pub public: Option<Vec<String>>,

@@ -11,7 +11,7 @@ mod members;
 mod module_symbols;
 mod naming;
 mod navigation;
-mod package_imports;
+pub mod package_imports;
 mod private_access;
 mod required_modules;
 mod test_location;

@@ -22,6 +22,10 @@ pub struct CatalogRule {
 struct Setting<'a> {
     value: &'a str,
     broad: bool,
+    /// The config key that set it, such as `rules.ARC007`.
+    location: String,
+    /// The file of its rule layer; `None` outside the root rules.
+    source: Option<&'a str>,
 }
 
 impl<'a> Setting<'a> {
@@ -73,15 +77,23 @@ impl<'a> Settings<'a> {
         let layers = request
             .rule_layers
             .iter()
-            .map(|layer| entries(catalog, layer, &guard))
+            .enumerate()
+            .map(|(index, layer)| {
+                let source = request.rule_sources.get(index).map(String::as_str);
+                entries(catalog, layer, &guard, "rules", source)
+            })
             .collect();
         let packages = request
             .contracts
             .iter()
             .map(|(name, contract)| {
+                let location = match &contract.style_location {
+                    Some(location) => format!("{location}.rules"),
+                    None => format!("style.overrides.{name}.rules"),
+                };
                 (
                     name.as_str(),
-                    entries(catalog, &contract.rules, &project_rules),
+                    entries(catalog, &contract.rules, &project_rules, &location, None),
                 )
             })
             .collect();
@@ -136,6 +148,49 @@ impl<'a> Settings<'a> {
             }
         }
         value
+    }
+
+    /// Whether a named setting anywhere can enable the rule.
+    pub fn has_explicit_activation(&self, code: &str) -> bool {
+        self.layers
+            .iter()
+            .chain(self.packages.values())
+            .any(|entries| entries.get(code).is_some_and(Setting::enables))
+    }
+
+    /// The location and file of the named setting enabling `code` in `module`,
+    /// after precedence and disables.
+    pub fn explicit_activation(
+        &self,
+        code: &str,
+        contracts: &Contracts<'_>,
+        module: &str,
+    ) -> Option<(&str, Option<&'a str>)> {
+        let mut settings: Vec<&Setting<'a>> = self
+            .layers
+            .iter()
+            .filter_map(|layer| layer.get(code))
+            .collect();
+        let mut candidates: Vec<_> = contracts
+            .resolved
+            .iter()
+            .filter(|contract| is_within(module, contract.package))
+            .collect();
+        candidates.sort_by_key(|contract| contract.package.len());
+        settings.extend(candidates.into_iter().filter_map(|contract| {
+            self.packages
+                .get(contract.name)
+                .and_then(|entries| entries.get(code))
+        }));
+        for setting in settings.into_iter().rev() {
+            if setting.value == "off" {
+                return None;
+            }
+            if setting.enables() {
+                return Some((setting.location.as_str(), setting.source));
+            }
+        }
+        None
     }
 
     /// The severity of a finding in `module`; `None` when the rule is off there.
@@ -205,6 +260,8 @@ fn entries<'a>(
     catalog: &'a [CatalogRule],
     raw: &'a RuleMap,
     excluded: &HashSet<&str>,
+    location: &str,
+    source: Option<&'a str>,
 ) -> Entries<'a> {
     let mut result = Entries::new();
     let mut broad: Vec<(u8, &str, Vec<&'a str>, &'a str)> = raw
@@ -216,10 +273,18 @@ fn entries<'a>(
         })
         .collect();
     broad.sort_by_key(|item| (item.0, item.1));
-    for (_, _, codes, value) in broad {
+    for (_, key, codes, value) in broad {
         for code in codes {
             if !excluded.contains(code) {
-                result.insert(code, Setting { value, broad: true });
+                result.insert(
+                    code,
+                    Setting {
+                        value,
+                        broad: true,
+                        location: format!("{location}.{key}"),
+                        source,
+                    },
+                );
             }
         }
     }
@@ -244,6 +309,8 @@ fn entries<'a>(
                 Setting {
                     value,
                     broad: false,
+                    location: format!("{location}.{key}"),
+                    source,
                 },
             );
         }
