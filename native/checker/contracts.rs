@@ -1,8 +1,10 @@
 //! Package contracts resolved against the discovered inventory.
+use super::config::errors::ConfigError;
 use super::config::{Contract, Policy, Request};
 use super::files::FileIndex;
 use super::patterns::{ModulePattern, is_within};
 use serde_json::Value;
+use std::collections::BTreeMap;
 
 const PROJECT_POLICY: &str = "style";
 const DEFAULT_MAX_POSITIONAL_PARAMETERS: usize = 5;
@@ -20,6 +22,54 @@ impl ResolvedContract<'_> {
             self.package.to_owned()
         } else {
             format!("{}.{relative}", self.package)
+        }
+    }
+
+    /// The qualified public entry points; `None` leaves the package unrestricted.
+    pub fn public(&self) -> Option<Vec<String>> {
+        self.spec
+            .public
+            .as_ref()
+            .map(|entries| entries.iter().map(|entry| self.qualify(entry)).collect())
+    }
+
+    /// Whether callers outside the package may import `module`.
+    pub fn exposes(&self, module: &str) -> bool {
+        self.public().is_none_or(|public| {
+            public.iter().any(|pattern| {
+                ModulePattern::new(pattern).is_ok_and(|pattern| pattern.matches(module))
+            })
+        })
+    }
+
+    fn wildcards(&self) -> usize {
+        self.spec
+            .pattern
+            .split('.')
+            .filter(|segment| *segment == "*")
+            .count()
+    }
+}
+
+/// A package facade threshold, chosen per package by `facade_policies`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum FacadePolicy {
+    Bundle,
+    Export,
+}
+
+impl FacadePolicy {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Bundle => "min_imports_to_bundle",
+            Self::Export => "min_importers_to_export",
+        }
+    }
+
+    fn value(self, contract: &Contract) -> Option<usize> {
+        match self {
+            Self::Bundle => contract.min_imports_to_bundle,
+            Self::Export => contract.min_importers_to_export,
         }
     }
 }
@@ -55,6 +105,54 @@ impl<'a> Contracts<'a> {
             resolved,
             project: &request.project_policy,
         })
+    }
+
+    /// One threshold per concrete package; more literal match segments win.
+    pub fn facade_policies(
+        &self,
+        policy: FacadePolicy,
+    ) -> Result<Vec<&ResolvedContract<'a>>, String> {
+        let mut candidates: BTreeMap<&str, Vec<&ResolvedContract<'a>>> = BTreeMap::new();
+        for contract in &self.resolved {
+            if policy.value(contract.spec).is_some() {
+                candidates
+                    .entry(contract.package)
+                    .or_default()
+                    .push(contract);
+            }
+        }
+        let mut chosen = Vec::new();
+        for (package, matches) in candidates {
+            let rank = matches
+                .iter()
+                .map(|contract| contract.wildcards())
+                .min()
+                .unwrap_or(0);
+            let mut winners = matches
+                .into_iter()
+                .filter(|contract| contract.wildcards() == rank);
+            let Some(first) = winners.next() else {
+                continue;
+            };
+            for other in winners {
+                if policy.value(first.spec) != policy.value(other.spec)
+                    || (policy == FacadePolicy::Export
+                        && first.spec.count_tests != other.spec.count_tests)
+                {
+                    let name = policy.name();
+                    return Err(ConfigError::one(
+                        &format!("architecture.packages.{}.{name}", other.name),
+                        format!(
+                            "conflicting {name} policies for {package} with equally specific matches"
+                        ),
+                        "smelt configuration",
+                    )
+                    .render());
+                }
+            }
+            chosen.push(first);
+        }
+        Ok(chosen)
     }
 
     /// The closest contract setting `option`, else the project-wide style.

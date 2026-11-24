@@ -39,6 +39,13 @@ pub struct FileIndex {
     /// Source modules in discovery order, which findings listing peers follow.
     pub source_order: Vec<String>,
     package_paths: HashMap<String, String>,
+    /// Every directory of each package: one, or several namespace portions.
+    package_parts: HashMap<String, Vec<String>>,
+    /// The configured source root each package was found under.
+    package_source_roots: HashMap<String, String>,
+    /// The declared test root that owns each test, the most specific one.
+    test_roots: HashMap<String, String>,
+    default_source_root: String,
     exclude: Vec<PathPattern>,
 }
 
@@ -57,23 +64,29 @@ impl FileIndex {
             exclude,
             sources: BTreeMap::new(),
             portions: HashMap::new(),
+            parts: HashMap::new(),
             found_roots: Vec::new(),
             source_order: Vec::new(),
         };
         for package in &request.project.root_packages {
             discovery.package_root(package, &request.project.source_roots)?;
         }
-        let tests = discovery.tests(&request.project.test_roots);
+        let (tests, test_roots) = discovery.tests(&request.project.test_roots);
         let namespace_packages = discovery
             .portions
             .iter()
-            .filter(|(_, (_, has_init))| !has_init)
+            .filter(|(_, (_, has_init, _))| !has_init)
             .map(|(module, _)| module.clone())
+            .collect();
+        let package_source_roots: HashMap<String, String> = discovery
+            .portions
+            .iter()
+            .map(|(module, (_, _, source_root))| (module.clone(), source_root.clone()))
             .collect();
         let package_paths: HashMap<String, String> = discovery
             .portions
             .into_iter()
-            .map(|(module, (path, _))| (module, path))
+            .map(|(module, (path, _, _))| (module, path))
             .collect();
         let mut packages: Vec<String> = package_paths.keys().cloned().collect();
         packages.sort();
@@ -86,11 +99,68 @@ impl FileIndex {
             found_roots: discovery.found_roots,
             source_order: discovery.source_order,
             package_paths,
+            package_parts: discovery.parts,
+            package_source_roots,
+            test_roots,
+            default_source_root: request
+                .project
+                .source_roots
+                .first()
+                .cloned()
+                .unwrap_or_else(|| ".".to_owned()),
             exclude: discovery.exclude,
         })
     }
 
+    /// The test root that owns a discovered test.
+    pub fn test_root(&self, path: &str) -> Option<&str> {
+        self.test_roots.get(path).map(String::as_str)
+    }
+
+    /// The source root a discovered package was found under.
+    pub fn package_source_root(&self, package: &str) -> Option<&str> {
+        self.package_source_roots.get(package).map(String::as_str)
+    }
+
+    /// Whether `path` is a discovered test or lies below a declared test root.
+    pub fn is_test_path(&self, path: &str, test_roots: &[String]) -> bool {
+        self.tests.contains_key(path)
+            || test_roots.iter().any(|root| {
+                let root = root.trim_matches('/');
+                root == "." || path == root || path.starts_with(&format!("{root}/"))
+            })
+    }
+
+    /// The source root of the innermost package that contains `module`.
+    pub fn source_root_dir(&self, module: &str) -> Option<&str> {
+        let parts: Vec<&str> = module.split('.').collect();
+        (1..=parts.len()).rev().find_map(|end| {
+            self.package_source_roots
+                .get(&parts[..end].join("."))
+                .map(String::as_str)
+        })
+    }
+
+    /// The expected project-relative path of `module`, whether or not it exists.
+    pub fn module_to_path(&self, module: &str, package: bool) -> String {
+        let root = self
+            .source_root_dir(module)
+            .unwrap_or(&self.default_source_root);
+        let mut parts: Vec<&str> = root
+            .trim_matches('/')
+            .split('/')
+            .filter(|part| !part.is_empty() && *part != ".")
+            .collect();
+        parts.extend(module.split('.'));
+        format!("{}{}", parts.join("/"), if package { "/" } else { ".py" })
+    }
+
     /// The initializer of a package or the file of a module, else the package directory.
+    /// The directories of a package: one, or each portion of a namespace package.
+    pub fn package_parts(&self, module: &str) -> &[String] {
+        self.package_parts.get(module).map_or(&[], Vec::as_slice)
+    }
+
     pub fn path_for_module(&self, module: &str) -> Option<&str> {
         self.sources
             .get(module)
@@ -148,31 +218,39 @@ struct Discovery {
     root: PathBuf,
     exclude: Vec<PathPattern>,
     sources: BTreeMap<String, SourceFile>,
-    portions: HashMap<String, (String, bool)>,
+    /// Package to its directory, whether it has an initializer, and its source root.
+    portions: HashMap<String, (String, bool, String)>,
+    /// Package to every directory found for it, in discovery order.
+    parts: HashMap<String, Vec<String>>,
     found_roots: Vec<String>,
     source_order: Vec<String>,
 }
 
 impl Discovery {
     fn package_root(&mut self, package: &str, source_roots: &[String]) -> Result<(), String> {
-        let mut candidates: Vec<PathBuf> = Vec::new();
+        // A later root naming the same directory owns it, like a dict comprehension.
+        let mut candidates: Vec<(PathBuf, &str)> = Vec::new();
         for source_root in source_roots {
             let directory = self.root.join(source_root).join(package);
             if !directory.is_dir() || self.excluded(&self.relative(&directory)) {
                 continue;
             }
             let resolved = fs::canonicalize(&directory).map_err(|error| error.to_string())?;
-            if !candidates.contains(&resolved) {
-                candidates.push(resolved);
+            match candidates.iter_mut().find(|(path, _)| *path == resolved) {
+                Some(entry) => entry.1 = source_root,
+                None => candidates.push((resolved, source_root)),
             }
         }
-        let regular: Vec<PathBuf> = candidates
+        let regular: Vec<(PathBuf, &str)> = candidates
             .iter()
-            .filter(|path| path.join("__init__.py").is_file())
+            .filter(|(path, _)| path.join("__init__.py").is_file())
             .cloned()
             .collect();
         if regular.len() > 1 {
-            let paths: Vec<String> = regular.iter().map(|path| self.relative(path)).collect();
+            let paths: Vec<String> = regular
+                .iter()
+                .map(|(path, _)| self.relative(path))
+                .collect();
             return Err(format!("ambiguous package {package}: {}", paths.join(", ")));
         }
         // Python gives an ordinary package precedence over namespace portions.
@@ -184,28 +262,39 @@ impl Discovery {
         if !selected.is_empty() {
             self.found_roots.push(package.to_owned());
         }
-        for directory in selected {
-            self.walk_package(&directory, package)?;
+        for (directory, source_root) in selected {
+            self.walk_package(&directory, package, source_root)?;
         }
         Ok(())
     }
 
-    fn walk_package(&mut self, directory: &Path, module: &str) -> Result<(), String> {
+    fn walk_package(
+        &mut self,
+        directory: &Path,
+        module: &str,
+        source_root: &str,
+    ) -> Result<(), String> {
         let relative = self.relative(directory);
         if self.excluded(&relative) {
             return Ok(());
         }
         let has_init = directory.join("__init__.py").is_file();
-        if let Some((previous, previous_init)) = self.portions.get(module)
+        if let Some((previous, previous_init, _)) = self.portions.get(module)
             && (*previous_init || has_init)
         {
             return Err(format!(
                 "ambiguous package {module}: {previous}, {relative}"
             ));
         }
-        self.portions
+        self.parts
             .entry(module.to_owned())
-            .or_insert((relative, has_init));
+            .or_default()
+            .push(relative.clone());
+        self.portions.entry(module.to_owned()).or_insert((
+            relative,
+            has_init,
+            source_root.to_owned(),
+        ));
         let mut entries: Vec<PathBuf> = fs::read_dir(directory)
             .map_err(|error| error.to_string())?
             .filter_map(|entry| entry.ok().map(|item| item.path()))
@@ -218,7 +307,7 @@ impl Discovery {
                     && is_identifier(&name)
                     && contains_python(&entry)
                 {
-                    self.walk_package(&entry, &format!("{module}.{name}"))?;
+                    self.walk_package(&entry, &format!("{module}.{name}"), source_root)?;
                 }
             } else if entry.extension().is_some_and(|suffix| suffix == "py") && entry.is_file() {
                 self.add_file(&entry, module, &name)?;
@@ -263,14 +352,25 @@ impl Discovery {
     }
 
     /// Test files below the declared roots that are neither sources nor excluded.
-    fn tests(&self, roots: &[String]) -> BTreeMap<String, SourceFile> {
+    fn tests(&self, roots: &[String]) -> (BTreeMap<String, SourceFile>, HashMap<String, String>) {
         let source_paths: HashSet<&str> = self
             .sources
             .values()
             .map(|source| source.path.as_str())
             .collect();
         let mut tests = BTreeMap::new();
-        for root in roots {
+        let mut owners = HashMap::new();
+        // Broad roots first, so the most specific declared root owns a test.
+        let mut ordered: Vec<(usize, &String)> = roots
+            .iter()
+            .map(|root| {
+                let directory = self.root.join(root);
+                let resolved = fs::canonicalize(&directory).unwrap_or(directory);
+                (resolved.components().count(), root)
+            })
+            .collect();
+        ordered.sort();
+        for (_, root) in ordered {
             let directory = self.root.join(root);
             if !directory.is_dir() {
                 continue;
@@ -290,6 +390,7 @@ impl Discovery {
                         .strip_suffix(".py")
                         .unwrap_or(&relative)
                         .replace('/', ".");
+                    owners.insert(relative.clone(), root.trim_matches('/').to_owned());
                     tests.insert(
                         relative.clone(),
                         SourceFile {
@@ -302,7 +403,7 @@ impl Discovery {
                 }
             }
         }
-        tests
+        (tests, owners)
     }
 
     fn excluded(&self, path: &str) -> bool {

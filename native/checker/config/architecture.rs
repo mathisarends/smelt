@@ -13,6 +13,8 @@ pub struct Architecture {
     pub layers: Vec<Layer>,
     pub cross_feature: CrossFeature,
     pub import_graph: ImportGraphPolicy,
+    /// `architecture.members`: a member path glob and the member globs it may import.
+    pub members: Vec<(String, Vec<String>)>,
 }
 
 impl Architecture {
@@ -35,6 +37,14 @@ impl Architecture {
             layers,
             cross_feature: CrossFeature::from_config(&section["cross_feature"]),
             import_graph: ImportGraphPolicy::from_config(&section["import_graph"]),
+            members: section["members"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(pattern, member)| {
+                    (pattern.clone(), string_list(member.get("may_depend_on")))
+                })
+                .collect(),
         })
     }
 
