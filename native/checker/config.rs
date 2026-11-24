@@ -24,6 +24,8 @@ pub struct Request {
     pub root: PathBuf,
     pub select: Vec<String>,
     pub strict_coverage: bool,
+    /// `suppressions.require_reason`: an inline suppression needs a `-- reason`.
+    pub require_reason: bool,
     pub project: Project,
     pub architecture: Architecture,
     pub tests: TestPolicy,
@@ -101,6 +103,9 @@ impl Request {
             root,
             select,
             strict_coverage: load::strict_coverage(policy),
+            require_reason: policy["suppressions"]["require_reason"]
+                .as_bool()
+                .unwrap_or(true),
             project: Project {
                 root_packages: string_list(policy["project"].get("root_packages")),
                 source_roots: string_list(policy["project"].get("source_roots")),

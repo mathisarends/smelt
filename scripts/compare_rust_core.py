@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -82,6 +83,8 @@ PORTED = (
     "LAY009",
     "LAY010",
     "LAY011",
+    "MET001",
+    "MET002",
     "MOD001",
     "MOD002",
     "MOD003",
@@ -152,6 +155,7 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_coverage",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_coverage_workspace",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_untested",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_suppressions",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(
@@ -410,8 +414,8 @@ def _order(finding: dict[str, Any]) -> tuple[str, int, int, str, str]:
 def _differences(
     expected: list[dict[str, Any]], actual: list[dict[str, Any]]
 ) -> list[str]:
-    left = _by_id(expected)
-    right = _by_id(actual)
+    left = _by_id([_normalized(finding) for finding in expected])
+    right = _by_id([_normalized(finding) for finding in actual])
     found = [
         f"only python: {left[key][0]['path']}:{left[key][0]['line']} "
         f"{left[key][0]['message']}"
@@ -442,6 +446,17 @@ def _differences(
                 }
                 found.append(f"{python['path']}:{python['line']} {detail}")
     return found
+
+
+def _normalized(finding: dict[str, Any]) -> dict[str, Any]:
+    """Drop the git ref of upgrade guide links: a checkout links `main`, a release its tag."""
+    hint = finding.get("hint")
+    if not isinstance(hint, str):
+        return finding
+    return {**finding, "hint": _GUIDE_REF.sub("/blob/REF/docs/upgrading", hint)}
+
+
+_GUIDE_REF = re.compile(r"/blob/[^/]+/docs/upgrading")
 
 
 def _by_id(findings: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:

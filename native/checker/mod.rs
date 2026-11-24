@@ -5,7 +5,9 @@ mod config;
 mod contracts;
 mod files;
 mod import_report;
+mod meta;
 mod patterns;
+mod renames;
 mod rules;
 mod settings;
 mod source;
@@ -19,6 +21,7 @@ use analysis::test_syntax::{self, TestModule};
 use config::Request;
 use contracts::Contracts;
 use files::{FileIndex, SourceFile};
+use meta::{META_RULES, SuppressionAudit};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
@@ -27,7 +30,8 @@ use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::OnceLock;
@@ -108,12 +112,37 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     let files = FileIndex::discover(&request)?;
     let contracts = Contracts::resolve(&request, &files)?;
     let settings = Settings::new(&catalog, &request);
-    let active = settings.active(&request.select);
+    // The meta rules judge the run after filtering instead of checking sources.
+    let (meta_rules, active): (Vec<&CatalogRule>, Vec<&CatalogRule>) = settings
+        .active(&request.select)
+        .into_iter()
+        .partition(|rule| META_RULES.contains(&rule.code.as_str()));
     let ignores = Ignores::new(&request, &settings)?;
     let names: HashMap<&str, &str> = catalog
         .iter()
         .map(|rule| (rule.name.as_str(), rule.code.as_str()))
         .collect();
+    let meta_rule = |code: &str| {
+        meta_rules
+            .iter()
+            .copied()
+            .find(|rule| rule.code == code)
+            .map(|rule| (rule, settings.active_severity(rule)))
+    };
+    let audit = SuppressionAudit {
+        unused: meta_rule("MET001"),
+        reason: meta_rule("MET002").filter(|_| request.require_reason),
+        known: catalog.iter().map(|rule| rule.code.as_str()).collect(),
+        // The rules a full run would execute; the others are off and need no suppression.
+        enabled: settings
+            .active(&[])
+            .into_iter()
+            .map(|rule| rule.code.as_str())
+            .filter(|code| !META_RULES.contains(code))
+            .collect(),
+        checked: active.iter().map(|rule| rule.code.as_str()).collect(),
+        names: &names,
+    };
     let targets = PythonTargets::new(
         &files.root,
         &request.project.source_roots,
@@ -137,8 +166,6 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             roots: &request.project.root_packages,
         },
         settings: &settings,
-        ignores: &ignores,
-        names: &names,
         selected: !request.select.is_empty(),
     };
     let sources: Vec<&SourceFile> = files.sources.values().collect();
@@ -156,7 +183,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         known: &known,
         forbidden_mocks: &forbidden_mocks,
     };
-    let outcomes = with_analysis_pool(|| {
+    let (mut violations, suppressed) = with_analysis_pool(|| {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -175,7 +202,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         };
         let all_test_pairs: Vec<(&SourceFile, &ParsedSource)> =
             all_tests.iter().copied().zip(&parsed_tests).collect();
-        let mut outcomes: Vec<_> = source_pairs
+        let mut outcomes: Vec<Vec<Violation>> = source_pairs
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
@@ -306,13 +333,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     }
                 }
             }
-            let found = dependencies::deduplicate(found);
-            let parsed_files: Vec<(&SourceFile, &ParsedSource)> = source_pairs
-                .iter()
-                .chain(&all_test_pairs)
-                .copied()
-                .collect();
-            outcomes.extend(settle_by_file(&analysis, &parsed_files, found));
+            outcomes.push(found);
         }
         if !test_rules.is_empty() {
             // Test-quality exclusions only exempt tests from the test rules.
@@ -328,14 +349,51 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     .map(|module| analysis.test_file(&test_rules, module, &test_project)),
             );
         }
-        Ok::<_, String>(outcomes)
+        let found = dependencies::deduplicate(outcomes.into_iter().flatten().collect());
+        let mut by_path: HashMap<String, Vec<Violation>> = HashMap::new();
+        for violation in found {
+            if !ignores.covers(&violation) {
+                by_path
+                    .entry(violation.path.clone())
+                    .or_default()
+                    .push(violation);
+            }
+        }
+        let parsed_by_path: HashMap<&str, &ParsedSource> = source_pairs
+            .iter()
+            .chain(&all_test_pairs)
+            .map(|(file, parsed)| (file.path.as_str(), *parsed))
+            .collect();
+        let python_files: Vec<(&SourceFile, Vec<Violation>)> = sources
+            .iter()
+            .chain(&all_tests)
+            .map(|file| (*file, by_path.remove(&file.path).unwrap_or_default()))
+            .collect();
+        let settled: Vec<(Vec<Violation>, usize)> = python_files
+            .into_par_iter()
+            .map(|(file, found)| {
+                if found.is_empty() && !audit.is_active() {
+                    return (found, 0);
+                }
+                match parsed_by_path.get(file.path.as_str()) {
+                    Some(parsed) => settle(parsed, &file.path, found, &audit, &names),
+                    // Tests no rule read are parsed only for their suppressions.
+                    None => match unparsed_suppressions(file) {
+                        Some(parsed) => settle(&parsed, &file.path, found, &audit, &names),
+                        None => (found, 0),
+                    },
+                }
+            })
+            .collect();
+        let mut suppressed = 0;
+        // YAML files and package directories hold no suppression comments.
+        let mut violations: Vec<Violation> = by_path.into_values().flatten().collect();
+        for (found, hidden) in settled {
+            violations.extend(found);
+            suppressed += hidden;
+        }
+        Ok::<_, String>((violations, suppressed))
     })??;
-    let mut suppressed = 0;
-    let mut violations = Vec::new();
-    for (found, hidden) in outcomes {
-        violations.extend(found);
-        suppressed += hidden;
-    }
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.
     let members = if request.project.uv_workspace {
@@ -392,13 +450,11 @@ struct Analysis<'a> {
     active: &'a [&'a CatalogRule],
     project: rules::Project<'a>,
     settings: &'a Settings<'a>,
-    ignores: &'a Ignores,
-    names: &'a HashMap<&'a str, &'a str>,
     selected: bool,
 }
 
 impl Analysis<'_> {
-    fn file(&self, source: &SourceFile, parsed: &ParsedSource) -> (Vec<Violation>, usize) {
+    fn file(&self, source: &SourceFile, parsed: &ParsedSource) -> Vec<Violation> {
         let mut found = Vec::new();
         for rule in self.active {
             for mut violation in rules::check(rule, source, parsed, self.project) {
@@ -414,7 +470,7 @@ impl Analysis<'_> {
                 }
             }
         }
-        self.settle(parsed, found)
+        found
     }
 
     fn test_file(
@@ -422,7 +478,7 @@ impl Analysis<'_> {
         test_rules: &[&CatalogRule],
         module: &TestModule<'_>,
         project: &TestProject<'_>,
-    ) -> (Vec<Violation>, usize) {
+    ) -> Vec<Violation> {
         let mut found = Vec::new();
         for rule in test_rules {
             // A test belongs to no package, so package settings do not reach it.
@@ -437,58 +493,56 @@ impl Analysis<'_> {
                 found.push(violation);
             }
         }
-        self.settle(module.parsed, found)
-    }
-
-    /// Apply ignores and inline suppressions to the findings of one file.
-    fn settle(&self, parsed: &ParsedSource, mut found: Vec<Violation>) -> (Vec<Violation>, usize) {
-        found.retain(|violation| !self.ignores.covers(violation));
-        if found.is_empty() || !parsed.text.text.contains("smelt:") {
-            return (found, 0);
-        }
-        let suppressions: Vec<Suppression> = suppressions::parse(parsed)
-            .into_iter()
-            .map(|item| item.resolve_names(self.names))
-            .collect();
-        let before = found.len();
-        found.retain(|violation| {
-            violation.code == STRICT_COVERAGE
-                || !suppressions.iter().any(|item| item.matches(violation))
-        });
-        let hidden = before - found.len();
-        (found, hidden)
+        found
     }
 }
 
-/// Apply ignores and suppressions to project-wide findings, file by file.
-fn settle_by_file(
-    analysis: &Analysis<'_>,
-    sources: &[(&SourceFile, &ParsedSource)],
-    found: Vec<Violation>,
-) -> Vec<(Vec<Violation>, usize)> {
-    let parsed: HashMap<&str, &ParsedSource> = sources
-        .iter()
-        .map(|(source, parsed)| (source.path.as_str(), *parsed))
-        .collect();
-    let mut by_path: BTreeMap<String, Vec<Violation>> = BTreeMap::new();
-    for violation in found {
-        by_path
-            .entry(violation.path.clone())
-            .or_default()
-            .push(violation);
+/// Apply the inline suppressions of one file and judge them with the meta rules.
+fn settle(
+    parsed: &ParsedSource,
+    path: &str,
+    mut found: Vec<Violation>,
+    audit: &SuppressionAudit<'_>,
+    names: &HashMap<&str, &str>,
+) -> (Vec<Violation>, usize) {
+    if !parsed.text.text.contains("smelt:") {
+        return (found, 0);
     }
-    by_path
+    let suppressions: Vec<Suppression> = suppressions::parse(parsed)
         .into_iter()
-        .map(|(path, mut findings)| match parsed.get(path.as_str()) {
-            Some(source) => analysis.settle(source, findings),
-            // YAML files and package directories hold no suppression comments.
-            None => {
-                findings.retain(|violation| !analysis.ignores.covers(violation));
-                (findings, 0)
+        .map(|item| item.resolve_names(names))
+        .collect();
+    let mut usage: Vec<Vec<String>> = vec![Vec::new(); suppressions.len()];
+    found.retain(|violation| {
+        if violation.code == STRICT_COVERAGE {
+            return true;
+        }
+        match suppressions.iter().position(|item| item.matches(violation)) {
+            Some(index) => {
+                usage[index].push(violation.code.clone());
+                false
             }
-        })
-        .collect()
+            None => true,
+        }
+    });
+    let hidden = usage.iter().map(Vec::len).sum();
+    if audit.is_active() {
+        found.extend(audit.findings(path, &parsed.text, &suppressions, &usage));
+    }
+    (found, hidden)
 }
+
+/// A file read only for its suppression comments; `None` when it has none or
+/// cannot be tokenized, as `tokenize` errors leave Python without suppressions.
+fn unparsed_suppressions(file: &SourceFile) -> Option<ParsedSource> {
+    let bytes = fs::read(&file.absolute).ok()?;
+    if !bytes.windows(6).any(|window| window == b"smelt:") {
+        return None;
+    }
+    ParsedSource::read(file).ok()
+}
+
+impl Analysis<'_> {}
 
 fn parse_all(files: &[&SourceFile]) -> Result<Vec<ParsedSource>, String> {
     files
