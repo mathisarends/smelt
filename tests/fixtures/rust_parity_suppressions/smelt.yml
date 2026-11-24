@@ -1,0 +1,15 @@
+# Inline suppressions the meta rules judge: used, unused, unknown, retired and unexplained.
+version: 2
+
+project:
+  root_packages: [audit]
+  test_roots: [tests]
+
+rules:
+  complexity/excess-positional-parameters: {severity: warning, max: 2}
+  complexity/forbidden-nested-conditional: hint
+
+ignore:
+  - rule: complexity/excess-positional-parameters
+    paths: ["audit/ignored.py"]
+    reason: A configured ignore leaves the inline suppression unused.
