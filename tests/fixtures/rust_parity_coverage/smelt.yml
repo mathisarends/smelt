@@ -1,0 +1,28 @@
+# Strict coverage: every source file is governed, a facade or excluded with a reason.
+version: 2
+
+project:
+  root_packages: [shop]
+  source_roots: [src, extra, "."]
+  test_roots: [tests, src/shop/checks]
+  exclude:
+    - "src/shop/legacy/**"
+    - {path: "src/shop/vendor/**", reason: Vendored code follows its upstream layout.}
+    - {path: "extra/tools/**", reason: Developer tools.}
+
+architecture:
+  shared: [shop.shared]
+  composition_root: [shop.main]
+  wiring: [shop.wiring]
+  layers:
+    domain:
+      path: domain
+    application:
+      path: application
+      may_depend_on: [domain]
+    platform:
+      modules: [shop.platform]
+
+rules:
+  architecture/uncovered-source: error
+  architecture/unclassified-module: error
