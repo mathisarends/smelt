@@ -119,6 +119,13 @@ impl<'a> Settings<'a> {
         enabled && (select.is_empty() || selected)
     }
 
+    /// The severity an active rule runs with: its setting, else its default.
+    pub fn active_severity(&self, rule: &'a CatalogRule) -> &'a str {
+        self.global_value(rule)
+            .filter(|value| *value != "off")
+            .unwrap_or(rule.default_severity.as_str())
+    }
+
     fn global_value(&self, rule: &'a CatalogRule) -> Option<&'a str> {
         let mut value = rule
             .enabled_by_default
