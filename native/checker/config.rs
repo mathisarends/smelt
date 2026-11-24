@@ -14,7 +14,7 @@ pub mod yaml;
 use architecture::Architecture;
 use schema::string_list;
 use serde::Deserialize;
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -44,12 +44,14 @@ pub struct Request {
     pub rule_sources: Vec<String>,
     /// The max of the root `meta/uncovered-package-facade` entry, else 2.
     pub max_uncovered_facade_callers: usize,
-    pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
     /// The top-level packages of the workspace root (`""`) and of each member.
     pub workspace_packages: BTreeMap<String, Vec<String>>,
-    /// The architecture of a member without its own: the root's import graph only.
-    pub member_architecture: Architecture,
+    /// The architecture of each workspace member: its own, with the root's import
+    /// graph; a member without one has the root's import graph only.
+    pub member_architectures: BTreeMap<String, Architecture>,
+    /// The rules of each member's own config, by member path.
+    pub member_rules: Vec<(String, RuleMap)>,
 }
 
 impl Request {
@@ -138,9 +140,13 @@ impl Request {
                 uv_workspace: policy["project"]["workspace"] == "uv",
             },
             architecture: Architecture::from_config(&policy["architecture"])?,
-            member_architecture: Architecture::from_config(
-                &json!({"import_graph": policy["architecture"]["import_graph"]}),
-            )?,
+            member_architectures: member_architectures(policy)?,
+            member_rules: policy["members"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(path, member)| Ok((path.clone(), rule_map(&member["rules"])?)))
+                .collect::<Result<_, String>>()?,
             workspace_packages: policy["__workspace_packages__"]
                 .as_object()
                 .into_iter()
@@ -166,15 +172,6 @@ impl Request {
                     .map(str::to_owned),
             },
             rule_layers,
-            members: policy["members"]
-                .as_object()
-                .map(|members| {
-                    members
-                        .iter()
-                        .map(|(path, member)| (path.clone(), member.clone()))
-                        .collect()
-                })
-                .unwrap_or_default(),
             ignore_entries,
         })
     }
@@ -184,7 +181,33 @@ fn limit(value: &Value) -> Option<usize> {
     value.as_u64().and_then(|value| usize::try_from(value).ok())
 }
 
+/// Local architecture belongs to the member; only the import graph is the root's.
+fn member_architectures(policy: &Value) -> Result<BTreeMap<String, Architecture>, String> {
+    let import_graph = &policy["architecture"]["import_graph"];
+    policy["__workspace_packages__"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(path, _)| path)
+        .filter(|path| !path.is_empty())
+        .map(|path| {
+            let mut local = match &policy["members"][path.as_str()]["architecture"] {
+                Value::Object(architecture) => architecture.clone(),
+                _ => Map::new(),
+            };
+            local.insert("import_graph".to_owned(), import_graph.clone());
+            Ok((
+                path.clone(),
+                Architecture::from_config(&Value::Object(local))?,
+            ))
+        })
+        .collect()
+}
+
 fn rule_map(rules: &Value) -> Result<RuleMap, String> {
+    if rules.is_null() {
+        return Ok(RuleMap::new());
+    }
     serde_json::from_value(rules.clone()).map_err(|error| error.to_string())
 }
 

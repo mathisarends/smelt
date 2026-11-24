@@ -29,7 +29,6 @@ use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::Value;
-use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 pub const STRUCTURE_RULES: [&str; 25] = [
@@ -58,8 +57,6 @@ pub struct StructureContext<'a> {
     pub test_policy: &'a TestPolicy,
     /// Whether `architecture/uncovered-source` guards the whole run.
     pub strict_coverage: bool,
-    /// The top-level packages of the workspace root (`""`) and of each member.
-    pub workspace_packages: &'a BTreeMap<String, Vec<String>>,
     /// Tests the test-quality rules exempt; they still count as use evidence.
     pub quality_exclude: &'a [PathPattern],
     pub member_usage: OnceLock<MemberUsageIndex<'a>>,
@@ -118,7 +115,7 @@ struct StructureFinding {
 pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &StructureContext<'_>,
-    severity: impl Fn(&'r CatalogRule, &str) -> Option<&'r str>,
+    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
 ) -> Result<Vec<Violation>, String> {
     let mut found = Vec::new();
     for rule in rules {
@@ -152,7 +149,7 @@ pub fn findings<'r>(
         };
         for finding in raised {
             let module = finding.source_module.as_deref().unwrap_or_default();
-            if let Some(level) = severity(rule, module) {
+            if let Some(level) = severity(rule, module, &finding.path) {
                 let mut violation = violation(rule, finding);
                 level.clone_into(&mut violation.severity);
                 found.push(violation);

@@ -154,11 +154,12 @@ fn uncovered_settings<'a>(
 ) -> Vec<(&'a str, Option<&'a str>)> {
     let mut origins: Vec<((&str, Option<&str>), bool)> = Vec::new();
     for source in inputs.files.sources.values() {
-        let Some(origin) =
-            inputs
-                .settings
-                .explicit_activation(code, inputs.contracts, &source.module)
-        else {
+        let Some(origin) = inputs.settings.explicit_activation(
+            code,
+            inputs.contracts,
+            &source.module,
+            &source.path,
+        ) else {
             continue;
         };
         let has_policy = covered.contains(source.module.as_str());

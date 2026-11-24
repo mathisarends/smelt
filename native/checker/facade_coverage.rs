@@ -54,7 +54,7 @@ pub fn uncovered_imports(inputs: &FacadeInputs<'_>) -> Vec<Violation> {
             || inputs.files.is_test_path(&source.path, inputs.test_roots)
             || inputs
                 .settings
-                .explicit_activation(&rule.code, inputs.contracts, &source.module)
+                .explicit_activation(&rule.code, inputs.contracts, &source.module, &source.path)
                 .is_none()
         {
             continue;
@@ -164,7 +164,9 @@ pub fn uncovered_facades(
         let Some(initializer) = inputs.files.sources.get(package) else {
             continue;
         };
-        if evidence.callers.len() <= inputs.limit || governed_by_export_gap(inputs, package) {
+        if evidence.callers.len() <= inputs.limit
+            || governed_by_export_gap(inputs, package, &initializer.path)
+        {
             continue;
         }
         let callers: Vec<&str> = evidence.callers.into_iter().collect();
@@ -229,7 +231,7 @@ fn enclosing_facade<'f>(
 }
 
 /// Whether an active ARC008 export threshold already reviews this package.
-fn governed_by_export_gap(inputs: &FacadeInputs<'_>, package: &str) -> bool {
+fn governed_by_export_gap(inputs: &FacadeInputs<'_>, package: &str, path: &str) -> bool {
     let Some(rule) = inputs.catalog.iter().find(|rule| rule.code == EXPORT_GAP) else {
         return false;
     };
@@ -237,6 +239,6 @@ fn governed_by_export_gap(inputs: &FacadeInputs<'_>, package: &str) -> bool {
         contract.spec.min_importers_to_export.is_some() && contract.package == package
     }) && inputs
         .settings
-        .severity(rule, inputs.contracts, package, false)
+        .severity(rule, inputs.contracts, package, path, false)
         .is_some()
 }
