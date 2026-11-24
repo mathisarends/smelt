@@ -144,7 +144,15 @@ impl<'a> ArchitectureModel<'a> {
         &self.parts
     }
 
-    fn owns(&self, module: &str) -> bool {
+    /// The top-level packages a scoped part judges; `None` when it judges all.
+    pub fn scope_roots(&self) -> Option<&'a [String]> {
+        match self.scope {
+            Scope::Part(packages) => Some(packages),
+            Scope::Project | Scope::Combined(_) => None,
+        }
+    }
+
+    pub fn owns(&self, module: &str) -> bool {
         match self.scope {
             Scope::Part(packages) => {
                 let top = module.split('.').next().unwrap_or_default();

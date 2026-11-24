@@ -216,9 +216,14 @@ fn skip_import(context: &GraphContext<'_>, detail: &ImportDetail) -> bool {
 }
 
 fn boundary_imports<'a>(context: &GraphContext<'a>) -> Vec<BoundaryImport<'a>> {
+    let model = &context.model;
+    // A scoped part judges only paths that start and stay inside its packages.
     let mut result: Vec<BoundaryImport<'a>> = context
         .imports
         .all_imports()
+        .filter(|detail| {
+            model.owns(&detail.importer) && (detail.external || model.owns(&detail.imported))
+        })
         .map(|detail| BoundaryImport {
             detail: Cow::Borrowed(detail),
             chain: Vec::new(),
@@ -229,6 +234,9 @@ fn boundary_imports<'a>(context: &GraphContext<'a>) -> Vec<BoundaryImport<'a>> {
         return result;
     }
     for module in context.imports.modules() {
+        if !model.owns(module) {
+            continue;
+        }
         let mut seen: HashSet<(&str, &[String])> = context
             .imports
             .imports_of(module)
@@ -236,10 +244,11 @@ fn boundary_imports<'a>(context: &GraphContext<'a>) -> Vec<BoundaryImport<'a>> {
             .filter(|detail| !skip_import(context, detail))
             .map(|detail| (detail.imported.as_str(), detail.names.as_slice()))
             .collect();
-        for path in context
-            .imports
-            .shortest_chains_from(module, policy.include_type_checking, None)
-        {
+        for path in context.imports.shortest_chains_from(
+            module,
+            policy.include_type_checking,
+            model.scope_roots(),
+        ) {
             let (Some(first), Some(target)) = (path.first(), path.last()) else {
                 continue;
             };
