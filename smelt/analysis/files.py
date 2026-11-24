@@ -12,7 +12,7 @@ from smelt.config.patterns import path_matches
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
     from smelt.config.models import SmeltConfig
 
@@ -75,6 +75,8 @@ class FileIndex:
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
     _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
     _content_ids: dict[str, str] = field(default_factory=dict, repr=False)
+    # The SHA-256 of texts another reader checked, by path.
+    _observed: dict[str, str] = field(default_factory=dict, repr=False)
     _directories: dict[Path, tuple[tuple[Path, bool], ...]] = field(
         default_factory=dict, repr=False
     )
@@ -159,8 +161,16 @@ class FileIndex:
                 cached = self.store.read_text(self.root / path, encoding="utf-8-sig")
             except (OSError, UnicodeError) as exc:
                 raise AnalysisError(f"cannot read source {path}: {exc}") from exc
+            expected = self._observed.get(path)
+            if expected and hashlib.sha256(cached.encode()).hexdigest() != expected:
+                msg = "source changed since the check; run the check again"
+                raise AnalysisError(msg)
             self._text_cache[path] = cached
         return cached
+
+    def observe(self, digests: Mapping[str, str]) -> None:
+        """Record the texts another reader checked, so a later read rejects edits since."""
+        self._observed.update(digests)
 
     def lines(self, path: str) -> list[str]:
         if path not in self._line_cache:

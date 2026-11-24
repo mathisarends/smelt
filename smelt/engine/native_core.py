@@ -12,14 +12,15 @@ import os
 import subprocess
 import sys
 import sysconfig
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter
 
 from smelt.analysis.contracts import ResolvedContract, describe_contract
 from smelt.analysis.errors import AnalysisError
+from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Violation
 from smelt.engine.cache import CachedAnalysis
@@ -39,6 +40,8 @@ class NativeAnalysis:
     analysis: CachedAnalysis
     # The findings the base revision already had, when the run compares with one.
     baseline: Debt | None = None
+    # The SHA-256 of each text a fixable finding was found in, by path.
+    digests: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +117,8 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
     except ValueError:
         detail = result.stderr.strip() or f"exit status {result.returncode}"
         raise AnalysisError(f"the native core failed: {detail}") from None
+    if "config" in data:
+        raise _config_error(data["config"])
     if "error" in data:
         raise AnalysisError(data["error"])
     facts = data["coverage"]
@@ -144,7 +149,16 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         if staged
         else {},
     )
-    return NativeAnalysis(analysis, _known(data["baseline"]))
+    return NativeAnalysis(analysis, _known(data["baseline"]), data["digests"])
+
+
+def _config_error(error: dict[str, Any]) -> ConfigError:
+    """The configuration error the core reported, as the Python engine raises it."""
+    issues = [
+        ConfigIssue(issue["path"], issue["message"], issue["source"])
+        for issue in error["issues"]
+    ]
+    return ConfigError(issues, error["source"])
 
 
 def _known(findings: list[dict[str, object]] | None) -> Debt | None:

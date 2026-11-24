@@ -279,6 +279,8 @@ def _run_check(
         if native:
             result = _native_analysis(rules, loaded, options, compared=compared)
             analyzed, baseline = result.analysis, result.baseline
+            # A fix applies only to the text the core judged.
+            ctx.files.observe(result.digests)
         else:
             analyzed = _python_analysis(
                 ctx, rules, loaded, active=active, options=options

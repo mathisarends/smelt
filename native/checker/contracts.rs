@@ -111,7 +111,7 @@ impl<'a> Contracts<'a> {
     pub fn facade_policies(
         &self,
         policy: FacadePolicy,
-    ) -> Result<Vec<&ResolvedContract<'a>>, String> {
+    ) -> Result<Vec<&ResolvedContract<'a>>, ConfigError> {
         let mut candidates: BTreeMap<&str, Vec<&ResolvedContract<'a>>> = BTreeMap::new();
         for contract in &self.resolved {
             if policy.value(contract.spec).is_some() {
@@ -146,8 +146,7 @@ impl<'a> Contracts<'a> {
                             "conflicting {name} policies for {package} with equally specific matches"
                         ),
                         "smelt configuration",
-                    )
-                    .render());
+                    ));
                 }
             }
             chosen.push(first);
