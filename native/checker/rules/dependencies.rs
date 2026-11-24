@@ -176,7 +176,7 @@ struct ImportFinding {
     edge: Option<String>,
 }
 
-/// Every finding of `rules` at its resolved severity, without redundant ones.
+/// Every finding of `rules` at its resolved severity.
 pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &GraphContext<'_>,
@@ -208,7 +208,7 @@ pub fn findings<'r>(
             }
         }
     }
-    Ok(deduplicate(found))
+    Ok(found)
 }
 
 fn skip_import(context: &GraphContext<'_>, detail: &ImportDetail) -> bool {
@@ -351,7 +351,7 @@ fn join_or(values: &[String], empty: &str) -> String {
 }
 
 /// Drop findings that a more specific rule already reports for the same cause.
-fn deduplicate(violations: Vec<Violation>) -> Vec<Violation> {
+pub fn deduplicate(violations: Vec<Violation>) -> Vec<Violation> {
     type Cause<'a> = (&'a str, Option<&'a str>, Option<usize>);
     fn key(violation: &Violation) -> Cause<'_> {
         match violation.target_module.as_deref().filter(|t| !t.is_empty()) {

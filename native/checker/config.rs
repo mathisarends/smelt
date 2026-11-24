@@ -14,7 +14,7 @@ pub mod yaml;
 use architecture::Architecture;
 use schema::string_list;
 use serde::Deserialize;
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -36,6 +36,10 @@ pub struct Request {
     pub rule_layers: Vec<RuleMap>,
     pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
+    /// The top-level packages of the workspace root (`""`) and of each member.
+    pub workspace_packages: BTreeMap<String, Vec<String>>,
+    /// The architecture of a member without its own: the root's import graph only.
+    pub member_architecture: Architecture,
 }
 
 impl Request {
@@ -102,6 +106,15 @@ impl Request {
                 uv_workspace: policy["project"]["workspace"] == "uv",
             },
             architecture: Architecture::from_config(&policy["architecture"])?,
+            member_architecture: Architecture::from_config(
+                &json!({"import_graph": policy["architecture"]["import_graph"]}),
+            )?,
+            workspace_packages: policy["__workspace_packages__"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(path, packages)| (path.clone(), string_list(Some(packages))))
+                .collect(),
             tests: TestPolicy::from_config(policy),
             contracts,
             canonical_exports: structure["canonical_exports"]
