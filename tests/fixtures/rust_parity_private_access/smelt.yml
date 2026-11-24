@@ -1,0 +1,13 @@
+# Private symbols and attributes across modules.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+  test_roots: [tests]
+
+style:
+  overrides:
+    cooperative:
+      match: app.pkg
+      private_attribute_boundary: package

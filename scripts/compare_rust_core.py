@@ -41,8 +41,13 @@ PORTED = (
     "ARC004",
     "ARC005",
     "ARC006",
+    "ARC011",
+    "ARC012",
+    "ARC014",
+    "CPX001",
     "CPX002",
     "CPX003",
+    "CPX004",
     "CPX005",
     "CPX006",
     "CPX007",
@@ -58,17 +63,26 @@ PORTED = (
     "IDM007",
     "IDM008",
     "IMP002",
+    "IMP003",
+    "IMP004",
+    "LAY001",
     "LAY002",
+    "LAY003",
     "LAY006",
+    "LAY007",
     "LAY008",
+    "LAY009",
     "LAY010",
     "LAY011",
+    "MOD001",
+    "MOD002",
     "MOD003",
     "MOD004",
     "MOD005",
     "MOD006",
     "MOD007",
     "MOD008",
+    "MOD009",
     "MOD010",
     "MOD011",
     "MOD012",
@@ -86,10 +100,12 @@ PORTED = (
     "TYP002",
     "TYP003",
     "TYP004",
+    "TYP005",
     "TYP006",
     "TYP007",
     "TYP008",
     "VIS003",
+    "VIS005",
     "VIS006",
     "VIS007",
     "VIS008",
@@ -107,6 +123,11 @@ LIMITS = (None, 0, 1, 2, 3)
 ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_architecture",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_layers",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_import_style",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_enum_shadow",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_package_imports",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_navigation",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_private_access",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(
@@ -222,7 +243,9 @@ def _compare(
             # MOD008 only runs under an error policy, which real projects may not set.
             raw.setdefault("style", {}).setdefault("errors", {"base": "project.Error"})
         if graph is not None:
-            raw["architecture"].setdefault("import_graph", {}).update(graph)
+            raw.setdefault("architecture", {}).setdefault("import_graph", {}).update(
+                graph
+            )
         config_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
     try:
         loaded = load_config(config_path)
@@ -338,6 +361,8 @@ def _native_findings(
     result = subprocess.run(  # noqa: S603 - the locally built client
         [str(native), "--internal-core", str(config_path), ",".join(PORTED)],
         capture_output=True,
+        # The native core reads installed packages from this environment, as Python does.
+        env={**os.environ, "VIRTUAL_ENV": sys.prefix},
         text=True,
         encoding="utf-8",
         check=False,

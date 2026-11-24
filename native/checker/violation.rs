@@ -20,7 +20,7 @@ pub struct Violation {
     pub severity: String,
     pub message: String,
     pub path: String,
-    pub line: usize,
+    pub line: Option<usize>,
     pub column: Option<usize>,
     pub end_line: Option<usize>,
     pub end_column: Option<usize>,
@@ -39,14 +39,14 @@ impl Violation {
     pub fn compare(left: &Self, right: &Self) -> Ordering {
         (
             &left.path,
-            left.line,
+            left.line.unwrap_or(0),
             left.column.unwrap_or(0),
             &left.code,
             &left.message,
         )
             .cmp(&(
                 &right.path,
-                right.line,
+                right.line.unwrap_or(0),
                 right.column.unwrap_or(0),
                 &right.code,
                 &right.message,
@@ -99,7 +99,7 @@ impl Violation {
             "{}\x1f{}\x1f{}\x1f{}\x1f{}",
             self.code,
             self.path,
-            self.line,
+            self.line.unwrap_or(0),
             self.column.unwrap_or(0),
             self.message
         );

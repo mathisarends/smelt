@@ -1,0 +1,9 @@
+# A project module named enum hides the standard library.
+version: 2
+
+project:
+  root_packages: [enum, other]
+  source_roots: ["."]
+
+architecture:
+  import_graph: {}

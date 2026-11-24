@@ -13,6 +13,17 @@ pub struct ResolvedContract<'a> {
     pub spec: &'a Contract,
 }
 
+impl ResolvedContract<'_> {
+    /// The module a contract entry names, relative to the package.
+    pub fn qualify(&self, relative: &str) -> String {
+        if relative == "." {
+            self.package.to_owned()
+        } else {
+            format!("{}.{relative}", self.package)
+        }
+    }
+}
+
 /// Where a policy option came from, as findings name it.
 pub struct PolicyOrigin<'a> {
     pub contract: &'a str,

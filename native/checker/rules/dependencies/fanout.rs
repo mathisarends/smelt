@@ -98,7 +98,7 @@ pub fn check(rule: &CatalogRule, context: &GraphContext<'_>) -> Vec<Violation> {
                 targets.len()
             ),
             path: source.path.clone(),
-            line: first.line,
+            line: Some(first.line),
             column: Some(first.column),
             end_line: Some(first.line),
             end_column: Some(first.end_column),

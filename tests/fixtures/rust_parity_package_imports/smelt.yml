@@ -1,0 +1,17 @@
+# Package re-exports, first-party and installed.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+  test_roots: [tests, app/sub/checks]
+
+tests:
+  quality_exclude: ["tests/excluded/**"]
+
+style:
+  third_party_reexports: [pydantic, yaml, missingpkg]
+  overrides:
+    unlisted:
+      match: app.plain
+      third_party_reexports: []

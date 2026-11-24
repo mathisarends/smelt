@@ -407,7 +407,7 @@ fn import_statements(parsed: &ParsedSource) -> Vec<ImportStatement<'_>> {
         .collect()
 }
 
-fn is_type_checking(test: &Expr) -> bool {
+pub fn is_type_checking(test: &Expr) -> bool {
     match test {
         Expr::Name(name) => name.id.as_str() == "TYPE_CHECKING",
         Expr::Attribute(attribute) => attribute.attr.as_str() == "TYPE_CHECKING",

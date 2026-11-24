@@ -42,10 +42,11 @@ impl Suppression {
                 .any(|prefix| violation.code.starts_with(prefix.as_str()));
         covers
             && (self.file_level
-                || violation.line == self.path_line
+                || violation.line == Some(self.path_line)
                 || self
                     .span
-                    .is_some_and(|(first, last)| (first..=last).contains(&violation.line)))
+                    .zip(violation.line)
+                    .is_some_and(|((first, last), line)| (first..=last).contains(&line)))
     }
 }
 

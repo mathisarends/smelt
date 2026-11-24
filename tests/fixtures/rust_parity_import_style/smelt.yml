@@ -1,0 +1,20 @@
+# Import style with type-checking imports left out of the graph.
+version: 2
+
+project:
+  root_packages: [styled, single]
+  source_roots: ["."]
+
+architecture:
+  import_graph:
+    type_checking: ignore
+
+style:
+  imports: {style: relative, max_relative_level: 2}
+  overrides:
+    absolute_part:
+      match: styled.strict
+      imports: {style: absolute}
+    deep_part:
+      match: styled.deep.*
+      imports: {style: relative, max_relative_level: 3}

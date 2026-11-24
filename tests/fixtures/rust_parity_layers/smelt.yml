@@ -2,13 +2,13 @@
 version: 2
 
 project:
-  root_packages: [core, extras]
+  root_packages: [core, extras, plain, wired]
   source_roots: ["."]
 
 architecture:
   shared: [core.common]
   composition_root: [core.boot, extras.boot]
-  wiring: ["core.*.wiring"]
+  wiring: ["core.*.wiring", "wired.*.providers"]
   layers:
     model:
       path: model
@@ -24,3 +24,7 @@ architecture:
       may_depend_on: [logic]
   import_graph:
     type_checking: include
+
+style:
+  forbidden_names: [piece]
+  file_naming: {compose_basename: docker-compose}

@@ -11,6 +11,27 @@ use std::sync::LazyLock;
 static WORD: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[\p{L}\p{N}_]$").expect("the word class is valid"));
 
+// The module between `from` and `import`; continuation lines are not matched.
+static FROM_IMPORT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^from[ \t]+(?P<module>\.*[\p{L}\p{N}_.]*)[ \t]+import")
+        .expect("the from-import pattern is valid")
+});
+
+/// Replace the module of the from-import at `start`, spelled `current`.
+pub fn rewrite_from_module(
+    text: &SourceText,
+    start: usize,
+    current: &str,
+    spelling: &str,
+) -> Option<Value> {
+    let tail = &text.text[start..];
+    let captures = FROM_IMPORT.captures(tail)?;
+    let module = captures.name("module")?;
+    let end = captures.get(0)?.end();
+    (module.as_str() == current && is_word_boundary(Some('t'), tail[end..].chars().next()))
+        .then(|| text.edit(start + module.start(), start + module.end(), spelling))
+}
+
 /// A `Fix` as JSON.
 pub fn fix(applicability: &str, description: &str, edits: Vec<Value>) -> Value {
     json!({

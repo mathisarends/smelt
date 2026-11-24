@@ -29,6 +29,8 @@ pub struct Request {
     pub tests: TestPolicy,
     pub contracts: BTreeMap<String, Contract>,
     pub project_policy: Policy,
+    pub forbidden_names: Vec<String>,
+    pub file_naming: FileNaming,
     pub rule_layers: Vec<RuleMap>,
     pub members: BTreeMap<String, Value>,
     pub ignore_entries: Vec<IgnoreEntry>,
@@ -55,6 +57,8 @@ impl Request {
                 Contract {
                     pattern: contract["match"].as_str().unwrap_or_default().to_owned(),
                     style_override: contract["__style_override__"] == Value::Bool(true),
+                    required: string_list(contract.get("required")),
+                    public: string_list(contract.get("public")),
                     rules: rule_map(&contract["rules"])?,
                     policy: Policy::from_value(contract),
                 },
@@ -91,6 +95,15 @@ impl Request {
             tests: TestPolicy::from_config(policy),
             contracts,
             project_policy: Policy::from_value(structure),
+            forbidden_names: string_list(structure.get("forbidden_names")),
+            file_naming: FileNaming {
+                yaml_extension: structure["file_naming"]["yaml_extension"]
+                    .as_str()
+                    .map(str::to_owned),
+                compose_basename: structure["file_naming"]["compose_basename"]
+                    .as_str()
+                    .map(str::to_owned),
+            },
             rule_layers,
             members: policy["members"]
                 .as_object()
@@ -116,6 +129,12 @@ pub struct Project {
     pub test_roots: Vec<String>,
     pub exclude: Vec<String>,
     pub python_version: Option<String>,
+}
+
+/// The canonical YAML spellings of `style.file_naming`.
+pub struct FileNaming {
+    pub yaml_extension: Option<String>,
+    pub compose_basename: Option<String>,
 }
 
 /// The `tests` section and the project-wide patch limit.
@@ -148,6 +167,8 @@ impl TestPolicy {
 pub struct Contract {
     pub pattern: String,
     pub style_override: bool,
+    pub required: Vec<String>,
+    pub public: Vec<String>,
     pub rules: RuleMap,
     pub policy: Policy,
 }

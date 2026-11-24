@@ -70,7 +70,7 @@ impl Report<'_, '_> {
             severity: self.rule.default_severity.clone(),
             message: finding.message,
             path: self.module.path.to_owned(),
-            line: finding.line,
+            line: Some(finding.line),
             column: finding.column,
             end_line: finding.column.map(|_| finding.line),
             end_column: None,

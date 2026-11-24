@@ -22,6 +22,7 @@ use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES};
+use rules::structure::{self, STRUCTURE_RULES, StructureContext};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
@@ -115,9 +116,12 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         .iter()
         .copied()
         .partition(|rule| TEST_RULES.contains(&rule.code.as_str()));
-    let (import_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+    let (import_rules, other_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
         .into_iter()
         .partition(|rule| IMPORT_RULES.contains(&rule.code.as_str()));
+    let (structure_rules, file_rules): (Vec<&CatalogRule>, Vec<&CatalogRule>) = other_rules
+        .into_iter()
+        .partition(|rule| STRUCTURE_RULES.contains(&rule.code.as_str()));
     let analysis = Analysis {
         active: &file_rules,
         project: rules::Project {
@@ -133,11 +137,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     let sources: Vec<&SourceFile> = files.sources.values().collect();
     let quality_exclude = path_patterns(&request.tests.quality_exclude)?;
     let forbidden_mocks = path_patterns(&request.tests.forbidden_mock_paths)?;
-    let tests: Vec<&SourceFile> = files
-        .tests
-        .values()
-        .filter(|test| !quality_exclude.iter().any(|item| item.matches(&test.path)))
-        .collect();
+    let all_tests: Vec<&SourceFile> = files.tests.values().collect();
     let known: HashSet<&str> = files
         .sources
         .keys()
@@ -153,33 +153,66 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
+        let reads_tests =
+            !test_rules.is_empty() || structure_rules.iter().any(|rule| rule.code == "IMP004");
+        let parsed_tests = if reads_tests {
+            parse_all(&all_tests)?
+        } else {
+            Vec::new()
+        };
+        let all_test_pairs: Vec<(&SourceFile, &ParsedSource)> =
+            all_tests.iter().copied().zip(&parsed_tests).collect();
         let mut outcomes: Vec<_> = source_pairs
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
-        if !import_rules.is_empty() {
-            let imports =
-                ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+        if !import_rules.is_empty() || !structure_rules.is_empty() {
             let model = ArchitectureModel::build(
                 &request.architecture,
                 &request.project.root_packages,
                 &files,
             );
-            let context = GraphContext {
-                imports: &imports,
-                model: &model,
-                files: &files,
-                contracts: &contracts,
-            };
-            let found = dependencies::findings(&import_rules, &context, |rule, module| {
-                settings.severity(rule, &contracts, module, analysis.selected)
-            });
-            outcomes.extend(settle_by_file(&analysis, &source_pairs, found));
+            let severity =
+                |rule, module: &str| settings.severity(rule, &contracts, module, analysis.selected);
+            let mut found = Vec::new();
+            if !import_rules.is_empty() {
+                let imports =
+                    ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+                let context = GraphContext {
+                    imports: &imports,
+                    model: &model,
+                    files: &files,
+                    contracts: &contracts,
+                };
+                found.extend(dependencies::findings(&import_rules, &context, severity));
+            }
+            if !structure_rules.is_empty() {
+                let context = StructureContext {
+                    files: &files,
+                    model: &model,
+                    contracts: &contracts,
+                    sources: &source_pairs,
+                    tests: &all_test_pairs,
+                    test_roots: &request.project.test_roots,
+                    forbidden_names: &request.forbidden_names,
+                    file_naming: &request.file_naming,
+                };
+                found.extend(structure::findings(&structure_rules, &context, severity));
+            }
+            let parsed_files: Vec<(&SourceFile, &ParsedSource)> = source_pairs
+                .iter()
+                .chain(&all_test_pairs)
+                .copied()
+                .collect();
+            outcomes.extend(settle_by_file(&analysis, &parsed_files, found));
         }
         if !test_rules.is_empty() {
-            let parsed_tests = parse_all(&tests)?;
-            let test_pairs: Vec<(&SourceFile, &ParsedSource)> =
-                tests.iter().copied().zip(&parsed_tests).collect();
+            // Test-quality exclusions only exempt tests from the test rules.
+            let test_pairs: Vec<(&SourceFile, &ParsedSource)> = all_test_pairs
+                .iter()
+                .copied()
+                .filter(|(test, _)| !quality_exclude.iter().any(|item| item.matches(&test.path)))
+                .collect();
             let modules = test_syntax::analyze(&source_pairs, &test_pairs);
             outcomes.par_extend(
                 modules
@@ -317,7 +350,14 @@ fn settle_by_file(
     }
     by_path
         .into_iter()
-        .map(|(path, findings)| analysis.settle(parsed[path.as_str()], findings))
+        .map(|(path, mut findings)| match parsed.get(path.as_str()) {
+            Some(source) => analysis.settle(source, findings),
+            // YAML files and package directories hold no suppression comments.
+            None => {
+                findings.retain(|violation| !analysis.ignores.covers(violation));
+                (findings, 0)
+            }
+        })
         .collect()
 }
 

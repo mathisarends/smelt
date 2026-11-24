@@ -233,3 +233,21 @@ impl<'a> Visitor<'a> for ClassCollector<'a> {
         visitor::walk_stmt(self, statement);
     }
 }
+
+/// Every name an expression reads or binds, nested scopes included.
+pub fn names_in(expression: &Expr) -> Vec<&str> {
+    struct Names<'a> {
+        found: Vec<&'a str>,
+    }
+    impl<'a> Visitor<'a> for Names<'a> {
+        fn visit_expr(&mut self, expression: &'a Expr) {
+            if let Expr::Name(name) = expression {
+                self.found.push(name.id.as_str());
+            }
+            visitor::walk_expr(self, expression);
+        }
+    }
+    let mut names = Names { found: Vec::new() };
+    names.visit_expr(expression);
+    names.found
+}
