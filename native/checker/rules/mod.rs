@@ -20,6 +20,7 @@ mod domain_exceptions;
 mod durations;
 mod enum_styles;
 mod exports;
+pub(crate) use exports::explicit_exports;
 mod frozen_collections;
 mod generic_syntax;
 mod headers;
@@ -49,16 +50,16 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 74] = [
+pub const PORTED: [&str; 80] = [
     "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC011", "ARC012", "ARC014",
     "CPX001", "CPX002", "CPX003", "CPX004", "CPX005", "CPX006", "CPX007", "CPX008", "FWK001",
     "FWK002", "IDM001", "IDM002", "IDM003", "IDM004", "IDM005", "IDM006", "IDM007", "IDM008",
-    "IMP002", "IMP003", "IMP004", "LAY001", "LAY002", "LAY003", "LAY006", "LAY007", "LAY008",
-    "LAY009", "LAY010", "LAY011", "MOD001", "MOD002", "MOD003", "MOD004", "MOD005", "MOD006",
-    "MOD007", "MOD008", "MOD009", "MOD010", "MOD011", "MOD012", "TST002", "TST003", "TST004",
-    "TST005", "TST006", "TST007", "TST008", "TST009", "TST010", "TST011", "TYP001", "TYP002",
-    "TYP003", "TYP004", "TYP005", "TYP006", "TYP007", "TYP008", "VIS003", "VIS005", "VIS006",
-    "VIS007", "VIS008",
+    "IMP002", "IMP003", "IMP004", "LAY001", "LAY002", "LAY003", "LAY005", "LAY006", "LAY007",
+    "LAY008", "LAY009", "LAY010", "LAY011", "MOD001", "MOD002", "MOD003", "MOD004", "MOD005",
+    "MOD006", "MOD007", "MOD008", "MOD009", "MOD010", "MOD011", "MOD012", "TST002", "TST003",
+    "TST004", "TST005", "TST006", "TST007", "TST008", "TST009", "TST010", "TST011", "TYP001",
+    "TYP002", "TYP003", "TYP004", "TYP005", "TYP006", "TYP007", "TYP008", "VIS001", "VIS002",
+    "VIS003", "VIS004", "VIS005", "VIS006", "VIS007", "VIS008", "VIS009", "VIS010",
 ];
 
 /// The project-wide facts rules read besides their source.
