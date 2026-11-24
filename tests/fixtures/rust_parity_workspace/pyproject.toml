@@ -1,0 +1,9 @@
+[project]
+name = "workspace-root"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["services/*", "packages/*", "libs/*"]
+
+[tool.uv.sources]
+tools-lib = { workspace = true }

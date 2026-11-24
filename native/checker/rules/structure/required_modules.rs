@@ -25,7 +25,7 @@ pub fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
             .iter()
             .map(|module| (module.clone(), "required module"))
             .collect();
-        for entry in &contract.spec.public {
+        for entry in contract.spec.public.iter().flatten() {
             let pattern = contract.qualify(entry);
             let Ok(matcher) = ModulePattern::new(&pattern) else {
                 continue;

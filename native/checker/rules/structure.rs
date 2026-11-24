@@ -13,12 +13,13 @@ mod navigation;
 mod package_imports;
 mod private_access;
 mod required_modules;
+mod test_location;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
 use crate::checker::analysis::members::MemberUsageIndex;
 use crate::checker::analysis::namespace::project_namespaces;
 use crate::checker::analysis::test_syntax::{self, TestModule};
-use crate::checker::config::{FileNaming, Project};
+use crate::checker::config::{FileNaming, Project, TestPolicy};
 use crate::checker::contracts::Contracts;
 use crate::checker::files::{FileIndex, SourceFile};
 use crate::checker::patterns::PathPattern;
@@ -28,14 +29,16 @@ use crate::checker::violation::Violation;
 use serde_json::Value;
 use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 22] = [
+pub const STRUCTURE_RULES: [&str; 23] = [
     "ARC011", "ARC012", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003",
-    "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TYP005", "VIS001", "VIS002",
-    "VIS004", "VIS005", "VIS009", "VIS010",
+    "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TYP005", "VIS001",
+    "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
 ];
 
-/// The rules that read the member usage index, which every test file feeds.
-pub const MEMBER_RULES: [&str; 6] = ["LAY005", "VIS001", "VIS002", "VIS004", "VIS009", "VIS010"];
+/// The structure rules that read discovered tests.
+pub const TEST_READING_RULES: [&str; 8] = [
+    "IMP004", "LAY005", "TST001", "VIS001", "VIS002", "VIS004", "VIS009", "VIS010",
+];
 
 /// The project-wide facts the structure rules read.
 pub struct StructureContext<'a> {
@@ -49,6 +52,7 @@ pub struct StructureContext<'a> {
     pub forbidden_names: &'a [String],
     pub file_naming: &'a FileNaming,
     pub project: &'a Project,
+    pub test_policy: &'a TestPolicy,
     /// Tests the test-quality rules exempt; they still count as use evidence.
     pub quality_exclude: &'a [PathPattern],
     pub member_usage: OnceLock<MemberUsageIndex<'a>>,
@@ -127,6 +131,7 @@ pub fn findings<'r>(
             "MOD001" => enum_values::check(context),
             "MOD002" => naming::check_base_affixes(context),
             "MOD009" => class_names::check(context),
+            "TST001" => test_location::check(context),
             "TYP005" => literal_types::check(context),
             "VIS001" => members::check_internal_members(context),
             "VIS002" => module_symbols::check(context),

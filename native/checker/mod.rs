@@ -21,8 +21,8 @@ use contracts::Contracts;
 use files::{FileIndex, SourceFile};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
-use rules::dependencies::{self, GraphContext, IMPORT_RULES};
-use rules::structure::{self, MEMBER_RULES, STRUCTURE_RULES, StructureContext};
+use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
+use rules::structure::{self, STRUCTURE_RULES, StructureContext, TEST_READING_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
 use serde_json::json;
 use settings::{CatalogRule, Settings};
@@ -154,10 +154,14 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
+        let imports_tests = import_rules
+            .iter()
+            .any(|rule| TEST_IMPORT_RULES.contains(&rule.code.as_str()));
         let reads_tests = !test_rules.is_empty()
+            || imports_tests
             || structure_rules
                 .iter()
-                .any(|rule| rule.code == "IMP004" || MEMBER_RULES.contains(&rule.code.as_str()));
+                .any(|rule| TEST_READING_RULES.contains(&rule.code.as_str()));
         let parsed_tests = if reads_tests {
             parse_all(&all_tests)?
         } else {
@@ -179,15 +183,31 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                 |rule, module: &str| settings.severity(rule, &contracts, module, analysis.selected);
             let mut found = Vec::new();
             if !import_rules.is_empty() {
-                let imports =
-                    ImportIndex::build(&files, &request.project.root_packages, &source_pairs, &[])?;
+                let imported_tests: &[(&SourceFile, &ParsedSource)] =
+                    if imports_tests { &all_test_pairs } else { &[] };
+                let imports = ImportIndex::build(
+                    &files,
+                    &request.project.root_packages,
+                    &source_pairs,
+                    imported_tests,
+                )?;
                 let context = GraphContext {
                     imports: &imports,
                     model: &model,
                     files: &files,
                     contracts: &contracts,
+                    sources: &source_pairs,
+                    tests: &all_test_pairs,
+                    test_roots: &request.project.test_roots,
+                    test_policy: &request.tests,
+                    root_packages: &request.project.root_packages,
+                    canonical_exports: &request.canonical_exports,
+                    namespaces: OnceLock::new(),
+                    facade_usage: OnceLock::new(),
+                    uv_workspace: request.project.uv_workspace,
+                    workspace: OnceLock::new(),
                 };
-                found.extend(dependencies::findings(&import_rules, &context, severity));
+                found.extend(dependencies::findings(&import_rules, &context, severity)?);
             }
             if !structure_rules.is_empty() {
                 let context = StructureContext {
@@ -200,6 +220,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     forbidden_names: &request.forbidden_names,
                     file_naming: &request.file_naming,
                     project: &request.project,
+                    test_policy: &request.tests,
                     quality_exclude: &quality_exclude,
                     member_usage: OnceLock::new(),
                     test_modules: OnceLock::new(),
@@ -236,7 +257,25 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         suppressed += hidden;
     }
     violations.sort_by(Violation::compare);
-    let report: Vec<_> = violations.iter().map(Violation::to_json).collect();
+    // In a uv workspace every finding names the member that owns its file.
+    let members = if request.project.uv_workspace {
+        Some(analysis::workspace::member_paths(&files)?)
+    } else {
+        None
+    };
+    let report: Vec<_> = violations
+        .iter()
+        .map(|violation| {
+            let mut data = violation.to_json();
+            if let Some(members) = &members {
+                data["member"] = json!(analysis::workspace::member_for_path(
+                    members,
+                    &violation.path
+                ));
+            }
+            data
+        })
+        .collect();
     Ok(json!({"violations": report, "suppressed": suppressed}).to_string())
 }
 

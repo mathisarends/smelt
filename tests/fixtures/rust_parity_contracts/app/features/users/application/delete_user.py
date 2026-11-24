@@ -1,0 +1,2 @@
+class DeleteUser:
+    pass

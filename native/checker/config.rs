@@ -5,10 +5,10 @@ mod discovery;
 pub mod errors;
 pub mod load;
 pub mod models;
-mod paths;
+pub(crate) mod paths;
 pub mod schema;
 mod semantics;
-mod workspace;
+pub(crate) mod workspace;
 pub mod yaml;
 
 use architecture::Architecture;
@@ -28,6 +28,8 @@ pub struct Request {
     pub architecture: Architecture,
     pub tests: TestPolicy,
     pub contracts: BTreeMap<String, Contract>,
+    /// `architecture.canonical_exports`: a definition and its supported public export.
+    pub canonical_exports: BTreeMap<String, String>,
     pub project_policy: Policy,
     pub forbidden_names: Vec<String>,
     pub file_naming: FileNaming,
@@ -58,7 +60,14 @@ impl Request {
                     pattern: contract["match"].as_str().unwrap_or_default().to_owned(),
                     style_override: contract["__style_override__"] == Value::Bool(true),
                     required: string_list(contract.get("required")),
-                    public: string_list(contract.get("public")),
+                    public: contract
+                        .get("public")
+                        .filter(|value| !value.is_null())
+                        .map(|value| string_list(Some(value))),
+                    min_imports_to_bundle: limit(&contract["min_imports_to_bundle"]),
+                    min_importers_to_export: limit(&contract["min_importers_to_export"]),
+                    count_tests: contract["count_tests"].as_bool().unwrap_or(false),
+                    mirrored_test_access: contract["test_access"] == "mirrored",
                     rules: rule_map(&contract["rules"])?,
                     policy: Policy::from_value(contract),
                 },
@@ -90,10 +99,17 @@ impl Request {
                 python_version: policy["project"]["python_version"]
                     .as_str()
                     .map(str::to_owned),
+                uv_workspace: policy["project"]["workspace"] == "uv",
             },
             architecture: Architecture::from_config(&policy["architecture"])?,
             tests: TestPolicy::from_config(policy),
             contracts,
+            canonical_exports: structure["canonical_exports"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter_map(|(symbol, export)| Some((symbol.clone(), export.as_str()?.to_owned())))
+                .collect(),
             project_policy: Policy::from_value(structure),
             forbidden_names: string_list(structure.get("forbidden_names")),
             file_naming: FileNaming {
@@ -119,6 +135,10 @@ impl Request {
     }
 }
 
+fn limit(value: &Value) -> Option<usize> {
+    value.as_u64().and_then(|value| usize::try_from(value).ok())
+}
+
 fn rule_map(rules: &Value) -> Result<RuleMap, String> {
     serde_json::from_value(rules.clone()).map_err(|error| error.to_string())
 }
@@ -129,6 +149,8 @@ pub struct Project {
     pub test_roots: Vec<String>,
     pub exclude: Vec<String>,
     pub python_version: Option<String>,
+    /// `project.workspace: uv`: the root analyzes its declared uv workspace members.
+    pub uv_workspace: bool,
 }
 
 /// The canonical YAML spellings of `style.file_naming`.
@@ -139,6 +161,11 @@ pub struct FileNaming {
 
 /// The `tests` section and the project-wide patch limit.
 pub struct TestPolicy {
+    /// `mirror` or `none`.
+    pub layout: String,
+    pub mirror: String,
+    pub mirror_exclude: Vec<String>,
+    pub mirror_suffixes: bool,
     pub quality_exclude: Vec<String>,
     pub forbidden_mock_paths: Vec<String>,
     pub assertion_helpers: Vec<String>,
@@ -151,6 +178,13 @@ impl TestPolicy {
         let tests = &policy["tests"];
         let rules = &policy["rules"];
         Self {
+            layout: tests["layout"].as_str().unwrap_or("none").to_owned(),
+            mirror: tests["mirror"]
+                .as_str()
+                .unwrap_or("{path}/test_{module}.py")
+                .to_owned(),
+            mirror_exclude: string_list(tests.get("mirror_exclude")),
+            mirror_suffixes: tests["mirror_suffixes"].as_bool().unwrap_or(false),
             quality_exclude: string_list(tests.get("quality_exclude")),
             forbidden_mock_paths: string_list(tests.get("forbidden_mock_paths")),
             assertion_helpers: string_list(tests.get("assertion_helpers")),
@@ -168,7 +202,13 @@ pub struct Contract {
     pub pattern: String,
     pub style_override: bool,
     pub required: Vec<String>,
-    pub public: Vec<String>,
+    /// Public entry points relative to the package; `None` leaves it unrestricted.
+    pub public: Option<Vec<String>>,
+    pub min_imports_to_bundle: Option<usize>,
+    pub min_importers_to_export: Option<usize>,
+    pub count_tests: bool,
+    /// `test_access: mirrored`: tests mirroring a module count as inside the package.
+    pub mirrored_test_access: bool,
     pub rules: RuleMap,
     pub policy: Policy,
 }

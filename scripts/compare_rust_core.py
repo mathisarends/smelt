@@ -35,6 +35,11 @@ if TYPE_CHECKING:
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity"
 PORTED = (
+    "ARC010",
+    "ARC009",
+    "IMP001",
+    "ARC008",
+    "ARC007",
     "ARC001",
     "ARC002",
     "ARC003",
@@ -87,6 +92,7 @@ PORTED = (
     "MOD010",
     "MOD011",
     "MOD012",
+    "TST001",
     "TST002",
     "TST003",
     "TST004",
@@ -135,6 +141,10 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_navigation",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_private_access",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_members",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_test_location",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_test_location_root",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_contracts",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_workspace",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

@@ -1,21 +1,36 @@
 //! Rules over the resolved import graph.
 mod boundaries;
+mod contracts;
 mod cycles;
+mod facades;
 mod fanout;
+mod members;
 
 use crate::checker::analysis::architecture::{ArchitectureModel, ModuleInfo};
+use crate::checker::analysis::facade_usage::FacadeUsage;
 use crate::checker::analysis::imports::{ImportDetail, ImportIndex};
-use crate::checker::contracts::Contracts;
-use crate::checker::files::FileIndex;
+use crate::checker::analysis::mirror::Mirroring;
+use crate::checker::analysis::namespace::{Namespace, project_namespaces, resolve_dotted};
+use crate::checker::analysis::workspace::WorkspaceIndex;
+use crate::checker::config::TestPolicy;
+use crate::checker::contracts::{Contracts, ResolvedContract};
+use crate::checker::files::{FileIndex, SourceFile};
+use crate::checker::patterns::is_within;
 use crate::checker::settings::CatalogRule;
+use crate::checker::source::ParsedSource;
 use crate::checker::violation::{ImportLink, Violation};
 use serde_json::Value;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::sync::OnceLock;
 
-pub const IMPORT_RULES: [&str; 7] = [
-    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "IMP002",
+pub const IMPORT_RULES: [&str; 12] = [
+    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC007", "ARC008", "ARC009",
+    "ARC010", "IMP001", "IMP002",
 ];
+
+/// The import rules that read the project imports of discovered tests.
+pub const TEST_IMPORT_RULES: [&str; 3] = ["ARC007", "ARC008", "IMP001"];
 
 /// Winner and the codes it makes redundant when both report the same root cause.
 const SPECIFICITY: [(&str, [&str; 2]); 2] = [
@@ -30,6 +45,120 @@ pub struct GraphContext<'a> {
     pub model: &'a ArchitectureModel<'a>,
     pub files: &'a FileIndex,
     pub contracts: &'a Contracts<'a>,
+    pub sources: &'a [(&'a SourceFile, &'a ParsedSource)],
+    pub tests: &'a [(&'a SourceFile, &'a ParsedSource)],
+    pub test_roots: &'a [String],
+    pub test_policy: &'a TestPolicy,
+    pub root_packages: &'a [String],
+    pub canonical_exports: &'a BTreeMap<String, String>,
+    pub namespaces: OnceLock<HashMap<&'a str, Namespace>>,
+    pub facade_usage: OnceLock<FacadeUsage<'a>>,
+    /// `project.workspace: uv`.
+    pub uv_workspace: bool,
+    pub workspace: OnceLock<Result<WorkspaceIndex, String>>,
+}
+
+impl<'a> GraphContext<'a> {
+    fn namespaces(&self) -> &HashMap<&'a str, Namespace> {
+        self.namespaces
+            .get_or_init(|| project_namespaces(self.sources, &self.files.packages))
+    }
+
+    fn facade_usage(&self) -> &FacadeUsage<'a> {
+        self.facade_usage.get_or_init(|| {
+            FacadeUsage::new(
+                self.files,
+                self.sources,
+                self.tests,
+                self.test_roots,
+                self.first_party_edges(false),
+            )
+        })
+    }
+
+    /// The uv workspace members, or `None` outside a uv workspace.
+    fn workspace(&self) -> Result<Option<&WorkspaceIndex>, String> {
+        if !self.uv_workspace {
+            return Ok(None);
+        }
+        self.workspace
+            .get_or_init(|| WorkspaceIndex::new(self.files))
+            .as_ref()
+            .map(Some)
+            .map_err(Clone::clone)
+    }
+
+    /// Imports between analyzed first-party modules, by importer.
+    fn first_party_edges(
+        &self,
+        include_type_checking: bool,
+    ) -> HashMap<&'a str, BTreeSet<&'a str>> {
+        let mut edges: HashMap<&'a str, BTreeSet<&'a str>> = HashMap::new();
+        for detail in self.imports.all_imports() {
+            if detail.external || (detail.type_checking && !include_type_checking) {
+                continue;
+            }
+            edges
+                .entry(detail.importer.as_str())
+                .or_default()
+                .insert(detail.imported.as_str());
+        }
+        edges
+    }
+
+    /// Source and test callers shared by all package API policies, with their paths.
+    fn package_api_imports(&self) -> impl Iterator<Item = (&'a str, &'a ImportDetail)> {
+        let sources = &self.files.sources;
+        self.imports
+            .all_imports()
+            .map(|detail| (sources[&detail.importer].path.as_str(), detail))
+            .chain(
+                self.imports
+                    .imports_in_tests()
+                    .iter()
+                    .map(|(path, detail)| (path.as_str(), detail)),
+            )
+    }
+
+    fn is_test_path(&self, path: &str) -> bool {
+        self.files.is_test_path(path, self.test_roots)
+    }
+
+    /// Whether the import in `path` comes from inside the contracted package.
+    ///
+    /// Production code inside the package is. Tests are outside callers, unless the
+    /// contract sets `test_access: mirrored` and the test mirrors one of its modules.
+    fn inside_contract(&self, path: &str, importer: &str, contract: &ResolvedContract<'_>) -> bool {
+        if !self.is_test_path(path) {
+            return is_within(importer, contract.package);
+        }
+        contract.spec.mirrored_test_access
+            && Mirroring::new(self.files, self.test_policy, self.root_packages)
+                .mirrored_modules(path)
+                .iter()
+                .any(|module| is_within(module, contract.package))
+    }
+
+    /// The module whose attribute a `from` import binds.
+    ///
+    /// The graph resolves `from app.billing import invoice` to the submodule
+    /// `app.billing.invoice` whenever one exists. When the facade binds `invoice` to
+    /// another object, as `from .invoice import invoice` does, the statement reads that
+    /// attribute of `app.billing` instead.
+    fn bound_module<'d>(&self, detail: &'d ImportDetail) -> &'d str {
+        let Some((package, _)) = detail.imported.rsplit_once('.') else {
+            return &detail.imported;
+        };
+        if !detail.names.contains(&detail.imported)
+            || !detail.line_contents.trim_start().starts_with("from ")
+        {
+            return &detail.imported;
+        }
+        match resolve_dotted(&detail.imported, self.namespaces()) {
+            Some((_, Some(_))) => package,
+            _ => &detail.imported,
+        }
+    }
 }
 
 /// A direct import or, when enabled, a reachable dependency with its chain.
@@ -52,7 +181,7 @@ pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &GraphContext<'_>,
     severity: impl Fn(&'r CatalogRule, &str) -> Option<&'r str>,
-) -> Vec<Violation> {
+) -> Result<Vec<Violation>, String> {
     let boundary = boundary_imports(context);
     let mut found = Vec::new();
     for rule in rules {
@@ -63,6 +192,11 @@ pub fn findings<'r>(
             "ARC004" => cycles::check(rule, context),
             "ARC005" => boundaries::check_shared(rule, context, &boundary),
             "ARC006" => boundaries::check_composition_root(rule, context, &boundary),
+            "ARC007" => contracts::check_private_modules(rule, context),
+            "ARC008" => facades::check(rule, context)?,
+            "ARC009" => members::check_boundaries(rule, context)?,
+            "ARC010" => members::check_declarations(rule, context)?,
+            "IMP001" => contracts::check_bundles(rule, context)?,
             "IMP002" => fanout::check(rule, context),
             _ => Vec::new(),
         };
@@ -74,7 +208,7 @@ pub fn findings<'r>(
             }
         }
     }
-    deduplicate(found)
+    Ok(deduplicate(found))
 }
 
 fn skip_import(context: &GraphContext<'_>, detail: &ImportDetail) -> bool {
@@ -156,6 +290,18 @@ fn import_violation(
     detail: &ImportDetail,
     finding: ImportFinding,
 ) -> Violation {
+    let path = context.files.sources[&detail.importer].path.clone();
+    import_violation_at(rule, context, detail, path, finding)
+}
+
+/// An import finding in `path`, which differs from the importer's for a test.
+fn import_violation_at(
+    rule: &CatalogRule,
+    context: &GraphContext<'_>,
+    detail: &ImportDetail,
+    path: String,
+    finding: ImportFinding,
+) -> Violation {
     let info = context.model.info(&detail.importer);
     let target_module = match finding.chain.last() {
         Some(link) if rule.code != "ARC004" => link.imported.clone(),
@@ -175,7 +321,7 @@ fn import_violation(
         category: rule.category.clone(),
         severity: rule.default_severity.clone(),
         message: finding.message,
-        path: context.files.sources[&detail.importer].path.clone(),
+        path,
         line: Some(detail.line),
         column: Some(detail.column),
         end_line: Some(detail.line),
@@ -193,8 +339,12 @@ fn import_violation(
 }
 
 fn join(values: &[String]) -> String {
+    join_or(values, "(nothing)")
+}
+
+fn join_or(values: &[String], empty: &str) -> String {
     if values.is_empty() {
-        "(nothing)".to_owned()
+        empty.to_owned()
     } else {
         values.join(", ")
     }

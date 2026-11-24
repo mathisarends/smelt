@@ -1,0 +1,41 @@
+# Package API contracts: public entry points, bundling and facade exports.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+  test_roots: [tests]
+
+architecture:
+  import_graph:
+    type_checking: ignore
+  canonical_exports:
+    app.shop.cart.Cart: app.shop.public.Cart
+  packages:
+    billing-api:
+      match: app.billing
+      public: [".", api, "models.**"]
+    payments-api:
+      match: app.payments
+      public: ["."]
+    orders-closed:
+      match: app.orders
+      public: []
+      test_access: mirrored
+    orders-export:
+      match: app.orders
+      min_importers_to_export: 2
+    features-bundle:
+      match: app.features.*.application
+      min_imports_to_bundle: 2
+    features-export:
+      match: app.features.*.application
+      min_importers_to_export: 2
+      count_tests: true
+    teams-export:
+      match: app.features.teams.application
+      min_importers_to_export: 2
+      count_tests: true
+    shop-export:
+      match: app.shop
+      min_importers_to_export: 2
