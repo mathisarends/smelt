@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from smelt.analysis.errors import AnalysisError
+from smelt.cli import main
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
 from tests.helpers import check, write_project
@@ -66,6 +69,61 @@ def test_reports_like_the_python_engine(
     actual = render_json(check(tmp_path, options).report, show_coverage=True)
 
     assert json.loads(actual) == json.loads(expected)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+@pytest.mark.parametrize(
+    "arguments",
+    [("--changed",), ("--changed", "--select", "ALL"), ("--staged",)],
+    ids=["changed", "changed-all", "staged"],
+)
+def test_reports_git_snapshots_like_the_python_engine(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    arguments: tuple[str, ...],
+) -> None:
+    write_project(tmp_path, PROJECT)
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    # Shifted lines keep their findings; the new module and the unstaged edit add some.
+    orders = tmp_path / "shop/domain/orders.py"
+    orders.write_text("\n" + orders.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "shop/domain/payments.py").write_text(
+        "def pay() -> None:\n    pass\n\n\nimport os\n",
+        encoding="utf-8",
+    )
+    _git(tmp_path, "add", "-A")
+    helpers = tmp_path / "shop/helpers.py"
+    helpers.write_text(helpers.read_text(encoding="utf-8") + "\n\nimport os\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SMELT_DAEMON", "0")
+
+    expected = _cli_report(capsys, arguments)
+    monkeypatch.setenv("SMELT_CORE", "native")
+    actual = _cli_report(capsys, arguments)
+
+    assert expected["violations"]
+    assert actual == expected
+
+
+def _cli_report(
+    capsys: pytest.CaptureFixture[str], arguments: tuple[str, ...]
+) -> dict[str, Any]:
+    main(["check", *arguments, "--no-cache", "--show-coverage", "--format", "json"])
+    report: dict[str, Any] = json.loads(capsys.readouterr().out)
+    return report
+
+
+def _git(root: Path, *arguments: str) -> None:
+    subprocess.run(  # noqa: S603
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *arguments],  # noqa: S607
+        cwd=root,
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
 
 
 def test_source_that_does_not_parse_fails_only_rules_reading_syntax(
