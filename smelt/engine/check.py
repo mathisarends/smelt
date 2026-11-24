@@ -33,6 +33,7 @@ from smelt.diagnostics.violation import (
     Violation,
     docs_url,
 )
+from smelt.engine import native_core
 from smelt.engine.cache import (
     ANALYSIS,
     CachedAnalysis,
@@ -40,7 +41,7 @@ from smelt.engine.cache import (
     installed_inputs,
 )
 from smelt.engine.changes import Comparison, resolve_comparison
-from smelt.engine.coverage import effective_coverage
+from smelt.engine.coverage import analysis_facts, effective_coverage
 from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
 from smelt.engine.file_checks import file_findings, rule_findings
 from smelt.engine.git_source import GitSourceStore
@@ -226,10 +227,19 @@ def _run_check(
     if options.strict_coverage and not config.strict_coverage:
         config = config.with_strict_coverage()
         loaded = replace(loaded, config=config)
+    # The native core analyzes the working tree with the built-in rules and
+    # without the analysis cache.
+    native = (
+        native_core.selected()
+        and rules is None
+        and loaded.source is None
+        and not options.changed
+    )
     rules = rules or build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context, cache=cache)
     _validate_ownership(ctx, loaded)
+    cache = None if native else cache
     installed = installed_inputs(config, active) if cache else {}
     key = (
         cache.decision_key(
@@ -264,31 +274,23 @@ def _run_check(
     if options.paths:
         _validate_scope(ctx, options.paths)
     if analyzed is None:
-        violations, suppressed = _collect(
-            ctx, rules, loaded, active=active, options=options
-        )
-        analyzed = CachedAnalysis(
-            violations,
-            suppressed,
-            effective_coverage(
-                ctx,
-                include_inventory=True,
-                include_ordering=any(rule.code == "LAY004" for rule, _ in active),
-                include_test_quality=any(
-                    rule.code in TEST_QUALITY_CODES for rule, _ in active
-                ),
-            ),
-            len(ctx.files.sources),
-            list(ctx.files.all_check_paths()),
-            dict(ctx.store.dependencies()),
+        analyzed = (
+            _native_analysis(rules, loaded, options)
+            if native
+            else _python_analysis(ctx, rules, loaded, active=active, options=options)
         )
         if cache and key:
             cache.write(key, analyzed, ANALYSIS)
     ctx.store.dependencies().update(analyzed.dependencies)
     violations, suppressed = (
         analyzed.violations
-        + _configured_policy_findings(
-            ctx, rules, loaded, active=active, options=options
+        # The native core judges the configuration together with the sources.
+        + (
+            []
+            if native
+            else _configured_policy_findings(
+                ctx, rules, loaded, active=active, options=options
+            )
         ),
         analyzed.suppressed,
     )
@@ -383,6 +385,49 @@ def _run_check(
     return CheckOutcome(
         report, ctx, rules, active, unfiltered, resolved, installed_inputs=installed
     )
+
+
+def _python_analysis(
+    ctx: AnalysisContext,
+    rules: RuleSet,
+    loaded: LoadedConfig,
+    *,
+    active: list[tuple[RuleContract, Severity]],
+    options: CheckOptions,
+) -> CachedAnalysis:
+    violations, suppressed = _collect(
+        ctx, rules, loaded, active=active, options=options
+    )
+    facts = analysis_facts(
+        ctx,
+        include_ordering=any(rule.code == "LAY004" for rule, _ in active),
+        include_test_quality=any(rule.code in TEST_QUALITY_CODES for rule, _ in active),
+    )
+    return CachedAnalysis(
+        violations,
+        suppressed,
+        effective_coverage(ctx.config, facts, include_inventory=True),
+        len(ctx.files.sources),
+        list(ctx.files.all_check_paths()),
+        dict(ctx.store.dependencies()),
+    )
+
+
+def _native_analysis(
+    rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
+) -> CachedAnalysis:
+    return native_core.analyze(
+        loaded,
+        select=_codes(rules, options.select),
+        ignore=_codes(rules, options.ignore),
+        strict_coverage=options.strict_coverage,
+        configuration_findings=not (options.paths or options.changed or options.staged),
+    )
+
+
+def _codes(rules: RuleSet, prefixes: tuple[str, ...]) -> tuple[str, ...]:
+    """The rule codes that prefixes already validated by `_resolve_active_rules` name."""
+    return tuple(code for prefix in prefixes for code in rules.matching_codes(prefix))
 
 
 def _analysis_context(

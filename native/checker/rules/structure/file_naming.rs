@@ -6,7 +6,7 @@ const COMPOSE_NAMES: [&str; 2] = ["compose", "docker-compose"];
 
 pub fn check(context: &StructureContext<'_>) -> Vec<StructureFinding> {
     let policy = context.file_naming;
-    if policy.yaml_extension.is_none() && policy.compose_basename.is_none() {
+    if !policy.checks_yaml() {
         return Vec::new();
     }
     let mut found = Vec::new();

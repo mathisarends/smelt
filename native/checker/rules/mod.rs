@@ -13,7 +13,7 @@ mod constants;
 mod constructors;
 mod context_managers;
 mod dataclass_options;
-mod definition_order;
+pub mod definition_order;
 mod delegates;
 pub mod dependencies;
 mod discriminators;

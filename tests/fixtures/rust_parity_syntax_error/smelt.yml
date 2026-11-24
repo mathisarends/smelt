@@ -1,0 +1,18 @@
+# A source that does not parse stops a check only when a rule reads syntax.
+version: 2
+
+project:
+  root_packages: [shop]
+
+architecture:
+  layers:
+    domain: {path: domain}
+    infrastructure: {path: infra, may_depend_on: [domain]}
+
+style:
+  file_naming: {yaml_extension: yaml}
+
+rules:
+  architecture/unclassified-module: warning
+  layout/file-name-convention: warning
+  layout/redundant-module-name: warning

@@ -26,7 +26,7 @@ static VERSION: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&pattern).expect("the version pattern is valid")
 });
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PythonTarget {
     pub minimum: Option<(u64, u64)>,
     source: Option<String>,
@@ -148,6 +148,27 @@ impl PythonTargets {
             cache.insert(current, result.clone());
         }
         result
+    }
+
+    /// The distinct targets of `paths`, as `PythonTargetIndex.describe` lists them.
+    pub fn describe<'p>(&self, paths: impl Iterator<Item = &'p Path>) -> Vec<Value> {
+        let mut targets: Vec<PythonTarget> = Vec::new();
+        for path in paths {
+            let target = self.for_path(path);
+            if !targets.contains(&target) {
+                targets.push(target);
+            }
+        }
+        targets.sort_by(|left, right| {
+            let key = |target: &PythonTarget| {
+                (
+                    target.source.clone().unwrap_or_default(),
+                    target.minimum.unwrap_or((0, 0)),
+                )
+            };
+            key(left).cmp(&key(right))
+        });
+        targets.iter().map(PythonTarget::to_json).collect()
     }
 
     fn read(&self, path: &Path) -> Option<PythonTarget> {

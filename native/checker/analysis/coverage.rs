@@ -11,6 +11,7 @@ use crate::checker::source::ParsedSource;
 use ruff_python_ast::{
     ExceptHandler, Expr, ModModule, Number, Operator, Stmt, StmtAnnAssign, StmtAssign, UnaryOp,
 };
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -43,23 +44,69 @@ pub struct CoverageEntry {
     pub path: String,
     pub module: Option<String>,
     pub status: Status,
+    pub kind: Option<ModuleKind>,
     pub feature: Option<String>,
     pub layer: Option<String>,
+    pub wiring: bool,
+    pub central: bool,
     pub reason: Option<String>,
+    /// The architecture settings that classify the module.
+    pub policies: Vec<String>,
     pub source_root: Option<String>,
+}
+
+impl CoverageEntry {
+    /// An inventoried file no architecture classifies.
+    fn unclassified(path: String, module: Option<String>, status: Status) -> Self {
+        Self {
+            path,
+            module,
+            status,
+            kind: None,
+            feature: None,
+            layer: None,
+            wiring: false,
+            central: false,
+            reason: None,
+            policies: Vec::new(),
+            source_root: None,
+        }
+    }
+
+    pub fn to_json(&self) -> Value {
+        json!({
+            "path": self.path,
+            "module": self.module,
+            "status": self.status.name(),
+            "kind": self.kind.map(ModuleKind::value),
+            "feature": self.feature,
+            "layer": self.layer,
+            "wiring": self.wiring,
+            "central": self.central,
+            "reason": self.reason,
+            "policies": self.policies,
+            "source_root": self.source_root,
+        })
+    }
 }
 
 pub struct Coverage {
     /// Every inventoried file, sorted by path.
     pub entries: Vec<CoverageEntry>,
+    /// The directories searched for Python files, relative to the project.
+    pub scan_roots: Vec<String>,
     /// The `project.exclude` patterns given without a reason.
     pub unexplained_exclusions: Vec<String>,
+    /// Why workspace members could not be discovered, outside strict coverage.
+    pub discovery_errors: Vec<String>,
 }
 
 /// What the inventory reads beyond the discovered files.
 pub struct CoverageInputs<'a> {
     pub project: &'a Project,
     pub sources: &'a [(&'a SourceFile, &'a ParsedSource)],
+    /// Strict coverage fails on a workspace it cannot discover.
+    pub strict: bool,
 }
 
 impl Coverage {
@@ -80,7 +127,16 @@ impl Coverage {
             .iter()
             .map(|value| real(&base.join(value)))
             .collect();
-        for member in member_directories(&base, true)? {
+        let mut discovery_errors = Vec::new();
+        let members = match member_directories(&base, true) {
+            Ok(members) => members,
+            Err(error) if !inputs.strict => {
+                discovery_errors.push(error);
+                Vec::new()
+            }
+            Err(error) => return Err(error),
+        };
+        for member in members {
             let directory = base.join(&member.path);
             if !directory.is_dir() {
                 continue;
@@ -110,6 +166,14 @@ impl Coverage {
             .iter()
             .map(|entry| Ok((PathPattern::new(&entry.path)?, entry)))
             .collect::<Result<Vec<(PathPattern, &Exclusion)>, String>>()?;
+        let mut scan_roots: Vec<String> = roots
+            .iter()
+            .map(|root| match relative_path(&files.root, root) {
+                relative if relative.is_empty() => ".".to_owned(),
+                relative => relative,
+            })
+            .collect();
+        scan_roots.sort();
         // The most specific import root names a module in nested workspaces.
         let mut ordered: Vec<PathBuf> = roots.into_iter().collect();
         ordered.sort_by_cached_key(|root| {
@@ -151,22 +215,14 @@ impl Coverage {
                     .map(|(_, entry)| *entry);
                 let entry = match excluded {
                     Some(exclusion) => CoverageEntry {
-                        path: relative.clone(),
-                        module,
-                        status: Status::Excluded,
-                        feature: None,
-                        layer: None,
                         reason: exclusion.reason.clone(),
                         source_root,
+                        ..CoverageEntry::unclassified(relative.clone(), module, Status::Excluded)
                     },
                     None => CoverageEntry {
-                        path: relative.clone(),
-                        module,
-                        status: Status::Uncovered,
-                        feature: None,
-                        layer: None,
                         reason: Some(UNCOVERED_REASON.to_owned()),
                         source_root,
+                        ..CoverageEntry::unclassified(relative.clone(), module, Status::Uncovered)
                     },
                 };
                 inventory.insert(relative, entry);
@@ -174,12 +230,44 @@ impl Coverage {
         }
         Ok(Self {
             entries: inventory.into_values().collect(),
+            scan_roots,
             unexplained_exclusions: project
                 .exclusions
                 .iter()
                 .filter(|entry| entry.reason.is_none())
                 .map(|entry| entry.path.clone())
                 .collect(),
+            discovery_errors,
+        })
+    }
+
+    /// Whether every file is classified or excluded with a reason.
+    pub fn complete(&self) -> bool {
+        self.gaps().next().is_none()
+            && self.unexplained_exclusions.is_empty()
+            && self.discovery_errors.is_empty()
+    }
+
+    /// The inventory counts reports carry, as `CoverageIndex.summary`.
+    pub fn summary(&self) -> Value {
+        let count = |status: Status| {
+            self.entries
+                .iter()
+                .filter(|entry| entry.status == status)
+                .count()
+        };
+        json!({
+            "complete": self.complete(),
+            "counts": {
+                "governed": count(Status::Governed),
+                "facade": count(Status::Facade),
+                "unclassified": count(Status::Unclassified),
+                "uncovered": count(Status::Uncovered),
+                "excluded": count(Status::Excluded),
+            },
+            "scan_roots": self.scan_roots,
+            "unexplained_exclusions": self.unexplained_exclusions,
+            "discovery_errors": self.discovery_errors,
         })
     }
 
@@ -216,7 +304,7 @@ fn classify(
         .is_some_and(|info| is_governed(info, layers_declared))
     {
         Status::Governed
-    } else if source.is_package && is_facade(parsed.module()) {
+    } else if source.is_package && parsed.syntax_error.is_none() && is_facade(parsed.module()) {
         Status::Facade
     } else {
         Status::Unclassified
@@ -232,11 +320,39 @@ fn classify(
         path: source.path.clone(),
         module: Some(source.module.clone()),
         status,
+        kind: info.as_ref().map(|info| info.kind),
         feature: info.as_ref().and_then(|info| info.feature.clone()),
         layer: info.as_ref().and_then(|info| info.layer.clone()),
+        wiring: info.as_ref().is_some_and(|info| info.wiring),
+        central: info.as_ref().is_some_and(|info| info.central),
         reason: Some(reason.to_owned()),
+        policies: info.as_deref().map(policies).unwrap_or_default(),
         source_root: files.source_root_dir(&source.module).map(str::to_owned),
     }
+}
+
+/// The architecture settings behind a classification, as `_policies`.
+fn policies(info: &ModuleInfo) -> Vec<String> {
+    let mut found = Vec::new();
+    if let Some(layer) = &info.layer {
+        found.push(format!("architecture.layers.{layer}"));
+        // A central module is bound by an entry of its layer's `modules`.
+        if info.central {
+            found.push(format!("architecture.layers.{layer}.modules"));
+        }
+    }
+    if info.feature.is_some() {
+        found.push("architecture.features".to_owned());
+    }
+    if info.wiring {
+        found.push("architecture.wiring".to_owned());
+    }
+    match info.kind {
+        ModuleKind::Shared => found.push("architecture.shared".to_owned()),
+        ModuleKind::CompositionRoot => found.push("architecture.composition_root".to_owned()),
+        _ => {}
+    }
+    found
 }
 
 /// The dotted module of a file below an import root, if every part is an identifier.

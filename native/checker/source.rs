@@ -2,7 +2,7 @@
 use super::files::SourceFile;
 use ruff_python_ast::token::TokenKind;
 use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef, StmtFunctionDef};
-use ruff_python_parser::{Parsed, parse_module};
+use ruff_python_parser::{Mode, ParseOptions, Parsed, parse_unchecked};
 use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
 use std::fs;
@@ -58,10 +58,24 @@ impl SourceText {
 pub struct ParsedSource {
     pub text: SourceText,
     pub parsed: Parsed<ModModule>,
+    /// Why the source is not valid Python; only a tolerant read keeps such a source.
+    pub syntax_error: Option<String>,
 }
 
 impl ParsedSource {
     pub fn read(source: &SourceFile) -> Result<Self, String> {
+        let parsed = Self::read_tolerant(source)?;
+        match parsed.syntax_error {
+            Some(error) => Err(error),
+            None => Ok(parsed),
+        }
+    }
+
+    /// Read a source that may not parse, recovering what the parser can.
+    ///
+    /// The Python engine parses a source only when a rule needs its syntax, so
+    /// a syntax error stops a check only then.
+    pub fn read_tolerant(source: &SourceFile) -> Result<Self, String> {
         let bytes = fs::read(&source.absolute)
             .map_err(|error| format!("cannot read source {}: {error}", source.path))?;
         let body = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&bytes);
@@ -69,14 +83,18 @@ impl ParsedSource {
             .map_err(|error| format!("cannot read source {}: {error}", source.path))?;
         // Python reads sources with universal newlines.
         let normalized = decoded.replace("\r\n", "\n").replace('\r', "\n");
-        let parsed = parse_module(&normalized).map_err(|error| {
+        let parsed = parse_unchecked(&normalized, ParseOptions::from(Mode::Module))
+            .try_into_module()
+            .ok_or_else(|| format!("cannot parse source {} as a module", source.path))?;
+        let syntax_error = parsed.errors().first().map(|error| {
             let offset = usize::from(error.location.start());
             let line = normalized[..offset].matches('\n').count() + 1;
             format!("{}:{line}: syntax error: {}", source.path, error.error)
-        })?;
+        });
         Ok(Self {
             text: SourceText::new(normalized),
             parsed,
+            syntax_error,
         })
     }
 

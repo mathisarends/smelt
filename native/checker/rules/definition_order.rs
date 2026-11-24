@@ -1,19 +1,33 @@
 //! LAY004: definitions out of public-first order within execution boundaries.
 use super::RuleInput;
 use crate::checker::analysis::edits::{fix, whole_line_edit};
-use crate::checker::analysis::ordering::{self, OrderingConfig, rewrite_order};
+use crate::checker::analysis::ordering::{self, FileOrder, OrderingConfig, rewrite_order};
+use crate::checker::analysis::python_target::PythonTargets;
+use crate::checker::contracts::Contracts;
+use crate::checker::files::SourceFile;
+use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::{Value, json};
 
 const DEFAULT_CONTRACT: &str = "rules.layout/definition-order";
 
-pub fn check(input: &RuleInput<'_>) -> Vec<Violation> {
-    let source = input.source;
-    let origin = input.contracts.policy_for(&source.module, "ordering");
+/// The definition order of one source under the ordering policy that governs it.
+pub fn file_order<'a>(
+    source: &SourceFile,
+    parsed: &'a ParsedSource,
+    contracts: &Contracts<'_>,
+    targets: &PythonTargets,
+) -> FileOrder<'a> {
+    let origin = contracts.policy_for(&source.module, "ordering");
     let config = OrderingConfig::new(origin.as_ref().map(|origin| origin.value));
     let contract = origin.map_or(DEFAULT_CONTRACT, |origin| origin.contract);
-    let target = input.targets.for_path(&source.absolute);
-    let order = ordering::analyze(input.parsed, config, contract.to_owned(), &target);
+    let target = targets.for_path(&source.absolute);
+    ordering::analyze(parsed, config, contract.to_owned(), &target)
+}
+
+pub fn check(input: &RuleInput<'_>) -> Vec<Violation> {
+    let source = input.source;
+    let order = file_order(source, input.parsed, input.contracts, input.targets);
     order
         .findings(input.parsed, &source.path)
         .into_iter()
