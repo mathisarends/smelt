@@ -4,6 +4,10 @@ Every project is copied to a temporary directory and checked in several modes,
 once with each engine. The JSON reports, coverage included, must be equal; a
 check that fails must fail with the same error; only the parser's explanation
 of a syntax error differs.
+
+Each copy then becomes a Git repository whose sources are edited, copied and
+deleted after the first commit, partly staged, and checked with `--changed` and
+`--staged` through the command line.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import replace
@@ -43,6 +48,12 @@ MODES = {
     "scoped": replace(BASE, paths=(".",)),
     "without debt": replace(BASE, use_debt=False),
 }
+GIT_MODES = {
+    "changed": ("--changed",),
+    "changed all rules": ("--changed", "--select", "ALL"),
+    "staged": ("--staged",),
+    "staged strict": ("--staged", "--select", "ALL", "--strict-coverage"),
+}
 
 
 def main() -> int:
@@ -63,6 +74,11 @@ def main() -> int:
             shutil.copytree(project, copy, ignore=_SKIPPED)
             for mode, options in MODES.items():
                 failures += _compare(copy, options, label=f"{project.name} {mode}")
+            _history(copy)
+            for mode, arguments in GIT_MODES.items():
+                failures += _compare_cli(
+                    copy, arguments, label=f"{project.name} {mode}"
+                )
     _emit("parity holds" if not failures else f"{failures} comparisons differ")
     return 1 if failures else 0
 
@@ -78,6 +94,90 @@ def _compare(root: Path, options: CheckOptions, *, label: str) -> int:
     for line in _differences(expected, actual):
         _emit(f"  {line}")
     return 1
+
+
+def _history(root: Path) -> None:
+    """Commit the project, then edit, copy and delete sources and stage part of it."""
+    _git(root, "init", "--quiet")
+    _git(root, "add", "--all")
+    _git(root, "commit", "--quiet", "--message", "base")
+    sources = sorted(path for path in root.rglob("*.py") if ".git" not in path.parts)
+    for index, path in enumerate(sources):
+        if index % 3 == 0:
+            # Shifted lines must still match the base commit's findings.
+            path.write_bytes(b"\n" + path.read_bytes())
+        elif index % 3 == 1:
+            shutil.copyfile(path, path.with_name(f"{path.stem}_copy.py"))
+        elif path.name != "__init__.py":
+            path.unlink()
+    _git(root, "add", "--all")
+    for path in sources[::3]:
+        # Unstaged edits count for --changed only.
+        path.write_bytes(path.read_bytes() + b"\nfrom os import path as _path\n")
+
+
+def _git(root: Path, *arguments: str) -> None:
+    identity = ("-c", "user.name=parity", "-c", "user.email=parity@example.invalid")
+    subprocess.run(  # noqa: S603 - fixed Git arguments
+        ["git", *identity, *arguments],  # noqa: S607 - Git from PATH
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _compare_cli(root: Path, arguments: tuple[str, ...], *, label: str) -> int:
+    expected = _cli_report(root, arguments, engine="python")
+    actual = _cli_report(root, arguments, engine="native")
+    if expected == actual:
+        count = len(expected.get("violations", ()))
+        _emit(f"MATCH  {label}: {count} findings")
+        return 0
+    _emit(f"DIFFER {label}")
+    for line in _differences(expected, actual):
+        _emit(f"  {line}")
+    return 1
+
+
+def _cli_report(
+    root: Path, arguments: tuple[str, ...], *, engine: str
+) -> dict[str, Any]:
+    environment = {**os.environ, "SMELT_DAEMON": "0"}
+    environment.pop("SMELT_CORE", None)
+    if engine == "native":
+        environment["SMELT_CORE"] = "native"
+    result = subprocess.run(  # noqa: S603 - this interpreter's smelt
+        [
+            sys.executable,
+            "-m",
+            "smelt",
+            "check",
+            *arguments,
+            "--no-cache",
+            "--show-coverage",
+            "--format",
+            "json",
+        ],
+        cwd=root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    try:
+        text = _GUIDE_REF.sub("/blob/REF/docs/upgrading", result.stdout)
+        report = json.loads(text)
+    except ValueError:
+        return {"stderr": result.stderr.strip()[-500:], "exit": result.returncode}
+    error = report.get("error")
+    if isinstance(error, dict) and isinstance(error.get("message"), str):
+        # CPython and the native parser explain a syntax error in their own words.
+        error["message"] = _SYNTAX_ERROR.sub(r"\1", error["message"])
+    report["violations"] = sorted(
+        report.get("violations", ()), key=lambda item: json.dumps(item, sort_keys=True)
+    )
+    return report
 
 
 def _report(root: Path, options: CheckOptions, *, engine: str) -> dict[str, Any]:

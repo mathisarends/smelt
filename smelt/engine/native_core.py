@@ -1,8 +1,8 @@
 """The analysis of a check in the native core, which `SMELT_CORE=native` selects.
 
 The core discovers, parses and judges the project itself and returns the
-findings with the coverage facts a report needs. Checks of a Git snapshot
-(`--staged`, `--changed`) still analyze in Python.
+findings with the coverage facts a report needs. It also checks the staged Git
+index and a base revision, which it writes to a temporary directory.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import sysconfig
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,14 +20,45 @@ from pydantic import TypeAdapter
 
 from smelt.analysis.contracts import ResolvedContract, describe_contract
 from smelt.analysis.errors import AnalysisError
+from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Violation
 from smelt.engine.cache import CachedAnalysis
 from smelt.engine.coverage import effective_coverage
+from smelt.engine.git_source import GitSourceStore
 
 if TYPE_CHECKING:
     from smelt.config.loader import LoadedConfig
 
 _VIOLATIONS = TypeAdapter(list[Violation])
+# The files whose content the core reads; it sees only the existence of others.
+_READ_SUFFIXES = (".py", ".pyi", ".yml", ".yaml", ".toml")
+
+
+@dataclass(frozen=True, slots=True)
+class NativeAnalysis:
+    analysis: CachedAnalysis
+    # The findings the base revision already had, when the run compares with one.
+    baseline: Debt | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Baseline:
+    """The commit a `--changed` check compares with."""
+
+    repository: Path
+    revision: str
+
+
+@dataclass(frozen=True, slots=True)
+class NativeRun:
+    """What one check asks of the core; `select` and `ignore` hold rule codes."""
+
+    select: tuple[str, ...]
+    ignore: tuple[str, ...]
+    strict_coverage: bool
+    # Judge the configuration itself (MET004, MET005); a scoped run does not.
+    configuration_findings: bool
+    baseline: Baseline | None = None
 
 
 def selected() -> bool:
@@ -34,26 +66,37 @@ def selected() -> bool:
     return os.environ.get("SMELT_CORE") == "native"
 
 
-def analyze(
-    loaded: LoadedConfig,
-    *,
-    select: tuple[str, ...],
-    ignore: tuple[str, ...],
-    strict_coverage: bool,
-    configuration_findings: bool,
-) -> CachedAnalysis:
+def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
     """The findings of one check and the coverage its report describes.
 
-    `select` and `ignore` hold rule codes. The core reads the configuration from
-    its file; the loaded one completes the contracts the core resolved and
-    describes the policy of the coverage.
+    The core reads the configuration from
+    its file, or from the staged index when `loaded` came from there; the loaded
+    one completes the contracts the core resolved and describes the policy of
+    the coverage. With a baseline, the core also checks that commit with the
+    same configuration.
     """
+    staged = loaded.source if isinstance(loaded.source, GitSourceStore) else None
     request = {
         "config": str(loaded.path),
-        "select": list(select),
-        "ignore": list(ignore),
-        "strict_coverage": strict_coverage,
-        "configuration_findings": configuration_findings,
+        "select": list(run.select),
+        "ignore": list(run.ignore),
+        "strict_coverage": run.strict_coverage,
+        "configuration_findings": run.configuration_findings,
+        "index": (
+            {"repository": str(staged.repository), "blobs": staged.blobs}
+            if staged
+            else None
+        ),
+        "baseline": (
+            {
+                "repository": str(run.baseline.repository),
+                "revision": run.baseline.revision,
+            }
+            if run.baseline
+            else None
+        ),
+        # Installed packages are found where this interpreter imports them from.
+        "search_path": sys.path,
     }
     result = subprocess.run(  # noqa: S603 - the installed native launcher
         [_executable(), "--internal-check"],
@@ -86,12 +129,35 @@ def analyze(
         )
         for entry in facts["contracts"]
     ]
-    return CachedAnalysis(
+    analysis = CachedAnalysis(
         _VIOLATIONS.validate_python(data["violations"]),
         data["suppressed"],
         effective_coverage(loaded.config, facts, include_inventory=True),
         data["modules"],
         data["paths"],
+        # A staged file whose content the core reads may change the outcome.
+        {
+            path: blob
+            for path, blob in staged.blobs.items()
+            if path.endswith(_READ_SUFFIXES)
+        }
+        if staged
+        else {},
+    )
+    return NativeAnalysis(analysis, _known(data["baseline"]))
+
+
+def _known(findings: list[dict[str, object]] | None) -> Debt | None:
+    """The baseline findings as debt, fingerprinted by the lines the core read."""
+    if findings is None:
+        return None
+    lines = [str(finding.pop("snippet")) for finding in findings]
+    violations = _VIOLATIONS.validate_python(findings)
+    by_identity = {
+        id(violation): line for violation, line in zip(violations, lines, strict=True)
+    }
+    return Debt.from_violations(
+        violations, lambda violation: by_identity[id(violation)]
     )
 
 

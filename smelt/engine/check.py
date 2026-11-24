@@ -227,20 +227,20 @@ def _run_check(
     if options.strict_coverage and not config.strict_coverage:
         config = config.with_strict_coverage()
         loaded = replace(loaded, config=config)
-    # The native core analyzes the working tree with the built-in rules and
-    # without the analysis cache.
+    # The native core analyzes the working tree or the staged index with the
+    # built-in rules and without the analysis cache.
     native = (
         native_core.selected()
         and rules is None
-        and loaded.source is None
-        and not options.changed
+        and (loaded.source is None or isinstance(loaded.source, GitSourceStore))
     )
     rules = rules or build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context, cache=cache)
     _validate_ownership(ctx, loaded)
-    cache = None if native else cache
+    # The result cache follows installed packages whichever engine analyzes.
     installed = installed_inputs(config, active) if cache else {}
+    cache = None if native else cache
     key = (
         cache.decision_key(
             "index-analysis",
@@ -273,12 +273,16 @@ def _run_check(
         analyzed = cache.read(key, ANALYSIS) if cache and key else None
     if options.paths:
         _validate_scope(ctx, options.paths)
+    compared = _comparison(ctx, options) if native and options.changed else None
+    baseline: Debt | None = None
     if analyzed is None:
-        analyzed = (
-            _native_analysis(rules, loaded, options)
-            if native
-            else _python_analysis(ctx, rules, loaded, active=active, options=options)
-        )
+        if native:
+            result = _native_analysis(rules, loaded, options, compared=compared)
+            analyzed, baseline = result.analysis, result.baseline
+        else:
+            analyzed = _python_analysis(
+                ctx, rules, loaded, active=active, options=options
+            )
         if cache and key:
             cache.write(key, analyzed, ANALYSIS)
     ctx.store.dependencies().update(analyzed.dependencies)
@@ -298,39 +302,14 @@ def _run_check(
     coverage_gaps = [v for v in violations if v.code == _COVERAGE]
     violations = [v for v in violations if v.code != _COVERAGE]
 
-    in_debt = 0
-    resolved: list[DebtEntry] = []
-    severity_of = {rule.code: severity for rule, severity in active}
-    scopes = debt_scopes(config) if options.use_debt else ()
-    for debt_scope in scopes:
-        debt = Debt.load(loaded.root / debt_scope.path, store=ctx.store)
-        # Inactive rules have not been checked; their debt is not resolved.
-        policy = RuleSettings(rules, loaded)
-        debt = Debt(
-            [
-                entry
-                for entry in debt.entries
-                if debt_scope_for_path(scopes, entry.path) == debt_scope
-                and entry.code in severity_of
-                and (rule := rules.by_code(entry.code)) is not None
-                and policy.severity_for_path(
-                    rule, ctx, entry.path, selected=bool(options.select)
-                )
-                is not None
-            ]
-        )
-        violations, known, scope_resolved = debt.match(violations, snippet_reader(ctx))
-        resolved.extend(scope_resolved)
-        in_debt += len(known)
-        if "MET003" in severity_of and not options.paths and not options.changed:
-            violations.extend(
-                replace(finding, member=debt_scope.member)
-                for finding in _resolved_violations(
-                    scope_resolved, debt_scope.path, severity_of["MET003"]
-                )
-            )
-    comparison: Comparison | None = None
-    if options.changed:
+    debt = _match_debt(
+        ctx, RuleSettings(rules, loaded), violations, active=active, options=options
+    )
+    violations = debt.violations
+    comparison = compared[1] if compared else None
+    if compared and baseline is not None:
+        violations = baseline.match(violations, snippet_reader(ctx))[0]
+    elif options.changed and not native:
         violations, comparison = _introduced(
             ctx,
             violations,
@@ -356,7 +335,7 @@ def _run_check(
         rules=[rule_meta(rule) for rule, _ in active],
         fail_on=options.fail_on,
         suppressed=suppressed,
-        in_debt=in_debt,
+        in_debt=debt.in_debt,
         scope=options.paths,
         checked_files=sum(
             _under_any(path, options.paths) if options.paths else True
@@ -383,8 +362,64 @@ def _run_check(
         ],
     )
     return CheckOutcome(
-        report, ctx, rules, active, unfiltered, resolved, installed_inputs=installed
+        report,
+        ctx,
+        rules,
+        active,
+        unfiltered,
+        debt.resolved,
+        installed_inputs=installed,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class _DebtMatch:
+    """The findings no debt entry records, with what the debt files matched."""
+
+    violations: list[Violation]
+    in_debt: int
+    resolved: list[DebtEntry]
+
+
+def _match_debt(
+    ctx: AnalysisContext,
+    policy: RuleSettings,
+    violations: list[Violation],
+    *,
+    active: list[tuple[RuleContract, Severity]],
+    options: CheckOptions,
+) -> _DebtMatch:
+    in_debt = 0
+    resolved: list[DebtEntry] = []
+    severity_of = {rule.code: severity for rule, severity in active}
+    scopes = debt_scopes(policy.config) if options.use_debt else ()
+    for debt_scope in scopes:
+        debt = Debt.load(ctx.root / debt_scope.path, store=ctx.store)
+        # Inactive rules have not been checked; their debt is not resolved.
+        debt = Debt(
+            [
+                entry
+                for entry in debt.entries
+                if debt_scope_for_path(scopes, entry.path) == debt_scope
+                and entry.code in severity_of
+                and (rule := policy.rules.by_code(entry.code)) is not None
+                and policy.severity_for_path(
+                    rule, ctx, entry.path, selected=bool(options.select)
+                )
+                is not None
+            ]
+        )
+        violations, known, scope_resolved = debt.match(violations, snippet_reader(ctx))
+        resolved.extend(scope_resolved)
+        in_debt += len(known)
+        if "MET003" in severity_of and not options.paths and not options.changed:
+            violations.extend(
+                replace(finding, member=debt_scope.member)
+                for finding in _resolved_violations(
+                    scope_resolved, debt_scope.path, severity_of["MET003"]
+                )
+            )
+    return _DebtMatch(violations, in_debt, resolved)
 
 
 def _python_analysis(
@@ -414,15 +449,25 @@ def _python_analysis(
 
 
 def _native_analysis(
-    rules: RuleSet, loaded: LoadedConfig, options: CheckOptions
-) -> CachedAnalysis:
-    return native_core.analyze(
-        loaded,
+    rules: RuleSet,
+    loaded: LoadedConfig,
+    options: CheckOptions,
+    *,
+    compared: tuple[Path, Comparison] | None,
+) -> native_core.NativeAnalysis:
+    revision = compared[1].revision if compared else None
+    run = native_core.NativeRun(
         select=_codes(rules, options.select),
         ignore=_codes(rules, options.ignore),
         strict_coverage=options.strict_coverage,
         configuration_findings=not (options.paths or options.changed or options.staged),
+        baseline=(
+            native_core.Baseline(compared[0], revision)
+            if compared and revision
+            else None
+        ),
     )
+    return native_core.analyze(loaded, run)
 
 
 def _codes(rules: RuleSet, prefixes: tuple[str, ...]) -> tuple[str, ...]:
@@ -501,14 +546,7 @@ def _introduced(
 ) -> tuple[list[Violation], Comparison]:
     """The violations the working tree adds to the base commit, judged by today's config."""
     root = options.comparison_root or ctx.root
-    if options.comparison is not None and options.repository_root is not None:
-        repository, comparison = options.repository_root, options.comparison
-    else:
-        repository, comparison = resolve_comparison(
-            root, options.base, repository=options.repository_root
-        )
-    if options.staged:
-        comparison = replace(comparison, staged=True)
+    repository, comparison = _comparison(ctx, options)
     cache = ctx.cache
     # A source root outside the repository can change independently of HEAD.
     if any(
@@ -555,6 +593,21 @@ def _introduced(
         cache.write(key, known.entries, _BASELINE)
     introduced, _, _ = known.match(violations, snippet_reader(ctx))
     return introduced, comparison
+
+
+def _comparison(ctx: AnalysisContext, options: CheckOptions) -> tuple[Path, Comparison]:
+    """The repository and the commit a `--changed` check compares with."""
+    if options.comparison is not None and options.repository_root is not None:
+        repository, comparison = options.repository_root, options.comparison
+    else:
+        repository, comparison = resolve_comparison(
+            options.comparison_root or ctx.root,
+            options.base,
+            repository=options.repository_root,
+        )
+    if options.staged:
+        comparison = replace(comparison, staged=True)
+    return repository, comparison
 
 
 def _collect(
