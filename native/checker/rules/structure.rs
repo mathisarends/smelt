@@ -7,6 +7,7 @@ mod import_style;
 mod layout;
 mod literal_types;
 mod naming;
+mod navigation;
 mod package_imports;
 mod required_modules;
 
@@ -19,9 +20,9 @@ use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::Value;
 
-pub const STRUCTURE_RULES: [&str; 14] = [
-    "ARC011", "ARC012", "ARC014", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003", "LAY007",
-    "LAY009", "MOD001", "MOD002", "MOD009", "TYP005",
+pub const STRUCTURE_RULES: [&str; 15] = [
+    "ARC011", "ARC012", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003",
+    "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TYP005",
 ];
 
 /// The project-wide facts the structure rules read.
@@ -67,6 +68,7 @@ pub fn findings<'r>(
             "ARC011" => layout::check_unknown_layers(context),
             "ARC012" => layout::check_unclassified(context),
             "ARC014" => required_modules::check(context),
+            "CPX001" => navigation::check(context),
             "CPX004" => duplicate_functions::check(context),
             "IMP003" => import_style::check(context),
             "IMP004" => package_imports::check(context),

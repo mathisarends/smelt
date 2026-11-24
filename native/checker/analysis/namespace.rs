@@ -1,5 +1,8 @@
 //! The names a module binds at top level, like `smelt.analysis.exports.namespace_of`.
 use super::lazy_exports::static_lazy_exports;
+use crate::checker::files::SourceFile;
+use crate::checker::source::ParsedSource;
+use rayon::prelude::*;
 use ruff_python_ast::visitor::{self, Visitor};
 use ruff_python_ast::{ExceptHandler, Expr, ModModule, Stmt};
 use std::collections::{HashMap, HashSet};
@@ -218,4 +221,34 @@ impl<'a> Visitor<'a> for NameCollector<'a> {
         }
         visitor::walk_expr(self, expression);
     }
+}
+
+/// The namespace of every analyzed source, and an empty one for each package
+/// without an initializer, like `SyntaxIndex.namespace`.
+pub fn project_namespaces<'a>(
+    sources: &[(&'a SourceFile, &'a ParsedSource)],
+    packages: &'a [String],
+) -> HashMap<&'a str, Namespace> {
+    let built: Vec<(&str, Namespace)> = sources
+        .par_iter()
+        .map(|&(source, parsed)| {
+            let namespace = namespace_of(
+                &parsed.text.text,
+                parsed.module(),
+                &source.module,
+                source.is_package,
+            );
+            (source.module.as_str(), namespace)
+        })
+        .collect();
+    let mut namespaces: HashMap<&str, Namespace> = built.into_iter().collect();
+    for package in packages {
+        namespaces
+            .entry(package.as_str())
+            .or_insert_with(|| Namespace {
+                imported: HashMap::new(),
+                defined: HashSet::new(),
+            });
+    }
+    namespaces
 }
