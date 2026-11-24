@@ -137,11 +137,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     let sources: Vec<&SourceFile> = files.sources.values().collect();
     let quality_exclude = path_patterns(&request.tests.quality_exclude)?;
     let forbidden_mocks = path_patterns(&request.tests.forbidden_mock_paths)?;
-    let tests: Vec<&SourceFile> = files
-        .tests
-        .values()
-        .filter(|test| !quality_exclude.iter().any(|item| item.matches(&test.path)))
-        .collect();
+    let all_tests: Vec<&SourceFile> = files.tests.values().collect();
     let known: HashSet<&str> = files
         .sources
         .keys()
@@ -157,6 +153,15 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         let parsed = parse_all(&sources)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
+        let reads_tests =
+            !test_rules.is_empty() || structure_rules.iter().any(|rule| rule.code == "IMP004");
+        let parsed_tests = if reads_tests {
+            parse_all(&all_tests)?
+        } else {
+            Vec::new()
+        };
+        let all_test_pairs: Vec<(&SourceFile, &ParsedSource)> =
+            all_tests.iter().copied().zip(&parsed_tests).collect();
         let mut outcomes: Vec<_> = source_pairs
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
@@ -187,17 +192,27 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     model: &model,
                     contracts: &contracts,
                     sources: &source_pairs,
+                    tests: &all_test_pairs,
+                    test_roots: &request.project.test_roots,
                     forbidden_names: &request.forbidden_names,
                     file_naming: &request.file_naming,
                 };
                 found.extend(structure::findings(&structure_rules, &context, severity));
             }
-            outcomes.extend(settle_by_file(&analysis, &source_pairs, found));
+            let parsed_files: Vec<(&SourceFile, &ParsedSource)> = source_pairs
+                .iter()
+                .chain(&all_test_pairs)
+                .copied()
+                .collect();
+            outcomes.extend(settle_by_file(&analysis, &parsed_files, found));
         }
         if !test_rules.is_empty() {
-            let parsed_tests = parse_all(&tests)?;
-            let test_pairs: Vec<(&SourceFile, &ParsedSource)> =
-                tests.iter().copied().zip(&parsed_tests).collect();
+            // Test-quality exclusions only exempt tests from the test rules.
+            let test_pairs: Vec<(&SourceFile, &ParsedSource)> = all_test_pairs
+                .iter()
+                .copied()
+                .filter(|(test, _)| !quality_exclude.iter().any(|item| item.matches(&test.path)))
+                .collect();
             let modules = test_syntax::analyze(&source_pairs, &test_pairs);
             outcomes.par_extend(
                 modules

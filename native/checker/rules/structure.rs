@@ -7,6 +7,7 @@ mod import_style;
 mod layout;
 mod literal_types;
 mod naming;
+mod package_imports;
 mod required_modules;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
@@ -18,9 +19,9 @@ use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::Value;
 
-pub const STRUCTURE_RULES: [&str; 13] = [
-    "ARC011", "ARC012", "ARC014", "CPX004", "IMP003", "LAY001", "LAY003", "LAY007", "LAY009",
-    "MOD001", "MOD002", "MOD009", "TYP005",
+pub const STRUCTURE_RULES: [&str; 14] = [
+    "ARC011", "ARC012", "ARC014", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003", "LAY007",
+    "LAY009", "MOD001", "MOD002", "MOD009", "TYP005",
 ];
 
 /// The project-wide facts the structure rules read.
@@ -29,6 +30,9 @@ pub struct StructureContext<'a> {
     pub model: &'a ArchitectureModel<'a>,
     pub contracts: &'a Contracts<'a>,
     pub sources: &'a [(&'a SourceFile, &'a ParsedSource)],
+    /// Every discovered test, including those excluded from test-quality rules.
+    pub tests: &'a [(&'a SourceFile, &'a ParsedSource)],
+    pub test_roots: &'a [String],
     pub forbidden_names: &'a [String],
     pub file_naming: &'a FileNaming,
 }
@@ -65,6 +69,7 @@ pub fn findings<'r>(
             "ARC014" => required_modules::check(context),
             "CPX004" => duplicate_functions::check(context),
             "IMP003" => import_style::check(context),
+            "IMP004" => package_imports::check(context),
             "LAY001" => naming::check_forbidden_names(context),
             "LAY003" => naming::check_private_modules(context),
             "LAY007" => file_naming::check(context),
