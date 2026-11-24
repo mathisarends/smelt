@@ -1,0 +1,17 @@
+# Member usage evidence across modules and tests.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+  test_roots: [tests]
+  exclude: [scripts]
+
+architecture:
+  composition_root: [app.boot]
+
+style:
+  overrides:
+    modular:
+      match: app.modular
+      public_attribute_boundary: module
