@@ -233,30 +233,66 @@ fn run(options: Options) -> Result<Outcome, String> {
         (Some(snapshot), Some(staged)) => snapshot.locate(&staged.repository, &options.config)?,
         _ => options.config.clone(),
     };
-    let mut request = Request::load(&config, options.select.clone())?;
-    if options.strict_coverage {
-        request.force_strict_coverage()?;
-    }
-    let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
-    if let Some(baseline) = &options.baseline {
-        let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
-        let top = index
-            .as_ref()
-            .map_or(baseline.repository.as_path(), Snapshot::tree);
-        let root = snapshot.locate(top, &request.root)?;
-        // A project the revision lacks, or one without files, had no findings.
-        let mut findings = Vec::new();
-        if root.is_dir() {
-            request.root = root;
-            // Like the Python engine, judge a revision only when it has files to check.
-            if has_check_paths(&request)? {
-                let before = check(&request, &options.ignore, false)?;
-                findings = with_lines(&request.root, before.violations);
-            }
+    let load = || {
+        let mut request = Request::load(&config, options.select.clone())?;
+        if options.strict_coverage {
+            request.force_strict_coverage()?;
         }
-        outcome.baseline = Some(findings);
+        Ok::<_, String>(request)
+    };
+    let request = load()?;
+    let top = index.as_ref().map(Snapshot::tree).or(options
+        .baseline
+        .as_ref()
+        .map(|baseline| baseline.repository.as_path()));
+    // The base revision is written and checked while the run's own check proceeds.
+    std::thread::scope(|scope| {
+        let before = options
+            .baseline
+            .as_ref()
+            .zip(top)
+            .map(|(baseline, top)| {
+                std::thread::Builder::new()
+                    .stack_size(ANALYSIS_STACK_BYTES)
+                    .spawn_scoped(scope, || {
+                        baseline_findings(baseline, top, load()?, &options.ignore)
+                    })
+                    .map_err(|error| error.to_string())
+            })
+            .transpose()?;
+        let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
+        if let Some(before) = before {
+            let findings = before
+                .join()
+                .map_err(|_| "the baseline check panicked".to_owned())??;
+            outcome.baseline = Some(findings);
+        }
+        Ok(outcome)
+    })
+}
+
+/// The findings `baseline` already had, judged by `request`, with their lines.
+///
+/// `top` is the repository's top level as `request` sees it.
+fn baseline_findings(
+    baseline: &Baseline,
+    top: &Path,
+    mut request: Request,
+    ignore: &[String],
+) -> Result<Vec<Value>, String> {
+    let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
+    let root = snapshot.locate(top, &request.root)?;
+    // A project the revision lacks, or one without files, had no findings.
+    if !root.is_dir() {
+        return Ok(Vec::new());
     }
-    Ok(outcome)
+    request.root = root;
+    // Like the Python engine, judge a revision only when it has files to check.
+    if !has_check_paths(&request)? {
+        return Ok(Vec::new());
+    }
+    let before = check(&request, ignore, false)?;
+    Ok(with_lines(&request.root, before.violations))
 }
 
 /// Whether the project has a source, test or named YAML file to check.

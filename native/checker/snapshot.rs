@@ -5,7 +5,7 @@
 //! content; every other file is written empty, so its directory still exists
 //! without the cost of large assets.
 use rayon::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -15,6 +15,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const READ_SUFFIXES: [&str; 5] = [".py", ".pyi", ".yml", ".yaml", ".toml"];
 const SUBMODULE: u32 = 0o160000;
 const SYMBOLIC_LINK: u32 = 0o120000;
+/// Decoded objects each thread keeps, so blobs sharing delta bases decode once.
+const OBJECT_CACHE_BYTES: usize = 32 * 1024 * 1024;
 
 static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
 
@@ -94,17 +96,25 @@ impl Snapshot {
             tree: canonical(&tree),
             directory,
         };
-        open(repository)?;
-        // A repository handle is not shared between threads, so each opens its own.
+        let directories: BTreeSet<&Path> = entries
+            .iter()
+            .filter_map(|(path, _)| Path::new(path).parent())
+            .collect();
+        for directory in directories {
+            fs::create_dir_all(snapshot.tree.join(directory)).map_err(|error| error.to_string())?;
+        }
+        // A repository handle is not shared between threads, so each share of the
+        // files opens its own, with a cache for the deltas packed blobs share.
+        let share = entries.len().div_ceil(rayon::current_num_threads()).max(1);
         entries
-            .par_iter()
-            .map_init(
-                || open(repository),
-                |repo, (path, id)| match repo {
-                    Ok(repo) => snapshot.write_file(repo, path, *id),
-                    Err(error) => Err(error.clone()),
-                },
-            )
+            .par_chunks(share)
+            .map(|files| {
+                let mut repo = open(repository)?;
+                repo.object_cache_size_if_unset(OBJECT_CACHE_BYTES);
+                files
+                    .iter()
+                    .try_for_each(|(path, id)| snapshot.write_file(&repo, path, *id))
+            })
             .collect::<Result<(), String>>()?;
         Ok(snapshot)
     }
@@ -116,9 +126,6 @@ impl Snapshot {
         id: gix::ObjectId,
     ) -> Result<(), String> {
         let target = self.tree.join(path);
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
         let content = if READ_SUFFIXES.iter().any(|suffix| path.ends_with(suffix)) {
             repo.find_blob(id)
                 .map_err(|error| format!("cannot read {path} from Git: {error}"))?
