@@ -90,12 +90,8 @@ class TestInferConfig:
         assert inferred is not None
         assert inferred.root_packages == ["deploy", "backend", "browser"]
         assert not any(".src." in module for module in inferred.wiring)
-        config, warnings = parse_config(
-            _load_yaml(render_config(inferred)), root=tmp_path
-        )
-        outcome = run_check(
-            LoadedConfig(config, tmp_path / "smelt.yml", warnings), CheckOptions()
-        )
+        (tmp_path / "smelt.yml").write_text(render_config(inferred))
+        outcome = run_check(load_config(tmp_path / "smelt.yml"), CheckOptions())
         assert "backend.features.auth.domain.model" in outcome.context.files.sources
         assert "browser.app" in outcome.context.files.sources
         assert not any(".src." in module for module in outcome.context.files.sources)
