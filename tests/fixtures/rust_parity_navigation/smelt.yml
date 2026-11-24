@@ -1,0 +1,16 @@
+# Namespace evidence for attribute navigation.
+version: 2
+
+project:
+  root_packages: [app]
+  source_roots: ["."]
+
+style:
+  navigation:
+    namespace_types: [app.factory.Sdk]
+    instance_factories: [app.factory.provide]
+  overrides:
+    plain:
+      match: app.plain
+      navigation:
+        namespace_types: []
