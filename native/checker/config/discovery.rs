@@ -85,6 +85,14 @@ pub fn packages_in(base: &Path) -> Vec<PathBuf> {
     if selected.is_empty() { found } else { selected }
 }
 
+/// The import root of a project or member: `src/` when it holds a package,
+/// else the directory itself when it does.
+pub fn import_root(directory: &Path) -> Option<PathBuf> {
+    [directory.join("src"), directory.to_path_buf()]
+        .into_iter()
+        .find(|base| !packages_in(base).is_empty())
+}
+
 /// Top-level modules and namespace support declared by the uv build backend.
 fn build_package_settings(directory: &Path) -> (BTreeSet<String>, bool) {
     let Ok(text) = paths::read_text(&directory.join("pyproject.toml")) else {

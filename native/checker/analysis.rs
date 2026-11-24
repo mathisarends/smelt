@@ -2,6 +2,7 @@
 //! and the declared Python version.
 pub mod architecture;
 pub mod bindings;
+pub mod coverage;
 pub mod dump;
 pub mod edits;
 pub mod facade_usage;

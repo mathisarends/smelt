@@ -1,7 +1,7 @@
 //! The configuration loader and the resolved policy the core runs with.
 pub mod architecture;
 mod compose;
-mod discovery;
+pub(crate) mod discovery;
 pub mod errors;
 pub mod load;
 pub mod models;
@@ -49,13 +49,19 @@ impl Request {
         let policy = &loaded.config;
         let structure = &policy["__structure__"];
         let root = loaded.path.parent().unwrap_or(&loaded.path).to_path_buf();
-        let exclude = policy["project"]["exclude"]
+        let exclusions: Vec<Exclusion> = policy["project"]["exclude"]
             .as_array()
             .into_iter()
             .flatten()
-            .filter_map(|entry| entry.as_str().or_else(|| entry["path"].as_str()))
-            .map(str::to_owned)
+            .filter_map(|entry| {
+                let path = entry.as_str().or_else(|| entry["path"].as_str())?;
+                Some(Exclusion {
+                    path: path.to_owned(),
+                    reason: entry["reason"].as_str().map(str::to_owned),
+                })
+            })
             .collect();
+        let exclude = exclusions.iter().map(|entry| entry.path.clone()).collect();
         let mut contracts = BTreeMap::new();
         for (name, contract) in structure["contracts"].as_object().into_iter().flatten() {
             contracts.insert(
@@ -100,6 +106,7 @@ impl Request {
                 source_roots: string_list(policy["project"].get("source_roots")),
                 test_roots: string_list(policy["project"].get("test_roots")),
                 exclude,
+                exclusions,
                 python_version: policy["project"]["python_version"]
                     .as_str()
                     .map(str::to_owned),
@@ -161,9 +168,17 @@ pub struct Project {
     pub source_roots: Vec<String>,
     pub test_roots: Vec<String>,
     pub exclude: Vec<String>,
+    /// The `project.exclude` entries with the reason a `{path, reason}` entry gives.
+    pub exclusions: Vec<Exclusion>,
     pub python_version: Option<String>,
     /// `project.workspace: uv`: the root analyzes its declared uv workspace members.
     pub uv_workspace: bool,
+}
+
+/// One `project.exclude` entry.
+pub struct Exclusion {
+    pub path: String,
+    pub reason: Option<String>,
 }
 
 /// The canonical YAML spellings of `style.file_naming`.
