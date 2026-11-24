@@ -53,8 +53,12 @@ architecture:
 style:
   forbidden_names: [utils, helpers, misc]
   private_modules: forbid
+  imports: {style: relative, max_relative_level: 1}
   file_naming: {yaml_extension: yaml, compose_basename: compose}
   overrides:
+    absolute_imports:
+      match: shop.tools.style.strict
+      imports: {style: absolute}
     private_allowed:
       match: shop.platform
       private_modules: allow
