@@ -143,8 +143,17 @@ class _Module:
                 ):
                     yield _Delegate(owner, caller, callee)
 
-    def _isolated(self, owner: ast.ClassDef) -> bool:
-        """No base class outside this module could call a private hook."""
+    def _isolated(
+        self, owner: ast.ClassDef, visiting: frozenset[int] = frozenset()
+    ) -> bool:
+        """No base class outside this module could call a private hook.
+
+        Bases that inherit from each other have no resolution order, so a cycle
+        is not isolated either.
+        """
+        if id(owner) in visiting:
+            return False
+        visiting |= {id(owner)}
         for base in owner.bases:
             match base:
                 case ast.Subscript(value=ast.Name(id=name) | ast.Attribute(attr=name)):
@@ -157,7 +166,7 @@ class _Module:
                     return False
             if name in _NEUTRAL_BASES:
                 continue
-            if local is None or local is owner or not self._isolated(local):
+            if local is None or local is owner or not self._isolated(local, visiting):
                 return False
         return True
 
