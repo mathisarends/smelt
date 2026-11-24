@@ -1,5 +1,6 @@
 //! Rules over the module inventory and its place in the architecture.
 mod class_names;
+mod coverage;
 mod duplicate_functions;
 mod enum_values;
 mod file_naming;
@@ -14,6 +15,7 @@ mod package_imports;
 mod private_access;
 mod required_modules;
 mod test_location;
+mod untested;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
 use crate::checker::analysis::members::MemberUsageIndex;
@@ -27,12 +29,13 @@ use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-pub const STRUCTURE_RULES: [&str; 23] = [
-    "ARC011", "ARC012", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001", "LAY003",
-    "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TYP005", "VIS001",
-    "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
+pub const STRUCTURE_RULES: [&str; 25] = [
+    "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX004", "IMP003", "IMP004", "LAY001",
+    "LAY003", "LAY005", "LAY007", "LAY009", "MOD001", "MOD002", "MOD009", "TST001", "TST012",
+    "TYP005", "VIS001", "VIS002", "VIS004", "VIS005", "VIS009", "VIS010",
 ];
 
 /// The structure rules that read discovered tests.
@@ -53,6 +56,10 @@ pub struct StructureContext<'a> {
     pub file_naming: &'a FileNaming,
     pub project: &'a Project,
     pub test_policy: &'a TestPolicy,
+    /// Whether `architecture/uncovered-source` guards the whole run.
+    pub strict_coverage: bool,
+    /// The top-level packages of the workspace root (`""`) and of each member.
+    pub workspace_packages: &'a BTreeMap<String, Vec<String>>,
     /// Tests the test-quality rules exempt; they still count as use evidence.
     pub quality_exclude: &'a [PathPattern],
     pub member_usage: OnceLock<MemberUsageIndex<'a>>,
@@ -112,12 +119,13 @@ pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &StructureContext<'_>,
     severity: impl Fn(&'r CatalogRule, &str) -> Option<&'r str>,
-) -> Vec<Violation> {
+) -> Result<Vec<Violation>, String> {
     let mut found = Vec::new();
     for rule in rules {
         let raised = match rule.code.as_str() {
             "ARC011" => layout::check_unknown_layers(context),
             "ARC012" => layout::check_unclassified(context),
+            "ARC013" => coverage::check(context)?,
             "ARC014" => required_modules::check(context),
             "CPX001" => navigation::check(context),
             "CPX004" => duplicate_functions::check(context),
@@ -132,6 +140,7 @@ pub fn findings<'r>(
             "MOD002" => naming::check_base_affixes(context),
             "MOD009" => class_names::check(context),
             "TST001" => test_location::check(context),
+            "TST012" => untested::check(context),
             "TYP005" => literal_types::check(context),
             "VIS001" => members::check_internal_members(context),
             "VIS002" => module_symbols::check(context),
@@ -150,7 +159,7 @@ pub fn findings<'r>(
             }
         }
     }
-    found
+    Ok(found)
 }
 
 fn violation(rule: &CatalogRule, finding: StructureFinding) -> Violation {

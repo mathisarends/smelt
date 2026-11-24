@@ -61,7 +61,8 @@ impl Violation {
             "severity": self.severity,
             "category": self.category,
             "message": self.message,
-            "path": self.path,
+            // A project-wide finding has no path.
+            "path": (!self.path.is_empty()).then_some(&self.path),
             "line": self.line,
             "column": self.column,
             "end_line": self.end_line,

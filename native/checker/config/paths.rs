@@ -168,6 +168,14 @@ pub fn has_child_match(directory: &Path, pattern: &str) -> bool {
     })
 }
 
+/// `fnmatch.fnmatchcase`: `*` also matches `/`.
+pub fn fnmatchcase(pattern: &str, name: &str) -> bool {
+    wildcard(
+        &pattern.chars().collect::<Vec<_>>(),
+        &name.chars().collect::<Vec<_>>(),
+    )
+}
+
 /// `fnmatch` for one path segment, ignoring case on Windows.
 pub fn name_matches(pattern: &str, name: &str) -> bool {
     let fold = |text: &str| -> Vec<char> {

@@ -47,6 +47,7 @@ PORTED = (
     "ARC005",
     "ARC006",
     "ARC011",
+    "ARC013",
     "ARC012",
     "ARC014",
     "CPX001",
@@ -94,6 +95,7 @@ PORTED = (
     "MOD011",
     "MOD012",
     "TST001",
+    "TST012",
     "TST002",
     "TST003",
     "TST004",
@@ -147,6 +149,9 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_contracts",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_workspace",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_architecture_scopes",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_coverage",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_coverage_workspace",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_untested",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

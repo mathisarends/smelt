@@ -36,6 +36,8 @@ use violation::Violation;
 
 const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
 const ANALYSIS_STACK_BYTES: usize = 256 * 1024 * 1024;
+/// The strict-coverage guard, which ignores and suppressions cannot hide.
+const STRICT_COVERAGE: &str = "ARC013";
 /// The rules each architecture of a uv workspace runs for its own files.
 const ARCHITECTURE_SCOPED: [&str; 8] = [
     "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC011", "ARC012",
@@ -229,11 +231,13 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                         file_naming: &request.file_naming,
                         project: &request.project,
                         test_policy: &request.tests,
+                        strict_coverage: request.strict_coverage,
+                        workspace_packages: &request.workspace_packages,
                         quality_exclude: &quality_exclude,
                         member_usage: OnceLock::new(),
                         test_modules: OnceLock::new(),
                     };
-                    found.extend(structure::findings(structure_rules, &context, severity));
+                    found.extend(structure::findings(structure_rules, &context, severity)?);
                 }
                 Ok(found)
             };
@@ -343,7 +347,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         .iter()
         .map(|violation| {
             let mut data = violation.to_json();
-            if let Some(members) = &members {
+            if let Some(members) = members.as_ref().filter(|_| !violation.path.is_empty()) {
                 data["member"] = json!(analysis::workspace::member_for_path(
                     members,
                     &violation.path
@@ -447,7 +451,10 @@ impl Analysis<'_> {
             .map(|item| item.resolve_names(self.names))
             .collect();
         let before = found.len();
-        found.retain(|violation| !suppressions.iter().any(|item| item.matches(violation)));
+        found.retain(|violation| {
+            violation.code == STRICT_COVERAGE
+                || !suppressions.iter().any(|item| item.matches(violation))
+        });
         let hidden = before - found.len();
         (found, hidden)
     }
@@ -529,14 +536,16 @@ impl Ignores {
     }
 
     fn covers(&self, violation: &Violation) -> bool {
-        self.entries.iter().any(|entry| {
-            entry.codes.contains(&violation.code)
-                && (violation
-                    .source_module
-                    .as_deref()
-                    .is_some_and(|module| entry.modules.iter().any(|p| p.matches(module)))
-                    || entry.paths.iter().any(|p| p.matches(&violation.path)))
-        })
+        // Strict coverage cannot be ignored; reasoned exclusions are the only way out.
+        violation.code != STRICT_COVERAGE
+            && self.entries.iter().any(|entry| {
+                entry.codes.contains(&violation.code)
+                    && (violation
+                        .source_module
+                        .as_deref()
+                        .is_some_and(|module| entry.modules.iter().any(|p| p.matches(module)))
+                        || entry.paths.iter().any(|p| p.matches(&violation.path)))
+            })
     }
 }
 

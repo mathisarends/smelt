@@ -1,0 +1,17 @@
+# Strict coverage across a uv workspace and its members.
+version: 2
+
+project:
+  workspace: uv
+  source_roots: [src]
+
+architecture:
+  layers:
+    domain:
+      path: domain
+    application:
+      path: application
+      may_depend_on: [domain]
+
+rules:
+  architecture/uncovered-source: error

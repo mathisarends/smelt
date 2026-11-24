@@ -410,32 +410,36 @@ impl Discovery {
         self.exclude.iter().any(|pattern| pattern.matches(path))
     }
 
-    /// The POSIX path from the root, with `..` for a path outside it.
     fn relative(&self, path: &Path) -> String {
-        let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        if let Ok(inside) = resolved.strip_prefix(&self.root) {
-            return posix_parts(inside).join("/");
-        }
-        let shared = resolved
-            .components()
-            .zip(self.root.components())
-            .take_while(|(left, right)| left == right)
-            .count();
-        if shared == 0 {
-            // A different Windows drive has no relative path.
-            let absolute = resolved.to_string_lossy().replace('\\', "/");
-            return absolute
-                .strip_prefix("//?/")
-                .unwrap_or(&absolute)
-                .to_owned();
-        }
-        let ups = self.root.components().count() - shared;
-        let mut parts = vec!["..".to_owned(); ups];
-        parts.extend(posix_parts(
-            &resolved.components().skip(shared).collect::<PathBuf>(),
-        ));
-        parts.join("/")
+        relative_path(&self.root, path)
     }
+}
+
+/// The POSIX path of `path` from the resolved `root`, with `..` for a path outside it.
+pub fn relative_path(root: &Path, path: &Path) -> String {
+    let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    if let Ok(inside) = resolved.strip_prefix(root) {
+        return posix_parts(inside).join("/");
+    }
+    let shared = resolved
+        .components()
+        .zip(root.components())
+        .take_while(|(left, right)| left == right)
+        .count();
+    if shared == 0 {
+        // A different Windows drive has no relative path.
+        let absolute = resolved.to_string_lossy().replace('\\', "/");
+        return absolute
+            .strip_prefix("//?/")
+            .unwrap_or(&absolute)
+            .to_owned();
+    }
+    let ups = root.components().count() - shared;
+    let mut parts = vec!["..".to_owned(); ups];
+    parts.extend(posix_parts(
+        &resolved.components().skip(shared).collect::<PathBuf>(),
+    ));
+    parts.join("/")
 }
 
 fn posix_parts(path: &Path) -> Vec<String> {
@@ -448,7 +452,7 @@ fn posix_parts(path: &Path) -> Vec<String> {
 }
 
 /// Python files below a directory, skipping tool directories and symlink cycles.
-fn python_files(directory: &Path) -> Vec<PathBuf> {
+pub fn python_files(directory: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     let mut visited = HashSet::new();
     let mut pending = vec![directory.to_path_buf()];
