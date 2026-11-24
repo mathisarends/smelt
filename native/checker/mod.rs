@@ -12,7 +12,7 @@ mod source;
 mod suppressions;
 mod violation;
 
-use analysis::architecture::ArchitectureModel;
+use analysis::architecture::{ArchitectureModel, Scope};
 use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
@@ -36,6 +36,10 @@ use violation::Violation;
 
 const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
 const ANALYSIS_STACK_BYTES: usize = 256 * 1024 * 1024;
+/// The rules each architecture of a uv workspace runs for its own files.
+const ARCHITECTURE_SCOPED: [&str; 8] = [
+    "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC011", "ARC012",
+];
 
 /// Check the project of `config` with the comma-separated rules and print JSON.
 pub fn serve(config: &Path, select: &str) -> i32 {
@@ -174,59 +178,131 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
         if !import_rules.is_empty() || !structure_rules.is_empty() {
-            let model = ArchitectureModel::build(
-                &request.architecture,
-                &request.project.root_packages,
-                &files,
-            );
-            let severity =
-                |rule, module: &str| settings.severity(rule, &contracts, module, analysis.selected);
-            let mut found = Vec::new();
-            if !import_rules.is_empty() {
-                let imported_tests: &[(&SourceFile, &ParsedSource)] =
-                    if imports_tests { &all_test_pairs } else { &[] };
-                let imports = ImportIndex::build(
+            let imported_tests: &[(&SourceFile, &ParsedSource)] =
+                if imports_tests { &all_test_pairs } else { &[] };
+            let imports = if import_rules.is_empty() {
+                None
+            } else {
+                Some(ImportIndex::build(
                     &files,
                     &request.project.root_packages,
                     &source_pairs,
                     imported_tests,
-                )?;
-                let context = GraphContext {
-                    imports: &imports,
-                    model: &model,
-                    files: &files,
-                    contracts: &contracts,
-                    sources: &source_pairs,
-                    tests: &all_test_pairs,
-                    test_roots: &request.project.test_roots,
-                    test_policy: &request.tests,
-                    root_packages: &request.project.root_packages,
-                    canonical_exports: &request.canonical_exports,
-                    namespaces: OnceLock::new(),
-                    facade_usage: OnceLock::new(),
-                    uv_workspace: request.project.uv_workspace,
-                    workspace: OnceLock::new(),
+                )?)
+            };
+            let graph = |import_rules: &[&CatalogRule],
+                         structure_rules: &[&CatalogRule],
+                         model: &ArchitectureModel<'_>|
+             -> Result<Vec<Violation>, String> {
+                let severity = |rule, module: &str| {
+                    settings.severity(rule, &contracts, module, analysis.selected)
                 };
-                found.extend(dependencies::findings(&import_rules, &context, severity)?);
+                let mut found = Vec::new();
+                if let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty()) {
+                    let context = GraphContext {
+                        imports,
+                        model,
+                        files: &files,
+                        contracts: &contracts,
+                        sources: &source_pairs,
+                        tests: &all_test_pairs,
+                        test_roots: &request.project.test_roots,
+                        test_policy: &request.tests,
+                        root_packages: &request.project.root_packages,
+                        canonical_exports: &request.canonical_exports,
+                        namespaces: OnceLock::new(),
+                        facade_usage: OnceLock::new(),
+                        uv_workspace: request.project.uv_workspace,
+                        workspace: OnceLock::new(),
+                    };
+                    found.extend(dependencies::findings(import_rules, &context, severity)?);
+                }
+                if !structure_rules.is_empty() {
+                    let context = StructureContext {
+                        files: &files,
+                        model,
+                        contracts: &contracts,
+                        sources: &source_pairs,
+                        tests: &all_test_pairs,
+                        test_roots: &request.project.test_roots,
+                        forbidden_names: &request.forbidden_names,
+                        file_naming: &request.file_naming,
+                        project: &request.project,
+                        test_policy: &request.tests,
+                        quality_exclude: &quality_exclude,
+                        member_usage: OnceLock::new(),
+                        test_modules: OnceLock::new(),
+                    };
+                    found.extend(structure::findings(structure_rules, &context, severity));
+                }
+                Ok(found)
+            };
+            let roots = &request.project.root_packages;
+            let mut found = Vec::new();
+            if request.workspace_packages.is_empty() {
+                let model =
+                    ArchitectureModel::build(&request.architecture, roots, &files, Scope::Project);
+                found.extend(graph(&import_rules, &structure_rules, &model)?);
+            } else {
+                // Every architecture of a uv workspace judges only its own files.
+                let scoped =
+                    |rule: &&CatalogRule| ARCHITECTURE_SCOPED.contains(&rule.code.as_str());
+                let (scoped_imports, shared_imports): (Vec<&CatalogRule>, Vec<&CatalogRule>) =
+                    import_rules.iter().copied().partition(scoped);
+                let (scoped_structure, shared_structure): (Vec<&CatalogRule>, Vec<&CatalogRule>) =
+                    structure_rules.iter().copied().partition(scoped);
+                let root_packages = request
+                    .workspace_packages
+                    .get("")
+                    .map_or(&[][..], Vec::as_slice);
+                let combined = ArchitectureModel::build(
+                    &request.architecture,
+                    roots,
+                    &files,
+                    Scope::Combined(root_packages),
+                );
+                found.extend(graph(&shared_imports, &shared_structure, &combined)?);
+                if !scoped_imports.is_empty() || !scoped_structure.is_empty() {
+                    let members: Vec<&str> = request
+                        .workspace_packages
+                        .keys()
+                        .map(String::as_str)
+                        .filter(|path| !path.is_empty())
+                        .collect();
+                    let owner = |path: &str| {
+                        members
+                            .iter()
+                            .copied()
+                            .filter(|member| {
+                                path == *member
+                                    || path
+                                        .strip_prefix(member)
+                                        .is_some_and(|rest| rest.starts_with('/'))
+                            })
+                            .max_by_key(|member| member.len())
+                            .unwrap_or("")
+                    };
+                    for (scope, packages) in &request.workspace_packages {
+                        let architecture = if scope.is_empty() {
+                            &request.architecture
+                        } else {
+                            &request.member_architecture
+                        };
+                        let part = ArchitectureModel::build(
+                            architecture,
+                            roots,
+                            &files,
+                            Scope::Part(packages),
+                        );
+                        found.extend(
+                            graph(&scoped_imports, &scoped_structure, &part)?
+                                .into_iter()
+                                .filter(|violation| owner(&violation.path) == scope),
+                        );
+                    }
+                }
             }
-            if !structure_rules.is_empty() {
-                let context = StructureContext {
-                    files: &files,
-                    model: &model,
-                    contracts: &contracts,
-                    sources: &source_pairs,
-                    tests: &all_test_pairs,
-                    test_roots: &request.project.test_roots,
-                    forbidden_names: &request.forbidden_names,
-                    file_naming: &request.file_naming,
-                    project: &request.project,
-                    test_policy: &request.tests,
-                    quality_exclude: &quality_exclude,
-                    member_usage: OnceLock::new(),
-                    test_modules: OnceLock::new(),
-                };
-                found.extend(structure::findings(&structure_rules, &context, severity));
-            }
+            let found = dependencies::deduplicate(found);
             let parsed_files: Vec<(&SourceFile, &ParsedSource)> = source_pairs
                 .iter()
                 .chain(&all_test_pairs)

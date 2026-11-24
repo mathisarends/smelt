@@ -32,9 +32,23 @@ impl ModuleInfo {
     }
 }
 
+/// How one architecture shares a uv workspace with its members.
+#[derive(Clone, Copy)]
+pub enum Scope<'a> {
+    /// The project has one architecture.
+    Project,
+    /// The root architecture as the whole workspace sees it: it classifies only
+    /// these top-level packages, and members without their own are unclassified.
+    Combined(&'a [String]),
+    /// One architecture judging its own top-level packages.
+    Part(&'a [String]),
+}
+
 pub struct ArchitectureModel<'a> {
     pub config: &'a Architecture,
     roots: &'a [String],
+    first_party: &'a [String],
+    scope: Scope<'a>,
     packages: HashSet<&'a str>,
     modules: HashMap<&'a str, ModuleInfo>,
     features: BTreeMap<String, String>,
@@ -42,9 +56,18 @@ pub struct ArchitectureModel<'a> {
 }
 
 impl<'a> ArchitectureModel<'a> {
-    pub fn build(config: &'a Architecture, roots: &'a [String], files: &'a FileIndex) -> Self {
+    pub fn build(
+        config: &'a Architecture,
+        roots: &'a [String],
+        files: &'a FileIndex,
+        scope: Scope<'a>,
+    ) -> Self {
         let packages: HashSet<&str> = files.packages.iter().map(String::as_str).collect();
-        let classifier = Classifier::new(config, roots, packages.clone());
+        let classified = match scope {
+            Scope::Project => None,
+            Scope::Combined(packages) | Scope::Part(packages) => Some(packages),
+        };
+        let classifier = Classifier::new(config, roots, classified, packages.clone());
         let mut modules = HashMap::with_capacity(files.sources.len());
         let mut features = BTreeMap::new();
         for name in files.sources.keys() {
@@ -59,7 +82,12 @@ impl<'a> ArchitectureModel<'a> {
         }
         Self {
             config,
-            roots,
+            roots: match scope {
+                Scope::Part(packages) => packages,
+                Scope::Project | Scope::Combined(_) => roots,
+            },
+            first_party: roots,
+            scope,
             packages,
             modules,
             features,
@@ -71,9 +99,7 @@ impl<'a> ArchitectureModel<'a> {
         if let Some(info) = self.modules.get(module) {
             return Some(Cow::Borrowed(info));
         }
-        self.roots
-            .iter()
-            .any(|root| is_within(module, root))
+        self.is_first_party(module)
             .then(|| Cow::Owned(self.classifier.classify(module)))
     }
 
@@ -90,7 +116,7 @@ impl<'a> ArchitectureModel<'a> {
     }
 
     pub fn is_first_party(&self, module: &str) -> bool {
-        self.roots.iter().any(|root| is_within(module, root))
+        self.first_party.iter().any(|root| is_within(module, root))
     }
 
     /// The root packages holding at least one module with an architecture role.
@@ -104,7 +130,10 @@ impl<'a> ArchitectureModel<'a> {
 
     /// A short path for hints, relative to the feature container or root package.
     pub fn display_path(&self, module: &str, package: bool) -> String {
-        let spec = self.config.features.as_ref();
+        // A member module is shown under its member's architecture, which has no features.
+        let member = matches!(self.scope, Scope::Combined(packages)
+            if !packages.iter().any(|package| Some(package.as_str()) == module.split('.').next()));
+        let spec = self.config.features.as_ref().filter(|_| !member);
         let container = spec.and_then(|spec| {
             spec.root.clone().or_else(|| {
                 let pattern = spec.pattern.as_deref()?;
@@ -210,6 +239,7 @@ impl<'a> ArchitectureModel<'a> {
 struct Classifier<'a> {
     config: &'a Architecture,
     roots: &'a [String],
+    scope: Option<&'a [String]>,
     packages: HashSet<&'a str>,
     central: HashMap<&'a str, &'a str>,
     layer_paths: Vec<(Vec<&'a str>, &'a str)>,
@@ -217,7 +247,13 @@ struct Classifier<'a> {
 }
 
 impl<'a> Classifier<'a> {
-    fn new(config: &'a Architecture, roots: &'a [String], packages: HashSet<&'a str>) -> Self {
+    /// A classifier for `roots`; with a `scope`, only for those top-level packages.
+    fn new(
+        config: &'a Architecture,
+        roots: &'a [String],
+        scope: Option<&'a [String]>,
+        packages: HashSet<&'a str>,
+    ) -> Self {
         let mut layer_paths: Vec<(Vec<&str>, &str)> = config
             .layers
             .iter()
@@ -236,7 +272,8 @@ impl<'a> Classifier<'a> {
         });
         Self {
             config,
-            roots,
+            roots: scope.unwrap_or(roots),
+            scope,
             packages,
             central: config.module_bindings().collect(),
             layer_paths,
@@ -245,6 +282,20 @@ impl<'a> Classifier<'a> {
     }
 
     fn classify(&self, module: &str) -> ModuleInfo {
+        let top = module.split('.').next().unwrap_or_default();
+        if self
+            .scope
+            .is_some_and(|scope| !scope.iter().any(|package| package == top))
+        {
+            return ModuleInfo {
+                name: module.to_owned(),
+                kind: ModuleKind::Unclassified,
+                feature: None,
+                layer: None,
+                wiring: false,
+                central: false,
+            };
+        }
         let config = self.config;
         let wiring = config.wiring.iter().any(|item| item.matches(module));
         let info = |kind, feature: Option<&str>, layer: Option<&str>, central| ModuleInfo {
