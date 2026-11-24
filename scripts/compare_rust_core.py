@@ -85,6 +85,8 @@ PORTED = (
     "LAY011",
     "MET001",
     "MET002",
+    "MET004",
+    "MET005",
     "MOD001",
     "MOD002",
     "MOD003",
@@ -156,6 +158,7 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_coverage_workspace",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_untested",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_suppressions",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_policy_meta",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

@@ -1,0 +1,5 @@
+# A shared base that enables a rule; only the billing package sets its policy.
+version: 2
+
+rules:
+  imports/forbidden-import-style: error
