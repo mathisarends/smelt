@@ -1,8 +1,9 @@
 //! Static re-exports of installed third-party packages, read without importing them.
 //!
-//! The Python engine read the search path of the interpreter it ran in. The native
-//! core has none, so it looks in the environment that holds its own executable, the
-//! active `VIRTUAL_ENV` and the project's `.venv`, in that order.
+//! The Python engine read the search path of the interpreter it ran in. A check
+//! the engine requests passes that path along; otherwise the core looks in the
+//! environment that holds its own executable, the active `VIRTUAL_ENV` and the
+//! project's `.venv`, in that order.
 use super::imports::is_type_checking;
 use super::namespace::resolve_relative;
 use super::walk::{TreeNode, expression_key, tree_nodes};
@@ -13,8 +14,17 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 const SUFFIXES: [&str; 2] = [".pyi", ".py"];
+
+/// The search path of the interpreter that requested this run, when it sent one.
+static REQUESTED: OnceLock<Vec<PathBuf>> = OnceLock::new();
+
+/// Read installed packages from `entries` for the rest of this process.
+pub fn use_search_path(entries: Vec<PathBuf>) {
+    let _ = REQUESTED.set(entries);
+}
 
 /// Public name to imported name.
 pub type Exports = HashMap<String, String>;
@@ -314,6 +324,9 @@ fn module_statements(tree: &ModModule) -> Vec<(&Stmt, bool)> {
 
 /// The directories an interpreter of the project's environments would import from.
 fn search_path(project_root: &Path) -> Vec<PathBuf> {
+    if let Some(requested) = REQUESTED.get() {
+        return requested.clone();
+    }
     let mut prefixes = Vec::new();
     if let Ok(executable) = env::current_exe()
         && let Some(prefix) = executable.parent().and_then(Path::parent)

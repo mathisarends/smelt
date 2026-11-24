@@ -13,6 +13,7 @@ mod renames;
 mod rule_policy;
 mod rules;
 mod settings;
+mod snapshot;
 mod source;
 mod suppressions;
 mod violation;
@@ -36,8 +37,9 @@ use rules::testing::{self, TEST_RULES, TestProject};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use settings::{CatalogRule, Settings};
+use snapshot::Snapshot;
 use source::ParsedSource;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -80,6 +82,29 @@ pub struct Options {
     /// Judge the configuration itself (MET004, MET005); a scoped run does not.
     #[serde(default)]
     configuration_findings: bool,
+    /// Check the staged Git index, whose sources and configuration replace the working tree's.
+    #[serde(default)]
+    index: Option<StagedIndex>,
+    /// Also check this revision with the run's configuration, for the findings it already had.
+    #[serde(default)]
+    baseline: Option<Baseline>,
+    /// The requesting interpreter's import search path, for installed packages.
+    #[serde(default)]
+    search_path: Option<Vec<PathBuf>>,
+}
+
+#[derive(Deserialize)]
+struct StagedIndex {
+    repository: PathBuf,
+    /// The blob ID of each staged file, by repository-relative path.
+    blobs: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+struct Baseline {
+    repository: PathBuf,
+    /// The commit to compare with.
+    revision: String,
 }
 
 /// The findings of one run and what the report says about its coverage.
@@ -89,6 +114,8 @@ struct Outcome {
     coverage: Value,
     modules: usize,
     paths: Vec<String>,
+    /// The baseline revision's findings, each with the text of its line.
+    baseline: Option<Vec<Value>>,
 }
 
 /// Check the project of `config` with the comma-separated rules and print JSON.
@@ -99,6 +126,9 @@ pub fn serve(config: &Path, select: &str) -> i32 {
         ignore: Vec::new(),
         strict_coverage: false,
         configuration_findings: true,
+        index: None,
+        baseline: None,
+        search_path: None,
     };
     let unported: Vec<&str> = options
         .select
@@ -141,6 +171,7 @@ pub fn serve_check() -> i32 {
                 "coverage": outcome.coverage,
                 "modules": outcome.modules,
                 "paths": outcome.paths,
+                "baseline": outcome.baseline,
             }),
             0,
         ),
@@ -190,17 +221,104 @@ fn write_output(output: &str) -> Result<(), String> {
 }
 
 fn run(options: Options) -> Result<Outcome, String> {
-    let mut request = Request::load(&options.config, options.select)?;
+    if let Some(entries) = &options.search_path {
+        analysis::installed::use_search_path(entries.clone());
+    }
+    let index = options
+        .index
+        .as_ref()
+        .map(|staged| Snapshot::index(&staged.repository, &staged.blobs))
+        .transpose()?;
+    let config = match (&index, &options.index) {
+        (Some(snapshot), Some(staged)) => snapshot.locate(&staged.repository, &options.config)?,
+        _ => options.config.clone(),
+    };
+    let mut request = Request::load(&config, options.select.clone())?;
     if options.strict_coverage {
         request.force_strict_coverage()?;
     }
-    let request = request;
+    let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
+    if let Some(baseline) = &options.baseline {
+        let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
+        let top = index
+            .as_ref()
+            .map_or(baseline.repository.as_path(), Snapshot::tree);
+        let root = snapshot.locate(top, &request.root)?;
+        // A project the revision lacks, or one without files, had no findings.
+        let mut findings = Vec::new();
+        if root.is_dir() {
+            request.root = root;
+            // Like the Python engine, judge a revision only when it has files to check.
+            if has_check_paths(&request)? {
+                let before = check(&request, &options.ignore, false)?;
+                findings = with_lines(&request.root, before.violations);
+            }
+        }
+        outcome.baseline = Some(findings);
+    }
+    Ok(outcome)
+}
+
+/// Whether the project has a source, test or named YAML file to check.
+fn has_check_paths(request: &Request) -> Result<bool, String> {
+    let files = FileIndex::discover(request)?;
+    Ok(!files.sources.is_empty()
+        || !files.tests.is_empty()
+        || (request.file_naming.checks_yaml() && !files.yaml_paths().is_empty()))
+}
+
+/// Each finding with the text of its line, as the Python engine fingerprints it.
+fn with_lines(root: &Path, violations: Vec<Value>) -> Vec<Value> {
+    let mut texts: HashMap<String, Vec<String>> = HashMap::new();
+    violations
+        .into_iter()
+        .map(|mut violation| {
+            let path = violation["path"].as_str().unwrap_or_default().to_owned();
+            let line = violation["line"].as_u64().unwrap_or(0) as usize;
+            let text = if path.is_empty() || line == 0 {
+                String::new()
+            } else {
+                let lines = texts
+                    .entry(path.clone())
+                    .or_insert_with(|| python_lines(&root.join(&path)));
+                lines.get(line - 1).cloned().unwrap_or_default()
+            };
+            violation["snippet"] = json!(text);
+            violation
+        })
+        .collect()
+}
+
+/// The lines of a text file as Python's `str.splitlines` splits them.
+fn python_lines(path: &Path) -> Vec<String> {
+    let Ok(text) = config::paths::read_text(path) else {
+        return Vec::new();
+    };
+    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+    let mut lines: Vec<String> = text
+        .split([
+            '\n', '\u{b}', '\u{c}', '\u{1c}', '\u{1d}', '\u{1e}', '\u{85}', '\u{2028}', '\u{2029}',
+        ])
+        .map(str::to_owned)
+        .collect();
+    if lines.last().is_some_and(String::is_empty) {
+        lines.pop();
+    }
+    lines
+}
+
+/// Check the project `request` describes, leaving out the `ignore` rules.
+fn check(
+    request: &Request,
+    ignore: &[String],
+    configuration_findings: bool,
+) -> Result<Outcome, String> {
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
-    let files = FileIndex::discover(&request)?;
-    let contracts = Contracts::resolve(&request, &files)?;
-    let settings = Settings::new(&catalog, &request);
-    let ignored = |rule: &&CatalogRule| options.ignore.contains(&rule.code);
+    let files = FileIndex::discover(request)?;
+    let contracts = Contracts::resolve(request, &files)?;
+    let settings = Settings::new(&catalog, request);
+    let ignored = |rule: &&CatalogRule| ignore.contains(&rule.code);
     // The meta rules judge the run after filtering instead of checking sources.
     let (meta_rules, active): (Vec<&CatalogRule>, Vec<&CatalogRule>) = settings
         .active(&request.select)
@@ -218,7 +336,7 @@ fn run(options: Options) -> Result<Outcome, String> {
     let report_test_quality = active
         .iter()
         .any(|rule| TEST_QUALITY_RULES.contains(&rule.code.as_str()));
-    let ignores = Ignores::new(&request, &settings)?;
+    let ignores = Ignores::new(request, &settings)?;
     let names: HashMap<&str, &str> = catalog
         .iter()
         .map(|rule| (rule.name.as_str(), rule.code.as_str()))
@@ -289,7 +407,7 @@ fn run(options: Options) -> Result<Outcome, String> {
         rule.requires
             .iter()
             .any(|index| !SYNTAX_FREE.contains(&index.as_str()))
-    }) || (options.configuration_findings
+    }) || (configuration_findings
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
     let (mut violations, suppressed, coverage) = with_analysis_pool(|| {
@@ -510,21 +628,18 @@ fn run(options: Options) -> Result<Outcome, String> {
         }
         // Configuration findings come after suppressions, which cannot reach YAML.
         let mut configuration = Vec::new();
-        if let Some((rule, severity)) =
-            meta_rule("MET004").filter(|_| options.configuration_findings)
-        {
+        if let Some((rule, severity)) = meta_rule("MET004").filter(|_| configuration_findings) {
             let inputs = PolicyInputs {
                 catalog: &catalog,
                 settings: &settings,
                 contracts: &contracts,
                 files: &files,
-                request: &request,
+                request,
                 configured: &configured,
             };
             configuration.extend(missing_rule_policies(&inputs, rule, severity));
         }
-        if let Some((rule, severity)) =
-            meta_rule("MET005").filter(|_| options.configuration_findings)
+        if let Some((rule, severity)) = meta_rule("MET005").filter(|_| configuration_findings)
             && configured.contains("IMP004")
         {
             let inputs = FacadeInputs {
@@ -549,7 +664,7 @@ fn run(options: Options) -> Result<Outcome, String> {
                 .filter(|violation| !ignores.covers(violation)),
         );
         let coverage = coverage_report::facts(&ReportInputs {
-            request: &request,
+            request,
             files: &files,
             model: &model,
             contracts: &contracts,
@@ -598,6 +713,7 @@ fn run(options: Options) -> Result<Outcome, String> {
         coverage,
         modules: files.sources.len(),
         paths,
+        baseline: None,
     })
 }
 
