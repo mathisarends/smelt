@@ -52,6 +52,15 @@ style:
     enums_auto:
       match: parity.enum_styles.derived
       str_enum_values: auto
+    ordering_custom:
+      match: parity.ordering.custom
+      ordering:
+        module: [docstring, future-imports, imports, type-vars, dunder-assignments, public, private, main-guard]
+        class: [init, class-attributes, dunders, public, private]
+        constants_exempt: true
+    ordering_manual:
+      match: parity.ordering.manual
+      ordering: {fix: "off"}
     docs_required:
       match: parity.doc_policy.required
       module_docstrings: require

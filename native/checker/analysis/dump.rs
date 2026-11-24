@@ -57,6 +57,35 @@ pub fn dump_function_shape(source: &str, function: &StmtFunctionDef, body: &[Stm
     writer.out
 }
 
+/// `ast.dump` of each statement of `body`.
+pub fn dump_body<'s>(source: &'s str, body: &'s [Stmt]) -> Vec<String> {
+    dump_body_with(source, body, None)
+}
+
+/// `ast.dump` of each statement of `body` after the statements of `owner`, a body
+/// somewhere below it, are replaced by `replacement`.
+pub fn dump_body_with<'s>(
+    source: &'s str,
+    body: &'s [Stmt],
+    replace: Option<(&'s [Stmt], Vec<&'s Stmt>)>,
+) -> Vec<String> {
+    let mut writer = Dumper::new(source);
+    writer.replace = replace.map(|(owner, statements)| (owner.as_ptr().addr(), statements));
+    let statements: Vec<&Stmt> = match &writer.replace {
+        Some((owner, statements)) if *owner == body.as_ptr().addr() => statements.clone(),
+        _ => body.iter().collect(),
+    };
+    statements
+        .into_iter()
+        .map(|statement| {
+            writer.out.clear();
+            writer.fresh = false;
+            writer.stmt(statement);
+            writer.out.clone()
+        })
+        .collect()
+}
+
 /// The lowercase SHA-256 of `text`.
 pub fn sha256_hex(text: &str) -> String {
     let digest = Sha256::digest(text.as_bytes());
@@ -74,6 +103,8 @@ struct Dumper<'s> {
     fresh: bool,
     /// A `Name` to print under another identifier.
     rename: Option<(&'s str, &'s str)>,
+    /// The address of one body and the statements to print in its place.
+    replace: Option<(usize, Vec<&'s Stmt>)>,
 }
 
 /// One value of a `JoinedStr` or `TemplateStr`.
@@ -89,6 +120,7 @@ impl<'s> Dumper<'s> {
             out: String::new(),
             fresh: false,
             rename: None,
+            replace: None,
         }
     }
 
@@ -153,7 +185,18 @@ impl<'s> Dumper<'s> {
     }
 
     fn body(&mut self, field: &str, items: &[Stmt]) {
-        self.list(field, items, Self::stmt);
+        match self.replace.take() {
+            Some((owner, statements)) if owner == items.as_ptr().addr() => {
+                self.list(field, &statements, |writer, statement| {
+                    writer.stmt(statement)
+                });
+                self.replace = Some((owner, statements));
+            }
+            replace => {
+                self.replace = replace;
+                self.list(field, items, Self::stmt);
+            }
+        }
     }
 
     fn context(&mut self, context: ExprContext) {

@@ -1,11 +1,12 @@
 //! `ast.unparse` for expressions, because its spelling appears in findings.
+use super::edits::python_lines;
 use super::repr::{
     bytes_repr, float_repr, imaginary_repr, int_repr, is_printable, str_repr, unicode_escape,
 };
 use ruff_python_ast::{
-    BoolOp, CmpOp, Comprehension, ConversionFlag, Expr, InterpolatedElement,
+    Alias, BoolOp, CmpOp, Comprehension, ConversionFlag, Expr, InterpolatedElement,
     InterpolatedStringElement, InterpolatedStringElements, Keyword, Number, Operator, Parameter,
-    Parameters, UnaryOp, str_prefix::StringLiteralPrefix,
+    Parameters, Stmt, TypeParam, TypeParams, UnaryOp, str_prefix::StringLiteralPrefix,
 };
 use ruff_python_ast::{FStringPartRef, FStringValue};
 use ruff_text_size::Ranged;
@@ -55,6 +56,28 @@ pub fn unparse_without_receiver(source: &str, parameters: &Parameters) -> String
     let mut writer = Unparser::new(source);
     writer.parameters_from(parameters, 1);
     writer.out
+}
+
+/// The first line of `ast.unparse(statement)`: a simple statement or a header.
+pub fn unparse_statement_line(source: &str, statement: &Stmt) -> String {
+    let mut writer = Unparser::new(source);
+    writer.statement_line(statement);
+    first_line(&writer.out).to_owned()
+}
+
+/// The spelling of one type parameter, such as `T: int` or `*Ts`.
+pub fn unparse_type_param(source: &str, parameter: &TypeParam) -> String {
+    let mut writer = Unparser::new(source);
+    writer.type_param(parameter);
+    writer.out
+}
+
+/// `text.splitlines()[0]`, or the empty text.
+pub fn first_line(text: &str) -> &str {
+    python_lines(text, false)
+        .first()
+        .copied()
+        .unwrap_or_default()
 }
 
 /// The spelling of `values` joined by `and`, as one `BoolOp`.
@@ -334,6 +357,230 @@ impl<'s> Unparser<'s> {
                 }
             }
             Expr::IpyEscapeCommand(_) => {}
+        }
+    }
+
+    /// What `ast.unparse` writes for `statement` up to its first line break.
+    #[allow(clippy::too_many_lines)]
+    fn statement_line(&mut self, statement: &Stmt) {
+        match statement {
+            Stmt::FunctionDef(item) => {
+                if let Some(decorator) = item.decorator_list.first() {
+                    self.out.push('@');
+                    self.expr(&decorator.expression, TEST);
+                    return;
+                }
+                self.out
+                    .push_str(if item.is_async { "async def " } else { "def " });
+                self.out.push_str(item.name.as_str());
+                self.type_params(item.type_params.as_deref());
+                self.out.push('(');
+                self.parameters(&item.parameters);
+                self.out.push(')');
+                if let Some(returns) = &item.returns {
+                    self.out.push_str(" -> ");
+                    self.expr(returns, TEST);
+                }
+                self.out.push(':');
+            }
+            Stmt::ClassDef(item) => {
+                if let Some(decorator) = item.decorator_list.first() {
+                    self.out.push('@');
+                    self.expr(&decorator.expression, TEST);
+                    return;
+                }
+                self.out.push_str("class ");
+                self.out.push_str(item.name.as_str());
+                self.type_params(item.type_params.as_deref());
+                if let Some(arguments) = item
+                    .arguments
+                    .as_deref()
+                    .filter(|arguments| !arguments.is_empty())
+                {
+                    self.out.push('(');
+                    self.comma_separated(&arguments.args, |writer, base| writer.expr(base, TEST));
+                    if !arguments.args.is_empty() && !arguments.keywords.is_empty() {
+                        self.out.push_str(", ");
+                    }
+                    self.comma_separated(&arguments.keywords, Self::keyword);
+                    self.out.push(')');
+                }
+                self.out.push(':');
+            }
+            Stmt::Return(item) => {
+                self.out.push_str("return");
+                if let Some(value) = &item.value {
+                    self.out.push(' ');
+                    self.expr(value, TEST);
+                }
+            }
+            Stmt::Delete(item) => {
+                self.out.push_str("del ");
+                self.comma_separated(&item.targets, |writer, target| writer.expr(target, TEST));
+            }
+            Stmt::TypeAlias(item) => {
+                self.out.push_str("type ");
+                self.expr(&item.name, TEST);
+                self.type_params(item.type_params.as_deref());
+                self.out.push_str(" = ");
+                self.expr(&item.value, TEST);
+            }
+            Stmt::Assign(item) => {
+                for target in &item.targets {
+                    self.expr(target, TUPLE);
+                    self.out.push_str(" = ");
+                }
+                self.expr(&item.value, TEST);
+            }
+            Stmt::AugAssign(item) => {
+                self.expr(&item.target, TEST);
+                self.out.push(' ');
+                self.out.push_str(binary(item.op).0);
+                self.out.push_str("= ");
+                self.expr(&item.value, TEST);
+            }
+            Stmt::AnnAssign(item) => {
+                let parenthesized = !item.simple && item.target.is_name_expr();
+                self.parens(parenthesized, |writer| writer.expr(&item.target, TEST));
+                self.out.push_str(": ");
+                self.expr(&item.annotation, TEST);
+                if let Some(value) = &item.value {
+                    self.out.push_str(" = ");
+                    self.expr(value, TEST);
+                }
+            }
+            Stmt::For(item) => {
+                self.out
+                    .push_str(if item.is_async { "async for " } else { "for " });
+                self.expr(&item.target, TUPLE);
+                self.out.push_str(" in ");
+                self.expr(&item.iter, TEST);
+                self.out.push(':');
+            }
+            Stmt::While(item) => {
+                self.out.push_str("while ");
+                self.expr(&item.test, TEST);
+                self.out.push(':');
+            }
+            Stmt::If(item) => {
+                self.out.push_str("if ");
+                self.expr(&item.test, TEST);
+                self.out.push(':');
+            }
+            Stmt::With(item) => {
+                self.out.push_str(if item.is_async {
+                    "async with "
+                } else {
+                    "with "
+                });
+                self.comma_separated(&item.items, |writer, entry| {
+                    writer.expr(&entry.context_expr, TEST);
+                    if let Some(variables) = &entry.optional_vars {
+                        writer.out.push_str(" as ");
+                        writer.expr(variables, TEST);
+                    }
+                });
+                self.out.push(':');
+            }
+            Stmt::Match(item) => {
+                self.out.push_str("match ");
+                self.expr(&item.subject, TEST);
+                self.out.push(':');
+            }
+            Stmt::Raise(item) => {
+                self.out.push_str("raise");
+                if let Some(exception) = &item.exc {
+                    self.out.push(' ');
+                    self.expr(exception, TEST);
+                    if let Some(cause) = &item.cause {
+                        self.out.push_str(" from ");
+                        self.expr(cause, TEST);
+                    }
+                }
+            }
+            Stmt::Try(_) => self.out.push_str("try:"),
+            Stmt::Assert(item) => {
+                self.out.push_str("assert ");
+                self.expr(&item.test, TEST);
+                if let Some(message) = &item.msg {
+                    self.out.push_str(", ");
+                    self.expr(message, TEST);
+                }
+            }
+            Stmt::Import(item) => {
+                self.out.push_str("import ");
+                self.comma_separated(&item.names, Self::alias);
+            }
+            Stmt::ImportFrom(item) => {
+                self.out.push_str("from ");
+                for _ in 0..item.level {
+                    self.out.push('.');
+                }
+                if let Some(module) = &item.module {
+                    self.out.push_str(module.as_str());
+                }
+                self.out.push_str(" import ");
+                self.comma_separated(&item.names, Self::alias);
+            }
+            Stmt::Global(item) => {
+                self.out.push_str("global ");
+                let names: Vec<&str> = item.names.iter().map(|name| name.as_str()).collect();
+                self.out.push_str(&names.join(", "));
+            }
+            Stmt::Nonlocal(item) => {
+                self.out.push_str("nonlocal ");
+                let names: Vec<&str> = item.names.iter().map(|name| name.as_str()).collect();
+                self.out.push_str(&names.join(", "));
+            }
+            Stmt::Expr(item) => self.expr(&item.value, YIELD),
+            Stmt::Pass(_) => self.out.push_str("pass"),
+            Stmt::Break(_) => self.out.push_str("break"),
+            Stmt::Continue(_) => self.out.push_str("continue"),
+            Stmt::IpyEscapeCommand(_) => {}
+        }
+    }
+
+    fn alias(&mut self, alias: &Alias) {
+        self.out.push_str(alias.name.as_str());
+        if let Some(name) = &alias.asname {
+            self.out.push_str(" as ");
+            self.out.push_str(name.as_str());
+        }
+    }
+
+    fn type_params(&mut self, parameters: Option<&TypeParams>) {
+        let Some(parameters) = parameters.filter(|parameters| !parameters.is_empty()) else {
+            return;
+        };
+        self.out.push('[');
+        self.comma_separated(parameters, Self::type_param);
+        self.out.push(']');
+    }
+
+    fn type_param(&mut self, parameter: &TypeParam) {
+        let default = match parameter {
+            TypeParam::TypeVar(item) => {
+                self.out.push_str(item.name.as_str());
+                if let Some(bound) = &item.bound {
+                    self.out.push_str(": ");
+                    self.expr(bound, TEST);
+                }
+                item.default.as_deref()
+            }
+            TypeParam::TypeVarTuple(item) => {
+                self.out.push('*');
+                self.out.push_str(item.name.as_str());
+                item.default.as_deref()
+            }
+            TypeParam::ParamSpec(item) => {
+                self.out.push_str("**");
+                self.out.push_str(item.name.as_str());
+                item.default.as_deref()
+            }
+        };
+        if let Some(default) = default {
+            self.out.push_str(" = ");
+            self.expr(default, TEST);
         }
     }
 

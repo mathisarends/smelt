@@ -10,8 +10,11 @@ import tempfile
 import tomllib
 from pathlib import Path
 
+# Installing the source distribution compiles the native core in release mode.
+BUILD_TIMEOUT = 900
 
-def run(command: list[str], root: Path) -> str:
+
+def run(command: list[str], root: Path, *, timeout: int = 240) -> str:
     completed = subprocess.run(  # noqa: S603 - explicit argv, never a shell
         command,
         cwd=root,
@@ -20,7 +23,7 @@ def run(command: list[str], root: Path) -> str:
         encoding="utf-8",
         env={**os.environ, "SMELT_DAEMON": "0"},
         check=False,
-        timeout=240,
+        timeout=timeout,
     )
     if completed.returncode:
         raise RuntimeError(f"{command[0]} failed:\n{completed.stderr}")
@@ -82,6 +85,7 @@ def smoke(directory: Path) -> None:
             run(
                 ["uv", "pip", "install", "--python", str(python), str(distribution)],
                 root,
+                timeout=BUILD_TIMEOUT,
             )
             package = Path(
                 run(

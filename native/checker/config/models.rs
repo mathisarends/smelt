@@ -58,7 +58,7 @@ const LIMIT_RULES: [(&str, [&str; 2]); 5] = [
         ["VIS007", "visibility/excess-private-definitions"],
     ),
 ];
-const MODULE_ORDER: [&str; 8] = [
+pub const MODULE_ORDER: [&str; 8] = [
     "docstring",
     "future-imports",
     "imports",
@@ -68,7 +68,7 @@ const MODULE_ORDER: [&str; 8] = [
     "private",
     "main-guard",
 ];
-const CLASS_ORDER: [&str; 5] = ["class-attributes", "init", "dunders", "public", "private"];
+pub const CLASS_ORDER: [&str; 5] = ["class-attributes", "init", "dunders", "public", "private"];
 const BUILTIN_EXCEPTIONS: [&str; 71] = [
     "ArithmeticError",
     "AssertionError",

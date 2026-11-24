@@ -1,4 +1,5 @@
 //! The project's import graph, with the module resolution the Python engine uses.
+use super::edits::python_lines;
 use super::namespace::resolve_relative;
 use super::walk::{TreeNode, tree_nodes};
 use crate::checker::files::{FileIndex, SourceFile};
@@ -577,46 +578,12 @@ fn describe_import_from(
     }
 }
 
-/// `str.splitlines` without the line ends.
-fn python_lines(text: &str) -> Vec<&str> {
-    let mut lines = Vec::new();
-    let mut start = 0;
-    let mut characters = text.char_indices().peekable();
-    while let Some((index, character)) = characters.next() {
-        if !matches!(
-            character,
-            '\n' | '\r'
-                | '\x0b'
-                | '\x0c'
-                | '\x1c'
-                | '\x1d'
-                | '\x1e'
-                | '\u{85}'
-                | '\u{2028}'
-                | '\u{2029}'
-        ) {
-            continue;
-        }
-        lines.push(&text[start..index]);
-        if character == '\r' && characters.peek().is_some_and(|(_, next)| *next == '\n') {
-            characters.next();
-            start = index + 2;
-        } else {
-            start = index + character.len_utf8();
-        }
-    }
-    if start < text.len() {
-        lines.push(&text[start..]);
-    }
-    lines
-}
-
 fn test_details(
     test: &SourceFile,
     parsed: &ParsedSource,
     known: &HashSet<&str>,
 ) -> Vec<ImportDetail> {
-    let lines = python_lines(&parsed.text.text);
+    let lines = python_lines(&parsed.text.text, false);
     let guarded = type_checking_lines(parsed);
     let is_package = test.module.ends_with(".__init__");
     let mut details = Vec::new();
