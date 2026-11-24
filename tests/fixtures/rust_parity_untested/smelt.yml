@@ -1,0 +1,18 @@
+# Modules with behaviour need a test at their mirrored path or a topic test.
+version: 2
+
+project:
+  root_packages: [shop]
+  test_roots: [tests]
+
+architecture:
+  layers:
+    domain:
+      path: domain
+
+tests:
+  layout: mirror
+  mirror_suffixes: true
+
+rules:
+  tests/missing-mirror-test: warning
