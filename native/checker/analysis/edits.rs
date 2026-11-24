@@ -41,6 +41,72 @@ pub fn fix(applicability: &str, description: &str, edits: Vec<Value>) -> Value {
     })
 }
 
+/// `str.splitlines`, with the line ends when `keep_ends` is set.
+pub fn python_lines(text: &str, keep_ends: bool) -> Vec<&str> {
+    let mut lines = Vec::new();
+    let mut start = 0;
+    let mut characters = text.char_indices().peekable();
+    while let Some((index, character)) = characters.next() {
+        if !matches!(
+            character,
+            '\n' | '\r'
+                | '\x0b'
+                | '\x0c'
+                | '\x1c'
+                | '\x1d'
+                | '\x1e'
+                | '\u{85}'
+                | '\u{2028}'
+                | '\u{2029}'
+        ) {
+            continue;
+        }
+        let mut end = index + character.len_utf8();
+        if character == '\r' && characters.peek().is_some_and(|(_, next)| *next == '\n') {
+            characters.next();
+            end += 1;
+        }
+        lines.push(&text[start..if keep_ends { end } else { index }]);
+        start = end;
+    }
+    if start < text.len() {
+        lines.push(&text[start..]);
+    }
+    lines
+}
+
+/// The edit turning `text` into `after`, widened to whole lines, as
+/// `TextEdit.between(..., whole_lines=True)` computes it.
+pub fn whole_line_edit(text: &SourceText, after: &str) -> Value {
+    let before = text.text.as_bytes();
+    let changed = after.as_bytes();
+    let limit = before.len().min(changed.len());
+    let prefix = before
+        .iter()
+        .zip(changed)
+        .take_while(|(left, right)| left == right)
+        .count();
+    let mut suffix = before
+        .iter()
+        .rev()
+        .zip(changed.iter().rev())
+        .take(limit - prefix)
+        .take_while(|(left, right)| left == right)
+        .count();
+    let start = text.text[..prefix].rfind('\n').map_or(0, |index| index + 1);
+    let stop = before.len() - suffix;
+    if stop > 0 && before[stop - 1] != b'\n' {
+        suffix = text.text[stop..]
+            .find('\n')
+            .map_or(0, |index| before.len() - (stop + index) - 1);
+    }
+    text.edit(
+        start,
+        before.len() - suffix,
+        &after[start..changed.len() - suffix],
+    )
+}
+
 /// `str.isspace` for one character, which also covers U+001C to U+001F.
 pub fn is_python_space(character: char) -> bool {
     character.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&character)

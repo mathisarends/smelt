@@ -13,6 +13,7 @@ pub mod mirror;
 pub mod module_access;
 pub mod namespace;
 pub mod nodes;
+pub mod ordering;
 mod printable;
 pub mod private_attributes;
 pub mod python_target;
