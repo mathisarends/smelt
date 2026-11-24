@@ -17,6 +17,9 @@ pub struct CatalogRule {
     pub default_severity: String,
     pub enabled_by_default: bool,
     pub scope: String,
+    /// The analysis indexes the rule reads, such as `syntax` or `imports`.
+    #[serde(default)]
+    pub requires: Vec<String>,
 }
 
 struct Setting<'a> {
@@ -63,6 +66,8 @@ pub struct Settings<'a> {
     packages: HashMap<&'a str, Entries<'a>>,
     /// Workspace members with their own rules, the most specific path first.
     members: Vec<(&'a str, Entries<'a>)>,
+    /// Strict coverage runs its guard whatever the selection.
+    strict_coverage: bool,
 }
 
 impl<'a> Settings<'a> {
@@ -116,6 +121,7 @@ impl<'a> Settings<'a> {
             layers,
             packages,
             members,
+            strict_coverage: request.strict_coverage,
         }
     }
 
@@ -172,6 +178,9 @@ impl<'a> Settings<'a> {
     }
 
     fn is_active(&self, rule: &'a CatalogRule, select: &[String]) -> bool {
+        if self.strict_coverage && rule.code == STRICT_COVERAGE {
+            return true;
+        }
         let selected = select.iter().any(|prefix| {
             let wanted = prefix.trim().to_uppercase();
             wanted == ALL_RULES || rule.code.starts_with(&wanted)

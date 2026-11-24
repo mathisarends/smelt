@@ -26,6 +26,18 @@ pub struct ModuleInfo {
     pub central: bool,
 }
 
+impl ModuleKind {
+    /// The `ModuleKind` value reports use.
+    pub fn value(self) -> &'static str {
+        match self {
+            Self::Feature => "feature",
+            Self::Shared => "shared",
+            Self::CompositionRoot => "composition_root",
+            Self::Unclassified => "unclassified",
+        }
+    }
+}
+
 impl ModuleInfo {
     pub fn in_grid(&self) -> bool {
         self.kind == ModuleKind::Feature

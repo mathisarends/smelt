@@ -14,7 +14,7 @@ pub mod yaml;
 use architecture::Architecture;
 use schema::string_list;
 use serde::Deserialize;
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -204,6 +204,19 @@ fn member_architectures(policy: &Value) -> Result<BTreeMap<String, Architecture>
         .collect()
 }
 
+impl Request {
+    /// Enable architecture/uncovered-source for one run, as `--strict-coverage` does.
+    pub fn force_strict_coverage(&mut self) -> Result<(), String> {
+        if !self.strict_coverage {
+            self.rule_layers.push(rule_map(
+                &json!({"architecture/uncovered-source": "error"}),
+            )?);
+            self.strict_coverage = true;
+        }
+        Ok(())
+    }
+}
+
 fn rule_map(rules: &Value) -> Result<RuleMap, String> {
     if rules.is_null() {
         return Ok(RuleMap::new());
@@ -233,6 +246,13 @@ pub struct Exclusion {
 pub struct FileNaming {
     pub yaml_extension: Option<String>,
     pub compose_basename: Option<String>,
+}
+
+impl FileNaming {
+    /// Whether the policy names YAML files, which makes them part of a check.
+    pub fn checks_yaml(&self) -> bool {
+        self.yaml_extension.is_some() || self.compose_basename.is_some()
+    }
 }
 
 /// The `tests` section and the project-wide patch limit.

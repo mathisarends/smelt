@@ -155,6 +155,8 @@ pub struct FileOrder<'a> {
     config: OrderingConfig,
     pub sections: Vec<Section<'a>>,
     issues: Vec<Issue<'a>>,
+    /// The execution barriers that split sections, for the coverage report.
+    barriers: Vec<Value>,
 }
 
 /// Analyze the definition order of one module.
@@ -180,6 +182,7 @@ pub fn analyze<'a>(
         config,
         sections: Vec::new(),
         issues: Vec::new(),
+        barriers: Vec::new(),
     };
     let aliases: Aliases<'a> = UNION_BUILTINS
         .iter()
@@ -198,6 +201,17 @@ pub fn analyze<'a>(
 }
 
 impl<'a> FileOrder<'a> {
+    /// What the coverage report says about this file, as `FileOrder.summary`.
+    pub fn summary(&self, path: &str) -> Value {
+        json!({
+            "path": path,
+            "contract": self.contract,
+            "deferred_annotations": self.deferred,
+            "sections": self.sections.len(),
+            "barriers": self.barriers,
+        })
+    }
+
     /// The findings in the order the analysis met them.
     pub fn findings(&self, parsed: &ParsedSource, path: &str) -> Vec<OrderFinding> {
         self.issues
@@ -288,8 +302,10 @@ impl<'a> FileOrder<'a> {
         }
         let mut group = Vec::new();
         for block in blocks {
-            if block.barrier.is_some() {
+            if let Some(reason) = block.barrier {
                 self.section(owner, scope, std::mem::take(&mut group), fix_blocker);
+                self.barriers
+                    .push(json!({"scope": scope, "line": block.line, "reason": reason}));
             } else {
                 group.push(block);
             }

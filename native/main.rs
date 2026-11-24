@@ -333,6 +333,9 @@ fn run() -> io::Result<i32> {
     if arguments == [OsString::from("--internal-git")] {
         return git::serve();
     }
+    if arguments == [OsString::from("--internal-check")] {
+        return Ok(checker::serve_check());
+    }
     if let [flag, config, select] = arguments.as_slice()
         && flag == "--internal-core"
     {

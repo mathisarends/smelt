@@ -1,8 +1,9 @@
-//! The Rust analysis core. It stays behind `--internal-core` until its reports
-//! match the Python engine, which `scripts/compare_rust_core.py` verifies.
+//! The Rust analysis core. `--internal-check` serves the check engine;
+//! `scripts/compare_rust_core.py` compares its findings with the Python engine's.
 mod analysis;
 mod config;
 mod contracts;
+mod coverage_report;
 mod facade_coverage;
 mod files;
 mod import_report;
@@ -22,6 +23,7 @@ use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
 use config::Request;
 use contracts::Contracts;
+use coverage_report::ReportInputs;
 use facade_coverage::{FacadeInputs, uncovered_facades, uncovered_imports};
 use files::{FileIndex, SourceFile};
 use meta::{META_RULES, SuppressionAudit};
@@ -31,13 +33,14 @@ use rule_policy::{PolicyInputs, missing_rule_policies};
 use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
 use rules::structure::{self, STRUCTURE_RULES, StructureContext, TEST_READING_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
-use serde_json::json;
+use serde::Deserialize;
+use serde_json::{Value, json};
 use settings::{CatalogRule, Settings};
 use source::ParsedSource;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
-use std::io::{self, Write};
-use std::path::Path;
+use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use suppressions::Suppression;
 use violation::Violation;
@@ -52,12 +55,99 @@ const STRICT_COVERAGE: &str = "ARC013";
 const ARCHITECTURE_SCOPED: [&str; 8] = [
     "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC011", "ARC012",
 ];
+/// Rules whose findings add test-quality coverage to the report.
+const TEST_QUALITY_RULES: [&str; 9] = [
+    "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008", "TST009", "TST010",
+];
+/// The rule whose per-file summaries the report's ordering coverage lists.
+const DEFINITION_ORDER: &str = "LAY004";
+/// The analysis indexes built without parsing a source.
+const SYNTAX_FREE: [&str; 3] = ["files", "model", "workspace"];
+
+/// One check run, as the Python engine requests it.
+#[derive(Deserialize)]
+pub struct Options {
+    config: PathBuf,
+    /// Rule codes the run is narrowed to; empty runs the configured rules.
+    #[serde(default)]
+    select: Vec<String>,
+    /// Rule codes the run leaves out.
+    #[serde(default)]
+    ignore: Vec<String>,
+    /// Enable architecture/uncovered-source for this run.
+    #[serde(default)]
+    strict_coverage: bool,
+    /// Judge the configuration itself (MET004, MET005); a scoped run does not.
+    #[serde(default)]
+    configuration_findings: bool,
+}
+
+/// The findings of one run and what the report says about its coverage.
+struct Outcome {
+    violations: Vec<Value>,
+    suppressed: usize,
+    coverage: Value,
+    modules: usize,
+    paths: Vec<String>,
+}
 
 /// Check the project of `config` with the comma-separated rules and print JSON.
 pub fn serve(config: &Path, select: &str) -> i32 {
-    let select = select.split(',').map(str::to_owned).collect();
-    match run(config, select).and_then(|output| write_output(&output)) {
+    let options = Options {
+        config: config.to_path_buf(),
+        select: select.split(',').map(str::to_owned).collect(),
+        ignore: Vec::new(),
+        strict_coverage: false,
+        configuration_findings: true,
+    };
+    let unported: Vec<&str> = options
+        .select
+        .iter()
+        .map(String::as_str)
+        .filter(|code| !rules::PORTED.contains(code))
+        .collect();
+    let result = if unported.is_empty() {
+        run(options)
+    } else {
+        Err(format!("rules not ported: {}", unported.join(", ")))
+    };
+    let output = result.map(|outcome| {
+        json!({"violations": outcome.violations, "suppressed": outcome.suppressed}).to_string()
+    });
+    match output.and_then(|output| write_output(&output)) {
         Ok(()) => 0,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// Run the check that stdin requests as JSON `Options` and print its outcome.
+///
+/// An error prints `{"error": message}` and exits 2, so the engine can raise it.
+pub fn serve_check() -> i32 {
+    let mut input = String::new();
+    let outcome = io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| error.to_string())
+        .and_then(|_| serde_json::from_str::<Options>(&input).map_err(|error| error.to_string()))
+        .and_then(run);
+    let (output, code) = match outcome {
+        Ok(outcome) => (
+            json!({
+                "violations": outcome.violations,
+                "suppressed": outcome.suppressed,
+                "coverage": outcome.coverage,
+                "modules": outcome.modules,
+                "paths": outcome.paths,
+            }),
+            0,
+        ),
+        Err(message) => (json!({"error": message}), 2),
+    };
+    match write_output(&output.to_string()) {
+        Ok(()) => code,
         Err(message) => {
             eprintln!("smelt core: {message}");
             2
@@ -99,27 +189,35 @@ fn write_output(output: &str) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
-    let request = Request::load(config, select)?;
+fn run(options: Options) -> Result<Outcome, String> {
+    let mut request = Request::load(&options.config, options.select)?;
+    if options.strict_coverage {
+        request.force_strict_coverage()?;
+    }
+    let request = request;
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
-    let unported: Vec<&str> = request
-        .select
-        .iter()
-        .map(String::as_str)
-        .filter(|code| !rules::PORTED.contains(code))
-        .collect();
-    if request.select.is_empty() || !unported.is_empty() {
-        return Err(format!("rules not ported: {}", unported.join(", ")));
-    }
     let files = FileIndex::discover(&request)?;
     let contracts = Contracts::resolve(&request, &files)?;
     let settings = Settings::new(&catalog, &request);
+    let ignored = |rule: &&CatalogRule| options.ignore.contains(&rule.code);
     // The meta rules judge the run after filtering instead of checking sources.
     let (meta_rules, active): (Vec<&CatalogRule>, Vec<&CatalogRule>) = settings
         .active(&request.select)
         .into_iter()
+        .filter(|rule| !ignored(rule))
         .partition(|rule| META_RULES.contains(&rule.code.as_str()));
+    // The rules a full run with this configuration executes, as MET004 and MET005 judge it.
+    let configured: HashSet<&str> = settings
+        .active(&[])
+        .into_iter()
+        .filter(|rule| !ignored(rule))
+        .map(|rule| rule.code.as_str())
+        .collect();
+    let report_ordering = active.iter().any(|rule| rule.code == DEFINITION_ORDER);
+    let report_test_quality = active
+        .iter()
+        .any(|rule| TEST_QUALITY_RULES.contains(&rule.code.as_str()));
     let ignores = Ignores::new(&request, &settings)?;
     let names: HashMap<&str, &str> = catalog
         .iter()
@@ -186,8 +284,16 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         known: &known,
         forbidden_mocks: &forbidden_mocks,
     };
-    let (mut violations, suppressed) = with_analysis_pool(|| {
-        let parsed = parse_all(&sources)?;
+    // A source that does not parse stops the check only when a rule reads syntax.
+    let needs_syntax = active.iter().any(|rule| {
+        rule.requires
+            .iter()
+            .any(|index| !SYNTAX_FREE.contains(&index.as_str()))
+    }) || (options.configuration_findings
+        && meta_rule("MET005").is_some()
+        && configured.contains("IMP004"));
+    let (mut violations, suppressed, coverage) = with_analysis_pool(|| {
+        let parsed = parse_sources(&sources, needs_syntax)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
         let imports_tests = import_rules
@@ -209,6 +315,34 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
+        let roots = &request.project.root_packages;
+        let model = if request.workspace_packages.is_empty() {
+            ArchitectureModel::build(&request.architecture, roots, &files, Scope::Project)
+        } else {
+            let root_packages = request
+                .workspace_packages
+                .get("")
+                .map_or(&[][..], Vec::as_slice);
+            // Python's order: the root part first, then the members by path.
+            let parts: Vec<ArchitectureModel<'_>> = request
+                .workspace_packages
+                .iter()
+                .filter_map(|(scope, packages)| {
+                    let architecture = if scope.is_empty() {
+                        Some(&request.architecture)
+                    } else {
+                        request.member_architectures.get(scope)
+                    }?;
+                    Some(ArchitectureModel::build(
+                        architecture,
+                        roots,
+                        &files,
+                        Scope::Part(packages),
+                    ))
+                })
+                .collect();
+            ArchitectureModel::combine(&request.architecture, roots, &files, root_packages, parts)
+        };
         if !import_rules.is_empty() || !structure_rules.is_empty() {
             let imported_tests: &[(&SourceFile, &ParsedSource)] =
                 if imports_tests { &all_test_pairs } else { &[] };
@@ -270,11 +404,8 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                 }
                 Ok(found)
             };
-            let roots = &request.project.root_packages;
             let mut found = Vec::new();
             if request.workspace_packages.is_empty() {
-                let model =
-                    ArchitectureModel::build(&request.architecture, roots, &files, Scope::Project);
                 found.extend(graph(&import_rules, &structure_rules, &model)?);
             } else {
                 // Every architecture of a uv workspace judges only its own files.
@@ -284,36 +415,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     import_rules.iter().copied().partition(scoped);
                 let (scoped_structure, shared_structure): (Vec<&CatalogRule>, Vec<&CatalogRule>) =
                     structure_rules.iter().copied().partition(scoped);
-                let root_packages = request
-                    .workspace_packages
-                    .get("")
-                    .map_or(&[][..], Vec::as_slice);
-                // Python's order: the root part first, then the members by path.
-                let parts: Vec<ArchitectureModel<'_>> = request
-                    .workspace_packages
-                    .iter()
-                    .filter_map(|(scope, packages)| {
-                        let architecture = if scope.is_empty() {
-                            Some(&request.architecture)
-                        } else {
-                            request.member_architectures.get(scope)
-                        }?;
-                        Some(ArchitectureModel::build(
-                            architecture,
-                            roots,
-                            &files,
-                            Scope::Part(packages),
-                        ))
-                    })
-                    .collect();
-                let combined = ArchitectureModel::combine(
-                    &request.architecture,
-                    roots,
-                    &files,
-                    root_packages,
-                    parts,
-                );
-                found.extend(graph(&shared_imports, &shared_structure, &combined)?);
+                found.extend(graph(&shared_imports, &shared_structure, &model)?);
                 if !scoped_imports.is_empty() || !scoped_structure.is_empty() {
                     let members: Vec<&str> = request
                         .workspace_packages
@@ -334,7 +436,7 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                             .max_by_key(|member| member.len())
                             .unwrap_or("")
                     };
-                    for (scope, part) in request.workspace_packages.keys().zip(combined.parts()) {
+                    for (scope, part) in request.workspace_packages.keys().zip(model.parts()) {
                         found.extend(
                             graph(&scoped_imports, &scoped_structure, part)?
                                 .into_iter()
@@ -345,14 +447,18 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             }
             outcomes.push(found);
         }
-        if !test_rules.is_empty() {
-            // Test-quality exclusions only exempt tests from the test rules.
-            let test_pairs: Vec<(&SourceFile, &ParsedSource)> = all_test_pairs
-                .iter()
-                .copied()
-                .filter(|(test, _)| !quality_exclude.iter().any(|item| item.matches(&test.path)))
-                .collect();
-            let modules = test_syntax::analyze(&source_pairs, &test_pairs);
+        // Test-quality exclusions only exempt tests from the test rules.
+        let test_pairs: Vec<(&SourceFile, &ParsedSource)> = all_test_pairs
+            .iter()
+            .copied()
+            .filter(|(test, _)| !quality_exclude.iter().any(|item| item.matches(&test.path)))
+            .collect();
+        let test_modules = if test_rules.is_empty() {
+            None
+        } else {
+            Some(test_syntax::analyze(&source_pairs, &test_pairs))
+        };
+        if let Some(modules) = &test_modules {
             outcomes.par_extend(
                 modules
                     .par_iter()
@@ -403,20 +509,23 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             suppressed += hidden;
         }
         // Configuration findings come after suppressions, which cannot reach YAML.
-        let mut configured = Vec::new();
-        if let Some((rule, severity)) = meta_rule("MET004") {
+        let mut configuration = Vec::new();
+        if let Some((rule, severity)) =
+            meta_rule("MET004").filter(|_| options.configuration_findings)
+        {
             let inputs = PolicyInputs {
                 catalog: &catalog,
                 settings: &settings,
                 contracts: &contracts,
                 files: &files,
                 request: &request,
-                configured: &audit.enabled,
+                configured: &configured,
             };
-            configured.extend(missing_rule_policies(&inputs, rule, severity));
+            configuration.extend(missing_rule_policies(&inputs, rule, severity));
         }
-        if let Some((rule, severity)) = meta_rule("MET005")
-            && audit.enabled.contains("IMP004")
+        if let Some((rule, severity)) =
+            meta_rule("MET005").filter(|_| options.configuration_findings)
+            && configured.contains("IMP004")
         {
             let inputs = FacadeInputs {
                 catalog: &catalog,
@@ -432,14 +541,24 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                 .into_iter()
                 .filter(|evidence| !ignores.covers(evidence))
                 .collect();
-            configured.extend(uncovered_facades(&inputs, &evidence, rule, severity));
+            configuration.extend(uncovered_facades(&inputs, &evidence, rule, severity));
         }
         violations.extend(
-            configured
+            configuration
                 .into_iter()
                 .filter(|violation| !ignores.covers(violation)),
         );
-        Ok::<_, String>((violations, suppressed))
+        let coverage = coverage_report::facts(&ReportInputs {
+            request: &request,
+            files: &files,
+            model: &model,
+            contracts: &contracts,
+            targets: &targets,
+            sources: &source_pairs,
+            ordering: report_ordering,
+            test_modules: test_modules.as_deref().filter(|_| report_test_quality),
+        })?;
+        Ok::<_, String>((violations, suppressed, coverage))
     })??;
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.
@@ -464,7 +583,22 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
             data
         })
         .collect();
-    Ok(json!({"violations": report, "suppressed": suppressed}).to_string())
+    let mut paths: Vec<String> = files
+        .sources
+        .values()
+        .map(|source| source.path.clone())
+        .chain(files.tests.keys().cloned())
+        .collect();
+    if request.file_naming.checks_yaml() {
+        paths.extend(files.yaml_paths());
+    }
+    Ok(Outcome {
+        violations: report,
+        suppressed,
+        coverage,
+        modules: files.sources.len(),
+        paths,
+    })
 }
 
 /// Run `work` on a pool whose workers have all exited by the time it returns.
@@ -598,6 +732,18 @@ fn unparsed_suppressions(file: &SourceFile) -> Option<ParsedSource> {
 }
 
 impl Analysis<'_> {}
+
+/// Parse every source; one that does not parse is an error when `strict`.
+fn parse_sources(files: &[&SourceFile], strict: bool) -> Result<Vec<ParsedSource>, String> {
+    let parsed: Vec<ParsedSource> = files
+        .par_iter()
+        .map(|file| ParsedSource::read_tolerant(file))
+        .collect::<Result<_, _>>()?;
+    if strict && let Some(error) = parsed.iter().find_map(|item| item.syntax_error.clone()) {
+        return Err(error);
+    }
+    Ok(parsed)
+}
 
 fn parse_all(files: &[&SourceFile]) -> Result<Vec<ParsedSource>, String> {
     files

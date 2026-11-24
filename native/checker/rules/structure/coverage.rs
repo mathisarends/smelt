@@ -13,6 +13,7 @@ pub fn check(context: &StructureContext<'_>) -> Result<Vec<StructureFinding>, St
         &CoverageInputs {
             project: context.project,
             sources: context.sources,
+            strict: true,
         },
     )?;
     let mut found: Vec<StructureFinding> = coverage
