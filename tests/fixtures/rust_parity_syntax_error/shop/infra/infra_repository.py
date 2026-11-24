@@ -1,0 +1,2 @@
+class InfraRepository:
+    """Stores orders."""
