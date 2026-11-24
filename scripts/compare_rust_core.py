@@ -46,6 +46,7 @@ PORTED = (
     "ARC014",
     "CPX002",
     "CPX003",
+    "CPX004",
     "CPX005",
     "CPX006",
     "CPX007",
@@ -61,6 +62,7 @@ PORTED = (
     "IDM007",
     "IDM008",
     "IMP002",
+    "IMP003",
     "LAY001",
     "LAY002",
     "LAY003",
@@ -70,6 +72,7 @@ PORTED = (
     "LAY009",
     "LAY010",
     "LAY011",
+    "MOD001",
     "MOD002",
     "MOD003",
     "MOD004",
@@ -95,6 +98,7 @@ PORTED = (
     "TYP002",
     "TYP003",
     "TYP004",
+    "TYP005",
     "TYP006",
     "TYP007",
     "TYP008",
@@ -116,6 +120,8 @@ LIMITS = (None, 0, 1, 2, 3)
 ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_architecture",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_layers",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_import_style",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_enum_shadow",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

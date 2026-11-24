@@ -9,8 +9,8 @@ use ruff_python_ast::{
     Alias, BoolOp, CmpOp, Comprehension, ConversionFlag, ElifElseClause, ExceptHandler, Expr,
     ExprContext, ExprFString, ExprTString, FStringPartRef, InterpolatedElement,
     InterpolatedStringElement, InterpolatedStringElements, Keyword, MatchCase, Number, Operator,
-    Parameter, Parameters, Pattern, Singleton, Stmt, StringLiteral, TypeParam, TypeParams, UnaryOp,
-    WithItem,
+    Parameter, Parameters, Pattern, Singleton, Stmt, StmtFunctionDef, StringLiteral, TypeParam,
+    TypeParams, UnaryOp, WithItem,
 };
 use ruff_text_size::Ranged;
 use sha2::{Digest, Sha256};
@@ -47,6 +47,13 @@ pub fn dump_stmt(source: &str, statement: &Stmt) -> String {
 pub fn dump_elif(source: &str, test: &Expr, body: &[Stmt], rest: &[ElifElseClause]) -> String {
     let mut writer = Dumper::new(source);
     writer.if_chain(test, body, rest);
+    writer.out
+}
+
+/// `ast.dump` of `function` with an empty name and `body` in place of its own.
+pub fn dump_function_shape(source: &str, function: &StmtFunctionDef, body: &[Stmt]) -> String {
+    let mut writer = Dumper::new(source);
+    writer.function(function, "", body);
     writer.out
 }
 
@@ -545,24 +552,26 @@ impl<'s> Dumper<'s> {
         self.close();
     }
 
+    fn function(&mut self, item: &StmtFunctionDef, name: &str, body: &[Stmt]) {
+        self.open(if item.is_async {
+            "AsyncFunctionDef"
+        } else {
+            "FunctionDef"
+        });
+        self.text("name", name);
+        self.name("args");
+        self.parameters(&item.parameters);
+        self.body("body", body);
+        self.decorators(&item.decorator_list);
+        self.optional("returns", item.returns.as_deref());
+        self.type_params(item.type_params.as_deref());
+        self.close();
+    }
+
     #[allow(clippy::too_many_lines)]
     fn stmt(&mut self, node: &Stmt) {
         match node {
-            Stmt::FunctionDef(item) => {
-                self.open(if item.is_async {
-                    "AsyncFunctionDef"
-                } else {
-                    "FunctionDef"
-                });
-                self.text("name", item.name.as_str());
-                self.name("args");
-                self.parameters(&item.parameters);
-                self.body("body", &item.body);
-                self.decorators(&item.decorator_list);
-                self.optional("returns", item.returns.as_deref());
-                self.type_params(item.type_params.as_deref());
-                self.close();
-            }
+            Stmt::FunctionDef(item) => self.function(item, item.name.as_str(), &item.body),
             Stmt::ClassDef(item) => {
                 let (bases, keywords): (&[Expr], &[Keyword]) = match &item.arguments {
                     Some(arguments) => (&arguments.args, &arguments.keywords),

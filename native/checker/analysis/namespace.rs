@@ -91,7 +91,7 @@ pub fn resolve_dotted(
 
 /// The module defining `module.name` and its name there; `None` as the name when it
 /// is a module itself.
-fn resolve_export(
+pub fn resolve_export(
     module: &str,
     name: &str,
     namespaces: &HashMap<&str, Namespace>,

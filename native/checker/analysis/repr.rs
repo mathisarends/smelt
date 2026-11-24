@@ -20,6 +20,31 @@ pub fn is_printable(character: char) -> bool {
         .is_err()
 }
 
+/// `json.dumps(str)` with its default `ensure_ascii=True`.
+pub fn json_string(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for character in text.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            ' '..='~' => out.push(character),
+            _ => {
+                for unit in character.encode_utf16(&mut [0; 2]) {
+                    write!(out, "\\u{unit:04x}").expect("writing to a string cannot fail");
+                }
+            }
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// `repr(str)`.
 pub fn str_repr(text: &str) -> String {
     let quote = if text.contains('\'') && !text.contains('"') {

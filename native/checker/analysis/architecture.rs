@@ -89,6 +89,10 @@ impl<'a> ArchitectureModel<'a> {
         self.packages.contains(module)
     }
 
+    pub fn is_first_party(&self, module: &str) -> bool {
+        self.roots.iter().any(|root| is_within(module, root))
+    }
+
     /// The root packages holding at least one module with an architecture role.
     pub fn classified_roots(&self) -> HashSet<&str> {
         self.modules

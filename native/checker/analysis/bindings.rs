@@ -55,6 +55,11 @@ impl<'a> BindingCounts<'a> {
     pub fn get(&self, name: &str) -> usize {
         self.counts.get(name).copied().unwrap_or(0)
     }
+
+    /// Every name bound at least once.
+    pub fn names(&self) -> impl Iterator<Item = &'a str> + '_ {
+        self.counts.keys().copied()
+    }
 }
 
 struct Counter<'a> {
