@@ -1,0 +1,24 @@
+# Each architecture of a uv workspace judges only the files of its own packages.
+version: 2
+
+project:
+  workspace: uv
+  source_roots: [src]
+
+architecture:
+  features: {root: app.features}
+  shared: [app.shared]
+  composition_root: [app.main]
+  layers:
+    domain:
+      path: domain
+      third_party: deny
+    application:
+      path: application
+      may_depend_on: [domain]
+  packages:
+    slices:
+      match: app.features.*
+      required: [domain, application]
+  import_graph:
+    cycles: [features, layers, siblings, modules]
