@@ -235,108 +235,110 @@ class ContractIndex:
     def describe(self, module: str | None = None) -> list[dict[str, Any]]:
         """Contracts containing a target, or below a package/project target."""
         return [
-            {
-                "name": contract.name,
-                "package": contract.package,
-                "match": contract.spec.match,
-                "rules": contract.spec.model_dump(mode="json", include={"rules"})[
-                    "rules"
-                ],
-                "required": [
-                    contract.qualify(entry) for entry in contract.spec.required
-                ],
-                "missing": self.missing(contract),
-                "public": list(contract.public)
-                if contract.public is not None
-                else None,
-                "missing_public": self.missing_public(contract),
-                **(
-                    {"test_access": contract.spec.test_access}
-                    if contract.spec.test_access != "public"
-                    else {}
-                ),
-                **(
-                    {
-                        "type_dispatch": contract.spec.type_dispatch.model_dump(
-                            mode="json"
-                        )
-                    }
-                    if contract.spec.type_dispatch
-                    else {}
-                ),
-                **(
-                    {"errors": contract.spec.errors.model_dump(mode="json")}
-                    if contract.spec.errors
-                    else {}
-                ),
-                **(
-                    {"navigation": contract.spec.navigation.model_dump(mode="json")}
-                    if contract.spec.navigation
-                    else {}
-                ),
-                **(
-                    {
-                        "ordering": contract.spec.ordering.model_dump(
-                            mode="json", by_alias=True
-                        )
-                    }
-                    if contract.spec.ordering
-                    else {}
-                ),
-                "target_public": contract.exposes(module)
-                if module
-                and is_within(module, contract.package)
-                and contract.public is not None
-                else None,
-                **(
-                    {"imports": contract.spec.imports.model_dump(mode="json")}
-                    if contract.spec.imports
-                    else {}
-                ),
-                **(
-                    {"min_imports_to_bundle": contract.spec.min_imports_to_bundle}
-                    if contract.spec.min_imports_to_bundle is not None
-                    else {}
-                ),
-                **(
-                    {
-                        "min_importers_to_export": contract.spec.min_importers_to_export,
-                        "count_tests": contract.spec.count_tests,
-                    }
-                    if contract.spec.min_importers_to_export is not None
-                    else {}
-                ),
-                **(
-                    {
-                        key: getattr(contract.spec, key)
-                        for key in (
-                            "module_docstrings",
-                            "future_annotations",
-                            "reexports",
-                            "private_modules",
-                            "public_attribute_boundary",
-                            "private_attribute_boundary",
-                            "max_positional_parameters",
-                            "max_module_imports",
-                            "module_import_exemptions",
-                            "max_comprehension_loops",
-                            "max_constructor_decisions",
-                            "max_private_definitions",
-                            "call_argument_kinds",
-                            "str_enum_values",
-                            "dataclass_options",
-                            "bases",
-                            "third_party_reexports",
-                        )
-                        if getattr(contract.spec, key) is not None
-                    }
-                ),
-            }
+            describe_contract(
+                contract,
+                missing=self.missing(contract),
+                missing_public=self.missing_public(contract),
+                module=module,
+            )
             for contract in self.resolved
             if module is None
             or is_within(module, contract.package)
             or is_within(contract.package, module)
         ]
+
+
+def describe_contract(
+    contract: ResolvedContract,
+    *,
+    missing: list[str],
+    missing_public: list[str],
+    module: str | None = None,
+) -> dict[str, Any]:
+    """A resolved contract's policy and the required and public modules it lacks."""
+    return {
+        "name": contract.name,
+        "package": contract.package,
+        "match": contract.spec.match,
+        "rules": contract.spec.model_dump(mode="json", include={"rules"})["rules"],
+        "required": [contract.qualify(entry) for entry in contract.spec.required],
+        "missing": missing,
+        "public": list(contract.public) if contract.public is not None else None,
+        "missing_public": missing_public,
+        **(
+            {"test_access": contract.spec.test_access}
+            if contract.spec.test_access != "public"
+            else {}
+        ),
+        **(
+            {"type_dispatch": contract.spec.type_dispatch.model_dump(mode="json")}
+            if contract.spec.type_dispatch
+            else {}
+        ),
+        **(
+            {"errors": contract.spec.errors.model_dump(mode="json")}
+            if contract.spec.errors
+            else {}
+        ),
+        **(
+            {"navigation": contract.spec.navigation.model_dump(mode="json")}
+            if contract.spec.navigation
+            else {}
+        ),
+        **(
+            {"ordering": contract.spec.ordering.model_dump(mode="json", by_alias=True)}
+            if contract.spec.ordering
+            else {}
+        ),
+        "target_public": contract.exposes(module)
+        if module
+        and is_within(module, contract.package)
+        and contract.public is not None
+        else None,
+        **(
+            {"imports": contract.spec.imports.model_dump(mode="json")}
+            if contract.spec.imports
+            else {}
+        ),
+        **(
+            {"min_imports_to_bundle": contract.spec.min_imports_to_bundle}
+            if contract.spec.min_imports_to_bundle is not None
+            else {}
+        ),
+        **(
+            {
+                "min_importers_to_export": contract.spec.min_importers_to_export,
+                "count_tests": contract.spec.count_tests,
+            }
+            if contract.spec.min_importers_to_export is not None
+            else {}
+        ),
+        **(
+            {
+                key: getattr(contract.spec, key)
+                for key in (
+                    "module_docstrings",
+                    "future_annotations",
+                    "reexports",
+                    "private_modules",
+                    "public_attribute_boundary",
+                    "private_attribute_boundary",
+                    "max_positional_parameters",
+                    "max_module_imports",
+                    "module_import_exemptions",
+                    "max_comprehension_loops",
+                    "max_constructor_decisions",
+                    "max_private_definitions",
+                    "call_argument_kinds",
+                    "str_enum_values",
+                    "dataclass_options",
+                    "bases",
+                    "third_party_reexports",
+                )
+                if getattr(contract.spec, key) is not None
+            }
+        ),
+    }
 
 
 def _project_policy(structure: StructureConfig) -> ResolvedContract:

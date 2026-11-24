@@ -19,24 +19,48 @@ if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
 
 
-def effective_coverage(
+def analysis_facts(
     ctx: AnalysisContext,
     *,
-    include_inventory: bool = False,
     include_ordering: bool = False,
     include_test_quality: bool = False,
 ) -> dict[str, Any]:
-    config = ctx.config
+    """What the analysis found about coverage; the native core reports the same."""
+    inventory = ctx.coverage
+    facts: dict[str, Any] = {
+        **inventory.summary(),
+        "inventory": [entry.to_json() for entry in inventory.entries],
+        "modules": _classification(ctx),
+        "contracts": ctx.contracts.describe(),
+        "python_targets": ctx.python_targets.describe(),
+        "omitted_workspace_members": _omitted_members(ctx),
+    }
+    if include_ordering and ctx.ordering.files:
+        facts["ordering"] = ctx.ordering.summary()
+    if include_test_quality and ctx.test_syntax.modules:
+        facts["test_quality"] = {
+            "files": len(ctx.test_syntax.modules),
+            "collected_tests": ctx.test_syntax.collected_tests(),
+        }
+    return facts
+
+
+def effective_coverage(
+    config: SmeltConfig,
+    facts: dict[str, Any],
+    *,
+    include_inventory: bool = False,
+) -> dict[str, Any]:
+    """The report's coverage: the analysis facts under the policy that produced them."""
     project = config.project
     architecture = config.architecture
-    inventory = ctx.coverage
     report = {
         "mode": "strict" if config.strict_coverage else "configured",
         "architecture_configured": bool(
             architecture.has_layout
             or any(member.governs_architecture for member in config.members.values())
         ),
-        **inventory.summary(),
+        **{key: facts[key] for key in _SUMMARY},
         "policy_hash": policy_hash(config),
         "rules": config.model_dump(mode="json")["rules"],
         "root_packages": list(project.root_packages),
@@ -47,7 +71,7 @@ def effective_coverage(
             entry if isinstance(entry, str) else entry.model_dump(mode="json")
             for entry in project.exclude
         ],
-        "omitted_workspace_members": _omitted_members(ctx),
+        "omitted_workspace_members": facts["omitted_workspace_members"],
         "member_architectures": {
             path: list(member.packages)
             for path, member in config.members.items()
@@ -57,7 +81,7 @@ def effective_coverage(
             pattern: policy.model_dump(mode="json")
             for pattern, policy in architecture.members.items()
         },
-        "modules": _classification(ctx),
+        "modules": facts["modules"],
         "exempt": {
             "composition_root": list(architecture.composition_root),
             "wiring": list(architecture.wiring),
@@ -71,8 +95,8 @@ def effective_coverage(
             "default": architecture.cross_feature.default,
             "allow": architecture.cross_feature.entries(),
         },
-        "contracts": ctx.contracts.describe(),
-        "python_targets": ctx.python_targets.describe(),
+        "contracts": facts["contracts"],
+        "python_targets": facts["python_targets"],
         "tests": {
             **config.tests.model_dump(mode="json"),
             "layout": config.tests.layout,
@@ -81,16 +105,15 @@ def effective_coverage(
         },
     }
     if include_inventory:
-        report["inventory"] = [entry.to_json() for entry in inventory.entries]
+        report["inventory"] = facts["inventory"]
     if project.workspace == "uv":
         report["scope"] = "workspace"
-    if include_ordering and ctx.ordering.files:
-        report["ordering"] = ctx.ordering.summary()
-    if include_test_quality and ctx.test_syntax.modules:
+    if "ordering" in facts:
+        report["ordering"] = facts["ordering"]
+    if "test_quality" in facts:
         report["test_quality"] = {
             "mode": "syntactic",
-            "files": len(ctx.test_syntax.modules),
-            "collected_tests": ctx.test_syntax.collected_tests(),
+            **facts["test_quality"],
             "fixture_traversal": False,
             "fixture_return_annotations": True,
             "fixture_return_inference": "consistent known constructor/alias or fixed tuple; no execution",
@@ -142,6 +165,16 @@ def policy_hash(config: SmeltConfig) -> str:
         ]
     payload = json.dumps(policy, sort_keys=True)
     return "sha256:" + hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+# The inventory summary, as `CoverageIndex.summary` reports it.
+_SUMMARY = (
+    "complete",
+    "counts",
+    "scan_roots",
+    "unexplained_exclusions",
+    "discovery_errors",
+)
 
 
 def _classification(ctx: AnalysisContext) -> dict[str, int]:
