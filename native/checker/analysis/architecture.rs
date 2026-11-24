@@ -37,8 +37,8 @@ impl ModuleInfo {
 pub enum Scope<'a> {
     /// The project has one architecture.
     Project,
-    /// The root architecture as the whole workspace sees it: it classifies only
-    /// these top-level packages, and members without their own are unclassified.
+    /// The whole workspace: the root architecture over these top-level packages,
+    /// and every other module as the part that owns it classifies it.
     Combined(&'a [String]),
     /// One architecture judging its own top-level packages.
     Part(&'a [String]),
@@ -53,6 +53,8 @@ pub struct ArchitectureModel<'a> {
     modules: HashMap<&'a str, ModuleInfo>,
     features: BTreeMap<String, String>,
     classifier: Classifier<'a>,
+    /// The scoped architectures of a combined model, the root first.
+    parts: Vec<ArchitectureModel<'a>>,
 }
 
 impl<'a> ArchitectureModel<'a> {
@@ -92,15 +94,84 @@ impl<'a> ArchitectureModel<'a> {
             modules,
             features,
             classifier,
+            parts: Vec::new(),
         }
+    }
+
+    /// One view over the scoped architectures of a workspace; the first part is the root.
+    pub fn combine(
+        config: &'a Architecture,
+        roots: &'a [String],
+        files: &'a FileIndex,
+        root_packages: &'a [String],
+        parts: Vec<Self>,
+    ) -> Self {
+        let mut combined = Self::build(config, roots, files, Scope::Combined(root_packages));
+        combined.modules.clear();
+        combined.features.clear();
+        for part in &parts {
+            combined.modules.extend(
+                part.modules
+                    .iter()
+                    .filter(|(name, _)| part.owns(name))
+                    .map(|(name, info)| (*name, info.clone())),
+            );
+            for (feature, package) in &part.features {
+                combined
+                    .features
+                    .entry(feature.clone())
+                    .or_insert_with(|| package.clone());
+            }
+        }
+        combined.parts = parts;
+        combined
+    }
+
+    /// The scoped architectures of a combined model, the root first.
+    pub fn parts(&self) -> &[Self] {
+        &self.parts
+    }
+
+    fn owns(&self, module: &str) -> bool {
+        match self.scope {
+            Scope::Part(packages) => {
+                let top = module.split('.').next().unwrap_or_default();
+                packages.iter().any(|package| package == top)
+            }
+            Scope::Project | Scope::Combined(_) => true,
+        }
+    }
+
+    /// The scoped architecture of `module`; the model itself if not combined.
+    pub fn part_for(&self, module: &str) -> &Self {
+        self.parts
+            .iter()
+            .find(|part| part.owns(module))
+            .unwrap_or(self)
     }
 
     pub fn info(&self, module: &str) -> Option<Cow<'_, ModuleInfo>> {
         if let Some(info) = self.modules.get(module) {
             return Some(Cow::Borrowed(info));
         }
-        self.is_first_party(module)
-            .then(|| Cow::Owned(self.classifier.classify(module)))
+        if !self.is_first_party(module) {
+            return None;
+        }
+        if !self.parts.is_empty() {
+            let part = self.part_for(module);
+            if !std::ptr::eq(part, self) {
+                return part.info(module);
+            }
+            return Some(Cow::Owned(ModuleInfo {
+                name: module.to_owned(),
+                kind: ModuleKind::Unclassified,
+                feature: None,
+                layer: None,
+                wiring: false,
+                central: false,
+            }));
+        }
+        Some(Cow::Owned(self.classifier.classify(module)))
     }
 
     pub fn has_features(&self) -> bool {
@@ -130,10 +201,9 @@ impl<'a> ArchitectureModel<'a> {
 
     /// A short path for hints, relative to the feature container or root package.
     pub fn display_path(&self, module: &str, package: bool) -> String {
-        // A member module is shown under its member's architecture, which has no features.
-        let member = matches!(self.scope, Scope::Combined(packages)
-            if !packages.iter().any(|package| Some(package.as_str()) == module.split('.').next()));
-        let spec = self.config.features.as_ref().filter(|_| !member);
+        // A workspace module is shown under the architecture that owns it.
+        let part = self.part_for(module);
+        let spec = part.config.features.as_ref();
         let container = spec.and_then(|spec| {
             spec.root.clone().or_else(|| {
                 let pattern = spec.pattern.as_deref()?;
@@ -151,7 +221,7 @@ impl<'a> ArchitectureModel<'a> {
         let shown = match (inside, spec) {
             (Some(rest), _) => rest,
             (None, None) => match module.split_once('.') {
-                Some((root, rest)) if self.roots.iter().any(|item| item == root) => rest,
+                Some((root, rest)) if part.roots.iter().any(|item| item == root) => rest,
                 _ => module,
             },
             (None, Some(_)) => module,
@@ -211,19 +281,13 @@ impl<'a> ArchitectureModel<'a> {
                 .collect();
             return parts.join(".");
         }
+        let config = self.part_for(module).config;
         let entries: Vec<&str> = match info.kind {
-            ModuleKind::Shared => self.config.shared.iter().map(String::as_str).collect(),
-            ModuleKind::CompositionRoot => self
-                .config
-                .composition_root
-                .iter()
-                .map(String::as_str)
-                .collect(),
-            _ if info.central => self
-                .config
-                .module_bindings()
-                .map(|(prefix, _)| prefix)
-                .collect(),
+            ModuleKind::Shared => config.shared.iter().map(String::as_str).collect(),
+            ModuleKind::CompositionRoot => {
+                config.composition_root.iter().map(String::as_str).collect()
+            }
+            _ if info.central => config.module_bindings().map(|(prefix, _)| prefix).collect(),
             _ => Vec::new(),
         };
         let mut longest: Option<&str> = None;

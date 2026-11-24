@@ -45,6 +45,8 @@ use violation::Violation;
 const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
 const ANALYSIS_STACK_BYTES: usize = 256 * 1024 * 1024;
 /// The strict-coverage guard, which ignores and suppressions cannot hide.
+/// Meta findings about the configuration rather than a file's findings.
+const CONFIGURATION_FINDINGS: [&str; 2] = ["MET004", "MET005"];
 const STRICT_COVERAGE: &str = "ARC013";
 /// The rules each architecture of a uv workspace runs for its own files.
 const ARCHITECTURE_SCOPED: [&str; 8] = [
@@ -99,9 +101,6 @@ fn write_output(output: &str) -> Result<(), String> {
 
 fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
     let request = Request::load(config, select)?;
-    if !request.members.is_empty() {
-        return Err("workspace members are not supported yet".to_owned());
-    }
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
     let unported: Vec<&str> = request
@@ -227,8 +226,8 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                          structure_rules: &[&CatalogRule],
                          model: &ArchitectureModel<'_>|
              -> Result<Vec<Violation>, String> {
-                let severity = |rule, module: &str| {
-                    settings.severity(rule, &contracts, module, analysis.selected)
+                let severity = |rule, module: &str, path: &str| {
+                    settings.severity(rule, &contracts, module, path, analysis.selected)
                 };
                 let mut found = Vec::new();
                 if let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty()) {
@@ -263,7 +262,6 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                         project: &request.project,
                         test_policy: &request.tests,
                         strict_coverage: request.strict_coverage,
-                        workspace_packages: &request.workspace_packages,
                         quality_exclude: &quality_exclude,
                         member_usage: OnceLock::new(),
                         test_modules: OnceLock::new(),
@@ -290,11 +288,30 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                     .workspace_packages
                     .get("")
                     .map_or(&[][..], Vec::as_slice);
-                let combined = ArchitectureModel::build(
+                // Python's order: the root part first, then the members by path.
+                let parts: Vec<ArchitectureModel<'_>> = request
+                    .workspace_packages
+                    .iter()
+                    .filter_map(|(scope, packages)| {
+                        let architecture = if scope.is_empty() {
+                            Some(&request.architecture)
+                        } else {
+                            request.member_architectures.get(scope)
+                        }?;
+                        Some(ArchitectureModel::build(
+                            architecture,
+                            roots,
+                            &files,
+                            Scope::Part(packages),
+                        ))
+                    })
+                    .collect();
+                let combined = ArchitectureModel::combine(
                     &request.architecture,
                     roots,
                     &files,
-                    Scope::Combined(root_packages),
+                    root_packages,
+                    parts,
                 );
                 found.extend(graph(&shared_imports, &shared_structure, &combined)?);
                 if !scoped_imports.is_empty() || !scoped_structure.is_empty() {
@@ -317,20 +334,9 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
                             .max_by_key(|member| member.len())
                             .unwrap_or("")
                     };
-                    for (scope, packages) in &request.workspace_packages {
-                        let architecture = if scope.is_empty() {
-                            &request.architecture
-                        } else {
-                            &request.member_architecture
-                        };
-                        let part = ArchitectureModel::build(
-                            architecture,
-                            roots,
-                            &files,
-                            Scope::Part(packages),
-                        );
+                    for (scope, part) in request.workspace_packages.keys().zip(combined.parts()) {
                         found.extend(
-                            graph(&scoped_imports, &scoped_structure, &part)?
+                            graph(&scoped_imports, &scoped_structure, part)?
                                 .into_iter()
                                 .filter(|violation| owner(&violation.path) == scope),
                         );
@@ -446,7 +452,10 @@ fn run(config: &Path, select: Vec<String>) -> Result<String, String> {
         .iter()
         .map(|violation| {
             let mut data = violation.to_json();
-            if let Some(members) = members.as_ref().filter(|_| !violation.path.is_empty()) {
+            // Configuration findings are judged after members are assigned, so they have none.
+            let owned = !violation.path.is_empty()
+                && !CONFIGURATION_FINDINGS.contains(&violation.code.as_str());
+            if let Some(members) = members.as_ref().filter(|_| owned) {
                 data["member"] = json!(analysis::workspace::member_for_path(
                     members,
                     &violation.path
@@ -503,6 +512,7 @@ impl Analysis<'_> {
                     rule,
                     self.project.contracts,
                     &source.module,
+                    &source.path,
                     self.selected,
                 );
                 if let Some(severity) = severity {
@@ -523,9 +533,13 @@ impl Analysis<'_> {
         let mut found = Vec::new();
         for rule in test_rules {
             // A test belongs to no package, so package settings do not reach it.
-            let severity = self
-                .settings
-                .severity(rule, self.project.contracts, "", self.selected);
+            let severity = self.settings.severity(
+                rule,
+                self.project.contracts,
+                "",
+                module.path,
+                self.selected,
+            );
             let Some(severity) = severity else {
                 continue;
             };

@@ -159,6 +159,7 @@ ARCHITECTURE_FIXTURES = (
     REPOSITORY / "tests" / "fixtures" / "rust_parity_untested",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_suppressions",
     REPOSITORY / "tests" / "fixtures" / "rust_parity_policy_meta",
+    REPOSITORY / "tests" / "fixtures" / "rust_parity_member_configs",
 )
 # Every way the import graph options change what the dependency rules see.
 GRAPH_POLICIES = tuple(

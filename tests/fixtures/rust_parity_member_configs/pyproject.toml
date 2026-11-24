@@ -1,0 +1,7 @@
+[project]
+name = "root"
+version = "0"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["libs/*"]

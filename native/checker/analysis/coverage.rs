@@ -59,8 +59,6 @@ pub struct Coverage {
 /// What the inventory reads beyond the discovered files.
 pub struct CoverageInputs<'a> {
     pub project: &'a Project,
-    /// The top-level packages of the workspace root (`""`) and of each member.
-    pub workspace_packages: &'a BTreeMap<String, Vec<String>>,
     pub sources: &'a [(&'a SourceFile, &'a ParsedSource)],
 }
 
@@ -99,12 +97,11 @@ impl Coverage {
             roots.insert(real(&located));
             test_roots.extend(["tests", "test"].map(|name| real(&directory.join(name))));
         }
-        let layered = Layered::new(model, inputs.workspace_packages);
         let mut inventory: BTreeMap<String, CoverageEntry> = inputs
             .sources
             .iter()
             .map(|(source, parsed)| {
-                let entry = classify(source, parsed, files, model, &layered);
+                let entry = classify(source, parsed, files, model);
                 (source.path.clone(), entry)
             })
             .collect();
@@ -198,40 +195,6 @@ fn real(path: &Path) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// Whether the architecture owning a module declares layers: in a workspace the
-/// root owns its packages first, then each member its own.
-struct Layered<'a> {
-    root_layers: bool,
-    root_packages: HashSet<&'a str>,
-    member_packages: HashSet<&'a str>,
-}
-
-impl<'a> Layered<'a> {
-    fn new(model: &ArchitectureModel<'_>, workspace: &'a BTreeMap<String, Vec<String>>) -> Self {
-        let packages = |root: bool| -> HashSet<&'a str> {
-            workspace
-                .iter()
-                .filter(|(path, _)| path.is_empty() == root)
-                .flat_map(|(_, packages)| packages.iter().map(String::as_str))
-                .collect()
-        };
-        Self {
-            root_layers: !model.config.layers.is_empty(),
-            root_packages: packages(true),
-            member_packages: packages(false),
-        }
-    }
-
-    fn declared(&self, module: &str) -> bool {
-        let top = module.split('.').next().unwrap_or_default();
-        if self.root_packages.contains(top) || !self.member_packages.contains(top) {
-            return self.root_layers;
-        }
-        // Members without their own configuration declare no layers.
-        false
-    }
-}
-
 fn is_governed(info: &ModuleInfo, layers_declared: bool) -> bool {
     info.layer.is_some()
         || (info.feature.is_some() && !layers_declared)
@@ -244,12 +207,13 @@ fn classify(
     parsed: &ParsedSource,
     files: &FileIndex,
     model: &ArchitectureModel<'_>,
-    layered: &Layered<'_>,
 ) -> CoverageEntry {
     let info = model.info(&source.module);
+    // In a workspace the architecture owning the module decides whether it declares layers.
+    let layers_declared = !model.part_for(&source.module).config.layers.is_empty();
     let status = if info
         .as_deref()
-        .is_some_and(|info| is_governed(info, layered.declared(&source.module)))
+        .is_some_and(|info| is_governed(info, layers_declared))
     {
         Status::Governed
     } else if source.is_package && is_facade(parsed.module()) {

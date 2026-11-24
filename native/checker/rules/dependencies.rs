@@ -180,7 +180,7 @@ struct ImportFinding {
 pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &GraphContext<'_>,
-    severity: impl Fn(&'r CatalogRule, &str) -> Option<&'r str>,
+    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
 ) -> Result<Vec<Violation>, String> {
     let boundary = boundary_imports(context);
     let mut found = Vec::new();
@@ -202,7 +202,7 @@ pub fn findings<'r>(
         };
         for mut violation in raised {
             let module = violation.source_module.as_deref().unwrap_or_default();
-            if let Some(level) = severity(rule, module) {
+            if let Some(level) = severity(rule, module, &violation.path) {
                 level.clone_into(&mut violation.severity);
                 found.push(violation);
             }

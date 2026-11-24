@@ -12,7 +12,6 @@ pub fn check(context: &StructureContext<'_>) -> Result<Vec<StructureFinding>, St
         context.model,
         &CoverageInputs {
             project: context.project,
-            workspace_packages: context.workspace_packages,
             sources: context.sources,
         },
     )?;

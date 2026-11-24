@@ -61,6 +61,8 @@ pub struct Settings<'a> {
     catalog: &'a [CatalogRule],
     layers: Vec<Entries<'a>>,
     packages: HashMap<&'a str, Entries<'a>>,
+    /// Workspace members with their own rules, the most specific path first.
+    members: Vec<(&'a str, Entries<'a>)>,
 }
 
 impl<'a> Settings<'a> {
@@ -97,11 +99,67 @@ impl<'a> Settings<'a> {
                 )
             })
             .collect();
+        let mut members: Vec<(&str, Entries)> = request
+            .member_rules
+            .iter()
+            .map(|(path, rules)| {
+                let location = format!("members.{path}.rules");
+                (
+                    path.as_str(),
+                    entries(catalog, rules, &guard, &location, None),
+                )
+            })
+            .collect();
+        members.sort_by_key(|(path, _)| std::cmp::Reverse(path.len()));
         Self {
             catalog,
             layers,
             packages,
+            members,
         }
+    }
+
+    /// The innermost workspace member with a config that contains `path`.
+    fn member_for(&self, path: &str) -> Option<&Entries<'a>> {
+        self.members
+            .iter()
+            .find(|(member, _)| {
+                path == *member
+                    || path
+                        .strip_prefix(member)
+                        .is_some_and(|rest| rest.starts_with('/'))
+            })
+            .map(|(_, entries)| entries)
+    }
+
+    /// The root layers, the member owning `path`, then the contracts around `module`.
+    fn target_settings(
+        &self,
+        code: &str,
+        contracts: &Contracts<'_>,
+        module: &str,
+        path: &str,
+    ) -> Vec<&Setting<'a>> {
+        let mut settings: Vec<&Setting<'a>> = self
+            .layers
+            .iter()
+            .filter_map(|layer| layer.get(code))
+            .collect();
+        settings.extend(self.member_for(path).and_then(|entries| entries.get(code)));
+        if !module.is_empty() {
+            let mut candidates: Vec<_> = contracts
+                .resolved
+                .iter()
+                .filter(|contract| is_within(module, contract.package))
+                .collect();
+            candidates.sort_by_key(|contract| contract.package.len());
+            settings.extend(candidates.into_iter().filter_map(|contract| {
+                self.packages
+                    .get(contract.name)
+                    .and_then(|entries| entries.get(code))
+            }));
+        }
+        settings
     }
 
     /// The ported rules this selection runs.
@@ -119,11 +177,15 @@ impl<'a> Settings<'a> {
             wanted == ALL_RULES || rule.code.starts_with(&wanted)
         });
         let setting = self.global_value(rule);
-        let package_enabled = self.packages.values().any(|settings| {
-            settings
-                .get(rule.code.as_str())
-                .is_some_and(Setting::enables)
-        });
+        let package_enabled = self
+            .packages
+            .values()
+            .chain(self.members.iter().map(|(_, entries)| entries))
+            .any(|settings| {
+                settings
+                    .get(rule.code.as_str())
+                    .is_some_and(Setting::enables)
+            });
         if setting == Some("off") && !package_enabled {
             return false;
         }
@@ -155,6 +217,7 @@ impl<'a> Settings<'a> {
         self.layers
             .iter()
             .chain(self.packages.values())
+            .chain(self.members.iter().map(|(_, entries)| entries))
             .any(|entries| entries.get(code).is_some_and(Setting::enables))
     }
 
@@ -165,24 +228,13 @@ impl<'a> Settings<'a> {
         code: &str,
         contracts: &Contracts<'_>,
         module: &str,
+        path: &str,
     ) -> Option<(&str, Option<&'a str>)> {
-        let mut settings: Vec<&Setting<'a>> = self
-            .layers
-            .iter()
-            .filter_map(|layer| layer.get(code))
-            .collect();
-        let mut candidates: Vec<_> = contracts
-            .resolved
-            .iter()
-            .filter(|contract| is_within(module, contract.package))
-            .collect();
-        candidates.sort_by_key(|contract| contract.package.len());
-        settings.extend(candidates.into_iter().filter_map(|contract| {
-            self.packages
-                .get(contract.name)
-                .and_then(|entries| entries.get(code))
-        }));
-        for setting in settings.into_iter().rev() {
+        for setting in self
+            .target_settings(code, contracts, module, path)
+            .into_iter()
+            .rev()
+        {
             if setting.value == "off" {
                 return None;
             }
@@ -193,36 +245,20 @@ impl<'a> Settings<'a> {
         None
     }
 
-    /// The severity of a finding in `module`; `None` when the rule is off there.
+    /// The severity of a finding at `path` in `module`; `None` when the rule is off there.
     pub fn severity(
         &self,
         rule: &'a CatalogRule,
         contracts: &Contracts<'_>,
         module: &str,
+        path: &str,
         selected: bool,
     ) -> Option<&'a str> {
         let mut value = rule
             .enabled_by_default
             .then_some(rule.default_severity.as_str());
-        for layer in &self.layers {
-            if let Some(setting) = layer.get(rule.code.as_str()) {
-                value = setting.apply(value);
-            }
-        }
-        let mut candidates: Vec<_> = contracts
-            .resolved
-            .iter()
-            .filter(|contract| is_within(module, contract.package))
-            .collect();
-        candidates.sort_by_key(|contract| contract.package.len());
-        for contract in candidates {
-            if let Some(setting) = self
-                .packages
-                .get(contract.name)
-                .and_then(|entries| entries.get(rule.code.as_str()))
-            {
-                value = setting.apply(value);
-            }
+        for setting in self.target_settings(&rule.code, contracts, module, path) {
+            value = setting.apply(value);
         }
         if value.is_none() && selected {
             value = Some(rule.default_severity.as_str());
