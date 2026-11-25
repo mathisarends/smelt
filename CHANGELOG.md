@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `tests/nondeterministic-data` (TST011) also reviews wall-clock reads in
+  tests: `datetime.now`, `datetime.utcnow`, `datetime.today`, `date.today`,
+  `time.time` and `time.time_ns`. Reads inside `freezegun.freeze_time` or
+  `time_machine.travel` contexts and decorators, under
+  `pytest.mark.freeze_time` and in tests using the `freezer` fixture are not
+  reported. `time.monotonic` and `time.perf_counter` stay out of scope.
+
 ## [0.17.0] - 2026-11-25
 
 See [upgrading from 0.16.1](docs/upgrading.md#0161-to-0170) for hook pins, the

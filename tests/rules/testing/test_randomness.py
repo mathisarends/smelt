@@ -106,3 +106,98 @@ def test_opt_in_off_and_reasoned_suppression(tmp_path: Path) -> None:
         },
     )
     assert violations(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("imports", "call", "qualified"),
+    [
+        ("from datetime import datetime", "datetime.now()", "datetime.datetime.now"),
+        ("from datetime import datetime", "datetime.now(UTC)", "datetime.datetime.now"),
+        (
+            "from datetime import datetime",
+            "datetime.utcnow()",
+            "datetime.datetime.utcnow",
+        ),
+        (
+            "from datetime import datetime",
+            "datetime.today()",
+            "datetime.datetime.today",
+        ),
+        ("from datetime import date", "date.today()", "datetime.date.today"),
+        ("import datetime", "datetime.datetime.now()", "datetime.datetime.now"),
+        ("import datetime as dt", "dt.date.today()", "datetime.date.today"),
+        (
+            "from datetime import datetime as clock",
+            "clock.now()",
+            "datetime.datetime.now",
+        ),
+        ("import time", "time.time()", "time.time"),
+        ("from time import time_ns", "time_ns()", "time.time_ns"),
+    ],
+)
+def test_wall_clock_reads_are_reviewed(
+    tmp_path: Path, imports: str, call: str, qualified: str
+) -> None:
+    source = f"{imports}\n\ndef test_expired():\n    value = {call}\n    assert value\n"
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_lease.py": source},
+    )
+    [finding] = violations(tmp_path, OPTIONS)
+    assert (finding.code, finding.line) == ("TST011", 4)
+    assert finding.expected is not None
+    assert finding.expected["generators"] == [qualified]
+    assert "wall-clock" in finding.message
+
+
+def test_clock_and_random_reads_on_one_line_are_one_finding(tmp_path: Path) -> None:
+    source = "from datetime import datetime\nfrom uuid import uuid4\n\ndef test_create():\n    lease = create(uuid4(), datetime.now())\n    assert lease\n"
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_lease.py": source},
+    )
+    [finding] = violations(tmp_path, OPTIONS)
+    assert finding.line == 5
+    assert finding.expected is not None
+    assert finding.expected["generators"] == ["datetime.datetime.now", "uuid.uuid4"]
+
+
+def test_clock_reads_in_fixtures_and_helpers_are_reviewed(tmp_path: Path) -> None:
+    source = "import time\nimport pytest\n\n@pytest.fixture\ndef started():\n    return time.time()\n\ndef make_lease():\n    return Lease(time.time())\n\ndef test_lease(started):\n    assert make_lease()\n"
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_lease.py": source},
+    )
+    assert [v.line for v in violations(tmp_path, OPTIONS)] == [6, 9]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from datetime import datetime\nfrom freezegun import freeze_time\n\ndef test_expired():\n    with freeze_time('2026-01-01'):\n        assert datetime.now()\n",
+        "from datetime import datetime\nimport freezegun\n\n@freezegun.freeze_time('2026-01-01')\ndef test_expired():\n    assert datetime.now()\n",
+        "from datetime import datetime\nfrom freezegun import freeze_time\n\n@freeze_time('2026-01-01')\nclass TestLease:\n    def test_expired(self):\n        assert datetime.now()\n",
+        "import time\nimport time_machine\n\nasync def test_expired():\n    async with time_machine.travel(0):\n        assert time.time()\n",
+        "from datetime import datetime\nimport pytest\n\n@pytest.mark.freeze_time('2026-01-01')\ndef test_expired():\n    assert datetime.now()\n",
+        "from datetime import datetime\n\ndef test_expired(freezer):\n    assert datetime.now()\n",
+        "import time\n\ndef test_deadline():\n    deadline = time.monotonic() + 5\n    assert time.perf_counter() < deadline\n",
+        "from datetime import UTC, datetime\n\ndef test_expired():\n    assert datetime(2026, 1, 1, tzinfo=UTC)\n",
+    ],
+)
+def test_frozen_clocks_deadlines_and_fixed_instants_are_preserved(
+    tmp_path: Path, source: str
+) -> None:
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_lease.py": source},
+    )
+    assert violations(tmp_path, OPTIONS) == []
+
+
+def test_clock_read_after_a_freeze_context_is_reviewed(tmp_path: Path) -> None:
+    source = "from datetime import datetime\nfrom freezegun import freeze_time\n\ndef test_expired():\n    with freeze_time('2026-01-01'):\n        frozen = datetime.now()\n    assert datetime.now() > frozen\n"
+    write_project(
+        tmp_path,
+        {"smelt.yml": CONFIG, "app/__init__.py": "", "tests/test_lease.py": source},
+    )
+    assert [v.line for v in violations(tmp_path, OPTIONS)] == [7]
