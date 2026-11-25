@@ -39,6 +39,7 @@ mod secret_settings;
 mod stateful_dataclasses;
 pub mod structure;
 pub mod testing;
+mod tool_suppressions;
 mod tuples;
 mod type_dispatch;
 
@@ -51,19 +52,22 @@ use super::violation::Violation;
 use ruff_text_size::TextSize;
 use serde_json::Value;
 
-pub const PORTED: [&str; 93] = [
+pub const PORTED: [&str; 94] = [
     "ARC001", "ARC002", "ARC003", "ARC004", "ARC005", "ARC006", "ARC007", "ARC008", "ARC009",
     "ARC010", "ARC011", "ARC012", "ARC013", "ARC014", "CPX001", "CPX002", "CPX003", "CPX004",
     "CPX005", "CPX006", "CPX007", "CPX008", "FWK001", "FWK002", "IDM001", "IDM002", "IDM003",
     "IDM004", "IDM005", "IDM006", "IDM007", "IDM008", "IMP001", "IMP002", "IMP003", "IMP004",
     "LAY001", "LAY002", "LAY003", "LAY004", "LAY005", "LAY006", "LAY007", "LAY008", "LAY009",
-    "LAY010", "LAY011", "MET001", "MET002", "MET004", "MET005", "MOD001", "MOD002", "MOD003",
-    "MOD004", "MOD005", "MOD006", "MOD007", "MOD008", "MOD009", "MOD010", "MOD011", "MOD012",
-    "TST001", "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008", "TST009",
-    "TST010", "TST011", "TST012", "TYP001", "TYP002", "TYP003", "TYP004", "TYP005", "TYP006",
-    "TYP007", "TYP008", "VIS001", "VIS002", "VIS003", "VIS004", "VIS005", "VIS006", "VIS007",
-    "VIS008", "VIS009", "VIS010",
+    "LAY010", "LAY011", "MET001", "MET002", "MET004", "MET005", "MET006", "MOD001", "MOD002",
+    "MOD003", "MOD004", "MOD005", "MOD006", "MOD007", "MOD008", "MOD009", "MOD010", "MOD011",
+    "MOD012", "TST001", "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008",
+    "TST009", "TST010", "TST011", "TST012", "TYP001", "TYP002", "TYP003", "TYP004", "TYP005",
+    "TYP006", "TYP007", "TYP008", "VIS001", "VIS002", "VIS003", "VIS004", "VIS005", "VIS006",
+    "VIS007", "VIS008", "VIS009", "VIS010",
 ];
+
+/// Source rules that also read test modules, because their finding is not about test quality.
+pub const TEST_SOURCE_RULES: [&str; 1] = ["MET006"];
 
 /// The project-wide facts rules read besides their source.
 #[derive(Clone, Copy)]
@@ -164,6 +168,7 @@ pub fn check(
         "LAY008" => constants::check(&input),
         "LAY010" => exports::check_reexports(&input),
         "LAY011" => headers::check_logger(&input),
+        "MET006" => tool_suppressions::check(&input),
         "MOD003" => discriminators::check(&input),
         "MOD004" => enum_styles::check(&input),
         "MOD005" => stateful_dataclasses::check(&input),

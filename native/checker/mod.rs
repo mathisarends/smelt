@@ -34,6 +34,7 @@ use meta::{META_RULES, SuppressionAudit};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
 use rule_policy::{PolicyInputs, missing_rule_policies};
+use rules::TEST_SOURCE_RULES;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
 use rules::structure::{self, STRUCTURE_RULES, StructureContext, TEST_READING_RULES};
 use rules::testing::{self, TEST_RULES, TestProject};
@@ -575,7 +576,13 @@ fn check(
         let imports_tests = import_rules
             .iter()
             .any(|rule| TEST_IMPORT_RULES.contains(&rule.code.as_str()));
+        let test_source_rules: Vec<&CatalogRule> = file_rules
+            .iter()
+            .copied()
+            .filter(|rule| TEST_SOURCE_RULES.contains(&rule.code.as_str()))
+            .collect();
         let reads_tests = !test_rules.is_empty()
+            || !test_source_rules.is_empty()
             || imports_tests
             || structure_rules
                 .iter()
@@ -591,6 +598,13 @@ fn check(
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
+        if !test_source_rules.is_empty() {
+            outcomes.par_extend(
+                all_test_pairs
+                    .par_iter()
+                    .map(|(test, parsed)| analysis.test_source(&test_source_rules, test, parsed)),
+            );
+        }
         let shared_coverage = OnceLock::new();
         let roots = &request.project.root_packages;
         let model = if request.workspace_packages.is_empty() {
@@ -946,6 +960,30 @@ impl Analysis<'_> {
                     violation.severity = severity.to_owned();
                     found.push(violation);
                 }
+            }
+        }
+        found
+    }
+
+    /// Source rules over a test module, which belongs to no package.
+    fn test_source(
+        &self,
+        rules: &[&CatalogRule],
+        test: &SourceFile,
+        parsed: &ParsedSource,
+    ) -> Vec<Violation> {
+        let mut found = Vec::new();
+        for rule in rules {
+            let severity =
+                self.settings
+                    .severity(rule, self.project.contracts, "", &test.path, self.selected);
+            let Some(severity) = severity else {
+                continue;
+            };
+            for mut violation in rules::check(rule, test, parsed, self.project) {
+                violation.severity = severity.to_owned();
+                violation.source_module = None;
+                found.push(violation);
             }
         }
         found

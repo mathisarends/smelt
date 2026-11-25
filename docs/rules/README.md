@@ -54,6 +54,7 @@
 | [MET003](MET003.md) | meta/resolved-debt | meta | default | warning |
 | [MET004](MET004.md) | meta/missing-rule-policy | meta | default | warning |
 | [MET005](MET005.md) | meta/uncovered-package-facade | meta | default | hint |
+| [MET006](MET006.md) | meta/missing-tool-suppression-reason | meta | explicit | warning |
 | [MOD001](MOD001.md) | modeling/redundant-str-enum-value | modeling | explicit | hint |
 | [MOD002](MOD002.md) | modeling/forbidden-base-class-affix | modeling | explicit | error |
 | [MOD003](MOD003.md) | modeling/prefer-str-enum-discriminator | modeling | explicit | hint |

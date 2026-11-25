@@ -1026,6 +1026,25 @@ MET001 parity/suppressed.py:49:1 warning fix unused suppression (all codes)
 MET001 parity/suppressed.py:5:11 warning fix unused suppression (all codes)
 MET002 parity/broad_handlers.py:162:24 error suppression without a reason
 MET002 parity/broad_handlers.py:166:24 error suppression without a reason
+MET006 parity/broad_handlers.py:102:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:106:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:118:24 warning `pylint: disable` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:122:24 warning `pylint: disable-next` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:130:24 warning `pylint: disable` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:138:24 warning `type: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:142:24 warning `type: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:146:24 warning `pyright: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:178:24 warning `noqa` and `type: ignore` hide findings without saying why
+MET006 parity/broad_handlers.py:186:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:190:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:237:24 warning `type: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:241:24 warning `type: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:249:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:253:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:257:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:265:24 warning `type: ignore` hides a type-checker finding without saying why
+MET006 parity/broad_handlers.py:94:24 warning `noqa` hides a linter finding without saying why
+MET006 parity/broad_handlers.py:98:24 warning `noqa` hides a linter finding without saying why
 MOD002 parity/call_order.py:369:1 error class "WithBase" uses the forbidden Base suffix
 MOD002 parity/callables.py:95:1 error class "WithBase" uses the forbidden Base suffix
 MOD002 parity/dataclass_policy/__init__.py:140:1 error class "ExternalBase" uses the forbidden Base suffix

@@ -723,6 +723,20 @@
     "fix_availability": "none"
   },
   {
+    "target": "smelt.rules.meta:MissingToolSuppressionReason",
+    "code": "MET006",
+    "name": "meta/missing-tool-suppression-reason",
+    "category": "meta",
+    "default_severity": "warning",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none"
+  },
+  {
     "target": "smelt.rules.structure.enum_values:RedundantStrEnumValue",
     "code": "MOD001",
     "name": "modeling/redundant-str-enum-value",
