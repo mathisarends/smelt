@@ -1,4 +1,5 @@
-# smelt checks itself. Run `smelt check` (or `uv run smelt check`) from the repo root.
+# yaml-language-server: $schema=smelt.schema.json
+# Run `uv run smelt check` from the repository root.
 version: 2
 
 project:
@@ -12,7 +13,7 @@ project:
       reason: Maintainer schema and documentation generator, checked by Ruff and test_docs.
 
 architecture:
-  # The doc generator is a tool for the repo, not part of any layer.
+  # The documentation generator can use shared code without owning a layer.
   shared: [smelt.docs]
   composition_root: [smelt.__main__]
 
@@ -21,21 +22,27 @@ architecture:
       path: config
       third_party: {default: deny, allow: [pydantic, yaml]}
       may_depend_on: []
+
     model:
       path: model
       may_depend_on: [config]
+
     analysis:
       path: analysis
       may_depend_on: [config, model]
+
     diagnostics:
       path: diagnostics
       may_depend_on: [config]
+
     rules:
       path: rules
       may_depend_on: [analysis, config, diagnostics, model]
+
     engine:
       path: engine
       may_depend_on: [analysis, config, diagnostics, model, rules]
+
     cli:
       path: cli
       may_depend_on: [analysis, config, diagnostics, engine, model, rules]
@@ -53,115 +60,152 @@ architecture:
       min_importers_to_export: 2
 
 style:
+  # Keep imports and module layout consistent across production packages.
   forbidden_names: [utils, helpers]
   imports: {style: absolute}
   private_modules: forbid
   future_annotations: when-needed
   reexports: all
   ordering: {fix: safe-only}
+  file_naming:
+    yaml_extension: yml
+
+  # All Pydantic input models reject unknown fields through this project base.
+  bases:
+    pydantic.BaseModel: smelt.config.input_model.InputModel
+
   dataclass_options: [slots]
   call_argument_kinds: [await]
+
   overrides:
     analysis-errors:
       match: smelt.analysis
       errors: {base: smelt.analysis.errors.AnalysisError}
       rules:
         modeling/prefer-domain-exception: warning
+
     type-dispatch:
       match: smelt.rules.structure
       type_dispatch: {style: match, min_branches: 3}
 
 tests:
   layout: mirror
+  # Rule tests exercise the checker on real source fixtures.
   forbidden_mock_paths: ['tests/rules/**']
 
 rules:
+  # Source coverage, layer dependencies and package APIs.
+  architecture/composition-root-leak: error
   architecture/forbidden-third-party-import: error
-  architecture/unclassified-module: error
+  architecture/import-cycle: error
+  architecture/layer-boundary: error
   architecture/missing-facade-export: hint
-  imports/forbidden-import-style: error
-  imports/excess-module-imports: hint
-  complexity/forbidden-nested-conditional: warning
+  architecture/missing-required-module: error
+  architecture/non-public-module-import: error
+  architecture/shared-imports-feature: error
+  architecture/unclassified-module: error
+  architecture/uncovered-source: error
+
+  # Keep decisions and collaborator calls readable.
+  complexity/duplicate-function: warning
+  complexity/excess-attribute-depth: warning
   complexity/excess-comprehension-loops: hint
   complexity/excess-constructor-decisions: hint
-  idioms/loop-invariant-collection: warning
-  idioms/prefer-callable-instance: hint
-  layout/misplaced-module-logger: warning
-  layout/redundant-comment: hint
-  layout/redundant-module-name: hint
-  meta/missing-tool-suppression-reason: warning
-  modeling/redundant-str-enum-value: hint
-  modeling/prefer-str-enum-discriminator: hint
-  modeling/parallel-record-fields: hint
-  # Frozen records can own mutable caches. Review ownership at each finding.
-  modeling/mutable-field-in-frozen-dataclass: hint
-  tests/forbidden-mock: error
-  tests/string-patch-target: error
-  tests/excess-patches: {severity: error, max: 2}
-  # CLI and integration tests also exercise modules through their callers.
-  tests/missing-mirror-test: hint
-  tests/missing-skip-reason: warning
-  typing/implicit-optional-default: warning
-  typing/prefer-inline-type-parameters: warning
-  visibility/excess-private-definitions: hint
-  # Public values are serialized in reports: keep their wire spelling explicit.
-  modeling/str-enum-value-convention: warning
-  typing/deprecated-async-contextmanager-return: warning
-  visibility/foreign-private-access: warning
+  complexity/excess-positional-parameters: {severity: warning, max: 3}
+  complexity/forbidden-nested-conditional: warning
   complexity/inline-call-argument: warning
   complexity/inline-constructor-receiver: warning
-  visibility/redundant-private-delegate: warning
-  idioms/redundant-name-alias: warning
-  typing/prefer-deferred-annotations: warning
-  idioms/missing-interface-docstring: warning
-  modeling/dataclass-field-mutation: warning
-  complexity/duplicate-function: warning
-  idioms/missing-broad-except-reason: warning
-  idioms/bundled-instance-assignment: error
-  modeling/duplicate-class-name: warning
-  idioms/duplicate-narrowing-assert: warning
-  modeling/implicit-duration-unit: warning
-  # These reviews need semantic judgment: equal shapes can model distinct concepts.
-  typing/duplicate-literal-type: hint
-  typing/anonymous-tuple-type: hint
-  layout/callee-before-caller: warning
-  frameworks/redundant-dishka-provider: warning
+
+  # Framework-specific checks apply when their imports are present.
   frameworks/prefer-secret-type: warning
-  modeling/forbidden-base-class-affix: error
-  visibility/misplaced-dunder-all: error
-  tests/nondeterministic-data: error
-  imports/prefer-package-import: warning
-  complexity/excess-attribute-depth: warning
-  architecture/import-cycle: error
+  frameworks/redundant-dishka-provider: warning
+
+  # Prefer explicit control flow and interface contracts.
+  idioms/bundled-instance-assignment: error
+  idioms/duplicate-narrowing-assert: warning
+  idioms/loop-invariant-collection: warning
+  idioms/missing-broad-except-reason: warning
+  idioms/missing-interface-docstring: warning
+  idioms/prefer-callable-instance: hint
   idioms/prefer-match-type-dispatch: error
+  idioms/redundant-name-alias: warning
+
+  # Import through the owning package where it exposes an API.
+  imports/excess-module-imports: hint
+  imports/excess-package-imports: hint
+  imports/forbidden-import-style: error
+  imports/prefer-package-import: warning
+
+  # File names, definition order and module organization.
+  layout/callee-before-caller: warning
   layout/definition-order: error
-  layout/reexport-only-module: hint
+  layout/file-name-convention: error
+  layout/forbidden-module-name: error
+  layout/forbidden-private-module: error
+  layout/misplaced-module-logger: warning
   layout/misplaced-private-constant: error
+  layout/misplaced-static-helper: warning
+  layout/redundant-comment: hint
+  layout/redundant-module-name: hint
+  layout/reexport-only-module: hint
+
+  # Explain suppressions so reviewers can reevaluate them.
+  meta/missing-tool-suppression-reason: warning
+
+  # Use consistent model contracts and explicit serialized enum values.
+  modeling/dataclass-field-mutation: warning
+  modeling/duplicate-class-name: warning
+  modeling/forbidden-base-class-affix: error
+  modeling/implicit-duration-unit: warning
+  modeling/missing-dataclass-option: warning
+  # Frozen records can own mutable caches. Review ownership at each finding.
+  modeling/mutable-field-in-frozen-dataclass: hint
+  modeling/parallel-record-fields: hint
+  modeling/prefer-project-base-class: error
+  modeling/prefer-str-enum-discriminator: hint
+  modeling/redundant-str-enum-value: hint
+  modeling/str-enum-value-convention: warning
+
+  # Mirrored layout, deterministic data and observable outcomes.
+  tests/excess-patches: {severity: error, max: 2}
+  tests/forbidden-mock: error
+  tests/independent-case-loop: warning
+  tests/misplaced-test: error
+  tests/missing-await-assertion: warning
+  # CLI and integration tests also exercise modules through their callers.
+  tests/missing-mirror-test: hint
+  tests/missing-outcome-check: warning
+  tests/missing-skip-reason: warning
+  tests/nondeterministic-data: error
+  tests/private-access: warning
+  tests/string-patch-target: error
+  tests/unbounded-wait: warning
+  tests/vacuous-assertion: warning
+
+  # Static types, annotation evaluation and optional defaults.
+  # Equal tuple shapes and repeated literals can represent distinct concepts.
+  typing/anonymous-tuple-type: hint
+  typing/deprecated-async-contextmanager-return: warning
+  typing/duplicate-literal-type: hint
+  typing/forbidden-future-annotations: error
+  typing/implicit-optional-default: warning
+  typing/prefer-deferred-annotations: warning
+  typing/prefer-inline-type-parameters: warning
+  typing/redundant-future-annotations: warning
+
+  # Keep implementation details private and exports deliberate.
+  visibility/excess-private-definitions: hint
+  visibility/foreign-private-access: warning
+  visibility/internal-public-attribute: warning
   visibility/internal-public-member: warning
   visibility/internal-public-module-symbol: warning
-  visibility/internal-public-attribute: warning
-  visibility/test-only-public-function: warning
-  visibility/test-only-public-attribute: warning
-  layout/misplaced-static-helper: warning
-  typing/redundant-future-annotations: warning
-  tests/private-access: warning
-  tests/missing-outcome-check: warning
-  tests/vacuous-assertion: warning
-  tests/unbounded-wait: warning
-  tests/independent-case-loop: warning
-  tests/missing-await-assertion: warning
-  architecture/uncovered-source: error
-  architecture/layer-boundary: error
-  architecture/shared-imports-feature: error
-  architecture/composition-root-leak: error
-  architecture/non-public-module-import: error
-  imports/excess-package-imports: hint
-  layout/forbidden-module-name: error
-  architecture/missing-required-module: error
-  typing/forbidden-future-annotations: error
-  layout/forbidden-private-module: error
-  complexity/excess-positional-parameters: {severity: warning, max: 3}
-  modeling/missing-dataclass-option: warning
+  visibility/misplaced-dunder-all: error
+  visibility/redundant-private-delegate: warning
   visibility/reexport-convention: warning
-  tests/misplaced-test: error
-# yaml-language-server: $schema=smelt.schema.json
+  visibility/test-only-public-attribute: warning
+  visibility/test-only-public-function: warning
+
+ignore:
+  - rule: layout/file-name-convention
+    paths: [.pre-commit-hooks.yaml]
+    reason: pre-commit discovers published hooks by this exact manifest filename.

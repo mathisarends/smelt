@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal, NamedTuple, Self
 
 from pydantic import (
-    BaseModel,
     ConfigDict,
     Field,
     PrivateAttr,
@@ -18,6 +17,8 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+
+from smelt.config.input_model import InputModel
 
 type Policy = Literal["allow", "deny"]
 type RuleSeverity = Literal["error", "warning", "hint", "on", "off"]
@@ -37,8 +38,8 @@ _LAYER_PAIR = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*->\s*([A-Za-z_][\w.]*)\s*$")
 _FEATURE_LAYER = re.compile(r"^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$")
 
 
-class _Model(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+class _Model(InputModel):
+    model_config = ConfigDict(frozen=True)
 
 
 class RuleOverride(_Model):

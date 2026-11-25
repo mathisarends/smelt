@@ -38,17 +38,12 @@ def test_repository_policy_reviews_every_opt_in_rule(
     policy = load_config(pytestconfig.rootpath / "smelt.yml")
     settings = RuleSettings(build_rule_set(lazy=True), policy)
 
-    assert (
-        settings.unconfigured_codes()
-        == {
-            "ARC002",  # Smelt uses layers without feature namespaces.
-            "ARC009",  # Member boundaries require a multi-member workspace.
-            "ARC010",  # The single Python distribution has no member dependencies.
-            "LAY002",  # Module introductions are useful selectively.
-            "LAY007",  # The pre-commit hook manifest requires .yaml alongside our .yml files.
-            "MOD007",  # Config and debt models have different Pydantic base contracts.
-        }
-    )
+    assert settings.unconfigured_codes() == {
+        "ARC002",  # Smelt uses layers without feature namespaces.
+        "ARC009",  # Member boundaries require a multi-member workspace.
+        "ARC010",  # The single Python distribution has no member dependencies.
+        "LAY002",  # Module introductions are useful selectively.
+    }
 
 
 @pytest.mark.parametrize("value", ["off", "warning", "hint", "on"])
