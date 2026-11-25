@@ -440,3 +440,16 @@ pub fn retired_hint(key: &str, names: &HashMap<&str, &str>) -> String {
     }
     String::new()
 }
+
+/// The SMT code a family code replaced, which debt fingerprints still hash.
+pub fn legacy_code(code: &str) -> &str {
+    LEGACY_CODES
+        .iter()
+        .find(|(_, current)| *current == code)
+        .map_or(code, |(retired, _)| retired)
+}
+
+/// The family code of a debt entry written with a pre-family SMT code.
+pub fn current_code(code: &str) -> &str {
+    lookup(&LEGACY_CODES, code).unwrap_or(code)
+}
