@@ -113,9 +113,6 @@ def test_lazy_selection_preserves_catalog_metadata() -> None:
             "scope",
             "enabled_by_default",
             "activation",
-            "file_local",
-            "test_local",
-            "member_local",
         ):
             assert getattr(rule, attribute) == getattr(original, attribute)
         assert rule.explain() == original.explain()

@@ -124,7 +124,6 @@ def test_is_opt_in_and_supports_intentional_reference_holder(tmp_path: Path) -> 
     write_project(root, {"app/model.py": source.replace("# smelt:", "# reason:")})
     (finding,) = violations(root)
     assert finding.code == "MOD011"
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 def _project(tmp_path: Path, source: str) -> Path:

@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 import json
-import os
 import runpy
 import shutil
-import sqlite3
 import subprocess
-import sys
-from contextlib import closing
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -706,51 +701,13 @@ def test_staged_analyses_do_not_materialize_sources(
     assert report["violations"][0]["path"] == "app/browser.py"
 
 
-def test_exact_retry_bypasses_the_engine_and_its_imports(
-    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    expected = _check(repo, capsys)
-
-    def unexpected(*args: Any, **kwargs: Any) -> None:
-        pytest.fail("an exact staged result must bypass analysis")
-
-    monkeypatch.setattr(
-        import_module("smelt.cli.commands.check"), "staged_project", unexpected
-    )
-    assert _check(repo, capsys) == expected
-    executed = subprocess.run(  # noqa: S603 - fixed interpreter and fixture-controlled CLI arguments
-        [
-            sys.executable,
-            "-c",
-            "import sys; from smelt.cli import main; "
-            "code=main(sys.argv[1:]); "
-            "assert 'pydantic' not in sys.modules; assert 'grimp' not in sys.modules; "
-            "raise SystemExit(code)",
-            "check",
-            "--staged",
-            "--config",
-            str(repo / "smelt.yml"),
-            "--format",
-            "json",
-            "--fail-on",
-            "warning",
-        ],
-        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])},
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    assert executed.returncode == expected[0], executed.stderr
-    assert json.loads(executed.stdout) == expected[1]
-
-
-def test_staged_retry_needs_two_git_processes(
+def test_staged_check_reads_each_git_input_once(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(repo)
+    monkeypatch.setenv("SMELT_NATIVE_GIT", "0")
     expected = _check(repo, capsys)
     calls: list[list[str]] = []
     original = subprocess.run
@@ -761,10 +718,12 @@ def test_staged_retry_needs_two_git_processes(
 
     monkeypatch.setattr(subprocess, "run", run)
     assert _check(repo, capsys) == expected
-    assert len(calls) == 2
-    assert "--show-toplevel" in calls[0]
-    assert "HEAD" in calls[0]
-    assert "ls-files" in calls[1]
+    git_calls = [call[1:] for call in calls if call[0] == "git"]
+    assert git_calls == [
+        ["rev-parse", "--show-toplevel", "--verify", "--quiet", "HEAD"],
+        ["ls-files", "--stage", "-z"],
+        ["cat-file", "--batch"],
+    ]
 
 
 def test_head_advance_invalidates_the_exact_result(
@@ -776,56 +735,6 @@ def test_head_advance_invalidates_the_exact_result(
     _git(repo, "commit", "-qm", "accept existing finding")
     assert _check(repo, capsys)[0] == 0
     assert _check(repo, capsys) == _check(repo, capsys, "--no-cache")
-
-
-def test_corrupt_exact_result_and_cached_blob_fall_back_to_analysis(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    expected = _check(repo, capsys)
-    database = next((repo / ".smelt_cache").rglob("results.sqlite3"))
-    with closing(sqlite3.connect(database)) as connection, connection:
-        connection.execute("UPDATE results SET payload = ?", (b"broken",))
-    assert _check(repo, capsys) == expected
-    facts = next((repo / ".smelt_cache").rglob("facts.sqlite3"))
-    with closing(sqlite3.connect(facts)) as connection, connection:
-        connection.execute("UPDATE objects SET payload = ?", (b"invalid source(",))
-    (repo / "app/consumer.py").write_text("")
-    _git(repo, "add", "app/consumer.py")
-    cached = _check(repo, capsys)
-    assert cached[0] == 1
-    assert cached == _check(repo, capsys, "--no-cache")
-
-
-@pytest.mark.parametrize("use_cache", [True, False])
-def test_staged_policy_blob_reuse_respects_no_cache(
-    repo: Path,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-    use_cache: bool,
-) -> None:
-    # Cached blobs serve only the Python engine.
-    monkeypatch.setenv("SMELT_CORE", "python")
-    _check(repo, capsys)
-    policy_oid = capture_index(repo).blobs["smelt.yml"]
-    (repo / "app/consumer.py").write_text("# Removed the last caller.\n")
-    _git(repo, "add", "app/consumer.py")
-    source_oid = capture_index(repo).blobs["app/consumer.py"]
-    fetched: list[str] = []
-    module = import_module("smelt.engine.git_source")
-    original = module.read_blobs
-
-    def read(root: Path, identifiers: list[str]) -> dict[str, bytes]:
-        fetched.extend(identifiers)
-        return original(root, identifiers)  # type: ignore[no-any-return]
-
-    with monkeypatch.context() as patch:
-        patch.setattr(module, "read_blobs", read)
-        actual = _check(repo, capsys, *([] if use_cache else ["--no-cache"]))
-    assert (policy_oid in fetched) is not use_cache
-    if use_cache:
-        assert fetched == [source_oid]
-    assert actual[0] == 1
-    assert actual == _check(repo, capsys, "--no-cache")
 
 
 def test_changed_staged_policy_cannot_reuse_previous_blob(
@@ -846,33 +755,6 @@ def test_changed_staged_policy_cannot_reuse_previous_blob(
     actual = _check(repo, capsys)
     assert actual[0] == 0
     assert actual == _check(repo, capsys, "--no-cache")
-
-
-@pytest.mark.parametrize("output", ["json", "sarif"])
-def test_document_content_edits_reuse_analysis_with_fresh_index_provenance(
-    repo: Path,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-    output: str,
-) -> None:
-    (repo / "README.md").write_text("before\n")
-    _git(repo, "add", "README.md")
-    # Also cover a result built from an already cached whole analysis.
-    _check(repo, capsys, "--statistics", "--format", output)
-    before = _check(repo, capsys, "--format", output)
-    (repo / "README.md").write_text("after\n")
-    _git(repo, "add", "README.md")
-
-    def unexpected(*args: Any, **kwargs: Any) -> None:
-        pytest.fail("unobserved content changes must reuse the result before analysis")
-
-    with monkeypatch.context() as patch:
-        patch.setattr(
-            import_module("smelt.cli.commands.check"), "staged_project", unexpected
-        )
-        cached = _check(repo, capsys, "--format", output)
-    assert cached != before  # provenance must describe the new captured index
-    assert cached == _check(repo, capsys, "--no-cache", "--format", output)
 
 
 def test_staged_results_and_baseline_follow_installed_package_exports(
@@ -1075,7 +957,7 @@ def test_debt_uses_the_captured_index_even_if_another_process_stages_again(
         _git(repo, "add", "accepted.baseline")
         return captured
 
-    monkeypatch.setattr("smelt.engine.result_cache.capture_index", capture)
+    monkeypatch.setattr("smelt.engine.staged.capture_index", capture)
     code, report = _check(repo, capsys)
     assert code == 0
     assert report["summary"]["in_debt"] == 1

@@ -39,7 +39,7 @@ from smelt.engine.check import CheckOptions, run_check
 # CPython and the native parser explain a syntax error in their own words.
 _SYNTAX_ERROR = re.compile(r"(: syntax error): .*", re.DOTALL)
 SYNTAX_FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity_syntax_error"
-BASE = CheckOptions(use_cache=False, show_coverage=True)
+BASE = CheckOptions(show_coverage=True)
 MODES = {
     "configured": BASE,
     "all rules": replace(BASE, select=("ALL",)),
@@ -151,7 +151,6 @@ def _cli_report(
             "smelt",
             "check",
             *arguments,
-            "--no-cache",
             "--show-coverage",
             "--format",
             "json",

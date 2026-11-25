@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 
 class PreferDeferredAnnotations(Rule):
-    file_local = True
     code = "TYP006"
     name = "typing/prefer-deferred-annotations"
     category = Category.TYPING

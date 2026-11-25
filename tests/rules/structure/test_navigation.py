@@ -152,9 +152,9 @@ def test_imported_record_changes_invalidate_namespace_evidence(
 
     cached = violations(root)
     assert len(cached) == 1
-    assert cached == violations(root, CheckOptions(use_cache=False))
+    assert cached == violations(root, CheckOptions())
     write_project(root, {"app/state.py": record})
-    assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+    assert violations(root) == []
 
 
 @pytest.mark.parametrize(
@@ -340,7 +340,7 @@ def test_cached_and_uncached_results_agree_after_source_and_policy_changes(
             "app/control.py": "class Controller:\n    def run(self):\n        self.motor.aim()"
         },
     )
-    assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+    assert violations(root) == []
     write_project(
         root,
         {
@@ -349,9 +349,9 @@ def test_cached_and_uncached_results_agree_after_source_and_policy_changes(
     )
     cached = violations(root)
     assert len(cached) == 1
-    assert cached == violations(root, CheckOptions(use_cache=False))
+    assert cached == violations(root, CheckOptions())
     write_project(root, {"smelt.yml": CONFIG.replace(": hint", ": 'off'")})
-    assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+    assert violations(root) == []
 
 
 _SDK_SOURCE = (

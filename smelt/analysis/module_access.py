@@ -7,8 +7,6 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.parsing import SyntaxVisitor, resolve_relative, tree_nodes
 
 if TYPE_CHECKING:
@@ -28,50 +26,27 @@ class ModuleAttributeRead:
     qualified: str
 
 
-_READS = TypeAdapter(tuple[ModuleAttributeRead, ...])
-
-
 def module_attributes(
     syntax: SyntaxIndex, path: str, *, ignore_guarded: bool
 ) -> tuple[ModuleAttributeRead, ...]:
-    """Module-qualified reads in ``path``, cached per module and contents."""
-    identity = syntax.module_identity(path)
-    if identity is None:
+    """Module-qualified reads in ``path``."""
+    module = syntax.for_path(path)
+    if module is None:
         return ()
-
-    def build() -> tuple[ModuleAttributeRead, ...]:
-        module = syntax.for_path(path)
-        if module is None:
-            raise LookupError(path)
-        visitor = _Attributes(
-            module, module.guarded_lines if ignore_guarded else frozenset()
+    visitor = _Attributes(
+        module, module.guarded_lines if ignore_guarded else frozenset()
+    )
+    visitor.visit(module.tree)
+    return tuple(
+        ModuleAttributeRead(
+            node.attr,
+            node.lineno,
+            node.col_offset,
+            node.end_lineno,
+            node.end_col_offset,
+            qualified,
         )
-        visitor.visit(module.tree)
-        return tuple(
-            ModuleAttributeRead(
-                node.attr,
-                node.lineno,
-                node.col_offset,
-                node.end_lineno,
-                node.end_col_offset,
-                qualified,
-            )
-            for node, qualified in visitor.reads
-        )
-
-    if syntax.cache is None:
-        return build()
-    return syntax.cache.get(
-        "module-attributes",
-        [
-            path,
-            identity.module,
-            identity.is_package,
-            syntax.files.content_id(path),
-            ignore_guarded,
-        ],
-        _READS,
-        build=build,
+        for node, qualified in visitor.reads
     )
 
 

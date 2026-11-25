@@ -271,7 +271,7 @@ def test_cross_module_definition_changes_invalidate_cached_decisions(
     for definitions in ("", "from third_party import _helper\n", "_helper = 1\n"):
         write_policy_project(root, {"app/service.py": definitions})
         cached = violations(root, SELECT)
-        fresh = violations(root, CheckOptions(select=("VIS005",), use_cache=False))
+        fresh = violations(root, CheckOptions(select=("VIS005",)))
         assert cached == fresh
         assert len(cached) == (1 if definitions == "_helper = 1\n" else 0)
 
@@ -582,7 +582,7 @@ style:
     )
     [finding] = violations(root)
     assert (finding.path, finding.severity) == ("app/client.py", Severity.ERROR)
-    assert violations(root, CheckOptions(use_cache=False)) == [finding]
+    assert violations(root, CheckOptions()) == [finding]
 
 
 def test_cache_tracks_owner_changes_in_unchanged_consumers(tmp_path: Path) -> None:
@@ -593,7 +593,7 @@ def test_cache_tracks_owner_changes_in_unchanged_consumers(tmp_path: Path) -> No
         OWNER.replace("self._images", "self.images"), encoding="utf-8"
     )
     assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("VIS005",))) == []
 
 
 def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -> None:
@@ -615,12 +615,10 @@ def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -
     )
     [after] = violations(root, SELECT)
     assert after.target_module == "app.alternate.SessionLog._images"
-    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == [
-        after
-    ]
+    assert violations(root, CheckOptions(select=("VIS005",))) == [after]
     (root / "app/alternate.py").unlink()
     assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("VIS005",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("VIS005",))) == []
 
 
 @pytest.mark.parametrize(

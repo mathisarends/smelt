@@ -227,7 +227,7 @@ def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
         root, {"services/api/pyproject.toml": '[project]\nname = "web-api"\n'}
     )
     cached = check(root).report.violations
-    uncached = check(root, CheckOptions(use_cache=False)).report.violations
+    uncached = check(root, CheckOptions()).report.violations
 
     assert [v.code for v in cached] == ["ARC010"]
     assert cached == uncached

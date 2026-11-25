@@ -338,7 +338,7 @@ def test_cached_results_follow_external_uses_exports_and_inheritance(
     for index, files in enumerate(states):
         write_policy_project(root, files)
         cached = violations(root)
-        assert cached == violations(root, CheckOptions(use_cache=False))
+        assert cached == violations(root, CheckOptions())
         assert [v.code for v in cached] == (
             ["VIS004"] if index == len(states) - 1 else []
         )

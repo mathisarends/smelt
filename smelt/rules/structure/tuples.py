@@ -19,7 +19,6 @@ _EXEMPT_DECORATORS = frozenset({"override", "overload"})
 
 
 class AnonymousTupleType(Rule):
-    file_local = True
     code = "TYP007"
     name = "typing/anonymous-tuple-type"
     category = Category.TYPING

@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 class PreferMatchTypeDispatch(Rule):
-    file_local = True
     activation = POLICIES["IDM002"]
     code = "IDM002"
     name = "idioms/prefer-match-type-dispatch"

@@ -109,7 +109,7 @@ def test_lazy_exports_protect_actual_api_and_invalidate_after_table_edits(
         },
     )
     cached = check(tmp_path).report.violations
-    fresh = check(tmp_path, CheckOptions(use_cache=False)).report.violations
+    fresh = check(tmp_path, CheckOptions()).report.violations
     assert cached == fresh
     assert [finding.code for finding in fresh] == ["VIS001"]
 

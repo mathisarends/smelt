@@ -91,9 +91,7 @@ def test_cached_test_findings_follow_import_and_export_edits(tmp_path: Path) -> 
     ):
         write_project(root, {test_path: client, "app/observation/__init__.py": exports})
         warm = violations(root, OPTIONS)
-        assert warm == violations(
-            root, CheckOptions(select=("IMP004",), use_cache=False)
-        )
+        assert warm == violations(root, CheckOptions(select=("IMP004",)))
         assert [v.code for v in warm] == expected
     (root / test_path).unlink()
     assert violations(root, OPTIONS) == []
@@ -341,12 +339,12 @@ def test_cached_findings_follow_export_edits_and_deletion(tmp_path: Path) -> Non
     for exports in ("", EXPORTS):
         initializer.write_text(exports, encoding="utf-8")
         warm = check(root).report.violations
-        fresh = check(root, CheckOptions(use_cache=False)).report.violations
+        fresh = check(root, CheckOptions()).report.violations
         assert warm == fresh
         assert [finding.code for finding in warm] == (["IMP004"] if exports else [])
     initializer.unlink()
     assert violations(root) == []
-    assert violations(root, CheckOptions(use_cache=False)) == []
+    assert violations(root, CheckOptions()) == []
 
 
 SITE = {
@@ -482,6 +480,6 @@ def test_cached_findings_follow_installed_package_edits(
     )
 
     warm = check(root).report.violations
-    fresh = check(root, CheckOptions(use_cache=False)).report.violations
+    fresh = check(root, CheckOptions()).report.violations
     assert warm == fresh
     assert [finding.code for finding in warm] == ["IMP004"]

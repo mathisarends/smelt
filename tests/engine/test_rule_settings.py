@@ -401,7 +401,7 @@ def test_information_hiding_includes_test_only_apis_without_duplicates(
     assert {v.code for v in findings} == _VISIBILITY_CODES
     assert len(findings) == 5
     assert all(v.severity == Severity.WARNING for v in findings)
-    assert findings == violations(root, CheckOptions(use_cache=False))
+    assert findings == violations(root, CheckOptions())
     assert not {"LAY005", "LAY008"} & {rule.code for rule, _ in outcome.active}
 
 

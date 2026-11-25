@@ -154,7 +154,7 @@ style:
         encoding="utf-8",
     )
     assert violations(root) == []
-    assert violations(root, CheckOptions(use_cache=False)) == []
+    assert violations(root, CheckOptions()) == []
 
 
 def test_opt_in_off_override_and_suppression(tmp_path: Path) -> None:
@@ -183,7 +183,6 @@ style:
     )
     [finding] = violations(root)
     assert finding.path == "app/model.py"
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 @pytest.mark.parametrize(

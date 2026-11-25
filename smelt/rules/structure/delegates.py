@@ -19,7 +19,6 @@ _NEUTRAL_BASES = frozenset({"object", "ABC", "Protocol", "Generic"})
 
 
 class RedundantPrivateDelegate(Rule):
-    file_local = True
     code = "VIS006"
     name = "visibility/redundant-private-delegate"
     category = Category.VISIBILITY

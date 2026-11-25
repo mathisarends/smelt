@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class PreferStrEnumDiscriminator(Rule):
-    file_local = True
     code = "MOD003"
     name = "modeling/prefer-str-enum-discriminator"
     category = Category.MODELING

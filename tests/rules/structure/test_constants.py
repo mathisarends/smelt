@@ -218,7 +218,7 @@ def test_moving_constant_invalidates_cached_findings(tmp_path: Path) -> None:
     )
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("LAY008",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("LAY008",))) == []
 
 
 def _project(tmp_path: Path, source: str) -> Path:

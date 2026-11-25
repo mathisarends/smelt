@@ -231,7 +231,7 @@ def test_cached_results_follow_field_declaration_changes(tmp_path: Path) -> None
     write_project(root, {"app/state.py": SNAPSHOT.replace("id: str", "id: object")})
     assert (
         violations(root, SELECT)
-        == violations(root, CheckOptions(select=("IDM008",), use_cache=False))
+        == violations(root, CheckOptions(select=("IDM008",)))
         == []
     )
 

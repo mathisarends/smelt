@@ -11,16 +11,15 @@ CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
 OPTIONS = CheckOptions(select=("TYP003",))
 
 
-@pytest.mark.parametrize("use_cache", [False, True])
 def test_optional_debt_does_not_hide_a_new_function_after_an_old_one_is_fixed(
-    tmp_path: Path, use_cache: bool
+    tmp_path: Path,
 ) -> None:
     before = (
         "def upload(content_type: str | None = None):\n    return content_type or 'default'\n"
         "def download(content_type: str | None = None):\n    return content_type or 'default'\n"
     )
     root = _project(tmp_path, before, CONFIG + "debt: debt.json\n")
-    options = CheckOptions(select=("TYP003",), use_cache=use_cache)
+    options = OPTIONS
     original = check(root, options)
     debt = Debt.from_violations(original.unfiltered, snippet_reader(original.context))
     debt.write(root / "debt.json")

@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
 
 class MisplacedModuleLogger(Rule):
-    file_local = True
     code = "LAY011"
     name = "layout/misplaced-module-logger"
     category = Category.LAYOUT
@@ -81,7 +80,6 @@ class MisplacedModuleLogger(Rule):
 
 
 class ModuleDocstringConvention(Rule):
-    file_local = True
     activation = POLICIES["LAY002"]
     code = "LAY002"
     name = "layout/module-docstring-convention"
@@ -156,7 +154,6 @@ class ModuleDocstringConvention(Rule):
 
 
 class ForbiddenFutureAnnotations(Rule):
-    file_local = True
     activation = POLICIES["TYP001"]
     code = "TYP001"
     name = "typing/forbidden-future-annotations"
@@ -184,7 +181,6 @@ class ForbiddenFutureAnnotations(Rule):
 
 
 class RedundantFutureAnnotations(Rule):
-    file_local = True
     activation = POLICIES["TYP002"]
     code = "TYP002"
     name = "typing/redundant-future-annotations"

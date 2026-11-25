@@ -20,7 +20,6 @@ _ALTERNATIVES = {
 
 
 class MutableFieldInFrozenDataclass(Rule):
-    file_local = True
     code = "MOD011"
     name = "modeling/mutable-field-in-frozen-dataclass"
     category = Category.MODELING

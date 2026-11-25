@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class RedundantDishkaProvider(Rule):
-    file_local = True
     code = "FWK002"
     name = "frameworks/redundant-dishka-provider"
     category = Category.FRAMEWORKS

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class NestedConditionalExpression(Rule):
-    file_local = True
     code = "CPX005"
     name = "complexity/forbidden-nested-conditional"
     category = Category.COMPLEXITY

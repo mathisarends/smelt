@@ -30,7 +30,6 @@ _DECISIONS = (
 
 
 class ConstructorLogic(Rule):
-    file_local = True
     code = "CPX007"
     name = "complexity/excess-constructor-decisions"
     category = Category.COMPLEXITY

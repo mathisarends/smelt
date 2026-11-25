@@ -385,7 +385,7 @@ style:
         ("app/mapping.py", Severity.HINT),
         ("app/strict/__init__.py", Severity.WARNING),
     ]
-    assert violations(root, CheckOptions(use_cache=False)) == found
+    assert violations(root, CheckOptions()) == found
     assert violations(root, SELECT) == found
 
 

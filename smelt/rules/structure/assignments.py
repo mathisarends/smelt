@@ -46,7 +46,6 @@ def _qualified(node: ast.expr, bindings: dict[str, str]) -> str | None:
 
 
 class BundledInstanceAssignment(Rule):
-    file_local = True
     code = "IDM001"
     name = "idioms/bundled-instance-assignment"
     category = Category.IDIOMS

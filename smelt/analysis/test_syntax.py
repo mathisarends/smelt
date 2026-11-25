@@ -3,15 +3,9 @@
 from __future__ import annotations
 
 import ast
-import hashlib
-import json
 from collections.abc import Mapping
-from copy import copy
 from dataclasses import dataclass, field, replace
-from functools import partial
 from typing import TYPE_CHECKING, NamedTuple
-
-from pydantic import TypeAdapter
 
 from smelt.analysis.exports import namespace_of, resolve_dotted
 from smelt.analysis.literals import nonempty_literal
@@ -36,7 +30,6 @@ from smelt.config.patterns import path_matches
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
 
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
     from smelt.analysis.parsing import AstCache
     from smelt.analysis.syntax import SyntaxIndex
@@ -121,10 +114,6 @@ class _Binding:
     mutable: bool = False
     text: str | None = None
     helper_line: int | None = None
-
-
-_BINDINGS = TypeAdapter(dict[str, _Binding])
-_ASYNC_SPECS = TypeAdapter(dict[str, frozenset[str]])
 
 
 def _fixture_binding(node: ast.AST, env: Mapping[str, _Binding]) -> _Binding | None:
@@ -1332,10 +1321,6 @@ class TestReferences:
     instance_attributes: list[AttributeReference]
 
 
-_REFERENCES = TypeAdapter(TestReferences)
-_COUNT = TypeAdapter(int)
-
-
 class _TestModules(Mapping[str, TestModule]):
     def __init__(
         self, paths: tuple[str, ...], load: Callable[[str], TestModule]
@@ -1364,30 +1349,15 @@ class TestSyntaxIndex:
         files: FileIndex,
         asts: AstCache,
         *,
-        cache: FactCache | None = None,
         syntax: SyntaxIndex | None = None,
     ) -> None:
-        self._cache = cache
         self._files = files
-        self._inputs: dict[str, object] = {}
         config = files.config.tests
 
         # The engine requests this index for selected rules. Evidence is shared
         # across those rules rather than gated by separate policy switches.
         def specs(path: str, module: str) -> dict[str, frozenset[str]]:
-            def build() -> dict[str, frozenset[str]]:
-                return _class_async_methods(asts.parse(path), module)
-
-            return (
-                build()
-                if cache is None
-                else cache.get(
-                    "test-source-specs",
-                    [path, module, files.content_id(path)],
-                    _ASYNC_SPECS,
-                    build=build,
-                )
-            )
+            return _class_async_methods(asts.parse(path), module)
 
         source_specs = {
             qualified: methods
@@ -1431,47 +1401,9 @@ class TestSyntaxIndex:
                 for name, binding in bindings.items()
             }
             async_specs.update(specs(path, path.removesuffix(".py").replace("/", ".")))
-
-            build_fixtures = partial(
-                _fixture_facts,
-                asts,
-                path,
-                constructors,
-                inherited=inherited,
-                async_specs=async_specs,
+            fixture_scopes[path.removesuffix("conftest.py")] = _fixture_facts(
+                asts, path, constructors, inherited=inherited, async_specs=async_specs
             )
-
-            fixture_scopes[path.removesuffix("conftest.py")] = (
-                build_fixtures()
-                if cache is None
-                else cache.get(
-                    "test-fixtures",
-                    [
-                        path,
-                        files.content_id(path),
-                        sorted(constructors),
-                        _BINDINGS.dump_python(inherited, mode="json"),
-                        [
-                            (name, sorted(methods))
-                            for name, methods in sorted(async_specs.items())
-                        ],
-                    ],
-                    _BINDINGS,
-                    build=build_fixtures,
-                )
-            )
-        environment = hashlib.sha256(
-            json.dumps(
-                [
-                    sorted(constructors),
-                    [
-                        (name, sorted(methods))
-                        for name, methods in sorted(async_specs.items())
-                    ],
-                ],
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
         fixtures_by_path: dict[str, dict[str, _Binding]] = {}
         for path in sorted(files.tests):
             if any(path_matches(pattern, path) for pattern in config.quality_exclude):
@@ -1483,84 +1415,42 @@ class TestSyntaxIndex:
                 for name, binding in fixture_scopes[scope].items()
             }
             fixtures_by_path[path] = fixtures
-            self._inputs[path] = [
-                path,
-                files.content_id(path),
-                environment,
-                _BINDINGS.dump_python(fixtures, mode="json"),
-            ]
 
         def load(path: str) -> TestModule:
-            module = _analyze_test_syntax(
+            return _analyze_test_syntax(
                 asts.parse(path),
                 path,
                 constructors=constructors,
                 fixtures=fixtures_by_path[path],
                 async_specs=async_specs,
             )
-            if cache is not None:
-                cache.write(
-                    cache.key("test-count", self.inputs(path)),
-                    len(module.tests),
-                    _COUNT,
-                )
-            return module
 
         self.modules: Mapping[str, TestModule] = _TestModules(
             tuple(fixtures_by_path), load
         )
 
-    def for_file(self, path: str) -> TestSyntaxIndex:
-        view = copy(self)
-        view.modules = {path: self.modules[path]}
-        return view
-
     def collected_tests(self) -> int:
-        def count(path: str) -> int:
-            return len(self.modules[path].tests)
-
-        return sum(
-            count(path)
-            if self._cache is None
-            else self._cache.get(
-                "test-count", self.inputs(path), _COUNT, build=partial(count, path)
-            )
-            for path in self.modules
-        )
+        return sum(len(module.tests) for module in self.modules.values())
 
     def references(self) -> Iterator[tuple[str, TestReferences]]:
-        def extract(path: str) -> TestReferences:
-            module = self.modules[path]
-            return TestReferences(
-                [(node.lineno, name) for node, name in module.imports],
-                [
-                    AttributeReference(
-                        node.lineno, name, isinstance(node.ctx, ast.Load)
-                    )
-                    for node, name in module.attributes
-                ],
-                [
-                    AttributeReference(
-                        use.node.lineno,
-                        use.qualified,
-                        isinstance(use.node.ctx, ast.Load),
-                    )
-                    for use in module.instance_attributes
-                ],
+        for path, module in self.modules.items():
+            yield (
+                path,
+                TestReferences(
+                    [(node.lineno, name) for node, name in module.imports],
+                    [
+                        AttributeReference(
+                            node.lineno, name, isinstance(node.ctx, ast.Load)
+                        )
+                        for node, name in module.attributes
+                    ],
+                    [
+                        AttributeReference(
+                            use.node.lineno,
+                            use.qualified,
+                            isinstance(use.node.ctx, ast.Load),
+                        )
+                        for use in module.instance_attributes
+                    ],
+                ),
             )
-
-        for path in self.modules:
-            cached = (
-                extract(path)
-                if self._cache is None
-                else self._cache.get(
-                    "test-references",
-                    self.inputs(path),
-                    _REFERENCES,
-                    build=partial(extract, path),
-                )
-            )
-            yield path, cached
-
-    def inputs(self, path: str) -> object:
-        return self._inputs[path]

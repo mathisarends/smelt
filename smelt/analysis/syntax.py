@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.exports import Namespace, namespace_of
 from smelt.analysis.parsing import (
     AstCache,
@@ -18,10 +16,7 @@ from smelt.analysis.parsing import (
 )
 
 if TYPE_CHECKING:
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex, SourceFile
-
-_NAMESPACE = TypeAdapter(Namespace)
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,9 +58,6 @@ class AttributeCandidates:
         return index < len(lines) and lines[index] <= (
             statement.end_lineno or statement.lineno
         )
-
-
-_ATTRIBUTES = TypeAdapter(AttributeCandidates)
 
 
 class ModuleIdentity(NamedTuple):
@@ -138,16 +130,10 @@ class ImportStatement:
         )
 
 
-_IMPORT_STATEMENTS = TypeAdapter(tuple[ImportStatement, ...])
-
-
 class ClassDefinition(NamedTuple):
     name: str
     line: int
     column: int
-
-
-_CLASSES = TypeAdapter(tuple[ClassDefinition, ...])
 
 
 @dataclass
@@ -176,12 +162,9 @@ class ModuleSyntax:
 
 
 class SyntaxIndex:
-    def __init__(
-        self, files: FileIndex, asts: AstCache, *, cache: FactCache | None = None
-    ) -> None:
+    def __init__(self, files: FileIndex, asts: AstCache) -> None:
         self.files = files
         self._asts = asts
-        self.cache = cache
         self._by_path: dict[str, ModuleSyntax] = {}
         self._attributes: dict[str, AttributeCandidates] = {}
         self._namespaces: dict[str, Namespace | None] = {}
@@ -213,71 +196,32 @@ class SyntaxIndex:
         return None
 
     def import_statements(self, path: str) -> tuple[ImportStatement, ...]:
-        """Every import statement in ``ast.walk`` order, cached per file content."""
+        """Every import statement in ``ast.walk`` order."""
         if path not in self._imports:
-
-            def build() -> tuple[ImportStatement, ...]:
-                tree = self._asts.parse(path)
-                guarded = type_checking_lines(tree)
-                scoped = _module_scope_imports(tree)
-                return tuple(
-                    ImportStatement.of(
-                        node, guarded=guarded, module_scope=node in scoped
-                    )
-                    for node in tree_nodes(tree)
-                    if isinstance(node, ast.Import | ast.ImportFrom)
-                )
-
-            self._imports[path] = (
-                build()
-                if self.cache is None
-                else self.cache.get(
-                    "import-statements",
-                    self.files.content_id(path),
-                    _IMPORT_STATEMENTS,
-                    build=build,
-                )
+            tree = self._asts.parse(path)
+            guarded = type_checking_lines(tree)
+            scoped = _module_scope_imports(tree)
+            self._imports[path] = tuple(
+                ImportStatement.of(node, guarded=guarded, module_scope=node in scoped)
+                for node in tree_nodes(tree)
+                if isinstance(node, ast.Import | ast.ImportFrom)
             )
         return self._imports[path]
 
     def class_definitions(self, path: str) -> tuple[ClassDefinition, ...]:
-        """Top-level classes in source order, cached per file content."""
+        """Top-level classes in source order."""
         if path not in self._classes:
-
-            def build() -> tuple[ClassDefinition, ...]:
-                return tuple(
-                    ClassDefinition(node.name, node.lineno, node.col_offset + 1)
-                    for node in self._asts.parse(path).body
-                    if isinstance(node, ast.ClassDef)
-                )
-
-            self._classes[path] = (
-                build()
-                if self.cache is None
-                else self.cache.get(
-                    "class-definitions",
-                    self.files.content_id(path),
-                    _CLASSES,
-                    build=build,
-                )
+            self._classes[path] = tuple(
+                ClassDefinition(node.name, node.lineno, node.col_offset + 1)
+                for node in self._asts.parse(path).body
+                if isinstance(node, ast.ClassDef)
             )
         return self._classes[path]
 
     def attribute_candidates(self, path: str) -> AttributeCandidates:
         if path not in self._attributes:
-
-            def build() -> AttributeCandidates:
-                return AttributeCandidates.from_tree(self._asts.parse(path))
-
-            self._attributes[path] = (
-                build()
-                if self.cache is None
-                else self.cache.get(
-                    "attribute-candidates",
-                    self.files.content_id(path),
-                    _ATTRIBUTES,
-                    build=build,
-                )
+            self._attributes[path] = AttributeCandidates.from_tree(
+                self._asts.parse(path)
             )
         return self._attributes[path]
 
@@ -293,25 +237,8 @@ class SyntaxIndex:
         return self._namespaces[module]
 
     def _namespace(self, source: SourceFile) -> Namespace:
-        def build() -> Namespace:
-            return namespace_of(
-                self._asts.parse(source.path),
-                source.module,
-                is_package=source.is_package,
-            )
-
-        if self.cache is None:
-            return build()
-        return self.cache.get(
-            "namespace",
-            [
-                source.module,
-                source.path,
-                source.is_package,
-                self.files.content_id(source.path),
-            ],
-            _NAMESPACE,
-            build=build,
+        return namespace_of(
+            self._asts.parse(source.path), source.module, is_package=source.is_package
         )
 
 

@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from smelt.analysis.identity import analyzer_identity
-from smelt.analysis.retained import RetainedAnalysis, retain
 from smelt.cli.app import main
 from smelt.cli.session_slots import worker_slot
 
@@ -49,7 +48,6 @@ def _serve_internal(
 
 def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
     identity = analyzer_identity()
-    state = RetainedAnalysis()
     root = root or os.getcwd()  # noqa: PTH109 - match the native client's lexical cwd
     # Neither the Python worker nor its Windows environment redirector may keep
     # an idle project's directory open and prevent worktree deletion or renames.
@@ -91,7 +89,7 @@ def _serve(endpoint: Path, *, root: str | None, idle_seconds: float) -> None:
                                 stream,
                                 token,
                                 dispatch=partial(
-                                    _dispatch, root=root, identity=identity, state=state
+                                    _dispatch, root=root, identity=identity
                                 ),
                                 acknowledged=acknowledged,
                             )
@@ -184,8 +182,6 @@ def _dispatch(
     message: dict[str, Any],
     root: str,
     identity: str,
-    *,
-    state: RetainedAnalysis | None = None,
 ) -> dict[str, Any]:
     analyzer_identity.cache_clear()
     if analyzer_identity() != identity:
@@ -206,7 +202,6 @@ def _dispatch(
     out = Capture(tty=message.get("tty") is True)
     err = Capture(tty=False)
     with (
-        retain(state),
         contextlib.chdir(root),
         contextlib.redirect_stdout(out),
         contextlib.redirect_stderr(err),

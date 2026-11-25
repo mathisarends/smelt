@@ -23,7 +23,6 @@ class DuplicateFunction(Rule):
     name = "complexity/duplicate-function"
     category = Category.COMPLEXITY
     default_severity = Severity.WARNING
-    production_only = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="A module-level function repeats another function's code.",

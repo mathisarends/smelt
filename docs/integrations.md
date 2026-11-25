@@ -88,8 +88,7 @@ To install from source, use `repo: https://github.com/mathisarends/smelt`,
 `rev: v0.16.1` and `id: smelt-staged` (or `id: smelt` for full checks). This source
 installation requires Rust 1.98+ and a platform linker. Use the release's
 matching `v`-prefixed Git tag. See the [agent workflow](agent-workflow.md) for
-cache behavior and limitations. Smelt's disposable `.smelt_cache/` creates its
-own `.gitignore`; cache files should not enter commits.
+performance and limitations.
 
 prek uses the [pre-commit hook format](https://pre-commit.com/#creating-new-hooks).
 The published `.pre-commit-hooks.yaml` manifest keeps the required filename.

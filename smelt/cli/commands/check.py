@@ -5,7 +5,6 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from smelt import __version__
-from smelt.analysis.cache import cache_directory
 from smelt.analysis.files import FileIndex
 from smelt.cli.support import (
     EXIT_OK,
@@ -55,14 +54,7 @@ def check(args: argparse.Namespace, console: Console, cwd: Path) -> int:
                 option=option,
                 value="--staged",
             )
-        with staged_project(
-            cwd,
-            args.config,
-            index=getattr(args, "_staged_index", None),
-            use_cache=not args.no_cache,
-        ) as staged:
-            if staged.loaded.source is not None:
-                args._staged_inputs = staged.loaded.source.dependencies()
+        with staged_project(cwd, args.config, base=args.base) as staged:
             return _check_loaded(
                 args,
                 console,
@@ -95,13 +87,10 @@ def _check_loaded(
         ignore=_split_selectors(args.ignore),
         fail_on=Severity(args.fail_on),
         use_debt=not args.no_debt,
-        use_cache=not args.no_cache,
-        cache_dir=cache_directory(origin.root),
         comparison_root=origin.root if args.staged else None,
         staged=args.staged,
-        snapshot_id=index_hash,
         repository_root=staged.repository if staged else None,
-        comparison=getattr(args, "_comparison", None),
+        comparison=staged.comparison if staged else None,
     )
     outcome = run_check(loaded, options)
     if args.diff:
@@ -119,7 +108,6 @@ def _check_loaded(
             )
     report = outcome.report
     if args.staged:
-        args._installed_inputs = outcome.installed_inputs
         report.project = project_metadata(origin)
         if report.comparison is not None:
             report.comparison = {**report.comparison, "index_hash": index_hash}

@@ -53,7 +53,6 @@ class ImplicitDurationUnit(Rule):
     name = "modeling/implicit-duration-unit"
     category = Category.MODELING
     default_severity = Severity.WARNING
-    file_local = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary=(

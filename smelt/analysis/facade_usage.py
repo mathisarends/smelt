@@ -7,8 +7,6 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.exports import MAX_HOPS
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
 from smelt.analysis.lazy_exports import static_lazy_exports
@@ -69,9 +67,6 @@ class _ModuleFacts:
     declares_all: bool = False
     # runtime ``from base import names`` statements, without private names
     imports: tuple[tuple[str, tuple[str, ...]], ...] = ()
-
-
-_FACTS = TypeAdapter(_ModuleFacts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -275,7 +270,6 @@ class FacadeUsage:
         return None
 
     def _facts_for(self, path: str) -> _ModuleFacts | None:
-        """Cached per content, so unchanged modules are never parsed again."""
         if path not in self._facts:
             self._facts[path] = self._load_facts(path)
         return self._facts[path]
@@ -285,27 +279,10 @@ class FacadeUsage:
         source = files.source_for_path(path)
         if source is None and path not in files.tests:
             return None
-
-        def build() -> _ModuleFacts:
-            syntax = self._syntax.for_path(path)
-            if syntax is None:
-                raise LookupError(path)
-            return _module_facts(syntax)
-
-        cache = self._syntax.cache
-        if cache is None:
-            return build()
-        return cache.get(
-            "facade-module",
-            [
-                path,
-                source.module if source else None,
-                source.is_package if source else None,
-                files.content_id(path),
-            ],
-            _FACTS,
-            build=build,
-        )
+        syntax = self._syntax.for_path(path)
+        if syntax is None:
+            raise LookupError(path)
+        return _module_facts(syntax)
 
     def _cycle(self, package: str, module: str) -> tuple[str, ...]:
         previous: dict[str, str | None] = {module: None}

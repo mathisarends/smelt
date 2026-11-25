@@ -101,15 +101,13 @@ or from one representative codebase.
 
 ## C08 — Changed checks repeat full graph work
 
-Changed/staged checks now reuse content-addressed results, per-file facts and
-historical analysis; native clients can retain bounded member dependency state
-and avoid Git process starts. See the paired measurements in
-[the agent workflow](agent-workflow.md). These improvements do not make
-filename-only analysis correct: a removed caller can affect an unchanged method.
+Changed/staged checks analyze the complete project in the native core and keep
+no cache; the native Git reader avoids Git process starts. Analysis stays
+complete because filename-only analysis is not correct: a removed caller can
+affect an unchanged method.
 
 Continue measuring cold checks, architecture-heavy edits, complete hooks and
-memory on representative layouts. Keep independent `--no-cache` parity checks
-for every optimization. Earlier single-run timings are historical observations,
+memory on representative layouts. Earlier single-run timings are historical observations,
 not a portable latency guarantee.
 
 ## Multi-project CI and report usability
@@ -197,8 +195,8 @@ Python project will have the same precision or defaults.
    results retain project identity, validated output and correct artifact paths.
 4. **Visibility and trusted extensions:** encode bounded importer/symbol contracts
    and repository conventions without weakening existing architecture policies.
-5. **Latency:** benchmark representative layouts, then cache immutable analysis
-   without losing effects in unchanged importers.
+5. **Latency:** benchmark representative layouts and keep complete analysis
+   fast enough that unchanged importers need no cache.
 
 Avoid an opaque aggregate “slop score”. Report enforceable changes and their
 consequences: a private dependency, lost policy coverage, a widened exception,

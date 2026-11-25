@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class TestWithoutOutcomeCheck(Rule):
-    test_local = True
     scope = "test"
     code = "TST006"
     name = "tests/missing-outcome-check"
@@ -80,7 +79,6 @@ class TestWithoutOutcomeCheck(Rule):
 
 
 class TestOnlyChecksPossiblyEmptyData(Rule):
-    test_local = True
     scope = "test"
     code = "TST007"
     name = "tests/vacuous-assertion"

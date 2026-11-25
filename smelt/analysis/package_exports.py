@@ -5,8 +5,6 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.function_usage import definition_bindings, explicit_exports
 from smelt.analysis.parsing import resolve_relative
 from smelt.model import is_within
@@ -16,31 +14,15 @@ if TYPE_CHECKING:
 
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
-_EXPORTS = TypeAdapter(dict[str, str])
-
 
 def package_facades(syntax: SyntaxIndex) -> dict[str, dict[str, str]]:
-    """Direct re-exports of every analyzed package, cached per initializer content."""
-    files = syntax.files
+    """Direct re-exports of every analyzed package."""
     facades: dict[str, dict[str, str]] = {}
-    for source in files.sources.values():
+    for source in syntax.files.sources.values():
         if not source.is_package:
             continue
-
-        def build(path: str = source.path) -> dict[str, str]:
-            module = syntax.for_path(path)
-            return {} if module is None else _direct_exports(module)
-
-        facades[source.module] = (
-            build()
-            if syntax.cache is None
-            else syntax.cache.get(
-                "package-exports",
-                [source.module, source.path, files.content_id(source.path)],
-                _EXPORTS,
-                build=build,
-            )
-        )
+        module = syntax.for_path(source.path)
+        facades[source.module] = {} if module is None else _direct_exports(module)
     return facades
 
 

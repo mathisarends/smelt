@@ -5,19 +5,15 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic import TypeAdapter
-
-from smelt.analysis.cache import FactCache, cache_directory
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
 from smelt.analysis.files import FileIndex
-from smelt.analysis.identity import IdentityScope, analyzer_identity
 from smelt.analysis.parsing import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue, did_you_mean
 from smelt.config.patterns import module_matches, path_matches
-from smelt.config.workspace import debt_scope_for_path, debt_scopes
+from smelt.config.workspace import debt_scope_for_path, debt_scopes, scope_for_path
 from smelt.diagnostics.debt import Debt, DebtEntry
 from smelt.diagnostics.dedupe import deduplicate
 from smelt.diagnostics.fixes import FixAvailability
@@ -34,16 +30,10 @@ from smelt.diagnostics.violation import (
     docs_url,
 )
 from smelt.engine import native_core
-from smelt.engine.cache import (
-    ANALYSIS,
-    CachedAnalysis,
-    analysis_inputs,
-    installed_inputs,
-)
+from smelt.engine.analysis import Analysis
 from smelt.engine.changes import Comparison, resolve_comparison
 from smelt.engine.coverage import analysis_facts, effective_coverage
 from smelt.engine.facade_coverage import uncovered_facades, uncovered_imports
-from smelt.engine.file_checks import file_findings, rule_findings
 from smelt.engine.git_source import GitSourceStore
 from smelt.engine.paths import missing_paths, project_metadata
 from smelt.engine.rule_policy import missing_rule_policies
@@ -62,7 +52,7 @@ from smelt.rules.renames import retired_hint
 from smelt.rules.structure.package_imports import PreferPackageImport
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from smelt.config.loader import LoadedConfig
     from smelt.config.source import SourceStore
@@ -92,8 +82,6 @@ _META = frozenset(
     }
 )
 _COVERAGE = "ARC013"
-_BASELINE = TypeAdapter(list[DebtEntry])
-_SUPPRESSIONS = TypeAdapter(list[Suppression])
 
 
 _CATEGORY_ORDER = [category for category in Category if category is not Category.META]
@@ -110,11 +98,8 @@ class CheckOptions:
     use_debt: bool = True
     strict_coverage: bool = False
     show_coverage: bool = False
-    use_cache: bool = True
-    cache_dir: Path | None = None
     comparison_root: Path | None = None
     staged: bool = False
-    snapshot_id: str | None = None
     repository_root: Path | None = None
     comparison: Comparison | None = None
 
@@ -128,7 +113,6 @@ class CheckOutcome:
     # every violation after ignores and suppressions, before debt and scoping
     unfiltered: list[Violation] = field(default_factory=list)
     resolved_debt: list[DebtEntry] = field(default_factory=list)
-    installed_inputs: dict[str, str | None] = field(default_factory=dict)
 
 
 def rule_meta(rule: RuleContract) -> RuleMeta:
@@ -164,29 +148,18 @@ def run_check(
     rules: RuleSet | None = None,
     context: AnalysisContext | None = None,
 ) -> CheckOutcome:
-    owned_cache = (
-        FactCache(options.cache_dir or cache_directory(loaded.root))
-        if options.use_cache and rules is None and context is None
-        else None
-    )
-    cache = owned_cache
-    if context is not None and options.use_cache and rules is None:
-        cache = context.cache
     try:
-        return _run_check(loaded, options, rules=rules, context=context, cache=cache)
+        return _run_check(loaded, options, rules=rules, context=context)
     except ConfigError as exc:
         explained = loaded.explain_error(exc)
         if explained is exc:
             raise
         raise explained from exc
-    finally:
-        if owned_cache is not None:
-            owned_cache.close()
 
 
 def snippet_reader(ctx: AnalysisContext) -> Callable[[Violation], str]:
-    # A cached snapshot needs source lines, not source discovery, to compare
-    # fingerprints. A lightweight FileIndex provides the same decoding/cache.
+    # Fingerprints need source lines, not source discovery. A lightweight
+    # FileIndex decodes them as the analysis does.
     files = ctx.__dict__.get("files") or FileIndex(
         ctx.root, ctx.config, store=ctx.store
     )
@@ -221,14 +194,13 @@ def _run_check(
     *,
     rules: RuleSet | None,
     context: AnalysisContext | None,
-    cache: FactCache | None,
 ) -> CheckOutcome:
     config = loaded.config
     if options.strict_coverage and not config.strict_coverage:
         config = config.with_strict_coverage()
         loaded = replace(loaded, config=config)
     # The native core analyzes the working tree or the staged index with the
-    # built-in rules and without the analysis cache.
+    # built-in rules.
     native = (
         native_core.selected()
         and rules is None
@@ -236,58 +208,23 @@ def _run_check(
     )
     rules = rules or build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
-    ctx = _analysis_context(loaded, context, cache=cache)
+    ctx = _analysis_context(loaded, context)
     _validate_ownership(ctx, loaded)
-    # The result cache follows installed packages whichever engine analyzes.
-    installed = installed_inputs(config, active) if cache else {}
-    cache = None if native else cache
-    key = (
-        cache.decision_key(
-            "index-analysis",
-            [
-                options.snapshot_id,
-                config.model_dump(mode="json"),
-                [(r.code, s.value) for r, s in active],
-                str(options.comparison_root),
-                options.select,
-                installed,
-            ],
-        )
-        if cache and options.snapshot_id
-        else None
-    )
-    analyzed = cache.read(key, ANALYSIS) if cache and key else None
-    if analyzed is None:
-        if issues := missing_paths(ctx):
-            raise ConfigError(issues, loaded.path.name)
-        settings = RuleSettings(rules, loaded)
-        settings.validate_packages(ctx)
-        key = key or (
-            cache.decision_key(
-                "analysis",
-                analysis_inputs(ctx, active, options.select, installed=installed),
-            )
-            if cache
-            else None
-        )
-        analyzed = cache.read(key, ANALYSIS) if cache and key else None
+    if issues := missing_paths(ctx):
+        raise ConfigError(issues, loaded.path.name)
+    settings = RuleSettings(rules, loaded)
+    settings.validate_packages(ctx)
     if options.paths:
         _validate_scope(ctx, options.paths)
     compared = _comparison(ctx, options) if native and options.changed else None
     baseline: Debt | None = None
-    if analyzed is None:
-        if native:
-            result = _native_analysis(rules, loaded, options, compared=compared)
-            analyzed, baseline = result.analysis, result.baseline
-            # A fix applies only to the text the core judged.
-            ctx.files.observe(result.digests)
-        else:
-            analyzed = _python_analysis(
-                ctx, rules, loaded, active=active, options=options
-            )
-        if cache and key:
-            cache.write(key, analyzed, ANALYSIS)
-    ctx.store.dependencies().update(analyzed.dependencies)
+    if native:
+        result = _native_analysis(rules, loaded, options, compared=compared)
+        analyzed, baseline = result.analysis, result.baseline
+        # A fix applies only to the text the core judged.
+        ctx.files.observe(result.digests)
+    else:
+        analyzed = _python_analysis(ctx, rules, loaded, active=active, options=options)
     violations, suppressed = (
         analyzed.violations
         # The native core judges the configuration together with the sources.
@@ -319,12 +256,6 @@ def _run_check(
                 before, rules, loaded, active=active, options=options
             )[0],
             options=options,
-            cache_key=[
-                config.model_dump(mode="json"),
-                [(r.code, s.value) for r, s in active],
-                options.select,
-                installed,
-            ],
         )
 
     violations = coverage_gaps + [v for v in violations if _in_scope(v, options)]
@@ -370,7 +301,6 @@ def _run_check(
         active,
         unfiltered,
         debt.resolved,
-        installed_inputs=installed,
     )
 
 
@@ -431,7 +361,7 @@ def _python_analysis(
     *,
     active: list[tuple[RuleContract, Severity]],
     options: CheckOptions,
-) -> CachedAnalysis:
+) -> Analysis:
     violations, suppressed = _collect(
         ctx, rules, loaded, active=active, options=options
     )
@@ -440,13 +370,12 @@ def _python_analysis(
         include_ordering=any(rule.code == "LAY004" for rule, _ in active),
         include_test_quality=any(rule.code in TEST_QUALITY_CODES for rule, _ in active),
     )
-    return CachedAnalysis(
+    return Analysis(
         violations,
         suppressed,
         effective_coverage(ctx.config, facts, include_inventory=True),
         len(ctx.files.sources),
         list(ctx.files.all_check_paths()),
-        dict(ctx.store.dependencies()),
     )
 
 
@@ -478,18 +407,11 @@ def _codes(rules: RuleSet, prefixes: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _analysis_context(
-    loaded: LoadedConfig, context: AnalysisContext | None, *, cache: FactCache | None
+    loaded: LoadedConfig, context: AnalysisContext | None
 ) -> AnalysisContext:
-    ctx = (
-        context
-        if context is not None and context.config == loaded.config
-        else AnalysisContext(
-            loaded.root, loaded.config, cache=cache, store=loaded.source
-        )
-    )
-    if isinstance(ctx.store, GitSourceStore):
-        ctx.store.cache = cache
-    return ctx
+    if context is not None and context.config == loaded.config:
+        return context
+    return AnalysisContext(loaded.root, loaded.config, store=loaded.source)
 
 
 def _configured_policy_findings(
@@ -544,38 +466,14 @@ def _introduced(
     collect: Callable[[AnalysisContext], list[Violation]],
     *,
     options: CheckOptions,
-    cache_key: object = None,
 ) -> tuple[list[Violation], Comparison]:
     """The violations the working tree adds to the base commit, judged by today's config."""
     root = options.comparison_root or ctx.root
     repository, comparison = _comparison(ctx, options)
-    cache = ctx.cache
-    # A source root outside the repository can change independently of HEAD.
-    if any(
-        not ctx.store.resolve(root / path).is_relative_to(repository.resolve())
-        for path in [*ctx.config.project.source_roots, *ctx.config.project.test_roots]
-    ):
-        cache = None
-    key = (
-        cache.decision_key(
-            "baseline",
-            [root.relative_to(repository).as_posix(), comparison.revision, cache_key],
-        )
-        if cache
-        else None
-    )
-    entries = cache.read(key, _BASELINE) if cache and key else None
-    if entries is not None:
-        baseline = Debt(entries)
-        introduced, _, _ = baseline.match(violations, snippet_reader(ctx))
-        return introduced, comparison
     if comparison.revision is None:
         return violations, comparison
-    # The base is read from Git objects in every mode. Its facts are keyed like
-    # the working tree's, so only sources that differ are analyzed again.
-    before_store = GitSourceStore.from_revision(
-        repository, comparison.revision, cache=ctx.cache
-    )
+    # The base is read from Git objects in every mode.
+    before_store = GitSourceStore.from_revision(repository, comparison.revision)
     before_root = (
         root
         if isinstance(ctx.store, GitSourceStore)
@@ -583,16 +481,12 @@ def _introduced(
     )
     if not before_store.is_dir(before_root):
         return violations, comparison
-    before_ctx = AnalysisContext(
-        before_root, ctx.config, cache=ctx.cache, store=before_store
-    )
+    before_ctx = AnalysisContext(before_root, ctx.config, store=before_store)
     # A committed README (or a newly added workspace package) is an empty
     # historical inventory, not an analysis failure. Existing source still
     # goes through normal parsing so corrupt baselines do not pass silently.
     before = collect(before_ctx) if any(before_ctx.files.all_check_paths()) else []
     known = Debt.from_violations(before, snippet_reader(before_ctx))
-    if cache and key:
-        cache.write(key, known.entries, _BASELINE)
     introduced, _, _ = known.match(violations, snippet_reader(ctx))
     return introduced, comparison
 
@@ -627,21 +521,10 @@ def _collect(
 
     policy = RuleSettings(rules, loaded)
     violations: list[Violation] = []
-    grouped = file_findings(
-        [
-            rule
-            for rule, _ in active
-            if getattr(rule, "file_local", False)
-            and not getattr(rule, "architecture_scoped", False)
-        ],
-        ctx,
-    )
     for rule, _ in active:
         if rule.code in _META:
             continue
-        for violation in (
-            grouped[rule.code] if rule.code in grouped else rule_findings(rule, ctx)
-        ):
+        for violation in _rule_findings(rule, ctx):
             severity = policy.severity(
                 rule,
                 ctx,
@@ -679,6 +562,18 @@ def _collect(
         replace(finding, member=ctx.workspace.member_for_path(finding.path))
         for finding in violations
     ], sum(len(codes) for codes in usage.values())
+
+
+def _rule_findings(rule: RuleContract, ctx: AnalysisContext) -> Iterator[Violation]:
+    """Each member architecture judges the files of its own packages and members."""
+    if not (getattr(rule, "architecture_scoped", False) and ctx.model.parts):
+        yield from rule.check(ctx)
+        return
+    scopes = ctx.architecture_scopes
+    for scope in scopes:
+        for finding in rule.check(ctx.architecture_view(scope)):
+            if scope_for_path(scopes, finding.path) is scope:
+                yield finding
 
 
 def _resolve_active_rules(
@@ -808,33 +703,11 @@ def _module_for_path(ctx: AnalysisContext, path: str | None) -> str | None:
 
 def _collect_suppressions(ctx: AnalysisContext) -> list[Suppression]:
     found: list[Suppression] = []
-    keys = (
-        {
-            # Comments are parsed below the rules, so a rule edit keeps them.
-            path: ctx.cache.decision_key(
-                "suppressions-v2",
-                [path, ctx.files.content_id(path)],
-                identity=analyzer_identity(IdentityScope.RULE_HOST),
-            )
-            for path in ctx.files.all_python_paths()
-        }
-        if ctx.cache
-        else {}
-    )
-    missing = ctx.cache.missing(list(keys.values())) if ctx.cache else set()
-    ctx.store.prefetch(
-        ctx.root / path
-        for path in ctx.files.all_python_paths()
-        if ctx.cache is None or keys[path] in missing
-    )
+    ctx.store.prefetch(ctx.root / path for path in ctx.files.all_python_paths())
     for path in ctx.files.all_python_paths():
-        cached = ctx.cache.read(keys[path], _SUPPRESSIONS) if ctx.cache else None
-        if cached is None:
-            text = ctx.files.read_text(path)
-            cached = parse_suppressions(path, text) if "smelt:" in text else []
-            if ctx.cache:
-                ctx.cache.write(keys[path], cached, _SUPPRESSIONS)
-        found.extend(cached)
+        text = ctx.files.read_text(path)
+        if "smelt:" in text:
+            found.extend(parse_suppressions(path, text))
     return found
 
 

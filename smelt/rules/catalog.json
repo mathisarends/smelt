@@ -9,10 +9,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -27,10 +23,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -45,10 +37,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -63,10 +51,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -81,10 +65,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -99,10 +79,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -118,10 +94,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -137,10 +109,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -156,10 +124,6 @@
       "workspace"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -175,10 +139,6 @@
       "workspace"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -193,10 +153,6 @@
       "files"
     ],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -211,10 +167,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": true,
     "scope": "source",
     "fix_availability": "none"
@@ -229,10 +181,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -247,10 +195,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -265,10 +209,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": true,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -283,10 +223,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -301,10 +237,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -319,10 +251,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": true,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -337,10 +265,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -355,10 +279,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -373,10 +293,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -391,10 +307,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -409,10 +321,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -427,10 +335,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -445,10 +349,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -463,10 +363,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -481,10 +377,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -499,10 +391,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -517,10 +405,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -535,10 +419,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -553,10 +433,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -571,10 +447,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -590,10 +462,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -608,10 +476,6 @@
       "imports"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -626,10 +490,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -644,10 +504,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -662,10 +518,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -680,10 +532,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -698,10 +546,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -716,10 +560,6 @@
       "ordering"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -734,10 +574,6 @@
       "member_usage"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": true,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -752,10 +588,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -770,10 +602,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -788,10 +616,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -806,10 +630,6 @@
       "files"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -824,10 +644,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -842,10 +658,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -858,10 +670,6 @@
     "default_severity": "warning",
     "requires": [],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "sometimes"
@@ -874,10 +682,6 @@
     "default_severity": "error",
     "requires": [],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -890,10 +694,6 @@
     "default_severity": "warning",
     "requires": [],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -906,10 +706,6 @@
     "default_severity": "warning",
     "requires": [],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -922,10 +718,6 @@
     "default_severity": "hint",
     "requires": [],
     "enabled_by_default": true,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "project",
     "fix_availability": "none"
@@ -940,10 +732,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -958,10 +746,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -976,10 +760,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -994,10 +774,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1012,10 +788,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1030,10 +802,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1048,10 +816,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1066,10 +830,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1084,10 +844,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": true,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1102,10 +858,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1120,10 +872,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1138,10 +886,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1157,10 +901,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1175,10 +915,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1193,10 +929,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1211,10 +943,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1229,10 +957,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1247,10 +971,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1265,10 +985,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1283,10 +999,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1301,10 +1013,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1319,10 +1027,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1337,10 +1041,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": true,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1356,10 +1056,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "test",
     "fix_availability": "none"
@@ -1374,10 +1070,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1392,10 +1084,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1410,10 +1098,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1428,10 +1112,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1446,10 +1126,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1464,10 +1140,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1482,10 +1154,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1500,10 +1168,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1519,10 +1183,6 @@
       "model"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": true,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1539,10 +1199,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1557,10 +1213,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1575,10 +1227,6 @@
       "member_usage"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1593,10 +1241,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": true,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1611,10 +1255,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1629,10 +1269,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1647,10 +1283,6 @@
       "syntax"
     ],
     "enabled_by_default": false,
-    "file_local": true,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "sometimes"
@@ -1666,10 +1298,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"
@@ -1685,10 +1313,6 @@
       "test_syntax"
     ],
     "enabled_by_default": false,
-    "file_local": false,
-    "production_only": false,
-    "test_local": false,
-    "member_local": false,
     "architecture_scoped": false,
     "scope": "source",
     "fix_availability": "none"

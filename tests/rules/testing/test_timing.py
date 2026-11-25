@@ -40,7 +40,7 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
     path = tmp_path / "tests/test_compiler.py"
     path.write_text(path.read_text().replace("check=False", "check=False, timeout=10"))
     cached = check(tmp_path).report
-    uncached = check(tmp_path, CheckOptions(use_cache=False)).report
+    uncached = check(tmp_path, CheckOptions()).report
     assert cached.violations == []
     assert render_json(cached) == render_json(uncached)
     path.write_text(path.read_text().replace("assert result.returncode == 0", "pass"))

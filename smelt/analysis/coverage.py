@@ -8,8 +8,6 @@ from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.errors import AnalysisError
 from smelt.analysis.parsing import tree_nodes
 from smelt.analysis.workspace import import_root, workspace_members
@@ -27,7 +25,6 @@ if TYPE_CHECKING:
 type CoverageStatus = Literal[
     "governed", "facade", "unclassified", "uncovered", "excluded"
 ]
-_BOOL = TypeAdapter(bool)
 
 
 @dataclass(frozen=True, slots=True)
@@ -276,17 +273,6 @@ def _policies(info: ModuleInfo | None) -> tuple[str, ...]:
 
 
 def _is_facade(source: SourceFile, asts: AstCache) -> bool:
-    if asts.cache is not None:
-        return asts.cache.get(
-            "facade",
-            [source.path, asts.files.content_id(source.path)],
-            _BOOL,
-            build=lambda: _facade_syntax(source, asts),
-        )
-    return _facade_syntax(source, asts)
-
-
-def _facade_syntax(source: SourceFile, asts: AstCache) -> bool:
     try:
         tree = asts.parse(source.path)
     except AnalysisError:

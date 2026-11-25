@@ -14,7 +14,6 @@ _TYPING = frozenset({"typing", "typing_extensions"})
 
 
 class RedundantNameAlias(Rule):
-    file_local = True
     code = "IDM004"
     name = "idioms/redundant-name-alias"
     category = Category.IDIOMS

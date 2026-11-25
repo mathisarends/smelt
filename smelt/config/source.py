@@ -45,10 +45,6 @@ class SourceStore:
     def identity(self, path: Path) -> str | None:
         return None
 
-    def content_digest(self, path: Path) -> str | None:
-        """The decoded text's SHA-256 when an immutable view tracks it, else None."""
-        return None
-
     def prefetch(self, paths: Iterable[Path]) -> None:
         """Load several immutable objects in one request, when supported."""
 
@@ -58,7 +54,3 @@ class SourceStore:
     def yaml_inventory(self, root: Path) -> Iterable[str] | None:
         """Project-relative YAML candidates from an immutable inventory, if available."""
         return None
-
-    def dependencies(self) -> dict[str, str]:
-        """Immutable inputs observed by this view; disk checks cannot reuse these."""
-        return {}

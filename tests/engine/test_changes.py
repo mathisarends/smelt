@@ -55,13 +55,8 @@ def test_changed_checks_find_new_deep_test_imports(
             "tests/test_api.py": "from app.api.impl import Item\nfrom app.api.other import Other\n"
         },
     )
-    for use_cache in (True, True, False):
-        found = violations(
-            root, CheckOptions(changed=True, select=(code,), use_cache=use_cache)
-        )
-        assert [(v.code, v.path) for v in found] == [
-            (code, "tests/test_api.py")
-        ] * count
+    found = violations(root, CheckOptions(changed=True, select=(code,)))
+    assert [(v.code, v.path) for v in found] == [(code, "tests/test_api.py")] * count
 
 
 def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
@@ -85,12 +80,8 @@ def test_changed_literal_group_detects_new_sites_after_a_group_is_accepted(
     write_policy_project(
         tmp_path, {"app/third.py": source.replace("def first", "def third")}
     )
-    for use_cache in (True, True, False):
-        found = violations(
-            tmp_path,
-            CheckOptions(changed=True, select=("TYP005",), use_cache=use_cache),
-        )
-        assert [v.path for v in found] == ["app/third.py"]
+    found = violations(tmp_path, options)
+    assert [v.path for v in found] == ["app/third.py"]
     (tmp_path / "app/first.py").write_text(
         source + source.split("\n", maxsplit=1)[1].replace("def first", "def added"),
         encoding="utf-8",
@@ -132,9 +123,7 @@ def test_changed_module_fanout_detects_replaced_dependency_at_the_same_count(
     assert (finding.code, finding.path) == ("IMP002", "app/client.py")
     assert finding.expected is not None
     assert finding.expected["modules"] == ["app.first", "app.third"]
-    assert violations(
-        root, CheckOptions(changed=True, select=("IMP002",), use_cache=False)
-    ) == [finding]
+    assert violations(root, CheckOptions(changed=True, select=("IMP002",))) == [finding]
 
 
 @pytest.mark.parametrize("change", ["append", "replace"])
@@ -168,9 +157,7 @@ def test_changed_private_definitions_detect_new_names(
     assert (finding.code, finding.path) == ("VIS007", "app/client.py")
     assert finding.expected is not None
     assert "class:_Added" in finding.expected["definition_edges"]
-    assert violations(
-        root, CheckOptions(changed=True, select=("VIS007",), use_cache=False)
-    ) == [finding]
+    assert violations(root, CheckOptions(changed=True, select=("VIS007",))) == [finding]
     write_policy_project(root, {"app/client.py": "class _First: pass\n"})
     assert violations(root, options) == []
 
@@ -204,9 +191,7 @@ def test_changed_multiline_comprehension_detects_new_logic_below_its_anchor(
     assert (finding.code, finding.line) == ("CPX006", 1)
     assert finding.expected is not None
     assert "nontrivial conditional element" in finding.expected["conditions"]
-    assert violations(
-        root, CheckOptions(changed=True, select=("CPX006",), use_cache=False)
-    ) == [finding]
+    assert violations(root, CheckOptions(changed=True, select=("CPX006",))) == [finding]
 
 
 def test_changed_constructor_detects_an_added_decision_at_the_same_method(
@@ -233,9 +218,7 @@ def test_changed_constructor_detects_an_added_decision_at_the_same_method(
     assert (finding.code, finding.line) == ("CPX007", 2)
     assert finding.expected is not None
     assert finding.expected["count"] == 2
-    assert violations(
-        root, CheckOptions(changed=True, select=("CPX007",), use_cache=False)
-    ) == [finding]
+    assert violations(root, CheckOptions(changed=True, select=("CPX007",))) == [finding]
 
 
 def test_changed_private_access_detects_an_owner_change_in_a_facade(
@@ -262,9 +245,7 @@ def test_changed_private_access_detects_an_owner_change_in_a_facade(
     [finding] = violations(root, options)
     assert finding.target_module == "app.second.Store._data"
     assert finding.path == "app/client.py"
-    assert violations(
-        root, CheckOptions(changed=True, select=("VIS005",), use_cache=False)
-    ) == [finding]
+    assert violations(root, CheckOptions(changed=True, select=("VIS005",))) == [finding]
 
 
 def test_changed_filename_policy_reports_only_new_paths(tmp_path: Path) -> None:
@@ -438,7 +419,7 @@ class TestBaseComparison:
         monkeypatch.setattr("tempfile.mkdtemp", unexpected)
         (repo / "app/application/service.py").write_text("x = 1\n")
 
-        assert violations(repo, CheckOptions(changed=True, use_cache=False)) == []
+        assert violations(repo, CheckOptions(changed=True)) == []
 
     def test_without_commits_there_is_no_base(self, tmp_path: Path) -> None:
         _git(tmp_path, "init", "-q")

@@ -158,7 +158,6 @@ class ForbiddenPrivateModule(Rule):
 
 
 class ForbiddenBaseClassAffix(Rule):
-    file_local = True
     code = "MOD002"
     name = "modeling/forbidden-base-class-affix"
     category = Category.MODELING

@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 class PackageOnlyDunderAll(Rule):
-    file_local = True
     code = "VIS003"
     name = "visibility/misplaced-dunder-all"
     category = Category.VISIBILITY
@@ -65,7 +64,6 @@ class PackageOnlyDunderAll(Rule):
 
 
 class ReexportOnlyModule(Rule):
-    file_local = True
     code = "LAY010"
     name = "layout/reexport-only-module"
     category = Category.LAYOUT

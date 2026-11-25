@@ -22,7 +22,6 @@ _SLOTTED_MODULES = frozenset({"abc", "typing", "typing_extensions"})
 
 
 class MissingDataclassOption(Rule):
-    file_local = True
     activation = POLICIES["MOD006"]
     code = "MOD006"
     name = "modeling/missing-dataclass-option"

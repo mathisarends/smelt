@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class SecretSettingsField(Rule):
-    file_local = True
     code = "FWK001"
     name = "frameworks/prefer-secret-type"
     category = Category.FRAMEWORKS

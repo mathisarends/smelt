@@ -27,7 +27,6 @@ _NOT_IMPLEMENTED = "NotImplementedError"
 
 
 class MissingInterfaceDocstring(Rule):
-    file_local = True
     code = "IDM005"
     name = "idioms/missing-interface-docstring"
     category = Category.IDIOMS

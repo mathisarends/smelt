@@ -54,7 +54,7 @@ PROJECT = {
         "def _helper() -> None:\n    pass\n\n\ndef helper() -> None:\n    _helper()\n"
     ),
 }
-BASE = CheckOptions(use_cache=False, show_coverage=True)
+BASE = CheckOptions(show_coverage=True)
 
 
 @pytest.mark.parametrize(
@@ -214,7 +214,7 @@ def test_member_architecture_follows_only_its_own_import_paths(
             "services/api/src/api/infra/client.py": "import requests\n",
         },
     )
-    options = CheckOptions(select=("ARC003",), use_cache=False)
+    options = CheckOptions(select=("ARC003",))
     monkeypatch.setenv("SMELT_CORE", "python")
     expected = violations(tmp_path, options)
 

@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import fnmatch
-import hashlib
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from pydantic import TypeAdapter
 
 from smelt.analysis.errors import AnalysisError
 from smelt.config.source import SourceStore
@@ -17,10 +14,7 @@ from smelt.engine.changes import read_blobs, run_git
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from smelt.analysis.cache import FactCache
     from smelt.engine.changes import GitIndex
-
-_DIGEST = TypeAdapter(str)
 
 
 class GitSourceStore(SourceStore):
@@ -29,16 +23,12 @@ class GitSourceStore(SourceStore):
         repository: Path,
         blobs: dict[str, str],
         *,
-        cache: FactCache | None = None,
         yaml_paths: tuple[str, ...] | None = None,
     ) -> None:
         self.repository = repository
         self.blobs = blobs
-        self.cache = cache
         self._yaml_paths = yaml_paths
         self._contents: dict[str, bytes] = {}
-        self._digests: dict[str, str] = {}
-        self._dependencies: dict[str, str] = {}
         self._children: dict[Path, set[Path]] = {repository: set()}
         self._objects = {repository / path: oid for path, oid in blobs.items()}
         self._files = set(self._objects)
@@ -53,9 +43,7 @@ class GitSourceStore(SourceStore):
         return cls(index.repository, index.blobs, yaml_paths=index.yaml_paths)
 
     @classmethod
-    def from_revision(
-        cls, repository: Path, revision: str, *, cache: FactCache | None = None
-    ) -> GitSourceStore:
+    def from_revision(cls, repository: Path, revision: str) -> GitSourceStore:
         blobs: dict[str, str] = {}
         for record in run_git(
             repository, "ls-tree", "-rz", "--full-tree", revision
@@ -74,7 +62,7 @@ class GitSourceStore(SourceStore):
             if path.drive or path.is_absolute() or ".." in path.parts:
                 raise AnalysisError(f"unsafe path in Git snapshot: {path}")
             blobs[path.as_posix()] = oid.decode("ascii")
-        return cls(repository, blobs, cache=cache)
+        return cls(repository, blobs)
 
     def resolve(self, path: Path) -> Path:
         # Working-tree symlinks and missing directories cannot change a Git view.
@@ -129,29 +117,7 @@ class GitSourceStore(SourceStore):
     def identity(self, path: Path) -> str | None:
         resolved = path if path in self._objects else self.resolve(path)
         oid = self._objects.get(resolved)
-        if oid is not None:
-            self._dependencies[resolved.relative_to(self.repository).as_posix()] = oid
         return f"git:{oid}" if oid is not None else None
-
-    def content_digest(self, path: Path) -> str | None:
-        """Map the object ID to the text digest a disk check uses for the same text.
-
-        The mapping is cached, so a warm check still needs no blob contents.
-        """
-        identity = self.identity(path)
-        if identity is None:
-            return None
-        oid = identity.removeprefix("git:")
-        if oid not in self._digests:
-            try:
-                self._digests[oid] = self._cached_digest(path, oid)
-            except UnicodeError:
-                # Reading the source reports the error; the ID only has to be stable.
-                self._digests[oid] = identity
-        return self._digests[oid]
-
-    def dependencies(self) -> dict[str, str]:
-        return self._dependencies
 
     def prefetch(self, paths: Iterable[Path]) -> None:
         identifiers = set()
@@ -162,14 +128,8 @@ class GitSourceStore(SourceStore):
             if oid is not None:
                 identifiers.add(oid)
         missing = identifiers - self._contents.keys()
-        if missing and self.cache is not None:
-            self._contents.update(self.cache.read_blobs(sorted(missing)))
-            missing -= self._contents.keys()
         if missing:
-            fetched = read_blobs(self.repository, sorted(missing))
-            self._contents.update(fetched)
-            if self.cache is not None:
-                self.cache.write_blobs(fetched)
+            self._contents.update(read_blobs(self.repository, sorted(missing)))
 
     def read_bytes(self, path: Path) -> bytes:
         identity = self.identity(path)
@@ -179,18 +139,3 @@ class GitSourceStore(SourceStore):
         if oid not in self._contents:
             self.prefetch([path])
         return self._contents[oid]
-
-    def _cached_digest(self, path: Path, oid: str) -> str:
-        if self.cache is None:
-            return self._text_digest(path)
-        # Computed outside the analysis layer, so it is keyed like a decision.
-        key = self.cache.decision_key("text-digest", oid)
-        digest = self.cache.read(key, _DIGEST)
-        if digest is None:
-            digest = self._text_digest(path)
-            self.cache.write(key, digest, _DIGEST)
-        return digest
-
-    def _text_digest(self, path: Path) -> str:
-        text = self.read_text(path, encoding="utf-8-sig")
-        return hashlib.sha256(text.encode()).hexdigest()

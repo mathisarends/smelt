@@ -164,7 +164,6 @@ style:
     )
     [finding] = violations(root)
     assert finding.path == "app/model.py"
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 @pytest.mark.parametrize(

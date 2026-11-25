@@ -524,7 +524,7 @@ class TestBaseClassPrefix:
 
         (root / "app/service.py").write_text("class Service: pass\n", encoding="utf-8")
 
-        assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+        assert violations(root) == []
 
 
 REDUNDANT_CONFIG = """version: 2
@@ -692,7 +692,7 @@ rules: {layout/redundant-module-name: hint}
         write_project(root, {sibling: ""})
 
         cached = violations(root)
-        assert cached == violations(root, CheckOptions(use_cache=False))
+        assert cached == violations(root, CheckOptions())
         assert len(cached) == 1
         assert cached[0].expected is not None
         assert cached[0].expected["suggested_name"] is None
@@ -700,4 +700,4 @@ rules: {layout/redundant-module-name: hint}
         (root / sibling).unlink()
         (root / REDUNDANT_PATH).rename((root / REDUNDANT_PATH).with_name("exporter.py"))
 
-        assert violations(root) == violations(root, CheckOptions(use_cache=False)) == []
+        assert violations(root) == []

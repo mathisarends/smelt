@@ -193,6 +193,6 @@ def test_cached_results_follow_a_new_reexport(tmp_path: Path) -> None:
     write_project(root, {"app/jobs/__init__.py": "from .worker import start, stop\n"})
 
     warm = check(root).report.violations
-    fresh = check(root, CheckOptions(use_cache=False)).report.violations
+    fresh = check(root, CheckOptions()).report.violations
     assert warm == fresh
     assert {v.code for v in warm} == {"IMP004"}

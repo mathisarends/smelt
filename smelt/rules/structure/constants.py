@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 
 class PrivateClassConstant(Rule):
-    file_local = True
     code = "LAY008"
     name = "layout/misplaced-private-constant"
     category = Category.LAYOUT

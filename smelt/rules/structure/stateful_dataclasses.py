@@ -55,7 +55,6 @@ _MUTATING_METHODS = frozenset(
 
 
 class StatefulDataclass(Rule):
-    file_local = True
     code = "MOD005"
     name = "modeling/dataclass-field-mutation"
     category = Category.MODELING

@@ -5,10 +5,7 @@ from __future__ import annotations
 import ast
 from collections import Counter
 from dataclasses import dataclass
-from functools import partial
 from typing import TYPE_CHECKING, Literal
-
-from pydantic import TypeAdapter
 
 from smelt.analysis.function_usage import explicit_exports
 from smelt.analysis.parsing import child_nodes, tree_nodes
@@ -16,12 +13,8 @@ from smelt.analysis.parsing import child_nodes, tree_nodes
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from smelt.analysis.files import SourceFile
     from smelt.analysis.members import MemberUsageIndex
     from smelt.analysis.syntax import SyntaxIndex
-
-
-_NAMES = TypeAdapter(list[str])
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,17 +33,6 @@ def internal_module_symbols(
     for source in sorted(syntax.files.sources.values(), key=lambda item: item.path):
         if source.is_package:
             continue
-        if syntax.cache is not None:
-            names = syntax.cache.get(
-                "public-symbol-candidates",
-                syntax.files.content_id(source.path),
-                _NAMES,
-                build=partial(_public_candidates, syntax, source),
-            )
-            if all(
-                usage.module_name_used_externally(source.module, name) for name in names
-            ):
-                continue
         module = syntax.for_path(source.path)
         if module is None:
             continue
@@ -83,19 +65,6 @@ def internal_module_symbols(
                 tuple(sorted(loads.get(name, ()))),
                 frozenset(bindings),
             )
-
-
-def _public_candidates(syntax: SyntaxIndex, source: SourceFile) -> list[str]:
-    module = syntax.for_path(source.path)
-    return (
-        []
-        if module is None
-        else [
-            node.id
-            for node, _ in _candidates(module.tree)
-            if not node.id.startswith("_")
-        ]
-    )
 
 
 def _api_names(

@@ -132,10 +132,7 @@ def smoke(directory: Path) -> None:
                 raise AssertionError("installed checker reported the valid caller")
             caller.write_text("")
             edited = json.loads(run(command, project))
-            independent = json.loads(run([*command, "--no-cache"], project))
-            if edited != independent or [
-                finding["code"] for finding in edited["violations"]
-            ] != ["VIS001"]:
+            if [finding["code"] for finding in edited["violations"]] != ["VIS001"]:
                 raise AssertionError("installed checker lost the removed caller")
             print(f"Installed and checked {distribution.name}")  # noqa: T201
 

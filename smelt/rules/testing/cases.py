@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class IndependentTestCaseLoop(Rule):
-    test_local = True
     scope = "test"
     code = "TST009"
     name = "tests/independent-case-loop"

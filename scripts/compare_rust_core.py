@@ -284,9 +284,7 @@ def _compare(
     try:
         loaded = load_config(config_path)
         started = time.perf_counter()
-        outcome = run_check(
-            loaded, CheckOptions(select=PORTED, use_cache=False, use_debt=False)
-        )
+        outcome = run_check(loaded, CheckOptions(select=PORTED, use_debt=False))
         python_seconds = time.perf_counter() - started
         expected = sorted(
             (

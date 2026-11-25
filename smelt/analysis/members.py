@@ -4,27 +4,17 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field, replace
-from functools import cached_property, partial
+from functools import cached_property
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
-from pydantic import TypeAdapter
-
-from smelt.analysis.exports import Namespace, resolve_dotted, resolve_export
+from smelt.analysis.exports import resolve_dotted, resolve_export
 from smelt.analysis.function_usage import (
     ReferenceNames,
     definition_bindings,
     explicit_exports,
     reference_names,
 )
-from smelt.analysis.member_state import (
-    MEMBER_STATE,
-    MemberIndexState,
-    MemberSummary,
-    NamespaceIdentity,
-    update_members,
-)
 from smelt.analysis.parsing import SyntaxVisitor, tree_nodes
-from smelt.analysis.retained import StateKey, current
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -127,19 +117,11 @@ class _FileFacts:
     public_exports: list[str] = field(default_factory=list)
 
 
-_FACTS = TypeAdapter(_FileFacts)
-
-
 @dataclass(slots=True)
 class _ResolvedReferences:
     targets: list[tuple[str, str | None]]
     inherited: list[tuple[str, str | None]]
-    dependencies: dict[str, NamespaceIdentity | None]
     public_exports: list[tuple[str, str | None]] = field(default_factory=list)
-
-
-_REFERENCES = TypeAdapter(_ResolvedReferences)
-_MEMBERS = TypeAdapter(list[Member])
 
 
 class MemberState(NamedTuple):
@@ -152,7 +134,6 @@ class MemberState(NamedTuple):
 class MemberUsageIndex:
     def __init__(self, syntax: SyntaxIndex) -> None:
         self._syntax = syntax
-        self._decision_keys: dict[str, str] = {}
 
     @property
     def usage_scope(self) -> dict[str, object]:
@@ -170,169 +151,12 @@ class MemberUsageIndex:
         }
 
     @cached_property
-    def _local_state(self) -> MemberIndexState:
-        syntax = self._syntax
-        cache = syntax.cache
-        if cache is None:
-            raise ValueError("member dependency state requires a fact cache")
-        key = cache.key(
-            "member-state",
-            [str(syntax.files.root), syntax.files.config.model_dump(mode="json")],
-        )
-        retained = current()
-        state_key = StateKey(str(cache.directory), key)
-        previous = retained.take(state_key) if retained is not None else None
-        previous = previous or cache.read(key, MEMBER_STATE) or MemberIndexState()
-        identities = {
-            path: self._fact_key(path)
-            for path in sorted(set(syntax.files.by_path) | syntax.files.tests.keys())
-        }
-        namespaces = {
-            name: self._namespace_identity(name)
-            for name in syntax.files.sources.keys() | syntax.files.packages.keys()
-        }
-
-        def decision(summary: MemberSummary, totals: dict[str, int]) -> str:
-            return cache.key(
-                "member-decision",
-                [summary.identity, [totals.get(query, 0) for query in summary.queries]],
-            )
-
-        state = update_members(
-            previous, identities, namespaces, build=self._summary, decision=decision
-        )
-        cache.write(key, state, MEMBER_STATE)
-        if retained is not None:
-            retained.put(state_key, state, size=len(MEMBER_STATE.dump_json(state)))
-        return state
-
-    def local_paths(self) -> Iterator[str]:
-        """Yield decisions without deserializing unchanged definition objects."""
-        for path, summary in self._local_state.files.items():
-            if summary.has_members:
-                yield path
-
-    def members_for_path(self, path: str) -> list[Member]:
-        cache = self._syntax.cache
-        if cache is None:
-            return self.member_files.get(path, [])
-        state = self._local_state
-        key = state.files[path].decision
-
-        def build() -> list[Member]:
-            file = self._facts(path)
-            states: list[MemberState] = []
-            for candidate in file.candidates:
-                owner = candidate.owner
-                if owner is None:
-                    states.append(
-                        MemberState(
-                            self._counted_external(file.module, candidate.node.name),
-                            self._counted_external(
-                                file.module, candidate.node.name, production=True
-                            ),
-                            candidate.internal_references,
-                            False,
-                        )
-                    )
-                    continue
-                local = [
-                    line
-                    for line, line_owner, internal in file.attributes.get(
-                        candidate.node.name, []
-                    )
-                    if line_owner == owner.lineno and internal
-                ]
-                name = candidate.node.name
-                states.append(
-                    MemberState(
-                        state.totals.get(f"a:{name}", 0) > len(local),
-                        state.totals.get(f"p:{name}", 0) > len(local),
-                        tuple(sorted(set(local))),
-                        bool(
-                            state.totals.get(f"i:{file.module}:{owner.name}", 0)
-                            or (
-                                not candidate.node.name.startswith("_")
-                                and state.totals.get(
-                                    f"api:{file.module}:{owner.name}", 0
-                                )
-                            )
-                        ),
-                    )
-                )
-            return self._resolve_file(file, states)
-
-        return cache.get("member-values", key, _MEMBERS, build=build)
-
-    def _counted_external(
-        self, module: str, name: str, *, production: bool = False
-    ) -> bool:
-        totals = self._local_state.totals
-        prefix = "pf" if production else "f"
-        return any(
-            totals.get(f"{prefix}:{target}", 0)
-            > totals.get(f"{prefix}:{target}:{module}", 0)
-            for target in _function_targets(module, name)
-        )
-
-    def _summary(self, path: str) -> MemberSummary:
-        file = self._facts(path)
-        references = self._references(file)
-        contributions: dict[str, int] = {}
-        for module, name in set(references.targets):
-            target = f"{module}:{name or ''}"
-            for prefix in ("f", "pf") if file.production else ("f",):
-                contributions[f"{prefix}:{target}"] = 1
-                contributions[f"{prefix}:{target}:{file.module}"] = 1
-        for module, name in set(references.inherited):
-            contributions[f"i:{module}:{name}"] = 1
-        for module, name in set(references.public_exports):
-            contributions[f"api:{module}:{name}"] = 1
-        for name, uses in file.attributes.items():
-            contributions[f"a:{name}"] = len(uses)
-            if file.production:
-                contributions[f"p:{name}"] = len(uses)
-        queries: set[str] = set()
-        for candidate in file.candidates:
-            if candidate.owner is None:
-                for target in _function_targets(file.module, candidate.node.name):
-                    for prefix in ("f", "pf"):
-                        queries.update(
-                            (f"{prefix}:{target}", f"{prefix}:{target}:{file.module}")
-                        )
-            else:
-                queries.update(
-                    (
-                        f"a:{candidate.node.name}",
-                        f"p:{candidate.node.name}",
-                        f"i:{file.module}:{candidate.owner.name}",
-                        f"api:{file.module}:{candidate.owner.name}",
-                    )
-                )
-        return MemberSummary(
-            self._fact_key(path),
-            references.dependencies,
-            contributions,
-            sorted(queries),
-            bool(file.candidates),
-        )
-
-    @cached_property
     def _files(self) -> list[_FileFacts]:
         syntax = self._syntax
         paths = sorted(
             {s.path for s in syntax.files.sources.values()} | set(syntax.files.tests)
         )
-        missing = (
-            None
-            if syntax.cache is None
-            else syntax.cache.missing([self._fact_key(path) for path in paths])
-        )
-        syntax.files.store.prefetch(
-            syntax.files.root / path
-            for path in paths
-            if missing is None or self._fact_key(path) in missing
-        )
+        syntax.files.store.prefetch(syntax.files.root / path for path in paths)
         return [self._facts(path) for path in paths]
 
     @cached_property
@@ -355,46 +179,8 @@ class MemberUsageIndex:
             evidence.public_exports.update(references.public_exports)
         return evidence
 
-    def _namespace_identity(self, module: str) -> NamespaceIdentity | None:
-        files = self._syntax.files
-        source = files.sources.get(module)
-        if source is not None:
-            return NamespaceIdentity(
-                source.path, files.content_id(source.path), source.is_package
-            )
-        package = files.packages.get(module)
-        if package is None:
-            return None
-        return NamespaceIdentity(package.path, "namespace", is_package=False)
-
     def _references(self, file: _FileFacts) -> _ResolvedReferences:
-        syntax = self._syntax
-        cache = syntax.cache
-        key = (
-            cache.key(
-                "member-references",
-                [
-                    file.module,
-                    file.path,
-                    file.production,
-                    syntax.files.content_id(file.path),
-                ],
-            )
-            if cache
-            else None
-        )
-        cached = cache.read(key, _REFERENCES) if cache and key else None
-        if cached is not None and all(
-            self._namespace_identity(module) == identity
-            for module, identity in cached.dependencies.items()
-        ):
-            return cached
-        dependencies: dict[str, NamespaceIdentity | None] = {}
-
-        def namespace(module: str) -> Namespace | None:
-            dependencies[module] = self._namespace_identity(module)
-            return syntax.namespace(module)
-
+        namespace = self._syntax.namespace
         resolved: dict[str, tuple[str, str | None] | None] = {}
 
         def resolve(name: str) -> tuple[str, str | None] | None:
@@ -422,10 +208,7 @@ class MemberUsageIndex:
             for name in file.public_exports
             if (target := resolve(name)) is not None and target[1] is not None
         ]
-        result = _ResolvedReferences(targets, inherited, dependencies, public_exports)
-        if cache and key:
-            cache.write(key, result, _REFERENCES)
-        return result
+        return _ResolvedReferences(targets, inherited, public_exports)
 
     @cached_property
     def _attribute_counts(self) -> dict[str, _AttributeCounts]:
@@ -470,25 +253,7 @@ class MemberUsageIndex:
                 states.append(
                     MemberState(external, production_external, references, inherited)
                 )
-            cache = self._syntax.cache
-            if cache is None:
-                members.extend(self._resolve_file(file, states))
-            else:
-                inputs = [
-                    file.module,
-                    file.path,
-                    file.production,
-                    self._syntax.files.content_id(file.path),
-                    states,
-                ]
-                self._decision_keys[file.path] = cache.key("resolved-members", inputs)
-                cached_members = cache.get(
-                    "resolved-members",
-                    inputs,
-                    _MEMBERS,
-                    build=partial(self._resolve_file, file, states),
-                )
-                members.extend(cached_members)
+            members.extend(self._resolve_file(file, states))
         return members
 
     @cached_property
@@ -497,11 +262,6 @@ class MemberUsageIndex:
         for member in self.members:
             groups.setdefault(member.path, []).append(member)
         return groups
-
-    def decision_key(self, path: str) -> str:
-        if self._syntax.cache is not None:
-            return self._local_state.files[path].decision
-        return self._decision_keys[path]
 
     def test_only_functions(
         self, tests: TestSyntaxIndex
@@ -575,38 +335,11 @@ class MemberUsageIndex:
 
     def _facts(self, path: str) -> _FileFacts:
         syntax = self._syntax
-        source = syntax.files.source_for_path(path)
-
-        def build() -> _FileFacts:
-            module = syntax.for_path(path)
-            if module is None:
-                raise ValueError(f"missing syntax for indexed file: {path}")
-            return _file_facts(module, syntax, production=source is not None)
-
-        if syntax.cache is None:
-            return build()
-        key = self._fact_key(path)
-        cached = syntax.cache.read(key, _FACTS)
-        if cached is not None:
-            return cached
-        result = build()
-        syntax.cache.write(key, result, _FACTS)
-        return result
-
-    def _fact_key(self, path: str) -> str:
-        syntax = self._syntax
-        source = syntax.files.source_for_path(path)
-        if syntax.cache is None:
-            return ""
-        return syntax.cache.key(
-            "members",
-            [
-                path,
-                source.module if source else None,
-                source.is_package if source else False,
-                syntax.files.content_id(path),
-            ],
-        )
+        module = syntax.for_path(path)
+        if module is None:
+            raise ValueError(f"missing syntax for indexed file: {path}")
+        production = syntax.files.source_for_path(path) is not None
+        return _file_facts(module, syntax, production=production)
 
     def _function_external(
         self, module: str, name: str, *, production: bool = False
@@ -652,13 +385,6 @@ class MemberUsageIndex:
                 _, production = self._attribute_counts.get(candidate.name, (0, 0))
                 if production == local:
                     yield candidate
-
-
-def _function_targets(module: str, name: str) -> Iterator[str]:
-    yield f"{module}:{name}"
-    parts = module.split(".")
-    for end in range(1, len(parts) + 1):
-        yield f"{'.'.join(parts[:end])}:"
 
 
 def _file_facts(

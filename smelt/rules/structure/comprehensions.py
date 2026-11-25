@@ -18,7 +18,6 @@ _MAX_FILTER_OPERANDS = 2
 
 
 class ComplexComprehension(Rule):
-    file_local = True
     code = "CPX006"
     name = "complexity/excess-comprehension-loops"
     category = Category.COMPLEXITY

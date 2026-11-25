@@ -6,8 +6,6 @@ import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NamedTuple
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.parsing import SyntaxVisitor
 from smelt.analysis.typing_bindings import typing_bindings, typing_name
 
@@ -37,29 +35,15 @@ class LiteralType:
     end_column: int
 
 
-_FACTS = TypeAdapter(tuple[LiteralType, ...])
-
-
 def literal_types(ctx: AnalysisContext, path: str) -> tuple[LiteralType, ...]:
-    def build() -> tuple[LiteralType, ...]:
-        # Every supported direct import/access spells Literal in the source.
-        # Negative results are facts too; do not parse them on warm checks.
-        if "Literal" not in ctx.files.read_text(path):
-            return ()
-        tree = ctx.asts.parse(path)
-        collector = _Collector(typing_bindings(tree))
-        if collector.bindings:
-            collector.visit(tree)
-        return tuple(collector.found)
-
-    if ctx.cache is None:
-        return build()
-    return ctx.cache.get(
-        "literal-types",
-        [path, ctx.files.content_id(path)],
-        _FACTS,
-        build=build,
-    )
+    # Every supported direct import/access spells Literal in the source.
+    if "Literal" not in ctx.files.read_text(path):
+        return ()
+    tree = ctx.asts.parse(path)
+    collector = _Collector(typing_bindings(tree))
+    if collector.bindings:
+        collector.visit(tree)
+    return tuple(collector.found)
 
 
 class _Collector(SyntaxVisitor, ast.NodeVisitor):

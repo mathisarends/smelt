@@ -42,7 +42,6 @@ _KIND_NAMES = {
 
 
 class InlineCallArgument(Rule):
-    file_local = True
     activation = POLICIES["CPX002"]
     code = "CPX002"
     name = "complexity/inline-call-argument"

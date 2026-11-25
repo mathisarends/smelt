@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 class ExcessPrivateDefinitions(Rule):
-    file_local = True
     code = "VIS007"
     name = "visibility/excess-private-definitions"
     category = Category.VISIBILITY

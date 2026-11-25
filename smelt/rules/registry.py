@@ -134,14 +134,9 @@ class _LazyRule:
         self.scope = str(metadata["scope"])
         self.enabled_by_default = bool(metadata["enabled_by_default"])
         self.activation = POLICIES.get(self.code)
-        self.production_only = bool(metadata["production_only"])
-        self.file_local = bool(metadata["file_local"])
-        self.test_local = bool(metadata["test_local"])
-        self.member_local = bool(metadata["member_local"])
         self.architecture_scoped = bool(metadata["architecture_scoped"])
         self.fix_availability = FixAvailability(metadata["fix_availability"])
         self._target = str(metadata["target"])
-        self.implementation_module = self._target.partition(":")[0]
 
     @cached_property
     def _implementation(self) -> RuleContract:
@@ -170,10 +165,6 @@ def catalog_metadata() -> list[dict[str, Any]]:
                 flag: getattr(rule, flag, False)
                 for flag in (
                     "enabled_by_default",
-                    "file_local",
-                    "production_only",
-                    "test_local",
-                    "member_local",
                     "architecture_scoped",
                 )
             },

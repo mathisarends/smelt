@@ -156,7 +156,6 @@ def test_opt_in_and_intentional_column_storage_suppression(tmp_path: Path) -> No
     write_project(root, {"app/model.py": source.replace("# smelt:", "# reason:")})
     (finding,) = violations(root)
     assert finding.code == "MOD012"
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 def _project(tmp_path: Path, source: str) -> Path:

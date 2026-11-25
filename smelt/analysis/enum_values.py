@@ -7,8 +7,6 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.exports import Namespace, resolve_dotted, resolve_export
 from smelt.analysis.parsing import resolve_relative, tree_nodes
 
@@ -75,7 +73,6 @@ class _ModuleEnums:
     accesses: tuple[_Access, ...]
 
 
-_MODULE_ENUMS = TypeAdapter(_ModuleEnums)
 _RESERVED = frozenset(
     {"value", "_ignore_", "__new__", "__init__", "__getattribute__", "__getattr__"}
 )
@@ -99,6 +96,18 @@ def str_enum_value_accesses(syntax: SyntaxIndex) -> Iterator[StrEnumValueAccess]
                     access.end_column,
                     access.replacement,
                 )
+
+
+def _module_enums(syntax: SyntaxIndex, source: SourceFile) -> _ModuleEnums:
+    module = syntax.for_path(source.path)
+    if module is None:
+        raise LookupError(source.path)
+    bound = _binding_counts(module)
+    return _ModuleEnums(
+        _namespace(module),
+        () if bound["*"] else tuple(_candidates(module, bound)),
+        tuple(_accesses(module)),
+    )
 
 
 def _namespace(module: ModuleSyntax) -> Namespace:
@@ -206,33 +215,6 @@ class _Enums:
             ):
                 members.update(assignment.targets)
         return frozenset(members)
-
-
-def _module_enums(syntax: SyntaxIndex, source: SourceFile) -> _ModuleEnums:
-    def build() -> _ModuleEnums:
-        module = syntax.for_path(source.path)
-        if module is None:
-            raise LookupError(source.path)
-        bound = _binding_counts(module)
-        return _ModuleEnums(
-            _namespace(module),
-            () if bound["*"] else tuple(_candidates(module, bound)),
-            tuple(_accesses(module)),
-        )
-
-    if syntax.cache is None:
-        return build()
-    return syntax.cache.get(
-        "enum-module",
-        [
-            source.module,
-            source.path,
-            source.is_package,
-            syntax.files.content_id(source.path),
-        ],
-        _MODULE_ENUMS,
-        build=build,
-    )
 
 
 def _accesses(module: ModuleSyntax) -> Iterator[_Access]:

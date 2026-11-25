@@ -1,4 +1,4 @@
-"""Behavior fingerprints of module-level functions, cached per file content."""
+"""Behavior fingerprints of module-level functions."""
 
 from __future__ import annotations
 
@@ -6,8 +6,6 @@ import ast
 import hashlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-
-from pydantic import TypeAdapter
 
 from smelt.analysis.parsing import tree_nodes
 
@@ -28,29 +26,15 @@ class FunctionFingerprint:
     fingerprint: str
 
 
-_FINGERPRINTS = TypeAdapter(tuple[FunctionFingerprint, ...])
-
-
 def function_fingerprints(asts: AstCache, path: str) -> tuple[FunctionFingerprint, ...]:
     """Fingerprints of the module-level functions in ``path`` with enough statements."""
-
-    def build() -> tuple[FunctionFingerprint, ...]:
-        return tuple(
-            FunctionFingerprint(
-                function.name, function.lineno, function.col_offset + 1, fingerprint
-            )
-            for function in asts.parse(path).body
-            if isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef)
-            and (fingerprint := _fingerprint(function)) is not None
+    return tuple(
+        FunctionFingerprint(
+            function.name, function.lineno, function.col_offset + 1, fingerprint
         )
-
-    if asts.cache is None:
-        return build()
-    return asts.cache.get(
-        "function-fingerprints",
-        asts.files.content_id(path),
-        _FINGERPRINTS,
-        build=build,
+        for function in asts.parse(path).body
+        if isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef)
+        and (fingerprint := _fingerprint(function)) is not None
     )
 
 
