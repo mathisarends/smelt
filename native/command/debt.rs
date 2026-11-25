@@ -94,6 +94,34 @@ fn optional_text(item: &Map<String, Value>, key: &str) -> Result<Option<String>,
     }
 }
 
+/// `Debt.from_violations`: findings as debt, each fingerprinted by the text
+/// of its line.
+pub fn from_findings(findings: &[(Finding, String)]) -> Vec<Entry> {
+    findings
+        .iter()
+        .flat_map(|(finding, snippet)| {
+            let edges = semantic_edges(finding);
+            let targeted = finding
+                .target_module
+                .as_deref()
+                .is_some_and(|module| !module.is_empty());
+            let text = if targeted || !edges.is_empty() {
+                ""
+            } else {
+                snippet.as_str()
+            };
+            fingerprints(finding, &edges, text)
+                .into_iter()
+                .map(|fingerprint| Entry {
+                    fingerprint,
+                    code: finding.code.clone(),
+                    path: finding.path.clone(),
+                    message: finding.message.clone(),
+                })
+        })
+        .collect()
+}
+
 /// The findings no entry accepts, how many entries accepted, and the
 /// entries nothing matched.
 pub struct Matched {

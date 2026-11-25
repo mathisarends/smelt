@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sysconfig
 from pathlib import Path
@@ -42,6 +43,13 @@ MEMBERS = (
     "rust_parity_member_configs/libs/tools/src",
     "rust_parity_workspace/services/api",
 )
+# Checks that report only what changed since a commit.
+COMPARISONS = {
+    "changed": ("--changed", "--show-hints"),
+    "json": ("--changed", "--format", "json", "--select", "ALL"),
+    "base": ("--base", "base", "--format", "sarif"),
+    "scoped": ("--changed", "shop", "--format", "concise"),
+}
 _FALLBACK = b"smelt trace: the Python CLI checks:"
 
 
@@ -89,3 +97,38 @@ def test_native_check_in_a_member_writes_the_python_report(
 
     assert (code, report) == _check(root, VARIANTS[variant], native=False)[:2]
     assert not fell_back
+
+
+@pytest.mark.parametrize("variant", COMPARISONS)
+def test_native_changed_check_writes_the_python_report(
+    tmp_path: Path, variant: str
+) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "rust_parity_architecture", root)
+    sources = sorted(root.rglob("*.py"))[::2]
+    contents = {path: path.read_bytes() for path in sources}
+    for path in sources:
+        path.write_bytes(b"")
+    _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base")
+    _git(root, "branch", "base")
+    # The restored files are what changed since the commit.
+    for path, content in contents.items():
+        path.write_bytes(content)
+    code, report, fell_back = _check(root, COMPARISONS[variant], native=True)
+
+    assert (code, report) == _check(root, COMPARISONS[variant], native=False)[:2]
+    assert not fell_back
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(  # noqa: S603
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+        cwd=root,
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )

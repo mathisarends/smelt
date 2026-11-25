@@ -111,6 +111,13 @@ pub fn render(
             report.checked_files
         ));
     }
+    if report
+        .comparison
+        .as_ref()
+        .is_some_and(|comparison| comparison.get("mode").and_then(Value::as_str) == Some("staged"))
+    {
+        lines.push("Scope: staged Git index; new findings since the compared commit.".to_owned());
+    }
     if !concise
         && shown.iter().any(|violation| {
             violation

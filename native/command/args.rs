@@ -24,11 +24,18 @@ pub struct Args {
     pub no_debt: bool,
     pub strict_coverage: bool,
     pub show_coverage: bool,
+    pub changed: bool,
+    pub base: Option<String>,
 }
 
 impl Args {
     pub fn format(&self) -> Format {
         self.format.unwrap_or(Format::Text)
+    }
+
+    /// Whether the check reports only the findings new since a commit.
+    pub fn compares(&self) -> bool {
+        self.changed || self.base.is_some()
     }
 }
 
@@ -36,7 +43,7 @@ impl Args {
 fn takes_value(name: &str) -> bool {
     matches!(
         name,
-        "--config" | "--format" | "--fail-on" | "--select" | "--ignore"
+        "--config" | "--format" | "--fail-on" | "--select" | "--ignore" | "--base"
     )
 }
 
@@ -49,6 +56,7 @@ fn flag(args: &mut Args, name: &str) -> Option<()> {
         "--no-cache" => {}
         "--strict-coverage" => args.strict_coverage = true,
         "--show-coverage" => args.show_coverage = true,
+        "--changed" => args.changed = true,
         _ => return None,
     }
     Some(())
@@ -76,6 +84,7 @@ fn option(args: &mut Args, name: &str, value: String) -> Option<()> {
         }
         "--select" => args.select = Some(value),
         "--ignore" => args.ignore = Some(value),
+        "--base" => args.base = Some(value),
         _ => return None,
     }
     Some(())
@@ -181,9 +190,19 @@ mod tests {
         assert_eq!(args.paths, ["src", "tests"]);
         assert_eq!(args.format(), Format::Json);
         assert!(args.fail_on_warning);
+        assert!(!args.compares());
+        let changed = parse(&arguments("check --changed --base origin/main")).expect("supported");
+        assert!(changed.changed);
+        assert_eq!(changed.base.as_deref(), Some("origin/main"));
+        assert!(
+            parse(&arguments("check --base main"))
+                .expect("supported")
+                .compares()
+        );
         for unsupported in [
-            "check --changed",
             "check --staged",
+            "check --changed --staged",
+            "check --base -x",
             "check --statistics",
             "check --fix",
             "check src --no-color tests",

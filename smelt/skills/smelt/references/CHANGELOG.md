@@ -38,8 +38,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   or of a generated 1000-module project takes about 35-40% less time. Reports
   are unchanged.
 - `smelt check` writes full and path-scoped reports in every format without
-  starting Python, including uv workspaces and checks started inside a member.
-  A full check of this repository takes about 60% less time, a generated
+  starting Python, including uv workspaces, checks started inside a member and
+  `--changed` with or without `--base`. A full check of this repository takes about 60% less time, a generated
   1000-module project about 75% less, a uv workspace with two members about
   60-80% less, and a small project 20 ms instead of 0.4 s on Windows. Other
   options and every error still go through the Python CLI, so reports,

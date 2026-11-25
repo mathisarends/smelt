@@ -13,7 +13,7 @@ pub(crate) mod renames;
 mod rule_policy;
 mod rules;
 mod settings;
-mod snapshot;
+pub(crate) mod snapshot;
 mod source;
 mod suppressions;
 mod symbols;
@@ -128,7 +128,7 @@ pub(crate) struct Outcome {
     /// The SHA-256 of each text a fixable finding was found in, by path.
     digests: BTreeMap<String, String>,
     /// The baseline revision's findings, each with the text of its line.
-    baseline: Option<Vec<Value>>,
+    pub(crate) baseline: Option<Vec<Value>>,
     /// The sources, packages and tests the check discovered.
     pub(crate) files: Value,
     /// Each `architecture.canonical_exports` declaration that failed, with why.
@@ -148,15 +148,46 @@ pub(crate) fn check_loaded(
     strict_coverage: bool,
     configuration_findings: bool,
     search_path: Option<Vec<PathBuf>>,
+    baseline: Option<(PathBuf, String)>,
 ) -> Option<Outcome> {
     if let Some(entries) = search_path {
         analysis::installed::use_search_path(entries);
     }
-    let mut request = Request::from_loaded(loaded, select).ok()?;
-    if strict_coverage {
-        request.force_strict_coverage().ok()?;
-    }
-    check(&request, ignore, configuration_findings, true).ok()
+    let load = || {
+        let mut request = Request::from_loaded(loaded, select.clone())?;
+        if strict_coverage {
+            request.force_strict_coverage()?;
+        }
+        Ok::<_, String>(request)
+    };
+    let request = load().ok()?;
+    let Some((repository, revision)) = baseline else {
+        return check(&request, ignore, configuration_findings, true).ok();
+    };
+    let baseline = Baseline {
+        repository,
+        revision,
+    };
+    // The base revision is checked while the run's own check proceeds.
+    std::thread::scope(|scope| {
+        let before = std::thread::Builder::new()
+            .name("baseline".to_owned())
+            .stack_size(ANALYSIS_STACK_BYTES)
+            .spawn_scoped(scope, || {
+                baseline_findings(
+                    &baseline,
+                    &baseline.repository,
+                    load().map_err(Failure::from)?,
+                    ignore,
+                )
+            })
+            .ok()?;
+        let outcome = check(&request, ignore, configuration_findings, true);
+        let findings = before.join().ok()?.ok()?;
+        let mut outcome = outcome.ok()?;
+        outcome.baseline = Some(findings);
+        Some(outcome)
+    })
 }
 
 /// Run the check that stdin requests as JSON `Options` and print its outcome.
