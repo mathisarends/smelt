@@ -12,12 +12,8 @@ if TYPE_CHECKING:
 
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.coverage import CoverageIndex
-    from smelt.analysis.facade_usage import FacadeUsage
     from smelt.analysis.files import FileIndex
-    from smelt.analysis.imports import ImportIndex
-    from smelt.analysis.parsing import AstCache
     from smelt.analysis.python_version import PythonTargetIndex
-    from smelt.analysis.syntax import SyntaxIndex
     from smelt.analysis.workspace_policy import WorkspaceIndex
     from smelt.config.models import SmeltConfig
     from smelt.config.workspace import ArchitectureScope
@@ -44,7 +40,7 @@ class AnalysisContext:
         *,
         store: SourceStore | None = None,
     ) -> None:
-        # grimp resolves its search paths; the file index must agree on the prefix
+        # Paths below the root compare with the resolved root the core reports.
         self.store = store or SourceStore()
         self.root = self.store.resolve(root)
         self.config = config
@@ -63,12 +59,6 @@ class AnalysisContext:
         from smelt.analysis.files import FileIndex  # noqa: PLC0415
 
         return FileIndex.discover(self.root, self.config, store=self.store)
-
-    @cached_property
-    def asts(self) -> AstCache:
-        from smelt.analysis.parsing import AstCache  # noqa: PLC0415
-
-        return AstCache(self.files)
 
     @cached_property
     def architecture_scopes(self) -> tuple[ArchitectureScope, ...]:
@@ -111,25 +101,6 @@ class AnalysisContext:
         from smelt.analysis.workspace_policy import WorkspaceIndex  # noqa: PLC0415
 
         return WorkspaceIndex(self.files)
-
-    @cached_property
-    def imports(self) -> ImportIndex:
-        from smelt.analysis.imports import ImportIndex  # noqa: PLC0415
-
-        return ImportIndex.build(self.files, self.asts)
-
-    @cached_property
-    def syntax(self) -> SyntaxIndex:
-        from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415
-
-        return SyntaxIndex(self.files, self.asts)
-
-    @cached_property
-    def facade_usage(self) -> FacadeUsage:
-        """Facade demand shared by the export, fan-out and ownership checks."""
-        from smelt.analysis.facade_usage import FacadeUsage  # noqa: PLC0415
-
-        return FacadeUsage(self.syntax, self.imports, files=self.files)
 
     @cached_property
     def contracts(self) -> ContractIndex:

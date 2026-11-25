@@ -43,6 +43,8 @@ class NativeAnalysis:
     digests: dict[str, str] = field(default_factory=dict)
     # The sources, packages and tests the core discovered.
     files: dict[str, Any] = field(default_factory=dict)
+    # Each failed `architecture.canonical_exports` declaration, with why.
+    ownership_issues: list[list[str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,7 +146,11 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         data["paths"],
     )
     return NativeAnalysis(
-        analysis, _known(data["baseline"]), data["digests"], data["files"]
+        analysis,
+        _known(data["baseline"]),
+        digests=data["digests"],
+        files=data["files"],
+        ownership_issues=data["ownership_issues"],
     )
 
 

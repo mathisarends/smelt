@@ -31,9 +31,6 @@ class TestAnalysisContext:
         ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         assert set(ctx.files.sources) == {"app.domain.service", "app.infra.db"}
-        assert ctx.imports.graph.direct_import_exists(
-            importer="app.domain.service", imported="app.infra.db"
-        )
         assert ctx.files.module_to_path("app.infra.new") == "two/src/app/infra/new.py"
 
     @pytest.mark.parametrize("regular", [False, True])
@@ -77,7 +74,6 @@ class TestAnalysisContext:
         ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         assert set(ctx.files.sources) == {"app", "app.domain.model"}
-        assert set(ctx.imports.modules()) == set(ctx.files.sources)
 
     def test_unresolved_root_still_finds_every_module(self, tmp_path: Path) -> None:
         # macOS temp dirs sit behind a symlink and Windows ones may use 8.3 names;
@@ -97,4 +93,4 @@ class TestAnalysisContext:
 
         ctx = AnalysisContext(tmp_path / "elsewhere" / ".." / "project", config)
 
-        assert "app.application.service" in ctx.imports.graph.modules
+        assert "app.application.service" in ctx.files.sources

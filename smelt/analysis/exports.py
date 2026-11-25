@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 # Re-export chains are short; a longer one is more likely a cycle than a design.
-MAX_HOPS = 8
+_MAX_HOPS = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +104,7 @@ def _resolve_export(
     the loader's modules, star imports, and chains that cycle or run too long.
     """
     seen: set[tuple[str, str]] = set()
-    while len(seen) < MAX_HOPS and (module, name) not in seen:
+    while len(seen) < _MAX_HOPS and (module, name) not in seen:
         seen.add((module, name))
         namespace = load(module)
         if namespace is None:

@@ -181,7 +181,7 @@ def _run_check(
         )
     if "coverage" not in ctx.__dict__:
         ctx.coverage = CoverageIndex.from_report(analyzed.coverage)
-    _validate_ownership(ctx, loaded)
+    _validate_ownership(result.ownership_issues, loaded)
     if issues := missing_paths(ctx):
         raise ConfigError(issues, loaded.path.name)
     settings = RuleSettings(rules, loaded)
@@ -346,11 +346,8 @@ def _analysis_context(
     return AnalysisContext(loaded.root, loaded.config, store=loaded.source)
 
 
-def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
-    declarations = ctx.config.structure.canonical_exports
-    if not declarations:
-        return
-    _, issues = ctx.facade_usage.canonical_exports(declarations)
+def _validate_ownership(issues: list[list[str]], loaded: LoadedConfig) -> None:
+    """Reject the `architecture.canonical_exports` the core could not verify."""
     if issues:
         raise ConfigError(
             [

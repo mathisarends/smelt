@@ -18,6 +18,7 @@ mod suppressions;
 mod violation;
 
 use analysis::architecture::{ArchitectureModel, Scope};
+use analysis::facade_usage::FacadeUsage;
 use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
@@ -127,6 +128,8 @@ struct Outcome {
     baseline: Option<Vec<Value>>,
     /// The sources, packages and tests the check discovered.
     files: Value,
+    /// Each `architecture.canonical_exports` declaration that failed, with why.
+    ownership_issues: Vec<(String, String)>,
 }
 
 /// Run the check that stdin requests as JSON `Options` and print its outcome.
@@ -151,6 +154,7 @@ pub fn serve_check() -> i32 {
                 "digests": outcome.digests,
                 "baseline": outcome.baseline,
                 "files": outcome.files,
+                "ownership_issues": outcome.ownership_issues,
             }),
             0,
         ),
@@ -189,6 +193,9 @@ struct FilesRequest {
     exclude: Vec<String>,
     /// Whether a file naming policy reads YAML files.
     yaml: bool,
+    /// Also report the imports between uv workspace members, as `member_edges`.
+    #[serde(default)]
+    member_edges: bool,
 }
 
 /// Discover the files of the project stdin describes and print the inventory.
@@ -212,7 +219,12 @@ pub fn serve_files() -> i32 {
                 python_version: None,
                 uv_workspace: false,
             };
-            FileIndex::scan(&request.root, &project).map(|files| files.inventory(request.yaml))
+            let files = FileIndex::scan(&request.root, &project)?;
+            let mut inventory = files.inventory(request.yaml);
+            if request.member_edges {
+                inventory["member_edges"] = json!(member_edges(&files, &project.root_packages)?);
+            }
+            Ok(inventory)
         });
     let (output, code) = match inventory {
         Ok(inventory) => (inventory, 0),
@@ -225,6 +237,18 @@ pub fn serve_files() -> i32 {
             2
         }
     }
+}
+
+/// The imports between the uv workspace members of `files`.
+fn member_edges(files: &FileIndex, roots: &[String]) -> Result<Vec<(String, String)>, String> {
+    let sources: Vec<&SourceFile> = files.sources.values().collect();
+    with_analysis_pool(|| {
+        let parsed = parse_sources(&sources, true)?;
+        let pairs: Vec<(&SourceFile, &ParsedSource)> =
+            sources.iter().copied().zip(&parsed).collect();
+        let imports = ImportIndex::build(files, roots, &pairs, &[])?;
+        analysis::workspace::member_edges(files, &imports)
+    })?
 }
 
 /// Load one configuration and print it, or its error, as JSON.
@@ -505,10 +529,22 @@ fn check(
     }) || (configuration_findings
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
+    let mut ownership_issues = Vec::new();
     let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
         let parsed = parse_sources(&sources, needs_syntax)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
+        // Ownership declarations are verified against the static exports of the sources.
+        if !request.canonical_exports.is_empty() {
+            let usage = FacadeUsage::new(
+                &files,
+                &source_pairs,
+                &[],
+                &request.project.test_roots,
+                HashMap::new(),
+            );
+            ownership_issues = usage.canonical_exports(&request.canonical_exports).1;
+        }
         let imports_tests = import_rules
             .iter()
             .any(|rule| TEST_IMPORT_RULES.contains(&rule.code.as_str()));
@@ -827,6 +863,7 @@ fn check(
         digests,
         baseline: None,
         files: files.inventory(request.file_naming.checks_yaml()),
+        ownership_issues,
     })
 }
 

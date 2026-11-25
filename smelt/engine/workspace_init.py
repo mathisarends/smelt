@@ -5,11 +5,11 @@ from __future__ import annotations
 import posixpath
 import tomllib
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import yaml
 
-from smelt.analysis.context import AnalysisContext
+from smelt.analysis import native
 from smelt.analysis.errors import AnalysisError
 from smelt.analysis.workspace import workspace_members
 from smelt.config.errors import ConfigError
@@ -26,6 +26,8 @@ from smelt.engine.inference import (
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
+
+    from smelt.config.models import SmeltConfig
 
 
 def workspace_drafts(
@@ -154,7 +156,7 @@ def _with_boundary_draft(
 def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> str:
     try:
         config, _ = parse_config(data, root=root)
-        edges = _observed_edges(AnalysisContext(root, config))
+        edges = _observed_edges(root, config)
     except (AnalysisError, ConfigError):
         # A draft remains useful when imports could not be analyzed.
         edges = []
@@ -193,14 +195,28 @@ def _boundary_draft(root: Path, data: dict[str, Any], patterns: list[str]) -> st
     )
 
 
-def _observed_edges(ctx: AnalysisContext) -> list[tuple[str, str]]:
-    return sorted(
+class _MemberEdge(NamedTuple):
+    """An import from one workspace member into another."""
+
+    source: str
+    target: str
+
+
+def _observed_edges(root: Path, config: SmeltConfig) -> list[_MemberEdge]:
+    """The imports between workspace members, as the native core resolves them."""
+    project = config.project
+    report = native.request(
+        "--internal-files",
         {
-            (source, target)
-            for detail in ctx.imports.all_imports()
-            if not detail.external
-            and (source := ctx.workspace.member_for_module(detail.importer)) is not None
-            and (target := ctx.workspace.member_for_module(detail.imported)) is not None
-            and source != target
-        }
+            "root": str(root.resolve()),
+            "root_packages": project.root_packages,
+            "source_roots": project.source_roots,
+            "test_roots": project.test_roots,
+            "exclude": list(project.exclude_patterns),
+            "yaml": False,
+            "member_edges": True,
+        },
     )
+    if "error" in report:
+        raise AnalysisError(report["error"])
+    return [_MemberEdge(source, target) for source, target in report["member_edges"]]

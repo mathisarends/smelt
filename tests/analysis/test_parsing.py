@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import gc
-import sys
 from pathlib import Path
 from weakref import ref
 
@@ -10,15 +9,10 @@ import pytest
 
 from smelt.analysis.parsing import (
     AnalysisError,
-    SyntaxVisitor,
-    child_nodes,
-    python_note,
     tree_nodes,
 )
 from smelt.engine.check import CheckOptions
 from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
-
-RUNNING = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
 # Newer syntax the core parses on any Python; each file also breaks a layer boundary.
 PY313 = "from app.infra import db\n\n\ndef first[T = int](items: list[T]) -> T:\n    return items[0]\n"
@@ -47,31 +41,6 @@ def _project(tmp_path: Path, service: str, requires: str = ">=3.12") -> Path:
             "app/infra/db.py": "",
         },
     )
-
-
-class TestPythonNote:
-    def test_names_the_running_python(self, tmp_path: Path) -> None:
-        assert python_note(tmp_path) == f" (parsed by Python {RUNNING})"
-
-    def test_suggests_the_targeted_python(self, tmp_path: Path) -> None:
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nrequires-python = ">=3.99"\n', encoding="utf-8"
-        )
-
-        assert python_note(tmp_path) == (
-            f" (parsed by Python {RUNNING}); the project targets Python 3.99, "
-            "so run smelt on it, e.g. `uvx -p 3.99 --from smelt-cli smelt check`"
-        )
-
-    def test_reads_python_version_file(self, tmp_path: Path) -> None:
-        (tmp_path / ".python-version").write_text("3.99.1\n", encoding="utf-8")
-
-        assert "`uvx -p 3.99 --from smelt-cli smelt check`" in python_note(tmp_path)
-
-    def test_older_target_adds_nothing(self, tmp_path: Path) -> None:
-        (tmp_path / ".python-version").write_text("3.8\n", encoding="utf-8")
-
-        assert python_note(tmp_path) == f" (parsed by Python {RUNNING})"
 
 
 class TestSyntaxError:
@@ -120,7 +89,7 @@ def test_tree_nodes_matches_ast_walk_for_a_module_and_its_parts() -> None:
     assert list(tree_nodes(function)) == list(ast.walk(function))
 
 
-def test_child_nodes_matches_ast_for_every_field_shape() -> None:
+def test_tree_nodes_matches_ast_walk_for_every_field_shape() -> None:
     tree = ast.parse(
         "@decorator\n"
         "async def run[T](first: int, *rest, key=None) -> T:\n"
@@ -136,46 +105,15 @@ def test_child_nodes_matches_ast_for_every_field_shape() -> None:
         "    return {None: 1}, lambda x=1: x\n"
     )
 
-    nodes = list(ast.walk(tree))
-
-    assert [child_nodes(node) for node in nodes] == [
-        list(ast.iter_child_nodes(node)) for node in nodes
-    ]
+    assert list(tree_nodes(tree)) == list(ast.walk(tree))
 
 
-def test_child_nodes_reads_a_constructed_node_with_omitted_fields() -> None:
-    value = ast.Name("value")
+def test_tree_nodes_reads_a_constructed_node_with_omitted_fields() -> None:
+    value = ast.Constant(1)
+    present, omitted = ast.Return(value), ast.Return()
 
-    assert child_nodes(ast.Return(value)) == [value]
-    assert child_nodes(ast.Return()) == []
-
-
-def test_syntax_visitor_visits_in_node_visitor_order() -> None:
-    class Plain(ast.NodeVisitor):
-        def __init__(self) -> None:
-            self.seen: list[ast.AST] = []
-
-        def visit(self, node: ast.AST) -> None:
-            self.seen.append(node)
-            super().visit(node)
-
-    class Shared(SyntaxVisitor, ast.NodeVisitor):
-        def __init__(self) -> None:
-            self.seen: list[ast.AST] = []
-
-        def visit(self, node: ast.AST) -> None:
-            self.seen.append(node)
-            super().visit(node)
-
-    tree = ast.parse(
-        "class Service:\n    def run(self, value=1):\n        return [value]\n"
-    )
-    plain, shared = Plain(), Shared()
-
-    plain.visit(tree)
-    shared.visit(tree)
-
-    assert shared.seen == plain.seen
+    assert tree_nodes(present) == (present, value)
+    assert tree_nodes(omitted) == (omitted,)
 
 
 def test_tree_nodes_walks_a_root_once() -> None:

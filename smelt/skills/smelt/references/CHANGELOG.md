@@ -24,6 +24,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 - Checks and `smelt context` take the project's sources, tests and policy
   coverage from the native core instead of discovering them again in Python,
   which shortens every check.
+- The native core verifies `architecture.canonical_exports` and resolves the
+  imports between uv workspace members for `smelt init`. Smelt no longer
+  depends on `grimp`.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.

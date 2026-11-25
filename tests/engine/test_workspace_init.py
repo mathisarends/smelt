@@ -32,12 +32,6 @@ def test_workspace_fixture_keeps_one_graph_with_member_architectures(
     assert set(
         outcome.context.model.part_for("api.features.orders.application.service").layers
     ) == {"domain", "application"}
-    assert (
-        outcome.context.imports.imports_of("api.features.orders.application.service")[
-            0
-        ].imported
-        == "core.domain.task"
-    )
     visibility = check(root, CheckOptions(select=("visibility",))).report.violations
     assert not any(finding.member == "packages/core" for finding in visibility)
 
