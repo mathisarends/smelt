@@ -1,41 +1,9 @@
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
-from functools import cache
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from smelt.analysis.files import TestFile
-
-
-_PLACEHOLDER = re.compile(r"(\{path\}/|\{path\}|\{module\}|\{root\})")
-_GROUPS = {
-    "{path}/": r"(?:(?P<path>[A-Za-z_]\w*(?:/[A-Za-z_]\w*)*)/)?",
-    "{path}": r"(?P<path>[A-Za-z_]\w*(?:/[A-Za-z_]\w*)*)?",
-    "{module}": r"(?P<module>[A-Za-z_]\w*)",
-    "{root}": r"(?P<root>[A-Za-z_]\w*)",
-}
-
-
-@cache
-def _mirror_regex(pattern: str) -> re.Pattern[str]:
-    parts = _PLACEHOLDER.split(pattern)
-    return re.compile("".join(_GROUPS.get(part, re.escape(part)) for part in parts))
-
-
-@dataclass(frozen=True, slots=True)
-class _Mirror:
-    """What a test path says it mirrors: ``billing/test_invoice.py`` -> billing, invoice."""
-
-    directories: list[str]
-    module: str
-    root: str | None
 
 
 def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
@@ -50,35 +18,6 @@ def mirror_path(ctx: AnalysisContext, module: str) -> str | None:
     return None
 
 
-def _mirrored_modules(ctx: AnalysisContext, path: str) -> list[str]:
-    """The modules a discovered test's path mirrors, one per candidate root package.
-
-    ``tests/billing/test_invoice.py`` mirrors ``app.billing.invoice`` whether or
-    not that module exists. ``conftest.py`` and paths outside tests.mirror mirror
-    nothing.
-    """
-    test = ctx.files.tests.get(path)
-    if test is None or test.is_conftest:
-        return []
-    mirror = _mirror_parts(ctx, test)
-    if mirror is None:
-        return []
-    return [
-        ".".join([root, *mirror.directories, mirror.module])
-        for root in _roots(ctx, mirror, test.test_root)
-    ]
-
-
-def _mirror_parts(ctx: AnalysisContext, test: TestFile) -> _Mirror | None:
-    relative = test.path.removeprefix(f"{test.test_root}/")
-    match = _mirror_regex(ctx.config.tests.mirror).fullmatch(relative)
-    if match is None:
-        return None
-    path = match.group("path") if "path" in match.groupdict() else None
-    root = match.group("root") if "root" in match.groupdict() else None
-    return _Mirror(path.split("/") if path else [], match.group("module"), root)
-
-
 def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
     package = ctx.files.packages.get(root)
     if package is None:
@@ -91,13 +30,6 @@ def _common_depth(ctx: AnalysisContext, root: str, test_root: str) -> int:
             break
         depth += 1
     return depth
-
-
-def _roots(ctx: AnalysisContext, mirror: _Mirror, test_root: str) -> list[str]:
-    roots = _member_roots(ctx, test_root)
-    if mirror.root is None:
-        return roots
-    return [mirror.root] if mirror.root in roots else []
 
 
 def _member_roots(ctx: AnalysisContext, test_root: str) -> list[str]:

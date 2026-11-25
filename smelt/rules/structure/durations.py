@@ -1,10 +1,6 @@
-import ast
-
 from smelt.analysis.context import Index
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-type _Function = ast.FunctionDef | ast.AsyncFunctionDef
 
 
 class ImplicitDurationUnit(Rule):

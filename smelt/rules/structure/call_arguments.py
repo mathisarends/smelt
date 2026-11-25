@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import ast
-
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.config.models import POLICY_DEFAULTS
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import readable_list
-
-type _EagerComprehension = ast.ListComp | ast.SetComp | ast.DictComp
-type _ExtractableArgument = _EagerComprehension | ast.Call
 
 _KIND_NAMES = {
     "await": "awaited results",

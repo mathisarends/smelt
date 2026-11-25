@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-import ast
-from dataclasses import dataclass
-
 from smelt.analysis.context import Index
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-type _Shape = str | _Tuple
-type _Function = ast.FunctionDef | ast.AsyncFunctionDef
-type _Environment = dict[str, _Shape]
 
 
 class LoopInvariantCollection(Rule):
@@ -73,8 +64,3 @@ class LoopInvariantCollection(Rule):
         canonical="Build a lookup set from stable inputs once, outside the loop",
         config=("rules", "style.overrides"),
     )
-
-
-@dataclass(frozen=True, slots=True)
-class _Tuple:
-    item: _Shape

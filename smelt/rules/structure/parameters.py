@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import ast
-
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.fixes import (
     FixAvailability,
 )
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-type _Function = ast.FunctionDef | ast.AsyncFunctionDef
 
 
 class ExcessPositionalParameters(Rule):

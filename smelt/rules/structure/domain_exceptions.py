@@ -6,18 +6,6 @@ from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
 from smelt.rules.common import readable_list
 
-# Control flow rather than failures, and the abstract-method placeholder.
-_DEFAULT_ALLOWED = frozenset(
-    {
-        "NotImplementedError",
-        "StopIteration",
-        "StopAsyncIteration",
-        "GeneratorExit",
-        "KeyboardInterrupt",
-        "SystemExit",
-    }
-)
-
 
 class PreferDomainException(Rule):
     activation = POLICIES["MOD008"]

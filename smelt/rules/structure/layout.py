@@ -1,18 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from smelt.analysis.files import FileIndex, PackageDir
-
-
-def _package_location(files: FileIndex, package: PackageDir) -> str:
-    init = files.sources.get(package.module)
-    return init.path if init is not None else package.path
 
 
 class UnknownLayer(Rule):
