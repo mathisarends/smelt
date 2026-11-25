@@ -58,6 +58,11 @@ impl Request {
     /// Load `config` and resolve the policy for the selected rules.
     pub fn load(config: &Path, select: Vec<String>) -> Result<Self, String> {
         let loaded = load::load_config(config).map_err(|error| error.render())?;
+        Self::from_loaded(&loaded, select)
+    }
+
+    /// Resolve the policy of a loaded configuration for the selected rules.
+    pub fn from_loaded(loaded: &load::LoadedConfig, select: Vec<String>) -> Result<Self, String> {
         let policy = &loaded.config;
         let structure = &policy["__structure__"];
         let root = loaded.path.parent().unwrap_or(&loaded.path).to_path_buf();

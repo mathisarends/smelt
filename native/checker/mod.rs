@@ -1,15 +1,15 @@
 //! The Rust analysis core. `--internal-check` serves the check engine;
 //! `scripts/compare_rust_core.py` compares its findings with the Python engine's.
 mod analysis;
-mod config;
+pub(crate) mod config;
 mod contracts;
 mod coverage_report;
 mod facade_coverage;
 mod files;
 mod meta;
-mod patterns;
-mod profile;
-mod renames;
+pub(crate) mod patterns;
+pub(crate) mod profile;
+pub(crate) mod renames;
 mod rule_policy;
 mod rules;
 mod settings;
@@ -17,7 +17,7 @@ mod snapshot;
 mod source;
 mod suppressions;
 mod symbols;
-mod vfs;
+pub(crate) mod vfs;
 mod violation;
 
 use analysis::architecture::{ArchitectureModel, Scope};
@@ -51,7 +51,7 @@ use std::sync::OnceLock;
 use suppressions::Suppression;
 use violation::Violation;
 
-const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
+pub(crate) const CATALOG: &str = include_str!("../../smelt/rules/catalog.json");
 const ANALYSIS_STACK_BYTES: usize = 256 * 1024 * 1024;
 /// The strict-coverage guard, which ignores and suppressions cannot hide.
 /// Meta findings about the configuration rather than a file's findings.
@@ -119,20 +119,42 @@ struct Baseline {
 }
 
 /// The findings of one run and what the report says about its coverage.
-struct Outcome {
-    violations: Vec<Value>,
-    suppressed: usize,
-    coverage: Value,
-    modules: usize,
-    paths: Vec<String>,
+pub(crate) struct Outcome {
+    pub(crate) violations: Vec<Value>,
+    pub(crate) suppressed: usize,
+    pub(crate) coverage: Value,
+    pub(crate) modules: usize,
+    pub(crate) paths: Vec<String>,
     /// The SHA-256 of each text a fixable finding was found in, by path.
     digests: BTreeMap<String, String>,
     /// The baseline revision's findings, each with the text of its line.
     baseline: Option<Vec<Value>>,
     /// The sources, packages and tests the check discovered.
-    files: Value,
+    pub(crate) files: Value,
     /// Each `architecture.canonical_exports` declaration that failed, with why.
-    ownership_issues: Vec<(String, String)>,
+    pub(crate) ownership_issues: Vec<(String, String)>,
+}
+
+pub(crate) use analysis::installed::interpreter_search_path;
+
+/// Check the working tree under a configuration the caller loaded, for the
+/// native `smelt check`; `None` for any failure the Python CLI reports instead.
+pub(crate) fn check_loaded(
+    loaded: &config::load::LoadedConfig,
+    select: Vec<String>,
+    ignore: &[String],
+    strict_coverage: bool,
+    configuration_findings: bool,
+    search_path: Option<Vec<PathBuf>>,
+) -> Option<Outcome> {
+    if let Some(entries) = search_path {
+        analysis::installed::use_search_path(entries);
+    }
+    let mut request = Request::from_loaded(loaded, select).ok()?;
+    if strict_coverage {
+        request.force_strict_coverage().ok()?;
+    }
+    check(&request, ignore, configuration_findings, true).ok()
 }
 
 /// Run the check that stdin requests as JSON `Options` and print its outcome.

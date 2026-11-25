@@ -169,6 +169,8 @@ def catalog_metadata() -> list[dict[str, Any]]:
             "fix_availability": getattr(
                 rule, "fix_availability", FixAvailability.NONE
             ).value,
+            # The native check reports it without importing the rule.
+            "summary": rule.explain().summary,
         }
         for rule in sorted(_builtin_rules(), key=lambda rule: rule.code)
     ]

@@ -35,6 +35,7 @@ the same decision before adding another finding.
 | Diagnostic content | The rule's `RuleDoc` | Summary, rationale, bad/good examples, repair advice and config paths |
 | Execution and scope | `smelt/engine/` | Selection, severity, suppressions, debt and changed comparisons |
 | Output and CLI | `smelt/diagnostics/`, `smelt/cli/` | Render findings and expose commands |
+| Native check | `native/command/` | Run full and path-scoped `smelt check` without Python; leave every other invocation and every error to the Python CLI |
 | Regression | Mirrored paths under `tests/` | Demonstrate the failure and protect valid neighbors |
 | Generated reference | `docs/rules/`, `smelt.schema.json` | Generated from code; edit their sources instead |
 
@@ -43,6 +44,9 @@ The core runs every rule; the engine selects them, applies severity, suppression
 and debt, and renders the result. Share a source fact through a core analysis
 index when several rules need it; don't make one rule call another or hide
 policy decisions in parsing.
+`native/command/` repeats the engine's selection, severity, debt and rendering,
+so change it together with `smelt/engine/` and `smelt/diagnostics/`;
+`tests/cli/commands/test_check.py` compares both reports.
 Smelt checks these architecture boundaries with its own `smelt.yml`.
 
 The repository also enables public-first ordering, explicit

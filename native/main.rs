@@ -1,4 +1,5 @@
-//! The `smelt` command: runs the Python CLI, which checks in the native core.
+//! The `smelt` command: checks natively where it can, else runs the Python
+//! CLI, which checks in the native core.
 use std::env;
 use std::ffi::OsString;
 use std::io;
@@ -6,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 mod checker;
+mod command;
 mod git;
 
 fn trace(message: impl std::fmt::Display) {
@@ -88,6 +90,9 @@ fn run() -> io::Result<i32> {
     if arguments == [OsString::from("--version")] {
         println!("smelt {}", env!("CARGO_PKG_VERSION"));
         return Ok(0);
+    }
+    if let Some(code) = command::check(&arguments) {
+        return Ok(code);
     }
     let python = python()?;
     trace(format!("interpreter: {}", python.display()));

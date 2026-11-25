@@ -407,7 +407,7 @@ fn dump_structure(structure: &Value) -> Value {
     dumped
 }
 
-fn dump_model(config: &Value) -> Value {
+pub fn dump_model(config: &Value) -> Value {
     let mut dumped = config.clone();
     if let Some(entries) = dumped.as_object_mut() {
         for hidden in [

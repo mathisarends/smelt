@@ -37,6 +37,13 @@ current configuration and complete rule contracts, see the [README](README.md),
   import-graph and structure rules in parallel. A full check of this repository
   or of a generated 1000-module project takes about 35-40% less time. Reports
   are unchanged.
+- `smelt check` writes full and path-scoped reports in every format without
+  starting Python. A full check of this repository takes about 60% less time, a
+  generated 1000-module project about 75% less, and a small project 20 ms
+  instead of 0.4 s on Windows. Other options, uv workspaces, members,
+  structured `cross_feature.allow` entries and every error still go through the
+  Python CLI, so reports, messages and exit codes are unchanged.
+  `SMELT_NATIVE_CHECK=0` always uses the Python CLI.
 
 ## [0.17.0] - 2026-11-25
 
