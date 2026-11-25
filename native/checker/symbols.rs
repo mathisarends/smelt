@@ -1,5 +1,6 @@
 //! The top-level symbols, imports and strings of modules, from which `smelt init`
 //! traces how an application is assembled.
+use super::vfs;
 use crate::checker::analysis::namespace::namespace_of;
 use crate::checker::analysis::walk::{TreeNode, nodes_below};
 use rayon::prelude::*;
@@ -9,7 +10,6 @@ use ruff_python_parser::parse_module;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
 
 #[derive(Deserialize)]
@@ -31,7 +31,7 @@ pub fn symbols(request: &SymbolsRequest) -> Vec<Value> {
 }
 
 fn module_symbols(file: &ModuleFile) -> Value {
-    let Ok(bytes) = fs::read(&file.path) else {
+    let Ok(bytes) = vfs::read(&file.path) else {
         return Value::Null;
     };
     let body = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&bytes);

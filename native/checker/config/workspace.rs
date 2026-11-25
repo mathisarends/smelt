@@ -5,6 +5,7 @@ use super::models::{POLICY_FIELDS, RULE_LIMITS, default_contract, join, normpath
 use super::paths;
 use super::schema::{Out, string_list};
 use super::yaml::Yaml;
+use crate::checker::vfs;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
@@ -49,7 +50,7 @@ pub fn member_config_files(root: &Path) -> Vec<(String, PathBuf)> {
         let file = MEMBER_CONFIG_NAMES
             .iter()
             .map(|name| root.join(&member.path).join(name))
-            .find(|candidate| candidate.is_file());
+            .find(|candidate| vfs::is_file(candidate));
         if let Some(file) = file {
             found.push((member.path, file));
         }
@@ -139,7 +140,7 @@ pub fn member_directories(root: &Path, strict: bool) -> Result<Vec<MemberDirecto
             .into_iter()
             .filter(|candidate| {
                 let resolved = paths::resolve(candidate);
-                candidate.is_dir()
+                vfs::is_dir(candidate)
                     && resolved.starts_with(&resolved_root)
                     && resolved != resolved_root
             })
@@ -324,7 +325,7 @@ fn existing(root: &Path, bases: &[String], roots: &[String]) -> Vec<String> {
     for base in bases {
         for entry in roots {
             let path = normpath(&join(base, entry));
-            if root.join(&path).is_dir() && !found.contains(&path) {
+            if vfs::is_dir(&root.join(&path)) && !found.contains(&path) {
                 found.push(path);
             }
         }
@@ -339,7 +340,7 @@ fn package_directories(source: &Path, selected: &[String]) -> Vec<PathBuf> {
     selected
         .iter()
         .map(|name| source.join(name))
-        .filter(|path| path.is_dir())
+        .filter(|path| vfs::is_dir(path))
         .collect()
 }
 
@@ -384,7 +385,7 @@ fn member_packages(
     let regular: Vec<&PathBuf> = candidates
         .iter()
         .flat_map(|(_, directories)| directories)
-        .filter(|package| !selected.is_empty() && package.join("__init__.py").is_file())
+        .filter(|package| !selected.is_empty() && vfs::is_file(&package.join("__init__.py")))
         .collect();
     let regular_names: BTreeSet<String> = regular.iter().map(|path| directory_name(path)).collect();
     let mut owners: BTreeMap<String, String> = BTreeMap::new();

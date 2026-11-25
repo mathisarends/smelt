@@ -1,9 +1,9 @@
 //! Source discovery with the package rules of `smelt.analysis.files`.
 use super::config::{Project, Request};
 use super::patterns::PathPattern;
+use super::vfs;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 const SKIP_DIRS: [&str; 5] = ["__pycache__", ".git", ".venv", "venv", "node_modules"];
@@ -69,7 +69,7 @@ impl FileIndex {
 
     /// Discover the sources and tests the project settings describe below `root`.
     pub fn scan(root: &Path, project: &Project) -> Result<Self, String> {
-        let root = fs::canonicalize(root)
+        let root = vfs::canonicalize(root)
             .map_err(|error| format!("cannot resolve project root: {error}"))?;
         let exclude = project
             .exclude
@@ -238,19 +238,18 @@ impl FileIndex {
     pub fn yaml_paths(&self) -> Vec<String> {
         let mut found = BTreeSet::new();
         let mut visited = HashSet::new();
-        let real = fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+        let real = vfs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
         let mut pending = vec![(self.root.clone(), real)];
         while let Some((directory, resolved)) = pending.pop() {
             if !resolved.starts_with(&self.root) || !visited.insert(resolved.clone()) {
                 continue;
             }
-            let Ok(entries) = fs::read_dir(&directory) else {
+            let Ok(mut entries) = vfs::read_dir(&directory) else {
                 continue;
             };
-            let mut entries: Vec<fs::DirEntry> = entries.flatten().collect();
-            entries.sort_by_key(fs::DirEntry::path);
+            entries.sort_by(|left, right| left.path.cmp(&right.path));
             for listed in entries {
-                let entry = listed.path();
+                let entry = listed.path.clone();
                 let Ok(inside) = entry.strip_prefix(&self.root) else {
                     continue;
                 };
@@ -300,10 +299,10 @@ impl Discovery {
         let mut candidates: Vec<(PathBuf, &str)> = Vec::new();
         for source_root in source_roots {
             let directory = self.root.join(source_root).join(package);
-            if !directory.is_dir() || self.excluded(&self.relative(&directory)) {
+            if !vfs::is_dir(&directory) || self.excluded(&self.relative(&directory)) {
                 continue;
             }
-            let resolved = fs::canonicalize(&directory).map_err(|error| error.to_string())?;
+            let resolved = vfs::canonicalize(&directory).map_err(|error| error.to_string())?;
             match candidates.iter_mut().find(|(path, _)| *path == resolved) {
                 Some(entry) => entry.1 = source_root,
                 None => candidates.push((resolved, source_root)),
@@ -311,7 +310,7 @@ impl Discovery {
         }
         let regular: Vec<(PathBuf, &str)> = candidates
             .iter()
-            .filter(|(path, _)| path.join("__init__.py").is_file())
+            .filter(|(path, _)| vfs::is_file(&path.join("__init__.py")))
             .cloned()
             .collect();
         if regular.len() > 1 {
@@ -346,7 +345,7 @@ impl Discovery {
         if self.excluded(&relative) {
             return Ok(());
         }
-        let has_init = directory.join("__init__.py").is_file();
+        let has_init = vfs::is_file(&directory.join("__init__.py"));
         if let Some((previous, previous_init, _)) = self.portions.get(module)
             && (*previous_init || has_init)
         {
@@ -369,21 +368,23 @@ impl Discovery {
             has_init,
             source_root.to_owned(),
         ));
-        let mut entries: Vec<PathBuf> = fs::read_dir(directory)
+        let mut entries: Vec<PathBuf> = vfs::read_dir(directory)
             .map_err(|error| error.to_string())?
-            .filter_map(|entry| entry.ok().map(|item| item.path()))
+            .into_iter()
+            .map(|entry| entry.path)
             .collect();
         entries.sort_by_key(|path| file_name(path).to_owned());
         for entry in entries {
             let name = file_name(&entry).to_owned();
-            if entry.is_dir() {
+            if vfs::is_dir(&entry) {
                 if !SKIP_DIRS.contains(&name.as_str())
                     && is_identifier(&name)
                     && contains_python(&entry)
                 {
                     self.walk_package(&entry, &format!("{module}.{name}"), source_root)?;
                 }
-            } else if entry.extension().is_some_and(|suffix| suffix == "py") && entry.is_file() {
+            } else if entry.extension().is_some_and(|suffix| suffix == "py") && vfs::is_file(&entry)
+            {
                 self.add_file(&entry, module, &name)?;
             }
         }
@@ -439,14 +440,14 @@ impl Discovery {
             .iter()
             .map(|root| {
                 let directory = self.root.join(root);
-                let resolved = fs::canonicalize(&directory).unwrap_or(directory);
+                let resolved = vfs::canonicalize(&directory).unwrap_or(directory);
                 (resolved.components().count(), root)
             })
             .collect();
         ordered.sort();
         for (_, root) in ordered {
             let directory = self.root.join(root);
-            if !directory.is_dir() {
+            if !vfs::is_dir(&directory) {
                 continue;
             }
             for path in python_files(&directory) {
@@ -491,7 +492,7 @@ impl Discovery {
 
 /// The POSIX path of `path` from the resolved `root`, with `..` for a path outside it.
 pub fn relative_path(root: &Path, path: &Path) -> String {
-    let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let resolved = vfs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     if let Ok(inside) = resolved.strip_prefix(root) {
         return posix_parts(inside).join("/");
     }
@@ -541,17 +542,17 @@ pub fn python_files(directory: &Path) -> Vec<PathBuf> {
 /// lookup, and a directory's real path is its parent's unless it is a link.
 fn walk_python(directory: &Path, mut visit: impl FnMut(PathBuf) -> bool) -> bool {
     let mut visited = HashSet::new();
-    let real = fs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
+    let real = vfs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
     let mut pending = vec![(directory.to_path_buf(), real)];
     while let Some((parent, resolved)) = pending.pop() {
         if !visited.insert(resolved.clone()) {
             continue;
         }
-        let Ok(entries) = fs::read_dir(&parent) else {
+        let Ok(entries) = vfs::read_dir(&parent) else {
             continue;
         };
-        for entry in entries.flatten() {
-            let path = entry.path();
+        for entry in entries {
+            let path = entry.path.clone();
             if listed_directory(&entry) {
                 let name = file_name(&path);
                 if !SKIP_DIRS.contains(&name) && !name.starts_with('.') {
@@ -567,18 +568,16 @@ fn walk_python(directory: &Path, mut visit: impl FnMut(PathBuf) -> bool) -> bool
 }
 
 /// Whether a listed entry is a directory, following links as `Path::is_dir` does.
-fn listed_directory(entry: &fs::DirEntry) -> bool {
-    match entry.file_type() {
-        Ok(kind) if !kind.is_symlink() => kind.is_dir(),
-        _ => entry.path().is_dir(),
-    }
+fn listed_directory(entry: &vfs::Entry) -> bool {
+    entry.is_dir()
 }
 
 /// The real path of a listed entry below the real directory `parent`.
-fn listed_real(parent: &Path, entry: &fs::DirEntry) -> PathBuf {
-    match entry.file_type() {
-        Ok(kind) if !kind.is_symlink() => parent.join(entry.file_name()),
-        _ => fs::canonicalize(entry.path()).unwrap_or_else(|_| entry.path()),
+fn listed_real(parent: &Path, entry: &vfs::Entry) -> PathBuf {
+    if entry.is_link() {
+        vfs::canonicalize(&entry.path).unwrap_or_else(|_| entry.path.clone())
+    } else {
+        parent.join(entry.path.file_name().unwrap_or_default())
     }
 }
 
@@ -591,13 +590,12 @@ fn file_name(path: &Path) -> &str {
 /// Whether a listed entry is a file whose real path stays below `root`.
 ///
 /// Its directory is already known to be inside, so only a link needs resolving.
-fn listed_file_inside(entry: &fs::DirEntry, root: &Path) -> bool {
-    match entry.file_type() {
-        Ok(kind) if !kind.is_symlink() => kind.is_file(),
-        _ => {
-            let path = entry.path();
-            path.is_file() && fs::canonicalize(&path).is_ok_and(|real| real.starts_with(root))
-        }
+fn listed_file_inside(entry: &vfs::Entry, root: &Path) -> bool {
+    if entry.is_link() {
+        vfs::is_file(&entry.path)
+            && vfs::canonicalize(&entry.path).is_ok_and(|real| real.starts_with(root))
+    } else {
+        entry.is_file()
     }
 }
 

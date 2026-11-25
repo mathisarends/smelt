@@ -12,10 +12,10 @@ use super::files::{FileIndex, SourceFile, relative_path};
 use super::patterns::ModulePattern;
 use super::rules::definition_order::file_order;
 use super::source::ParsedSource;
+use super::vfs;
 use rayon::prelude::*;
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -242,5 +242,5 @@ fn omitted_members(inputs: &ReportInputs<'_>) -> Result<Vec<Value>, String> {
 }
 
 fn real(path: &Path) -> PathBuf {
-    fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    vfs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }

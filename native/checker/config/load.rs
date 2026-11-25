@@ -8,6 +8,7 @@ use super::schema::{Out, Validator, string_list};
 use super::semantics::{partial_layer_issues, validate_semantics};
 use super::workspace::{expand_workspace, member_config_files, member_directories};
 use super::yaml::Yaml;
+use crate::checker::vfs;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -51,7 +52,7 @@ fn config_in(directory: &Path) -> Option<PathBuf> {
     CONFIG_FILENAMES
         .iter()
         .map(|name| directory.join(name))
-        .find(|candidate| candidate.is_file())
+        .find(|candidate| vfs::is_file(candidate))
 }
 
 /// Find the enclosing workspace even when a nested policy is misplaced.
@@ -220,11 +221,11 @@ fn collect_configs(directory: &Path, found: &mut Vec<PathBuf>) {
     ];
     for entry in paths::children(directory) {
         let name = file_name(&entry);
-        if CONFIG_FILENAMES.contains(&name.as_str()) && entry.is_file() {
+        if CONFIG_FILENAMES.contains(&name.as_str()) && vfs::is_file(&entry) {
             found.push(entry);
         } else if !name.starts_with('.')
             && !SKIPPED.contains(&name.as_str())
-            && entry.is_dir()
+            && vfs::is_dir(&entry)
             && paths::same_path(&paths::resolve(&entry), &entry)
         {
             collect_configs(&entry, found);
