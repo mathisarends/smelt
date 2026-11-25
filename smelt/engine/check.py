@@ -247,6 +247,7 @@ def _run_check(
     violations = debt.violations
     comparison = compared[1] if compared else None
     if compared and baseline is not None:
+        _read_quoted_sources(ctx, violations)
         violations = baseline.match(violations, snippet_reader(ctx))[0]
     elif options.changed and not native:
         violations, comparison = _introduced(
@@ -325,6 +326,8 @@ def _match_debt(
     resolved: list[DebtEntry] = []
     severity_of = {rule.code: severity for rule, severity in active}
     scopes = debt_scopes(policy.config) if options.use_debt else ()
+    if scopes:
+        _read_quoted_sources(ctx, violations)
     for debt_scope in scopes:
         debt = Debt.load(ctx.root / debt_scope.path, store=ctx.store)
         # Inactive rules have not been checked; their debt is not resolved.
@@ -352,6 +355,15 @@ def _match_debt(
                 )
             )
     return _DebtMatch(violations, in_debt, resolved)
+
+
+def _read_quoted_sources(ctx: AnalysisContext, violations: list[Violation]) -> None:
+    """Read the files whose lines debt fingerprints quote in one Git request."""
+    ctx.store.prefetch(
+        ctx.root / violation.path
+        for violation in violations
+        if violation.path and violation.line
+    )
 
 
 def _python_analysis(
