@@ -7,6 +7,30 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- New opt-in hint `layout/redundant-comment` (LAY012) reports a comment block
+  above a def, class or assignment, or a docstring, whose words only restate
+  the documented name, such as `# Get user by id` above `get_user_by_id`.
+  Required docstrings are reported with advice to improve them, not remove them.
+- New opt-in rule `tests/missing-skip-reason` (TST013) reports pytest skip,
+  skipif, xfail and flaky markers, `pytest.skip`/`pytest.xfail` calls,
+  unittest skip decorators and flaky rerun decorators whose reason names no
+  issue. The reason must match the new `tests.skip_reason_pattern` (an issue
+  reference or a link by default), in the reason argument or a comment.
+  Environment limits such as `skipif(sys.platform == "win32", ...)` only need a
+  non-empty reason.
+- New opt-in rule `meta/missing-tool-suppression-reason` (MET006) reports
+  `noqa`, `type: ignore`, `pyright: ignore`, `mypy:` and `pylint: disable`
+  comments without a reason, in production and test modules. Text after the
+  directive or a comment right above it counts as the reason.
+  `meta/missing-suppression-reason` (MET002) is unchanged.
+- `idioms/missing-broad-except-reason` (IDM006) no longer accepts `ruff: noqa`,
+  `flake8: noqa` or `mypy:` directives as the reason for a broad handler.
+- `tests/nondeterministic-data` (TST011) also reviews wall-clock reads in
+  tests: `datetime.now`, `datetime.utcnow`, `datetime.today`, `date.today`,
+  `time.time` and `time.time_ns`. Reads inside `freezegun.freeze_time` or
+  `time_machine.travel` contexts and decorators, under
+  `pytest.mark.freeze_time` and in tests using the `freezer` fixture are not
+  reported. `time.monotonic` and `time.perf_counter` stay out of scope.
 - `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
   and each project-wide rule took to stderr, to locate a slow check.
 
