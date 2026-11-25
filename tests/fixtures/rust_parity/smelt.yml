@@ -1,4 +1,4 @@
-# Edge cases the Rust core must report exactly like the Python engine.
+# Edge cases whose findings the golden reports in tests/fixtures/golden keep.
 version: 2
 
 project:

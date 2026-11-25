@@ -1,0 +1,20 @@
+modules: 56, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 13, "governed": 21, "unclassified": 22, "uncovered": 0} complete=False
+ARC001 core/kernel/inner_copy.py:3:33 error kernel must not depend on web
+ARC006 extras/boot_copy.py:1:23 error extras.boot_copy must not import the composition root core.boot
+ARC012 core/boot_copy.py:None:None warning core.boot_copy is not part of a feature, layer, shared or composition root
+ARC012 core/loose_copy.py:None:None warning core.loose_copy is not part of a feature, layer, shared or composition root
+ARC012 core/twin_copy.py:None:None warning core.twin_copy is not part of a feature, layer, shared or composition root
+ARC012 core/web/__init___copy.py:None:None warning core.web.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 core/web/other/__init___copy.py:None:None warning core.web.other.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 extras/boot_copy.py:None:None warning extras.boot_copy is not part of a feature, layer, shared or composition root
+ARC012 extras/kernel/shallow_copy.py:None:None warning extras.kernel.shallow_copy is not part of a feature, layer, shared or composition root
+ARC012 extras/web/__init___copy.py:None:None warning extras.web.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 wired/a/providers_copy.py:None:None warning wired.a.providers_copy is not part of a feature, layer, shared or composition root
+ARC012 wired/b/sub/__init___copy.py:None:None warning wired.b.sub.__init___copy is not part of a feature, layer, shared or composition root
+CPX004 core/twin.py:1:1 warning Function repeated repeats repeated in core/twin_copy.py
+CPX004 core/twin_copy.py:1:1 warning Function repeated repeats repeated in core/twin.py
+LAY004 core/literal_a.py:6:None error imports appear after later definition groups
+LAY004 extras/literal_b.py:6:None error imports appear after later definition groups
+LAY004 extras/twin.py:7:None error imports appear after later definition groups
+VIS001 core/twin_copy.py:1:1 warning repeated is public, but has no observed use outside its module

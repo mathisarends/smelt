@@ -1,0 +1,32 @@
+modules: 23, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 9, "governed": 0, "unclassified": 14, "uncovered": 0} complete=False
+ARC013 app/billing/__init___copy.py:None:None error app/billing/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/payment.py:None:None error app/billing/payment.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/stripe/__init___copy.py:None:None error app/billing/stripe/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/errors.py:None:None error app/errors.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/health/__init___copy.py:None:None error app/health/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/health/presentation/router.py:None:None error app/health/presentation/router.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/memory.py:None:None error app/memory.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/memory_copy.py:None:None error app/memory_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/repository.py:None:None error app/orders/repository.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/service.py:None:None error app/orders/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/service_copy.py:None:None error app/orders/service_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/other/service.py:None:None error app/other/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/session/__init___copy.py:None:None error app/session/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/session/infrastructure/repository.py:None:None error app/session/infrastructure/repository.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+TST001 tests/app/billing/test_payment_copy.py:None:None error test_payment_copy.py has no source module at its mirrored path app/app/billing/payment_copy.py
+TST001 tests/billing/test_invoice.py:None:None error test_invoice.py has no source module at its mirrored path app/billing/invoice.py
+TST001 tests/billing/test_invoise_copy.py:None:None error test_invoise_copy.py has no source module at its mirrored path app/billing/invoise_copy.py
+TST001 tests/health/presentation/test_health_presentation_router_copy.py:None:None error test_health_presentation_router_copy.py has no source module at its mirrored path app/health/presentation/health_presentation_router_copy.py
+TST001 tests/test_orders_copy.py:None:None error test_orders_copy.py has no source module at its mirrored path app/orders_copy.py
+TST001 tests/test_session_infrastructure_repository_copy.py:None:None error test_session_infrastructure_repository_copy.py has no source module at its mirrored path app/session_infrastructure_repository_copy.py
+TST012 app/billing/payment.py:1:None warning app.billing.payment has no test at its mirrored path tests/billing/test_payment.py
+TST012 app/health/presentation/router.py:1:None warning app.health.presentation.router has no test at its mirrored path tests/health/presentation/test_router.py
+TST012 app/memory_copy.py:1:None warning app.memory_copy has no test at its mirrored path tests/test_memory_copy.py
+TST012 app/orders/repository.py:1:None warning app.orders.repository has no test at its mirrored path tests/orders/test_repository.py
+TST012 app/orders/service_copy.py:1:None warning app.orders.service_copy has no test at its mirrored path tests/orders/test_service_copy.py
+TST012 app/other/service.py:1:None warning app.other.service has no test at its mirrored path tests/other/test_service.py
+TST012 app/session/infrastructure/repository.py:1:None warning app.session.infrastructure.repository has no test at its mirrored path tests/session/infrastructure/test_repository.py
+VIS001 app/memory.py:1:1 warning remember is public, but has no observed use outside its module
+VIS001 app/memory_copy.py:1:1 warning remember is public, but has no observed use outside its module
+VIS001 app/orders/service_copy.py:1:1 warning place is public, but has no observed use outside its module

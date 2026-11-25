@@ -1,0 +1,16 @@
+modules: 27, suppressed: 0, in debt: 0
+coverage: {"excluded": 1, "facade": 10, "governed": 9, "unclassified": 8, "uncovered": 0} complete=False
+ARC011 libs/core/src/core/features/one/legacy.py:None:None error member=libs/core one contains module legacy.py, which is in no layer (domain, application)
+ARC011 libs/core/src/core/features/one/runner.py:None:None error member=libs/core one contains module runner.py, which is in no layer (domain, application)
+ARC011 src/app/features/billing/stray.py:None:None error member=. billing contains module stray.py, which is in no layer (domain, application)
+ARC012 libs/core/src/core/loose.py:None:None hint member=libs/core core.loose is not part of a feature, layer, shared or composition root
+ARC012 src/app/loose.py:None:None warning member=. app.loose is not part of a feature, layer, shared or composition root
+CPX003 libs/core/src/core/features/one/domain/model.py:1:1 warning fix member=libs/core model accepts 3 positional parameters; style allows 2
+CPX003 libs/core/src/core/loose.py:4:1 warning fix member=libs/core loose accepts 3 positional parameters; style allows 2
+CPX003 libs/tools/src/tools/a.py:1:1 hint fix member=libs/tools helper accepts 3 positional parameters; style allows 2
+CPX003 src/app/features/orders/domain/order.py:1:1 warning fix member=. order accepts 3 positional parameters; style allows 2
+CPX005 libs/core/src/core/features/one/domain/model.py:2:12 hint member=libs/core This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+IMP003 libs/core/src/core/loose.py:1:1 warning fix member=libs/core style expects an absolute import of core
+MET004 libs/tools/smelt.yml:7:3 warning members.libs/tools.rules.architecture/missing-facade-export enables architecture/missing-facade-export without architecture.packages.<name>.min_importers_to_export
+TST002 libs/tools/tests/test_a.py:1:21 warning member=libs/tools test accesses private production name tools.a._hidden
+TST002 tests/test_order.py:1:46 error member=. test accesses private production name app.features.orders.domain.order._private

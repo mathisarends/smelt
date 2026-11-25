@@ -1,0 +1,1045 @@
+modules: 414, suppressed: 10, in debt: 0
+coverage: {"excluded": 0, "facade": 42, "governed": 0, "unclassified": 372, "uncovered": 2} complete=False
+CPX002 parity/call_kinds/comprehensions/__init___copy.py:3:10 hint Name the collection transformation before passing it to show()
+CPX003 parity/enum_styles/__init___copy.py:47:5 warning fix _generate_next_value_ accepts 3 positional parameters; style allows 2
+CPX003 parity/enum_styles/__init___copy.py:59:5 warning fix _generate_next_value_ accepts 3 positional parameters; style allows 2
+CPX003 parity/ignored_copy.py:7:1 warning fix hidden accepts 4 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:231:1 warning scalar_annotations accepts 6 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:265:1 warning fix unknown_annotations accepts 10 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:330:1 warning fix projections accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:389:1 warning fix comprehension_shapes accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:490:1 warning fix lambda_yield accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:515:1 warning fix conditional_branches accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:563:1 warning fix statements_in_loop accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:723:1 warning fix written_inputs accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections_copy.py:844:1 warning fix loop_shapes accepts 3 positional parameters; style allows 2
+CPX003 parity/silenced/nested_copy.py:7:1 warning fix reported accepts 3 positional parameters; style allows 2
+CPX004 parity/call_kinds/comprehensions/__init___copy.py:1:1 warning Function run repeats run in parity/call_kinds/aggregates/__init__.py and 2 more
+CPX004 parity/class_constants.py:87:1 warning Function scope repeats scope in parity/class_constants_copy.py
+CPX004 parity/class_constants_copy.py:87:1 warning Function scope repeats scope in parity/class_constants.py
+CPX004 parity/discriminators.py:41:1 warning Function factory repeats factory in parity/discriminators_copy.py
+CPX004 parity/discriminators_copy.py:41:1 warning Function factory repeats factory in parity/discriminators.py
+CPX004 parity/enum_styles/__init__.py:97:1 warning Function scope repeats scope in parity/enum_styles/__init___copy.py
+CPX004 parity/enum_styles/__init___copy.py:97:1 warning Function scope repeats scope in parity/enum_styles/__init__.py
+CPX004 parity/import_graph/other.py:27:1 warning Function local repeats local in parity/import_graph/other_copy.py
+CPX004 parity/import_graph/other_copy.py:27:1 warning Function local repeats local in parity/import_graph/other.py
+CPX004 parity/lazy/unstable.py:9:1 warning Function __getattr__ repeats __getattr__ in parity/lazy/unstable_copy.py
+CPX004 parity/lazy/unstable_copy.py:9:1 warning Function __getattr__ repeats __getattr__ in parity/lazy/unstable.py
+CPX004 parity/loop_collections.py:218:1 warning Function plain repeats plain in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:224:1 warning Function membership repeats membership in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:231:1 warning Function scalar_annotations repeats scalar_annotations in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:265:1 warning Function unknown_annotations repeats unknown_annotations in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:307:1 warning Function grouped_renames repeats grouped_renames in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:318:1 warning Function separate_projections repeats separate_projections in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:330:1 warning Function projections repeats projections in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:389:1 warning Function comprehension_shapes repeats comprehension_shapes in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:437:1 warning Function asynchronous repeats asynchronous in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:444:1 warning Function awaiting repeats awaiting in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:452:1 warning Function async_loop repeats async_loop in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:459:1 warning Function async_comprehension repeats async_comprehension in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:466:1 warning Function yielding repeats yielding in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:472:1 warning Function delegating repeats delegating in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:480:1 warning Function nested_yield repeats nested_yield in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:490:1 warning Function lambda_yield repeats lambda_yield in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:498:1 warning Function decorated repeats decorated in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:505:1 warning Function inner_scope repeats inner_scope in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:515:1 warning Function conditional_branches repeats conditional_branches in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:563:1 warning Function statements_in_loop repeats statements_in_loop in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:636:1 warning Function raises repeats raises in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:672:1 warning Function returns repeats returns in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:682:1 warning Function assignments repeats assignments in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:723:1 warning Function written_inputs repeats written_inputs in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:748:1 warning Function env_before_loop repeats env_before_loop in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:844:1 warning Function loop_shapes repeats loop_shapes in parity/loop_collections_copy.py
+CPX004 parity/loop_collections.py:900:1 warning Function not_a_generic repeats not_a_generic in parity/loop_collections_copy.py
+CPX004 parity/loop_collections_copy.py:218:1 warning Function plain repeats plain in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:224:1 warning Function membership repeats membership in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:231:1 warning Function scalar_annotations repeats scalar_annotations in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:265:1 warning Function unknown_annotations repeats unknown_annotations in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:307:1 warning Function grouped_renames repeats grouped_renames in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:318:1 warning Function separate_projections repeats separate_projections in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:330:1 warning Function projections repeats projections in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:389:1 warning Function comprehension_shapes repeats comprehension_shapes in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:437:1 warning Function asynchronous repeats asynchronous in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:444:1 warning Function awaiting repeats awaiting in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:452:1 warning Function async_loop repeats async_loop in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:459:1 warning Function async_comprehension repeats async_comprehension in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:466:1 warning Function yielding repeats yielding in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:472:1 warning Function delegating repeats delegating in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:480:1 warning Function nested_yield repeats nested_yield in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:490:1 warning Function lambda_yield repeats lambda_yield in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:498:1 warning Function decorated repeats decorated in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:505:1 warning Function inner_scope repeats inner_scope in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:515:1 warning Function conditional_branches repeats conditional_branches in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:563:1 warning Function statements_in_loop repeats statements_in_loop in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:636:1 warning Function raises repeats raises in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:672:1 warning Function returns repeats returns in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:682:1 warning Function assignments repeats assignments in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:723:1 warning Function written_inputs repeats written_inputs in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:748:1 warning Function env_before_loop repeats env_before_loop in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:844:1 warning Function loop_shapes repeats loop_shapes in parity/loop_collections.py
+CPX004 parity/loop_collections_copy.py:900:1 warning Function not_a_generic repeats not_a_generic in parity/loop_collections.py
+CPX004 parity/loop_shadowed/rebound_tuple_copy.py:4:1 warning Function check repeats check in parity/loop_shadowed/rebound_tuple.py
+CPX004 parity/ordering/local_namespace.py:5:1 warning Function public repeats public in parity/ordering/local_namespace_copy.py
+CPX004 parity/ordering/local_namespace_copy.py:5:1 warning Function public repeats public in parity/ordering/local_namespace.py
+CPX004 parity/parallel_records.py:184:1 warning Function scope repeats scope in parity/parallel_records_copy.py
+CPX004 parity/parallel_records_copy.py:184:1 warning Function scope repeats scope in parity/parallel_records.py
+CPX004 parity/receivers.py:62:1 warning Function function repeats function in parity/receivers_copy.py
+CPX004 parity/receivers.py:71:1 warning Function coroutine repeats coroutine in parity/receivers_copy.py
+CPX004 parity/receivers_copy.py:62:1 warning Function function repeats function in parity/receivers.py
+CPX004 parity/receivers_copy.py:71:1 warning Function coroutine repeats coroutine in parity/receivers.py
+CPX004 parity/versioned/__init___copy.py:10:1 warning Function chain repeats chain in parity/legacy/__init__.py and 3 more
+CPX005 parity/conditionals_copy.py:12:29 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:13:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:13:39 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:14:21 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:15:21 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:16:17 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:16:49 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:18:5 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:26:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:29:19 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:30:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:33:8 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:34:17 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:35:18 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:6:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:7:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:8:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals_copy.py:9:9 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/ignored_copy.py:4:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX006 parity/conditionals_copy.py:15:20 hint Complex comprehension: nontrivial conditional element
+CPX006 parity/loop_collections_copy.py:394:20 hint Complex comprehension: too many for clauses
+CPX006 parity/relaxed/thresholds_copy.py:5:14 hint Complex comprehension: too many for clauses
+CPX007 parity/relaxed/thresholds_copy.py:16:5 hint Constructor Excessive.__init__ contains 5 decisions (limit 4); name its normalization or validation steps
+CPX008 parity/receivers_copy.py:21:16 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:31:12 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:32:20 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:34:1 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:35:18 hint Name the collections.OrderedDict instance before calling .copy()
+CPX008 parity/receivers_copy.py:36:17 hint Name the coll.Counter instance before calling .most_common()
+CPX008 parity/receivers_copy.py:37:10 hint Name the os.path.PathLike instance before calling .__fspath__()
+CPX008 parity/receivers_copy.py:41:16 hint Name the _Hidden instance before calling .value()
+CPX008 parity/receivers_copy.py:42:19 hint Name the path_class instance before calling .as_posix()
+CPX008 parity/receivers_copy.py:43:12 hint Name the Direct instance before calling .run()
+CPX008 parity/receivers_copy.py:44:18 hint Name the Renamed instance before calling .run()
+CPX008 parity/receivers_copy.py:45:19 hint Name the sibling.Direct instance before calling .run()
+CPX008 parity/receivers_copy.py:51:12 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:52:17 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:53:10 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:63:13 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:67:9 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:72:19 hint Name the Local instance before calling .run()
+CPX008 parity/receivers_copy.py:74:18 hint Name the Local instance before calling .run()
+FWK001 parity/frameworks_copy.py:16:5 warning review secret settings field Settings.api_key; use a masked secret type
+FWK001 parity/frameworks_copy.py:17:5 warning review secret settings field Settings.database_password; use a masked secret type
+FWK001 parity/frameworks_copy.py:18:5 warning review secret settings field Settings.refresh_token; use a masked secret type
+FWK001 parity/frameworks_copy.py:19:5 warning review secret settings field Settings.private_key; use a masked secret type
+FWK001 parity/frameworks_copy.py:20:5 warning review secret settings field Settings.SECRET; use a masked secret type
+FWK001 parity/frameworks_copy.py:21:5 warning review secret settings field Settings.union_token; use a masked secret type
+FWK001 parity/frameworks_copy.py:22:5 warning review secret settings field Settings.quoted_token; use a masked secret type
+FWK001 parity/frameworks_copy.py:28:5 warning review secret settings field Settings.passwd; use a masked secret type
+FWK001 parity/frameworks_copy.py:29:5 warning review secret settings field Settings.typed_secret; use a masked secret type
+FWK001 parity/frameworks_copy.py:34:5 warning review secret settings field Child.access_token; use a masked secret type
+FWK001 parity/frameworks_copy.py:38:5 warning review secret settings field Grandchild.client_secret; use a masked secret type
+FWK001 parity/frameworks_copy.py:42:5 warning review secret settings field Aliased.password; use a masked secret type
+FWK001 parity/frameworks_copy.py:46:5 warning review secret settings field Dotted.token; use a masked secret type
+FWK001 parity/frameworks_copy.py:50:5 warning review secret settings field DottedLegacy.token; use a masked secret type
+FWK002 parity/frameworks_copy.py:66:5 hint review direct constructor registration for Forwarding.query
+FWK002 parity/frameworks_copy.py:70:5 hint review direct constructor registration for Forwarding.options
+FWK002 parity/frameworks_copy.py:74:5 hint review direct constructor registration for Forwarding.renamed
+FWK002 parity/frameworks_copy.py:78:5 hint review direct constructor registration for Forwarding.dotted
+FWK002 parity/frameworks_copy.py:82:5 hint review direct constructor registration for Forwarding.no_dependencies
+IDM002 parity/versioned/__init___copy.py:11:5 hint consider match value: for 2 type-dispatch branches
+IDM003 parity/loop_collections_copy.py:210:5 hint review Nested.method as __call__ with an operation-based class name
+IDM003 parity/ordering/comments_copy.py:13:1 hint review Holder.public as __call__ with an operation-based class name
+IDM003 parity/receivers_copy.py:24:1 hint review Rebound.run as __call__ with an operation-based class name
+IDM003 parity/test_support/service_copy.py:38:1 hint review Worker.run as __call__ with an operation-based class name
+IDM004 parity/name_aliases_copy.py:34:1 hint First is a second name for class Model
+IDM004 parity/name_aliases_copy.py:35:1 hint Second is a second name for class Model
+IDM004 parity/name_aliases_copy.py:36:1 hint Third is a second name for function helper
+IDM004 parity/name_aliases_copy.py:38:1 hint Fifth is a second name for class Model
+IDM004 parity/name_aliases_copy.py:42:1 hint SecondImport is a second name for class Imported
+IDM004 parity/name_aliases_copy.py:45:1 hint Mix is a second name for class Mixed_Case
+IDM004 parity/name_aliases_copy.py:48:1 hint Ordered is a second name for class collections.OrderedDict
+IDM004 parity/name_aliases_copy.py:49:1 hint Abstract is a second name for class abc_module.Mapping
+IDM004 parity/name_aliases_copy.py:53:1 hint Parenthesized is a second name for class Model
+IDM004 parity/name_aliases_copy.py:54:1 hint AnnotatedParens is a second name for class Model
+IDM004 parity/name_aliases_copy.py:57:1 hint Packaged is a second name for class Widget
+IDM004 parity/receivers_copy.py:29:1 hint Rebound is a second name for class Local
+IDM006 parity/ordering/basic_copy.py:43:1 hint Handler for Exception does not say why it catches every failure
+IDM008 parity/loop_collections_copy.py:194:28 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:220:24 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:226:21 hint Lookup set {other for other in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:243:19 hint Lookup set {x for x in a} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:246:19 hint Lookup set {x for x in b} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:249:21 hint Lookup set {x for x in c} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:252:20 hint Lookup set {x for x in d} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:255:20 hint Lookup set {x for x in e} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:258:19 hint Lookup set {x for x in f} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:261:21 hint Lookup set {x for x in g} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:309:20 hint Lookup set {a for a in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:320:22 hint Lookup set {item.id for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:322:24 hint Lookup set {item.size for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:326:22 hint Lookup set {item.id for item in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:32:23 hint Lookup set {other for other in self.tags} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:379:21 hint Lookup set {item * 2 for item in values} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:381:21 hint Lookup set {-item for item in values} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:383:21 hint Lookup set {item + 1.5 for item in values} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:385:21 hint Lookup set {item << 1 for item in values} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:38:24 hint Lookup set {item.size for item in items} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:418:20 hint Lookup set {item for item in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:421:32 hint Lookup set {item for item in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:424:26 hint Lookup set {item for item in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:427:20 hint Lookup set {item for item in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:430:29 hint Lookup set {x for x in wanted} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:439:20 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:523:20 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:540:22 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:56:24 hint Lookup set {other for other in self.names} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:62:24 hint Lookup set {other for other in self.names} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:638:20 hint Lookup set {a for a in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:668:20 hint Lookup set {k for k in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:674:20 hint Lookup set {a for a in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:677:24 hint Lookup set {b for b in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:685:17 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:689:17 hint Lookup set {item for item in available} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:751:20 hint Lookup set {item for item in pool} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:763:20 hint Lookup set {item for item in pool} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:783:20 hint Lookup set {item for item in stable} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:814:20 hint Lookup set {item for item in call_root} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:827:20 hint Lookup set {item for item in handler} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:840:20 hint Lookup set {item for item in function_name} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:846:20 hint Lookup set {item for item in rows[0]} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:849:20 hint Lookup set {item for item in ('a', 'b')} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IDM008 parity/loop_collections_copy.py:877:26 hint Lookup set {other.ratio for other in items} is rebuilt on each iteration from stable immutable inputs; review computing it once
+IMP004 parity_tests/domain/test_mocks_copy.py:16:1 hint fix import these names from the existing parity.test_support package API
+IMP004 parity_tests/test_patches_copy.py:5:1 hint fix import these names from the existing parity.test_support package API
+IMP004 parity_tests/test_star_copy.py:1:1 hint fix import these names from the existing parity.test_support package API
+LAY002 parity/doc_policy/forbidden/__init___copy.py:1:1 error contract "docs_forbidden" forbids module docstrings
+LAY002 parity/doc_policy/forbidden/multi_line_copy.py:1:1 error contract "docs_forbidden" forbids module docstrings
+LAY002 parity/doc_policy/required/__main___copy.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/bytes_doc.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/comment_only_copy.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/control_doc.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/empty_doc_copy.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/fstring_doc.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY002 parity/doc_policy/required/no_doc.py:1:1 error contract "docs_required" requires a non-empty module docstring
+LAY004 parity/async_contexts/dotted_import.py:12:None error imports appear after later definition groups
+LAY004 parity/async_contexts/guarded.py:13:None error imports appear after later definition groups
+LAY004 parity/async_contexts/module_attributes.py:28:None error imports appear after later definition groups
+LAY004 parity/async_contexts/quoted.py:40:None error imports appear after later definition groups
+LAY004 parity/async_contexts/reused.py:14:None error imports appear after later definition groups
+LAY004 parity/async_contexts/reused_inline.py:11:None error imports appear after later definition groups
+LAY004 parity/async_contexts/wildcard.py:11:None error imports appear after later definition groups
+LAY004 parity/call_arguments.py:119:None error imports appear after later definition groups
+LAY004 parity/call_kinds/awaits/__init__.py:7:None error imports appear after later definition groups
+LAY004 parity/call_order_eof.py:9:None error imports appear after later definition groups
+LAY004 parity/callables.py:169:None error imports appear after later definition groups
+LAY004 parity/class_constants_copy.py:127:None error definitions in module.Reads#0 have 11 avoidable ordering inversion(s)
+LAY004 parity/comprehensions.py:80:None error imports appear after later definition groups
+LAY004 parity/dataclass_policy/__init__.py:290:None error imports appear after later definition groups
+LAY004 parity/dataclass_policy/shadowed_builtin.py:26:None error imports appear after later definition groups
+LAY004 parity/doc_policy/forbidden/empty_doc.py:5:None error imports appear after later definition groups
+LAY004 parity/doc_policy/required/bytes_doc.py:5:None error imports appear after later definition groups
+LAY004 parity/doc_policy/required/fstring_doc.py:5:None error imports appear after later definition groups
+LAY004 parity/doc_policy/required/no_doc.py:4:None error imports appear after later definition groups
+LAY004 parity/domain_errors/free/__init__.py:5:None error imports appear after later definition groups
+LAY004 parity/domain_errors/strict/__init__.py:7:None error imports appear after later definition groups
+LAY004 parity/enum_styles/derived/__init__.py:48:None error imports appear after later definition groups
+LAY004 parity/enum_styles/derived/no_import_line.py:8:None error imports appear after later definition groups
+LAY004 parity/enum_styles/guarded.py:9:None error imports appear after later definition groups
+LAY004 parity/enum_styles/own_line.py:9:None error imports appear after later definition groups
+LAY004 parity/enum_styles/still_used.py:11:None error imports appear after later definition groups
+LAY004 parity/file_level.py:12:None error imports appear after later definition groups
+LAY004 parity/frozen_relative.py:21:None error imports appear after later definition groups
+LAY004 parity/future_policy/generics/custom.py:6:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/__init__.py:8:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/attribute.py:8:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/builtin.py:7:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/decorated_class.py:9:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/dunder.py:7:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/generic.py:6:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/imported_late.py:8:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/multi_line.py:10:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/number.py:6:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/plus.py:6:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/star.py:8:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/type_checking.py:7:None error imports appear after later definition groups
+LAY004 parity/future_policy/needed/variadic_late.py:8:None error imports appear after later definition groups
+LAY004 parity/future_policy/unions/__init__.py:6:None error imports appear after later definition groups
+LAY004 parity/generics/below/__init__.py:10:None error imports appear after later definition groups
+LAY004 parity/generics/in_string.py:11:None error imports appear after later definition groups
+LAY004 parity/generics/kinds.py:15:None error imports appear after later definition groups
+LAY004 parity/generics/shadowed.py:11:None error imports appear after later definition groups
+LAY004 parity/generics/split_imports.py:12:None error imports appear after later definition groups
+LAY004 parity/generics/wildcard.py:10:None error imports appear after later definition groups
+LAY004 parity/import_graph/guarded.py:11:None error imports appear after later definition groups
+LAY004 parity/instance_assignments.py:200:None error imports appear after later definition groups
+LAY004 parity/lazy/__init__.py:32:None error imports appear after later definition groups
+LAY004 parity/legacy/__init__.py:17:None error imports appear after later definition groups
+LAY004 parity/loop_shadowed/rebound_error.py:12:None error imports appear after later definition groups
+LAY004 parity/modeling/__init__.py:13:None error imports appear after later definition groups
+LAY004 parity/modeling/models.py:87:None error imports appear after later definition groups
+LAY004 parity/module_loggers/after_logger.py:8:None error imports appear after later definition groups
+LAY004 parity/module_loggers/annotated_dotted.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/attribute_write.py:8:None error imports appear after later definition groups
+LAY004 parity/module_loggers/before_imports_copy.py:3:None error imports appear after later definition groups
+LAY004 parity/module_loggers/docstring.py:8:None error imports appear after later definition groups
+LAY004 parity/module_loggers/docstring_only_copy.py:4:None error imports appear after later definition groups
+LAY004 parity/module_loggers/from_alias.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/guarded_code.py:9:None error imports appear after later definition groups
+LAY004 parity/module_loggers/guarded_try.py:16:None error imports appear after later definition groups
+LAY004 parity/module_loggers/many_blanks.py:11:None error imports appear after later definition groups
+LAY004 parity/module_loggers/no_blank.py:6:None error imports appear after later definition groups
+LAY004 parity/module_loggers/no_imports_copy.py:2:None error imports appear after later definition groups
+LAY004 parity/module_loggers/no_name.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/other_name.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/relative.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/shadowed.py:8:None error imports appear after later definition groups
+LAY004 parity/module_loggers/trailing_comment.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/tuple_target.py:7:None error imports appear after later definition groups
+LAY004 parity/module_loggers/two_loggers.py:8:None error imports appear after later definition groups
+LAY004 parity/none_defaults.py:262:None error imports appear after later definition groups
+LAY004 parity/ordering/barriers.py:50:None error imports appear after later definition groups
+LAY004 parity/ordering/basic_copy.py:10:None error fix definitions in module have 3 avoidable ordering inversion(s)
+LAY004 parity/ordering/basic_copy.py:27:None error the main guard must be the final module statement
+LAY004 parity/ordering/basic_copy.py:30:None error imports appear after later definition groups
+LAY004 parity/ordering/classes.py:96:None error imports appear after later definition groups
+LAY004 parity/ordering/comments_copy.py:15:None error fix definitions in module.Holder#0 have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/comments_copy.py:4:None error fix definitions in module have 2 avoidable ordering inversion(s)
+LAY004 parity/ordering/deferred/__init__.py:9:None error imports appear after later definition groups
+LAY004 parity/ordering/dependencies_copy.py:17:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/future_deferred.py:12:None error imports appear after later definition groups
+LAY004 parity/ordering/local_namespace_copy.py:1:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/local_namespace_shadowed.py:13:None error imports appear after later definition groups
+LAY004 parity/ordering/manual/__init___copy.py:1:None error definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/single_line_class.py:9:None error imports appear after later definition groups
+LAY004 parity/ordering/tabs_copy.py:1:None error definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/typevars.py:20:None error imports appear after later definition groups
+LAY004 parity/ordering/typevars_called_copy.py:4:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/ordering/unions/__init__.py:17:None error imports appear after later definition groups
+LAY004 parity/parallel_shadowed/parameter.py:9:None error imports appear after later definition groups
+LAY004 parity/patched_builtins.py:15:None error imports appear after later definition groups
+LAY004 parity/private_delegates_copy.py:12:None error fix definitions in module.Frames#0 have 485 avoidable ordering inversion(s)
+LAY004 parity/private_delegates_copy.py:195:None error fix definitions in module.References#0 have 66 avoidable ordering inversion(s)
+LAY004 parity/quoted_annotations/concatenated.py:7:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/deferred/__init__.py:4:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/escaped.py:8:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/forbidden/with_future.py:6:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/guarded_future.py:7:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/multiline.py:7:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/none_quoted.py:5:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/spaced.py:8:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/unicode.py:7:None error imports appear after later definition groups
+LAY004 parity/quoted_annotations/yielded.py:6:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/after_code/__init__.py:5:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/alias/multi/__init__.py:9:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/alias/star/__init__.py:7:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/augmented_all/__init__.py:7:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/dynamic_all/__init__.py:6:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/rebound/__init__.py:6:None error imports appear after later definition groups
+LAY004 parity/reexport_styles/set_all/__init__.py:6:None error imports appear after later definition groups
+LAY004 parity/reexports/__init__.py:6:None error imports appear after later definition groups
+LAY004 parity/reexports/annotated_copy.py:2:None error imports appear after later definition groups
+LAY004 parity/reexports/augmented.py:6:None error imports appear after later definition groups
+LAY004 parity/reexports/declared_twice.py:5:None error imports appear after later definition groups
+LAY004 parity/reexports/dynamic.py:5:None error imports appear after later definition groups
+LAY004 parity/reexports/formatted_copy.py:2:None error imports appear after later definition groups
+LAY004 parity/reexports/imported_all.py:6:None error imports appear after later definition groups
+LAY004 parity/reexports/mismatch_copy.py:2:None error imports appear after later definition groups
+LAY004 parity/reexports/non_string.py:5:None error imports appear after later definition groups
+LAY004 parity/reexports/read_elsewhere.py:9:None error imports appear after later definition groups
+LAY004 parity/reexports/with_code.py:5:None error imports appear after later definition groups
+LAY004 parity/relaxed/limits.py:12:None error imports appear after later definition groups
+LAY004 parity/shadowed_builtins.py:15:None error imports appear after later definition groups
+LAY004 parity/suppressed.py:54:None error imports appear after later definition groups
+LAY004 parity/test_support/checks.py:10:None error imports appear after later definition groups
+LAY004 parity/test_support/service_copy.py:46:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY004 parity/unit_durations.py:198:None error imports appear after later definition groups
+LAY005 parity/instance_static_copy.py:6:5 hint Aliased.method is an internal static helper; prefer a private module function
+LAY005 parity/test_support/service_copy.py:16:5 hint Service.build is an internal static helper; prefer a private module function
+LAY008 parity/class_constants_copy.py:100:5 warning fix move private constant Reads._MOVABLE to module scope
+LAY008 parity/class_constants_copy.py:102:5 warning fix move private constant Reads._ANNOTATED_LITERAL to module scope
+LAY008 parity/class_constants_copy.py:103:6 warning move private constant Reads._PARENTHESIZED to module scope
+LAY008 parity/class_constants_copy.py:104:5 warning fix move private constant Reads._COMMENTED to module scope
+LAY008 parity/class_constants_copy.py:105:21 warning move private constant Reads._SECOND to module scope
+LAY008 parity/class_constants_copy.py:105:5 warning move private constant Reads._SAME_LINE to module scope
+LAY008 parity/class_constants_copy.py:106:5 warning fix move private constant Reads._BLANK_AFTER to module scope
+LAY008 parity/class_constants_copy.py:108:5 warning fix move private constant Reads._MULTI_LINE to module scope
+LAY008 parity/class_constants_copy.py:10:5 warning fix move private constant Controller._NEGATIVE to module scope
+LAY008 parity/class_constants_copy.py:112:5 warning fix move private constant Reads._TEXT to module scope
+LAY008 parity/class_constants_copy.py:117:5 warning fix move private constant Reads._UNREAD to module scope
+LAY008 parity/class_constants_copy.py:118:5 warning move private constant Reads._WRITTEN to module scope
+LAY008 parity/class_constants_copy.py:119:5 warning move private constant Reads._DELETED to module scope
+LAY008 parity/class_constants_copy.py:11:5 warning fix move private constant Controller._POSITIVE to module scope
+LAY008 parity/class_constants_copy.py:120:5 warning move private constant Reads._OTHER_RECEIVER to module scope
+LAY008 parity/class_constants_copy.py:121:5 warning move private constant Reads._NESTED_ATTRIBUTE to module scope
+LAY008 parity/class_constants_copy.py:122:5 warning move private constant Reads._ALSO_NAME to module scope
+LAY008 parity/class_constants_copy.py:123:5 warning move private constant Reads._IN_STRING to module scope
+LAY008 parity/class_constants_copy.py:124:5 warning move private constant Reads._GLOBAL_DECLARED to module scope
+LAY008 parity/class_constants_copy.py:125:5 warning fix move private constant Reads._BY_INSTANCE to module scope
+LAY008 parity/class_constants_copy.py:12:5 warning fix move private constant Controller._BYTES to module scope
+LAY008 parity/class_constants_copy.py:13:5 warning fix move private constant Controller._FLAG to module scope
+LAY008 parity/class_constants_copy.py:14:5 warning fix move private constant Controller._NOTHING to module scope
+LAY008 parity/class_constants_copy.py:15:5 warning fix move private constant Controller._DOTS to module scope
+LAY008 parity/class_constants_copy.py:16:16 warning move private constant Controller._OTHER to module scope
+LAY008 parity/class_constants_copy.py:16:5 warning move private constant Controller._CHAINED to module scope
+LAY008 parity/class_constants_copy.py:178:5 warning fix move private constant Commented._MOVED to module scope
+LAY008 parity/class_constants_copy.py:184:5 warning fix move private constant NoNewlineAfter._LAST to module scope
+LAY008 parity/class_constants_copy.py:19:5 warning fix move private constant Controller._NESTED_NEGATIVE to module scope
+LAY008 parity/class_constants_copy.py:30:5 warning move private constant Controller.__MANGLED to module scope
+LAY008 parity/class_constants_copy.py:33:5 warning fix move private constant Controller._ÄÖ to module scope
+LAY008 parity/class_constants_copy.py:36:9 warning move private constant Controller._GUARDED to module scope
+LAY008 parity/class_constants_copy.py:38:9 warning move private constant Controller._ELSE to module scope
+LAY008 parity/class_constants_copy.py:41:9 warning move private constant Controller._TRY to module scope
+LAY008 parity/class_constants_copy.py:43:9 warning move private constant Controller._EXCEPT to module scope
+LAY008 parity/class_constants_copy.py:45:9 warning move private constant Controller._FINAL to module scope
+LAY008 parity/class_constants_copy.py:48:9 warning move private constant Controller._LOOP to module scope
+LAY008 parity/class_constants_copy.py:51:9 warning move private constant Controller._WITH to module scope
+LAY008 parity/class_constants_copy.py:55:13 warning move private constant Controller._CASE to module scope
+LAY008 parity/class_constants_copy.py:5:5 warning fix move private constant Controller._EXTENSIONS to module scope
+LAY008 parity/class_constants_copy.py:63:9 warning move private constant Nested._NESTED to module scope
+LAY008 parity/class_constants_copy.py:6:5 warning move private constant Controller._LIMIT to module scope
+LAY008 parity/class_constants_copy.py:7:5 warning fix move private constant Controller._NAMES to module scope
+LAY008 parity/class_constants_copy.py:83:5 warning fix move private constant EmptyParens._COUNTED to module scope
+LAY008 parity/class_constants_copy.py:89:9 warning move private constant Local._LOCAL_CLASS to module scope
+LAY008 parity/class_constants_copy.py:8:5 warning fix move private constant Controller._PAIRS to module scope
+LAY008 parity/class_constants_copy.py:96:5 warning move private constant OnlyConstant._ALONE to module scope
+LAY008 parity/class_constants_copy.py:9:5 warning fix move private constant Controller._MAPPING to module scope
+LAY010 parity/reexport_styles/allowed/__init___copy.py:1:21 hint parity.reexport_styles.allowed.__init___copy only re-exports imported names
+LAY010 parity/reexport_styles/parenthesized/__init___copy.py:2:5 hint parity.reexport_styles.parenthesized.__init___copy only re-exports imported names
+LAY010 parity/reexports/declared_copy.py:5:21 hint parity.reexports.declared_copy only re-exports imported names
+LAY010 parity/test_support/__init___copy.py:1:41 hint parity.test_support.__init___copy only re-exports imported names
+LAY011 parity/module_loggers/aliased_copy.py:4:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/before_imports_copy.py:2:1 warning place module logger _logger immediately after imports
+LAY011 parity/module_loggers/docstring_only_copy.py:5:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/from_import_copy.py:4:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/guarded_elif_copy.py:11:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/multi_line_copy.py:4:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/no_imports_copy.py:3:1 warning place module logger _logger immediately after imports
+LAY011 parity/module_loggers/no_newline_copy.py:4:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/plain_copy.py:4:1 warning fix place module logger _logger immediately after imports
+LAY011 parity/module_loggers/same_line_copy.py:3:12 warning place module logger _logger immediately after imports
+LAY011 parity/module_loggers/try_handler_code_copy.py:8:1 warning fix place module logger _logger immediately after imports
+MOD002 parity/loop_collections_copy.py:90:1 error class "WithBase" uses the forbidden Base suffix
+MOD002 parity/private_delegates_copy.py:347:1 error class "UnknownBase" uses the forbidden Base suffix
+MOD002 parity/private_delegates_copy.py:355:1 error class "CallBase" uses the forbidden Base suffix
+MOD002 parity/private_delegates_copy.py:395:1 error class "SelfBase" uses the forbidden Base suffix
+MOD003 parity/discriminators_copy.py:10:5 hint consider a StrEnum member for Event.kind's discriminator "it's"
+MOD003 parity/discriminators_copy.py:11:5 hint consider a StrEnum member for Event.tag's discriminator 'say "hi"'
+MOD003 parity/discriminators_copy.py:16:5 hint consider a StrEnum member for Wrapped.type's discriminator 'annotated'
+MOD003 parity/discriminators_copy.py:17:5 hint consider a StrEnum member for Wrapped.kind's discriminator 'required'
+MOD003 parity/discriminators_copy.py:18:5 hint consider a StrEnum member for Wrapped.tag's discriminator 'nested'
+MOD003 parity/discriminators_copy.py:22:5 hint consider a StrEnum member for Quoted.type's discriminator 'quoted'
+MOD003 parity/discriminators_copy.py:23:5 hint consider a StrEnum member for Quoted.kind's discriminator 'é\n'
+MOD003 parity/discriminators_copy.py:34:5 hint consider a StrEnum member for Spelled.type's discriminator 'parenthesized'
+MOD003 parity/discriminators_copy.py:35:5 hint consider a StrEnum member for Spelled.kind's discriminator 'wrapped'
+MOD003 parity/discriminators_copy.py:36:5 hint consider a StrEnum member for Spelled.tag's discriminator 'implicit concatenation'
+MOD003 parity/discriminators_copy.py:43:9 hint consider a StrEnum member for Local.type's discriminator '\t\x7f\xad😀'
+MOD003 parity/discriminators_copy.py:54:17 hint consider a StrEnum member for Inner.kind's discriminator 'deep'
+MOD003 parity/discriminators_copy.py:9:5 hint consider a StrEnum member for Event.type's discriminator 'checkpoint.extension'
+MOD004 parity/enum_styles/__init___copy.py:10:1 hint fix StrEnum Plain derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:16:1 hint fix StrEnum Qualified derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:20:1 hint fix StrEnum Aliased derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:24:1 hint fix StrEnum Renamed derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:28:1 hint fix StrEnum Annotated derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:44:1 hint StrEnum Generated derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:51:1 hint StrEnum GeneratedAssign derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:56:1 hint fix StrEnum GeneratedAsync derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:63:1 hint fix StrEnum Duplicate derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:68:1 hint fix StrEnum DuplicateMixed derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:91:1 hint fix StrEnum Unicode derives values with auto()
+MOD004 parity/enum_styles/__init___copy.py:98:5 hint fix StrEnum Local derives values with auto()
+MOD004 parity/enum_styles/derived/auto_taken_copy.py:6:1 hint StrEnum Literal spells values that auto() derives
+MOD004 parity/enum_styles/derived/two_autos_copy.py:4:1 hint fix StrEnum Literal spells values that auto() derives
+MOD004 parity/enum_styles/in_string_copy.py:6:1 hint fix StrEnum Only derives values with auto()
+MOD004 parity/enum_styles/relative_copy.py:4:1 hint fix StrEnum Relative derives values with auto()
+MOD007 parity/modeling/base_copy.py:11:1 warning Class AlsoHere inherits pydantic.BaseModel directly; style expects parity.modeling.base.Options
+MOD007 parity/modeling/base_copy.py:15:1 warning Class StillReported inherits external.Base directly; style expects parity.modeling.base.Options
+MOD007 parity/modeling/base_copy.py:7:1 warning Class Options inherits pydantic.BaseModel directly; style expects parity.modeling.base.Options
+MOD008 parity/loop_collections_copy.py:195:17 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:221:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:642:13 warning Raise of builtin RuntimeError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:648:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:651:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:654:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:657:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:660:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:663:13 warning Raise of builtin KeyError; style expects a subclass of parity.domain_errors.base.AppError
+MOD008 parity/loop_collections_copy.py:669:13 warning Raise of builtin ValueError; style expects a subclass of parity.domain_errors.base.AppError
+MOD009 parity/class_constants.py:177:1 warning Class Commented is also defined in parity.class_constants_copy:177
+MOD009 parity/class_constants.py:182:1 warning Class NoNewlineAfter is also defined in parity.class_constants_copy:182
+MOD009 parity/class_constants.py:4:1 warning Class Controller is also defined in parity.class_constants_copy:4
+MOD009 parity/class_constants.py:73:1 warning Class Keyworded is also defined in parity.class_constants_copy:73
+MOD009 parity/class_constants.py:82:1 warning Class EmptyParens is also defined in parity.class_constants_copy:82
+MOD009 parity/class_constants.py:95:1 warning Class OnlyConstant is also defined in parity.class_constants_copy:95
+MOD009 parity/class_constants.py:99:1 warning Class Reads is also defined in parity.class_constants_copy:99
+MOD009 parity/class_constants_copy.py:177:1 warning Class Commented is also defined in parity.class_constants:177
+MOD009 parity/class_constants_copy.py:182:1 warning Class NoNewlineAfter is also defined in parity.class_constants:182
+MOD009 parity/class_constants_copy.py:4:1 warning Class Controller is also defined in parity.class_constants:4
+MOD009 parity/class_constants_copy.py:69:1 warning Class Inherits is also defined in parity.class_constants:69, parity.parallel_records:179, parity.parallel_records_copy:179
+MOD009 parity/class_constants_copy.py:73:1 warning Class Keyworded is also defined in parity.class_constants:73
+MOD009 parity/class_constants_copy.py:78:1 warning Class Decorated is also defined in parity.class_constants:78, parity.conditionals:34, parity.conditionals_copy:34, parity.frameworks:54, parity.frameworks_copy:54
+MOD009 parity/class_constants_copy.py:82:1 warning Class EmptyParens is also defined in parity.class_constants:82
+MOD009 parity/class_constants_copy.py:95:1 warning Class OnlyConstant is also defined in parity.class_constants:95
+MOD009 parity/class_constants_copy.py:99:1 warning Class Reads is also defined in parity.class_constants:99
+MOD009 parity/conditionals_copy.py:34:1 warning Class Decorated is also defined in parity.class_constants:78, parity.class_constants_copy:78, parity.conditionals:34, parity.frameworks:54, parity.frameworks_copy:54
+MOD009 parity/dataclass_policy/lifted/__init__.py:5:1 warning Class Free is also defined in parity.dataclass_policy.lifted.__init___copy:5
+MOD009 parity/dataclass_policy/lifted/__init___copy.py:5:1 warning Class Free is also defined in parity.dataclass_policy.lifted:5
+MOD009 parity/discriminators.py:15:1 warning Class Wrapped is also defined in parity.discriminators_copy:15
+MOD009 parity/discriminators.py:21:1 warning Class Quoted is also defined in parity.discriminators_copy:21
+MOD009 parity/discriminators.py:27:1 warning Class Excluded is also defined in parity.discriminators_copy:27
+MOD009 parity/discriminators.py:33:1 warning Class Spelled is also defined in parity.discriminators_copy:33
+MOD009 parity/discriminators_copy.py:15:1 warning Class Wrapped is also defined in parity.discriminators:15
+MOD009 parity/discriminators_copy.py:21:1 warning Class Quoted is also defined in parity.discriminators:21
+MOD009 parity/discriminators_copy.py:27:1 warning Class Excluded is also defined in parity.discriminators:27
+MOD009 parity/discriminators_copy.py:33:1 warning Class Spelled is also defined in parity.discriminators:33
+MOD009 parity/discriminators_copy.py:8:1 warning Class Event is also defined in parity.discriminators:8, parity.shadowed_settings:17, parity.shadowed_settings_copy:17
+MOD009 parity/enum_styles/__init__.py:10:1 warning Class Plain is also defined in parity.enum_styles.__init___copy:10
+MOD009 parity/enum_styles/__init__.py:16:1 warning Class Qualified is also defined in parity.enum_styles.__init___copy:16
+MOD009 parity/enum_styles/__init__.py:20:1 warning Class Aliased is also defined in parity.enum_styles.__init___copy:20
+MOD009 parity/enum_styles/__init__.py:24:1 warning Class Renamed is also defined in parity.enum_styles.__init___copy:24
+MOD009 parity/enum_styles/__init__.py:28:1 warning Class Annotated is also defined in parity.enum_styles.__init___copy:28
+MOD009 parity/enum_styles/__init__.py:33:1 warning Class Private is also defined in parity.enum_styles.__init___copy:33
+MOD009 parity/enum_styles/__init__.py:39:1 warning Class OnlyLiterals is also defined in parity.enum_styles.__init___copy:39
+MOD009 parity/enum_styles/__init__.py:44:1 warning Class Generated is also defined in parity.enum_styles.__init___copy:44
+MOD009 parity/enum_styles/__init__.py:51:1 warning Class GeneratedAssign is also defined in parity.enum_styles.__init___copy:51
+MOD009 parity/enum_styles/__init__.py:56:1 warning Class GeneratedAsync is also defined in parity.enum_styles.__init___copy:56
+MOD009 parity/enum_styles/__init__.py:63:1 warning Class Duplicate is also defined in parity.enum_styles.__init___copy:63
+MOD009 parity/enum_styles/__init__.py:68:1 warning Class DuplicateMixed is also defined in parity.enum_styles.__init___copy:68
+MOD009 parity/enum_styles/__init__.py:73:1 warning Class WithArguments is also defined in parity.enum_styles.__init___copy:73
+MOD009 parity/enum_styles/__init__.py:79:1 warning Class Chained is also defined in parity.enum_styles.__init___copy:79
+MOD009 parity/enum_styles/__init__.py:83:1 warning Class TwoBases is also defined in parity.enum_styles.__init___copy:83
+MOD009 parity/enum_styles/__init__.py:87:1 warning Class NotEnum is also defined in parity.enum_styles.__init___copy:87
+MOD009 parity/enum_styles/__init__.py:91:1 warning Class Unicode is also defined in parity.enum_styles.__init___copy:91
+MOD009 parity/enum_styles/__init___copy.py:10:1 warning Class Plain is also defined in parity.enum_styles:10
+MOD009 parity/enum_styles/__init___copy.py:16:1 warning Class Qualified is also defined in parity.enum_styles:16
+MOD009 parity/enum_styles/__init___copy.py:20:1 warning Class Aliased is also defined in parity.enum_styles:20
+MOD009 parity/enum_styles/__init___copy.py:24:1 warning Class Renamed is also defined in parity.enum_styles:24
+MOD009 parity/enum_styles/__init___copy.py:28:1 warning Class Annotated is also defined in parity.enum_styles:28
+MOD009 parity/enum_styles/__init___copy.py:33:1 warning Class Private is also defined in parity.enum_styles:33
+MOD009 parity/enum_styles/__init___copy.py:39:1 warning Class OnlyLiterals is also defined in parity.enum_styles:39
+MOD009 parity/enum_styles/__init___copy.py:44:1 warning Class Generated is also defined in parity.enum_styles:44
+MOD009 parity/enum_styles/__init___copy.py:51:1 warning Class GeneratedAssign is also defined in parity.enum_styles:51
+MOD009 parity/enum_styles/__init___copy.py:56:1 warning Class GeneratedAsync is also defined in parity.enum_styles:56
+MOD009 parity/enum_styles/__init___copy.py:63:1 warning Class Duplicate is also defined in parity.enum_styles:63
+MOD009 parity/enum_styles/__init___copy.py:68:1 warning Class DuplicateMixed is also defined in parity.enum_styles:68
+MOD009 parity/enum_styles/__init___copy.py:73:1 warning Class WithArguments is also defined in parity.enum_styles:73
+MOD009 parity/enum_styles/__init___copy.py:79:1 warning Class Chained is also defined in parity.enum_styles:79
+MOD009 parity/enum_styles/__init___copy.py:83:1 warning Class TwoBases is also defined in parity.enum_styles:83
+MOD009 parity/enum_styles/__init___copy.py:87:1 warning Class NotEnum is also defined in parity.enum_styles:87
+MOD009 parity/enum_styles/__init___copy.py:91:1 warning Class Unicode is also defined in parity.enum_styles:91
+MOD009 parity/enum_styles/derived/auto_taken_copy.py:6:1 warning Class Literal is also defined in parity.enum_styles.derived.auto_taken:6, parity.enum_styles.derived.no_import_line:5, parity.enum_styles.derived.two_autos:4, parity.enum_styles.derived.two_autos_copy:4
+MOD009 parity/enum_styles/derived/two_autos_copy.py:4:1 warning Class Literal is also defined in parity.enum_styles.derived.auto_taken:6, parity.enum_styles.derived.auto_taken_copy:6, parity.enum_styles.derived.no_import_line:5, parity.enum_styles.derived.two_autos:4
+MOD009 parity/enum_styles/in_string_copy.py:6:1 warning Class Only is also defined in parity.enum_styles.in_string:6, parity.enum_styles.own_line:6, parity.enum_styles.still_used:5
+MOD009 parity/enum_styles/relative.py:4:1 warning Class Relative is also defined in parity.enum_styles.relative_copy:4
+MOD009 parity/enum_styles/relative_copy.py:4:1 warning Class Relative is also defined in parity.enum_styles.relative:4
+MOD009 parity/enum_styles/submodule.py:5:1 warning Class Other is also defined in parity.enum_styles.submodule_copy:5
+MOD009 parity/enum_styles/submodule_copy.py:5:1 warning Class Other is also defined in parity.enum_styles.submodule:5
+MOD009 parity/frameworks.py:136:1 warning Class Mixed is also defined in parity.frameworks_copy:136
+MOD009 parity/frameworks.py:33:1 warning Class Child is also defined in parity.frameworks_copy:33
+MOD009 parity/frameworks.py:37:1 warning Class Grandchild is also defined in parity.frameworks_copy:37
+MOD009 parity/frameworks.py:49:1 warning Class DottedLegacy is also defined in parity.frameworks_copy:49
+MOD009 parity/frameworks.py:58:1 warning Class Unrelated is also defined in parity.frameworks_copy:58
+MOD009 parity/frameworks.py:62:1 warning Class Forwarding is also defined in parity.frameworks_copy:62
+MOD009 parity/frameworks_copy.py:136:1 warning Class Mixed is also defined in parity.frameworks:136
+MOD009 parity/frameworks_copy.py:15:1 warning Class Settings is also defined in parity.frameworks:15, parity.shadowed_settings:10, parity.shadowed_settings_copy:10, parity.unit_durations:64
+MOD009 parity/frameworks_copy.py:33:1 warning Class Child is also defined in parity.frameworks:33
+MOD009 parity/frameworks_copy.py:37:1 warning Class Grandchild is also defined in parity.frameworks:37
+MOD009 parity/frameworks_copy.py:41:1 warning Class Aliased is also defined in parity.frameworks:41, parity.instance_static:4, parity.instance_static_copy:4, parity.loop_collections:51, parity.loop_collections_copy:51
+MOD009 parity/frameworks_copy.py:45:1 warning Class Dotted is also defined in parity.frameworks:45
+MOD009 parity/frameworks_copy.py:49:1 warning Class DottedLegacy is also defined in parity.frameworks:49
+MOD009 parity/frameworks_copy.py:54:1 warning Class Decorated is also defined in parity.class_constants:78, parity.class_constants_copy:78, parity.conditionals:34, parity.conditionals_copy:34, parity.frameworks:54
+MOD009 parity/frameworks_copy.py:58:1 warning Class Unrelated is also defined in parity.frameworks:58
+MOD009 parity/frameworks_copy.py:62:1 warning Class Forwarding is also defined in parity.frameworks:62
+MOD009 parity/frozen_shadowed_copy.py:11:1 warning Class Shadowed is also defined in parity.frozen_shadowed:11, parity.private_delegates:419, parity.private_delegates_copy:419
+MOD009 parity/future_policy/needed/backward.py:4:1 warning Class Earlier is also defined in parity.future_policy.needed.backward_copy:4
+MOD009 parity/future_policy/needed/backward_copy.py:4:1 warning Class Earlier is also defined in parity.future_policy.needed.backward:4
+MOD009 parity/future_policy/needed/keyworded_copy.py:4:1 warning Class First is also defined in parity.future_policy.needed.decorated_class:6, parity.future_policy.needed.keyworded:4
+MOD009 parity/generics/aliased_copy.py:12:1 warning Class Two is also defined in parity.generics.aliased:12
+MOD009 parity/generics/aliased_copy.py:8:1 warning Class One is also defined in parity.generics.aliased:8
+MOD009 parity/generics/commented_import_copy.py:10:1 warning Class Box is also defined in parity.generics.commented_import:10, parity.generics.in_string:8, parity.generics.kept_generic:7, parity.generics.kept_generic_copy:7, parity.generics.not_alone:6, parity.generics.not_alone_copy:6, parity.generics.shadowed:8, parity.generics.shared:6, parity.generics.shared_copy:6, parity.generics.split_imports:9, parity.generics.trailing_comment:6, parity.generics.trailing_comment_copy:6, parity.generics.wildcard:7
+MOD009 parity/generics/kept_generic.py:11:1 warning Class Refused is also defined in parity.generics.kept_generic_copy:11
+MOD009 parity/generics/kept_generic_copy.py:11:1 warning Class Refused is also defined in parity.generics.kept_generic:11
+MOD009 parity/generics/kept_generic_copy.py:7:1 warning Class Box is also defined in parity.generics.commented_import:10, parity.generics.commented_import_copy:10, parity.generics.in_string:8, parity.generics.kept_generic:7, parity.generics.not_alone:6, parity.generics.not_alone_copy:6, parity.generics.shadowed:8, parity.generics.shared:6, parity.generics.shared_copy:6, parity.generics.split_imports:9, parity.generics.trailing_comment:6, parity.generics.trailing_comment_copy:6, parity.generics.wildcard:7
+MOD009 parity/generics/not_alone_copy.py:6:1 warning Class Box is also defined in parity.generics.commented_import:10, parity.generics.commented_import_copy:10, parity.generics.in_string:8, parity.generics.kept_generic:7, parity.generics.kept_generic_copy:7, parity.generics.not_alone:6, parity.generics.shadowed:8, parity.generics.shared:6, parity.generics.shared_copy:6, parity.generics.split_imports:9, parity.generics.trailing_comment:6, parity.generics.trailing_comment_copy:6, parity.generics.wildcard:7
+MOD009 parity/generics/shared_copy.py:6:1 warning Class Box is also defined in parity.generics.commented_import:10, parity.generics.commented_import_copy:10, parity.generics.in_string:8, parity.generics.kept_generic:7, parity.generics.kept_generic_copy:7, parity.generics.not_alone:6, parity.generics.not_alone_copy:6, parity.generics.shadowed:8, parity.generics.shared:6, parity.generics.split_imports:9, parity.generics.trailing_comment:6, parity.generics.trailing_comment_copy:6, parity.generics.wildcard:7
+MOD009 parity/generics/trailing_comment_copy.py:6:1 warning Class Box is also defined in parity.generics.commented_import:10, parity.generics.commented_import_copy:10, parity.generics.in_string:8, parity.generics.kept_generic:7, parity.generics.kept_generic_copy:7, parity.generics.not_alone:6, parity.generics.not_alone_copy:6, parity.generics.shadowed:8, parity.generics.shared:6, parity.generics.shared_copy:6, parity.generics.split_imports:9, parity.generics.trailing_comment:6, parity.generics.wildcard:7
+MOD009 parity/import_graph/other.py:33:1 warning Class Holder is also defined in parity.import_graph.other_copy:33
+MOD009 parity/import_graph/other_copy.py:33:1 warning Class Holder is also defined in parity.import_graph.other:33
+MOD009 parity/instance_static_copy.py:4:1 warning Class Aliased is also defined in parity.frameworks:41, parity.frameworks_copy:41, parity.instance_static:4, parity.loop_collections:51, parity.loop_collections_copy:51
+MOD009 parity/loop_collections.py:112:1 warning Class CustomAccess is also defined in parity.loop_collections_copy:112
+MOD009 parity/loop_collections.py:126:1 warning Class CustomNew is also defined in parity.loop_collections_copy:126
+MOD009 parity/loop_collections.py:12:1 warning Class Item is also defined in parity.loop_collections_copy:12
+MOD009 parity/loop_collections.py:152:1 warning Class TwoDecorators is also defined in parity.loop_collections_copy:152
+MOD009 parity/loop_collections.py:163:1 warning Class OddBody is also defined in parity.loop_collections_copy:163
+MOD009 parity/loop_collections.py:68:1 warning Class Thawed is also defined in parity.loop_collections_copy:68
+MOD009 parity/loop_collections.py:79:1 warning Class Undeclared is also defined in parity.loop_collections_copy:79
+MOD009 parity/loop_collections_copy.py:101:1 warning Class Unpacked is also defined in parity.loop_collections:101
+MOD009 parity/loop_collections_copy.py:112:1 warning Class CustomAccess is also defined in parity.loop_collections:112
+MOD009 parity/loop_collections_copy.py:126:1 warning Class CustomNew is also defined in parity.loop_collections:126
+MOD009 parity/loop_collections_copy.py:12:1 warning Class Item is also defined in parity.loop_collections:12
+MOD009 parity/loop_collections_copy.py:140:1 warning Class Parametrized is also defined in parity.loop_collections:140
+MOD009 parity/loop_collections_copy.py:152:1 warning Class TwoDecorators is also defined in parity.loop_collections:152
+MOD009 parity/loop_collections_copy.py:163:1 warning Class OddBody is also defined in parity.loop_collections:163
+MOD009 parity/loop_collections_copy.py:182:1 warning Class Rebound is also defined in parity.frozen_relative:18, parity.loop_collections:182, parity.receivers:24, parity.receivers_copy:24
+MOD009 parity/loop_collections_copy.py:189:1 warning Class Plain is also defined in parity.loop_collections:189
+MOD009 parity/loop_collections_copy.py:51:1 warning Class Aliased is also defined in parity.frameworks:41, parity.frameworks_copy:41, parity.instance_static:4, parity.instance_static_copy:4, parity.loop_collections:51
+MOD009 parity/loop_collections_copy.py:68:1 warning Class Thawed is also defined in parity.loop_collections:68
+MOD009 parity/loop_collections_copy.py:79:1 warning Class Undeclared is also defined in parity.loop_collections:79
+MOD009 parity/loop_collections_copy.py:90:1 warning Class WithBase is also defined in parity.callables:96, parity.loop_collections:90
+MOD009 parity/modeling/base.py:11:1 warning Class AlsoHere is also defined in parity.modeling.base_copy:11
+MOD009 parity/modeling/base.py:15:1 warning Class StillReported is also defined in parity.modeling.base_copy:15
+MOD009 parity/modeling/base.py:7:1 warning Class Options is also defined in parity.modeling.base_copy:7
+MOD009 parity/modeling/base_copy.py:11:1 warning Class AlsoHere is also defined in parity.modeling.base:11
+MOD009 parity/modeling/base_copy.py:15:1 warning Class StillReported is also defined in parity.modeling.base:15
+MOD009 parity/modeling/base_copy.py:7:1 warning Class Options is also defined in parity.modeling.base:7
+MOD009 parity/modeling/vendor.py:4:1 warning Class Local is also defined in parity.modeling.vendor_copy:4
+MOD009 parity/modeling/vendor.py:8:1 warning Class Thing is also defined in parity.modeling.vendor_copy:8
+MOD009 parity/modeling/vendor_copy.py:4:1 warning Class Local is also defined in parity.modeling.vendor:4
+MOD009 parity/modeling/vendor_copy.py:8:1 warning Class Thing is also defined in parity.modeling.vendor:8
+MOD009 parity/name_aliases.py:16:1 warning Class Model is also defined in parity.name_aliases_copy:16
+MOD009 parity/name_aliases.py:31:1 warning Class redefined is also defined in parity.name_aliases_copy:31
+MOD009 parity/name_aliases_copy.py:16:1 warning Class Model is also defined in parity.name_aliases:16
+MOD009 parity/name_aliases_copy.py:22:1 warning Class Twice is also defined in parity.name_aliases:22, parity.name_aliases:25
+MOD009 parity/name_aliases_copy.py:25:1 warning Class Twice is also defined in parity.name_aliases:22, parity.name_aliases:25
+MOD009 parity/name_aliases_copy.py:31:1 warning Class redefined is also defined in parity.name_aliases:31
+MOD009 parity/name_aliases_copy.py:67:1 warning Class Holder is also defined in parity.comprehensions:73, parity.name_aliases:67
+MOD009 parity/ordering/comments.py:13:1 warning Class Holder is also defined in parity.ordering.comments_copy:13
+MOD009 parity/ordering/comments_copy.py:13:1 warning Class Holder is also defined in parity.ordering.comments:13
+MOD009 parity/parallel_records.py:11:1 warning Class Layout is also defined in parity.parallel_records_copy:11
+MOD009 parity/parallel_records_copy.py:11:1 warning Class Layout is also defined in parity.parallel_records:11
+MOD009 parity/parallel_records_copy.py:179:1 warning Class Inherits is also defined in parity.class_constants:69, parity.class_constants_copy:69, parity.parallel_records:179
+MOD009 parity/parallel_shadowed/rebound_types.py:4:1 warning Class Rebound is also defined in parity.parallel_shadowed.rebound_types_copy:4
+MOD009 parity/parallel_shadowed/rebound_types_copy.py:4:1 warning Class Rebound is also defined in parity.parallel_shadowed.rebound_types:4
+MOD009 parity/private_delegates.py:11:1 warning Class Frames is also defined in parity.private_delegates_copy:11
+MOD009 parity/private_delegates.py:191:1 warning Class References is also defined in parity.private_delegates_copy:191
+MOD009 parity/private_delegates.py:291:1 warning Class Neutral is also defined in parity.private_delegates_copy:291
+MOD009 parity/private_delegates.py:299:1 warning Class WithProtocol is also defined in parity.private_delegates_copy:299
+MOD009 parity/private_delegates.py:307:1 warning Class WithGeneric is also defined in parity.private_delegates_copy:307
+MOD009 parity/private_delegates.py:315:1 warning Class WithObject is also defined in parity.private_delegates_copy:315
+MOD009 parity/private_delegates.py:323:1 warning Class DottedNeutral is also defined in parity.private_delegates_copy:323
+MOD009 parity/private_delegates.py:331:1 warning Class SubscriptedNeutral is also defined in parity.private_delegates_copy:331
+MOD009 parity/private_delegates.py:339:1 warning Class External is also defined in parity.private_delegates_copy:339
+MOD009 parity/private_delegates.py:347:1 warning Class UnknownBase is also defined in parity.private_delegates_copy:347
+MOD009 parity/private_delegates.py:355:1 warning Class CallBase is also defined in parity.private_delegates_copy:355
+MOD009 parity/private_delegates.py:363:1 warning Class SubscriptedCall is also defined in parity.private_delegates_copy:363
+MOD009 parity/private_delegates.py:371:1 warning Class LocalParent is also defined in parity.private_delegates_copy:371
+MOD009 parity/private_delegates.py:375:1 warning Class LocalChild is also defined in parity.private_delegates_copy:375
+MOD009 parity/private_delegates.py:383:1 warning Class ExternalParent is also defined in parity.private_delegates_copy:383
+MOD009 parity/private_delegates.py:387:1 warning Class ExternalChild is also defined in parity.private_delegates_copy:387
+MOD009 parity/private_delegates.py:395:1 warning Class SelfBase is also defined in parity.private_delegates_copy:395
+MOD009 parity/private_delegates.py:403:1 warning Class SubscriptedLocal is also defined in parity.private_delegates_copy:403
+MOD009 parity/private_delegates.py:411:1 warning Class Keywords is also defined in parity.private_delegates_copy:411
+MOD009 parity/private_delegates.py:428:1 warning Class UsesDuplicate is also defined in parity.private_delegates_copy:428
+MOD009 parity/private_delegates.py:436:1 warning Class Replaced is also defined in parity.private_delegates_copy:436
+MOD009 parity/private_delegates_copy.py:11:1 warning Class Frames is also defined in parity.private_delegates:11
+MOD009 parity/private_delegates_copy.py:191:1 warning Class References is also defined in parity.private_delegates:191
+MOD009 parity/private_delegates_copy.py:291:1 warning Class Neutral is also defined in parity.private_delegates:291
+MOD009 parity/private_delegates_copy.py:299:1 warning Class WithProtocol is also defined in parity.private_delegates:299
+MOD009 parity/private_delegates_copy.py:307:1 warning Class WithGeneric is also defined in parity.private_delegates:307
+MOD009 parity/private_delegates_copy.py:315:1 warning Class WithObject is also defined in parity.private_delegates:315
+MOD009 parity/private_delegates_copy.py:323:1 warning Class DottedNeutral is also defined in parity.private_delegates:323
+MOD009 parity/private_delegates_copy.py:331:1 warning Class SubscriptedNeutral is also defined in parity.private_delegates:331
+MOD009 parity/private_delegates_copy.py:339:1 warning Class External is also defined in parity.private_delegates:339
+MOD009 parity/private_delegates_copy.py:347:1 warning Class UnknownBase is also defined in parity.private_delegates:347
+MOD009 parity/private_delegates_copy.py:355:1 warning Class CallBase is also defined in parity.private_delegates:355
+MOD009 parity/private_delegates_copy.py:363:1 warning Class SubscriptedCall is also defined in parity.private_delegates:363
+MOD009 parity/private_delegates_copy.py:371:1 warning Class LocalParent is also defined in parity.private_delegates:371
+MOD009 parity/private_delegates_copy.py:375:1 warning Class LocalChild is also defined in parity.private_delegates:375
+MOD009 parity/private_delegates_copy.py:383:1 warning Class ExternalParent is also defined in parity.private_delegates:383
+MOD009 parity/private_delegates_copy.py:387:1 warning Class ExternalChild is also defined in parity.private_delegates:387
+MOD009 parity/private_delegates_copy.py:395:1 warning Class SelfBase is also defined in parity.private_delegates:395
+MOD009 parity/private_delegates_copy.py:403:1 warning Class SubscriptedLocal is also defined in parity.private_delegates:403
+MOD009 parity/private_delegates_copy.py:411:1 warning Class Keywords is also defined in parity.private_delegates:411
+MOD009 parity/private_delegates_copy.py:419:1 warning Class Shadowed is also defined in parity.frozen_shadowed:11, parity.frozen_shadowed_copy:11, parity.private_delegates:419
+MOD009 parity/private_delegates_copy.py:424:1 warning Class Duplicate is also defined in parity.callables:136, parity.private_delegates:424
+MOD009 parity/private_delegates_copy.py:428:1 warning Class UsesDuplicate is also defined in parity.private_delegates:428
+MOD009 parity/private_delegates_copy.py:436:1 warning Class Replaced is also defined in parity.private_delegates:436
+MOD009 parity/quoted_annotations/decorated_class_first.py:2:1 warning Class First is also defined in parity.quoted_annotations.decorated_class_first_copy:2
+MOD009 parity/quoted_annotations/decorated_class_first_copy.py:2:1 warning Class First is also defined in parity.quoted_annotations.decorated_class_first:2
+MOD009 parity/quoted_annotations/needs_future.py:11:1 warning Class Holder is also defined in parity.quoted_annotations.needs_future_copy:11
+MOD009 parity/quoted_annotations/needs_future_copy.py:11:1 warning Class Holder is also defined in parity.quoted_annotations.needs_future:11
+MOD009 parity/receivers_copy.py:15:1 warning Class Local is also defined in parity.receivers:15
+MOD009 parity/receivers_copy.py:24:1 warning Class Rebound is also defined in parity.frozen_relative:18, parity.loop_collections:182, parity.loop_collections_copy:182, parity.receivers:24
+MOD009 parity/relaxed/thresholds.py:15:1 warning Class Excessive is also defined in parity.relaxed.thresholds_copy:15
+MOD009 parity/relaxed/thresholds.py:8:1 warning Class Moderate is also defined in parity.relaxed.thresholds_copy:8
+MOD009 parity/relaxed/thresholds_copy.py:15:1 warning Class Excessive is also defined in parity.relaxed.thresholds:15
+MOD009 parity/relaxed/thresholds_copy.py:8:1 warning Class Moderate is also defined in parity.relaxed.thresholds:8
+MOD009 parity/shadowed_settings_copy.py:10:1 warning Class Settings is also defined in parity.frameworks:15, parity.frameworks_copy:15, parity.shadowed_settings:10, parity.unit_durations:64
+MOD009 parity/shadowed_settings_copy.py:17:1 warning Class Event is also defined in parity.discriminators:8, parity.discriminators_copy:8, parity.shadowed_settings:17
+MOD009 parity/test_support/service.py:38:1 warning Class Worker is also defined in parity.test_support.service_copy:38
+MOD009 parity/test_support/service.py:5:1 warning Class Service is also defined in parity.test_support.service_copy:5
+MOD009 parity/test_support/service_copy.py:38:1 warning Class Worker is also defined in parity.test_support.service:38
+MOD009 parity/test_support/service_copy.py:5:1 warning Class Service is also defined in parity.test_support.service:5
+MOD009 parity/versioned/__init__.py:6:1 warning Class Event is also defined in parity.versioned.__init___copy:6
+MOD009 parity/versioned/__init___copy.py:6:1 warning Class Event is also defined in parity.versioned:6
+MOD010 parity/module_loggers/in_place_copy.py:4:1 warning Constant _TIMEOUT holds a duration without a unit
+MOD010 parity/module_loggers/plain_copy.py:3:1 warning Constant _TIMEOUT holds a duration without a unit
+MOD011 parity/frozen_shadowed_copy.py:13:5 warning Frozen dataclass Shadowed.mapping contains mutable dict contents
+MOD012 parity/parallel_records_copy.py:190:20 hint Stored collections left, right on Local are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:36:29 hint Stored collections fields, models on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:43:16 hint Stored collections fields, models, names on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:46:13 hint Stored collections quoted, typed on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:47:13 hint Stored collections pairs, sequence on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:48:13 hint Stored collections abc_sequence, mutable on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:49:13 hint Stored collections aliased, typing_sequence on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:50:13 hint Stored collections assigned, bare_list on Layout are paired by position; consider one collection of named records
+MOD012 parity/parallel_records_copy.py:83:16 hint Stored collections fields, names on Layout are paired by position; consider one collection of named records
+TST002 parity_tests/nested/test_fixtures_copy.py:12:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:13:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:14:12 error test accesses private production name parity.test_support.Service._hidden
+TST002 parity_tests/nested/test_fixtures_copy.py:15:5 error test accesses private production name parity.test_support.service.Worker._step
+TST002 parity_tests/nested/test_fixtures_copy.py:16:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:20:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:26:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:27:5 error test accesses private production name parity.test_support.service.Worker._step
+TST002 parity_tests/nested/test_fixtures_copy.py:28:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:29:5 error test accesses private production name parity.test_support.PublicWorker._step
+TST002 parity_tests/nested/test_fixtures_copy.py:36:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:40:12 error test accesses private production name parity.test_support.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:44:12 error test accesses private production name parity.test_support.service.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:67:9 error test accesses private production name parity.test_support.service.Worker._step
+TST002 parity_tests/nested/test_fixtures_copy.py:68:16 error test accesses private production name parity.test_support.service.Service._state
+TST002 parity_tests/nested/test_fixtures_copy.py:7:5 error test accesses private production name parity.test_support.service.Worker._step
+TST002 parity_tests/nested/test_fixtures_copy.py:8:12 error test accesses private production name parity.test_support.service.Worker._state
+TST002 parity_tests/test_conftest_copy.py:12:5 error test accesses private production name parity.test_support.service.Worker._step
+TST003 parity_tests/domain/test_mocks_copy.py:20:12 error mock operation unittest.mock.Mock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:20:23 error mock operation unittest.mock.MagicMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:20:39 error mock operation unittest.mock.AsyncMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:21:12 error mock operation unittest.mock.NonCallableMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:21:34 error mock operation unittest.mock.NonCallableMagicMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:22:12 error mock operation unittest.mock.PropertyMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:22:31 error mock operation unittest.mock.mock_open is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:22:47 error mock operation unittest.mock.create_autospec is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:23:12 error mock operation unittest.mock.Mock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:23:28 error mock operation unittest.mock.MagicMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:27:10 error mock operation unittest.mock.patch is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:29:5 error mock operation unittest.mock.patch.object is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:30:5 error mock operation unittest.mock.patch.dict is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:31:5 error mock operation unittest.mock.patch.multiple is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:32:5 error mock operation pytest.MonkeyPatch.setattr is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:33:5 error mock operation pytest.MonkeyPatch.setattr is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:34:5 error mock operation pytest.MonkeyPatch.delattr is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:39:5 error mock operation pytest_mock.MockerFixture.patch is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:40:5 error mock operation pytest_mock.MockerFixture.patch.object is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:41:5 error mock operation pytest_mock.MockerFixture.spy is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:42:5 error mock operation pytest_mock.MockerFixture.stub is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:43:5 error mock operation pytest_mock.MockerFixture.async_stub is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:44:5 error mock operation pytest_mock.MockerFixture.Mock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:45:12 error mock operation pytest_mock.MockerFixture.MagicMock is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:50:9 error mock operation pytest.MonkeyPatch.setattr is forbidden in this test path
+TST003 parity_tests/domain/test_mocks_copy.py:57:16 error mock operation unittest.mock.Mock is forbidden in this test path
+TST004 parity_tests/domain/test_mocks_copy.py:27:10 error patch uses a literal string target
+TST004 parity_tests/domain/test_mocks_copy.py:30:5 error patch uses a literal string target
+TST004 parity_tests/domain/test_mocks_copy.py:32:5 error patch uses a literal string target
+TST004 parity_tests/domain/test_mocks_copy.py:34:5 error patch uses a literal string target
+TST004 parity_tests/domain/test_mocks_copy.py:39:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:10:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:14:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:24:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:26:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:27:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:28:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:29:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:31:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:45:5 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:51:9 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:52:9 error patch uses a literal string target
+TST004 parity_tests/test_patches_copy.py:9:5 error patch uses a literal string target
+TST005 parity_tests/domain/test_mocks_copy.py:26:None warning test_patches has 7 patch calls; maximum is 2
+TST005 parity_tests/test_patches_copy.py:23:None warning test_string_forms has 9 patch calls; maximum is 2
+TST005 parity_tests/test_patches_copy.py:8:None warning test_many_patches has 6 patch calls; maximum is 2
+TST006 parity_tests/test_conftest_copy.py:11:None warning test_named_like_a_conftest has no recognized outcome assertion
+TST006 parity_tests/test_star_copy.py:24:None warning test_dynamic_helper has no recognized outcome assertion
+TST006 parity_tests/test_star_copy.py:33:None warning test_decorated_helper has no recognized outcome assertion
+TST006 parity_tests/test_star_copy.py:45:None warning test_ambiguous_helper has no recognized outcome assertion
+TST006 parity_tests/test_star_copy.py:54:None warning test_generator_helper has no recognized outcome assertion
+TST006 parity_tests/test_waits_copy.py:80:None warning test_move_on_only has no recognized outcome assertion
+TST008 parity_tests/test_waits_copy.py:100:None warning test_tasks has no recognized deadline for asyncio.Task
+TST008 parity_tests/test_waits_copy.py:102:None warning test_tasks has no recognized deadline for asyncio.Future
+TST008 parity_tests/test_waits_copy.py:111:None warning test_async_subprocess has no recognized deadline for asyncio.subprocess.Process.wait
+TST008 parity_tests/test_waits_copy.py:112:None warning test_async_subprocess has no recognized deadline for asyncio.subprocess.Process.communicate
+TST008 parity_tests/test_waits_copy.py:119:None warning test_helper_wait has no recognized deadline for subprocess.run
+TST008 parity_tests/test_waits_copy.py:123:None warning test_async_helper_wait has no recognized deadline for asyncio.Event.wait
+TST008 parity_tests/test_waits_copy.py:131:None warning test_guard_cannot_stop_blocking has no recognized deadline for subprocess.run
+TST008 parity_tests/test_waits_copy.py:13:None warning test_blocking_calls has no recognized deadline for subprocess.run
+TST008 parity_tests/test_waits_copy.py:14:None warning test_blocking_calls has no recognized deadline for subprocess.call
+TST008 parity_tests/test_waits_copy.py:159:None warning test_clock_setattr replaces the asyncio scheduler/deadline clock
+TST008 parity_tests/test_waits_copy.py:15:None warning test_blocking_calls has no recognized deadline for subprocess.check_call
+TST008 parity_tests/test_waits_copy.py:165:None warning test_clock_assignment replaces the asyncio scheduler/deadline clock
+TST008 parity_tests/test_waits_copy.py:16:None warning test_blocking_calls has no recognized deadline for subprocess.check_output
+TST008 parity_tests/test_waits_copy.py:18:None warning test_blocking_calls has no recognized deadline for subprocess.run
+TST008 parity_tests/test_waits_copy.py:23:None warning test_popen has no recognized deadline for subprocess.Popen.wait
+TST008 parity_tests/test_waits_copy.py:26:None warning test_popen has no recognized deadline for subprocess.Popen.communicate
+TST008 parity_tests/test_waits_copy.py:27:None warning test_popen has no recognized deadline for subprocess.Popen.communicate
+TST008 parity_tests/test_waits_copy.py:39:None warning test_unbounded_event has no recognized deadline for asyncio.Event.wait
+TST008 parity_tests/test_waits_copy.py:54:None warning test_wait_for has no recognized deadline for asyncio.Event.wait
+TST008 parity_tests/test_waits_copy.py:55:None warning test_wait_for has no recognized deadline for asyncio.Event.wait
+TST008 parity_tests/test_waits_copy.py:64:None warning test_contexts has no recognized deadline for asyncio.Event.wait
+TYP001 parity/future_policy/forbidden/several_copy.py:1:1 error contract "future_forbidden" forbids the annotations future import
+TYP001 parity/future_policy/forbidden/several_copy.py:2:1 error contract "future_forbidden" forbids the annotations future import
+TYP001 parity/quoted_annotations/deferred/forbidden/__init___copy.py:1:1 error contract "quotes_deferred_forbidden" forbids the annotations future import
+TYP002 parity/future_policy/generics/simple_copy.py:1:1 hint no static postponement need found; review the annotations future import
+TYP002 parity/future_policy/needed/backward_copy.py:1:1 hint no static postponement need found; review the annotations future import
+TYP002 parity/future_policy/needed/def_end_copy.py:1:1 hint no static postponement need found; review the annotations future import
+TYP002 parity/future_policy/needed/no_annotations_copy.py:1:1 hint no static postponement need found; review the annotations future import
+TYP002 parity/future_policy/unions/nested_copy.py:1:1 hint no static postponement need found; review the annotations future import
+TYP004 parity/async_contexts/dotted_only_copy.py:6:24 warning fix use AsyncGenerator[int, None] for @asynccontextmanager function manager
+TYP004 parity/async_contexts/kept_by_string_copy.py:8:24 warning fix use AsyncGenerator[int, None] for @asynccontextmanager function manager
+TYP004 parity/async_contexts/name_in_fstring_copy.py:9:24 warning use AsyncGenerator[int, None] for @asynccontextmanager function manager
+TYP004 parity/async_contexts/quoted_only_copy.py:6:21 warning fix use AsyncGenerator[None, None] for @asynccontextmanager function only
+TYP004 parity/async_contexts/reused_alias_copy.py:7:24 warning fix use AsyncGenerator[int, None] for @asynccontextmanager function manager
+TYP004 parity/async_contexts/word_boundary_copy.py:8:24 warning fix use AsyncGenerator[int, None] for @asynccontextmanager function manager
+TYP005 parity/discriminators_copy.py:28:11 hint consider a shared alias for Literal['a', 'b']; 4 occurrences in parity
+TYP005 parity/quoted_annotations/needs_future_copy.py:14:14 hint consider a shared alias for Literal['a', 'b']; 4 occurrences in parity
+TYP006 parity/async_contexts/quoted_only_copy.py:6:21 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/conditionals_copy.py:29:49 hint 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/discriminators_copy.py:9:15 hint 16 quoted annotation(s); an annotations future import defers them
+TYP006 parity/frameworks_copy.py:18:20 hint 4 quoted annotation(s); an annotations future import defers them
+TYP006 parity/future_policy/needed/quoted_copy.py:4:18 hint fix 1 quoted annotation(s); the annotations future import already defers them
+TYP006 parity/loop_collections_copy.py:19:13 hint 9 quoted annotation(s); an annotations future import defers them
+TYP006 parity/parallel_records_copy.py:15:13 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/quoted_annotations/awaited_copy.py:3:4 hint 1 quoted annotation(s); the annotations future import already defers them
+TYP006 parity/quoted_annotations/decorated_class_first_copy.py:3:8 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/quoted_annotations/deferred/forbidden/__init___copy.py:3:8 hint fix 1 quoted annotation(s); annotations are deferred on Python 3.14+
+TYP006 parity/quoted_annotations/first_statement_copy.py:1:14 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/quoted_annotations/fstrings_copy.py:3:6 hint 15 quoted annotation(s); the annotations future import already defers them
+TYP006 parity/quoted_annotations/has_future_copy.py:4:14 hint fix 3 quoted annotation(s); the annotations future import already defers them
+TYP006 parity/quoted_annotations/needs_future_copy.py:6:14 hint fix 27 quoted annotation(s); an annotations future import defers them
+TYP006 parity/quoted_annotations/older/__init___copy.py:1:8 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 parity/quoted_annotations/ternary_copy.py:3:4 hint 1 quoted annotation(s); the annotations future import already defers them
+TYP006 parity/quoted_annotations/unparsable_copy.py:3:4 hint 2 quoted annotation(s); the annotations future import already defers them
+TYP008 parity/generics/aliased_copy.py:12:1 hint fix declare type parameters inline on class Two
+TYP008 parity/generics/aliased_copy.py:8:1 hint fix declare type parameters inline on class One
+TYP008 parity/generics/commented_import_copy.py:10:1 hint fix declare type parameters inline on class Box
+TYP008 parity/generics/kept_generic_copy.py:11:1 hint declare type parameters inline on class Refused
+TYP008 parity/generics/kept_generic_copy.py:7:1 hint fix declare type parameters inline on class Box
+TYP008 parity/generics/not_alone_copy.py:6:1 hint declare type parameters inline on class Box
+TYP008 parity/generics/shared_copy.py:6:1 hint fix declare type parameters inline on class Box
+TYP008 parity/generics/trailing_comment_copy.py:6:1 hint fix declare type parameters inline on class Box
+VIS001 parity/call_kinds/comprehensions/__init___copy.py:1:1 warning run is public, but has no observed use outside its module
+VIS001 parity/call_order_star_copy.py:4:1 warning helper is public, but has no observed use outside its module
+VIS001 parity/call_order_star_copy.py:8:1 warning caller is public, but has no observed use outside its module
+VIS001 parity/class_constants_copy.py:127:5 warning Reads.first is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:130:5 warning Reads.nested_scope is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:136:5 warning Reads.literal is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:139:5 warning Reads.order is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:146:5 warning Reads.writes is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:150:5 warning Reads.other_receiver is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:153:5 warning Reads.nested_attribute is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:156:5 warning Reads.name_read is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:159:5 warning Reads.text_read is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:162:5 warning Reads.global_read is public, but has no observed use outside its class
+VIS001 parity/class_constants_copy.py:87:1 warning scope is public, but has no observed use outside its module
+VIS001 parity/conditionals_copy.py:29:1 warning default is public, but has no observed use outside its module
+VIS001 parity/discriminators_copy.py:41:1 warning factory is public, but has no observed use outside its module
+VIS001 parity/domain_errors/free/module_copy.py:1:1 warning lifted is public, but has no observed use outside its module
+VIS001 parity/enum_styles/__init___copy.py:97:1 warning scope is public, but has no observed use outside its module
+VIS001 parity/frozen_shadowed_copy.py:6:1 warning helper is public, but has no observed use outside its module
+VIS001 parity/future_policy/allowed/__init___copy.py:4:1 warning count is public, but has no observed use outside its module
+VIS001 parity/future_policy/needed/backward_copy.py:8:1 warning first is public, but has no observed use outside its module
+VIS001 parity/future_policy/needed/def_end_copy.py:4:1 warning first is public, but has no observed use outside its module
+VIS001 parity/future_policy/needed/quoted_copy.py:4:1 warning first is public, but has no observed use outside its module
+VIS001 parity/generics/shared_copy.py:10:1 warning first is public, but has no observed use outside its module
+VIS001 parity/ignored_copy.py:7:1 warning hidden is public, but has no observed use outside its module
+VIS001 parity/import_graph/other_copy.py:27:1 warning local is public, but has no observed use outside its module
+VIS001 parity/lazy/unstable_copy.py:17:1 warning consumer is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:197:5 warning Plain.instance_field is public, but has no observed use outside its class
+VIS001 parity/loop_collections_copy.py:224:1 warning membership is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:231:1 warning scalar_annotations is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:265:1 warning unknown_annotations is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:307:1 warning grouped_renames is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:318:1 warning separate_projections is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:330:1 warning projections is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:389:1 warning comprehension_shapes is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:437:1 warning asynchronous is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:444:1 warning awaiting is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:452:1 warning async_loop is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:459:1 warning async_comprehension is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:466:1 warning yielding is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:472:1 warning delegating is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:480:1 warning nested_yield is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:490:1 warning lambda_yield is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:505:1 warning inner_scope is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:515:1 warning conditional_branches is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:563:1 warning statements_in_loop is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:636:1 warning raises is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:672:1 warning returns is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:682:1 warning assignments is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:723:1 warning written_inputs is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:748:1 warning env_before_loop is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:844:1 warning loop_shapes is public, but has no observed use outside its module
+VIS001 parity/loop_collections_copy.py:900:1 warning not_a_generic is public, but has no observed use outside its module
+VIS001 parity/loop_shadowed/rebound_tuple_copy.py:4:1 warning check is public, but has no observed use outside its module
+VIS001 parity/name_aliases_copy.py:19:1 warning helper is public, but has no observed use outside its module
+VIS001 parity/ordering/basic_copy.py:14:1 warning build is public, but has no observed use outside its module
+VIS001 parity/ordering/dependencies_copy.py:21:1 warning visible is public, but has no observed use outside its module
+VIS001 parity/ordering/dependencies_copy.py:8:1 warning use is public, but has no observed use outside its module
+VIS001 parity/ordering/local_namespace_copy.py:5:1 warning public is public, but has no observed use outside its module
+VIS001 parity/ordering/manual/__init___copy.py:5:1 warning visible is public, but has no observed use outside its module
+VIS001 parity/ordering/tabs_copy.py:5:1 warning public is public, but has no observed use outside its module
+VIS001 parity/ordering/typevars_called_copy.py:8:1 warning public is public, but has no observed use outside its module
+VIS001 parity/parallel_records_copy.py:184:1 warning scope is public, but has no observed use outside its module
+VIS001 parity/private_delegates_copy.py:104:5 warning Frames.wrong_double_star is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:110:5 warning Frames.keyword_value is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:116:5 warning Frames.keyword_other is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:122:5 warning Frames.calls_public is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:128:5 warning Frames.calls_dunder is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:12:5 warning Frames.events is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:147:5 warning Frames.decorated_callee is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:154:5 warning Frames.not_a_method is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:157:5 warning Frames.on_other_object is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:163:5 warning Frames.itself is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:181:5 warning Frames.returns_nothing is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:184:5 warning Frames.not_returned is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:18:5 warning Frames.documented is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:192:5 warning References.by_name is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:198:5 warning References.by_string is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:204:5 warning References.by_fstring is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:210:5 warning References.by_format_spec is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:216:5 warning References.by_concatenation is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:222:5 warning References.by_template is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:228:5 warning References.by_attribute is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:234:5 warning References.not_by_fragment is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:240:5 warning References.not_by_interpolated is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:246:5 warning References.not_by_bytes is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:252:5 warning References.not_by_keyword is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:258:5 warning References.defined_twice is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:25:5 warning Frames.varargs is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:316:5 warning WithObject.forward is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:31:5 warning Frames.positional_only is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:37:5 warning Frames.keyword_passed is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:43:5 warning Frames.no_parameters is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:49:5 warning Frames.extra_statement is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:56:5 warning Frames.changed is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:62:5 warning Frames.swapped is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:74:5 warning Frames.duplicated is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:80:5 warning Frames.renamed_parameter is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:86:5 warning Frames.other_kind is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:92:5 warning Frames.default_differs is public, but has no observed use outside its class
+VIS001 parity/private_delegates_copy.py:98:5 warning Frames.wrong_star is public, but has no observed use outside its class
+VIS001 parity/quoted_annotations/first_statement_copy.py:1:1 warning first is public, but has no observed use outside its module
+VIS001 parity/quoted_annotations/has_future_copy.py:4:1 warning first is public, but has no observed use outside its module
+VIS001 parity/quoted_annotations/needs_future_copy.py:6:1 warning plain is public, but has no observed use outside its module
+VIS001 parity/receivers_copy.py:62:1 warning function is public, but has no observed use outside its module
+VIS001 parity/receivers_copy.py:71:1 warning coroutine is public, but has no observed use outside its module
+VIS001 parity/receivers_copy.py:77:1 warning shadow is public, but has no observed use outside its module
+VIS001 parity/silenced/nested_copy.py:7:1 warning reported is public, but has no observed use outside its module
+VIS001 parity/test_support/service_copy.py:50:1 warning normalize is public, but has no observed use outside its module
+VIS001 parity/versioned/__init___copy.py:10:1 warning chain is public, but has no observed use outside its module
+VIS002 parity/async_contexts/name_in_fstring_copy.py:4:1 warning LABEL is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/async_contexts/name_in_fstring_copy.py:5:1 warning PLAIN is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/async_contexts/word_boundary_copy.py:4:1 warning PLAIN is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/doc_policy/forbidden/multi_line_copy.py:5:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/doc_policy/required/__main___copy.py:1:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/doc_policy/required/empty_doc_copy.py:2:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/doc_policy/required/has_doc_copy.py:2:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/future_policy/needed/no_annotations_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/aliased_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/annotated_empty_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/docstring_only_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/from_import_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/guarded_elif_copy.py:10:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/multi_line_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/no_imports_copy.py:1:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/no_newline_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/same_line_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/spread_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/module_loggers/two_arguments_copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/name_aliases_copy.py:38:6 warning Fifth is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/name_aliases_copy.py:39:6 warning Parametrized is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/ordering/basic_copy.py:19:1 warning T is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/ordering/basic_copy.py:20:1 warning LIMIT is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/ordering/basic_copy.py:47:6 warning Alias is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/ordering/dependencies_copy.py:14:1 warning TABLE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/ordering/typevars_called_copy.py:12:1 warning T is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/private_delegates_copy.py:272:1 warning USES is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/awaited_copy.py:3:1 warning A is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/deferred/forbidden/__init___copy.py:3:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:10:1 warning H is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:11:1 warning I is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:12:1 warning J is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:13:1 warning K is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:14:1 warning L is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:3:1 warning A is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:4:1 warning B is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:5:1 warning C is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:6:1 warning D is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:7:1 warning E is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:8:1 warning F is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/fstrings_copy.py:9:1 warning G is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/older/__init___copy.py:1:1 warning VALUE is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/ternary_copy.py:3:1 warning A is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/unparsable_copy.py:3:1 warning A is public, but has no observed use outside its module or public-signature evidence
+VIS002 parity/quoted_annotations/unparsable_copy.py:4:1 warning B is public, but has no observed use outside its module or public-signature evidence
+VIS003 parity/async_contexts/kept_by_string_copy.py:4:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexport_styles/alias/__init___copy.py:5:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexport_styles/bare_tuple/__init___copy.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexport_styles/empty_list/__init___copy.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexport_styles/listed/__init___copy.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexport_styles/prefixed_all/__init___copy.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexports/annotated_copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexports/declared_copy.py:8:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexports/formatted_copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/reexports/mismatch_copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 parity/test_support/__init___copy.py:4:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS004 parity/discriminators_copy.py:10:5 warning Event.kind is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:11:5 warning Event.tag is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:16:5 warning Wrapped.type is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:17:5 warning Wrapped.kind is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:18:5 warning Wrapped.tag is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:22:5 warning Quoted.type is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:23:5 warning Quoted.kind is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:24:5 warning Quoted.tag is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:28:5 warning Excluded.type is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:29:5 warning Excluded.kind is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:30:5 warning Excluded.tag is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:34:6 warning Spelled.type is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:35:5 warning Spelled.kind is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:36:5 warning Spelled.tag is public, but has no observed access outside its class
+VIS004 parity/discriminators_copy.py:9:5 warning Event.type is public, but has no observed access outside its class
+VIS004 parity/frameworks_copy.py:59:5 warning Unrelated.password is public, but has no observed access outside its class
+VIS004 parity/instance_assignments.py:113:21 warning Inbox.f is public, but has no observed access outside its class
+VIS004 parity/instance_assignments.py:116:17 warning Inbox.g is public, but has no observed access outside its class
+VIS004 parity/instance_assignments.py:116:25 warning Inbox.h is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future.py:12:5 warning Holder.field is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future.py:25:5 warning Holder.mapping is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:12:5 warning Holder.field is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:14:5 warning Holder.literal is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:16:5 warning Holder.metadata is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:17:5 warning Holder.bare_annotated is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:18:5 warning Holder.deep is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:19:5 warning Holder.union is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:20:5 warning Holder.tupled is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:22:5 warning Holder.dotted is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:23:5 warning Holder.lambda_ is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:24:5 warning Holder.listed is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:25:5 warning Holder.mapping is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:26:5 warning Holder.compared is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:27:5 warning Holder.comprehended is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:28:5 warning Holder.sliced is public, but has no observed access outside its class
+VIS004 parity/quoted_annotations/needs_future_copy.py:29:5 warning Holder.prefixed is public, but has no observed access outside its class
+VIS004 parity/shadowed_settings_copy.py:18:5 warning Event.type is public, but has no observed access outside its class
+VIS004 parity/versioned/__init___copy.py:7:5 warning Event.type is public, but has no observed access outside its class
+VIS006 parity/private_delegates_copy.py:12:5 hint events only forwards to _events
+VIS006 parity/private_delegates_copy.py:18:5 hint documented only forwards to _documented
+VIS006 parity/private_delegates_copy.py:234:5 hint not_by_fragment only forwards to _not_by_fragment
+VIS006 parity/private_delegates_copy.py:246:5 hint not_by_bytes only forwards to _not_by_bytes
+VIS006 parity/private_delegates_copy.py:252:5 hint not_by_keyword only forwards to _not_by_keyword
+VIS006 parity/private_delegates_copy.py:25:5 hint varargs only forwards to _varargs
+VIS006 parity/private_delegates_copy.py:292:5 hint forward only forwards to _neutral_forward
+VIS006 parity/private_delegates_copy.py:300:5 hint forward only forwards to _protocol_forward
+VIS006 parity/private_delegates_copy.py:308:5 hint forward only forwards to _generic_forward
+VIS006 parity/private_delegates_copy.py:316:5 hint forward only forwards to _object_forward
+VIS006 parity/private_delegates_copy.py:31:5 hint positional_only only forwards to _positional_only
+VIS006 parity/private_delegates_copy.py:324:5 hint forward only forwards to _dotted_forward
+VIS006 parity/private_delegates_copy.py:332:5 hint forward only forwards to _subscripted_forward
+VIS006 parity/private_delegates_copy.py:376:5 hint forward only forwards to _local_forward
+VIS006 parity/private_delegates_copy.py:37:5 hint keyword_passed only forwards to _keyword_passed
+VIS006 parity/private_delegates_copy.py:412:5 hint forward only forwards to _metaclass_forward
+VIS006 parity/private_delegates_copy.py:429:5 hint forward only forwards to _duplicate_forward
+VIS006 parity/private_delegates_copy.py:43:5 hint no_parameters only forwards to _no_parameters
+VIS006 parity/private_delegates_copy.py:92:5 hint default_differs only forwards to _default_differs
+VIS007 parity/relaxed/thresholds_copy.py:24:1 hint Module parity.relaxed.thresholds_copy contains 2 private definitions (limit 1): 0 classes, 2 functions, 0 type aliases; review its responsibilities

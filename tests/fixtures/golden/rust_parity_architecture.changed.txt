@@ -1,0 +1,199 @@
+modules: 138, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 24, "governed": 38, "unclassified": 76, "uncovered": 0} complete=False
+ARC002 shop/features/billing/infra/gateway.py:2:55 error feature billing must not import feature orders (infra -> domain)
+ARC002 shop/features/billing/providers_copy.py:1:49 error feature billing must not import feature orders ((feature root) -> (feature root))
+ARC002 shop/features/billing/providers_copy.py:1:49 error feature billing must not import feature orders ((feature root) -> application)
+ARC002 shop/features/billing/providers_copy.py:1:49 error feature billing must not import feature orders ((feature root) -> domain)
+ARC002 shop/features/billing/providers_copy.py:1:49 error feature billing must not import feature orders ((feature root) -> domain)
+ARC002 shop/features/orders/__init___copy.py:1:24 error feature orders must not import feature billing ((feature root) -> (feature root))
+ARC002 shop/features/orders/__init___copy.py:1:24 error feature orders must not import feature billing ((feature root) -> application)
+ARC002 shop/features/orders/__init___copy.py:1:24 error feature orders must not import feature billing ((feature root) -> infra)
+ARC005 shop/shared/wired.py:2:44 error shared module shop.shared.wired must not import feature orders
+ARC006 shop/features/billing/providers_copy.py:1:49 error shop.features.billing.providers_copy must not import the composition root shop.main
+ARC006 shop/features/billing/providers_copy.py:1:49 error shop.features.billing.providers_copy must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/billing/providers_copy.py:1:49 error shop.features.billing.providers_copy must not import the wiring module shop.features.orders.providers
+ARC006 shop/features/orders/__init___copy.py:1:24 error shop.features.orders.__init___copy must not import the composition root shop.main
+ARC006 shop/features/orders/__init___copy.py:1:24 error shop.features.orders.__init___copy must not import the wiring module shop.features.billing.providers
+ARC006 shop/features/orders/__init___copy.py:1:24 error shop.features.orders.__init___copy must not import the wiring module shop.features.orders.providers
+ARC006 shop/main_copy.py:1:45 error shop.main_copy must not import the composition root shop.main
+ARC006 shop/main_copy.py:1:45 error shop.main_copy must not import the wiring module shop.features.billing.providers
+ARC006 shop/main_copy.py:2:44 error shop.main_copy must not import the wiring module shop.features.orders.providers
+ARC007 shop/main_copy.py:1:45 error shop.main_copy imports private module shop.features.billing.providers of contract "slices"
+ARC007 shop/main_copy.py:2:44 error shop.main_copy imports private module shop.features.orders.providers of contract "slices"
+ARC007 shop/tools/style/sibling_copy.py:20:27 error shop.tools.style.sibling_copy imports private module shop.platform.auth of contract "platform_api"
+ARC011 shop/features/billing/__init___copy.py:None:None error billing contains module __init___copy.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/billing/providers_copy.py:None:None error billing contains module providers_copy.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/catalog/nested/loose_copy.py:None:None error catalog contains module loose_copy.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC011 shop/features/orders/__init___copy.py:None:None error orders contains module __init___copy.py, which is in no layer (domain, application, infra, alpha, beta, platform)
+ARC012 shop/__main___copy.py:None:None warning shop.__main___copy is not part of a feature, layer, shared or composition root
+ARC012 shop/main_copy.py:None:None warning shop.main_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/__init___copy.py:None:None warning shop.tools.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/_tools/tools_inner_copy.py:None:None warning shop.tools._tools.tools_inner_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/address/address_book_copy.py:None:None warning shop.tools.address.address_book_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/bus/bu_stop_copy.py:None:None warning shop.tools.bus.bu_stop_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/dupes/one_copy.py:None:None warning shop.tools.dupes.one_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/dupes/two_copy.py:None:None warning shop.tools.dupes.two_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/enums/kinds_copy.py:None:None warning shop.tools.enums.kinds_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/enums/star_copy.py:None:None warning shop.tools.enums.star_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/helpers/__init___copy.py:None:None warning shop.tools.helpers.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/literals/__init___copy.py:None:None warning shop.tools.literals.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/literals/second_copy.py:None:None warning shop.tools.literals.second_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/misc_copy.py:None:None warning shop.tools.misc_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/pkg_a/one_copy.py:None:None warning shop.tools.pkg_a.one_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/pkg_b/two_copy.py:None:None warning shop.tools.pkg_b.two_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/ring_b_copy.py:None:None warning shop.tools.ring_b_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/shapes/__init___copy.py:None:None warning shop.tools.shapes.__init___copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/shapes/many/copy_1_copy.py:None:None warning shop.tools.shapes.many.copy_1_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/shapes/many/copy_4_copy.py:None:None warning shop.tools.shapes.many.copy_4_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/shapes/one_copy.py:None:None warning shop.tools.shapes.one_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/status/statu_line_copy.py:None:None warning shop.tools.status.statu_line_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/style/nested/leaf_copy.py:None:None warning shop.tools.style.nested.leaf_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/style/sibling_copy.py:None:None warning shop.tools.style.sibling_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/style/strict/sibling_copy.py:None:None warning shop.tools.style.strict.sibling_copy is not part of a feature, layer, shared or composition root
+ARC012 shop/tools/typed_right_copy.py:None:None warning shop.tools.typed_right_copy is not part of a feature, layer, shared or composition root
+ARC014 shop/platform/__init__.py:None:None error contract "platform_api" on shop.platform is missing public entry point shop.platform.auth.guard
+CPX004 shop/tools/dupes/two.py:11:1 warning Function nested repeats nested in shop/tools/dupes/two_copy.py
+CPX004 shop/tools/dupes/two_copy.py:11:1 warning Function nested repeats nested in shop/tools/dupes/two.py
+CPX004 shop/tools/shapes/many/copy_1_copy.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 6 more
+CPX004 shop/tools/shapes/many/copy_4_copy.py:1:1 warning Function repeated repeats repeated in shop/tools/shapes/many/__init__.py and 6 more
+CPX004 shop/tools/shapes/one_copy.py:15:1 warning Function beta repeats beta in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:31:1 warning Function elif_counts repeats elif_counts in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:38:1 warning Function else_does_not_count repeats else_does_not_count in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:46:1 warning Function decorated repeats decorated in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:52:1 warning Function generic repeats generic in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:58:1 warning Function nested_blocks repeats nested_blocks in shop/tools/shapes/one.py
+CPX004 shop/tools/shapes/one_copy.py:5:1 warning Function alpha repeats alpha in shop/tools/shapes/one.py
+CPX004 shop/tools/style/sibling.py:39:1 warning Function function repeats function in shop/tools/style/sibling_copy.py
+CPX004 shop/tools/style/sibling_copy.py:39:1 warning Function function repeats function in shop/tools/style/sibling.py
+IDM003 shop/tools/shapes/one_copy.py:78:1 hint review Holder.method_is_ignored as __call__ with an operation-based class name
+IMP003 shop/features/billing/providers_copy.py:1:1 error fix style expects a relative import of shop.features.billing.infra.gateway
+IMP003 shop/main_copy.py:1:1 error fix style expects a relative import of shop.features.billing.providers
+IMP003 shop/main_copy.py:2:1 error fix style expects a relative import of shop.features.orders.providers
+IMP003 shop/tools/style/nested/leaf_copy.py:1:1 error fix style expects an absolute import of shop.tools.style.other
+IMP003 shop/tools/style/nested/leaf_copy.py:2:1 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/nested/leaf_copy.py:4:1 error fix style expects a relative import of shop.tools.style.nested
+IMP003 shop/tools/style/sibling_copy.py:13:1 error fix style expects an absolute import of shop.tools
+IMP003 shop/tools/style/sibling_copy.py:14:1 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling_copy.py:15:1 error fix style expects an absolute import of shop
+IMP003 shop/tools/style/sibling_copy.py:17:1 error fix style expects a relative import of shop.tools.style
+IMP003 shop/tools/style/sibling_copy.py:18:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:19:1 error fix style expects a relative import of shop.tools.style.nested.leaf
+IMP003 shop/tools/style/sibling_copy.py:21:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:22:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:23:1 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:27:1 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:29:1 error style expects a relative import of shop.tools.style
+IMP003 shop/tools/style/sibling_copy.py:30:1 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:30:32 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:34:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:35:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling_copy.py:36:5 error style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:40:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:41:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling_copy.py:42:5 error style expects a relative import of shop.tools.style.nested
+IMP003 shop/tools/style/sibling_copy.py:46:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:50:5 error fix style expects a relative import of shop.tools.style.other
+IMP003 shop/tools/style/sibling_copy.py:52:5 error fix style expects an absolute import of shop.tools.fan
+IMP003 shop/tools/style/sibling_copy.py:8:1 error style expects a relative import of shop.tools.style.other
+IMP004 shop/main_copy.py:2:1 hint fix import these names from the existing shop.features.orders package API
+LAY003 shop/__main___copy.py:None:None error style forbids underscore-prefixed module name "__main___copy" (shop.__main___copy)
+LAY003 shop/features/billing/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.billing.__init___copy)
+LAY003 shop/features/billing/domain/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.billing.domain.__init___copy)
+LAY003 shop/features/billing/infra/_billing_client_copy.py:None:None error style forbids underscore-prefixed module name "_billing_client_copy" (shop.features.billing.infra._billing_client_copy)
+LAY003 shop/features/catalog/alpha/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.catalog.alpha.__init___copy)
+LAY003 shop/features/catalog/nested/beta/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.catalog.nested.beta.__init___copy)
+LAY003 shop/features/orders/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.orders.__init___copy)
+LAY003 shop/features/orders/application/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.orders.application.__init___copy)
+LAY003 shop/features/orders/domain/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.orders.domain.__init___copy)
+LAY003 shop/features/orders/infra/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.orders.infra.__init___copy)
+LAY003 shop/features/orders/models/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.features.orders.models.__init___copy)
+LAY003 shop/tools/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.tools.__init___copy)
+LAY003 shop/tools/helpers/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.tools.helpers.__init___copy)
+LAY003 shop/tools/literals/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.tools.literals.__init___copy)
+LAY003 shop/tools/shapes/__init___copy.py:None:None error style forbids underscore-prefixed module name "__init___copy" (shop.tools.shapes.__init___copy)
+LAY004 shop/tools/dupes/__init__.py:5:None error imports appear after later definition groups
+LAY004 shop/tools/dupes/sub/three.py:4:None error imports appear after later definition groups
+LAY004 shop/tools/enums/attribute_write.py:9:None error imports appear after later definition groups
+LAY004 shop/tools/enums/shadowed_elsewhere.py:11:None error imports appear after later definition groups
+LAY004 shop/tools/literals/origin.py:6:None error imports appear after later definition groups
+LAY004 shop/tools/literals/star.py:6:None error imports appear after later definition groups
+LAY004 shop/tools/shapes/many/copy_0.py:7:None error imports appear after later definition groups
+LAY004 shop/tools/shapes/many/copy_3.py:7:None error imports appear after later definition groups
+LAY004 shop/tools/shapes/many/copy_6.py:7:None error imports appear after later definition groups
+LAY004 shop/tools/typed_left.py:8:None error imports appear after later definition groups
+LAY009 shop/features/billing/infra/_billing_client_copy.py:None:None hint module name "_billing_client_copy" repeats "billing" from package "shop.features.billing"
+LAY009 shop/features/orders/application/order_service_copy.py:None:None hint module name "order_service_copy" repeats "order" from package "shop.features.orders"
+LAY009 shop/tools/_tools/tools_inner_copy.py:None:None hint module name "tools_inner_copy" repeats "tools" from package "shop.tools._tools"
+LAY009 shop/tools/address/address_book_copy.py:None:None hint module name "address_book_copy" repeats "address" from package "shop.tools.address"
+MOD001 shop/tools/enums/kinds_copy.py:100:8 hint consider Color.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:101:11 hint consider Color.ALIAS directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:103:9 hint consider Color.TYPED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:105:28 hint consider Color.SECOND directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:105:9 hint consider Color.FIRST directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:108:26 hint consider Color.DOTTED_AUTO directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:108:8 hint consider Color.MADE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:111:5 hint consider Dotted.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:112:5 hint consider Aliased.ONE directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:127:11 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:127:31 hint consider Color.GREEN directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:128:16 hint consider Color.RED directly; StrEnum members are already strings
+MOD001 shop/tools/enums/kinds_copy.py:99:8 hint consider Color.RED directly; StrEnum members are already strings
+MOD004 shop/tools/enums/kinds_copy.py:7:1 hint fix StrEnum Color derives values with auto()
+MOD009 shop/tools/dupes/one_copy.py:1:1 warning Class Shared is also defined in shop.tools.dupes:2, shop.tools.dupes.one:1, shop.tools.dupes.two:6, shop.tools.dupes.two_copy:6
+MOD009 shop/tools/dupes/one_copy.py:2:1 warning Class Twice is also defined in shop.tools.dupes.one:2, shop.tools.dupes.one:3, shop.tools.dupes.two:7, shop.tools.dupes.two_copy:7
+MOD009 shop/tools/dupes/one_copy.py:3:1 warning Class Twice is also defined in shop.tools.dupes.one:2, shop.tools.dupes.one:3, shop.tools.dupes.two:7, shop.tools.dupes.two_copy:7
+MOD009 shop/tools/dupes/two_copy.py:6:1 warning Class Shared is also defined in shop.tools.dupes:2, shop.tools.dupes.one:1, shop.tools.dupes.one_copy:1, shop.tools.dupes.two:6
+MOD009 shop/tools/dupes/two_copy.py:7:1 warning Class Twice is also defined in shop.tools.dupes.one:2, shop.tools.dupes.one:3, shop.tools.dupes.one_copy:2, shop.tools.dupes.one_copy:3, shop.tools.dupes.two:7
+MOD009 shop/tools/enums/kinds.py:25:1 warning Class Dotted is also defined in shop.tools.enums.kinds_copy:25
+MOD009 shop/tools/enums/kinds.py:29:1 warning Class Aliased is also defined in shop.tools.enums.kinds_copy:29
+MOD009 shop/tools/enums/kinds.py:33:1 warning Class PlainEnum is also defined in shop.tools.enums.kinds_copy:33
+MOD009 shop/tools/enums/kinds.py:37:1 warning Class MixedIn is also defined in shop.tools.enums.kinds_copy:37
+MOD009 shop/tools/enums/kinds.py:41:1 warning Class Reserved is also defined in shop.tools.enums.kinds_copy:41
+MOD009 shop/tools/enums/kinds.py:46:1 warning Class ReservedWalrus is also defined in shop.tools.enums.kinds_copy:46
+MOD009 shop/tools/enums/kinds.py:50:1 warning Class ReservedLambda is also defined in shop.tools.enums.kinds_copy:50
+MOD009 shop/tools/enums/kinds.py:54:1 warning Class ReservedMethod is also defined in shop.tools.enums.kinds_copy:54
+MOD009 shop/tools/enums/kinds.py:61:1 warning Class ReservedImport is also defined in shop.tools.enums.kinds_copy:61
+MOD009 shop/tools/enums/kinds.py:66:1 warning Class ReservedGlobal is also defined in shop.tools.enums.kinds_copy:66
+MOD009 shop/tools/enums/kinds.py:71:1 warning Class Keyworded is also defined in shop.tools.enums.kinds_copy:71
+MOD009 shop/tools/enums/kinds.py:7:1 warning Class Color is also defined in shop.tools.enums.kinds_copy:7
+MOD009 shop/tools/enums/kinds.py:80:1 warning Class Decorated is also defined in shop.tools.enums.kinds_copy:80
+MOD009 shop/tools/enums/kinds.py:84:1 warning Class Rebound is also defined in shop.tools.enums.kinds_copy:84
+MOD009 shop/tools/enums/kinds.py:91:1 warning Class Child is also defined in shop.tools.enums.kinds_copy:91
+MOD009 shop/tools/enums/kinds_copy.py:25:1 warning Class Dotted is also defined in shop.tools.enums.kinds:25
+MOD009 shop/tools/enums/kinds_copy.py:29:1 warning Class Aliased is also defined in shop.tools.enums.kinds:29
+MOD009 shop/tools/enums/kinds_copy.py:33:1 warning Class PlainEnum is also defined in shop.tools.enums.kinds:33
+MOD009 shop/tools/enums/kinds_copy.py:37:1 warning Class MixedIn is also defined in shop.tools.enums.kinds:37
+MOD009 shop/tools/enums/kinds_copy.py:41:1 warning Class Reserved is also defined in shop.tools.enums.kinds:41
+MOD009 shop/tools/enums/kinds_copy.py:46:1 warning Class ReservedWalrus is also defined in shop.tools.enums.kinds:46
+MOD009 shop/tools/enums/kinds_copy.py:50:1 warning Class ReservedLambda is also defined in shop.tools.enums.kinds:50
+MOD009 shop/tools/enums/kinds_copy.py:54:1 warning Class ReservedMethod is also defined in shop.tools.enums.kinds:54
+MOD009 shop/tools/enums/kinds_copy.py:61:1 warning Class ReservedImport is also defined in shop.tools.enums.kinds:61
+MOD009 shop/tools/enums/kinds_copy.py:66:1 warning Class ReservedGlobal is also defined in shop.tools.enums.kinds:66
+MOD009 shop/tools/enums/kinds_copy.py:71:1 warning Class Keyworded is also defined in shop.tools.enums.kinds:71
+MOD009 shop/tools/enums/kinds_copy.py:7:1 warning Class Color is also defined in shop.tools.enums.kinds:7
+MOD009 shop/tools/enums/kinds_copy.py:80:1 warning Class Decorated is also defined in shop.tools.enums.kinds:80
+MOD009 shop/tools/enums/kinds_copy.py:84:1 warning Class Rebound is also defined in shop.tools.enums.kinds:84
+MOD009 shop/tools/enums/kinds_copy.py:91:1 warning Class Child is also defined in shop.tools.enums.kinds:91
+MOD009 shop/tools/shapes/one.py:78:1 warning Class Holder is also defined in shop.tools.shapes.one_copy:78
+MOD009 shop/tools/shapes/one_copy.py:78:1 warning Class Holder is also defined in shop.tools.shapes.one:78
+MOD009 shop/tools/style/sibling.py:45:1 warning Class Holder is also defined in shop.tools.style.sibling_copy:45
+MOD009 shop/tools/style/sibling_copy.py:45:1 warning Class Holder is also defined in shop.tools.style.sibling:45
+TYP005 shop/tools/literals/second.py:4:7 hint consider a shared alias for Literal['other', 'solo']; 2 occurrences in shop
+TYP005 shop/tools/literals/second_copy.py:3:7 hint consider a shared alias for Literal['left', 'right']; 2 occurrences in shop
+TYP005 shop/tools/literals/second_copy.py:4:7 hint consider a shared alias for Literal['other', 'solo']; 2 occurrences in shop
+TYP005 shop/tools/literals/second_copy.py:5:11 hint consider a shared alias for Literal['down', 'up']; 2 occurrences in shop
+VIS001 shop/tools/dupes/two_copy.py:11:1 warning nested is public, but has no observed use outside its module
+VIS001 shop/tools/dupes/two_copy.py:1:1 warning decorator is public, but has no observed use outside its module
+VIS001 shop/tools/enums/kinds_copy.py:75:1 warning decorator is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_1_copy.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/many/copy_4_copy.py:1:1 warning repeated is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:15:1 warning beta is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:21:1 warning too_short is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:25:1 warning docstring_is_not_counted is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:31:1 warning elif_counts is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:38:1 warning else_does_not_count is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:52:1 warning generic is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:58:1 warning nested_blocks is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:5:1 warning alpha is public, but has no observed use outside its module
+VIS001 shop/tools/shapes/one_copy.py:79:5 warning Holder.method_is_ignored is public, but has no observed use outside its class
+VIS001 shop/tools/style/sibling_copy.py:39:1 warning function is public, but has no observed use outside its module

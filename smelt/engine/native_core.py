@@ -1,4 +1,4 @@
-"""The analysis of a check in the native core, which checks use by default.
+"""The analysis of a check in the native core.
 
 The core discovers, parses and judges the project itself and returns the
 findings with the coverage facts a report needs. It also checks the staged Git
@@ -60,14 +60,6 @@ class NativeRun:
     # Judge the configuration itself (MET004, MET005); a scoped run does not.
     configuration_findings: bool
     baseline: Baseline | None = None
-
-
-def selected() -> bool:
-    """Whether this process analyzes checks in the native core.
-
-    `SMELT_CORE=python` selects the Python engine, which parity checks compare with.
-    """
-    return os.environ.get("SMELT_CORE") != "python"
 
 
 def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
@@ -146,7 +138,7 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
 
 
 def _config_error(error: dict[str, Any]) -> ConfigError:
-    """The configuration error the core reported, as the Python engine raises it."""
+    """The configuration error the core reported, as the config loader raises it."""
     issues = [
         ConfigIssue(issue["path"], issue["message"], issue["source"])
         for issue in error["issues"]

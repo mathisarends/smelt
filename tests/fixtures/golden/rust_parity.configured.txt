@@ -1,0 +1,111 @@
+modules: 389, suppressed: 10, in debt: 0
+coverage: {"excluded": 0, "facade": 42, "governed": 0, "unclassified": 347, "uncovered": 1} complete=False
+CPX003 parity/callables.py:75:5 warning fix run accepts 3 positional parameters; style allows 2
+CPX003 parity/enum_styles/__init__.py:47:5 warning fix _generate_next_value_ accepts 3 positional parameters; style allows 2
+CPX003 parity/enum_styles/__init__.py:59:5 warning fix _generate_next_value_ accepts 3 positional parameters; style allows 2
+CPX003 parity/enum_styles/derived/__init__.py:30:5 warning fix _generate_next_value_ accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:103:5 warning fix other_receiver accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:147:5 warning fix static accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:155:5 warning fix builtin_static accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:188:1 warning fix function accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:26:5 warning fix indented accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:69:5 warning fix unequal accepts 3 positional parameters; style allows 2
+CPX003 parity/instance_assignments.py:78:5 warning fix nested_tuple accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:231:1 warning scalar_annotations accepts 6 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:265:1 warning fix unknown_annotations accepts 10 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:330:1 warning fix projections accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:389:1 warning fix comprehension_shapes accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:490:1 warning fix lambda_yield accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:515:1 warning fix conditional_branches accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:563:1 warning fix statements_in_loop accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:723:1 warning fix written_inputs accepts 3 positional parameters; style allows 2
+CPX003 parity/loop_collections.py:844:1 warning fix loop_shapes accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:194:1 warning fix rebound_import accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:219:1 warning fix rebound_match accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:30:1 warning fix qualified accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:34:1 warning fix unions accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:42:1 warning fix quoted accepts 4 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:46:1 warning fix unqualified accepts 3 positional parameters; style allows 2
+CPX003 parity/none_defaults.py:50:1 warning defaults accepts 4 positional parameters; style allows 2
+CPX003 parity/relaxed/limits.py:8:1 hint fix too_many accepts 5 positional parameters; contract "relaxed" allows 4
+CPX003 parity/signatures.py:102:5 warning fix static accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:116:9 warning fix inner accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:11:1 warning fix with_defaults accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:122:9 warning fix deep accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:126:1 warning fix no_self_in_function accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:131:5 warning fix in_if accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:134:5 warning fix in_elif accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:138:9 warning fix method accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:142:5 warning fix in_try accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:145:5 warning fix in_handler accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:148:5 warning fix in_try_else accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:151:5 warning fix in_finally accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:157:5 warning fix in_star_handler accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:15:1 warning fix annotated accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:161:5 warning fix in_for accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:164:5 warning fix in_for_else accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:168:5 warning fix in_while accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:171:5 warning fix in_while_else accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:175:5 warning fix in_with accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:180:9 warning fix in_case accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:184:13 warning fix method accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:19:1 warning fix already_keyword accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:23:1 warning fix default_before_star accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:27:1 warning fix odd_star_spacing accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:31:1 warning star_with_comment accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:41:1 warning positional_only accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:45:1 warning fix boundary_positional_only accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:49:1 warning variadic accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:53:1 warning fix keyword_variadic accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:57:1 warning fix größe accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:61:1 warning fix asynchronous accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:66:1 warning fix decorated accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:72:1 warning fix stacked accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:78:1 warning fix spaced_decorator accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:7:1 warning fix plain accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:86:1 warning fix exempt_overload accepts 4 positional parameters; style allows 2
+CPX003 parity/signatures.py:91:5 warning fix method accepts 3 positional parameters; style allows 2
+CPX003 parity/signatures.py:98:5 warning fix build accepts 3 positional parameters; style allows 2
+CPX003 parity/silenced/nested.py:7:1 warning fix reported accepts 3 positional parameters; style allows 2
+CPX003 parity/suppressed.py:45:1 warning fix below_decorator accepts 3 positional parameters; style allows 2
+CPX003 parity/suppressed.py:50:1 warning fix not_covered accepts 3 positional parameters; style allows 2
+CPX003 parity/unit_durations.py:82:1 warning parameters accepts 6 positional parameters; style allows 2
+CPX005 parity/conditionals.py:12:29 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:13:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:13:39 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:14:21 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:15:21 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:16:17 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:16:49 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:18:5 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:26:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:29:19 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:30:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:33:8 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:34:17 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:35:18 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:6:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:7:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:8:11 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/conditionals.py:9:9 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/file_level.py:5:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/ignored.py:4:12 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/suppressed.py:14:14 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX005 parity/suppressed.py:21:8 hint This conditional expression contains multiple decision branches; use explicit if/elif or match statements
+CPX006 parity/relaxed/thresholds.py:5:14 hint Complex comprehension: too many for clauses
+CPX007 parity/relaxed/thresholds.py:16:5 hint Constructor Excessive.__init__ contains 5 decisions (limit 4); name its normalization or validation steps
+MET001 parity/broad_handlers.py:162:24 warning fix unused suppression (all codes)
+MET001 parity/broad_handlers.py:166:24 warning fix unused suppression (all codes)
+MET001 parity/suppressed.py:14:41 warning fix unused suppression (all codes)
+MET001 parity/suppressed.py:3:19 warning fix unused suppression (all codes)
+MET001 parity/suppressed.py:44:9 warning fix unused suppression (all codes)
+MET001 parity/suppressed.py:49:1 warning fix unused suppression (all codes)
+MET001 parity/suppressed.py:5:11 warning fix unused suppression (all codes)
+MET001 parity_tests/test_suppressed.py:1:53 warning fix unused suppression (all codes)
+MET001 parity_tests/test_suppressed.py:4:31 warning fix unused suppression (all codes)
+MET002 parity/broad_handlers.py:162:24 error suppression without a reason
+MET002 parity/broad_handlers.py:166:24 error suppression without a reason
+TST005 parity_tests/domain/test_mocks.py:26:None warning test_patches has 7 patch calls; maximum is 2
+TST005 parity_tests/test_patches.py:23:None warning test_string_forms has 9 patch calls; maximum is 2
+TST005 parity_tests/test_patches.py:8:None warning test_many_patches has 6 patch calls; maximum is 2
+VIS007 parity/relaxed/thresholds.py:24:1 hint Module parity.relaxed.thresholds contains 2 private definitions (limit 1): 0 classes, 2 functions, 0 type aliases; review its responsibilities

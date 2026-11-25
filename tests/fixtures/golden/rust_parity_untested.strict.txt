@@ -1,0 +1,38 @@
+modules: 14, suppressed: 1, in debt: 0
+coverage: {"excluded": 0, "facade": 0, "governed": 3, "unclassified": 11, "uncovered": 0} complete=False
+ARC013 shop/__init__.py:None:None error shop/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/__main__.py:None:None error shop/__main__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/async_job.py:None:None error shop/async_job.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/formatted.py:None:None error shop/formatted.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/method.py:None:None error shop/method.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/nested.py:None:None error shop/nested.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/stubs.py:None:None error shop/stubs.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/suppressed.py:None:None error shop/suppressed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/tested.py:None:None error shop/tested.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/topical.py:None:None error shop/topical.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 shop/untested.py:None:None error shop/untested.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IDM003 shop/method.py:1:1 hint review Service.run as __call__ with an operation-based class name
+IDM005 shop/stubs.py:11:5 hint Protocol method Port.fail has a placeholder body and no docstring
+IDM005 shop/stubs.py:14:5 hint Protocol method Port.nothing has a placeholder body and no docstring
+IDM005 shop/stubs.py:6:5 hint Protocol method Port.send has a placeholder body and no docstring
+TST006 tests/domain/test_order_items.py:1:None warning test_count has no recognized outcome assertion
+TST006 tests/test_tested.py:1:None warning test_run has no recognized outcome assertion
+TST006 tests/test_topical_parsing.py:1:None warning test_parse has no recognized outcome assertion
+TST012 shop/async_job.py:1:None warning shop.async_job has no test at its mirrored path tests/test_async_job.py
+TST012 shop/formatted.py:1:None warning shop.formatted has no test at its mirrored path tests/test_formatted.py
+TST012 shop/method.py:1:None warning shop.method has no test at its mirrored path tests/test_method.py
+TST012 shop/nested.py:1:None warning shop.nested has no test at its mirrored path tests/test_nested.py
+TST012 shop/untested.py:1:None warning shop.untested has no test at its mirrored path tests/test_untested.py
+VIS001 shop/__init__.py:1:1 warning setup is public, but has no observed use outside its module
+VIS001 shop/__main__.py:1:1 warning main is public, but has no observed use outside its module
+VIS001 shop/async_job.py:1:1 warning job is public, but has no observed use outside its module
+VIS001 shop/domain/order.py:1:1 warning total is public, but has no observed use outside its module
+VIS001 shop/domain/order_items.py:1:1 warning count is public, but has no observed use outside its module
+VIS001 shop/formatted.py:1:1 warning describe is public, but has no observed use outside its module
+VIS001 shop/method.py:2:5 warning Service.run is public, but has no observed use outside its class
+VIS001 shop/stubs.py:23:1 warning wait is public, but has no observed use outside its module
+VIS001 shop/suppressed.py:2:1 warning run is public, but has no observed use outside its module
+VIS001 shop/tested.py:1:1 warning run is public, but has no observed use outside its module
+VIS001 shop/topical.py:1:1 warning run is public, but has no observed use outside its module
+VIS001 shop/untested.py:1:1 warning run is public, but has no observed use outside its module
+VIS002 shop/stubs.py:26:1 warning LIMIT is public, but has no observed use outside its module or public-signature evidence

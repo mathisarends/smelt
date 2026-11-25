@@ -1,0 +1,81 @@
+modules: 5, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 0, "unclassified": 4, "uncovered": 0} complete=False
+ARC013 app/client.py:None:None error app/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/factory.py:None:None error app/factory.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/models.py:None:None error app/models.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/plain/__init__.py:None:None error app/plain/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+CPX001 app/client.py:100:9 hint review method call through self.generic.client; it traverses 2 instance attributes
+CPX001 app/client.py:101:9 hint review method call through self.twice.path; it traverses 2 instance attributes
+CPX001 app/client.py:104:9 hint review method call through self.counter.real; it traverses 2 instance attributes
+CPX001 app/client.py:105:9 hint review method call through self.dynamic.part; it traverses 2 instance attributes
+CPX001 app/client.py:106:9 hint review method call through self.loop.value; it traverses 2 instance attributes
+CPX001 app/client.py:111:9 hint review method call through self.browser.input; it traverses 2 instance attributes
+CPX001 app/client.py:113:9 hint review method call through self.a.b.c.d; it traverses 4 instance attributes
+CPX001 app/client.py:120:15 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client.py:120:33 hint review method call through self.d.e; it traverses 2 instance attributes
+CPX001 app/client.py:121:20 hint review method call through self.d.e; it traverses 2 instance attributes
+CPX001 app/client.py:121:9 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client.py:122:9 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client.py:125:19 hint review method call through self.x.y; it traverses 2 instance attributes
+CPX001 app/client.py:161:9 hint review method call through this.settings.service; it traverses 2 instance attributes
+CPX001 app/client.py:164:15 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client.py:173:13 hint review method call through self.a.b; it traverses 2 instance attributes
+CPX001 app/client.py:184:9 hint review method call through self.service.client; it traverses 2 instance attributes
+CPX001 app/client.py:66:9 hint review method call through self.settings.service; it traverses 2 instance attributes
+CPX001 app/client.py:69:9 hint review method call through self.settings.spaced.root; it traverses 3 instance attributes
+CPX001 app/client.py:74:9 hint review method call through self.settings.either; it traverses 2 instance attributes
+CPX001 app/client.py:76:9 hint review method call through self.settings.missing; it traverses 2 instance attributes
+CPX001 app/client.py:80:9 hint review method call through self.space.service; it traverses 2 instance attributes
+CPX001 app/client.py:81:9 hint review method call through self.space.unknown; it traverses 2 instance attributes
+CPX001 app/client.py:82:9 hint review method call through self.spread.path; it traverses 2 instance attributes
+CPX001 app/client.py:87:9 hint review method call through self.models.Settings; it traverses 2 instance attributes
+CPX001 app/client.py:89:9 hint review method call through self.proc.args; it traverses 2 instance attributes
+CPX001 app/client.py:91:9 hint review method call through self.service.client; it traverses 2 instance attributes
+CPX001 app/client.py:92:9 hint review method call through self.name.part; it traverses 2 instance attributes
+CPX001 app/client.py:98:9 hint review method call through self.made.client; it traverses 2 instance attributes
+CPX001 app/client.py:99:9 hint review method call through self.built.client; it traverses 2 instance attributes
+CPX001 app/plain/__init__.py:8:9 hint review method call through self.sdk.api; it traverses 2 instance attributes
+IDM003 app/client.py:171:5 hint review Local.go as __call__ with an operation-based class name
+IDM003 app/client.py:178:1 hint review Shadowed.use as __call__ with an operation-based class name
+IDM003 app/models.py:12:1 hint review Service.run as __call__ with an operation-based class name
+IDM004 app/models.py:95:1 hint Loop is a second name for class L10
+LAY004 app/client.py:64:None error fix definitions in module.Controller#0 have 4 avoidable ordering inversion(s)
+LAY005 app/client.py:128:5 hint Controller.static is an internal static helper; prefer a private module function
+MOD011 app/models.py:38:5 warning Frozen dataclass Other.values contains mutable dict contents
+TYP006 app/client.py:26:70 hint fix 1 quoted annotation(s); an annotations future import defers them
+TYP006 app/models.py:26:13 hint fix 3 quoted annotation(s); the annotations future import already defers them
+VIS001 app/client.py:131:5 warning Controller.rebinds is public, but has no observed use outside its class
+VIS001 app/client.py:135:5 warning Controller.rebinds_import is public, but has no observed use outside its class
+VIS001 app/client.py:142:5 warning Controller.walrus is public, but has no observed use outside its class
+VIS001 app/client.py:147:5 warning Controller.except_bind is public, but has no observed use outside its class
+VIS001 app/client.py:154:5 warning Controller.match_bind is public, but has no observed use outside its class
+VIS001 app/client.py:160:5 warning Controller.other_receiver is public, but has no observed use outside its class
+VIS001 app/client.py:163:5 warning Controller.asynchronous is public, but has no observed use outside its class
+VIS001 app/client.py:170:1 warning factory is public, but has no observed use outside its module
+VIS001 app/client.py:183:5 warning Shadowed.use is public, but has no observed use outside its class
+VIS001 app/client.py:188:5 warning Annotated.setup is public, but has no observed use outside its class
+VIS001 app/client.py:191:5 warning Annotated.use is public, but has no observed use outside its class
+VIS001 app/client.py:52:5 warning Controller.reset is public, but has no observed use outside its class
+VIS001 app/client.py:64:5 warning Controller.use is public, but has no observed use outside its class
+VIS004 app/client.py:19:5 warning Controller.model is public, but has no observed access outside its class
+VIS004 app/client.py:21:5 warning Controller.loop is public, but has no observed access outside its class
+VIS004 app/client.py:22:5 warning Controller.near is public, but has no observed access outside its class
+VIS004 app/client.py:24:5 warning Controller.facade is public, but has no observed access outside its class
+VIS004 app/client.py:29:9 warning Controller.other is public, but has no observed access outside its class
+VIS004 app/client.py:30:9 warning Controller.space is public, but has no observed access outside its class
+VIS004 app/client.py:33:9 warning Controller.spread is public, but has no observed access outside its class
+VIS004 app/client.py:34:9 warning Controller.module is public, but has no observed access outside its class
+VIS004 app/client.py:35:9 warning Controller.alias is public, but has no observed access outside its class
+VIS004 app/client.py:36:9 warning Controller.js is public, but has no observed access outside its class
+VIS004 app/client.py:37:9 warning Controller.package is public, but has no observed access outside its class
+VIS004 app/client.py:39:9 warning Controller.proc is public, but has no observed access outside its class
+VIS004 app/client.py:40:9 warning Controller.twice is public, but has no observed access outside its class
+VIS004 app/client.py:41:9 warning Controller.same is public, but has no observed access outside its class
+VIS004 app/client.py:43:9 warning Controller.name is public, but has no observed access outside its class
+VIS004 app/client.py:44:9 warning Controller.derived is public, but has no observed access outside its class
+VIS004 app/client.py:45:9 warning Controller.wrapped is public, but has no observed access outside its class
+VIS004 app/client.py:46:9 warning Controller.built is public, but has no observed access outside its class
+VIS004 app/client.py:47:9 warning Controller.generic is public, but has no observed access outside its class
+VIS004 app/client.py:48:9 warning Controller.counter is public, but has no observed access outside its class
+VIS004 app/client.py:50:9 warning Controller.dynamic is public, but has no observed access outside its class
+VIS004 app/client.py:54:9 warning Controller.later is public, but has no observed access outside its class

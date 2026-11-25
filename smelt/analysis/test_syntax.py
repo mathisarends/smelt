@@ -1429,9 +1429,6 @@ class TestSyntaxIndex:
             tuple(fixtures_by_path), load
         )
 
-    def collected_tests(self) -> int:
-        return sum(len(module.tests) for module in self.modules.values())
-
     def references(self) -> Iterator[tuple[str, TestReferences]]:
         for path, module in self.modules.items():
             yield (

@@ -1,0 +1,26 @@
+modules: 22, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 11, "governed": 5, "unclassified": 6, "uncovered": 0} complete=False
+ARC001 src/app/features/orders/domain/__init__.py:2:45 error member=. domain must not depend on application
+ARC002 src/app/features/orders/application/__init__.py:1:46 error member=. feature orders must not import feature billing (application -> application)
+ARC003 src/app/features/orders/domain/__init__.py:1:8 error member=. domain must not import requests (domain allows no third-party packages)
+ARC004 libs/core/src/core/application/__init__.py:1:25 error member=libs/core import cycle between concrete modules: core.application -> core.domain -> core.application
+ARC004 libs/core/src/core/application/__init__.py:1:25 error member=libs/core import cycle between modules in core: application -> domain -> application
+ARC004 libs/core/src/core/features/one/__init__.py:1:31 error member=libs/core import cycle between concrete modules: core.features.one -> core.features.two -> core.features.one
+ARC004 libs/core/src/core/features/one/__init__.py:1:31 error member=libs/core import cycle between modules in core.features: one -> two -> one
+ARC004 libs/tools/src/tools/a.py:1:21 error member=libs/tools import cycle between concrete modules: tools.a -> tools.b -> tools.a
+ARC004 libs/tools/src/tools/a.py:1:21 error member=libs/tools import cycle between modules in tools: a -> b -> a
+ARC004 src/app/loose.py:1:8 error member=. import cycle between concrete modules: app.loose -> core.loose -> app.loose
+ARC005 src/app/shared/__init__.py:1:40 error member=. shared module app.shared must not import feature orders
+ARC006 src/app/features/orders/application/__init__.py:2:22 error member=. app.features.orders.application must not import the composition root app.main
+ARC010 libs/core/src/core/loose.py:1:8 error member=libs/core member libs/core imports . without a declared dependency on root
+ARC010 libs/tools/src/tools/__init__.py:1:25 error member=libs/tools member libs/tools imports libs/core without a declared dependency on core
+ARC010 libs/tools/src/tools/__init__.py:2:22 error member=libs/tools member libs/tools imports . without a declared dependency on root
+ARC010 src/app/loose.py:1:8 error member=. member . imports libs/core without a declared dependency on core
+ARC013 libs/core/src/core/application/__init__.py:None:None error member=libs/core libs/core/src/core/application/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/core/src/core/loose.py:None:None error member=libs/core libs/core/src/core/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/tools/src/tools/a.py:None:None error member=libs/tools libs/tools/src/tools/a.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/tools/src/tools/b.py:None:None error member=libs/tools libs/tools/src/tools/b.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/features/billing/stray.py:None:None error member=. src/app/features/billing/stray.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/app/loose.py:None:None error member=. src/app/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC014 src/app/features/billing/__init__.py:None:None error member=. contract "slices" on app.features.billing is missing required module app.features.billing.domain
+VIS002 src/app/features/billing/stray.py:1:1 warning member=. X is public, but has no observed use outside its module or public-signature evidence

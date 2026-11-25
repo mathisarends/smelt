@@ -6,7 +6,7 @@ Development requires Python 3.12+ and Rust 1.98+ with rustfmt/clippy and a platf
 linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
 keys include the Cargo manifests and native Rust sources. `python -m smelt` keeps
 the direct Python entry point for debugging. Installed
-wheels include both the native client and the Python engine. Keep Cargo.toml's
+wheels include both the native client and the Python CLI. Keep Cargo.toml's
 version equal to pyproject.toml's version when releasing.
 
 Native interpreter launches use Python's safe-path mode so a project package named

@@ -1,0 +1,14 @@
+modules: 9, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 3, "governed": 2, "unclassified": 4, "uncovered": 4} complete=False
+ARC013 libs/core/src/core/domain/__init__.py:None:None error member=libs/core libs/core/src/core/domain/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/core/src/core/loose.py:None:None error member=libs/core libs/core/src/core/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 libs/flat/flat/__init__.py:None:None error member=libs/flat libs/flat/flat/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/flat/flat/module.py:None:None error member=libs/flat libs/flat/flat/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/ignored/src/ignored/__init__.py:None:None error member=. libs/ignored/src/ignored/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 libs/scripts/run.py:None:None error member=libs/scripts libs/scripts/run.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/app/loose.py:None:None error member=. src/app/loose.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 tools/cli/src/cli/main.py:None:None error member=tools/cli tools/cli/src/cli/main.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+TST006 libs/core/tests/test_core.py:1:None warning member=libs/core test_core has no recognized outcome assertion
+VIS002 libs/core/src/core/loose.py:1:1 warning member=libs/core X is public, but has no observed use outside its module or public-signature evidence
+VIS002 src/app/loose.py:1:1 warning member=. X is public, but has no observed use outside its module or public-signature evidence
+VIS002 tools/cli/src/cli/main.py:1:1 warning member=tools/cli X is public, but has no observed use outside its module or public-signature evidence

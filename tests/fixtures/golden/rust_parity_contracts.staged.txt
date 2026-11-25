@@ -1,0 +1,54 @@
+modules: 36, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 11, "governed": 0, "unclassified": 25, "uncovered": 0} complete=False
+ARC008 app/features/teams/application/create.py:5:1 hint app.features.teams.application.create.CreateTeam has 4 outside importers but is not exported by app.features.teams.application
+ARC008 app/features/teams/application/remove.py:1:1 hint app.features.teams.application.remove.RemoveTeam has 4 outside importers but is not exported by app.features.teams.application
+ARC008 app/shop/cart.py:17:1 hint app.shop.cart.Wagon has 2 outside importers but is not exported by app.shop
+ARC008 app/shop/cart.py:5:1 hint app.shop.cart.Basket has 2 outside importers but is not exported by app.shop
+ARC008 app/shop/cart.py:9:1 hint app.shop.cart.Bag has 2 outside importers but is not exported by app.shop
+ARC013 app/admin.py:None:None error app/admin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/admin_copy.py:None:None error app/admin_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/aliases.py:None:None error app/aliases.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/__init___copy.py:None:None error app/billing/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/internal/helpers.py:None:None error app/billing/internal/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/internal/helpers_copy.py:None:None error app/billing/internal/helpers_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/models/invoice.py:None:None error app/billing/models/invoice.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/storage.py:None:None error app/billing/storage.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/storage_copy.py:None:None error app/billing/storage_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/__init___copy.py:None:None error app/features/teams/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/application/create.py:None:None error app/features/teams/application/create.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/application/remove.py:None:None error app/features/teams/application/remove.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/application/remove_copy.py:None:None error app/features/teams/application/remove_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/delete_user.py:None:None error app/features/users/application/delete_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/delete_user_copy.py:None:None error app/features/users/application/delete_user_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/update_user.py:None:None error app/features/users/application/update_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/__init___copy.py:None:None error app/orders/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/service.py:None:None error app/orders/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/payments/__init___copy.py:None:None error app/payments/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/__init__.py:None:None error app/shop/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/cart.py:None:None error app/shop/cart.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/cart_copy.py:None:None error app/shop/cart_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/public.py:None:None error app/shop/public.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/typed.py:None:None error app/typed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/typed_copy.py:None:None error app/typed_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC014 app/billing/__init__.py:None:None error contract "billing-api" on app.billing is missing public entry point app.billing.api
+IMP001 app/admin_copy.py:1:8 hint app.admin_copy imports 3 modules of app.features.teams.application; consider its package facade
+IMP001 tests/test_teams_copy.py:1:51 hint tests.test_teams_copy imports 2 modules of app.features.teams.application; consider its package facade
+MOD009 app/billing/storage.py:1:1 warning Class Store is also defined in app.billing.storage_copy:1
+MOD009 app/billing/storage_copy.py:1:1 warning Class Store is also defined in app.billing.storage:1
+MOD009 app/features/teams/application/remove.py:1:1 warning Class RemoveTeam is also defined in app.features.teams.application.remove_copy:1
+MOD009 app/features/teams/application/remove_copy.py:1:1 warning Class RemoveTeam is also defined in app.features.teams.application.remove:1
+MOD009 app/features/users/application/delete_user.py:1:1 warning Class DeleteUser is also defined in app.features.users.application.delete_user_copy:1
+MOD009 app/features/users/application/delete_user_copy.py:1:1 warning Class DeleteUser is also defined in app.features.users.application.delete_user:1
+MOD009 app/shop/cart.py:13:1 warning Class Trolley is also defined in app.shop.cart_copy:13
+MOD009 app/shop/cart.py:17:1 warning Class Wagon is also defined in app.shop.cart_copy:17
+MOD009 app/shop/cart.py:1:1 warning Class Cart is also defined in app.shop.cart_copy:1
+MOD009 app/shop/cart.py:5:1 warning Class Basket is also defined in app.shop.cart_copy:5
+MOD009 app/shop/cart.py:9:1 warning Class Bag is also defined in app.shop.cart_copy:9
+MOD009 app/shop/cart_copy.py:13:1 warning Class Trolley is also defined in app.shop.cart:13
+MOD009 app/shop/cart_copy.py:17:1 warning Class Wagon is also defined in app.shop.cart:17
+MOD009 app/shop/cart_copy.py:1:1 warning Class Cart is also defined in app.shop.cart:1
+MOD009 app/shop/cart_copy.py:5:1 warning Class Basket is also defined in app.shop.cart:5
+MOD009 app/shop/cart_copy.py:9:1 warning Class Bag is also defined in app.shop.cart:9
+VIS001 app/billing/internal/helpers_copy.py:1:1 warning helper is public, but has no observed use outside its module
+VIS002 app/admin_copy.py:7:1 warning ADMIN is public, but has no observed use outside its module or public-signature evidence
+VIS005 app/admin_copy.py:4:62 warning production code accesses private module symbol app.shop.cart._Secret

@@ -1,0 +1,58 @@
+modules: 33, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 11, "governed": 0, "unclassified": 22, "uncovered": 0} complete=False
+ARC004 app/admin.py:1:8 error import cycle between modules in app: admin -> features -> admin
+ARC007 app/alias_user.py:1:25 error app.alias_user imports private module app.billing.storage of contract "billing-api"
+ARC007 app/aliases.py:1:25 error app.aliases imports private module app.billing.storage of contract "billing-api"
+ARC007 app/client.py:1:8 error app.client imports private module app.billing.storage of contract "billing-api"
+ARC007 app/client.py:2:8 error app.client imports private module app.orders of contract "orders-closed"
+ARC007 app/client.py:3:30 error app.client imports private module app.billing.internal of contract "billing-api"
+ARC007 app/client.py:4:34 error app.client imports private module app.billing.internal.helpers of contract "billing-api"
+ARC007 app/client.py:6:33 error app.client imports private module app.billing.storage of contract "billing-api"
+ARC007 app/client.py:7:24 error app.client imports private module app.orders.service of contract "orders-closed"
+ARC007 app/client.py:9:34 error app.client imports private module app.payments.gateway of contract "payments-api"
+ARC007 tests/billing/test_storage.py:1:33 error tests.billing.test_storage imports private module app.billing.storage of contract "billing-api"
+ARC007 tests/conftest.py:1:33 error tests.conftest imports private module app.billing.storage of contract "billing-api"
+ARC007 tests/test_flow.py:1:32 error tests.test_flow imports private module app.orders.service of contract "orders-closed"
+ARC008 app/features/teams/application/create.py:4:1 hint app.features.teams.application.create.CreateTeam has 2 outside importers but is not exported by app.features.teams.application
+ARC008 app/features/teams/application/remove.py:1:1 hint app.features.teams.application.remove.RemoveTeam has 2 outside importers but is not exported by app.features.teams.application
+ARC008 app/features/users/application/get_user.py:1:1 hint app.features.users.application.get_user.GetUser has 2 outside importers but is not exported by app.features.users.application
+ARC008 app/features/users/application/update_user.py:1:1 hint app.features.users.application.update_user.UpdateUser has 2 outside importers but is not exported by app.features.users.application
+ARC008 app/shop/cart.py:17:1 hint app.shop.cart.Wagon has 2 outside importers but is not exported by app.shop
+ARC008 app/shop/cart.py:5:1 hint app.shop.cart.Basket has 2 outside importers but is not exported by app.shop
+ARC008 app/shop/cart.py:9:1 hint app.shop.cart.Bag has 2 outside importers but is not exported by app.shop
+ARC013 app/admin.py:None:None error app/admin.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/alias_user.py:None:None error app/alias_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/aliases.py:None:None error app/aliases.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/api.py:None:None error app/billing/api.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/internal/helpers.py:None:None error app/billing/internal/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/models/invoice.py:None:None error app/billing/models/invoice.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/billing/storage.py:None:None error app/billing/storage.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/client.py:None:None error app/client.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/application/create.py:None:None error app/features/teams/application/create.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/teams/application/remove.py:None:None error app/features/teams/application/remove.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/delete_user.py:None:None error app/features/users/application/delete_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/get_user.py:None:None error app/features/users/application/get_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/features/users/application/update_user.py:None:None error app/features/users/application/update_user.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/repository.py:None:None error app/orders/repository.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/orders/service.py:None:None error app/orders/service.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/payments/gateway.py:None:None error app/payments/gateway.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/__init__.py:None:None error app/shop/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/cart.py:None:None error app/shop/cart.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/dynamic.py:None:None error app/shop/dynamic.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/shop/public.py:None:None error app/shop/public.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/typed.py:None:None error app/typed.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 app/web.py:None:None error app/web.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+IMP001 app/admin.py:1:8 hint app.admin imports 3 modules of app.features.teams.application; consider its package facade
+IMP001 app/web.py:1:56 hint app.web imports 3 modules of app.features.users.application; consider its package facade
+IMP001 tests/test_teams.py:1:51 hint tests.test_teams imports 2 modules of app.features.teams.application; consider its package facade
+IMP001 tests/test_web.py:1:53 hint tests.test_web imports 2 modules of app.features.users.application; consider its package facade
+IMP004 app/client.py:9:1 hint fix import these names from the existing app.payments package API
+LAY004 app/shop/__init__.py:3:None error fix definitions in module have 1 avoidable ordering inversion(s)
+LAY009 app/features/users/application/delete_user.py:None:None hint module name "delete_user" repeats "user" from package "app.features.users"
+LAY009 app/features/users/application/get_user.py:None:None hint module name "get_user" repeats "user" from package "app.features.users"
+LAY009 app/features/users/application/update_user.py:None:None hint module name "update_user" repeats "user" from package "app.features.users"
+LAY010 app/shop/public.py:1:19 hint app.shop.public only re-exports imported names
+VIS001 app/billing/internal/helpers.py:1:1 warning helper is public, but has no observed use outside its module
+VIS003 app/shop/public.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS005 app/admin.py:4:62 warning production code accesses private module symbol app.shop.cart._Secret
+VIS009 app/orders/service.py:4:None warning app.orders.service.place is public; unused outside tests among analyzed modules

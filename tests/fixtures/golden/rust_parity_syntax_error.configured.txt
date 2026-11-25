@@ -1,0 +1,7 @@
+modules: 7, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 5, "unclassified": 1, "uncovered": 0} complete=False
+ARC012 shop/helpers.py:None:None warning shop.helpers is not part of a feature, layer, shared or composition root
+LAY007 deploy/settings.yml:None:None warning filename must use .yaml: deploy/settings.yml
+LAY007 smelt.yml:None:None warning filename must use .yaml: smelt.yml
+LAY009 shop/infra/infra_repository.py:None:None warning module name "infra_repository" repeats "infra" from package "shop.infra"
+MET001 shop/domain/broken.py:1:14 warning fix unknown suppression identifiers (no-such-rule)

@@ -1,0 +1,2 @@
+modules: 25, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 7, "governed": 0, "unclassified": 18, "uncovered": 0} complete=False

@@ -1,0 +1,11 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+LAY004 shop/cart.py:11:None error imports appear after later definition groups
+LAY004 shop/checkout.py:15:None error imports appear after later definition groups
+LAY004 shop/ignored_caller.py:8:None error imports appear after later definition groups
+LAY004 shop/orders/__init__.py:8:None error imports appear after later definition groups
+LAY009 shop/orders/order_copy.py:None:None hint module name "order_copy" repeats "order" from package "shop.orders"
+MOD009 shop/orders/order.py:1:1 warning Class Order is also defined in shop.orders.order_copy:1
+MOD009 shop/orders/order.py:5:1 warning Class Draft is also defined in shop.orders.order_copy:5
+MOD009 shop/orders/order_copy.py:1:1 warning Class Order is also defined in shop.orders.order:1
+MOD009 shop/orders/order_copy.py:5:1 warning Class Draft is also defined in shop.orders.order:5

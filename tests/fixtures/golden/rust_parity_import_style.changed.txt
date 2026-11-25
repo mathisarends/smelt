@@ -1,0 +1,16 @@
+modules: 16, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 10, "uncovered": 0} complete=False
+IMP003 single/alone_copy.py:3:1 error style expects a relative import of single.sibling
+IMP003 single/alone_copy.py:4:1 error fix style expects a relative import of single
+IMP003 single/alone_copy.py:5:1 error fix style expects a relative import of single.sibling
+IMP003 styled/a_copy.py:10:5 error fix style expects a relative import of styled.b
+IMP003 styled/a_copy.py:2:1 error fix style expects a relative import of styled.b
+IMP003 styled/a_copy.py:4:1 error style expects a relative import of styled.b
+IMP003 styled/deep/one/two/leaf_copy.py:1:1 error fix contract "deep_part" expects a relative import of styled.deep.one.two
+IMP003 styled/deep/one/two/leaf_copy.py:2:1 error fix contract "deep_part" expects a relative import of styled.deep.one
+IMP003 styled/deep/one/two/leaf_copy.py:3:1 error fix contract "deep_part" expects a relative import of styled.deep
+IMP003 styled/deep/one/two/leaf_copy.py:5:1 error fix contract "deep_part" expects an absolute import of styled
+IMP003 styled/deep/one/two/leaf_copy.py:7:1 error contract "deep_part" expects a relative import of styled.deep.one.two.sibling
+IMP003 styled/strict/mod_copy.py:1:1 error fix contract "absolute_part" expects an absolute import of styled.strict
+IMP003 styled/strict/mod_copy.py:2:1 error fix contract "absolute_part" expects an absolute import of styled.strict.other
+IMP003 styled/strict/mod_copy.py:4:1 error fix contract "absolute_part" expects an absolute import of styled.a

@@ -1,0 +1,7 @@
+modules: 15, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 6, "governed": 0, "unclassified": 9, "uncovered": 0} complete=False
+ARC008 shop/billing/invoice.py:1:1 hint shop.billing.invoice.Invoice has 3 outside importers but is not exported by shop.billing
+MET004 base.yml:5:3 warning rules.imports/forbidden-import-style enables imports/forbidden-import-style without style.imports
+MET004 smelt.yml:25:9 warning style.overrides.legacy.rules.architecture/missing-facade-export enables architecture/missing-facade-export without architecture.packages.<name>.min_importers_to_export
+MET005 shop/catalog/__init__.py:1:1 hint shop.catalog does not re-export 2 names that 3 outside modules import from 1 implementation modules, so imports/prefer-package-import cannot apply
+MET005 shop/orders/__init__.py:1:1 hint shop.orders does not re-export 1 names that 2 outside modules import from 1 implementation modules, so imports/prefer-package-import cannot apply

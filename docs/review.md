@@ -60,7 +60,7 @@ DI resource ownership, route operation IDs, typed process contracts and
 discriminated unions. Module presence and legal imports do not establish those
 properties. Mirrored test paths do not establish useful behavioral assertions.
 
-The Python engine accepts custom RuleSets, but the CLI registry is fixed. Decide
+The native core runs only the built-in rules. Decide
 between a small, versioned interface for explicitly installed rule packs and a
 documented companion-tool workflow. Do not hardcode one project's conventions
 into built-in rules or execute arbitrary discovered project plugins.

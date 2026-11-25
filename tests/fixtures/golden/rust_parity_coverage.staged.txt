@@ -1,0 +1,71 @@
+modules: 71, suppressed: 0, in debt: 0
+coverage: {"excluded": 2, "facade": 19, "governed": 6, "unclassified": 46, "uncovered": 8} complete=False
+ARC013 None:None:None error exclusion "src/shop/legacy/**" has no coverage reason
+ARC013 extra/9lives/module.py:None:None error extra/9lives/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 extra/tool.py:None:None error extra/tool.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 extra/tool_copy.py:None:None error extra/tool_copy.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 scripts/outside.py:None:None error scripts/outside.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/__init__.py:None:None error src/other/__init__.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/dotted.name.py:None:None error src/other/dotted.name.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/module.py:None:None error src/other/module.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/other/module_copy.py:None:None error src/other/module_copy.py is uncovered: Not selected by project.root_packages/source_roots, or not an importable module.
+ARC013 src/shop/checks/test_shop.py:None:None error src/shop/checks/test_shop.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/checks/test_shop_copy.py:None:None error src/shop/checks/test_shop_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/attribute_target/__init__.py:None:None error src/shop/facades/attribute_target/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bare_annotation/__init__.py:None:None error src/shop/facades/bare_annotation/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bare_annotation/__init___copy.py:None:None error src/shop/facades/bare_annotation/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bool_negative/__init__.py:None:None error src/shop/facades/bool_negative/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bytes_doc/__init__.py:None:None error src/shop/facades/bytes_doc/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/bytes_doc/__init___copy.py:None:None error src/shop/facades/bytes_doc/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/call/__init__.py:None:None error src/shop/facades/call/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/complex_left/__init__.py:None:None error src/shop/facades/complex_left/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/concat/__init__.py:None:None error src/shop/facades/concat/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/concat/__init___copy.py:None:None error src/shop/facades/concat/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/double_negative/__init__.py:None:None error src/shop/facades/double_negative/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/elif_other/__init__.py:None:None error src/shop/facades/elif_other/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/elif_other/__init___copy.py:None:None error src/shop/facades/elif_other/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/fstring/__init__.py:None:None error src/shop/facades/fstring/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/function/__init__.py:None:None error src/shop/facades/function/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/function/__init___copy.py:None:None error src/shop/facades/function/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/if_other/__init__.py:None:None error src/shop/facades/if_other/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/metadata/__init___copy.py:None:None error src/shop/facades/metadata/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/negated/__init__.py:None:None error src/shop/facades/negated/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/other_name/__init__.py:None:None error src/shop/facades/other_name/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/other_name/__init___copy.py:None:None error src/shop/facades/other_name/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/spread/__init__.py:None:None error src/shop/facades/spread/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/star_handler/__init__.py:None:None error src/shop/facades/star_handler/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/starred/__init__.py:None:None error src/shop/facades/starred/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/starred/__init___copy.py:None:None error src/shop/facades/starred/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/tuple_handler/__init__.py:None:None error src/shop/facades/tuple_handler/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/type_checking/__init___copy.py:None:None error src/shop/facades/type_checking/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_key/__init__.py:None:None error src/shop/facades/unhashable_key/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_set/__init__.py:None:None error src/shop/facades/unhashable_set/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_set/__init___copy.py:None:None error src/shop/facades/unhashable_set/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/unhashable_tuple/__init__.py:None:None error src/shop/facades/unhashable_tuple/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_all/__init__.py:None:None error src/shop/facades/version_all/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_all/__init___copy.py:None:None error src/shop/facades/version_all/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_kwargs/__init__.py:None:None error src/shop/facades/version_kwargs/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_kwargs/__init___copy.py:None:None error src/shop/facades/version_kwargs/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_plain/__init___copy.py:None:None error src/shop/facades/version_plain/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/facades/version_unknown/__init__.py:None:None error src/shop/facades/version_unknown/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/main_copy.py:None:None error src/shop/main_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/application/__init__.py:None:None error src/shop/orders/application/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/domain/__init___copy.py:None:None error src/shop/orders/domain/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/helpers.py:None:None error src/shop/orders/helpers.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/tests/test_orders.py:None:None error src/shop/orders/tests/test_orders.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/orders/tests/test_orders_copy.py:None:None error src/shop/orders/tests/test_orders_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 src/shop/wiring_copy.py:None:None error src/shop/wiring_copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+LAY009 src/shop/orders/tests/test_orders_copy.py:None:None hint module name "test_orders_copy" repeats "test" from package "shop.orders.tests"
+VIS001 src/shop/checks/test_shop_copy.py:1:1 warning test_shop is public, but has no observed use outside its module
+VIS001 src/shop/facades/function/__init___copy.py:1:1 warning build is public, but has no observed use outside its module
+VIS001 src/shop/main_copy.py:1:1 warning run is public, but has no observed use outside its module
+VIS001 src/shop/orders/tests/test_orders_copy.py:1:1 warning test_orders is public, but has no observed use outside its module
+VIS001 src/shop/wiring_copy.py:1:1 warning wire is public, but has no observed use outside its module
+VIS002 src/shop/facades/other_name/__init___copy.py:1:1 warning VERSION is public, but has no observed use outside its module or public-signature evidence
+VIS003 src/shop/facades/bare_annotation/__init___copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/concat/__init___copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/metadata/__init___copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/metadata/__init___copy.py:3:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/starred/__init___copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/unhashable_set/__init___copy.py:1:1 error declare __all__ in __init__.py instead of an ordinary module
+VIS003 src/shop/facades/version_all/__init___copy.py:2:1 error declare __all__ in __init__.py instead of an ordinary module

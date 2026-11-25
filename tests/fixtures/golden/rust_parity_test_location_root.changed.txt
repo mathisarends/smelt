@@ -1,0 +1,22 @@
+modules: 28, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 10, "governed": 0, "unclassified": 18, "uncovered": 0} complete=False
+LAY004 src/app/billing/payment.py:5:None error imports appear after later definition groups
+LAY004 src/app/errors.py:5:None error imports appear after later definition groups
+LAY004 src/app/health/presentation/router.py:5:None error imports appear after later definition groups
+LAY004 src/app/orders/repository.py:5:None error imports appear after later definition groups
+LAY004 src/app/other/service.py:5:None error imports appear after later definition groups
+LAY004 src/app/session/infrastructure/repository.py:5:None error imports appear after later definition groups
+TST001 tests/app/billing/test_invoice_rounding.py:None:None error test_invoice_rounding.py has no source module at its mirrored path src/app/billing/invoice_rounding.py
+TST001 tests/other/test_service_copy.py:None:None error test_service_copy.py has no source module at its mirrored path src/app/service_copy.py
+TST012 src/app/billing/payment.py:1:None warning app.billing.payment has no test at its mirrored path tests/app/billing/test_payment.py
+TST012 src/app/health/presentation/router.py:1:None warning app.health.presentation.router has no test at its mirrored path tests/app/health/presentation/test_router.py
+TST012 src/app/memory_copy.py:1:None warning app.memory_copy has no test at its mirrored path tests/app/test_memory_copy.py
+TST012 src/app/orders/repository.py:1:None warning app.orders.repository has no test at its mirrored path tests/app/orders/test_repository.py
+TST012 src/app/orders/service_copy.py:1:None warning app.orders.service_copy has no test at its mirrored path tests/app/orders/test_service_copy.py
+TST012 src/app/other/service.py:1:None warning app.other.service has no test at its mirrored path tests/app/other/test_service.py
+TST012 src/app/session/infrastructure/repository.py:1:None warning app.session.infrastructure.repository has no test at its mirrored path tests/app/session/infrastructure/test_repository.py
+TST012 src/lib/tools_copy.py:1:None warning lib.tools_copy has no test at its mirrored path tests/lib/test_tools_copy.py
+VIS001 src/app/billing/payment.py:2:1 warning pay is public, but has no observed use outside its module
+VIS001 src/app/memory_copy.py:1:1 warning remember is public, but has no observed use outside its module
+VIS001 src/app/orders/service_copy.py:1:1 warning place is public, but has no observed use outside its module
+VIS001 src/lib/tools_copy.py:1:1 warning tool is public, but has no observed use outside its module

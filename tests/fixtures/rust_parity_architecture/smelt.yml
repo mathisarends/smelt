@@ -1,4 +1,4 @@
-# Architecture boundaries the Rust core must report exactly like the Python engine.
+# Architecture boundaries whose findings the golden reports keep.
 version: 2
 
 project:

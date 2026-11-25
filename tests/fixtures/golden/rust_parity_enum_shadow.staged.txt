@@ -1,0 +1,4 @@
+modules: 3, suppressed: 0, in debt: 0
+coverage: {"excluded": 0, "facade": 1, "governed": 0, "unclassified": 2, "uncovered": 0} complete=False
+ARC013 enum/__init__.py:None:None error enum/__init__.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.
+ARC013 other/__init___copy.py:None:None error other/__init___copy.py is unclassified: No architecture layer or explicit shared, wiring or composition-root policy.

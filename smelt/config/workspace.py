@@ -123,22 +123,6 @@ def architecture_scopes(config: SmeltConfig) -> tuple[ArchitectureScope, ...]:
     )
 
 
-def scope_for_path(
-    scopes: tuple[ArchitectureScope, ...], path: str | None
-) -> ArchitectureScope:
-    """The innermost member scope containing ``path``; else the root scope."""
-    owners = [
-        scope
-        for scope in scopes
-        if scope.member is not None
-        and path is not None
-        and (path == scope.member or path.startswith(scope.member + "/"))
-    ]
-    if owners:
-        return max(owners, key=lambda scope: len(scope.member or ""))
-    return scopes[0]
-
-
 def member_config_files(
     root: Path, *, store: SourceStore | None = None
 ) -> dict[str, Path]:
