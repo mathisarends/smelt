@@ -1,5 +1,6 @@
 //! Debt files as `smelt.diagnostics.debt.Debt` reads and matches them.
 use super::finding::Finding;
+use super::pyjson::truthy;
 use super::pytext::{display, squash};
 use crate::checker::renames::{current_code, legacy_code};
 use serde_json::{Map, Value};
@@ -245,17 +246,6 @@ fn scope(finding: &Finding) -> Option<&str> {
     value
         .and_then(Value::as_str)
         .filter(|scope| !scope.is_empty())
-}
-
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(number) => number.as_f64().is_some_and(|number| number != 0.0),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(items) => !items.is_empty(),
-        Value::Object(entries) => !entries.is_empty(),
-    }
 }
 
 fn fingerprints(finding: &Finding, edges: &[String], snippet: &str) -> Vec<String> {

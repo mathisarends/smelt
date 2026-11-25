@@ -399,23 +399,6 @@ fn dump_architecture(architecture: &mut Value) {
     if let Some(entries) = architecture.as_object_mut() {
         entries.shift_remove("__set__");
     }
-    // A `{from, to}` allowance dumps its field names, as pydantic does.
-    let allowances = architecture
-        .get_mut("cross_feature")
-        .and_then(|cross_feature| cross_feature.get_mut("allow"))
-        .and_then(Value::as_array_mut);
-    for allowance in allowances.into_iter().flatten() {
-        if let Some(entries) = allowance.as_object_mut() {
-            *entries = std::mem::take(entries)
-                .into_iter()
-                .map(|(key, value)| match key.as_str() {
-                    "from" => ("source".to_owned(), value),
-                    "to" => ("target".to_owned(), value),
-                    _ => (key, value),
-                })
-                .collect();
-        }
-    }
 }
 
 fn dump_structure(structure: &Value) -> Value {

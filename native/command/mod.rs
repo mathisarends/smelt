@@ -5,6 +5,7 @@
 //! anything else, and for every error, it returns `None` and the launcher runs
 //! the Python CLI, which reports the error exactly. `SMELT_NATIVE_CHECK=0`
 //! always runs the Python CLI.
+mod activation;
 mod args;
 mod changes;
 mod coverage;
@@ -241,20 +242,36 @@ fn debt_scope_for_path<'s>(scopes: &'s [DebtScope], path: Option<&str>) -> Optio
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-fn match_debt(
-    loaded: &LoadedConfig,
-    policy: &Policy,
-    catalog: &Catalog,
-    resolved: &[Resolved],
-    sources: &HashMap<String, String>,
-    active: &HashMap<&str, Severity>,
-    args: &Args,
+/// What matching findings against the debt files reads.
+struct DebtInputs<'a> {
+    loaded: &'a LoadedConfig,
+    policy: &'a Policy<'a>,
+    catalog: &'a Catalog,
+    resolved: &'a [Resolved],
+    sources: &'a HashMap<String, String>,
+    active: &'a HashMap<&'a str, Severity>,
+    args: &'a Args,
+    /// Whether the check covers only part of the project.
     partial: bool,
+    staged: Option<&'a Staged>,
+}
+
+fn match_debt(
+    inputs: &DebtInputs<'_>,
     mut findings: Vec<Finding>,
     lines: &mut Lines,
-    staged: Option<&Staged>,
 ) -> Option<Debt> {
+    let DebtInputs {
+        loaded,
+        policy,
+        catalog,
+        resolved,
+        sources,
+        active,
+        args,
+        partial,
+        staged,
+    } = *inputs;
     let scopes = if args.no_debt {
         Vec::new()
     } else {
@@ -521,20 +538,19 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         root: &root,
         files: HashMap::new(),
     };
-    let debt = match_debt(
-        &loaded,
-        &policy,
-        &catalog,
-        &resolved,
-        &inventory.sources,
-        &severities,
+    let inputs = DebtInputs {
+        loaded: &loaded,
+        policy: &policy,
+        catalog: &catalog,
+        resolved: &resolved,
+        sources: &inventory.sources,
+        active: &severities,
         args,
-        !scope.is_empty() || comparison.is_some(),
-        findings,
-        &mut lines,
-        staged.as_ref(),
-    )
-    .ok_or("a debt file the Python engine reports")?;
+        partial: !scope.is_empty() || comparison.is_some(),
+        staged: staged.as_ref(),
+    };
+    let debt =
+        match_debt(&inputs, findings, &mut lines).ok_or("a debt file the Python engine reports")?;
     let mut findings = debt.findings;
     if let Some(before) = outcome.baseline {
         // Only the findings the compared commit did not have are reported.
