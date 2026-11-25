@@ -8,8 +8,9 @@ use crate::checker::config::TestPolicy;
 use crate::checker::patterns::PathPattern;
 use crate::checker::settings::CatalogRule;
 use crate::checker::violation::Violation;
+use ruff_python_ast::visitor::{self, Visitor};
 use ruff_python_ast::{Alias, Expr, Stmt};
-use ruff_text_size::{Ranged, TextSize};
+use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -38,6 +39,22 @@ const GENERATORS: [&str; 19] = [
     "random.uniform",
     "random.getrandbits",
     "random.randbytes",
+];
+
+const CLOCKS: [&str; 6] = [
+    "datetime.datetime.now",
+    "datetime.datetime.utcnow",
+    "datetime.datetime.today",
+    "datetime.date.today",
+    "time.time",
+    "time.time_ns",
+];
+
+/// Calls that freeze or travel the clock for the code they decorate or enclose.
+const CLOCK_FREEZERS: [&str; 3] = [
+    "freezegun.freeze_time",
+    "time_machine.travel",
+    "pytest.mark.freeze_time",
 ];
 
 /// The project facts test rules read.
@@ -490,25 +507,132 @@ fn missing_awaits(report: &Report<'_, '_>) -> Vec<Violation> {
 
 fn nondeterministic(report: &Report<'_, '_>) -> Vec<Violation> {
     let module = report.module;
+    let frozen = frozen_ranges(module);
     let mut calls: BTreeMap<usize, BTreeSet<&str>> = BTreeMap::new();
     for call in &module.calls {
-        if GENERATORS.contains(&call.qualified.as_str()) {
-            calls
-                .entry(module.line(call.node.start()))
-                .or_default()
-                .insert(call.qualified.as_str());
+        let qualified = call.qualified.as_str();
+        let clock = CLOCKS.contains(&qualified);
+        if !(clock || GENERATORS.contains(&qualified)) {
+            continue;
         }
+        if clock
+            && frozen
+                .iter()
+                .any(|range| range.contains_range(call.node.range()))
+        {
+            continue;
+        }
+        calls
+            .entry(module.line(call.node.start()))
+            .or_default()
+            .insert(qualified);
     }
     calls
         .into_iter()
         .map(|(line, generators)| {
+            let clocks = generators
+                .iter()
+                .filter(|name| CLOCKS.contains(name))
+                .count();
+            let (message, hint) = if clocks == generators.len() {
+                (
+                    "review wall-clock test data; prefer a fixed instant or an injected clock",
+                    "Pass a fixed instant such as datetime(2026, 1, 1, tzinfo=UTC) or an injected clock or now parameter; a freeze_time or time_machine.travel context also counts. Keep tests of clock adapters with a specific reason.",
+                )
+            } else if clocks == 0 {
+                (
+                    "review random test data; prefer fixed inputs or a seeded local generator",
+                    "Use fixed IDs/values for incidental setup; keep intentional randomness tests with a specific reason.",
+                )
+            } else {
+                (
+                    "review random and wall-clock test data; prefer fixed inputs and a fixed instant",
+                    "Use fixed IDs/values and a fixed instant or injected clock for incidental setup; keep intentional randomness and clock tests with a specific reason.",
+                )
+            };
             report.at_line(
-                "review random test data; prefer fixed inputs or a seeded local generator"
-                    .to_owned(),
+                message.to_owned(),
                 line,
                 json!({"generators": generators, "automatic_rewrite": false}),
-                "Use fixed IDs/values for incidental setup; keep intentional randomness tests with a specific reason.",
+                hint,
             )
         })
         .collect()
+}
+
+/// The code a freeze_time or time_machine context or decorator runs on a fixed clock.
+///
+/// Tests that request pytest-freezer's `freezer` fixture run frozen as a whole.
+fn frozen_ranges(module: &TestModule<'_>) -> Vec<TextRange> {
+    let freezers: HashSet<TextRange> = module
+        .calls
+        .iter()
+        .filter(|call| CLOCK_FREEZERS.contains(&call.qualified.as_str()))
+        .map(|call| call.node.range())
+        .collect();
+    let mut collector = FrozenCode {
+        freezers: &freezers,
+        found: Vec::new(),
+    };
+    if !freezers.is_empty() {
+        collector.visit_body(&module.parsed.module().body);
+    }
+    for test in &module.tests {
+        let parameters = &test.node.parameters;
+        if parameters
+            .iter_non_variadic_params()
+            .any(|parameter| parameter.parameter.name.as_str() == "freezer")
+        {
+            collector.found.push(test.node.range());
+        }
+    }
+    collector.found
+}
+
+struct FrozenCode<'f> {
+    freezers: &'f HashSet<TextRange>,
+    found: Vec<TextRange>,
+}
+
+impl FrozenCode<'_> {
+    fn freezes(&self, expression: &Expr) -> bool {
+        self.freezers.contains(&expression.range())
+    }
+}
+
+impl<'a> Visitor<'a> for FrozenCode<'_> {
+    fn visit_stmt(&mut self, statement: &'a Stmt) {
+        match statement {
+            Stmt::With(node)
+                if node
+                    .items
+                    .iter()
+                    .any(|item| self.freezes(&item.context_expr)) =>
+            {
+                if let (Some(first), Some(last)) = (node.body.first(), node.body.last()) {
+                    self.found.push(TextRange::new(first.start(), last.end()));
+                }
+            }
+            Stmt::FunctionDef(node)
+                if node
+                    .decorator_list
+                    .iter()
+                    .any(|decorator| self.freezes(&decorator.expression)) =>
+            {
+                self.found.push(node.range());
+            }
+            Stmt::ClassDef(node)
+                if node
+                    .decorator_list
+                    .iter()
+                    .any(|decorator| self.freezes(&decorator.expression)) =>
+            {
+                self.found.push(node.range());
+            }
+            _ => {}
+        }
+        visitor::walk_stmt(self, statement);
+    }
+
+    fn visit_expr(&mut self, _expression: &'a Expr) {}
 }
