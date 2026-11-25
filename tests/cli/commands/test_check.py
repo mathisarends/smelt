@@ -105,6 +105,37 @@ def test_native_changed_check_writes_the_python_report(
 ) -> None:
     if not NATIVE.is_file():
         pytest.skip("install the native client")
+    root, _ = _changed_repository(tmp_path)
+    code, report, fell_back = _check(root, COMPARISONS[variant], native=True)
+
+    assert (code, report) == _check(root, COMPARISONS[variant], native=False)[:2]
+    assert not fell_back
+
+
+@pytest.mark.parametrize("variant", COMPARISONS)
+def test_native_staged_check_writes_the_python_report(
+    tmp_path: Path, variant: str
+) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    root, restored = _changed_repository(tmp_path)
+    staged = restored[: len(restored) // 2 + 1]
+    for path in staged:
+        _git(root, "add", path.relative_to(root).as_posix())
+    # Edits only the working tree has, which a staged check must not read.
+    with staged[0].open("a", encoding="utf-8") as source:
+        source.write("\nimport os\nvalue = eval('1')\n")
+    with (root / "smelt.yml").open("a", encoding="utf-8") as config:
+        config.write("\nnot: [valid\n")
+    args = ("--staged", *(arg for arg in COMPARISONS[variant] if arg != "--changed"))
+    code, report, fell_back = _check(root, args, native=True)
+
+    assert (code, report) == _check(root, args, native=False)[:2]
+    assert not fell_back
+
+
+def _changed_repository(tmp_path: Path) -> tuple[Path, list[Path]]:
+    """A fixture project committed with every other source emptied, then restored."""
     root = tmp_path / "project"
     shutil.copytree(FIXTURES / "rust_parity_architecture", root)
     sources = sorted(root.rglob("*.py"))[::2]
@@ -118,10 +149,7 @@ def test_native_changed_check_writes_the_python_report(
     # The restored files are what changed since the commit.
     for path, content in contents.items():
         path.write_bytes(content)
-    code, report, fell_back = _check(root, COMPARISONS[variant], native=True)
-
-    assert (code, report) == _check(root, COMPARISONS[variant], native=False)[:2]
-    assert not fell_back
+    return root, sources
 
 
 def _git(root: Path, *args: str) -> None:

@@ -14,6 +14,7 @@ mod policy;
 mod pyjson;
 mod pytext;
 mod report;
+mod staged;
 mod text;
 mod validate;
 
@@ -26,6 +27,7 @@ use finding::{Finding, Severity};
 use policy::{Catalog, Policy, Resolved, Rule};
 use report::{Diagnostic, Report};
 use serde_json::{Map, Value, json};
+use staged::Staged;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
@@ -246,6 +248,7 @@ fn match_debt(
     partial: bool,
     mut findings: Vec<Finding>,
     lines: &mut Lines,
+    staged: Option<&Staged>,
 ) -> Option<Debt> {
     let scopes = if args.no_debt {
         Vec::new()
@@ -260,11 +263,17 @@ fn match_debt(
     let mut in_debt = 0;
     for scope in &scopes {
         let file = root.join(&scope.path);
-        let entries = if vfs::is_file(&file) {
-            let bytes = vfs::read(&file).ok()?;
-            debt::parse(std::str::from_utf8(&bytes).ok()?).ok()?
-        } else {
-            Vec::new()
+        // A staged check reads the debt the index stages.
+        let bytes = match staged {
+            Some(staged) => staged.read(&file).transpose().ok()?,
+            None => vfs::is_file(&file)
+                .then(|| vfs::read(&file))
+                .transpose()
+                .ok()?,
+        };
+        let entries = match bytes {
+            Some(bytes) => debt::parse(std::str::from_utf8(&bytes).ok()?).ok()?,
+            None => Vec::new(),
         };
         let mut kept = Vec::new();
         for entry in entries {
@@ -332,11 +341,35 @@ fn trace(reason: &str) {
 /// The report text and exit code, or why the Python CLI runs instead.
 fn run(args: &Args) -> Result<(String, i32), &'static str> {
     let cwd = env::current_dir().map_err(|_| "no working directory")?;
-    let config_path = locate(
-        &cwd,
-        args.config.as_deref().filter(|config| !config.is_empty()),
-    )
-    .ok_or("no configuration file")?;
+    let explicit = args.config.as_deref().filter(|config| !config.is_empty());
+    // A staged check reads its project, configuration included, from the index.
+    let staged = if args.staged {
+        Some(profile::time("capture staged index", || {
+            Staged::capture(&cwd)
+        })?)
+    } else {
+        None
+    };
+    let (here, config_path) = match &staged {
+        Some(staged) => {
+            let here = staged.locate(&cwd)?;
+            // Unlike a working-tree check, `--config ""` names the directory itself.
+            let config = match args.config.as_deref() {
+                Some(config) => {
+                    let path = staged.locate(&staged::lexical(&cwd.join(config)))?;
+                    vfs::is_file(&path).then_some(path)
+                }
+                None => locate(&here, None),
+            }
+            .filter(|path| staged.contains(path))
+            .ok_or("no configuration file in the staged index")?;
+            (here, config)
+        }
+        None => {
+            let config = locate(&cwd, explicit).ok_or("no configuration file")?;
+            (cwd.clone(), config)
+        }
+    };
     let mut loaded = profile::time("load configuration", || load_config(&config_path))
         .map_err(|_| "a configuration error")?;
     if args.config.as_deref().is_none_or(str::is_empty)
@@ -344,7 +377,7 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     {
         // Started inside a workspace member: the check reports that member.
         let root = loaded.path.parent().ok_or("no project root")?;
-        let here = paths::resolve(&cwd);
+        let here = paths::resolve(&here);
         let owner = member_directories(root, false)
             .unwrap_or_default()
             .into_iter()
@@ -361,7 +394,14 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     let catalog = Catalog::load(CATALOG).ok_or("an unreadable rule catalog")?;
     let root = loaded.path.parent().ok_or("no project root")?.to_path_buf();
     let scope =
-        scope(&loaded, &root, &cwd, &args.paths).ok_or("a check path outside the project")?;
+        scope(&loaded, &root, &here, &args.paths).ok_or("a check path outside the project")?;
+    if let Some(staged) = &staged {
+        let debt: Vec<String> = debt_scopes(&loaded.config)
+            .into_iter()
+            .map(|scope| scope.path)
+            .collect();
+        staged.validate(&loaded, &debt)?;
+    }
     let mut layers: Vec<Value> = rule_layers(&loaded.config).into_iter().cloned().collect();
     let configured_strict = policy::strict_coverage(&layers);
     if args.strict_coverage && !configured_strict {
@@ -391,16 +431,30 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     } else {
         None
     };
-    let comparison = if args.compares() {
-        Some(changes::resolve(&root, args.base.as_deref())?)
-    } else {
-        None
+    let comparison = match &staged {
+        Some(staged) => {
+            let mut comparison = changes::compare(
+                &staged.repository,
+                staged.head.clone(),
+                args.base.as_deref(),
+            )?;
+            comparison.staged = true;
+            comparison.index_hash = Some(staged.identity.clone());
+            Some((staged.repository.clone(), comparison))
+        }
+        None if args.compares() => Some(changes::resolve(&root, args.base.as_deref())?),
+        None => None,
     };
+    // The core finds the project in the base revision where it finds it in
+    // the checked tree: the snapshot's top level for a staged check.
     let baseline = comparison.as_ref().and_then(|(top, comparison)| {
-        comparison
-            .revision
-            .clone()
-            .map(|revision| (top.clone(), revision))
+        comparison.revision.clone().map(|revision| {
+            let checked = staged.as_ref().map_or_else(
+                || top.clone(),
+                |staged| staged.snapshot.tree().to_path_buf(),
+            );
+            (top.clone(), revision, checked)
+        })
     });
     let owned = |codes: &[&str]| {
         codes
@@ -473,6 +527,7 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         !scope.is_empty() || comparison.is_some(),
         findings,
         &mut lines,
+        staged.as_ref(),
     )
     .ok_or("a debt file the Python engine reports")?;
     let mut findings = debt.findings;
@@ -568,7 +623,10 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         checked_files,
         comparison: comparison.map(|(_, comparison)| comparison.to_json()),
         coverage,
-        project: coverage::project_metadata(&loaded.path),
+        project: coverage::project_metadata(&staged.as_ref().map_or_else(
+            || loaded.path.clone(),
+            |staged| staged.original(&loaded.path),
+        )),
         diagnostics,
     };
     let show_hints = args.show_hints || args.compares();

@@ -148,7 +148,7 @@ pub(crate) fn check_loaded(
     strict_coverage: bool,
     configuration_findings: bool,
     search_path: Option<Vec<PathBuf>>,
-    baseline: Option<(PathBuf, String)>,
+    baseline: Option<(PathBuf, String, PathBuf)>,
 ) -> Option<Outcome> {
     if let Some(entries) = search_path {
         analysis::installed::use_search_path(entries);
@@ -161,7 +161,8 @@ pub(crate) fn check_loaded(
         Ok::<_, String>(request)
     };
     let request = load().ok()?;
-    let Some((repository, revision)) = baseline else {
+    // The baseline's repository, revision, and the top level as `loaded` sees it.
+    let Some((repository, revision, top)) = baseline else {
         return check(&request, ignore, configuration_findings, true).ok();
     };
     let baseline = Baseline {
@@ -174,12 +175,7 @@ pub(crate) fn check_loaded(
             .name("baseline".to_owned())
             .stack_size(ANALYSIS_STACK_BYTES)
             .spawn_scoped(scope, || {
-                baseline_findings(
-                    &baseline,
-                    &baseline.repository,
-                    load().map_err(Failure::from)?,
-                    ignore,
-                )
+                baseline_findings(&baseline, &top, load().map_err(Failure::from)?, ignore)
             })
             .ok()?;
         let outcome = check(&request, ignore, configuration_findings, true);

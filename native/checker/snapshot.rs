@@ -124,6 +124,14 @@ fn content(repo: &gix::Repository, path: &str, id: gix::ObjectId) -> Result<Vec<
     }
 }
 
+/// The content of blob `id`, which a snapshot leaves empty unless the core reads it.
+pub fn blob(repository: &Path, id: &str) -> Result<Vec<u8>, String> {
+    Ok(open(repository)?
+        .find_blob(object_id(id)?)
+        .map_err(|error| format!("cannot read blob {id} from Git: {error}"))?
+        .take_data())
+}
+
 fn open(repository: &Path) -> Result<gix::Repository, String> {
     gix::open_opts(
         repository,
