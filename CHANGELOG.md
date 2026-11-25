@@ -71,7 +71,7 @@ cache behavior.
   versions are kept besides the current one. Previously an editable checkout
   or several worktrees on different Smelt versions could accumulate gigabytes
   within the seven-day window. Existing caches remain readable. See
-  [cache behavior](docs/agent-workflow.md#cache-behavior).
+  [cache behavior](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/agent-workflow.md#cache-behavior).
 
 ## [0.16.0] - 2026-11-22
 
@@ -274,7 +274,7 @@ the JSON fix report, third-party import suggestions and facade suppressions.
 - `.smelt_cache/` no longer grows without bound. Facts unused for 14 days are
   pruned once a day, and caches of other Smelt versions unused for 7 days are
   removed. Existing caches are upgraded in place. See
-  [cache behavior](docs/agent-workflow.md#cache-behavior).
+  [cache behavior](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/agent-workflow.md#cache-behavior).
 - Configuration errors arrive in one report. Schema errors such as retired
   keys now list unknown or retired rule names from `rules` and `ignore`
   alongside them. A valid layer declaration also reports unknown layer references

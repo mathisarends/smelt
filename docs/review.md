@@ -176,12 +176,12 @@ selections, per-rule counts and coverage limits. Detailed consumer reports remai
 local; the aggregate contains no consumer source snippets. Reproduce with
 `load_config` for each existing YAML, an in-memory copy of the recorded explicit
 rules and `future_annotations: when-needed` package contracts, then
-`run_check(..., CheckOptions(use_cache=False, show_coverage=True))`. Use a separate
+`run_check(..., CheckOptions(show_coverage=True))`. Use a separate
 `strict_coverage=True` run for coverage; do not write the temporary policy to the
 consumer repository.
 
 Next adoption priorities are clearer multi-config execution, explicit scope and
-grouped triage, while retaining direct uncached comparisons and bounded inference.
+grouped triage, while retaining bounded inference.
 This single workspace is evidence for concrete regressions, not proof that every
 Python project will have the same precision or defaults.
 
