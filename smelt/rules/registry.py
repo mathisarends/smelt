@@ -107,6 +107,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.testing.public_functions:TestOnlyPublicFunction",
     "smelt.rules.testing.public_attributes:TestOnlyPublicAttribute",
     "smelt.rules.testing.randomness:NondeterministicTestData",
+    "smelt.rules.testing.skips:MissingSkipReason",
     "smelt.rules.testing.untested:MissingMirrorTest",
     "smelt.rules.meta:UnusedSuppression",
     "smelt.rules.meta:SuppressionWithoutReason",

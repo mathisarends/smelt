@@ -1,4 +1,6 @@
-//! TST002 to TST011: test-quality rules over the analyzed test modules.
+//! TST002 to TST011 and TST013: test-quality rules over the analyzed test modules.
+mod skips;
+
 use crate::checker::analysis::dump::dump_expr;
 use crate::checker::analysis::test_syntax::{
     TestModule, call_only_async_mocks, helper_outcome_review, independent_case_loops,
@@ -8,15 +10,16 @@ use crate::checker::config::TestPolicy;
 use crate::checker::patterns::PathPattern;
 use crate::checker::settings::CatalogRule;
 use crate::checker::violation::Violation;
+use regex::Regex;
 use ruff_python_ast::visitor::{self, Visitor};
 use ruff_python_ast::{Alias, Expr, Stmt};
 use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-pub const TEST_RULES: [&str; 10] = [
+pub const TEST_RULES: [&str; 11] = [
     "TST002", "TST003", "TST004", "TST005", "TST006", "TST007", "TST008", "TST009", "TST010",
-    "TST011",
+    "TST011", "TST013",
 ];
 
 const GENERATORS: [&str; 19] = [
@@ -150,6 +153,7 @@ pub fn check(
         "TST009" => case_loops(&report),
         "TST010" => missing_awaits(&report),
         "TST011" => nondeterministic(&report),
+        "TST013" => untracked_skips(&report, project),
         _ => Vec::new(),
     }
 }
@@ -555,6 +559,48 @@ fn nondeterministic(report: &Report<'_, '_>) -> Vec<Violation> {
                 line,
                 json!({"generators": generators, "automatic_rewrite": false}),
                 hint,
+            )
+        })
+        .collect()
+}
+
+fn untracked_skips(report: &Report<'_, '_>, project: &TestProject<'_>) -> Vec<Violation> {
+    let pattern = &project.policy.skip_reason_pattern;
+    let Ok(tracked) = Regex::new(pattern) else {
+        return Vec::new();
+    };
+    skips::untracked_skips(report.module, &tracked)
+        .into_iter()
+        .map(|skip| {
+            let action = match skip.kind {
+                skips::Kind::Skip => "skips a test",
+                skips::Kind::Xfail => "expects a test to fail",
+                skips::Kind::Rerun => "reruns a failing test",
+            };
+            let (message, hint) = if skip.environment {
+                (
+                    format!("{} {action} without a reason", skip.form),
+                    "Name the environment limit, for example reason=\"needs POSIX signals\", so the condition can be reviewed.".to_owned(),
+                )
+            } else {
+                (
+                    format!("{} {action} without a tracked reason", skip.form),
+                    format!(
+                        "Fix the test, or add reason=\"#123: <why>\" (matching tests.skip_reason_pattern `{pattern}`) so it can be found and removed later."
+                    ),
+                )
+            };
+            report.at_place(
+                message,
+                skip.offset,
+                json!({
+                    "form": skip.form,
+                    "kind": skip.kind.label(),
+                    "reason": skip.reason,
+                    "environment_condition": skip.environment,
+                    "skip_reason_pattern": pattern,
+                }),
+                &hint,
             )
         })
         .collect()

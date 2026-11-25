@@ -1,4 +1,5 @@
 //! The configuration models and their validators, as in `smelt.config.models`.
+use super::DEFAULT_SKIP_REASON_PATTERN;
 use super::schema::{
     Default as FieldDefault, Field, ModelDef, Out, Ty, checked, dict, list, nested, opt, optional,
     required, with_default,
@@ -1127,6 +1128,16 @@ fn quality_patterns(value: &mut Value) -> Result<(), String> {
     Ok(())
 }
 
+fn reason_pattern(value: &mut Value) -> Result<(), String> {
+    let text = value.as_str().unwrap_or_default();
+    if text.trim().is_empty() {
+        return Err("skip_reason_pattern must not be empty".to_owned());
+    }
+    Regex::new(text)
+        .map(|_| ())
+        .map_err(|_| format!("skip_reason_pattern \"{text}\" is not a valid regular expression"))
+}
+
 fn mirror_pattern(value: &mut Value) -> Result<(), String> {
     let text = value.as_str().unwrap_or_default();
     let mut unknown: Vec<&str> = PLACEHOLDER
@@ -1189,6 +1200,11 @@ static TESTS: LazyLock<ModelDef> = LazyLock::new(|| {
                 "timeout_helpers",
                 checked(list(Ty::Str), dotted_list),
                 json!([]),
+            ),
+            with_default(
+                "skip_reason_pattern",
+                checked(Ty::Str, reason_pattern),
+                json!(DEFAULT_SKIP_REASON_PATTERN),
             ),
         ],
     )
