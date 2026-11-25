@@ -47,6 +47,8 @@ pub struct Report<'a> {
     pub in_debt: usize,
     pub scope: Vec<String>,
     pub checked_files: usize,
+    /// What `--changed` or `--staged` compared with; `None` for a full check.
+    pub comparison: Option<Map<String, Value>>,
     pub coverage: Map<String, Value>,
     pub project: Value,
     pub diagnostics: Vec<Diagnostic>,
@@ -63,6 +65,18 @@ impl Report<'_> {
                 .iter()
                 .filter(|diagnostic| diagnostic.severity() == severity)
                 .count()
+    }
+
+    /// The report's mode: what the check compared with, else `full`.
+    pub fn mode(&self) -> Value {
+        self.comparison.as_ref().map_or_else(
+            || json!("full"),
+            |comparison| comparison.get("mode").cloned().unwrap_or(json!("changed")),
+        )
+    }
+
+    fn comparison_json(&self) -> Value {
+        self.comparison.clone().map_or(Value::Null, Value::Object)
     }
 
     /// Whether a scoped check of a workspace reports the workspace's totals.
@@ -138,7 +152,7 @@ pub fn render_json(report: &Report, show_coverage: bool) -> String {
     document.insert("status".into(), json!(report.status()));
     document.insert("summary".into(), report.summary_json());
     let mut scope = json!({
-        "mode": "full",
+        "mode": report.mode(),
         "paths": report.scope,
         "files": report.checked_files,
         "rules": report.rules.iter().map(|rule| rule.code.as_str()).collect::<Vec<_>>(),
@@ -147,7 +161,7 @@ pub fn render_json(report: &Report, show_coverage: bool) -> String {
         scope["totals"] = json!("workspace");
     }
     document.insert("scope".into(), scope);
-    document.insert("comparison".into(), Value::Null);
+    document.insert("comparison".into(), report.comparison_json());
     document.insert("coverage".into(), Value::Object(coverage));
     document.insert("project".into(), report.project.clone());
     document.insert("violations".into(), Value::Array(violations));
@@ -243,8 +257,8 @@ pub fn render_sarif(report: &Report, version: &str) -> String {
         })
         .collect();
     let mut properties = Map::new();
-    properties.insert("mode".into(), json!("full"));
-    properties.insert("comparison".into(), Value::Null);
+    properties.insert("mode".into(), report.mode());
+    properties.insert("comparison".into(), report.comparison_json());
     properties.insert(
         "policyHash".into(),
         report

@@ -6,6 +6,7 @@
 //! the Python CLI, which reports the error exactly. `SMELT_NATIVE_CHECK=0`
 //! always runs the Python CLI.
 mod args;
+mod changes;
 mod coverage;
 mod debt;
 mod finding;
@@ -242,7 +243,7 @@ fn match_debt(
     sources: &HashMap<String, String>,
     active: &HashMap<&str, Severity>,
     args: &Args,
-    scoped: bool,
+    partial: bool,
     mut findings: Vec<Finding>,
     lines: &mut Lines,
 ) -> Option<Debt> {
@@ -286,7 +287,8 @@ fn match_debt(
             debt::match_findings(kept, findings, &mut |finding| lines.snippet(finding)).ok()?;
         findings = matched.new;
         in_debt += matched.known;
-        if let Some(severity) = active.get(RESOLVED_DEBT).filter(|_| !scoped) {
+        // A scoped or `--changed` check cannot tell what the rest resolved.
+        if let Some(severity) = active.get(RESOLVED_DEBT).filter(|_| !partial) {
             let rule = catalog.by_code(RESOLVED_DEBT)?;
             findings.extend(matched.resolved.iter().map(|entry| Finding {
                 code: rule.code.clone(),
@@ -389,6 +391,17 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     } else {
         None
     };
+    let comparison = if args.compares() {
+        Some(changes::resolve(&root, args.base.as_deref())?)
+    } else {
+        None
+    };
+    let baseline = comparison.as_ref().and_then(|(top, comparison)| {
+        comparison
+            .revision
+            .clone()
+            .map(|revision| (top.clone(), revision))
+    });
     let owned = |codes: &[&str]| {
         codes
             .iter()
@@ -400,8 +413,9 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         owned(&select),
         &owned(&ignore),
         args.strict_coverage,
-        scope.is_empty(),
+        scope.is_empty() && comparison.is_none(),
         search_path,
+        baseline,
     )
     .ok_or("an analysis error")?;
     let _span = profile::span("report");
@@ -456,16 +470,37 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         &inventory.sources,
         &severities,
         args,
-        !scope.is_empty(),
+        !scope.is_empty() || comparison.is_some(),
         findings,
         &mut lines,
     )
     .ok_or("a debt file the Python engine reports")?;
+    let mut findings = debt.findings;
+    if let Some(before) = outcome.baseline {
+        // Only the findings the compared commit did not have are reported.
+        let known: Vec<(Finding, String)> = before
+            .into_iter()
+            .map(|mut finding| {
+                let snippet = finding
+                    .as_object_mut()?
+                    .shift_remove("snippet")?
+                    .as_str()?
+                    .to_owned();
+                Some((Finding::from_core(&finding)?, snippet))
+            })
+            .collect::<Option<_>>()
+            .ok_or("a baseline finding the report model rejects")?;
+        findings = debt::match_findings(debt::from_findings(&known), findings, &mut |finding| {
+            lines.snippet(finding)
+        })
+        .map_err(|()| "an unreadable source")?
+        .new;
+    }
     let in_scope = |finding: &Finding| {
         scope.is_empty() || validate::under_any(finding.path.as_deref(), &scope)
     };
     let mut violations = gaps;
-    violations.extend(debt.findings.into_iter().filter(in_scope));
+    violations.extend(findings.into_iter().filter(in_scope));
     violations.sort_by(Finding::compare);
     let rules: Vec<&Rule> = active.iter().map(|(rule, _)| *rule).collect();
     let categories = CATEGORIES
@@ -531,10 +566,12 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         in_debt: debt.in_debt,
         scope,
         checked_files,
+        comparison: comparison.map(|(_, comparison)| comparison.to_json()),
         coverage,
         project: coverage::project_metadata(&loaded.path),
         diagnostics,
     };
+    let show_hints = args.show_hints || args.compares();
     let text = match args.format() {
         Format::Json => report::render_json(&report, args.show_coverage),
         Format::Sarif => report::render_sarif(&report, env!("CARGO_PKG_VERSION")),
@@ -544,7 +581,8 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
             &mut |path, line| lines.line(path, line),
             false,
             true,
-            args.show_hints,
+            // Hints on the files just changed are few and relevant.
+            show_hints,
         )
         .map_err(|()| "an unreadable source")?,
         Format::Text => {
@@ -556,7 +594,7 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
                 &mut |path, line| lines.line(path, line),
                 color,
                 false,
-                args.show_hints,
+                show_hints,
             )
             .map_err(|()| "an unreadable source")?;
             if args.show_coverage {
