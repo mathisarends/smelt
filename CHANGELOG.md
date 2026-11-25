@@ -46,6 +46,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   options and every error still go through the Python CLI, so reports,
   messages and exit codes are unchanged. `SMELT_NATIVE_CHECK=0` always uses
   the Python CLI.
+- Loading a uv workspace's configuration no longer looks up every file while
+  searching for ignored member configs, and the check reuses the directory
+  listings of that search. On Windows a check of a two-member workspace takes
+  about 5-15% less time.
 
 ## [0.17.0] - 2026-11-25
 
