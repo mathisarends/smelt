@@ -3,7 +3,7 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const LIMIT: u64 = 64 * 1024 * 1024;
 
@@ -17,61 +17,92 @@ struct Request {
     index_file: Option<PathBuf>,
 }
 
-fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let repo = gix::discover_opts(
-        &request.root,
+type Error = Box<dyn std::error::Error + Send + Sync>;
+
+/// A repository's top level, HEAD and index, as one read captures them.
+pub struct Capture {
+    pub repository: PathBuf,
+    /// `None` before the first commit.
+    pub head: Option<String>,
+    /// The index as `git ls-files --stage -z` lists it.
+    pub records: Vec<u8>,
+    /// The YAML files the index stages.
+    pub yaml_paths: Vec<String>,
+}
+
+fn open(root: &Path) -> Result<gix::Repository, Error> {
+    Ok(gix::discover_opts(
+        root,
         Default::default(),
         gix::open::Options::default().bail_if_untrusted(true),
-    )?;
-    let root = repo.workdir().ok_or("bare repository")?;
-    let root = root.to_str().ok_or("non-UTF-8 repository root")?;
+    )?)
+}
+
+/// The repository `root` lies in, with its HEAD and the index at
+/// `index_file`, relative to the top level, or the repository's own.
+pub fn capture(root: &Path, index_file: Option<&Path>) -> Result<Capture, Error> {
+    let repo = open(root)?;
+    let top = repo.workdir().ok_or("bare repository")?;
+    // Match ls-files' repository-relative cwd, including the temporary
+    // index Git supplies to partial-commit hooks. Ignore gix-only index
+    // config settings that the Git command does not interpret.
+    let index_path = index_file
+        .map(|path| top.join(path))
+        .unwrap_or_else(|| repo.git_dir().join("index"));
+    let index =
+        gix::index::File::at_or_default(index_path, repo.object_hash(), false, Default::default())?;
+    let mut records = Vec::new();
+    let mut yaml_paths = Vec::new();
+    for entry in index.entries() {
+        if entry.mode == gix::index::entry::Mode::DIR {
+            return Err("sparse index requires Git expansion".into());
+        }
+        write!(
+            records,
+            "{:06o} {} {}	",
+            entry.mode.bits(),
+            entry.id,
+            entry.stage_raw()
+        )?;
+        records.extend_from_slice(entry.path(&index).as_ref());
+        records.push(0);
+        let path: &[u8] = entry.path(&index).as_ref();
+        if entry.stage_raw() == 0
+            && entry.mode != gix::index::entry::Mode::COMMIT
+            && entry.mode != gix::index::entry::Mode::SYMLINK
+            && (path.ends_with(b".yaml") || path.ends_with(b".yml"))
+        {
+            // Derive candidates from this exact captured index. Never
+            // re-open the index later while applying Python policy.
+            yaml_paths.push(std::str::from_utf8(path)?.to_owned());
+        }
+    }
+    let head = repo.head()?.id().map(|id| id.to_string());
+    Ok(Capture {
+        repository: top.to_path_buf(),
+        head,
+        records,
+        yaml_paths,
+    })
+}
+
+fn execute(request: Request) -> Result<Value, Error> {
     match request.operation.as_str() {
         "capture" | "index" => {
-            // Match ls-files' repository-relative cwd, including the temporary
-            // index Git supplies to partial-commit hooks. Ignore gix-only index
-            // config settings that the Git command does not interpret.
-            let index_path = request
-                .index_file
-                .map(|path| std::path::Path::new(root).join(path))
-                .unwrap_or_else(|| repo.git_dir().join("index"));
-            let index = gix::index::File::at_or_default(
-                index_path,
-                repo.object_hash(),
-                false,
-                Default::default(),
-            )?;
-            let mut records = Vec::new();
-            let mut yaml_paths = Vec::new();
-            for entry in index.entries() {
-                if entry.mode == gix::index::entry::Mode::DIR {
-                    return Err("sparse index requires Git expansion".into());
-                }
-                write!(
-                    records,
-                    "{:06o} {} {}\t",
-                    entry.mode.bits(),
-                    entry.id,
-                    entry.stage_raw()
-                )?;
-                records.extend_from_slice(entry.path(&index).as_ref());
-                records.push(0);
-                let path: &[u8] = entry.path(&index).as_ref();
-                if entry.stage_raw() == 0
-                    && entry.mode != gix::index::entry::Mode::COMMIT
-                    && entry.mode != gix::index::entry::Mode::SYMLINK
-                    && (path.ends_with(b".yaml") || path.ends_with(b".yml"))
-                {
-                    // Derive candidates from this exact captured index. Never
-                    // re-open the index later while applying Python policy.
-                    yaml_paths.push(std::str::from_utf8(path)?.to_owned());
-                }
-            }
-            let head = repo.head()?.id().map(|id| id.to_string());
-            Ok(
-                json!({"repository": root, "head": head, "records": STANDARD.encode(records), "yaml_paths": yaml_paths}),
-            )
+            let captured = capture(&request.root, request.index_file.as_deref())?;
+            let root = captured
+                .repository
+                .to_str()
+                .ok_or("non-UTF-8 repository root")?;
+            Ok(json!({
+                "repository": root,
+                "head": captured.head,
+                "records": STANDARD.encode(captured.records),
+                "yaml_paths": captured.yaml_paths,
+            }))
         }
         "blobs" => {
+            let repo = open(&request.root)?;
             let mut blobs = serde_json::Map::new();
             for identifier in request.identifiers {
                 let id = gix::hash::ObjectId::from_hex(identifier.as_bytes())?;
