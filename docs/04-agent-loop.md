@@ -64,7 +64,7 @@ repos:
         name: smelt
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.16.1]
+        additional_dependencies: [smelt-cli==0.17.0]
         pass_filenames: false
         always_run: true
         require_serial: true
@@ -73,7 +73,7 @@ repos:
 ```yaml
 # GitHub Actions
 - uses: astral-sh/setup-uv@v7
-- run: uvx --from smelt-cli==0.16.1 smelt check --format github
+- run: uvx --from smelt-cli==0.17.0 smelt check --format github
 ```
 
 The hook checks the Git index and blocks new findings. Checks run in a
