@@ -33,6 +33,10 @@ current configuration and complete rule contracts, see the [README](README.md),
   reported. `time.monotonic` and `time.perf_counter` stay out of scope.
 - `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
   and each project-wide rule took to stderr, to locate a slow check.
+- `smelt check` lists each project directory once and in parallel, and runs the
+  import-graph and structure rules in parallel. A full check of this repository
+  or of a generated 1000-module project takes about 35-40% less time. Reports
+  are unchanged.
 
 ## [0.17.0] - 2026-11-25
 
