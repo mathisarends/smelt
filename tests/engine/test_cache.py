@@ -28,6 +28,12 @@ style:
 """
 
 
+@pytest.fixture(autouse=True)
+def _python_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The analysis cache serves only the Python engine."""
+    monkeypatch.setenv("SMELT_CORE", "python")
+
+
 @pytest.mark.parametrize("workspace", ["first", "second"])
 def test_editing_only_a_shared_policy_invalidates_each_workspace(
     tmp_path: Path,

@@ -20,7 +20,7 @@ from tests.helpers import LAYERED_CONFIG, codes_at, violations, write_project
 
 RUNNING = f"{sys.version_info[0]}.{sys.version_info[1]}"
 
-# Valid only on newer Pythons; each file also breaks a layer boundary.
+# Newer syntax the core parses on any Python; each file also breaks a layer boundary.
 PY313 = "from app.infra import db\n\n\ndef first[T = int](items: list[T]) -> T:\n    return items[0]\n"
 PY314 = (
     "from app.infra import db\n\n\n"
@@ -75,20 +75,11 @@ class TestPythonNote:
 
 
 class TestSyntaxError:
-    def test_error_carries_the_python_note(self, tmp_path: Path) -> None:
+    def test_error_names_the_file_and_line(self, tmp_path: Path) -> None:
         root = _project(tmp_path, "def broken(:\n", requires=">=3.99")
 
         with pytest.raises(
-            AnalysisError, match=r"uvx -p 3\.99 --from smelt-cli smelt check"
-        ):
-            violations(root)
-
-    @pytest.mark.skipif(sys.version_info >= (3, 14), reason="3.14 parses it")
-    def test_newer_syntax_on_an_older_python(self, tmp_path: Path) -> None:
-        root = _project(tmp_path, PY314, requires=">=3.14")
-
-        with pytest.raises(
-            AnalysisError, match=r"uvx -p 3\.14 --from smelt-cli smelt check"
+            AnalysisError, match=r"^app/domain/service\.py:1: syntax error"
         ):
             violations(root)
 
@@ -104,7 +95,6 @@ class TestNewerSyntax:
 
         assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
 
-    @pytest.mark.skipif(sys.version_info < (3, 13), reason="PEP 696 needs 3.13")
     def test_type_parameter_defaults(self, tmp_path: Path) -> None:
         root = _project(tmp_path, PY313, requires=">=3.13")
 
@@ -112,7 +102,6 @@ class TestNewerSyntax:
 
         assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
 
-    @pytest.mark.skipif(sys.version_info < (3, 14), reason="PEP 750/758 need 3.14")
     def test_template_strings_and_bare_except_tuples(self, tmp_path: Path) -> None:
         root = _project(tmp_path, PY314, requires=">=3.14")
 

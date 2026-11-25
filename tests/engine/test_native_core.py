@@ -71,6 +71,7 @@ def test_reports_like_the_python_engine(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, options: CheckOptions
 ) -> None:
     write_project(tmp_path, PROJECT)
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = render_json(check(tmp_path, options).report, show_coverage=True)
 
     monkeypatch.setenv("SMELT_CORE", "native")
@@ -108,6 +109,7 @@ def test_reports_git_snapshots_like_the_python_engine(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SMELT_DAEMON", "0")
 
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = _cli_report(capsys, arguments)
     monkeypatch.setenv("SMELT_CORE", "native")
     actual = _cli_report(capsys, arguments)
@@ -213,6 +215,7 @@ def test_member_architecture_follows_only_its_own_import_paths(
         },
     )
     options = CheckOptions(select=("ARC003",), use_cache=False)
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = violations(tmp_path, options)
 
     monkeypatch.setenv("SMELT_CORE", "native")

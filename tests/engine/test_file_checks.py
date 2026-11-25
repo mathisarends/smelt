@@ -36,6 +36,12 @@ if TYPE_CHECKING:
     from smelt.rules.base import RuleContract
 
 
+@pytest.fixture(autouse=True)
+def _python_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The analysis cache serves only the Python engine."""
+    monkeypatch.setenv("SMELT_CORE", "python")
+
+
 def test_changed_reexport_rechecks_unchanged_definitions_but_reuses_unrelated_decisions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

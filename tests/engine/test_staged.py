@@ -803,6 +803,8 @@ def test_staged_policy_blob_reuse_respects_no_cache(
     monkeypatch: pytest.MonkeyPatch,
     use_cache: bool,
 ) -> None:
+    # Cached blobs serve only the Python engine.
+    monkeypatch.setenv("SMELT_CORE", "python")
     _check(repo, capsys)
     policy_oid = capture_index(repo).blobs["smelt.yml"]
     (repo / "app/consumer.py").write_text("# Removed the last caller.\n")

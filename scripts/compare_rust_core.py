@@ -190,6 +190,8 @@ _SKIPPED = shutil.ignore_patterns(
 
 
 def main() -> int:
+    # The findings the core is compared with come from the Python engine.
+    os.environ["SMELT_CORE"] = "python"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("projects", nargs="*", type=Path)
     parser.add_argument(

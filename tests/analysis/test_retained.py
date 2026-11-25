@@ -24,6 +24,12 @@ style:
 """
 
 
+@pytest.fixture(autouse=True)
+def _python_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The analysis cache serves only the Python engine."""
+    monkeypatch.setenv("SMELT_CORE", "python")
+
+
 def test_retained_dependencies_skip_deserialization_and_refresh_all_inputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

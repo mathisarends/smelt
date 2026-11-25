@@ -65,8 +65,11 @@ class NativeRun:
 
 
 def selected() -> bool:
-    """Whether this process analyzes checks in the native core."""
-    return os.environ.get("SMELT_CORE") == "native"
+    """Whether this process analyzes checks in the native core.
+
+    `SMELT_CORE=python` selects the Python engine, which parity checks compare with.
+    """
+    return os.environ.get("SMELT_CORE") != "python"
 
 
 def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:

@@ -20,6 +20,12 @@ TEXT = TypeAdapter(str)
 DAY = 86400
 
 
+@pytest.fixture(autouse=True)
+def _python_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The analysis cache serves only the Python engine."""
+    monkeypatch.setenv("SMELT_CORE", "python")
+
+
 def _write(root: Path, key: str) -> Path:
     cache = FactCache(root)
     cache.write(key, "fact", TEXT)

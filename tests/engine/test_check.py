@@ -533,7 +533,11 @@ class TestDebt:
         assert [v.code for v in violations(root)] == ["MET003"]
 
 
-def test_global_rules_build_shared_import_and_symbol_facts_once(tmp_path: Path) -> None:
+def test_global_rules_build_shared_import_and_symbol_facts_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The shared facts belong to the Python engine.
+    monkeypatch.setenv("SMELT_CORE", "python")
     root = write_policy_project(
         tmp_path,
         {

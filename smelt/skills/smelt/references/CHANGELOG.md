@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `smelt check` analyzes in the compiled native core by default, including
+  `--staged` and `--changed`. Reports match the Python engine's. The core parses
+  the newest Python grammar whichever Python runs smelt, so a syntax error no
+  longer suggests running smelt on a newer Python. `SMELT_CORE=python` selects
+  the Python engine for comparison until it is removed.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.
