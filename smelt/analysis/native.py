@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import sysconfig
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,11 @@ from smelt.analysis.errors import AnalysisError
 
 
 def request(flag: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """The JSON the core prints for `payload` in the mode `flag` selects."""
+    """The JSON the core prints for `payload` in the mode `flag` selects.
+
+    With `SMELT_PROFILE` set, the core's phase timings reach stderr.
+    """
+    started = time.perf_counter()
     result = subprocess.run(  # noqa: S603 - the installed native launcher
         [_executable(), flag],
         input=json.dumps(payload),
@@ -24,6 +29,10 @@ def request(flag: str, payload: dict[str, Any]) -> dict[str, Any]:
         check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
+    if os.environ.get("SMELT_PROFILE"):
+        elapsed = (time.perf_counter() - started) * 1000
+        sys.stderr.write(result.stderr)
+        sys.stderr.write(f"smelt profile: {flag} took {elapsed:.1f} ms in total\n")
     try:
         data = json.loads(result.stdout)
     except ValueError:

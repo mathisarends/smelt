@@ -6,11 +6,12 @@ import argparse
 import json
 import os
 import statistics
-import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
+
+from benchmark_installs import command, git, install, isolated_env
 
 # Change executable Python in existing, independently passing files. A missing
 # anchor is a broken workload and must fail rather than time an unchanged check.
@@ -30,66 +31,18 @@ _EDITS = {
 }
 
 
-def git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
-        [  # noqa: S607 - use Git from PATH, like the hooks under measurement
-            "git",
-            "-c",
-            "user.name=benchmark",
-            "-c",
-            "user.email=benchmark@example.invalid",
-            *args,
-        ],
-        cwd=root,
-        capture_output=True,
-        check=True,
-    )
-
-
-def command(root: Path, args: list[str], *, env: dict[str, str] | None = None) -> str:
-    completed = subprocess.run(  # noqa: S603 - fixed benchmark commands
-        args,
-        cwd=root,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    output = completed.stdout.decode(errors="replace")
-    if completed.returncode:
-        raise RuntimeError(f"{args} failed in {root}:\n{output}")
-    return output.strip()
-
-
 def benchmark(
     args: argparse.Namespace, parent: Path
 ) -> dict[str, dict[str, list[float]]]:
     repo = Path(__file__).resolve().parents[1]
-    roots = {name: parent / name for name in ("base", "candidate")}
-    env = {
-        **os.environ,
-        "UV_CACHE_DIR": command(repo, ["uv", "cache", "dir"]),
-        "UV_PYTHON_INSTALL_DIR": command(repo, ["uv", "python", "dir"]),
-        "PREK_HOME": command(repo, ["uv", "run", "--frozen", "prek", "cache", "dir"]),
-    }
-    env.pop("UV_PROJECT_ENVIRONMENT", None)
-    env.pop("VIRTUAL_ENV", None)
+    env = isolated_env(repo)
     hooks = ["uv", "run", "--frozen", "prek", "run"]
-    for name, revision in (("base", args.base), ("candidate", args.candidate)):
-        sha = command(repo, ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"])
-        git(
-            repo,
-            "clone",
-            "--quiet",
-            "--shared",
-            "--no-checkout",
-            str(repo),
-            str(roots[name]),
-        )
-        git(roots[name], "checkout", "--quiet", "--detach", sha)
-        command(roots[name], ["uv", "sync", "--frozen"], env=env)
-        sys.stdout.write(f"{name}: {sha}\n")
-        sys.stdout.flush()
+    roots = install(
+        repo,
+        {"base": args.base, "candidate": args.candidate},
+        parent=parent,
+        env=env,
+    )
     full_check: dict[str, list[float]] = {"base": [], "candidate": []}
     times = {"strict full check after test edit": full_check}
     for scenario, (path, anchor, replacement) in _EDITS.items():

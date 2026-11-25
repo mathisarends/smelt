@@ -31,6 +31,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   `time_machine.travel` contexts and decorators, under
   `pytest.mark.freeze_time` and in tests using the `freezer` fixture are not
   reported. `time.monotonic` and `time.perf_counter` stay out of scope.
+- `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
+  and each project-wide rule took to stderr, to locate a slow check.
 
 ## [0.17.0] - 2026-11-25
 

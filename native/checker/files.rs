@@ -1,6 +1,7 @@
 //! Source discovery with the package rules of `smelt.analysis.files`.
 use super::config::{Project, Request};
 use super::patterns::PathPattern;
+use super::profile;
 use super::vfs;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -85,10 +86,14 @@ impl FileIndex {
             source_order: Vec::new(),
             ordered_portions: Vec::new(),
         };
-        for package in &project.root_packages {
-            discovery.package_root(package, &project.source_roots)?;
-        }
-        let (tests, test_roots) = discovery.tests(&project.test_roots);
+        profile::time("discover packages", || {
+            project
+                .root_packages
+                .iter()
+                .try_for_each(|package| discovery.package_root(package, &project.source_roots))
+        })?;
+        let (tests, test_roots) =
+            profile::time("discover tests", || discovery.tests(&project.test_roots));
         let namespace_packages = discovery
             .portions
             .iter()

@@ -8,6 +8,7 @@ mod facade_coverage;
 mod files;
 mod meta;
 mod patterns;
+mod profile;
 mod renames;
 mod rule_policy;
 mod rules;
@@ -138,13 +139,25 @@ struct Outcome {
 ///
 /// An error prints `{"error": message}` and exits 2, so the engine can raise it.
 pub fn serve_check() -> i32 {
+    profile::start();
+    let code = respond_to_check();
+    profile::report();
+    code
+}
+
+fn respond_to_check() -> i32 {
     let mut input = String::new();
-    let outcome = io::stdin()
-        .read_to_string(&mut input)
-        .map_err(|error| error.to_string())
-        .and_then(|_| serde_json::from_str::<Options>(&input).map_err(|error| error.to_string()))
-        .map_err(Failure::Message)
-        .and_then(run);
+    let outcome = profile::time("check request", || {
+        io::stdin()
+            .read_to_string(&mut input)
+            .map_err(|error| error.to_string())
+            .and_then(|_| {
+                serde_json::from_str::<Options>(&input).map_err(|error| error.to_string())
+            })
+            .map_err(Failure::Message)
+            .and_then(run)
+    });
+    let _span = profile::span("write outcome");
     let (output, code) = match outcome {
         Ok(outcome) => (
             json!({
@@ -319,16 +332,19 @@ fn run(options: Options) -> Result<Outcome, Failure> {
     if let Some(entries) = &options.search_path {
         analysis::installed::use_search_path(entries.clone());
     }
-    let index = options
-        .index
-        .as_ref()
-        .map(|staged| Snapshot::index(&staged.repository, &staged.blobs))
-        .transpose()?;
+    let index = profile::time("mount staged index", || {
+        options
+            .index
+            .as_ref()
+            .map(|staged| Snapshot::index(&staged.repository, &staged.blobs))
+            .transpose()
+    })?;
     let config = match (&index, &options.index) {
         (Some(snapshot), Some(staged)) => snapshot.locate(&staged.repository, &options.config)?,
         _ => options.config.clone(),
     };
     let load = || {
+        let _span = profile::span("load configuration");
         let mut request = Request::load(&config, options.select.clone())?;
         if options.strict_coverage {
             request.force_strict_coverage()?;
@@ -348,6 +364,8 @@ fn run(options: Options) -> Result<Outcome, Failure> {
             .zip(top)
             .map(|(baseline, top)| {
                 std::thread::Builder::new()
+                    // The analysis pool and the profile name their threads after it.
+                    .name("baseline".to_owned())
                     .stack_size(ANALYSIS_STACK_BYTES)
                     .spawn_scoped(scope, || {
                         baseline_findings(baseline, top, load()?, &options.ignore)
@@ -380,7 +398,9 @@ fn baseline_findings(
     mut request: Request,
     ignore: &[String],
 ) -> Result<Vec<Value>, Failure> {
-    let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
+    let snapshot = profile::time("mount base revision", || {
+        Snapshot::revision(&baseline.repository, &baseline.revision)
+    })?;
     let root = snapshot.locate(top, &request.root)?;
     // A project the revision lacks, or one without files, had no findings.
     if !vfs::is_dir(&root) {
@@ -453,8 +473,8 @@ fn check(
 ) -> Result<Outcome, Failure> {
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
-    let files = FileIndex::discover(request)?;
-    let contracts = Contracts::resolve(request, &files)?;
+    let files = profile::time("discover files", || FileIndex::discover(request))?;
+    let contracts = profile::time("resolve contracts", || Contracts::resolve(request, &files))?;
     let settings = Settings::new(&catalog, request);
     let ignored = |rule: &&CatalogRule| !with_rules || ignore.contains(&rule.code);
     // The meta rules judge the run after filtering instead of checking sources.
@@ -559,7 +579,7 @@ fn check(
         && configured.contains("IMP004"));
     let mut ownership_issues = Vec::new();
     let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
-        let parsed = parse_sources(&sources, needs_syntax)?;
+        let parsed = profile::time("parse sources", || parse_sources(&sources, needs_syntax))?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
         // Ownership declarations are verified against the static exports of the sources.
@@ -588,25 +608,28 @@ fn check(
                 .iter()
                 .any(|rule| TEST_READING_RULES.contains(&rule.code.as_str()));
         let parsed_tests = if reads_tests {
-            parse_all(&all_tests)?
+            profile::time("parse tests", || parse_all(&all_tests))?
         } else {
             Vec::new()
         };
         let all_test_pairs: Vec<(&SourceFile, &ParsedSource)> =
             all_tests.iter().copied().zip(&parsed_tests).collect();
-        let mut outcomes: Vec<Vec<Violation>> = source_pairs
-            .par_iter()
-            .map(|(source, parsed)| analysis.file(source, parsed))
-            .collect();
-        if !test_source_rules.is_empty() {
-            outcomes.par_extend(
-                all_test_pairs
+        let mut outcomes: Vec<Vec<Violation>> =
+            profile::time("file rules", || {
+                let mut outcomes: Vec<Vec<Violation>> = source_pairs
                     .par_iter()
-                    .map(|(test, parsed)| analysis.test_source(&test_source_rules, test, parsed)),
-            );
-        }
+                    .map(|(source, parsed)| analysis.file(source, parsed))
+                    .collect();
+                if !test_source_rules.is_empty() {
+                    outcomes.par_extend(all_test_pairs.par_iter().map(|(test, parsed)| {
+                        analysis.test_source(&test_source_rules, test, parsed)
+                    }));
+                }
+                outcomes
+            });
         let shared_coverage = OnceLock::new();
         let roots = &request.project.root_packages;
+        let model_span = profile::span("architecture model");
         let model = if request.workspace_packages.is_empty() {
             ArchitectureModel::build(&request.architecture, roots, &files, Scope::Project)
         } else {
@@ -634,18 +657,21 @@ fn check(
                 .collect();
             ArchitectureModel::combine(&request.architecture, roots, &files, root_packages, parts)
         };
+        drop(model_span);
         if !import_rules.is_empty() || !structure_rules.is_empty() {
             let imported_tests: &[(&SourceFile, &ParsedSource)] =
                 if imports_tests { &all_test_pairs } else { &[] };
             let imports = if import_rules.is_empty() {
                 None
             } else {
-                Some(ImportIndex::build(
-                    &files,
-                    &request.project.root_packages,
-                    &source_pairs,
-                    imported_tests,
-                )?)
+                Some(profile::time("import index", || {
+                    ImportIndex::build(
+                        &files,
+                        &request.project.root_packages,
+                        &source_pairs,
+                        imported_tests,
+                    )
+                })?)
             };
             let graph = |import_rules: &[&CatalogRule],
                          structure_rules: &[&CatalogRule],
@@ -748,9 +774,12 @@ fn check(
         let test_modules = if test_rules.is_empty() {
             None
         } else {
-            Some(test_syntax::analyze(&source_pairs, &test_pairs))
+            Some(profile::time("test syntax", || {
+                test_syntax::analyze(&source_pairs, &test_pairs)
+            }))
         };
         if let Some(modules) = &test_modules {
+            let _span = profile::span("test rules");
             outcomes.par_extend(
                 modules
                     .par_iter()
@@ -777,6 +806,7 @@ fn check(
             .chain(&all_tests)
             .map(|file| (*file, by_path.remove(&file.path).unwrap_or_default()))
             .collect();
+        let settle_span = profile::span("suppressions");
         let settled: Vec<(Vec<Violation>, usize)> = python_files
             .into_par_iter()
             .map(|(file, found)| {
@@ -793,6 +823,7 @@ fn check(
                 }
             })
             .collect();
+        drop(settle_span);
         let mut suppressed = 0;
         // YAML files and package directories hold no suppression comments.
         let mut violations: Vec<Violation> = by_path.into_values().flatten().collect();
@@ -814,6 +845,7 @@ fn check(
             })
             .collect();
         // Configuration findings come after suppressions, which cannot reach YAML.
+        let configuration_span = profile::span("configuration findings");
         let mut configuration = Vec::new();
         if let Some((rule, severity)) = meta_rule("MET004").filter(|_| configuration_findings) {
             let inputs = PolicyInputs {
@@ -850,6 +882,8 @@ fn check(
                 .into_iter()
                 .filter(|violation| !ignores.covers(violation)),
         );
+        drop(configuration_span);
+        let coverage_span = profile::span("coverage report");
         let coverage = coverage_report::facts(&ReportInputs {
             request,
             files: &files,
@@ -861,8 +895,10 @@ fn check(
             test_modules: test_modules.as_deref().filter(|_| report_test_quality),
             coverage: &shared_coverage,
         })?;
+        drop(coverage_span);
         Ok::<_, String>((violations, suppressed, coverage, digests))
     })??;
+    let _span = profile::span("build report");
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.
     let members = if request.project.uv_workspace {
@@ -917,9 +953,12 @@ fn check(
 /// can end before their thread-local teardown, so each OS thread is joined here.
 fn with_analysis_pool<R: Send>(work: impl FnOnce() -> R + Send) -> Result<R, String> {
     let mut workers = Vec::new();
+    // Workers carry the caller's name, so the profile tells a base revision's work apart.
+    let scope = std::thread::current().name().unwrap_or("main").to_owned();
     let pool = rayon::ThreadPoolBuilder::new()
         .spawn_handler(|thread| {
             let worker = std::thread::Builder::new()
+                .name(format!("{scope}-{}", thread.index()))
                 .stack_size(ANALYSIS_STACK_BYTES)
                 .spawn(move || thread.run())?;
             workers.push(worker);
@@ -928,6 +967,7 @@ fn with_analysis_pool<R: Send>(work: impl FnOnce() -> R + Send) -> Result<R, Str
         .build()
         .map_err(|error| error.to_string())?;
     let result = pool.install(work);
+    let _span = profile::span("stop analysis pool");
     drop(pool);
     for worker in workers {
         worker
