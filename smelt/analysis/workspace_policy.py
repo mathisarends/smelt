@@ -36,16 +36,6 @@ class WorkspaceIndex:
         """Every analyzed member path, '.' (the workspace root) first."""
         return (".", *self._paths) if self._enabled else ()
 
-    def member_for_module(self, module: str) -> str | None:
-        source = self._files.sources.get(module)
-        if source is not None:
-            return self.member_for_path(source.path)
-        owners = {
-            self.member_for_path(part.path)
-            for part in self._files.package_parts.get(module, [])
-        }
-        return next(iter(owners)) if len(owners) == 1 else None
-
     def member_for_path(self, path: str | None) -> str | None:
         """The innermost declared member, '.' for root files, None outside a workspace."""
         if not self._enabled or path is None:

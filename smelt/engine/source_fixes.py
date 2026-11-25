@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 
 if TYPE_CHECKING:
     from collections.abc import Callable

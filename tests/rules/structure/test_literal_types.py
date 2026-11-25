@@ -4,14 +4,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.analysis.parsing import AstCache
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Severity
 from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import check, violations, write_project
 
 if TYPE_CHECKING:
-    import ast
     from pathlib import Path
 
 CONFIG = "version: 2\nproject: {root_packages: [app]}\n"
@@ -176,21 +174,10 @@ def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> N
     assert not violations(root)
 
 
-def test_cache_reuses_facts_and_matches_fresh_results_after_changes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_repeated_checks_match_fresh_results_after_changes(tmp_path: Path) -> None:
     root = _project(tmp_path)
     baseline = violations(root, OPTIONS)
-    original = AstCache.parse
-    parsed: list[str] = []
-
-    def track(cache: AstCache, path: str) -> ast.Module:
-        parsed.append(path)
-        return original(cache, path)
-
-    monkeypatch.setattr(AstCache, "parse", track)
     assert violations(root, OPTIONS) == baseline
-    assert "app/pointer.py" not in parsed
     for addition in (
         'from typing import Literal\nx: Literal["left", "right"]\n',
         'from typing import Literal\nx: Literal["up", "down"]\n',

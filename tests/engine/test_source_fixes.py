@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 from smelt.engine.source_fixes import SourceEdit
 from tests.helpers import check, write_project
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 from smelt.diagnostics.fixes import Applicability
 from smelt.engine.source_fixes import SourceEdit
 

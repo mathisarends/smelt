@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext
+from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
@@ -171,16 +172,22 @@ def _run_check(
     rules = build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context)
-    _validate_ownership(ctx, loaded)
+    compared = _comparison(ctx, options) if options.changed else None
+    result = _native_analysis(rules, loaded, options, compared=compared)
+    analyzed, baseline = result.analysis, result.baseline
+    if "files" not in ctx.__dict__:
+        ctx.files = FileIndex.from_inventory(
+            ctx.root, ctx.config, result.files, store=ctx.store
+        )
+    if "coverage" not in ctx.__dict__:
+        ctx.coverage = CoverageIndex.from_report(analyzed.coverage)
+    _validate_ownership(result.ownership_issues, loaded)
     if issues := missing_paths(ctx):
         raise ConfigError(issues, loaded.path.name)
     settings = RuleSettings(rules, loaded)
     settings.validate_packages(ctx)
     if options.paths:
         _validate_scope(ctx, options.paths)
-    compared = _comparison(ctx, options) if options.changed else None
-    result = _native_analysis(rules, loaded, options, compared=compared)
-    analyzed, baseline = result.analysis, result.baseline
     # A fix applies only to the text the core judged.
     ctx.files.observe(result.digests)
     violations, suppressed = analyzed.violations, analyzed.suppressed
@@ -339,11 +346,8 @@ def _analysis_context(
     return AnalysisContext(loaded.root, loaded.config, store=loaded.source)
 
 
-def _validate_ownership(ctx: AnalysisContext, loaded: LoadedConfig) -> None:
-    declarations = ctx.config.structure.canonical_exports
-    if not declarations:
-        return
-    _, issues = ctx.facade_usage.canonical_exports(declarations)
+def _validate_ownership(issues: list[list[str]], loaded: LoadedConfig) -> None:
+    """Reject the `architecture.canonical_exports` the core could not verify."""
     if issues:
         raise ConfigError(
             [

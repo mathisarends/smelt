@@ -6,22 +6,15 @@ from smelt.analysis.errors import AnalysisError
 if TYPE_CHECKING:
     from smelt.analysis.context import AnalysisContext, Index
     from smelt.analysis.files import FileIndex, SourceFile, TestFile
-    from smelt.analysis.imports import ImportDetail, ImportIndex, is_stdlib
-    from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
 
 
 __all__ = [
     "AnalysisContext",
     "AnalysisError",
     "FileIndex",
-    "ImportDetail",
-    "ImportIndex",
     "Index",
-    "ModuleSyntax",
     "SourceFile",
-    "SyntaxIndex",
     "TestFile",
-    "is_stdlib",
 ]
 
 
@@ -37,9 +30,4 @@ _MODULES = {
     "FileIndex": "files",
     "SourceFile": "files",
     "TestFile": "files",
-    "ImportDetail": "imports",
-    "ImportIndex": "imports",
-    "is_stdlib": "imports",
-    "ModuleSyntax": "syntax",
-    "SyntaxIndex": "syntax",
 }
