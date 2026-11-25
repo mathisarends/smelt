@@ -3,7 +3,8 @@
 //! raise, so the Python CLI runs again and reports it.
 use super::policy::Resolved;
 use crate::checker::config::paths;
-use crate::checker::patterns::ModulePattern;
+use crate::checker::config::workspace::member_directories;
+use crate::checker::patterns::{ModulePattern, PathPattern};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -14,6 +15,10 @@ pub struct Inventory {
     pub sources: HashMap<String, String>,
     pub modules: HashSet<String>,
     pub packages: HashSet<String>,
+    /// Each module and the path of its source, else of its package.
+    pub module_paths: HashMap<String, String>,
+    /// Every source and test path.
+    pub python_paths: Vec<String>,
     /// Every source, test and checked YAML path.
     pub check_paths: Vec<String>,
     missing_root_packages: HashSet<String>,
@@ -33,6 +38,7 @@ impl Inventory {
         for test in files["tests"].as_array().into_iter().flatten() {
             check_paths.push(text(test, "path"));
         }
+        let python_paths = check_paths.clone();
         for path in files["yaml_paths"].as_array().into_iter().flatten() {
             check_paths.push(path.as_str().unwrap_or_default().to_owned());
         }
@@ -43,10 +49,21 @@ impl Inventory {
             .map(|package| text(package, "module"))
             .collect();
         modules.extend(packages.iter().cloned());
+        let mut module_paths = HashMap::new();
+        for package in files["packages"].as_array().into_iter().flatten() {
+            module_paths
+                .entry(text(package, "module"))
+                .or_insert_with(|| text(package, "path"));
+        }
+        for (path, module) in &sources {
+            module_paths.insert(module.clone(), path.clone());
+        }
         Self {
             sources,
             modules,
             packages,
+            module_paths,
+            python_paths,
             check_paths,
             missing_root_packages: files["missing_root_packages"]
                 .as_array()
@@ -67,30 +84,13 @@ fn texts(value: &Value) -> impl Iterator<Item = &str> {
         .filter_map(Value::as_str)
 }
 
-/// The configurations whose report the native check does not write: workspace
-/// members and policies only the Python engine resolves.
-pub fn supported(config: &Value) -> bool {
-    let architecture = &config["architecture"];
-    config["project"]["workspace"].is_null()
-        && config["members"].as_object().is_none_or(Map::is_empty)
-        && architecture["members"]
-            .as_object()
-            .is_none_or(Map::is_empty)
-        && architecture["cross_feature"]["allow"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .all(Value::is_string)
-}
-
-use serde_json::Map;
-
 /// `missing_paths`: config entries that point at nothing.
 pub fn missing_paths(
     config: &Value,
     root: &Path,
     inventory: &Inventory,
     resolved: &[Resolved],
+    features: &[(String, Vec<String>)],
 ) -> Result<(), ()> {
     let project = &config["project"];
     let is_dir = |directory: &str| crate::checker::vfs::is_dir(&root.join(directory));
@@ -105,7 +105,57 @@ pub fn missing_paths(
     {
         return Err(());
     }
-    let architecture = &config["architecture"];
+    let found = |scope: &str| {
+        features
+            .iter()
+            .find(|(path, _)| path == scope)
+            .map_or(&[][..], |(_, names)| names.as_slice())
+    };
+    // `_architecture_views`: the root architecture, then each member's.
+    let mut views = vec![(&config["architecture"], found(""))];
+    if let Some(packages) = config["__workspace_packages__"]
+        .as_object()
+        .filter(|packages| !packages.is_empty())
+    {
+        let mut members: Vec<&String> = packages.keys().filter(|path| !path.is_empty()).collect();
+        members.sort();
+        views.extend(members.into_iter().filter_map(|path| {
+            let architecture = &config["members"][path]["architecture"];
+            (!architecture.is_null()).then(|| (architecture, found(path)))
+        }));
+    }
+    for (architecture, features) in views {
+        missing_modules(architecture, inventory)?;
+        unknown_allowed_features(architecture, features)?;
+    }
+    unmatched_member_globs(config, root)?;
+    let contracts = config["__structure__"]["contracts"].as_object();
+    // Two overrides of one package may set conflicting policies.
+    let mut overridden: HashSet<&str> = HashSet::new();
+    for contract in resolved {
+        let spec = &contracts.and_then(|contracts| contracts.get(&contract.name));
+        if spec.is_some_and(|spec| spec["__style_override__"] == true)
+            && !overridden.insert(contract.package.as_str())
+        {
+            return Err(());
+        }
+    }
+    let matched: HashSet<&str> = resolved
+        .iter()
+        .map(|contract| contract.name.as_str())
+        .collect();
+    if contracts
+        .into_iter()
+        .flatten()
+        .any(|(name, _)| !matched.contains(name.as_str()))
+    {
+        return Err(());
+    }
+    Ok(())
+}
+
+/// `_missing_modules`: modules an architecture names that do not exist.
+fn missing_modules(architecture: &Value, inventory: &Inventory) -> Result<(), ()> {
     let features = &architecture["features"];
     if !features.is_null() {
         let package = match features["root"].as_str() {
@@ -147,27 +197,54 @@ pub fn missing_paths(
             return Err(());
         }
     }
-    let contracts = config["__structure__"]["contracts"].as_object();
-    // Two overrides of one package may set conflicting policies.
-    let mut overridden: HashSet<&str> = HashSet::new();
-    for contract in resolved {
-        let spec = &contracts.and_then(|contracts| contracts.get(&contract.name));
-        if spec.is_some_and(|spec| spec["__style_override__"] == true)
-            && !overridden.insert(contract.package.as_str())
-        {
-            return Err(());
-        }
-    }
-    let matched: HashSet<&str> = resolved
-        .iter()
-        .map(|contract| contract.name.as_str())
-        .collect();
-    if contracts
+    Ok(())
+}
+
+/// `_unknown_allowed_features`: a `{from, to}` allowance names a feature the
+/// architecture does not have.
+fn unknown_allowed_features(architecture: &Value, features: &[String]) -> Result<(), ()> {
+    for allowance in architecture["cross_feature"]["allow"]
+        .as_array()
         .into_iter()
         .flatten()
-        .any(|(name, _)| !matched.contains(name.as_str()))
+        .filter(|allowance| allowance.is_object())
     {
-        return Err(());
+        for key in ["from", "to"] {
+            let value = allowance[key].as_str().unwrap_or_default();
+            let feature = value.split('.').next().unwrap_or_default();
+            if !features.iter().any(|known| known == feature) {
+                return Err(());
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `_unmatched_member_globs`: member boundaries whose globs match no member.
+fn unmatched_member_globs(config: &Value, root: &Path) -> Result<(), ()> {
+    let boundaries = config["architecture"]["members"].as_object();
+    if boundaries.is_none_or(serde_json::Map::is_empty) {
+        return Ok(());
+    }
+    let mut members = Vec::new();
+    if config["project"]["workspace"] == "uv" {
+        members.push(".".to_owned());
+        members.extend(
+            member_directories(root, false)
+                .map_err(|_| ())?
+                .into_iter()
+                .filter(|member| member.skipped.is_none())
+                .map(|member| member.path),
+        );
+    }
+    let matched = |pattern: &str| {
+        PathPattern::new(pattern)
+            .is_ok_and(|pattern| members.iter().any(|member| pattern.matches(member)))
+    };
+    for (pattern, policy) in boundaries.into_iter().flatten() {
+        if !matched(pattern) || !texts(&policy["may_depend_on"]).all(matched) {
+            return Err(());
+        }
     }
     Ok(())
 }

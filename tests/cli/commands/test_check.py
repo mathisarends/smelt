@@ -31,19 +31,17 @@ VARIANTS = {
     ),
     "github": ("--format", "github", "--fail-on", "warning", "--no-debt"),
 }
-# The projects only the Python CLI reports: workspaces and structured allowances.
-PYTHON_ONLY = {
-    "rust_parity_architecture",
-    "rust_parity_architecture_scopes",
-    "rust_parity_coverage_workspace",
-    "rust_parity_member_configs",
-    "rust_parity_workspace",
-}
 # The Python CLI reports the syntax error the rules of these variants reach.
-PYTHON_ONLY_VARIANTS = {
+PYTHON_ONLY = {
     ("rust_parity_syntax_error", "concise"),
     ("rust_parity_syntax_error", "json"),
 }
+# Workspace members a check starts in, with and without their own config.
+MEMBERS = (
+    "rust_parity_member_configs/libs/core",
+    "rust_parity_member_configs/libs/tools/src",
+    "rust_parity_workspace/services/api",
+)
 _FALLBACK = b"smelt trace: the Python CLI checks:"
 
 
@@ -76,6 +74,18 @@ def test_native_check_writes_the_python_report(project: str, variant: str) -> No
     code, report, fell_back = _check(root, VARIANTS[variant], native=True)
 
     assert (code, report) == _check(root, VARIANTS[variant], native=False)[:2]
-    assert fell_back == (
-        project in PYTHON_ONLY or (project, variant) in PYTHON_ONLY_VARIANTS
-    )
+    assert fell_back == ((project, variant) in PYTHON_ONLY)
+
+
+@pytest.mark.parametrize("variant", VARIANTS)
+@pytest.mark.parametrize("member", MEMBERS)
+def test_native_check_in_a_member_writes_the_python_report(
+    member: str, variant: str
+) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    root = FIXTURES / member
+    code, report, fell_back = _check(root, VARIANTS[variant], native=True)
+
+    assert (code, report) == _check(root, VARIANTS[variant], native=False)[:2]
+    assert not fell_back

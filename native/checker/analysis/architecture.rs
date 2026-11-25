@@ -253,6 +253,10 @@ impl<'a> ArchitectureModel<'a> {
         )
     }
 
+    pub fn feature_names(&self) -> impl Iterator<Item = &str> {
+        self.features.keys().map(String::as_str)
+    }
+
     pub fn feature_packages(&self) -> impl Iterator<Item = &str> {
         self.features.values().map(String::as_str)
     }

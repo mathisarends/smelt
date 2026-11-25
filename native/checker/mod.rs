@@ -133,6 +133,8 @@ pub(crate) struct Outcome {
     pub(crate) files: Value,
     /// Each `architecture.canonical_exports` declaration that failed, with why.
     pub(crate) ownership_issues: Vec<(String, String)>,
+    /// The features each architecture found, by workspace member; "" is the root.
+    pub(crate) features: Vec<(String, Vec<String>)>,
 }
 
 pub(crate) use analysis::installed::interpreter_search_path;
@@ -613,7 +615,7 @@ fn check_in_pool(
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
     let mut ownership_issues = Vec::new();
-    let (mut violations, suppressed, coverage, digests) = (|| {
+    let (mut violations, suppressed, coverage, digests, features) = (|| {
         let parsed = profile::time("parse sources", || parse_sources(&sources, needs_syntax))?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -693,6 +695,25 @@ fn check_in_pool(
             ArchitectureModel::combine(&request.architecture, roots, &files, root_packages, parts)
         };
         drop(model_span);
+        // The features each architecture found, by workspace member; "" is the root.
+        let features: Vec<(String, Vec<String>)> = if model.parts().is_empty() {
+            vec![(
+                String::new(),
+                model.feature_names().map(str::to_owned).collect(),
+            )]
+        } else {
+            request
+                .workspace_packages
+                .keys()
+                .cloned()
+                .zip(
+                    model
+                        .parts()
+                        .iter()
+                        .map(|part| part.feature_names().map(str::to_owned).collect()),
+                )
+                .collect()
+        };
         if !import_rules.is_empty() || !structure_rules.is_empty() {
             let imported_tests: &[(&SourceFile, &ParsedSource)] =
                 if imports_tests { &all_test_pairs } else { &[] };
@@ -941,7 +962,7 @@ fn check_in_pool(
             coverage: &shared_coverage,
         })?;
         drop(coverage_span);
-        Ok::<_, String>((violations, suppressed, coverage, digests))
+        Ok::<_, String>((violations, suppressed, coverage, digests, features))
     })()?;
     let _span = profile::span("build report");
     violations.sort_by(Violation::compare);
@@ -986,6 +1007,7 @@ fn check_in_pool(
         baseline: None,
         files: files.inventory(request.file_naming.checks_yaml()),
         ownership_issues,
+        features,
     })
 }
 

@@ -65,6 +65,12 @@ impl Report<'_> {
                 .count()
     }
 
+    /// Whether a scoped check of a workspace reports the workspace's totals.
+    pub fn workspace_totals(&self) -> bool {
+        !self.scope.is_empty()
+            && self.coverage.get("scope").and_then(Value::as_str) == Some("workspace")
+    }
+
     pub fn failed(&self) -> bool {
         self.violations
             .iter()
@@ -131,15 +137,16 @@ pub fn render_json(report: &Report, show_coverage: bool) -> String {
     document.insert("schema_version".into(), json!(JSON_SCHEMA_VERSION));
     document.insert("status".into(), json!(report.status()));
     document.insert("summary".into(), report.summary_json());
-    document.insert(
-        "scope".into(),
-        json!({
-            "mode": "full",
-            "paths": report.scope,
-            "files": report.checked_files,
-            "rules": report.rules.iter().map(|rule| rule.code.as_str()).collect::<Vec<_>>(),
-        }),
-    );
+    let mut scope = json!({
+        "mode": "full",
+        "paths": report.scope,
+        "files": report.checked_files,
+        "rules": report.rules.iter().map(|rule| rule.code.as_str()).collect::<Vec<_>>(),
+    });
+    if report.workspace_totals() {
+        scope["totals"] = json!("workspace");
+    }
+    document.insert("scope".into(), scope);
     document.insert("comparison".into(), Value::Null);
     document.insert("coverage".into(), Value::Object(coverage));
     document.insert("project".into(), report.project.clone());
