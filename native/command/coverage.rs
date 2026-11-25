@@ -41,17 +41,29 @@ fn set(value: &Value) -> bool {
     !value.is_null()
 }
 
-/// `effective_coverage(config, facts, include_inventory=True)` for a project
-/// without workspace members; `layers` are the run's rule layers.
-pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Value) -> Value {
-    let dumped = dump_model(config);
-    let architecture = &config["architecture"];
-    let has_layout = architecture["__set__"]
+/// `ArchitectureConfig.has_layout`: whether a file declares local architecture.
+fn has_layout(architecture: &Value) -> bool {
+    architecture["__set__"]
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(Value::as_str)
-        .any(|key| !NON_LAYOUT.contains(&key));
+        .any(|key| !NON_LAYOUT.contains(&key))
+}
+
+/// `effective_coverage(config, facts, include_inventory=True)`; `layers` are
+/// the run's rule layers.
+pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Value) -> Value {
+    let dumped = dump_model(config);
+    // The members that declare their own architecture, with their packages.
+    let governing: Map<String, Value> = config["members"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(_, member)| has_layout(&member["architecture"]))
+        .map(|(path, member)| (path.clone(), member["__packages__"].clone()))
+        .collect();
+    let has_layout = has_layout(&config["architecture"]) || !governing.is_empty();
     let mut report = Map::new();
     report.insert(
         "mode".into(),
@@ -85,8 +97,14 @@ pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Valu
         "omitted_workspace_members".into(),
         facts["omitted_workspace_members"].take(),
     );
-    report.insert("member_architectures".into(), json!({}));
-    report.insert("member_boundaries".into(), json!({}));
+    report.insert("member_architectures".into(), Value::Object(governing));
+    report.insert(
+        "member_boundaries".into(),
+        match &dumped["architecture"]["members"] {
+            Value::Object(boundaries) => Value::Object(boundaries.clone()),
+            _ => json!({}),
+        },
+    );
     report.insert("modules".into(), facts["modules"].take());
     let architecture = &dumped["architecture"];
     report.insert(
@@ -111,14 +129,7 @@ pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Valu
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter_map(Value::as_str)
-                .filter_map(layer_pair)
-                .map(|(source, target)| json!({
-                    "source_feature": null,
-                    "source_layer": source,
-                    "target_feature": null,
-                    "target_layer": target,
-                }))
+                .filter_map(allowance)
                 .collect::<Vec<_>>(),
         }),
     );
@@ -137,6 +148,9 @@ pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Valu
     report.insert("python_targets".into(), facts["python_targets"].take());
     report.insert("tests".into(), dumped["tests"].clone());
     report.insert("inventory".into(), facts["inventory"].take());
+    if config["project"]["workspace"] == "uv" {
+        report.insert("scope".into(), json!("workspace"));
+    }
     if let Some(ordering) = facts.get_mut("ordering") {
         report.insert("ordering".into(), ordering.take());
     }
@@ -174,6 +188,28 @@ pub fn effective(config: &Value, layers: &[Value], strict: bool, mut facts: Valu
     Value::Object(report)
 }
 
+/// `CrossFeatureConfig.entries`: an allowance as fields; a `null` feature
+/// stands for every feature.
+fn allowance(entry: &Value) -> Option<Value> {
+    if let Some(text) = entry.as_str() {
+        let (source, target) = layer_pair(text)?;
+        return Some(json!({
+            "source_feature": null,
+            "source_layer": source,
+            "target_feature": null,
+            "target_layer": target,
+        }));
+    }
+    let (source_feature, source_layer) = entry["source"].as_str()?.split_once('.')?;
+    let (target_feature, target_layer) = entry["target"].as_str()?.split_once('.')?;
+    Some(json!({
+        "source_feature": source_feature,
+        "source_layer": source_layer,
+        "target_feature": target_feature,
+        "target_layer": target_layer,
+    }))
+}
+
 /// `_LAYER_PAIR`: `source -> target` between two layer names.
 fn layer_pair(text: &str) -> Option<(&str, &str)> {
     let (source, target) = text.split_once("->")?;
@@ -198,6 +234,21 @@ fn layer_name(name: &str) -> bool {
 fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
     let mut policy = dumped.clone();
     rename_ordering(&mut policy);
+    if let Some(entries) = policy.as_object_mut()
+        && !truthy(entries.get("members"))
+    {
+        entries.shift_remove("members");
+    }
+    for member in policy
+        .get_mut("members")
+        .and_then(Value::as_object_mut)
+        .into_iter()
+        .flat_map(|members| members.values_mut())
+    {
+        if let Some(architecture) = member.get_mut("architecture") {
+            without_empty_modules(architecture);
+        }
+    }
     let architecture = policy["architecture"].as_object_mut();
     if let Some(architecture) = architecture {
         if !truthy(architecture.get("canonical_exports")) {
@@ -213,22 +264,8 @@ fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
         if !truthy(architecture.get("members")) {
             architecture.shift_remove("members");
         }
-        for layer in architecture
-            .get_mut("layers")
-            .and_then(Value::as_object_mut)
-            .into_iter()
-            .flat_map(|layers| layers.values_mut())
-        {
-            if let Some(layer) = layer.as_object_mut()
-                && !truthy(layer.get("modules"))
-            {
-                layer.shift_remove("modules");
-            }
-        }
     }
-    if let Some(entries) = policy.as_object_mut() {
-        entries.shift_remove("members");
-    }
+    without_empty_modules(&mut policy["architecture"]);
     if let Some(project) = policy["project"].as_object_mut()
         && project.get("workspace").is_none_or(Value::is_null)
     {
@@ -243,6 +280,22 @@ fn policy_hash(dumped: &Value, layers: &[Value]) -> String {
         let _ = write!(hash, "{byte:02x}");
     }
     hash
+}
+
+/// Drop the empty `modules` of an architecture's layers.
+fn without_empty_modules(architecture: &mut Value) {
+    for layer in architecture
+        .get_mut("layers")
+        .and_then(Value::as_object_mut)
+        .into_iter()
+        .flat_map(|layers| layers.values_mut())
+    {
+        if let Some(layer) = layer.as_object_mut()
+            && !truthy(layer.get("modules"))
+        {
+            layer.shift_remove("modules");
+        }
+    }
 }
 
 fn truthy(value: Option<&Value>) -> bool {

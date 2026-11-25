@@ -18,6 +18,7 @@ mod validate;
 
 use crate::checker::config::load::{LoadedConfig, load_config, rule_layers};
 use crate::checker::config::paths;
+use crate::checker::config::workspace::member_directories;
 use crate::checker::{CATALOG, check_loaded, interpreter_search_path, profile, vfs};
 use args::{Args, Format};
 use finding::{Finding, Severity};
@@ -102,6 +103,10 @@ fn selectors(raw: Option<&str>) -> Vec<String> {
 
 /// `_scope`: the project-relative paths a check reports, `()` for all.
 fn scope(loaded: &LoadedConfig, root: &Path, cwd: &Path, raw: &[String]) -> Option<Vec<String>> {
+    if let Some(member) = loaded.member.as_ref().filter(|_| raw.is_empty()) {
+        // Started in a workspace member: report that member's files only.
+        return Some(vec![member.clone()]);
+    }
     if raw.iter().any(|path| {
         let resolved = paths::resolve(&cwd.join(path));
         loaded
@@ -171,73 +176,61 @@ fn decoded_lines(path: &Path) -> Option<Vec<String>> {
     Some(lines)
 }
 
-/// `severity_for_path`'s module: the source at `path`, or the module a path
-/// below a source root would be.
-fn module_for(
-    config: &Value,
-    sources: &HashMap<String, String>,
-    path: &str,
-) -> Result<Option<String>, ()> {
-    if let Some(module) = sources.get(path) {
-        return Ok(Some(module.clone()));
-    }
-    let project = &config["project"];
-    let roots: Vec<&str> = project["root_packages"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .collect();
-    for source_root in project["source_roots"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-    {
-        let relative = if source_root == "." {
-            Some(path)
-        } else if path == source_root {
-            Some("")
-        } else {
-            path.strip_prefix(source_root)
-                .and_then(|rest| rest.strip_prefix('/'))
-        };
-        let Some(relative) = relative else {
-            continue;
-        };
-        if relative.is_empty() || relative == "." {
-            // `Path(".").with_suffix("")` raises in the Python engine.
-            return Err(());
-        }
-        let mut parts: Vec<&str> = relative
-            .split('/')
-            .filter(|part| !part.is_empty() && *part != ".")
-            .collect();
-        if let Some(last) = parts.last_mut() {
-            *last = without_suffix(last);
-        }
-        if parts.first().is_some_and(|first| roots.contains(first)) {
-            if parts.last() == Some(&"__init__") {
-                parts.pop();
-            }
-            return Ok(Some(parts.join(".")));
-        }
-        return Ok(None);
-    }
-    Ok(None)
-}
-
-/// `PurePath.with_suffix("")` for one name.
-fn without_suffix(name: &str) -> &str {
-    match name.rfind('.') {
-        Some(index) if index > 0 && index < name.len() - 1 => &name[..index],
-        _ => name,
-    }
-}
-
 struct Debt {
     in_debt: usize,
     findings: Vec<Finding>,
+}
+
+/// A debt file and the workspace member whose findings it may accept.
+#[derive(PartialEq)]
+struct DebtScope {
+    path: String,
+    member: Option<String>,
+}
+
+/// `debt_scopes`: each member's debt file, the deepest member first, then the root's.
+fn debt_scopes(config: &Value) -> Vec<DebtScope> {
+    let mut members: Vec<(&String, &str)> = config["members"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(path, member)| member["debt"].as_str().map(|debt| (path, debt)))
+        .collect();
+    members.sort_by_key(|(path, _)| std::cmp::Reverse(path.len()));
+    let mut scopes: Vec<DebtScope> = members
+        .into_iter()
+        .map(|(path, debt)| DebtScope {
+            path: if debt.starts_with('/') {
+                debt.to_owned()
+            } else if path.is_empty() || path.ends_with('/') {
+                format!("{path}{debt}")
+            } else {
+                format!("{path}/{debt}")
+            },
+            member: Some(path.clone()),
+        })
+        .collect();
+    if let Some(debt) = config["debt"].as_str().filter(|debt| !debt.is_empty()) {
+        scopes.push(DebtScope {
+            path: debt.to_owned(),
+            member: None,
+        });
+    }
+    scopes
+}
+
+/// `debt_scope_for_path`: the closest member's debt file, else the root's.
+fn debt_scope_for_path<'s>(scopes: &'s [DebtScope], path: Option<&str>) -> Option<&'s DebtScope> {
+    scopes.iter().find(|scope| match (&scope.member, path) {
+        (None, _) => true,
+        (Some(member), Some(path)) => {
+            path == member
+                || path
+                    .strip_prefix(member.as_str())
+                    .is_some_and(|rest| rest.starts_with('/'))
+        }
+        (Some(_), None) => false,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -250,84 +243,82 @@ fn match_debt(
     active: &HashMap<&str, Severity>,
     args: &Args,
     scoped: bool,
-    findings: Vec<Finding>,
+    mut findings: Vec<Finding>,
     lines: &mut Lines,
 ) -> Option<Debt> {
-    let config = &loaded.config;
-    let debt_path = config["debt"].as_str().filter(|path| !path.is_empty());
-    let Some(debt_path) = debt_path.filter(|_| !args.no_debt) else {
-        return Some(Debt {
-            in_debt: 0,
-            findings,
-        });
+    let scopes = if args.no_debt {
+        Vec::new()
+    } else {
+        debt_scopes(&loaded.config)
     };
     let root = loaded.path.parent()?;
-    let file = root.join(debt_path);
-    let entries = if vfs::is_file(&file) {
-        let bytes = vfs::read(&file).ok()?;
-        debt::parse(std::str::from_utf8(&bytes).ok()?).ok()?
-    } else {
-        Vec::new()
-    };
     let selected = args
         .select
         .as_deref()
         .is_some_and(|select| !selectors(Some(select)).is_empty());
-    let mut kept = Vec::new();
-    for entry in entries {
-        if !active.contains_key(entry.code.as_str()) {
-            continue;
-        }
-        let rule = catalog.by_code(&entry.code)?;
-        let module = match entry.path.as_deref() {
-            Some(path) if !path.is_empty() => module_for(config, sources, path).ok()?,
-            _ => None,
+    let mut in_debt = 0;
+    for scope in &scopes {
+        let file = root.join(&scope.path);
+        let entries = if vfs::is_file(&file) {
+            let bytes = vfs::read(&file).ok()?;
+            debt::parse(std::str::from_utf8(&bytes).ok()?).ok()?
+        } else {
+            Vec::new()
         };
-        if policy
-            .severity(rule, resolved, module.as_deref(), selected)
-            .is_some()
-        {
-            kept.push(entry);
+        let mut kept = Vec::new();
+        for entry in entries {
+            // Inactive rules have not been checked; their debt is not resolved.
+            if debt_scope_for_path(&scopes, entry.path.as_deref()) != Some(scope)
+                || !active.contains_key(entry.code.as_str())
+            {
+                continue;
+            }
+            let rule = catalog.by_code(&entry.code)?;
+            if policy
+                .severity_for_path(rule, resolved, sources, entry.path.as_deref(), selected)
+                .ok()?
+                .is_some()
+            {
+                kept.push(entry);
+            }
+        }
+        let matched =
+            debt::match_findings(kept, findings, &mut |finding| lines.snippet(finding)).ok()?;
+        findings = matched.new;
+        in_debt += matched.known;
+        if let Some(severity) = active.get(RESOLVED_DEBT).filter(|_| !scoped) {
+            let rule = catalog.by_code(RESOLVED_DEBT)?;
+            findings.extend(matched.resolved.iter().map(|entry| Finding {
+                code: rule.code.clone(),
+                rule: rule.name.clone(),
+                severity: *severity,
+                message: format!(
+                    "resolved debt entry: {} {} ({})",
+                    entry.code,
+                    entry.path.as_deref().unwrap_or(""),
+                    entry.message
+                ),
+                path: Some(scope.path.clone()),
+                line: None,
+                column: None,
+                end_line: None,
+                end_column: None,
+                source_module: None,
+                target_module: None,
+                import_chain: Vec::new(),
+                feature: None,
+                layer: None,
+                expected: None,
+                hint: Some("Run `smelt debt --prune` to remove resolved entries.".to_owned()),
+                edge: None,
+                docs_url: Some(finding::docs_url(&rule.code)),
+                category: Some(rule.category.clone()),
+                member: scope.member.clone(),
+                fix: None,
+            }));
         }
     }
-    let matched =
-        debt::match_findings(kept, findings, &mut |finding| lines.snippet(finding)).ok()?;
-    let mut findings = matched.new;
-    if let Some(severity) = active.get(RESOLVED_DEBT).filter(|_| !scoped) {
-        let rule = catalog.by_code(RESOLVED_DEBT)?;
-        findings.extend(matched.resolved.iter().map(|entry| Finding {
-            code: rule.code.clone(),
-            rule: rule.name.clone(),
-            severity: *severity,
-            message: format!(
-                "resolved debt entry: {} {} ({})",
-                entry.code,
-                entry.path.as_deref().unwrap_or(""),
-                entry.message
-            ),
-            path: Some(debt_path.to_owned()),
-            line: None,
-            column: None,
-            end_line: None,
-            end_column: None,
-            source_module: None,
-            target_module: None,
-            import_chain: Vec::new(),
-            feature: None,
-            layer: None,
-            expected: None,
-            hint: Some("Run `smelt debt --prune` to remove resolved entries.".to_owned()),
-            edge: None,
-            docs_url: Some(finding::docs_url(&rule.code)),
-            category: Some(rule.category.clone()),
-            member: None,
-            fix: None,
-        }));
-    }
-    Some(Debt {
-        in_debt: matched.known,
-        findings,
-    })
+    Some(Debt { in_debt, findings })
 }
 
 fn trace(reason: &str) {
@@ -344,10 +335,26 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         args.config.as_deref().filter(|config| !config.is_empty()),
     )
     .ok_or("no configuration file")?;
-    let loaded = profile::time("load configuration", || load_config(&config_path))
+    let mut loaded = profile::time("load configuration", || load_config(&config_path))
         .map_err(|_| "a configuration error")?;
-    if loaded.member.is_some() || !validate::supported(&loaded.config) {
-        return Err("a workspace or a policy only the Python engine resolves");
+    if args.config.as_deref().is_none_or(str::is_empty)
+        && loaded.config["project"]["workspace"] == "uv"
+    {
+        // Started inside a workspace member: the check reports that member.
+        let root = loaded.path.parent().ok_or("no project root")?;
+        let here = paths::resolve(&cwd);
+        let owner = member_directories(root, false)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|member| {
+                member.skipped.is_none()
+                    && here.starts_with(paths::resolve(&root.join(&member.path)))
+            })
+            .map(|member| member.path)
+            .max_by_key(String::len);
+        if owner.is_some() {
+            loaded.member = owner;
+        }
     }
     let catalog = Catalog::load(CATALOG).ok_or("an unreadable rule catalog")?;
     let root = loaded.path.parent().ok_or("no project root")?.to_path_buf();
@@ -411,10 +418,16 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
             package: entry["package"].as_str().unwrap_or_default().to_owned(),
         })
         .collect();
-    validate::missing_paths(&loaded.config, &root, &inventory, &resolved)
-        .map_err(|()| "a configured path that matches nothing")?;
+    validate::missing_paths(
+        &loaded.config,
+        &root,
+        &inventory,
+        &resolved,
+        &outcome.features,
+    )
+    .map_err(|()| "a configured path that matches nothing")?;
     policy
-        .validate_packages(&resolved)
+        .validate_packages(&resolved, &inventory)
         .map_err(|()| "conflicting package rules")?;
     validate::scope(&root, &inventory, &scope)
         .map_err(|()| "a check path without checked files")?;

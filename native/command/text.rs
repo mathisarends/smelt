@@ -135,7 +135,12 @@ pub fn render(
                     .map_or_else(|| "0".to_owned(), display)
             };
             lines.push(format!(
-                "Policy coverage: {}; {} uncovered, {} unclassified sources",
+                "{}: {}; {} uncovered, {} unclassified sources",
+                if report.workspace_totals() {
+                    "Workspace policy coverage"
+                } else {
+                    "Policy coverage"
+                },
                 format_args!(
                     "{} ({})",
                     if complete { "complete" } else { "incomplete" },
@@ -775,13 +780,18 @@ fn summary(report: &Report, style: &Style, show_hints: bool) -> String {
         hint_text.push_str(" (use --show-hints)");
     }
     let mut tail: Vec<String> = Vec::new();
+    let scope = if report.workspace_totals() {
+        " in workspace"
+    } else {
+        ""
+    };
     if report.suppressed > 0 {
-        tail.push(format!("{} suppressed", report.suppressed));
+        tail.push(format!("{} suppressed{scope}", report.suppressed));
     }
     if report.in_debt > 0 {
-        tail.push(format!("{} in debt", report.in_debt));
+        tail.push(format!("{} in debt{scope}", report.in_debt));
     }
-    tail.push(plural(report.modules as usize, "module"));
+    tail.push(plural(report.modules as usize, "module") + scope);
     tail.extend(fixable(&report.violations));
     if errors == 0 && warnings == 0 {
         let checks: Vec<String> = report
