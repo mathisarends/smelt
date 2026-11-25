@@ -145,25 +145,26 @@ rules:
   layout/misplaced-module-logger: warning
   layout/misplaced-private-constant: error
   layout/misplaced-static-helper: warning
-  layout/redundant-comment: hint
-  layout/redundant-module-name: hint
-  layout/reexport-only-module: hint
+  layout/redundant-comment: warning
+  layout/redundant-module-name: warning
+  layout/reexport-only-module: error
 
   # Explain suppressions so reviewers can reevaluate them.
   meta/missing-tool-suppression-reason: warning
 
   # Use consistent model contracts and explicit serialized enum values.
-  modeling/dataclass-field-mutation: warning
+  modeling/dataclass-field-mutation: error
   modeling/duplicate-class-name: warning
   modeling/forbidden-base-class-affix: error
-  modeling/implicit-duration-unit: warning
+  modeling/implicit-duration-unit: error
   modeling/missing-dataclass-option: warning
   # Frozen records can own mutable caches. Review ownership at each finding.
   modeling/mutable-field-in-frozen-dataclass: hint
   modeling/parallel-record-fields: hint
   modeling/prefer-project-base-class: error
+  # A single-value Literal field alone does not establish union membership.
   modeling/prefer-str-enum-discriminator: hint
-  modeling/redundant-str-enum-value: hint
+  modeling/redundant-str-enum-value: warning
   modeling/str-enum-value-convention: warning
 
   # Mirrored layout, deterministic data and observable outcomes.
@@ -175,12 +176,12 @@ rules:
   # CLI and integration tests also exercise modules through their callers.
   tests/missing-mirror-test: hint
   tests/missing-outcome-check: warning
-  tests/missing-skip-reason: warning
+  tests/missing-skip-reason: error
   tests/nondeterministic-data: error
-  tests/private-access: warning
+  tests/private-access: error
   tests/string-patch-target: error
-  tests/unbounded-wait: warning
-  tests/vacuous-assertion: warning
+  tests/unbounded-wait: error
+  tests/vacuous-assertion: error
 
   # Static types, annotation evaluation and optional defaults.
   # Equal tuple shapes and repeated literals can represent distinct concepts.
@@ -188,22 +189,23 @@ rules:
   typing/deprecated-async-contextmanager-return: warning
   typing/duplicate-literal-type: hint
   typing/forbidden-future-annotations: error
-  typing/implicit-optional-default: warning
-  typing/prefer-deferred-annotations: warning
-  typing/prefer-inline-type-parameters: warning
-  typing/redundant-future-annotations: warning
+  typing/implicit-optional-default: error
+  typing/prefer-deferred-annotations: error
+  typing/prefer-inline-type-parameters: error
+  typing/redundant-future-annotations: error
 
   # Keep implementation details private and exports deliberate.
+  # Review cohesion before splitting parsers, renderers or model modules.
   visibility/excess-private-definitions: hint
-  visibility/foreign-private-access: warning
-  visibility/internal-public-attribute: warning
-  visibility/internal-public-member: warning
-  visibility/internal-public-module-symbol: warning
+  visibility/foreign-private-access: error
+  visibility/internal-public-attribute: error
+  visibility/internal-public-member: error
+  visibility/internal-public-module-symbol: error
   visibility/misplaced-dunder-all: error
-  visibility/redundant-private-delegate: warning
-  visibility/reexport-convention: warning
-  visibility/test-only-public-attribute: warning
-  visibility/test-only-public-function: warning
+  visibility/redundant-private-delegate: error
+  visibility/reexport-convention: error
+  visibility/test-only-public-attribute: error
+  visibility/test-only-public-function: error
 
 ignore:
   - rule: layout/file-name-convention

@@ -826,7 +826,7 @@ def _rule_lines(briefing: Briefing) -> list[str]:
         if (detail["severity"] != "off" or detail.get("reason"))
         and (
             briefing.target.kind == "project"
-            or (detail["scope"] != "test" and detail["family"] != Category.META.value)
+            or (detail["scope"] != "test" and detail["family"] != Category.META)
         )
     ]
 
