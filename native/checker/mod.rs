@@ -465,7 +465,20 @@ fn python_lines(path: &Path) -> Vec<String> {
 
 /// Check the project `request` describes, leaving out the `ignore` rules, or
 /// without rules only describe its files and coverage.
+///
+/// The whole check runs on an analysis pool, so discovery lists directories in
+/// parallel too, and every walk of the check shares their listings.
 fn check(
+    request: &Request,
+    ignore: &[String],
+    configuration_findings: bool,
+    with_rules: bool,
+) -> Result<Outcome, Failure> {
+    let _listings = vfs::ListingCache::enable();
+    with_analysis_pool(|| check_in_pool(request, ignore, configuration_findings, with_rules))?
+}
+
+fn check_in_pool(
     request: &Request,
     ignore: &[String],
     configuration_findings: bool,
@@ -578,7 +591,7 @@ fn check(
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
     let mut ownership_issues = Vec::new();
-    let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
+    let (mut violations, suppressed, coverage, digests) = (|| {
         let parsed = profile::time("parse sources", || parse_sources(&sources, needs_syntax))?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -680,8 +693,12 @@ fn check(
                 let severity = |rule, module: &str, path: &str| {
                     settings.severity(rule, &contracts, module, path, analysis.selected)
                 };
-                let mut found = Vec::new();
-                if let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty()) {
+                // Graph and structure rules share no lazily built facts, so they run together.
+                let graph_findings = || {
+                    let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty())
+                    else {
+                        return Ok(Vec::new());
+                    };
                     let context = GraphContext {
                         imports,
                         model,
@@ -698,9 +715,12 @@ fn check(
                         uv_workspace: request.project.uv_workspace,
                         workspace: OnceLock::new(),
                     };
-                    found.extend(dependencies::findings(import_rules, &context, severity)?);
-                }
-                if !structure_rules.is_empty() {
+                    dependencies::findings(import_rules, &context, severity)
+                };
+                let structure_findings = || {
+                    if structure_rules.is_empty() {
+                        return Ok(Vec::new());
+                    }
                     let context = StructureContext {
                         files: &files,
                         model,
@@ -718,8 +738,11 @@ fn check(
                         member_usage: OnceLock::new(),
                         test_modules: OnceLock::new(),
                     };
-                    found.extend(structure::findings(structure_rules, &context, severity)?);
-                }
+                    structure::findings(structure_rules, &context, severity)
+                };
+                let (graph, structure) = rayon::join(graph_findings, structure_findings);
+                let mut found = graph?;
+                found.extend(structure?);
                 Ok(found)
             };
             let mut found = Vec::new();
@@ -897,7 +920,7 @@ fn check(
         })?;
         drop(coverage_span);
         Ok::<_, String>((violations, suppressed, coverage, digests))
-    })??;
+    })()?;
     let _span = profile::span("build report");
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.

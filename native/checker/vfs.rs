@@ -8,7 +8,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::{Arc, LazyLock, PoisonError, RwLock};
 
 static MOUNTS: RwLock<Vec<Arc<Overlay>>> = RwLock::new(Vec::new());
 
@@ -81,7 +81,97 @@ impl Drop for Mount {
     }
 }
 
+/// Real directory listings that every walk of one check shares.
+///
+/// Discovery, coverage and YAML naming walk overlapping trees, and on Windows a
+/// listing costs far more than reading it again from memory. A check enables
+/// the cache while it runs and fills it in parallel with `prefetch`; walks then
+/// list in the same order as before, so their results do not change.
+struct Listings {
+    /// The checks that currently share the cache.
+    users: usize,
+    directories: HashMap<PathBuf, Arc<Vec<Entry>>>,
+}
+
+static LISTINGS: LazyLock<RwLock<Listings>> = LazyLock::new(|| {
+    RwLock::new(Listings {
+        users: 0,
+        directories: HashMap::new(),
+    })
+});
+
+/// Shares real directory listings while this value lives.
+#[must_use = "listings are shared only while the value lives"]
+pub struct ListingCache(());
+
+impl ListingCache {
+    pub fn enable() -> Self {
+        LISTINGS
+            .write()
+            .unwrap_or_else(PoisonError::into_inner)
+            .users += 1;
+        Self(())
+    }
+}
+
+impl Drop for ListingCache {
+    fn drop(&mut self) {
+        let mut listings = LISTINGS.write().unwrap_or_else(PoisonError::into_inner);
+        listings.users -= 1;
+        if listings.users == 0 {
+            listings.directories.clear();
+        }
+    }
+}
+
+/// List the real directories below `roots` in parallel into the enabled cache.
+///
+/// `descend` chooses the listed directories to visit; links are never followed,
+/// so a cycle cannot recur, and the walks resolve them as before.
+pub fn prefetch(roots: &[PathBuf], descend: impl Fn(&Entry) -> bool + Sync) {
+    use rayon::prelude::*;
+    let fresh = |directory: &PathBuf| {
+        let listings = LISTINGS.read().unwrap_or_else(PoisonError::into_inner);
+        listings.users > 0
+            && !listings.directories.contains_key(directory)
+            && mounted(directory).is_none()
+    };
+    let mut seen: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut level: Vec<PathBuf> = roots
+        .iter()
+        .filter(|directory| fresh(directory) && seen.insert((*directory).clone()))
+        .cloned()
+        .collect();
+    let listed = |directory: PathBuf| list(&directory).ok().map(|entries| (directory, entries));
+    while !level.is_empty() {
+        // Outside an analysis pool, listing in parallel would start rayon's global pool.
+        let listed: Vec<(PathBuf, Vec<Entry>)> = if rayon::current_thread_index().is_some() {
+            level.into_par_iter().filter_map(listed).collect()
+        } else {
+            level.into_iter().filter_map(listed).collect()
+        };
+        level = listed
+            .iter()
+            .flat_map(|(_, entries)| entries)
+            .filter(|entry| entry.kind == Kind::Directory && descend(entry))
+            .filter(|entry| fresh(&entry.path) && seen.insert(entry.path.clone()))
+            .map(|entry| entry.path.clone())
+            .collect();
+        let mut listings = LISTINGS.write().unwrap_or_else(PoisonError::into_inner);
+        if listings.users == 0 {
+            return;
+        }
+        for (directory, entries) in listed {
+            listings
+                .directories
+                .entry(directory)
+                .or_insert_with(|| Arc::new(entries));
+        }
+    }
+}
+
 /// One listed directory entry and its kind as the listing reports it.
+#[derive(Clone)]
 pub struct Entry {
     pub path: PathBuf,
     kind: Kind,
@@ -177,6 +267,17 @@ pub fn read_dir(directory: &Path) -> io::Result<Vec<Entry>> {
             })
             .collect());
     }
+    {
+        let listings = LISTINGS.read().unwrap_or_else(PoisonError::into_inner);
+        if let Some(entries) = listings.directories.get(directory) {
+            return Ok(entries.as_ref().clone());
+        }
+    }
+    list(directory)
+}
+
+/// The entries of a real directory, in the order the filesystem lists them.
+fn list(directory: &Path) -> io::Result<Vec<Entry>> {
     Ok(fs::read_dir(directory)?
         .flatten()
         .map(|entry| {
@@ -239,8 +340,12 @@ fn exists_in(overlay: &Overlay, relative: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{Mount, Overlay, canonicalize, exists, is_dir, is_file, read, read_dir};
+    use super::{
+        ListingCache, Mount, Overlay, canonicalize, exists, is_dir, is_file, prefetch, read,
+        read_dir,
+    };
     use std::collections::BTreeMap;
+    use std::fs;
     use std::path::PathBuf;
 
     #[test]
@@ -274,5 +379,35 @@ mod tests {
 
         drop(mount);
         assert!(!is_dir(&tree));
+    }
+
+    #[test]
+    fn a_listing_cache_serves_prefetched_directories_until_its_last_user_drops() {
+        let root = std::env::temp_dir().join(format!("smelt-listing-test-{}", std::process::id()));
+        let package = root.join("app");
+        fs::create_dir_all(&package).unwrap();
+        fs::write(package.join("core.py"), "").unwrap();
+        let names = |directory: &PathBuf| -> Vec<PathBuf> {
+            read_dir(directory)
+                .unwrap()
+                .into_iter()
+                .map(|entry| entry.path)
+                .collect()
+        };
+
+        let outer = ListingCache::enable();
+        let inner = ListingCache::enable();
+        prefetch(std::slice::from_ref(&root), |_| true);
+        fs::write(package.join("added.py"), "").unwrap();
+        let cached = names(&package);
+        drop(inner);
+        let still_cached = names(&package);
+        drop(outer);
+        let fresh = names(&package);
+        fs::remove_dir_all(&root).unwrap();
+
+        assert_eq!(cached, [package.join("core.py")]);
+        assert_eq!(still_cached, cached);
+        assert_eq!(fresh, [package.join("added.py"), package.join("core.py")]);
     }
 }

@@ -27,9 +27,11 @@ use crate::checker::contracts::Contracts;
 use crate::checker::files::{FileIndex, SourceFile};
 use crate::checker::patterns::PathPattern;
 use crate::checker::profile;
+use crate::checker::rules::{reads_fact, shared_fact};
 use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::Violation;
+use rayon::prelude::*;
 use serde_json::Value;
 use std::sync::OnceLock;
 
@@ -67,10 +69,22 @@ pub struct StructureContext<'a> {
     pub test_modules: OnceLock<Vec<TestModule<'a>>>,
 }
 
+/// The rules that read each lazily built fact, which `prepare` builds first.
+const MEMBER_USAGE_RULES: [&str; 6] = ["LAY005", "VIS001", "VIS002", "VIS004", "VIS009", "VIS010"];
+const TEST_MODULE_RULES: [&str; 2] = ["VIS009", "VIS010"];
+
 impl<'a> StructureContext<'a> {
+    /// Build the facts `rules` read, in parallel, before the rules run.
+    fn prepare(&self, rules: &[&CatalogRule]) {
+        rayon::join(
+            || reads_fact(rules, &MEMBER_USAGE_RULES).then(|| self.member_usage()),
+            || reads_fact(rules, &TEST_MODULE_RULES).then(|| self.test_modules()),
+        );
+    }
+
     /// Built once, for the first rule that asks.
     fn member_usage(&self) -> &MemberUsageIndex<'a> {
-        self.member_usage.get_or_init(|| {
+        shared_fact(&self.member_usage, || {
             let namespaces = project_namespaces(self.sources, &self.files.packages);
             MemberUsageIndex::new(self.sources, self.tests, namespaces)
         })
@@ -78,7 +92,7 @@ impl<'a> StructureContext<'a> {
 
     /// The analyzed tests outside `tests.quality_exclude`.
     fn test_modules(&self) -> &[TestModule<'a>] {
-        self.test_modules.get_or_init(|| {
+        shared_fact(&self.test_modules, || {
             let tests: Vec<_> = self
                 .tests
                 .iter()
@@ -115,15 +129,34 @@ struct StructureFinding {
     fix: Option<Value>,
 }
 
-/// Every finding of `rules` at its resolved severity.
+/// Every finding of `rules` at its resolved severity, in the order of `rules`.
+///
+/// The rules run in parallel and share the context's lazily built facts.
 pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &StructureContext<'_>,
-    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
+    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str> + Sync,
 ) -> Result<Vec<Violation>, String> {
+    context.prepare(rules);
+    let per_rule: Vec<Result<Vec<Violation>, String>> = rules
+        .par_iter()
+        .map(|rule| rule_findings(rule, context, &severity))
+        .collect();
     let mut found = Vec::new();
-    for rule in rules {
-        let _span = profile::span(format!("rule {}", rule.code));
+    for raised in per_rule {
+        found.extend(raised?);
+    }
+    Ok(found)
+}
+
+fn rule_findings<'r>(
+    rule: &'r CatalogRule,
+    context: &StructureContext<'_>,
+    severity: &impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
+) -> Result<Vec<Violation>, String> {
+    let _span = profile::span(format!("rule {}", rule.code));
+    let mut found = Vec::new();
+    {
         let raised = match rule.code.as_str() {
             "ARC011" => layout::check_unknown_layers(context),
             "ARC012" => layout::check_unclassified(context),

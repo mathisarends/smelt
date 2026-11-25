@@ -86,6 +86,20 @@ impl FileIndex {
             source_order: Vec::new(),
             ordered_portions: Vec::new(),
         };
+        profile::time("list directories", || {
+            let packages = project.source_roots.iter().flat_map(|source_root| {
+                let base = discovery.root.join(source_root);
+                project
+                    .root_packages
+                    .iter()
+                    .map(move |package| base.join(package))
+            });
+            let tests = project
+                .test_roots
+                .iter()
+                .map(|test| discovery.root.join(test));
+            prefetch_python_directories(&packages.chain(tests).collect::<Vec<_>>());
+        });
         profile::time("discover packages", || {
             project
                 .root_packages
@@ -333,18 +347,20 @@ impl Discovery {
             self.found_roots.push(package.to_owned());
         }
         for (directory, source_root) in selected {
-            self.walk_package(&directory, package, source_root)?;
+            self.walk_package(&directory, &directory, package, source_root)?;
         }
         Ok(())
     }
 
+    /// Add the package in `directory`, whose real path is `real`, with its modules.
     fn walk_package(
         &mut self,
         directory: &Path,
+        real: &Path,
         module: &str,
         source_root: &str,
     ) -> Result<(), String> {
-        let relative = self.relative(directory);
+        let relative = resolved_relative_path(&self.root, real);
         if self.excluded(&relative) {
             return Ok(());
         }
@@ -370,31 +386,34 @@ impl Discovery {
             has_init,
             source_root.to_owned(),
         ));
-        let mut entries: Vec<PathBuf> = vfs::read_dir(directory)
-            .map_err(|error| error.to_string())?
-            .into_iter()
-            .map(|entry| entry.path)
-            .collect();
-        entries.sort_by_key(|path| file_name(path).to_owned());
-        for entry in entries {
-            let name = file_name(&entry).to_owned();
-            if vfs::is_dir(&entry) {
-                if !SKIP_DIRS.contains(&name.as_str())
-                    && is_identifier(&name)
-                    && contains_python(&entry)
-                {
-                    self.walk_package(&entry, &format!("{module}.{name}"), source_root)?;
+        let mut entries = vfs::read_dir(directory).map_err(|error| error.to_string())?;
+        entries.sort_by(|left, right| file_name(&left.path).cmp(file_name(&right.path)));
+        for listed in entries {
+            let entry = &listed.path;
+            let name = file_name(entry).to_owned();
+            if listed.is_dir() {
+                if !SKIP_DIRS.contains(&name.as_str()) && is_identifier(&name) {
+                    let child = listed_real(real, &listed);
+                    if contains_python(entry, child.clone()) {
+                        self.walk_package(entry, &child, &format!("{module}.{name}"), source_root)?;
+                    }
                 }
-            } else if entry.extension().is_some_and(|suffix| suffix == "py") && vfs::is_file(&entry)
-            {
-                self.add_file(&entry, module, &name)?;
+            } else if entry.extension().is_some_and(|suffix| suffix == "py") && listed.is_file() {
+                self.add_file(entry, &listed_real(real, &listed), module, &name)?;
             }
         }
         Ok(())
     }
 
-    fn add_file(&mut self, entry: &Path, package: &str, name: &str) -> Result<(), String> {
-        let relative = self.relative(entry);
+    /// Add the module in `entry`, whose real path is `real`, to `package`.
+    fn add_file(
+        &mut self,
+        entry: &Path,
+        real: &Path,
+        package: &str,
+        name: &str,
+    ) -> Result<(), String> {
+        let relative = resolved_relative_path(&self.root, real);
         if self.excluded(&relative) {
             return Ok(());
         }
@@ -452,8 +471,8 @@ impl Discovery {
             if !vfs::is_dir(&directory) {
                 continue;
             }
-            for path in python_files(&directory) {
-                let relative = self.relative(&path);
+            for PythonFile { path, real } in python_files(&directory) {
+                let relative = resolved_relative_path(&self.root, &real);
                 if source_paths.contains(relative.as_str()) || self.excluded(&relative) {
                     continue;
                 }
@@ -495,6 +514,11 @@ impl Discovery {
 /// The POSIX path of `path` from the resolved `root`, with `..` for a path outside it.
 pub fn relative_path(root: &Path, path: &Path) -> String {
     let resolved = vfs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    resolved_relative_path(root, &resolved)
+}
+
+/// `relative_path` of a path a walk already resolved, without resolving it again.
+pub fn resolved_relative_path(root: &Path, resolved: &Path) -> String {
     if let Ok(inside) = resolved.strip_prefix(root) {
         return posix_parts(inside).join("/");
     }
@@ -528,23 +552,49 @@ fn posix_parts(path: &Path) -> Vec<String> {
         .collect()
 }
 
+/// A Python file a walk found, and its real path.
+pub struct PythonFile {
+    pub path: PathBuf,
+    pub real: PathBuf,
+}
+
 /// Python files below a directory, skipping tool directories and symlink cycles.
-pub fn python_files(directory: &Path) -> Vec<PathBuf> {
+pub fn python_files(directory: &Path) -> Vec<PythonFile> {
+    let real = vfs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
     let mut found = Vec::new();
-    walk_python(directory, |path| {
-        found.push(path);
+    walk_python(directory, real, |path, real| {
+        found.push(PythonFile { path, real });
         false
     });
     found
 }
 
-/// Visit the Python files below `directory` until `visit` returns true.
+/// List the directories below `roots` that a Python walk visits, in parallel.
+///
+/// Walks list the same directories again from memory while a `vfs::ListingCache`
+/// lives, and in the same order, so prefetching changes no result.
+pub fn prefetch_python_directories(roots: &[PathBuf]) {
+    let resolved: Vec<PathBuf> = roots
+        .iter()
+        .filter_map(|root| vfs::canonicalize(root).ok())
+        .collect();
+    vfs::prefetch(&resolved, |entry| {
+        let name = file_name(&entry.path);
+        !SKIP_DIRS.contains(&name) && !name.starts_with('.')
+    });
+}
+
+/// Visit the Python files below `directory`, whose real path is `real`, until
+/// `visit` returns true for one; it receives each file's path and real path.
 ///
 /// A listing already holds the kind of each entry, so only links cost a
-/// lookup, and a directory's real path is its parent's unless it is a link.
-fn walk_python(directory: &Path, mut visit: impl FnMut(PathBuf) -> bool) -> bool {
+/// lookup, and an entry's real path is its parent's unless it is a link.
+fn walk_python(
+    directory: &Path,
+    real: PathBuf,
+    mut visit: impl FnMut(PathBuf, PathBuf) -> bool,
+) -> bool {
     let mut visited = HashSet::new();
-    let real = vfs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
     let mut pending = vec![(directory.to_path_buf(), real)];
     while let Some((parent, resolved)) = pending.pop() {
         if !visited.insert(resolved.clone()) {
@@ -561,8 +611,11 @@ fn walk_python(directory: &Path, mut visit: impl FnMut(PathBuf) -> bool) -> bool
                     let real = listed_real(&resolved, &entry);
                     pending.push((path, real));
                 }
-            } else if path.extension().is_some_and(|suffix| suffix == "py") && visit(path) {
-                return true;
+            } else if path.extension().is_some_and(|suffix| suffix == "py") {
+                let real = listed_real(&resolved, &entry);
+                if visit(path, real) {
+                    return true;
+                }
             }
         }
     }
@@ -601,8 +654,9 @@ fn listed_file_inside(entry: &vfs::Entry, root: &Path) -> bool {
     }
 }
 
-fn contains_python(directory: &Path) -> bool {
-    walk_python(directory, |_| true)
+/// Whether a directory whose real path is `real` holds a Python file below it.
+fn contains_python(directory: &Path, real: PathBuf) -> bool {
+    walk_python(directory, real, |_, _| true)
 }
 
 /// `str.isidentifier`.

@@ -70,6 +70,8 @@ pub struct PythonTargets {
     source_roots: Vec<PathBuf>,
     pinned: Option<(u64, u64)>,
     cache: Mutex<HashMap<PathBuf, PythonTarget>>,
+    /// The real path of each directory a file was looked up in; siblings share it.
+    resolved: Mutex<HashMap<PathBuf, PathBuf>>,
 }
 
 impl PythonTargets {
@@ -88,7 +90,26 @@ impl PythonTargets {
                 Some((major.parse().ok()?, minor.parse().ok()?))
             }),
             cache: Mutex::new(HashMap::new()),
+            resolved: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// `vfs::canonicalize` of `directory`, resolved once per directory.
+    fn resolve(&self, directory: &Path) -> PathBuf {
+        let known = self
+            .resolved
+            .lock()
+            .expect("the cache lock is not poisoned")
+            .get(directory)
+            .cloned();
+        known.unwrap_or_else(|| {
+            let real = vfs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
+            self.resolved
+                .lock()
+                .expect("the cache lock is not poisoned")
+                .insert(directory.to_path_buf(), real.clone());
+            real
+        })
     }
 
     pub fn for_path(&self, path: &Path) -> PythonTarget {
@@ -101,7 +122,7 @@ impl PythonTargets {
             };
         }
         let parent = path.parent().unwrap_or(path);
-        let directory = vfs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+        let directory = self.resolve(parent);
         let mut boundary = self.root.as_path();
         if !directory.starts_with(&self.root) {
             let Some(deepest) = self

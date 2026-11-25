@@ -182,18 +182,24 @@ fn omitted_members(inputs: &ReportInputs<'_>) -> Result<Vec<Value>, String> {
         .iter()
         .map(String::as_str)
         .collect();
-    let analyzed: HashSet<PathBuf> = inputs
-        .files
-        .sources
-        .values()
-        .flat_map(|source| {
-            real(&source.absolute)
-                .ancestors()
-                .skip(1)
-                .map(Path::to_path_buf)
-                .collect::<Vec<_>>()
+    // Resolving every source costs a lookup each, so only a member's packages pay for it.
+    let analyzed = std::cell::OnceCell::new();
+    let analyzed = || {
+        analyzed.get_or_init(|| {
+            inputs
+                .files
+                .sources
+                .values()
+                .flat_map(|source| {
+                    real(&source.absolute)
+                        .ancestors()
+                        .skip(1)
+                        .map(Path::to_path_buf)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<HashSet<PathBuf>>()
         })
-        .collect();
+    };
     let mut omitted = Vec::new();
     for member in member_directories(root, false)? {
         if let Some(reason) = member.skipped {
@@ -218,7 +224,7 @@ fn omitted_members(inputs: &ReportInputs<'_>) -> Result<Vec<Value>, String> {
         let uncovered: Vec<String> = packages
             .iter()
             .filter(|name| configured.contains(name.as_str()))
-            .filter(|name| !analyzed.contains(&real(&root.join(&source_root).join(name))))
+            .filter(|name| !analyzed().contains(&real(&root.join(&source_root).join(name))))
             .map(|name| format!("{source_root}/{name}"))
             .collect();
         let mut reasons = Vec::new();

@@ -70,6 +70,27 @@ pub const PORTED: [&str; 96] = [
 /// Source rules that also read test modules, because their finding is not about test quality.
 pub const TEST_SOURCE_RULES: [&str; 1] = ["MET006"];
 
+/// The fact in `cell`, built by `build` for the first rule that asks.
+///
+/// Project-wide rules run in parallel and builders run in parallel too. A
+/// builder inside `OnceLock::get_or_init` could let its waiting worker steal
+/// another rule that asks for the same fact, which would wait for itself. So the
+/// fact is built outside the cell; two rules asking at once may both build it,
+/// and the first stored wins. The dispatch builds the facts its rules read
+/// beforehand, so that only happens for a fact it did not know about.
+pub(crate) fn shared_fact<T>(cell: &std::sync::OnceLock<T>, build: impl FnOnce() -> T) -> &T {
+    if let Some(fact) = cell.get() {
+        return fact;
+    }
+    let built = build();
+    cell.get_or_init(|| built)
+}
+
+/// Whether any of `rules` has one of `codes`.
+pub(crate) fn reads_fact(rules: &[&CatalogRule], codes: &[&str]) -> bool {
+    rules.iter().any(|rule| codes.contains(&rule.code.as_str()))
+}
+
 /// The project-wide facts rules read besides their source.
 #[derive(Clone, Copy)]
 pub struct Project<'a> {
@@ -192,5 +213,32 @@ pub fn check(
         "VIS007" => private_definitions::check(&input),
         "VIS008" => reexport_convention::check(&input),
         _ => Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::shared_fact;
+    use crate::checker::with_analysis_pool;
+    use rayon::prelude::*;
+    use std::sync::OnceLock;
+
+    #[test]
+    fn rules_asking_in_parallel_for_a_fact_built_in_parallel_share_one_value() {
+        let fact: OnceLock<u64> = OnceLock::new();
+
+        let addresses: Vec<usize> = with_analysis_pool(|| {
+            (0..256)
+                .into_par_iter()
+                .map(|_| {
+                    let value = shared_fact(&fact, || (0..10_000u64).into_par_iter().sum());
+                    std::ptr::from_ref(value).addr()
+                })
+                .collect()
+        })
+        .expect("the pool starts");
+
+        assert!(addresses.windows(2).all(|pair| pair[0] == pair[1]));
+        assert_eq!(fact.get(), Some(&49_995_000));
     }
 }
