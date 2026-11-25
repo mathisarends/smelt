@@ -42,9 +42,7 @@ IMP004 app/client_copy.py:7:1 hint fix import these names from the existing app.
 IMP004 app/client_copy.py:8:1 hint import these names from the existing app.sub package API
 IMP004 app/client_copy.py:9:1 hint fix import these names from the existing app.sub package API
 IMP004 app/nested/deep/mod_copy.py:1:1 hint fix import these names from the existing app.sub package API
-IMP004 tests/test_client_copy.py:2:1 hint fix import these names from the existing app.sub package API
-IMP004 tests/test_client_copy.py:3:1 hint fix import these names from the existing app package API
-IMP004 tests/test_client_copy.py:4:1 hint fix import these names from the existing pydantic package API
+IMP004 tests/Upper/test_case_copy.py:1:1 hint fix import these names from the existing app.sub package API
 LAY004 app/client_copy.py:27:None error imports appear after later definition groups
 LAY004 app/client_copy.py:28:None error imports appear after later definition groups
 LAY004 app/client_copy.py:31:None error imports appear after later definition groups

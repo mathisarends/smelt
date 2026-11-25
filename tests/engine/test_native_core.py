@@ -210,7 +210,11 @@ def _edit_history(root: Path) -> None:
     _git(root, "init", "--quiet")
     _git(root, "add", "--all")
     _git(root, "commit", "--quiet", "--message", "base")
-    sources = sorted(path for path in root.rglob("*.py") if ".git" not in path.parts)
+    # Paths compare case-insensitively on Windows; strings order alike everywhere.
+    sources = sorted(
+        (path for path in root.rglob("*.py") if ".git" not in path.parts),
+        key=lambda path: path.relative_to(root).as_posix(),
+    )
     for index, path in enumerate(sources):
         if index % 3 == 0:
             # Shifted lines must still match the base commit's findings.
