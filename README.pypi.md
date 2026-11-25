@@ -61,7 +61,7 @@ smelt init                  # draft smelt.yml from your layout
 smelt check                 # enforce it
 ```
 
-Upgrading to 0.16.1? See the [upgrade guide](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/upgrading.md#016-to-0161).
+Upgrading to 0.17.0? See the [upgrade guide](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/upgrading.md#0161-to-0170).
 
 | You want to… | Command |
 | --- | --- |
@@ -87,28 +87,28 @@ repos:
         name: smelt
         entry: smelt check --staged --fail-on warning
         language: python
-        additional_dependencies: [smelt-cli==0.16.1]
+        additional_dependencies: [smelt-cli==0.17.0]
         pass_filenames: false
         always_run: true
         require_serial: true
 ```
 
-Run `smelt check --fail-on warning` in CI. See [integrations](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/integrations.md).
+Run `smelt check --fail-on warning` in CI. See [integrations](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/integrations.md).
 
 ## Documentation
 
 | Level | Guide | You learn |
 | --- | --- | --- |
-| 1 | [First check](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/01-first-check.md) | Write the first rules, read and act on findings |
-| 2 | [Architecture boundaries](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/02-architecture-boundaries.md) | Layers, features, composition root, third-party imports |
-| 3 | [Tests that mirror the source](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/03-test-layout.md) | Test layout and test quality rules |
-| 4 | [The agent loop](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/04-agent-loop.md) | `context`, changed and staged checks, hooks, CI |
-| 5 | [Existing codebases](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/05-existing-codebases.md) | Debt baselines and strict policy coverage |
-| 6 | [Scaling the policy](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/06-scaling-the-policy.md) | Package APIs, shared configs, uv workspaces |
+| 1 | [First check](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/01-first-check.md) | Write the first rules, read and act on findings |
+| 2 | [Architecture boundaries](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/02-architecture-boundaries.md) | Layers, features, composition root, third-party imports |
+| 3 | [Tests that mirror the source](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/03-test-layout.md) | Test layout and test quality rules |
+| 4 | [The agent loop](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/04-agent-loop.md) | `context`, changed and staged checks, hooks, CI |
+| 5 | [Existing codebases](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/05-existing-codebases.md) | Debt baselines and strict policy coverage |
+| 6 | [Scaling the policy](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/06-scaling-the-policy.md) | Package APIs, shared configs, uv workspaces |
 
-Reference: [configuration](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/configuration.md), [rule catalog](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/rules/README.md),
-[CLI](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/cli.md), [all docs](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/README.md), [changelog](https://github.com/mathisarends/smelt/blob/v0.16.1/CHANGELOG.md),
-[contributing](https://github.com/mathisarends/smelt/blob/v0.16.1/CONTRIBUTING.md).
+Reference: [configuration](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/configuration.md), [rule catalog](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/rules/README.md),
+[CLI](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/cli.md), [all docs](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/README.md), [changelog](https://github.com/mathisarends/smelt/blob/v0.17.0/CHANGELOG.md),
+[contributing](https://github.com/mathisarends/smelt/blob/v0.17.0/CONTRIBUTING.md).
 
 Smelt analyzes source statically and never runs your code. Use it alongside
-tests, a type checker and Ruff. See [scope and limits](https://github.com/mathisarends/smelt/blob/v0.16.1/docs/vision.md).
+tests, a type checker and Ruff. See [scope and limits](https://github.com/mathisarends/smelt/blob/v0.17.0/docs/vision.md).

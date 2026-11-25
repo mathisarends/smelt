@@ -7,40 +7,40 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
-- Changed and staged checks now accept repositories containing tracked symlinks.
-  Git snapshots omit link entries and analyze regular files at their tracked paths.
+## [0.17.0] - 2026-11-25
+
+See [upgrading from 0.16.1](docs/upgrading.md#0161-to-0170) for hook pins, the
+removed cache and source installations.
 
 - `smelt check` analyzes in the compiled native core, including `--staged`
-  and `--changed`. Reports match the earlier Python analysis. The core parses
-  the newest Python grammar whichever Python runs smelt, so a syntax error no
-  longer suggests running smelt on a newer Python.
+  and `--changed`. Reports match 0.16.1: with every rule selected, this
+  repository and the other projects compared report the same findings. Full
+  checks of this repository take 2 s instead of 28 s on Windows, and checks of
+  the other projects were 3 to 13 times faster. The core parses the newest
+  Python grammar whichever Python runs smelt, so a syntax error no longer
+  suggests running smelt on a newer Python.
 - Checks keep no cache. Every run analyzes the current working tree or staged
   index, so a result never depends on an earlier run, and smelt no longer
   writes a `.smelt_cache/` directory; an existing one can be deleted.
   `--no-cache` is still accepted and has no effect.
 - The installed `smelt` command no longer starts a background worker; every
   check runs in the foreground and exits. `SMELT_DAEMON` has no effect.
-- A check builds its policy coverage once and reads file kinds from directory
-  listings, which shortens checks of projects with large non-Python
-  directories, such as a Rust `target/`. Staged checks read the lines debt
-  entries quote in one Git request.
-- Checks and `smelt context` take the project's sources, tests and policy
-  coverage from the native core instead of discovering them again in Python,
-  which shortens every check.
-- The native core verifies `architecture.canonical_exports`, resolves the
-  imports between uv workspace members and reads the symbols that
-  `smelt init` traces. Smelt no longer analyzes project sources in Python and
-  no longer depends on `grimp`.
+- Smelt no longer analyzes project sources in Python and no longer depends on
+  `grimp`. The native core also verifies `architecture.canonical_exports`,
+  resolves the imports between uv workspace members, reads the symbols that
+  `smelt init` traces and supplies the sources, tests and policy coverage that
+  `smelt context` reports.
 - `--staged` and `--changed` read the staged index and the base revision in
   memory instead of writing them to a temporary directory, which saves one to
-  two seconds per check on Windows.
+  two seconds per check on Windows. Checks of projects with large non-Python
+  directories, such as a Rust `target/`, or with many tests are faster as well.
+  Findings are unchanged.
+- Changed and staged checks accept repositories containing tracked symlinks.
+  Git snapshots omit link entries and analyze regular files at their tracked
+  paths.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.
-- Test analysis collects fixtures without analyzing every other function body
-  a second time, which shortens checks of projects with many tests.
-- Checks traverse syntax trees faster and walk each statement's scope
-  once for private attribute analysis. Findings are unchanged.
 - Installing from a Git checkout or source distribution now requires Rust 1.98+.
   Release wheels are unaffected.
 - Release wheels now cover musl Linux, such as Alpine containers, on x86_64 and
@@ -1710,7 +1710,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/mathisarends/smelt/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/mathisarends/smelt/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/mathisarends/smelt/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/mathisarends/smelt/compare/v0.14.0...v0.15.0
