@@ -516,16 +516,6 @@ class TestBaseClassPrefix:
         with pytest.raises(ConfigError, match="conflicting MOD002"):
             violations(root)
 
-    def test_cached_check_observes_renamed_classes(self, tmp_path: Path) -> None:
-        root = _module_project(
-            tmp_path, {"app/service.py": "class BaseService: pass\n"}, CLASS_CONFIG
-        )
-        assert codes_at(violations(root)) == [("MOD002", "app/service.py", 1)]
-
-        (root / "app/service.py").write_text("class Service: pass\n", encoding="utf-8")
-
-        assert violations(root) == []
-
 
 REDUNDANT_CONFIG = """version: 2
 project: {root_packages: [backend]}
@@ -677,27 +667,15 @@ rules: {layout/redundant-module-name: hint}
         assert violations(root) == []
 
     @pytest.mark.parametrize("occupied", ["exporter.py", "exporter/__init__.py"])
-    def test_collisions_and_renames_invalidate_cached_findings(
+    def test_an_occupied_shorter_name_is_not_suggested(
         self, tmp_path: Path, occupied: str
     ) -> None:
+        sibling = f"{REDUNDANT_PATH.rpartition('/')[0]}/{occupied}"
         root = write_project(
             tmp_path,
-            {"smelt.yml": REDUNDANT_CONFIG, REDUNDANT_PATH: ""},
+            {"smelt.yml": REDUNDANT_CONFIG, REDUNDANT_PATH: "", sibling: ""},
         )
-        [initial] = violations(root)
-        assert initial.expected is not None
-        assert initial.expected["suggested_name"] == "exporter.py"
 
-        sibling = str((root / REDUNDANT_PATH).parent.relative_to(root) / occupied)
-        write_project(root, {sibling: ""})
-
-        cached = violations(root)
-        assert cached == violations(root, CheckOptions())
-        assert len(cached) == 1
-        assert cached[0].expected is not None
-        assert cached[0].expected["suggested_name"] is None
-
-        (root / sibling).unlink()
-        (root / REDUNDANT_PATH).rename((root / REDUNDANT_PATH).with_name("exporter.py"))
-
-        assert violations(root) == []
+        [finding] = violations(root)
+        assert finding.expected is not None
+        assert finding.expected["suggested_name"] is None

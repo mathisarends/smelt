@@ -306,17 +306,6 @@ class Debt:
                 resolved.append(entry)
         return DebtMatch(new, known, resolved)
 
-    def without(self, resolved: Iterable[DebtEntry]) -> Debt:
-        """A copy without ``resolved`` entries (matched by fingerprint, one per entry)."""
-        remove = Counter(entry.fingerprint for entry in resolved)
-        kept: list[DebtEntry] = []
-        for entry in self.entries:
-            if remove[entry.fingerprint] > 0:
-                remove[entry.fingerprint] -= 1
-            else:
-                kept.append(entry)
-        return Debt(kept)
-
 
 def _current(code: str) -> str:
     """The family code of an entry written with a pre-family SMT code."""

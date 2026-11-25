@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from smelt.analysis import native
 from smelt.analysis.errors import AnalysisError
-from smelt.config.patterns import path_matches
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
@@ -36,17 +35,12 @@ class TestFile:
     def name(self) -> str:
         return self.path.rsplit("/", 1)[-1]
 
-    @property
-    def is_conftest(self) -> bool:
-        return self.name == "conftest.py"
-
 
 @dataclass(slots=True)
 class PackageDir:
     module: str
     path: str
     source_root: str
-    has_init: bool
 
 
 @dataclass(frozen=True)
@@ -55,8 +49,6 @@ class FileIndex:
     config: SmeltConfig
     sources: dict[str, SourceFile] = field(default_factory=dict)
     packages: dict[str, PackageDir] = field(default_factory=dict)
-    package_parts: dict[str, list[PackageDir]] = field(default_factory=dict)
-    package_roots: dict[str, list[Path]] = field(default_factory=dict)
     tests: dict[str, TestFile] = field(default_factory=dict)
     missing_root_packages: list[str] = field(default_factory=list)
     # YAML files by name alone, listed when a file naming policy reads them.
@@ -110,13 +102,9 @@ class FileIndex:
         store = store or SourceStore()
         base = store.resolve(root)
         packages: dict[str, PackageDir] = {}
-        parts: dict[str, list[PackageDir]] = {}
         for entry in inventory["packages"]:
-            portion = PackageDir(
-                entry["module"], entry["path"], entry["source_root"], entry["has_init"]
-            )
+            portion = PackageDir(entry["module"], entry["path"], entry["source_root"])
             packages.setdefault(portion.module, portion)
-            parts.setdefault(portion.module, []).append(portion)
         return cls(
             root=base,
             config=config,
@@ -130,12 +118,6 @@ class FileIndex:
                 for entry in inventory["sources"]
             },
             packages=packages,
-            package_parts=parts,
-            package_roots={
-                package: [store.resolve(base / part.path) for part in parts[package]]
-                for package in config.project.root_packages
-                if package in parts
-            },
             tests={
                 entry["path"]: TestFile(
                     entry["path"], base / entry["path"], entry["test_root"]
@@ -145,12 +127,6 @@ class FileIndex:
             missing_root_packages=list(inventory["missing_root_packages"]),
             yaml_paths=tuple(inventory["yaml_paths"]),
             store=store,
-        )
-
-    def is_excluded(self, path: str) -> bool:
-        return any(
-            path_matches(pattern, path)
-            for pattern in self.config.project.exclude_patterns
         )
 
     def relative(self, path: Path) -> str:
@@ -235,24 +211,6 @@ class FileIndex:
     def all_check_paths(self) -> Iterator[str]:
         yield from self.all_python_paths()
         yield from self.yaml_paths
-
-    def source_root_dir(self, module: str) -> str | None:
-        parts = module.split(".")
-        for end in range(len(parts), 0, -1):
-            package = self.packages.get(".".join(parts[:end]))
-            if package is not None:
-                return package.source_root
-        return None
-
-    def module_to_path(self, module: str, *, package: bool = False) -> str:
-        """The expected repo-relative path for ``module``, whether or not it exists."""
-        root = (
-            self.source_root_dir(module)
-            or (self.config.project.source_roots or ["."])[0]
-        )
-        parts = [p for p in root.strip("/").split("/") if p and p != "."]
-        parts.extend(module.split("."))
-        return "/".join(parts) + ("/" if package else ".py")
 
     def _under_test_root(self, path: str) -> bool:
         # Import-policy rules ask once per import and contract.

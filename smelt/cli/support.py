@@ -49,9 +49,6 @@ class Console:
     def error(self, text: str) -> None:
         self.err.write(f"error: {text}\n")
 
-    def warn(self, text: str) -> None:
-        self.err.write(f"warning: {text}\n")
-
 
 def use_color(stream: TextIO, *, disabled: bool) -> bool:
     if disabled or os.environ.get("NO_COLOR"):

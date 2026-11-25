@@ -80,28 +80,6 @@ fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send +
             }
             Ok(json!({"blobs": blobs}))
         }
-        "tree" => {
-            let revision = request.identifiers.first().ok_or("missing revision")?;
-            let id = gix::hash::ObjectId::from_hex(revision.as_bytes())?;
-            let tree = repo.find_commit(id)?.tree()?;
-            let mut entries = tree.traverse().breadthfirst.files()?;
-            entries.sort_by(|a, b| a.filepath.cmp(&b.filepath));
-            let mut records = Vec::new();
-            for entry in entries {
-                if entry.mode.is_tree() {
-                    continue;
-                }
-                let kind = if entry.mode.is_commit() {
-                    "commit"
-                } else {
-                    "blob"
-                };
-                write!(records, "{:06o} {kind} {}\t", entry.mode.value(), entry.oid)?;
-                records.extend_from_slice(entry.filepath.as_ref());
-                records.push(0);
-            }
-            Ok(json!({"records": STANDARD.encode(records)}))
-        }
         _ => Err("unsupported operation".into()),
     }
 }

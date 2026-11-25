@@ -343,30 +343,6 @@ def test_other_api_packages_do_not_contribute_to_bundling(tmp_path: Path) -> Non
     assert violations(tmp_path, OPTIONS) == []
 
 
-def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> None:
-    _project(
-        tmp_path,
-        "from app.user.application.get_user import GetUser\nfrom app.user.application.update_user import UpdateUser\n",
-        config=CONFIG.replace("min_imports_to_bundle: 3", "min_imports_to_bundle: 2"),
-    )
-    [before] = violations(tmp_path, OPTIONS)
-    assert before.expected is not None
-    assert before.expected["cycle_check"] == "no-cycle-found"
-    write_project(
-        tmp_path,
-        {
-            "app/user/application/update_user.py": "from app.user.application import GetUser\nclass UpdateUser: pass\n"
-        },
-    )
-
-    [cached] = violations(tmp_path, OPTIONS)
-    [fresh] = violations(tmp_path, CheckOptions(select=("IMP001",)))
-
-    assert cached.expected == fresh.expected
-    assert cached.expected is not None
-    assert cached.expected["cycle_check"] == "cycle"
-
-
 def test_export_proposals_remain_specific_to_each_caller(tmp_path: Path) -> None:
     _project(
         tmp_path,

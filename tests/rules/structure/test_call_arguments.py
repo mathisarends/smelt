@@ -360,7 +360,7 @@ def test_rule_is_opt_in_and_configurable(tmp_path: Path) -> None:
     assert (finding.code, finding.severity) == ("CPX002", Severity.WARNING)
 
 
-def test_package_overrides_suppression_and_uncached_results(tmp_path: Path) -> None:
+def test_package_overrides_and_suppression(tmp_path: Path) -> None:
     source = "consume(values=[x for x in items])\n"
     root = _project(tmp_path, source)
     write_project(
@@ -385,7 +385,6 @@ style:
         ("app/mapping.py", Severity.HINT),
         ("app/strict/__init__.py", Severity.WARNING),
     ]
-    assert violations(root, CheckOptions()) == found
     assert violations(root, SELECT) == found
 
 

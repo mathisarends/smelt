@@ -309,36 +309,3 @@ def test_package_override_ignore_and_reasoned_suppression(tmp_path: Path) -> Non
     assert outcome.report.suppressed == 1
     write_policy_project(root, {"app/readiness.py": source})
     assert [v.severity for v in violations(root)] == [Severity.ERROR]
-
-
-@pytest.mark.parametrize("style", ["", _MODULE_BOUNDARY])
-def test_cached_results_follow_external_uses_exports_and_inheritance(
-    tmp_path: Path,
-    style: str,
-) -> None:
-    root = _project(tmp_path, "class Readiness:\n    initial = 1")
-    write_policy_project(root, {"smelt.yml": _CONFIG + style})
-    states = [
-        {"app/other.py": "def consume(value): return value.initial"},
-        {
-            "app/other.py": "",
-            "tests/test_readiness.py": "def test_initial(value): assert value.initial == 1",
-        },
-        {
-            "tests/test_readiness.py": "",
-            "app/__init__.py": "from .readiness import Readiness",
-        },
-        {
-            "app/__init__.py": "",
-            "app/other.py": "from .readiness import Readiness as R\nclass Child(R): pass",
-        },
-        {"app/other.py": ""},
-    ]
-    assert [v.code for v in violations(root)] == ["VIS004"]
-    for index, files in enumerate(states):
-        write_policy_project(root, files)
-        cached = violations(root)
-        assert cached == violations(root, CheckOptions())
-        assert [v.code for v in cached] == (
-            ["VIS004"] if index == len(states) - 1 else []
-        )

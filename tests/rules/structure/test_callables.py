@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, violations, write_project
+from tests.helpers import violations, write_project
 
 CONFIG = "version: 2\nproject: {root_packages: [app], test_roots: [tests]}\n"
 OPTIONS = CheckOptions(select=("IDM003",))
@@ -148,29 +148,3 @@ def test_reasoned_suppression_and_test_files_are_respected(tmp_path: Path) -> No
     write_project(root, {"tests/test_reports.py": SINGLE_METHOD})
 
     assert violations(root, OPTIONS) == []
-
-
-def test_cached_review_tracks_method_arguments_and_conversion(tmp_path: Path) -> None:
-    root = _project(tmp_path, SINGLE_METHOD)
-    assert len(violations(root, OPTIONS)) == 1
-
-    write_project(
-        root,
-        {
-            "app/reports.py": SINGLE_METHOD.replace(
-                "report_id):", "report_id, *, refresh=False):"
-            )
-        },
-    )
-    cached = check(root, OPTIONS).report
-    fresh = check(root, CheckOptions(select=("IDM003",))).report
-    assert cached.violations == fresh.violations
-    [finding] = cached.violations
-    assert finding.expected is not None
-    assert finding.expected["operation_signature"] == "report_id, *, refresh=False"
-
-    write_project(
-        root, {"app/reports.py": SINGLE_METHOD.replace("generate", "__call__")}
-    )
-    assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("IDM003",))) == []

@@ -40,10 +40,6 @@ class ModuleInfo:
         default=None, kw_only=True, compare=False
     )
 
-    @property
-    def in_grid(self) -> bool:
-        return self.kind is ModuleKind.FEATURE
-
 
 @dataclass(frozen=True, slots=True)
 class FeatureInfo:
@@ -194,29 +190,6 @@ class ArchitectureModel:
         if spec is not None and spec.pattern is not None:
             return spec.pattern.replace("{feature}", feature)
         return feature
-
-    def feature_pattern(self) -> str | None:
-        spec = self.config.architecture.features
-        if spec is None:
-            return None
-        if spec.root is not None:
-            return f"{spec.root}.{{feature}}"
-        return spec.pattern
-
-    def modules_in(self, feature: str | None, layer: str) -> list[str]:
-        return [
-            name
-            for name, info in self.modules.items()
-            if info.in_grid and info.feature == feature and info.layer == layer
-        ]
-
-    def grid_containers(self) -> list[str]:
-        """Packages whose direct child packages must be declared layers."""
-        if not self.layers:
-            return []
-        if self.has_features:
-            return sorted(info.package for info in self.features.values())
-        return [root for root in self.roots if root in self.packages]
 
 
 class _Classifier:

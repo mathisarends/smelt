@@ -87,6 +87,27 @@ def test_statistics_grouping_requires_statistics(
     assert "requires --statistics" in json.loads(out)["error"]["message"]
 
 
+def test_the_retired_cache_flag_is_accepted_without_effect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_policy_project(
+        tmp_path,
+        {
+            "smelt.yml": "version: 2\nproject: {root_packages: [app]}\n",
+            "app/__init__.py": "",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+
+    reports = [
+        _run(capsys, "check", *flags, "--format", "json")
+        for flags in ((), ("--no-cache",))
+    ]
+
+    assert reports[0] == reports[1]
+    assert reports[0][0] == 0
+
+
 def test_inherited_config_show_explains_sources_and_is_cwd_independent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

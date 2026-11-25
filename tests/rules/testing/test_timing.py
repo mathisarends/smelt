@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from smelt.diagnostics.render.machine import render_json
-from smelt.engine.check import CheckOptions
-from tests.helpers import check, violations, write_project
+from tests.helpers import violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_same_file_helper_reports_operation_and_invalidates_after_edits(
+def test_same_file_helper_reports_the_unbounded_operation_it_runs(
     tmp_path: Path,
 ) -> None:
     write_project(
@@ -39,10 +37,7 @@ def test_same_file_helper_reports_operation_and_invalidates_after_edits(
     }
     path = tmp_path / "tests/test_compiler.py"
     path.write_text(path.read_text().replace("check=False", "check=False, timeout=10"))
-    cached = check(tmp_path).report
-    uncached = check(tmp_path, CheckOptions()).report
-    assert cached.violations == []
-    assert render_json(cached) == render_json(uncached)
+    assert violations(tmp_path) == []
     path.write_text(path.read_text().replace("assert result.returncode == 0", "pass"))
     [finding] = violations(tmp_path)
     assert finding.code == "TST006"

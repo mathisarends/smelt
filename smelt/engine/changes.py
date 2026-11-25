@@ -103,7 +103,7 @@ def capture_index(repository: Path) -> GitIndex:
     """Capture one immutable manifest, including stage/mode validation."""
     records = native_git.index_records(repository)
     if records is None:
-        records = run_git(repository, "ls-files", "--stage", "-z")
+        records = _run_git(repository, "ls-files", "--stage", "-z")
     blobs: dict[str, str] = {}
     for record in records.split(b"\0"):
         if not record:
@@ -133,11 +133,11 @@ def resolve_comparison(
     captured: GitRepository | None = None,
 ) -> tuple[Path, Comparison]:
     toplevel = (captured.path if captured else repository) or Path(
-        os.fsdecode(run_git(root, "rev-parse", "--show-toplevel")).strip()
+        os.fsdecode(_run_git(root, "rev-parse", "--show-toplevel")).strip()
     )
     head = captured.head if captured is not None else _head(root)
     if base is not None:
-        ref = run_git(root, "merge-base", head or "HEAD", base).decode().strip()
+        ref = _run_git(root, "merge-base", head or "HEAD", base).decode().strip()
     elif head is not None:
         ref = head
     else:
@@ -152,7 +152,7 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     if native is not None:
         return native
     contents = io.BytesIO(
-        run_git(
+        _run_git(
             repository,
             "cat-file",
             "--batch",
@@ -174,11 +174,7 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
     return result
 
 
-def run_git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
-    if args[:-1] == ("ls-tree", "-rz", "--full-tree"):
-        native = native_git.tree_records(root, args[3])
-        if native is not None:
-            return native
+def _run_git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
     try:
         result = subprocess.run(  # noqa: S603
             ["git", *args],  # noqa: S607

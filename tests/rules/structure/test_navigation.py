@@ -129,34 +129,6 @@ def test_namespace_spelling_services_shadowing_and_rebinding_do_not_exempt_calls
     assert len(violations(_project(tmp_path, source), OPTIONS)) == 1
 
 
-@pytest.mark.parametrize("kind", ["dataclass", "pydantic"])
-def test_imported_record_changes_invalidate_namespace_evidence(
-    tmp_path: Path, kind: str
-) -> None:
-    record = (
-        "from dataclasses import dataclass\n@dataclass\nclass State:\n    calls: list[str]\n"
-        if kind == "dataclass"
-        else "from pydantic import BaseModel\nclass State(BaseModel):\n    calls: list[str]\n"
-    )
-    root = _project(
-        tmp_path,
-        "from .api import State\nclass Controller:\n    def __init__(self, state: State): self.state = state\n    def run(self): self.state.calls.append('run')",
-    )
-    write_project(
-        root, {"app/api.py": "from .state import State\n", "app/state.py": record}
-    )
-    assert violations(root) == []
-
-    # The unchanged caller must be reviewed when the dependency becomes a service.
-    write_project(root, {"app/state.py": "class State:\n    calls: list[str]\n"})
-
-    cached = violations(root)
-    assert len(cached) == 1
-    assert cached == violations(root, CheckOptions())
-    write_project(root, {"app/state.py": record})
-    assert violations(root) == []
-
-
 @pytest.mark.parametrize(
     "expression",
     [
@@ -324,34 +296,6 @@ def test_new_occurrences_are_not_hidden_by_existing_debt(tmp_path: Path) -> None
     after = check(root)
     new, known, _ = debt.match(after.report.violations, snippet_reader(after.context))
     assert len(new) == len(known) == 1
-
-
-def test_cached_and_uncached_results_agree_after_source_and_policy_changes(
-    tmp_path: Path,
-) -> None:
-    root = _project(
-        tmp_path,
-        "class Controller:\n    def run(self):\n        self.browser.input.motor()",
-    )
-    assert len(violations(root)) == 1
-    write_project(
-        root,
-        {
-            "app/control.py": "class Controller:\n    def run(self):\n        self.motor.aim()"
-        },
-    )
-    assert violations(root) == []
-    write_project(
-        root,
-        {
-            "app/control.py": "class Controller:\n    def run(self):\n        self.browser.input.motor()"
-        },
-    )
-    cached = violations(root)
-    assert len(cached) == 1
-    assert cached == violations(root, CheckOptions())
-    write_project(root, {"smelt.yml": CONFIG.replace(": hint", ": 'off'")})
-    assert violations(root) == []
 
 
 _SDK_SOURCE = (

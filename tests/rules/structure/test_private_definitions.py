@@ -247,7 +247,6 @@ style:
         },
     )
     assert violations(root) == []
-    assert violations(root, CheckOptions()) == []
 
 
 def test_requires_opt_in_and_supports_off_overrides_and_suppression(
@@ -276,7 +275,6 @@ style:
     )
     [finding] = violations(root)
     assert finding.path == "app/state.py"
-    assert violations(root, CheckOptions()) == [finding]
 
 
 @pytest.mark.parametrize(

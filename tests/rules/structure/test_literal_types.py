@@ -174,20 +174,6 @@ def test_opt_in_severity_package_overrides_and_suppressions(tmp_path: Path) -> N
     assert not violations(root)
 
 
-def test_repeated_checks_match_fresh_results_after_changes(tmp_path: Path) -> None:
-    root = _project(tmp_path)
-    baseline = violations(root, OPTIONS)
-    assert violations(root, OPTIONS) == baseline
-    for addition in (
-        'from typing import Literal\nx: Literal["left", "right"]\n',
-        'from typing import Literal\nx: Literal["up", "down"]\n',
-        "",
-    ):
-        write_project(root, {"app/other.py": addition})
-    (root / "app/other.py").unlink()
-    (root / "app/pointer.py").rename(root / "app/renamed.py")
-
-
 def test_debt_detects_growth_and_replacement_inside_an_existing_group(
     tmp_path: Path,
 ) -> None:

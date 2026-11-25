@@ -80,23 +80,6 @@ def test_relative_test_suggestions_reach_the_facade(
     assert finding.expected["replacement"] == replacement
 
 
-def test_cached_test_findings_follow_import_and_export_edits(tmp_path: Path) -> None:
-    root = _project(tmp_path, client="")
-    test_path = "tests/test_observation.py"
-    for client, exports, expected in (
-        (CLIENT, EXPORTS, ["IMP004"]),
-        (CLIENT, "", []),
-        (CLIENT, EXPORTS, ["IMP004"]),
-        ("from app.observation import Snapshot\n", EXPORTS, []),
-    ):
-        write_project(root, {test_path: client, "app/observation/__init__.py": exports})
-        warm = violations(root, OPTIONS)
-        assert warm == violations(root, CheckOptions(select=("IMP004",)))
-        assert [v.code for v in warm] == expected
-    (root / test_path).unlink()
-    assert violations(root, OPTIONS) == []
-
-
 @pytest.mark.parametrize(
     ("exports", "expected"),
     [
@@ -329,24 +312,6 @@ def test_deliberate_implementation_import_can_be_suppressed(tmp_path: Path) -> N
     assert outcome.report.suppressed == 1
 
 
-def test_cached_findings_follow_export_edits_and_deletion(tmp_path: Path) -> None:
-    root = _project(
-        tmp_path, config=CONFIG + "rules: {imports/prefer-package-import: hint}\n"
-    )
-    [initial] = violations(root)
-    assert initial.code == "IMP004"
-    initializer = root / "app/observation/__init__.py"
-    for exports in ("", EXPORTS):
-        initializer.write_text(exports, encoding="utf-8")
-        warm = check(root).report.violations
-        fresh = check(root, CheckOptions()).report.violations
-        assert warm == fresh
-        assert [finding.code for finding in warm] == (["IMP004"] if exports else [])
-    initializer.unlink()
-    assert violations(root) == []
-    assert violations(root, CheckOptions()) == []
-
-
 SITE = {
     "web/__init__.py": "from .routing import APIRouter as APIRouter\n"
     "from .app import App\n",
@@ -461,25 +426,3 @@ def test_project_packages_shadow_a_listed_name(
     )
 
     assert violations(root, OPTIONS) == []
-
-
-def test_cached_findings_follow_installed_package_edits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root = _installed_project(
-        tmp_path,
-        monkeypatch,
-        client="from web.orm.session import Engine\n",
-        config=THIRD_PARTY + "rules: {imports/prefer-package-import: hint}\n",
-    )
-    assert violations(root) == []
-
-    write_project(
-        tmp_path / "site",
-        {"web/orm/__init__.py": "from .session import Engine, Session\n"},
-    )
-
-    warm = check(root).report.violations
-    fresh = check(root, CheckOptions()).report.violations
-    assert warm == fresh
-    assert [finding.code for finding in warm] == ["IMP004"]

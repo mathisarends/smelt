@@ -12,7 +12,6 @@ from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.changes import capture_repository, resolve_comparison
 from smelt.engine.check import CheckOptions
-from smelt.engine.git_source import GitSourceStore
 from tests.helpers import (
     LAYERED_CONFIG,
     add_rules,
@@ -366,14 +365,14 @@ def test_changed_optional_defaults_distinguish_a_replaced_function(repo: Path) -
     assert finding.expected["scope"] == "download"
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
+def _git(root: Path, *args: str) -> bytes:
+    return subprocess.run(  # noqa: S603
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
         cwd=root,
         check=True,
         capture_output=True,
         timeout=10,
-    )
+    ).stdout
 
 
 @pytest.fixture
@@ -404,8 +403,10 @@ class TestBaseComparison:
         repository, comparison = resolve_comparison(repo, None)
 
         assert comparison.revision is not None
-        base = GitSourceStore.from_revision(repository, comparison.revision)
-        assert base.read_text(repository / "app/application/service.py") == ""
+        base = _git(
+            repository, "show", f"{comparison.revision}:app/application/service.py"
+        )
+        assert base == b""
         assert comparison.revision == comparison.head
         assert comparison.to_json()["merge_base"] is None
 

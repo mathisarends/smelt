@@ -1,4 +1,4 @@
-"""Load only the command being executed, after argument parsing and cache lookup."""
+"""Load only the command being executed, after argument parsing."""
 
 from __future__ import annotations
 

@@ -49,7 +49,7 @@ def service(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 @pytest.mark.parametrize("object_format", ["sha1", "sha256"])
 @pytest.mark.parametrize("index_version", ["2", "4"])
-def test_native_index_tree_and_blobs_match_git_and_refresh_after_edits(
+def test_native_index_and_blobs_match_git_and_refresh_after_edits(
     tmp_path: Path, service: None, object_format: str, index_version: str
 ) -> None:
     git(tmp_path, "init", "-q", "-b", "main", f"--object-format={object_format}")
@@ -74,9 +74,6 @@ def test_native_index_tree_and_blobs_match_git_and_refresh_after_edits(
             assert head == git(tmp_path, "rev-parse", "HEAD").decode().strip()
             records = native_git.index_records(root)
             assert records == git(tmp_path, "ls-files", "--stage", "-z")
-            assert native_git.tree_records(root, str(head)) == git(
-                tmp_path, "ls-tree", "-rz", "--full-tree", str(head)
-            )
             index = capture_index(root)
             blobs = native_git.read_blobs(root, list(set(index.blobs.values())))
             assert blobs is not None

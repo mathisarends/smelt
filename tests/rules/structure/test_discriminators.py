@@ -283,23 +283,8 @@ def test_declared_python_minimum(tmp_path: Path, version: str, count: int) -> No
     assert len(found) == count
 
 
-def test_python_metadata_changes_invalidate_cached_findings(tmp_path: Path) -> None:
+def test_enum_member_discriminators_are_not_reported(tmp_path: Path) -> None:
     root = _project(tmp_path)
-    metadata = root / "pyproject.toml"
-    metadata.write_text('[project]\nrequires-python = ">=3.11"\n', encoding="utf-8")
-    [finding] = violations(root, OPTIONS)
-    assert finding.expected is not None
-    assert finding.expected["python"]["minimum"] == "3.11"
-
-    metadata.write_text('[project]\nrequires-python = ">=3.10"\n', encoding="utf-8")
-
-    assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("MOD003",))) == []
-
-
-def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> None:
-    root = _project(tmp_path)
-    assert len(violations(root, OPTIONS)) == 1
     (root / "app/events.py").write_text(
         SOURCE.replace(
             'Literal["checkpoint.extension"]', "Literal[EventType.CHECKPOINT_EXTENSION]"
@@ -308,4 +293,3 @@ def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> 
     )
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("MOD003",))) == []

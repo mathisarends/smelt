@@ -31,7 +31,6 @@ class TestAnalysisContext:
         ctx = AnalysisContext(root, load_config(root / "smelt.yml").config)
 
         assert set(ctx.files.sources) == {"app.domain.service", "app.infra.db"}
-        assert ctx.files.module_to_path("app.infra.new") == "two/src/app/infra/new.py"
 
     @pytest.mark.parametrize("regular", [False, True])
     def test_ambiguous_packages_and_modules_name_both_paths(

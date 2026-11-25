@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
 
 class Index(StrEnum):
-    COVERAGE = "coverage"
     FILES = "files"
     IMPORTS = "imports"
     MEMBERS = "member_usage"

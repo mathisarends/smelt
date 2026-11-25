@@ -150,28 +150,6 @@ def test_exclusions_ignores_severity_and_scope_apply_to_yaml(tmp_path: Path) -> 
     assert report.checked_files == 1
 
 
-def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
-    tmp_path: Path,
-) -> None:
-    write_policy_project(
-        tmp_path,
-        {
-            "smelt.yml": CONFIG
-            + "style: {file_naming: {yaml_extension: yml, compose_basename: compose}}\n",
-            "app/__init__.py": "",
-            "compose.yml": "",
-        },
-    )
-    assert not check(tmp_path).report.violations
-    (tmp_path / "compose.yml").rename(tmp_path / "docker-compose.yaml")
-    cached = check(tmp_path).report
-    fresh = check(tmp_path, CheckOptions()).report
-    assert cached.violations == fresh.violations
-    assert [v.code for v in cached.violations] == ["LAY007"]
-    (tmp_path / "docker-compose.yaml").unlink()
-    assert not check(tmp_path).report.violations
-
-
 @pytest.mark.parametrize(
     "policy",
     ["yaml_extension: json", "yaml_extension: .yaml", "compose_basename: stack"],

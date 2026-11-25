@@ -32,7 +32,6 @@ struct Portion {
     module: String,
     path: String,
     source_root: String,
-    has_init: bool,
 }
 
 pub struct FileIndex {
@@ -155,7 +154,6 @@ impl FileIndex {
                     "module": portion.module,
                     "path": portion.path,
                     "source_root": portion.source_root,
-                    "has_init": portion.has_init,
                 })
             })
             .collect();
@@ -361,7 +359,6 @@ impl Discovery {
             module: module.to_owned(),
             path: relative.clone(),
             source_root: source_root.to_owned(),
-            has_init,
         });
         self.portions.entry(module.to_owned()).or_insert((
             relative,

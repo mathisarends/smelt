@@ -224,18 +224,6 @@ def test_is_opt_in_and_supports_package_overrides_and_suppression(
     assert violations(root) == []
 
 
-def test_cached_results_follow_field_declaration_changes(tmp_path: Path) -> None:
-    root = _project(tmp_path, SNAPSHOT)
-    (finding,) = violations(root, SELECT)
-    assert finding.code == "IDM008"
-    write_project(root, {"app/state.py": SNAPSHOT.replace("id: str", "id: object")})
-    assert (
-        violations(root, SELECT)
-        == violations(root, CheckOptions(select=("IDM008",)))
-        == []
-    )
-
-
 @pytest.mark.parametrize(
     "source",
     [

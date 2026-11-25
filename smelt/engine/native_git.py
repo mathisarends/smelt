@@ -148,16 +148,6 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes] | N
         return None
 
 
-def tree_records(repository: Path, revision: str) -> bytes | None:
-    response = request("tree", repository, identifiers=[revision])
-    try:
-        return (
-            base64.b64decode(response["records"], validate=True) if response else None
-        )
-    except (KeyError, TypeError, ValueError):
-        return None
-
-
 def request(operation: str, root: Path, **values: object) -> dict[str, Any] | None:
     global _service, _failed  # noqa: PLW0603 - serialized helper ownership
     executable = _executable()
