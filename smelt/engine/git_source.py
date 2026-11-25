@@ -53,12 +53,8 @@ class GitSourceStore(SourceStore):
             metadata, raw_path = record.split(b"\t", 1)
             mode, kind, oid = metadata.split()
             path = Path(os.fsdecode(raw_path))
-            if kind != b"blob":
+            if kind != b"blob" or mode == b"120000":
                 continue
-            if mode == b"120000":
-                raise AnalysisError(
-                    f"changed/staged snapshots do not support symbolic links: {path}"
-                )
             if path.drive or path.is_absolute() or ".." in path.parts:
                 raise AnalysisError(f"unsafe path in Git snapshot: {path}")
             blobs[path.as_posix()] = oid.decode("ascii")

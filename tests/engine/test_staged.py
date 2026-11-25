@@ -273,6 +273,38 @@ def _check(
     return code, json.loads(captured.out)
 
 
+@pytest.mark.parametrize("mode", ["--changed", "--staged"])
+def test_tracked_directory_link_preserves_new_findings(
+    repo: Path,
+    mode: str,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    link = repo / ".claude/skills"
+    link.parent.mkdir()
+    (repo / ".agents/skills").mkdir(parents=True)
+    (repo / ".agents/skills/SKILL.md").write_text(
+        "Shared instructions", encoding="utf-8"
+    )
+    try:
+        link.symlink_to("../.agents/skills", target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks are unavailable")
+    _git(repo, "add", ".agents", ".claude")
+    _git(repo, "commit", "-qm", "shared skills")
+    (repo / "app/consumer.py").write_text("", encoding="utf-8")
+    _git(repo, "add", "app/consumer.py")
+    monkeypatch.chdir(repo)
+
+    status = main(["check", mode, "--format", "json", "--fail-on", "warning"])
+    report = json.loads(capsys.readouterr().out)
+
+    assert status == 1
+    assert [(v["code"], v["path"]) for v in report["violations"]] == [
+        ("VIS001", "app/browser.py")
+    ]
+
+
 def test_staged_redundant_module_name_uses_index_paths(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

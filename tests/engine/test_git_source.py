@@ -8,6 +8,7 @@ import pytest
 
 from smelt.analysis.files import FileIndex
 from smelt.config.models import SmeltConfig
+from smelt.engine.changes import capture_index
 from smelt.engine.git_source import GitSourceStore
 from tests.helpers import write_project
 
@@ -21,14 +22,14 @@ CONFIG = SmeltConfig.model_validate(
 )
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
+def _git(root: Path, *args: str) -> bytes:
+    return subprocess.run(  # noqa: S603
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
         cwd=root,
         check=True,
         capture_output=True,
         timeout=10,
-    )
+    ).stdout
 
 
 @pytest.fixture
@@ -67,3 +68,23 @@ def test_path_outside_the_snapshot_has_no_identity(repo: Path) -> None:
     store = GitSourceStore.from_revision(repo, "HEAD")
 
     assert store.identity(repo / "app/missing.py") is None
+
+
+@pytest.mark.parametrize("staged", [False, True], ids=["revision", "index"])
+def test_git_snapshot_omits_links_and_keeps_regular_sources(
+    repo: Path, *, staged: bool
+) -> None:
+    # Stage the link mode directly so Windows runners need no symlink privileges.
+    target = repo / "link-target"
+    target.write_text("service.py", encoding="utf-8")
+    oid = _git(repo, "hash-object", "-w", "link-target").decode().strip()
+    _git(repo, "update-index", "--add", "--cacheinfo", f"120000,{oid},app/alias.py")
+    _git(repo, "commit", "-qm", "tracked link")
+    store = (
+        GitSourceStore.from_index(capture_index(repo))
+        if staged
+        else GitSourceStore.from_revision(repo, "HEAD")
+    )
+
+    assert store.read_text(repo / "app/service.py") == "VALUE = 1\n"
+    assert not store.exists(repo / "app/alias.py")

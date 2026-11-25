@@ -114,9 +114,8 @@ def capture_index(repository: Path) -> GitIndex:
         _snapshot_path(repository, path)
         if stage != b"0":
             raise AnalysisError(f"--staged cannot check an unmerged index: {path}")
-        if mode == b"120000":
-            raise AnalysisError(f"--staged does not support symbolic links: {path}")
-        if mode != b"160000":
+        # A link blob holds the target name, not a copy of its contents.
+        if mode not in {b"120000", b"160000"}:
             blobs[path.as_posix()] = object_id.decode("ascii")
     return GitIndex(
         repository,

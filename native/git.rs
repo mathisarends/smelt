@@ -58,6 +58,7 @@ fn execute(request: Request) -> Result<Value, Box<dyn std::error::Error + Send +
                 let path: &[u8] = entry.path(&index).as_ref();
                 if entry.stage_raw() == 0
                     && entry.mode != gix::index::entry::Mode::COMMIT
+                    && entry.mode != gix::index::entry::Mode::SYMLINK
                     && (path.ends_with(b".yaml") || path.ends_with(b".yml"))
                 {
                     // Derive candidates from this exact captured index. Never
