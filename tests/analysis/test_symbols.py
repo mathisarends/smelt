@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.analysis.symbols import Loader, Namespace, read_symbols, resolve_dotted
-from smelt.engine.check import CheckOptions
 from tests.helpers import check, write_project
 
 if TYPE_CHECKING:
@@ -231,7 +230,7 @@ def test_uncertain_tables_handlers_and_mutations_are_unverified(
     assert "Public" not in _namespace(tmp_path, source).imported
 
 
-def test_lazy_exports_protect_actual_api_and_invalidate_after_table_edits(
+def test_lazy_exports_protect_only_the_api_their_table_resolves(
     tmp_path: Path,
 ) -> None:
     write_project(
@@ -252,10 +251,8 @@ def test_lazy_exports_protect_actual_api_and_invalidate_after_table_edits(
             )
         },
     )
-    cached = check(tmp_path).report.violations
-    fresh = check(tmp_path, CheckOptions()).report.violations
-    assert cached == fresh
-    assert [finding.code for finding in fresh] == ["VIS001"]
+    found = check(tmp_path).report.violations
+    assert [finding.code for finding in found] == ["VIS001"]
 
 
 def test_stub_alone_does_not_prove_a_runtime_export(tmp_path: Path) -> None:

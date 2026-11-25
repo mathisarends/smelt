@@ -116,7 +116,7 @@ def test_conflicting_ownership_through_alias_keys_is_rejected(tmp_path: Path) ->
         violations(root, OPTIONS)
 
 
-def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_rule(
+def test_missing_canonical_export_fails_even_when_the_rule_is_inactive(
     tmp_path: Path,
 ) -> None:
     root = _project(
@@ -126,10 +126,6 @@ def test_deleted_canonical_export_is_revalidated_with_warm_cache_and_inactive_ru
             "architecture:\n  canonical_exports: {app.browser.base.BrowserEvents: app.Events}\n",
         ),
     )
-    write_policy_project(
-        root, {"app/__init__.py": "from .browser.base import BrowserEvents as Events\n"}
-    )
-    assert violations(root, OPTIONS) == []
     write_policy_project(root, {"app/__init__.py": ""})
     with pytest.raises(ConfigError, match="verified public export"):
         violations(root, CheckOptions(select=("MET001",)))
@@ -443,27 +439,6 @@ def test_threshold_and_rule_off_and_missing_policy_are_respected(
     ):
         _project(tmp_path, config=config)
         assert violations(tmp_path, OPTIONS) == []
-
-
-def test_warm_and_uncached_results_follow_callers_exports_and_deleted_definitions(
-    tmp_path: Path,
-) -> None:
-    root = _project(tmp_path)
-    assert len(violations(root, OPTIONS)) == 1
-    for updates, expected in (
-        ({"app/third.py": ""}, 0),
-        ({"app/third.py": CLIENT}, 1),
-        ({"app/browser/__init__.py": "from .base import Browser, BrowserEvents\n"}, 0),
-        ({"app/browser/__init__.py": "from .base import Browser\n"}, 1),
-        ({"app/browser/base.py": "class Browser: pass\n"}, 0),
-    ):
-        write_policy_project(root, updates)
-        warm = violations(root, OPTIONS)
-        fresh = violations(root, CheckOptions(select=("ARC008",)))
-        assert warm == fresh
-        assert len(warm) == expected
-    (root / "app/browser/base.py").unlink()
-    assert violations(root, OPTIONS) == []
 
 
 def test_recorded_gap_does_not_hide_a_new_symbol_or_importer(tmp_path: Path) -> None:

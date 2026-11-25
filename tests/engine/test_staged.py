@@ -26,7 +26,7 @@ style:
 """
 
 
-def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
+def test_staged_member_dependencies_use_index_metadata(
     repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     write_policy_project(
@@ -54,17 +54,15 @@ def test_staged_member_dependencies_use_index_metadata_and_invalidate_reuse(
     )
     monkeypatch.chdir(repo)
 
-    for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "ARC010", *flags)
-        assert status == 1
-        [found] = data["violations"]
-        assert (found["code"], found["member"]) == ("ARC010", "services/api")
+    status, data = _check(repo, capsys, "--select", "ARC010")
+    assert status == 1
+    [found] = data["violations"]
+    assert (found["code"], found["member"]) == ("ARC010", "services/api")
 
     _git(repo, "add", "services/api/pyproject.toml")
-    for flags in ((), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "ARC010", *flags)
-        assert status == 0
-        assert data["violations"] == []
+    status, data = _check(repo, capsys, "--select", "ARC010")
+    assert status == 0
+    assert data["violations"] == []
 
 
 def test_staged_member_reason_cannot_be_supplied_by_an_unstaged_repair(
@@ -91,12 +89,11 @@ def test_staged_member_reason_cannot_be_supplied_by_an_unstaged_repair(
     )
     monkeypatch.chdir(repo)
 
-    for flags in ((), ("--no-cache",)):
-        code = main(["check", "--staged", "--format", "json", *flags])
-        data = json.loads(capsys.readouterr().out)
-        assert code == 2
-        assert "reason" in json.dumps(data["error"])
-        assert "services/api/smelt.yml" in json.dumps(data["error"])
+    code = main(["check", "--staged", "--format", "json"])
+    data = json.loads(capsys.readouterr().out)
+    assert code == 2
+    assert "reason" in json.dumps(data["error"])
+    assert "services/api/smelt.yml" in json.dumps(data["error"])
 
     _git(repo, "add", "services/api/smelt.yml")
     code, data = _check(repo, capsys)
@@ -154,13 +151,12 @@ def test_staged_literal_groups_use_staged_sources_and_policy(
     # Neither unstaged removal nor disabling the rule may change the index view.
     write_policy_project(repo, {"app/second.py": "", "smelt.yml": CONFIG})
     monkeypatch.chdir(repo)
-    for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "TYP005", *flags)
-        assert status == 1
-        assert [v["path"] for v in data["violations"]] == [
-            "app/first.py",
-            "app/second.py",
-        ]
+    status, data = _check(repo, capsys, "--select", "TYP005")
+    assert status == 1
+    assert [v["path"] for v in data["violations"]] == [
+        "app/first.py",
+        "app/second.py",
+    ]
     _git(repo, "add", "app/second.py")
     status, data = _check(repo, capsys, "--select", "TYP005")
     assert status == 0
@@ -180,13 +176,12 @@ def test_staged_private_symbols_use_index_definitions_and_callers(
     _git(repo, "add", ".")
     write_policy_project(repo, {"app/service.py": "", "app/caller.py": ""})
     monkeypatch.chdir(repo)
-    for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "VIS005", *flags)
-        assert status == 1
-        [finding] = data["violations"]
-        assert finding["code"] == "VIS005"
-        assert finding["path"] == "app/caller.py"
-        assert finding["expected"]["private_target"] == "app.service._helper"
+    status, data = _check(repo, capsys, "--select", "VIS005")
+    assert status == 1
+    [finding] = data["violations"]
+    assert finding["code"] == "VIS005"
+    assert finding["path"] == "app/caller.py"
+    assert finding["expected"]["private_target"] == "app.service._helper"
 
 
 def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
@@ -217,12 +212,11 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
     # The working tree would report no new finding; only the staged blob has one.
     write_policy_project(repo, {"app/storage.py": original})
     monkeypatch.chdir(repo)
-    for flags in ((), (), ("--no-cache",)):
-        status, data = _check(repo, capsys, "--select", "TYP003", *flags)
-        assert status == 1
-        [finding] = data["violations"]
-        assert finding["code"] == "TYP003"
-        assert finding["expected"]["scope"] == "download"
+    status, data = _check(repo, capsys, "--select", "TYP003")
+    assert status == 1
+    [finding] = data["violations"]
+    assert finding["code"] == "TYP003"
+    assert finding["expected"]["scope"] == "download"
 
 
 def _git(root: Path, *args: str) -> None:
@@ -326,13 +320,12 @@ rules: {layout/redundant-module-name: warning}
     write_policy_project(repo, {"smelt.yml": CONFIG})
     monkeypatch.chdir(repo)
 
-    for flags in ((), (), ("--no-cache",)):
-        code, data = _check(repo, capsys, "--select", "LAY009", *flags)
-        assert code == 1
-        [finding] = data["violations"]
-        assert finding["code"] == "LAY009"
-        assert finding["path"] == "app/cars/application/car_exporter.py"
-        assert finding["expected"]["suggested_name"] == "exporter.py"
+    code, data = _check(repo, capsys, "--select", "LAY009")
+    assert code == 1
+    [finding] = data["violations"]
+    assert finding["code"] == "LAY009"
+    assert finding["path"] == "app/cars/application/car_exporter.py"
+    assert finding["expected"]["suggested_name"] == "exporter.py"
 
 
 def test_staged_filename_policy_uses_the_index_and_tracks_renames(
@@ -354,12 +347,11 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
     # An unstaged rename and policy edit must not affect the captured inventory.
     (repo / "deploy/docker-compose.yaml").rename(repo / "deploy/compose.yml")
     write_policy_project(repo, {"smelt.yml": CONFIG})
-    for flags in ((), (), ("--no-cache",)):
-        code, data = _check(repo, capsys, "--select", "LAY007", *flags)
-        assert code == 1
-        assert [(v["code"], v["path"]) for v in data["violations"]] == [
-            ("LAY007", "deploy/docker-compose.yaml"),
-        ]
+    code, data = _check(repo, capsys, "--select", "LAY007")
+    assert code == 1
+    assert [(v["code"], v["path"]) for v in data["violations"]] == [
+        ("LAY007", "deploy/docker-compose.yaml"),
+    ]
     _git(repo, "add", "deploy")
     code, data = _check(repo, capsys, "--select", "LAY007")
     assert code == 0
@@ -367,7 +359,7 @@ def test_staged_filename_policy_uses_the_index_and_tracks_renames(
 
 
 @pytest.mark.parametrize("legacy_only", [False, True])
-def test_staged_discovery_matches_cached_and_uncached_config_preference(
+def test_staged_discovery_prefers_the_current_config_name(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -382,17 +374,14 @@ def test_staged_discovery_matches_cached_and_uncached_config_preference(
     _git(repo, "add", ".")
     monkeypatch.chdir(repo)
 
-    reports = []
-    for args in ([], [], ["--no-cache"]):
-        code = main(["check", "--staged", "--format", "json", *args])
-        captured = capsys.readouterr()
-        assert code in {0, 1}
-        assert not captured.err
-        reports.append(json.loads(captured.out))
-    assert reports[0] == reports[1] == reports[2]
+    code = main(["check", "--staged", "--format", "json"])
+    captured = capsys.readouterr()
+    assert code in {0, 1}
+    assert not captured.err
+    assert json.loads(captured.out)["scope"]["mode"] == "staged"
 
 
-def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
+def test_staged_inheritance_uses_parent_blobs(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     write_policy_project(
@@ -406,14 +395,13 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     _git(repo, "commit", "-qm", "shared policy")
     (repo / "app/consumer.py").write_text("", encoding="utf-8")
     _git(repo, "add", "app/consumer.py")
-    cold = _check(repo, capsys)
-    assert cold[0] == 1
-    assert [v["code"] for v in cold[1]["violations"]] == ["VIS001"]
+    staged = _check(repo, capsys)
+    assert staged[0] == 1
+    assert [v["code"] for v in staged[1]["violations"]] == ["VIS001"]
 
-    # The warm result must ignore unstaged (even malformed) parent edits.
+    # Unstaged (even malformed) parent edits do not change the staged result.
     (repo / "policy/base.yml").write_text("invalid: [", encoding="utf-8")
-    assert _check(repo, capsys) == cold
-    assert _check(repo, capsys, "--no-cache") == cold
+    assert _check(repo, capsys) == staged
 
     # Only the inherited policy changes in the index. The child is untouched.
     (repo / "policy/base.yml").write_text(
@@ -424,7 +412,6 @@ def test_staged_inheritance_uses_parent_blobs_and_invalidates_result_reuse(
     changed = _check(repo, capsys)
     assert changed[0] == 0
     assert changed[1]["violations"] == []
-    assert changed == _check(repo, capsys, "--no-cache")
 
     # A missing staged parent cannot fall back to an existing working-tree file.
     _git(repo, "rm", "--cached", "policy/base.yml")
@@ -493,8 +480,6 @@ def test_staged_facade_gap_uses_index_callers_and_exports(
     [finding] = report["violations"]
     assert finding["path"] == "app/api/impl.py"
     assert finding["expected"]["count"] == 2
-    _, fresh = _check(repo, capsys, "--select", "ARC008", "--no-cache")
-    assert fresh["violations"] == report["violations"]
     _git(repo, "add", "app/api/__init__.py")
     _, exported = _check(repo, capsys, "--select", "ARC008")
     assert exported["violations"] == []
@@ -535,14 +520,13 @@ def test_staged_test_imports_use_index_callers_policy_and_exports(
             "smelt.yml": config + f"rules: {{{code}: off}}\n",
         },
     )
-    for flags in ((), (), ("--no-cache",)):
-        _, report = _check(repo, capsys, "--select", code, *flags)
-        assert [(v["code"], v["path"]) for v in report["violations"]] == [
-            (code, "tests/test_api.py")
-        ] * count
+    _, report = _check(repo, capsys, "--select", code)
+    assert [(v["code"], v["path"]) for v in report["violations"]] == [
+        (code, "tests/test_api.py")
+    ] * count
 
 
-def test_staged_change_finds_unchanged_definition_and_matches_uncached(
+def test_staged_change_finds_unchanged_definition(
     repo: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -556,12 +540,7 @@ def test_staged_change_finds_unchanged_definition_and_matches_uncached(
         "from .browser import Browser\nBrowser().emit()"
     )
 
-    cold = _check(repo, capsys)
-    warm = _check(repo, capsys)
-    uncached = _check(repo, capsys, "--no-cache")
-
-    assert cold == warm == uncached
-    code, report = cold
+    code, report = _check(repo, capsys)
     assert code == 1
     assert [(v["code"], v["path"]) for v in report["violations"]] == [
         ("VIS001", "app/browser.py")
@@ -729,7 +708,7 @@ def test_staged_analyses_do_not_materialize_sources(
     monkeypatch.setattr("tempfile.mkdtemp", unexpected)
     (repo / "app/consumer.py").write_text("")
     _git(repo, "add", "app/consumer.py")
-    code, report = _check(repo, capsys, "--no-cache")
+    code, report = _check(repo, capsys)
     assert code == 1
     assert report["violations"][0]["path"] == "app/browser.py"
 
@@ -759,7 +738,7 @@ def test_staged_check_reads_each_git_input_once(
     ]
 
 
-def test_head_advance_invalidates_the_exact_result(
+def test_committed_findings_leave_the_staged_check(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     (repo / "app/consumer.py").write_text("")
@@ -767,10 +746,9 @@ def test_head_advance_invalidates_the_exact_result(
     assert _check(repo, capsys)[0] == 1
     _git(repo, "commit", "-qm", "accept existing finding")
     assert _check(repo, capsys)[0] == 0
-    assert _check(repo, capsys) == _check(repo, capsys, "--no-cache")
 
 
-def test_changed_staged_policy_cannot_reuse_previous_blob(
+def test_staged_policy_wins_over_its_working_tree_copy(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     (repo / "app/consumer.py").write_text("")
@@ -785,9 +763,7 @@ def test_changed_staged_policy_cannot_reuse_previous_blob(
     )
     _git(repo, "add", "smelt.yml")
     config.write_text("invalid: [")
-    actual = _check(repo, capsys)
-    assert actual[0] == 0
-    assert actual == _check(repo, capsys, "--no-cache")
+    assert _check(repo, capsys)[0] == 0
 
 
 def test_staged_results_and_baseline_follow_installed_package_exports(
@@ -826,16 +802,11 @@ def test_staged_results_and_baseline_follow_installed_package_exports(
     assert [(item["code"], item["path"]) for item in report["violations"]] == [
         ("IMP004", "app/new.py")
     ]
-    assert (added, report) == _check(repo, capsys, "--no-cache")
 
-    # The README change also exercises reuse across unobserved index changes.
     facade.write_text("", encoding="utf-8")
-    (repo / "README.md").write_text("Updated notes.\n", encoding="utf-8")
-    _git(repo, "add", "README.md")
     removed, report = _check(repo, capsys)
     assert removed == 0
     assert report["violations"] == []
-    assert (removed, report) == _check(repo, capsys, "--no-cache")
 
 
 def test_arbitrary_markdown_debt_file_is_an_observed_input(
@@ -848,21 +819,7 @@ def test_arbitrary_markdown_debt_file_is_an_observed_input(
     assert _check(repo, capsys)[0] == 0
     (repo / "accepted.md").write_text("broken JSON")
     _git(repo, "add", "accepted.md")
-    cached = _check(repo, capsys)
-    assert cached[0] == 2
-    assert cached == _check(repo, capsys, "--no-cache")
-
-
-def test_inventory_changes_invalidate_reused_results(
-    repo: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    _check(repo, capsys)
-    (repo / "app/new.py").write_text("def helper(): pass\n")
-    _git(repo, "add", "app/new.py")
-    cached = _check(repo, capsys)
-    assert cached[0] == 1
-    assert cached == _check(repo, capsys, "--no-cache")
+    assert _check(repo, capsys)[0] == 2
 
 
 def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(
@@ -881,12 +838,11 @@ def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working
     _git(repo, "add", "smelt.yml", "app")
     (repo / "app/domain/leak.py").write_text("")
     (repo / "app/application/service.py").unlink()
-    cached = _check(repo, capsys)
+    _, report = _check(repo, capsys)
     assert any(
         v["code"] == "ARC001" and v["path"] == "app/domain/leak.py"
-        for v in cached[1]["violations"]
+        for v in report["violations"]
     )
-    assert cached == _check(repo, capsys, "--no-cache")
 
 
 def test_explicit_staged_config_can_be_deleted_from_the_working_tree(
@@ -902,9 +858,7 @@ def test_explicit_staged_config_can_be_deleted_from_the_working_tree(
     _git(repo, "add", "nested/smelt.yml")
     config.unlink()
     config.parent.rmdir()
-    cached = _check(repo, capsys, "--config", str(config))
-    assert cached[0] in {0, 1}
-    assert cached == _check(repo, capsys, "--config", str(config), "--no-cache")
+    assert _check(repo, capsys, "--config", str(config))[0] in {0, 1}
 
 
 def test_text_feedback_names_the_decision_and_shows_the_staged_source(

@@ -127,7 +127,7 @@ def test_member_check_does_not_import_inactive_test_rules(tmp_path: Path) -> Non
     script = """
 import sys
 from smelt.cli import main
-assert main(['check', '--no-cache']) == 0
+assert main(['check']) == 0
 assert 'smelt.rules.structure.members' in sys.modules
 assert 'smelt.rules.testing.awaits' not in sys.modules
 """

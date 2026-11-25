@@ -263,17 +263,16 @@ def test_rule_is_explicit_and_supports_package_overrides(tmp_path: Path) -> None
     assert finding.severity is Severity.ERROR
 
 
-def test_cross_module_definition_changes_invalidate_cached_decisions(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    ("definitions", "count"),
+    [("", 0), ("from third_party import _helper\n", 0), ("_helper = 1\n", 1)],
+)
+def test_private_reads_need_a_definition_in_the_target_module(
+    tmp_path: Path, definitions: str, count: int
 ) -> None:
     root = _symbol_project(tmp_path, "import app.service as s\ns._helper()")
-    assert len(violations(root, SELECT)) == 1
-    for definitions in ("", "from third_party import _helper\n", "_helper = 1\n"):
-        write_policy_project(root, {"app/service.py": definitions})
-        cached = violations(root, SELECT)
-        fresh = violations(root, CheckOptions(select=("VIS005",)))
-        assert cached == fresh
-        assert len(cached) == (1 if definitions == "_helper = 1\n" else 0)
+    write_policy_project(root, {"app/service.py": definitions})
+    assert len(violations(root, SELECT)) == count
 
 
 @pytest.mark.parametrize("with_init", [True, False])
@@ -582,21 +581,12 @@ style:
     )
     [finding] = violations(root)
     assert (finding.path, finding.severity) == ("app/client.py", Severity.ERROR)
-    assert violations(root, CheckOptions()) == [finding]
 
 
-def test_cache_tracks_owner_changes_in_unchanged_consumers(tmp_path: Path) -> None:
-    source = "from app.session import SessionLog\ndef persist(log: SessionLog):\n    return log._images\n"
-    root = _attribute_project(tmp_path, source)
-    assert len(violations(root, SELECT)) == 1
-    (root / "app/session.py").write_text(
-        OWNER.replace("self._images", "self.images"), encoding="utf-8"
-    )
-    assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("VIS005",))) == []
-
-
-def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -> None:
+@pytest.mark.parametrize("owner", ["session", "alternate"])
+def test_reexported_owner_resolves_through_the_facade(
+    tmp_path: Path, owner: str
+) -> None:
     root = _attribute_project(
         tmp_path,
         "from app import PublicLog\ndef persist(log: PublicLog):\n    return log._images\n",
@@ -604,21 +594,12 @@ def test_cache_tracks_reexports_and_removal_of_the_known_owner(tmp_path: Path) -
     write_policy_project(
         root,
         {
-            "app/__init__.py": "from .session import SessionLog as PublicLog\n",
+            "app/__init__.py": f"from .{owner} import SessionLog as PublicLog\n",
             "app/alternate.py": OWNER,
         },
     )
-    [before] = violations(root, SELECT)
-    assert before.target_module == "app.session.SessionLog._images"
-    (root / "app/__init__.py").write_text(
-        "from .alternate import SessionLog as PublicLog\n", encoding="utf-8"
-    )
-    [after] = violations(root, SELECT)
-    assert after.target_module == "app.alternate.SessionLog._images"
-    assert violations(root, CheckOptions(select=("VIS005",))) == [after]
-    (root / "app/alternate.py").unlink()
-    assert violations(root, SELECT) == []
-    assert violations(root, CheckOptions(select=("VIS005",))) == []
+    [finding] = violations(root, SELECT)
+    assert finding.target_module == f"app.{owner}.SessionLog._images"
 
 
 @pytest.mark.parametrize(

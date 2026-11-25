@@ -204,23 +204,6 @@ def test_reasoned_suppression_and_test_classes_are_supported(tmp_path: Path) -> 
     assert outcome.report.suppressed == 1
 
 
-def test_moving_constant_invalidates_cached_findings(tmp_path: Path) -> None:
-    root = _project(tmp_path, DOWNLOADS)
-    assert [v.code for v in violations(root, OPTIONS)] == ["LAY008"]
-    write_project(
-        root,
-        {
-            "app/download.py": '_DOWNLOADABLE_EXTENSIONS = {".pdf", ".zip"}\n'
-            + "class DownloadController:\n"
-            + "    def supports(self, extension):\n"
-            + "        return extension in _DOWNLOADABLE_EXTENSIONS\n"
-        },
-    )
-
-    assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("LAY008",))) == []
-
-
 def _project(tmp_path: Path, source: str) -> Path:
     return write_project(
         tmp_path,

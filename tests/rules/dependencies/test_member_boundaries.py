@@ -6,7 +6,7 @@ import pytest
 
 from smelt.analysis.errors import AnalysisError
 from smelt.engine.check import CheckOptions
-from tests.helpers import MEMBER_BOUNDARIES, check, violations, write_policy_project
+from tests.helpers import MEMBER_BOUNDARIES, violations, write_policy_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -217,30 +217,6 @@ def test_indirect_imports_do_not_require_direct_dependency_declarations(
     )
 
     assert violations(root, CheckOptions(select=("ARC010",))) == []
-
-
-def test_metadata_changes_invalidate_warm_analysis(tmp_path: Path) -> None:
-    root = _workspace(tmp_path, {})
-    assert violations(root) == []
-
-    write_policy_project(
-        root, {"services/api/pyproject.toml": '[project]\nname = "web-api"\n'}
-    )
-    cached = check(root).report.violations
-    uncached = check(root, CheckOptions()).report.violations
-
-    assert [v.code for v in cached] == ["ARC010"]
-    assert cached == uncached
-
-    write_policy_project(
-        root,
-        {
-            "services/api/pyproject.toml": MEMBER_BOUNDARIES[
-                "services/api/pyproject.toml"
-            ]
-        },
-    )
-    assert violations(root) == []
 
 
 @pytest.mark.parametrize(

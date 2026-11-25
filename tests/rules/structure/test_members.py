@@ -64,7 +64,6 @@ def test_composition_root_preserves_runtime_entry_points(tmp_path: Path) -> None
         (helper, "VIS001"),
         (helper, "VIS002"),
     }
-    assert found == violations(root, CheckOptions())
 
     write_project(root, {member: "architecture: {wiring: [api.main]}\n"})
     assert {(v.path, v.code) for v in violations(root)} == {

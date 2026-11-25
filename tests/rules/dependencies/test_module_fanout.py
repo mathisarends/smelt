@@ -200,7 +200,9 @@ style:
     assert (finding.path, finding.severity) == ("app/client.py", Severity.WARNING)
 
 
-def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
+def test_imported_submodules_count_as_modules_but_exported_values_do_not(
+    tmp_path: Path,
+) -> None:
     root = _project(
         tmp_path,
         "from app.users import read_api, write_api\nfrom other.pay import Pay\n",
@@ -212,7 +214,6 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
         },
     )
     assert violations(root, SELECT) == []
-    # Replacing exported values with submodules changes the target inventory.
     write_policy_project(
         root,
         {
@@ -228,7 +229,6 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
         "app.users.write_api",
         "other.pay",
     ]
-    assert violations(root, CheckOptions(select=("IMP002",))) == [finding]
 
 
 @pytest.mark.parametrize(

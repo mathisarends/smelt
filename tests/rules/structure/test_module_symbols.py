@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.diagnostics.render.machine import render_json
 from smelt.engine.check import CheckOptions
-from tests.helpers import check, violations, write_project
+from tests.helpers import violations, write_project
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -113,22 +112,3 @@ def test_package_override_and_reasoned_suppression_are_respected(
     )
     write_project(root, {"app/legacy/models.py": SOURCE})
     assert violations(root) == []
-
-
-def test_cache_tracks_added_removed_and_reexported_symbol_consumers(
-    tmp_path: Path,
-) -> None:
-    root = _project(tmp_path)
-    assert len(violations(root)) == 2
-    for facade, caller, expected in [
-        ("from .models import MIN_LENGTH, Payload as PublicPayload\n", "", 0),
-        ("", "from app.models import MIN_LENGTH, Payload\n", 0),
-        ("", "", 2),
-    ]:
-        write_project(root, {"app/__init__.py": facade, "app/caller.py": caller})
-        cached = check(root).report
-        uncached = check(root, CheckOptions()).report
-        assert render_json(cached) == render_json(uncached)
-        assert len(cached.violations) == expected
-    (root / "app/caller.py").unlink()
-    assert len(violations(root)) == 2
