@@ -74,6 +74,9 @@ fn run() -> io::Result<i32> {
     if arguments == [OsString::from("--internal-check")] {
         return Ok(checker::serve_check());
     }
+    if arguments == [OsString::from("--internal-files")] {
+        return Ok(checker::serve_files());
+    }
     if let [flag, config, select] = arguments.as_slice()
         && flag == "--internal-core"
     {

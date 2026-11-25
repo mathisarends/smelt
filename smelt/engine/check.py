@@ -171,6 +171,13 @@ def _run_check(
     rules = build_rule_set(lazy=True)
     active = _resolve_active_rules(rules, loaded, options)
     ctx = _analysis_context(loaded, context)
+    compared = _comparison(ctx, options) if options.changed else None
+    result = _native_analysis(rules, loaded, options, compared=compared)
+    analyzed, baseline = result.analysis, result.baseline
+    if "files" not in ctx.__dict__:
+        ctx.files = FileIndex.from_inventory(
+            ctx.root, ctx.config, result.files, store=ctx.store
+        )
     _validate_ownership(ctx, loaded)
     if issues := missing_paths(ctx):
         raise ConfigError(issues, loaded.path.name)
@@ -178,9 +185,6 @@ def _run_check(
     settings.validate_packages(ctx)
     if options.paths:
         _validate_scope(ctx, options.paths)
-    compared = _comparison(ctx, options) if options.changed else None
-    result = _native_analysis(rules, loaded, options, compared=compared)
-    analyzed, baseline = result.analysis, result.baseline
     # A fix applies only to the text the core judged.
     ctx.files.observe(result.digests)
     violations, suppressed = analyzed.violations, analyzed.suppressed

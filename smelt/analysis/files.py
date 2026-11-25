@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from smelt.analysis import native
 from smelt.analysis.errors import AnalysisError
 from smelt.config.patterns import path_matches
 from smelt.config.source import SourceStore
@@ -17,17 +18,6 @@ if TYPE_CHECKING:
     from smelt.config.models import SmeltConfig
 
 _SKIP_DIRS = frozenset({"__pycache__", ".git", ".venv", "venv", "node_modules"})
-_YAML_SKIP_DIRS = _SKIP_DIRS | {
-    ".hg",
-    ".svn",
-    ".smelt_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".pytest_cache",
-    ".tox",
-    ".nox",
-    ".worktrees",
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +61,8 @@ class FileIndex:
     package_roots: dict[str, list[Path]] = field(default_factory=dict)
     tests: dict[str, TestFile] = field(default_factory=dict)
     missing_root_packages: list[str] = field(default_factory=list)
+    # YAML files by name alone, listed when a file naming policy reads them.
+    yaml_paths: tuple[str, ...] = ()
     store: SourceStore = field(default_factory=SourceStore, repr=False)
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
     _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
@@ -90,19 +82,74 @@ class FileIndex:
     def discover(
         cls, root: Path, config: SmeltConfig, *, store: SourceStore | None = None
     ) -> FileIndex:
-        probe = cls(root=root, config=config, store=store or SourceStore())
-        found = _Discovery(probe)
-        found.discover_sources()
-        found.discover_tests()
-        # The probe's path-resolution cache carries over to the discovered index.
-        return replace(
-            probe,
-            sources=found.sources,
-            packages=found.packages,
-            package_parts=found.package_parts,
-            package_roots=found.package_roots,
-            tests=found.tests,
-            missing_root_packages=found.missing_root_packages,
+        """The files the native core finds in the project below `root`."""
+        store = store or SourceStore()
+        project = config.project
+        naming = config.structure.file_naming
+        inventory = native.request(
+            "--internal-files",
+            {
+                "root": str(store.resolve(root)),
+                "root_packages": project.root_packages,
+                "source_roots": project.source_roots,
+                "test_roots": project.test_roots,
+                "exclude": list(project.exclude_patterns),
+                "yaml": naming.yaml_extension is not None
+                or naming.compose_basename is not None,
+            },
+        )
+        if "error" in inventory:
+            raise AnalysisError(inventory["error"])
+        return cls.from_inventory(root, config, inventory, store=store)
+
+    @classmethod
+    def from_inventory(
+        cls,
+        root: Path,
+        config: SmeltConfig,
+        inventory: Mapping[str, Any],
+        *,
+        store: SourceStore | None = None,
+    ) -> FileIndex:
+        """Index the sources, packages and tests the native core reported."""
+        store = store or SourceStore()
+        base = store.resolve(root)
+        packages: dict[str, PackageDir] = {}
+        parts: dict[str, list[PackageDir]] = {}
+        for entry in inventory["packages"]:
+            portion = PackageDir(
+                entry["module"], entry["path"], entry["source_root"], entry["has_init"]
+            )
+            packages.setdefault(portion.module, portion)
+            parts.setdefault(portion.module, []).append(portion)
+        return cls(
+            root=base,
+            config=config,
+            sources={
+                entry["module"]: SourceFile(
+                    entry["module"],
+                    entry["path"],
+                    base / entry["path"],
+                    is_package=entry["is_package"],
+                )
+                for entry in inventory["sources"]
+            },
+            packages=packages,
+            package_parts=parts,
+            package_roots={
+                package: [store.resolve(base / part.path) for part in parts[package]]
+                for package in config.project.root_packages
+                if package in parts
+            },
+            tests={
+                entry["path"]: TestFile(
+                    entry["path"], base / entry["path"], entry["test_root"]
+                )
+                for entry in inventory["tests"]
+            },
+            missing_root_packages=list(inventory["missing_root_packages"]),
+            yaml_paths=tuple(inventory["yaml_paths"]),
+            store=store,
         )
 
     def is_excluded(self, path: str) -> bool:
@@ -194,46 +241,6 @@ class FileIndex:
         yield from self.all_python_paths()
         yield from self.yaml_paths
 
-    @cached_property
-    def yaml_paths(self) -> tuple[str, ...]:
-        """Filename-only inventory; never parse or read YAML contents."""
-        policy = self.config.structure.file_naming
-        if policy.yaml_extension is None and policy.compose_basename is None:
-            return ()
-        inventory = self.store.yaml_inventory(self.root)
-        if inventory is not None:
-            return tuple(
-                sorted(
-                    path
-                    for path in inventory
-                    if not self.is_excluded(path)
-                    and not (_YAML_SKIP_DIRS & set(path.split("/")[:-1]))
-                )
-            )
-        pending = [self.root]
-        visited: set[Path] = set()
-        found: set[str] = set()
-        while pending:
-            directory = pending.pop()
-            resolved = self.resolve_path(directory)
-            if resolved in visited or not resolved.is_relative_to(self.root):
-                continue
-            visited.add(resolved)
-            for entry, is_dir in sorted(self.entries(directory)):
-                relative = entry.relative_to(self.root).as_posix()
-                if self.is_excluded(relative):
-                    continue
-                if is_dir:
-                    if entry.name not in _YAML_SKIP_DIRS:
-                        pending.append(entry)
-                elif (
-                    entry.suffix in {".yaml", ".yml"}
-                    and self.store.is_file(entry)
-                    and self.resolve_path(entry).is_relative_to(self.root)
-                ):
-                    found.add(relative)
-        return tuple(sorted(found))
-
     def entries(self, directory: Path) -> tuple[tuple[Path, bool], ...]:
         """Share directory entries within one discovered view of the project."""
         if directory not in self._directories:
@@ -310,114 +317,3 @@ def _walk_python_files(
                     pending.append(entry)
             elif entry.suffix == ".py":
                 yield entry
-
-
-class _Discovery:
-    """Collect a project's source and test inventory before building a FileIndex."""
-
-    def __init__(self, index: FileIndex) -> None:
-        self._index = index
-        self._root = index.root
-        self._config = index.config
-        self._store = index.store
-        self.sources: dict[str, SourceFile] = {}
-        self.packages: dict[str, PackageDir] = {}
-        self.package_parts: dict[str, list[PackageDir]] = {}
-        self.package_roots: dict[str, list[Path]] = {}
-        self.tests: dict[str, TestFile] = {}
-        self.missing_root_packages: list[str] = []
-
-    def discover_sources(self) -> None:
-        project = self._config.project
-        for package in project.root_packages:
-            candidates = {
-                self._index.resolve_path(
-                    self._root / source_root / package
-                ): source_root
-                for source_root in project.source_roots
-                if self._store.is_dir(self._root / source_root / package)
-                and not self._index.is_excluded(
-                    self._index.relative(self._root / source_root / package)
-                )
-            }
-            regular = {
-                path: source_root
-                for path, source_root in candidates.items()
-                if self._store.is_file(path / "__init__.py")
-            }
-            # Python gives an ordinary package precedence over namespace portions,
-            # including workspace scaffolding found beneath a broad '.' root.
-            selected = regular or candidates
-            if len(regular) > 1:
-                paths = ", ".join(self._index.relative(path) for path in regular)
-                raise AnalysisError(f"ambiguous package {package}: {paths}")
-            self.package_roots[package] = list(selected)
-            for directory, source_root in selected.items():
-                self._walk_package(directory, package, source_root)
-            if not selected:
-                self.missing_root_packages.append(package)
-
-    def discover_tests(self) -> None:
-        source_paths = {source.path for source in self.sources.values()}
-        # Visit broad roots first so the most specific declared root owns a
-        # test, independently of the order in the configuration.
-        for test_root in sorted(
-            self._config.project.test_roots,
-            key=lambda root: (
-                len(self._index.resolve_path(self._root / root).parts),
-                root,
-            ),
-        ):
-            directory = self._root / test_root
-            if not self._store.is_dir(directory):
-                continue
-            for path in sorted(self._index.python_files(directory)):
-                rel = self._index.relative(path)
-                if rel in source_paths or self._index.is_excluded(rel):
-                    continue
-                name = path.name
-                if (
-                    name == "conftest.py"
-                    or name.startswith("test_")
-                    or path.stem.endswith("_test")
-                ):
-                    self.tests[rel] = TestFile(rel, path, test_root.strip("/"))
-
-    def _walk_package(self, directory: Path, module: str, source_root: str) -> None:
-        rel_dir = self._index.relative(directory)
-        if self._index.is_excluded(rel_dir):
-            return
-        init = directory / "__init__.py"
-        portion = PackageDir(module, rel_dir, source_root, self._store.is_file(init))
-        previous = self.packages.get(module)
-        if previous is not None and (previous.has_init or portion.has_init):
-            raise AnalysisError(
-                f"ambiguous package {module}: {previous.path}, {rel_dir}"
-            )
-        self.packages.setdefault(module, portion)
-        self.package_parts.setdefault(module, []).append(portion)
-        for entry, is_dir in sorted(
-            self._index.entries(directory), key=lambda item: item[0].name
-        ):
-            if is_dir:
-                if entry.name in _SKIP_DIRS or not entry.name.isidentifier():
-                    continue
-                if next(self._index.python_files(entry), None) is not None:
-                    self._walk_package(entry, f"{module}.{entry.name}", source_root)
-            elif entry.suffix == ".py" and self._store.is_file(entry):
-                rel = self._index.relative(entry)
-                if self._index.is_excluded(rel):
-                    continue
-                if entry.name == "__init__.py":
-                    self._add_source(SourceFile(module, rel, entry, is_package=True))
-                elif entry.stem.isidentifier():
-                    name = f"{module}.{entry.stem}"
-                    self._add_source(SourceFile(name, rel, entry, is_package=False))
-
-    def _add_source(self, source: SourceFile) -> None:
-        previous = self.sources.get(source.module)
-        if previous is not None:
-            raise AnalysisError(
-                f"ambiguous module {source.module}: {previous.path}, {source.path}"
-            )
-        self.sources[source.module] = source

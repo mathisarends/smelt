@@ -7,17 +7,13 @@ index and a base revision, which it writes to a temporary directory.
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
-import sysconfig
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter
 
+from smelt.analysis import native
 from smelt.analysis.contracts import ResolvedContract, describe_contract
 from smelt.analysis.errors import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue
@@ -28,6 +24,8 @@ from smelt.engine.coverage import effective_coverage
 from smelt.engine.git_source import GitSourceStore
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from smelt.config.loader import LoadedConfig
 
 _VIOLATIONS = TypeAdapter(list[Violation])
@@ -40,6 +38,8 @@ class NativeAnalysis:
     baseline: Debt | None = None
     # The SHA-256 of each text a fixable finding was found in, by path.
     digests: dict[str, str] = field(default_factory=dict)
+    # The sources, packages and tests the core discovered.
+    files: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,22 +94,7 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         # Installed packages are found where this interpreter imports them from.
         "search_path": sys.path,
     }
-    result = subprocess.run(  # noqa: S603 - the installed native launcher
-        [_executable(), "--internal-check"],
-        input=json.dumps(request),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        # The core reads installed packages from this interpreter's environment.
-        env={**os.environ, "VIRTUAL_ENV": sys.prefix},
-        check=False,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
-    try:
-        data = json.loads(result.stdout)
-    except ValueError:
-        detail = result.stderr.strip() or f"exit status {result.returncode}"
-        raise AnalysisError(f"the native core failed: {detail}") from None
+    data = native.request("--internal-check", request)
     if "config" in data:
         raise _config_error(data["config"])
     if "error" in data:
@@ -134,7 +119,9 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         data["modules"],
         data["paths"],
     )
-    return NativeAnalysis(analysis, _known(data["baseline"]), data["digests"])
+    return NativeAnalysis(
+        analysis, _known(data["baseline"]), data["digests"], data["files"]
+    )
 
 
 def _config_error(error: dict[str, Any]) -> ConfigError:
@@ -158,16 +145,3 @@ def _known(findings: list[dict[str, object]] | None) -> Debt | None:
     return Debt.from_violations(
         violations, lambda violation: by_identity[id(violation)]
     )
-
-
-def _executable() -> str:
-    """The native launcher that started this process, else the installed one."""
-    started = os.environ.get("SMELT_NATIVE_CLIENT")
-    if started:
-        return started
-    name = "smelt.exe" if os.name == "nt" else "smelt"
-    installed = Path(sysconfig.get_path("scripts")) / name
-    if installed.is_file():
-        return str(installed)
-    msg = "checks need the native smelt launcher, which is not installed"
-    raise AnalysisError(msg)

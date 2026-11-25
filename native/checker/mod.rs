@@ -119,6 +119,8 @@ struct Outcome {
     digests: BTreeMap<String, String>,
     /// The baseline revision's findings, each with the text of its line.
     baseline: Option<Vec<Value>>,
+    /// The sources, packages and tests the check discovered.
+    files: Value,
 }
 
 /// Check the project of `config` with the comma-separated rules and print JSON.
@@ -177,6 +179,7 @@ pub fn serve_check() -> i32 {
                 "paths": outcome.paths,
                 "digests": outcome.digests,
                 "baseline": outcome.baseline,
+                "files": outcome.files,
             }),
             0,
         ),
@@ -195,6 +198,54 @@ pub fn serve_check() -> i32 {
             }),
             2,
         ),
+    };
+    match write_output(&output.to_string()) {
+        Ok(()) => code,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// The project settings discovery reads, as the engine sends them.
+#[derive(Deserialize)]
+struct FilesRequest {
+    root: PathBuf,
+    root_packages: Vec<String>,
+    source_roots: Vec<String>,
+    test_roots: Vec<String>,
+    exclude: Vec<String>,
+    /// Whether a file naming policy reads YAML files.
+    yaml: bool,
+}
+
+/// Discover the files of the project stdin describes and print the inventory.
+///
+/// An error prints `{"error": message}` and exits 2, as a check does.
+pub fn serve_files() -> i32 {
+    let mut input = String::new();
+    let inventory = io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| error.to_string())
+        .and_then(|_| {
+            serde_json::from_str::<FilesRequest>(&input).map_err(|error| error.to_string())
+        })
+        .and_then(|request| {
+            let project = config::Project {
+                root_packages: request.root_packages,
+                source_roots: request.source_roots,
+                test_roots: request.test_roots,
+                exclude: request.exclude,
+                exclusions: Vec::new(),
+                python_version: None,
+                uv_workspace: false,
+            };
+            FileIndex::scan(&request.root, &project).map(|files| files.inventory(request.yaml))
+        });
+    let (output, code) = match inventory {
+        Ok(inventory) => (inventory, 0),
+        Err(message) => (json!({"error": message}), 2),
     };
     match write_output(&output.to_string()) {
         Ok(()) => code,
@@ -817,6 +868,7 @@ fn check(
         paths,
         digests,
         baseline: None,
+        files: files.inventory(request.file_naming.checks_yaml()),
     })
 }
 
