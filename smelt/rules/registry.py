@@ -94,6 +94,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.structure.exports:ReexportOnlyModule",
     "smelt.rules.structure.reexport_convention:ReexportConvention",
     "smelt.rules.structure.headers:MisplacedModuleLogger",
+    "smelt.rules.structure.comments:RedundantComment",
     "smelt.rules.testing.location:MisplacedTestFile",
     "smelt.rules.testing.private_access:PrivateTestAccess",
     "smelt.rules.testing.mocking:ForbiddenTestMock",

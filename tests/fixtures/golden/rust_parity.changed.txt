@@ -422,6 +422,7 @@ LAY011 parity/module_loggers/no_newline_copy.py:4:1 warning fix place module log
 LAY011 parity/module_loggers/plain_copy.py:4:1 warning fix place module logger _logger immediately after imports
 LAY011 parity/module_loggers/same_line_copy.py:3:12 warning place module logger _logger immediately after imports
 LAY011 parity/module_loggers/try_handler_code_copy.py:8:1 warning fix place module logger _logger immediately after imports
+LAY012 parity/module_loggers/docstring_only_copy.py:1:1 hint docstring only repeats the name `docstring_only_copy`
 MOD002 parity/loop_collections_copy.py:90:1 error class "WithBase" uses the forbidden Base suffix
 MOD002 parity/private_delegates_copy.py:347:1 error class "UnknownBase" uses the forbidden Base suffix
 MOD002 parity/private_delegates_copy.py:355:1 error class "CallBase" uses the forbidden Base suffix

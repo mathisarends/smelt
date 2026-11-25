@@ -1017,6 +1017,10 @@ LAY011 parity/module_loggers/two_before.py:2:1 warning place module logger _logg
 LAY011 parity/module_loggers/two_before.py:3:1 warning place module logger other immediately after imports
 LAY011 parity/module_loggers/two_loggers.py:4:1 warning fix place module logger _logger immediately after imports
 LAY011 parity/module_loggers/two_loggers.py:5:1 warning fix place module logger other immediately after imports
+LAY012 parity/domain_errors/__init__.py:1:1 hint docstring only repeats the name `domain_errors`
+LAY012 parity/module_loggers/docstring.py:1:1 hint docstring only repeats the name `docstring`
+LAY012 parity/module_loggers/docstring_only.py:1:1 hint docstring only repeats the name `docstring_only`
+LAY012 parity/quoted_annotations/docstring_only_code.py:1:1 hint docstring only repeats the name `docstring_only_code`
 MET001 parity/broad_handlers.py:162:24 warning fix unused suppression (all codes)
 MET001 parity/broad_handlers.py:166:24 warning fix unused suppression (all codes)
 MET001 parity/suppressed.py:14:41 warning fix unused suppression (all codes)

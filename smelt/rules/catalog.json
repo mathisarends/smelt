@@ -663,6 +663,20 @@
     "fix_availability": "sometimes"
   },
   {
+    "target": "smelt.rules.structure.comments:RedundantComment",
+    "code": "LAY012",
+    "name": "layout/redundant-comment",
+    "category": "layout",
+    "default_severity": "hint",
+    "requires": [
+      "syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "source",
+    "fix_availability": "none"
+  },
+  {
     "target": "smelt.rules.meta:UnusedSuppression",
     "code": "MET001",
     "name": "meta/unused-suppression",

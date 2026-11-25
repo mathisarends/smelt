@@ -7,6 +7,10 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- New opt-in hint `layout/redundant-comment` (LAY012) reports a comment block
+  above a def, class or assignment, or a docstring, whose words only restate
+  the documented name, such as `# Get user by id` above `get_user_by_id`.
+  Required docstrings are reported with advice to improve them, not remove them.
 - New opt-in rule `tests/missing-skip-reason` (TST013) reports pytest skip,
   skipif, xfail and flaky markers, `pytest.skip`/`pytest.xfail` calls,
   unittest skip decorators and flaky rerun decorators whose reason names no

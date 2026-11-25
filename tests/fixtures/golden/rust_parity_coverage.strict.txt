@@ -46,6 +46,7 @@ ARC013 src/standalone.py:None:None error src/standalone.py is uncovered: Not sel
 IDM006 src/shop/facades/bare_except/__init__.py:3:1 hint Bare except does not say why it catches every failure
 LAY009 src/shop/checks/test_shop.py:None:None hint module name "test_shop" repeats "shop" from package "shop"
 LAY009 src/shop/orders/tests/test_orders.py:None:None hint module name "test_orders" repeats "test" from package "shop.orders.tests"
+LAY012 src/shop/__init__.py:1:1 hint docstring only repeats the name `shop`
 MET001 src/shop/orders/helpers.py:2:15 warning fix unused suppression (all codes)
 MET002 src/shop/orders/helpers.py:2:15 error suppression without a reason
 TST006 tests/test_root.py:1:None warning test_root has no recognized outcome assertion
