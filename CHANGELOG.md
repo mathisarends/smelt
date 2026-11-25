@@ -33,23 +33,21 @@ current configuration and complete rule contracts, see the [README](README.md),
   reported. `time.monotonic` and `time.perf_counter` stay out of scope.
 - `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
   and each project-wide rule took to stderr, to locate a slow check.
-- `smelt check` lists each project directory once and in parallel, and runs the
-  import-graph and structure rules in parallel. A full check of this repository
-  or of a generated 1000-module project takes about 35-40% less time. Reports
-  are unchanged.
-- `smelt check` writes full and path-scoped reports in every format without
-  starting Python, including uv workspaces, checks started inside a member,
-  and `--changed` or `--staged` with or without `--base`, also in a commit
-  hook. A full check of this repository takes about 60% less time, a generated
-  1000-module project about 75% less, a uv workspace with two members about
-  60-80% less, and a small project 20 ms instead of 0.4 s on Windows. Other
-  options and every error still go through the Python CLI, so reports,
-  messages and exit codes are unchanged. `SMELT_NATIVE_CHECK=0` always uses
-  the Python CLI.
-- Loading a uv workspace's configuration no longer looks up every file while
-  searching for ignored member configs, and the check reuses the directory
-  listings of that search. On Windows a check of a two-member workspace takes
-  about 5-15% less time.
+- `smelt check` is faster; reports, messages and exit codes are unchanged:
+  - It writes full and path-scoped reports in every format without starting
+    Python, including uv workspaces, checks started inside a member, and
+    `--changed` or `--staged` with or without `--base`, also in a commit hook.
+    A full check of this repository takes about 60% less time, a generated
+    1000-module project about 75% less, a uv workspace with two members about
+    60-80% less, and a small project 20 ms instead of 0.4 s on Windows. Other
+    options and every error still go through the Python CLI;
+    `SMELT_NATIVE_CHECK=0` always uses it.
+  - It lists each project directory once and in parallel, and runs the
+    import-graph and structure rules in parallel: about 35-40% less time for a
+    full check of this repository or of a generated 1000-module project.
+  - It loads a uv workspace's configuration from those directory listings
+    instead of looking up every file: about 5-15% less time for a two-member
+    workspace on Windows.
 
 ## [0.17.0] - 2026-11-25
 

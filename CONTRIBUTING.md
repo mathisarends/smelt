@@ -362,6 +362,12 @@ seconds. While iterating, time existing installations without rebuilding:
 Set `SMELT_PROFILE=1` on any check to print how long each core phase and global
 rule took to stderr; the output file also records these profiles.
 
+The native check writes the Python CLI's report byte for byte and leaves every
+error to it; `tests/cli/commands/test_check.py` compares both. After changing
+configuration loading, also run `uv run python scripts/compare_rust_config.py`:
+it loads generated valid and invalid configs with the Rust and the Python loader
+and lists every difference.
+
 ## Publishing a release
 
 The `.github/workflows/release.yml` workflow publishes `smelt-cli` to PyPI when a
