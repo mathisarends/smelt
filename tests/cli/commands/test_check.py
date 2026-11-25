@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers import write_project
+
 NATIVE = Path(sysconfig.get_path("scripts")) / (
     "smelt.exe" if os.name == "nt" else "smelt"
 )
@@ -32,10 +34,12 @@ VARIANTS = {
     ),
     "github": ("--format", "github", "--fail-on", "warning", "--no-debt"),
 }
-# The Python CLI reports the syntax error the rules of these variants reach.
+# The Python CLI handles syntax errors and checks of installed re-exports.
 PYTHON_ONLY = {
     ("rust_parity_syntax_error", "concise"),
     ("rust_parity_syntax_error", "json"),
+    ("rust_parity_package_imports", "concise"),
+    ("rust_parity_package_imports", "json"),
 }
 # Workspace members a check starts in, with and without their own config.
 MEMBERS = (
@@ -97,6 +101,33 @@ def test_native_check_in_a_member_writes_the_python_report(
 
     assert (code, report) == _check(root, VARIANTS[variant], native=False)[:2]
     assert not fell_back
+
+
+@pytest.mark.parametrize(("pattern", "exit_code"), [(r"\p{L}+-\d+", 1), (r"(?=x)", 2)])
+def test_native_check_agrees_with_python_on_skip_reason_patterns(
+    tmp_path: Path, pattern: str, exit_code: int
+) -> None:
+    if not NATIVE.is_file():
+        pytest.skip("install the native client")
+    write_project(
+        tmp_path,
+        {
+            "smelt.yml": (
+                "version: 2\n"
+                "project: {root_packages: [app], test_roots: [tests]}\n"
+                "rules: {tests/missing-skip-reason: error}\n"
+                f"tests: {{skip_reason_pattern: '{pattern}'}}\n"
+            ),
+            "app/__init__.py": "",
+            "tests/test_app.py": "import pytest\n@pytest.mark.skip\ndef test_app(): ...\n",
+        },
+    )
+    args = ("--format", "json")
+    code, report, fell_back = _check(tmp_path, args, native=True)
+
+    assert code == exit_code
+    assert (code, report) == _check(tmp_path, args, native=False)[:2]
+    assert fell_back == (exit_code == 2)
 
 
 @pytest.mark.parametrize("variant", COMPARISONS)

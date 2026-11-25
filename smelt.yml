@@ -20,7 +20,7 @@ architecture:
   layers:
     config:
       path: config
-      third_party: {default: deny, allow: [pydantic, yaml]}
+      third_party: {default: deny, allow: [pydantic, pydantic_core, yaml]}
       may_depend_on: []
 
     model:

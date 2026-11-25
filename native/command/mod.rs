@@ -22,7 +22,7 @@ mod validate;
 use crate::checker::config::load::{LoadedConfig, load_config, rule_layers};
 use crate::checker::config::paths;
 use crate::checker::config::workspace::member_directories;
-use crate::checker::{CATALOG, check_loaded, interpreter_search_path, profile, vfs};
+use crate::checker::{CATALOG, check_loaded, profile, vfs};
 use args::{Args, Format};
 use finding::{Finding, Severity};
 use policy::{Catalog, Policy, Resolved, Rule};
@@ -440,19 +440,26 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
     let active = policy
         .active(&select, &ignore)
         .map_err(|()| "invalid strict coverage")?;
-    // The Python CLI would read installed packages where its interpreter imports them.
-    let search_path = if active
+    // Python startup can modify sys.path through .pth files and sitecustomize.
+    let structure = &loaded.config["__structure__"];
+    if active
         .iter()
         .any(|(rule, _)| rule.code == INSTALLED_PACKAGES)
+        && std::iter::once(structure)
+            .chain(
+                structure["contracts"]
+                    .as_object()
+                    .into_iter()
+                    .flat_map(Map::values),
+            )
+            .any(|policy| {
+                policy["third_party_reexports"]
+                    .as_array()
+                    .is_some_and(|packages| !packages.is_empty())
+            })
     {
-        let python = crate::python().map_err(|_| "no Python interpreter")?;
-        Some(
-            interpreter_search_path(&python)
-                .ok_or("an interpreter outside a virtual environment")?,
-        )
-    } else {
-        None
-    };
+        return Err("installed package re-exports that need Python's search path");
+    }
     let comparison = match &staged {
         Some(staged) => {
             let mut comparison = changes::compare(
@@ -490,7 +497,6 @@ fn run(args: &Args) -> Result<(String, i32), &'static str> {
         &owned(&ignore),
         args.strict_coverage,
         scope.is_empty() && comparison.is_none(),
-        search_path,
         baseline,
     )
     .ok_or("an analysis error")?;

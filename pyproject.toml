@@ -1,6 +1,6 @@
 [project]
 name = "smelt-cli"
-version = "0.17.0"
+version = "0.18.0"
 description = "Static guardrails for Python codebases maintained by humans and coding agents."
 readme = "README.pypi.md"
 authors = [{ name = "Mathis Arends", email = "mathisarends27@gmail.com" }]
@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 dependencies = [
     "packaging>=24.2",
     "pydantic>=2.13.5",
+    "pydantic-core>=2",
     "pyyaml>=6.0.3",
     "ruamel-yaml>=0.19.1",
 ]
