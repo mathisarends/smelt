@@ -7,6 +7,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
+  and each project-wide rule took to stderr, to locate a slow check.
+
 ## [0.17.0] - 2026-11-25
 
 See [upgrading from 0.16.1](docs/upgrading.md#0161-to-0170) for hook pins, the
