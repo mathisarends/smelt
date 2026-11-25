@@ -12,16 +12,14 @@ import tempfile
 import time
 from pathlib import Path
 
-from benchmark_checks import git
-
 # Change executable Python in existing, independently passing files. A missing
-# anchor is a broken workload and must never turn into an exact-result retry.
+# anchor is a broken workload and must fail rather than time an unchanged check.
 _MIN_REGRESSION_SECONDS = 0.35
 _EDITS = {
     "test body": (
-        "tests/engine/test_file_checks.py",
-        "def stable(): pass",
-        "def stable(): return {}",
+        "tests/engine/test_git_source.py",
+        '"app/service.py": "VALUE = 1\\n"',
+        '"app/service.py": "VALUE = {}\\n"',
     ),
     "rule implementation": (
         "smelt/rules/structure/narrowing_asserts.py",
@@ -30,6 +28,22 @@ _EDITS = {
     ),
     "core implementation": ("smelt/config/errors.py", "cutoff=0.6)", "cutoff=0.6{})"),
 }
+
+
+def git(root: Path, *args: str) -> None:
+    subprocess.run(  # noqa: S603
+        [  # noqa: S607 - use Git from PATH, like the hooks under measurement
+            "git",
+            "-c",
+            "user.name=benchmark",
+            "-c",
+            "user.email=benchmark@example.invalid",
+            *args,
+        ],
+        cwd=root,
+        capture_output=True,
+        check=True,
+    )
 
 
 def command(root: Path, args: list[str], *, env: dict[str, str] | None = None) -> str:
