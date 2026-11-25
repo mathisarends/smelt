@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.render.machine import render_json
 from smelt.engine.changes import capture_repository, resolve_comparison

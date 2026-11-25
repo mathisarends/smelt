@@ -15,6 +15,7 @@ mod settings;
 mod snapshot;
 mod source;
 mod suppressions;
+mod symbols;
 mod violation;
 
 use analysis::architecture::{ArchitectureModel, Scope};
@@ -249,6 +250,32 @@ fn member_edges(files: &FileIndex, roots: &[String]) -> Result<Vec<(String, Stri
         let imports = ImportIndex::build(files, roots, &pairs, &[])?;
         analysis::workspace::member_edges(files, &imports)
     })?
+}
+
+/// Print the symbols of the modules stdin lists, for `smelt init` to trace.
+///
+/// An error prints `{"error": message}` and exits 2, as a check does.
+pub fn serve_symbols() -> i32 {
+    let mut input = String::new();
+    let report = io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| error.to_string())
+        .and_then(|_| {
+            serde_json::from_str::<symbols::SymbolsRequest>(&input)
+                .map_err(|error| error.to_string())
+        })
+        .and_then(|request| with_analysis_pool(|| symbols::symbols(&request)));
+    let (output, code) = match report {
+        Ok(found) => (json!({"symbols": found}), 0),
+        Err(message) => (json!({"error": message}), 2),
+    };
+    match write_output(&output.to_string()) {
+        Ok(()) => code,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
 }
 
 /// Load one configuration and print it, or its error, as JSON.

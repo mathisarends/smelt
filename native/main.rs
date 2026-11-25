@@ -77,6 +77,9 @@ fn run() -> io::Result<i32> {
     if arguments == [OsString::from("--internal-files")] {
         return Ok(checker::serve_files());
     }
+    if arguments == [OsString::from("--internal-symbols")] {
+        return Ok(checker::serve_symbols());
+    }
     if let [flag, config] = arguments.as_slice()
         && flag == "--internal-config"
     {

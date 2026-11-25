@@ -132,7 +132,9 @@ class RuleSettings:
         self.source = loaded.path.name
         self.rules = rules
         self.codes = _rule_codes(rules)
-        self.defaults = {rule.code: rule.default_severity.value for rule in rules.rules}
+        self._defaults = {
+            rule.code: rule.default_severity.value for rule in rules.rules
+        }
         project_rules = {
             rule.code
             for rule in rules.rules
@@ -722,7 +724,7 @@ class RuleSettings:
                 severity = _raw_value(value) or "on"
                 result[named] = _Setting(
                     key,
-                    self.defaults[named] if severity == "on" else severity,
+                    self._defaults[named] if severity == "on" else severity,
                     broad=False,
                     location=f"{location}.{key}",
                     reason=value.reason if isinstance(value, RuleOverride) else None,
@@ -767,7 +769,7 @@ class RuleSettings:
             ConfigIssue(
                 f"rules.{key}",
                 f"{key} is not enabled; add its severity, e.g. "
-                f"{{severity: {self.defaults[code]}, max: {value.max}}}",
+                f"{{severity: {self._defaults[code]}, max: {value.max}}}",
             )
             for layer in loaded.config.rule_layers
             for key, value in layer.items()
@@ -909,7 +911,7 @@ class RuleSettings:
     def _broad_selection(self, key: str) -> tuple[int, tuple[str, ...]] | None:
         """Breadth rank and codes of ALL or a family, else None."""
         if key == ALL_RULES:
-            return 0, tuple(self.defaults)
+            return 0, tuple(self._defaults)
         if (family := self.rules.family_codes(key)) is not None:
             return 1, family
         return None

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import ConfigError
 from smelt.engine.briefing import (

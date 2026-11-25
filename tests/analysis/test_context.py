@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from smelt.analysis.context import AnalysisContext
-from smelt.analysis.parsing import AnalysisError
+from smelt.analysis.errors import AnalysisError
 from smelt.config import load_config
 from tests.helpers import LAYERED_CONFIG, write_project
 
