@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from smelt.analysis.errors import AnalysisError
 from smelt.config import ConfigError
 from smelt.diagnostics.debt import Debt, DebtEntry, fingerprint
 from smelt.diagnostics.violation import Severity
@@ -20,6 +21,7 @@ from tests.helpers import (
     codes_at,
     violations,
     write_policy_project,
+    write_project,
 )
 
 if TYPE_CHECKING:
@@ -540,3 +542,68 @@ def test_retired_smt_code_in_a_suppression_names_its_family_code(
     assert finding.expected == {"unknown_identifiers": ["SMT101"]}
     assert finding.hint is not None
     assert 'renamed to ARC001 "architecture/layer-boundary"' in finding.hint
+
+
+# Newer syntax the core parses on any Python; each file also breaks a layer boundary.
+PY313 = "from app.infra import db\n\n\ndef first[T = int](items: list[T]) -> T:\n    return items[0]\n"
+PY314 = (
+    "from app.infra import db\n\n\n"
+    "def run() -> None:\n"
+    "    try:\n"
+    "        db.connect()\n"
+    "    except ValueError, TypeError:\n"
+    "        pass\n"
+    "    template = t'{db}'\n"
+)
+
+
+def _syntax_project(tmp_path: Path, service: str, requires: str = ">=3.12") -> Path:
+    return write_project(
+        tmp_path,
+        {
+            "smelt.yml": LAYERED_CONFIG,
+            "pyproject.toml": f'[project]\nname = "app"\nrequires-python = "{requires}"\n',
+            "app/__init__.py": "",
+            "app/domain/__init__.py": "",
+            "app/domain/service.py": service,
+            "app/application/__init__.py": "",
+            "app/infra/__init__.py": "",
+            "app/infra/db.py": "",
+        },
+    )
+
+
+class TestSyntaxError:
+    def test_error_names_the_file_and_line(self, tmp_path: Path) -> None:
+        root = _syntax_project(tmp_path, "def broken(:\n", requires=">=3.99")
+
+        with pytest.raises(
+            AnalysisError, match=r"^app/domain/service\.py:1: syntax error"
+        ):
+            violations(root)
+
+
+class TestNewerSyntax:
+    def test_utf8_bom_keeps_imports_and_line_numbers(self, tmp_path: Path) -> None:
+        root = _syntax_project(tmp_path, "")
+        (root / "app/domain/service.py").write_text(
+            "from app.infra import db\n", encoding="utf-8-sig"
+        )
+
+        found = violations(root, CheckOptions(select=("ARC001",)))
+
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
+
+    def test_type_parameter_defaults(self, tmp_path: Path) -> None:
+        root = _syntax_project(tmp_path, PY313, requires=">=3.13")
+
+        found = violations(root, CheckOptions(select=("ARC001",)))
+
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]
+
+    def test_template_strings_and_bare_except_tuples(self, tmp_path: Path) -> None:
+        root = _syntax_project(tmp_path, PY314, requires=">=3.14")
+
+        found = violations(root, CheckOptions(select=("ARC001",)))
+
+        assert codes_at(found) == [("ARC001", "app/domain/service.py", 1)]

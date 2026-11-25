@@ -1,26 +1,17 @@
-"""An inventory independent of configured package selection and import rules."""
+"""The policy coverage of each Python file, as the native core inventories it."""
 
 from __future__ import annotations
 
-import ast
 from collections import Counter
 from dataclasses import dataclass
-from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
-from smelt.analysis.errors import AnalysisError
-from smelt.analysis.parsing import tree_nodes
-from smelt.analysis.workspace import import_root, workspace_members
-from smelt.config.models import SourceExclusion
-from smelt.config.patterns import path_matches
 from smelt.model import ModuleKind
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Mapping
 
-    from smelt.analysis.files import FileIndex, SourceFile
-    from smelt.analysis.parsing import AstCache
-    from smelt.model import ArchitectureModel, ModuleInfo
+    from smelt.model import ModuleInfo
 
 type CoverageStatus = Literal[
     "governed", "facade", "unclassified", "uncovered", "excluded"
@@ -65,105 +56,28 @@ class CoverageIndex:
     discovery_errors: tuple[str, ...] = ()
 
     @classmethod
-    def build(
-        cls, files: FileIndex, model: ArchitectureModel, asts: AstCache
-    ) -> CoverageIndex:
-        roots = {
-            files.resolve_path(files.root / value)
-            for value in files.config.project.source_roots
-        }
-        test_roots = {
-            files.resolve_path(files.root / value)
-            for value in files.config.project.test_roots
-        }
-        discovery_errors: tuple[str, ...] = ()
-        try:
-            members = workspace_members(files.root, strict=True, store=files.store)
-        except AnalysisError as exc:
-            if files.config.strict_coverage:
-                raise
-            members = []
-            discovery_errors = (str(exc),)
-        for member in members:
-            directory = files.root / member.path
-            if not files.store.is_dir(directory):
-                continue
-            # uv excludes control packaging, not architecture coverage. Inspect
-            # their Python files too, unless the policy explicitly excludes them.
-            located = import_root(directory, store=files.store)
-            fallback = (
-                directory / "src"
-                if files.store.is_dir(directory / "src")
-                else directory
-            )
-            roots.add(files.resolve_path(located.base if located else fallback))
-            test_roots.update(
-                files.resolve_path(directory / name) for name in ("tests", "test")
-            )
-        inventory = {
-            source.path: _classify_source(source, files, model, asts=asts)
-            for source in files.sources.values()
-        }
-        # The most specific import root names a module in nested workspaces.
-        ordered = sorted(roots, key=lambda value: (-len(value.parts), value.as_posix()))
-
-        @cache
-        def under_test_root(directory: Path) -> bool:
-            return any(directory.is_relative_to(root) for root in test_roots)
-
-        for directory in ordered:
-            if not files.store.is_dir(directory):
-                continue
-            for path in files.python_files(directory):
-                absolute = files.resolve_path(path)
-                relative = files.relative(path)
-                if (
-                    relative in inventory
-                    or absolute in test_roots
-                    or under_test_root(absolute.parent)
-                ):
-                    continue
-                exclusion = next(
-                    (
-                        entry
-                        for entry in files.config.project.exclude
-                        if path_matches(
-                            entry if isinstance(entry, str) else entry.path, relative
-                        )
-                    ),
-                    None,
-                )
-                module = _module_name(path, directory)
-                if exclusion is not None:
-                    reason = (
-                        exclusion.reason
-                        if isinstance(exclusion, SourceExclusion)
-                        else None
-                    )
-                    inventory[relative] = CoverageEntry(
-                        relative,
-                        module,
-                        "excluded",
-                        reason=reason,
-                        source_root=files.relative(directory),
-                    )
-                else:
-                    inventory[relative] = CoverageEntry(
-                        relative,
-                        module,
-                        "uncovered",
-                        reason="Not selected by project.root_packages/source_roots, or not an importable module.",
-                        source_root=files.relative(directory),
-                    )
+    def from_report(cls, coverage: Mapping[str, Any]) -> CoverageIndex:
+        """The inventory of a report's coverage, which the native core classified."""
         return cls(
-            tuple(inventory[path] for path in sorted(inventory)),
-            tuple(sorted(files.relative(path) for path in roots)),
             tuple(
-                entry
-                for entry in files.config.project.exclude
-                if isinstance(entry, str)
+                CoverageEntry(
+                    entry["path"],
+                    entry["module"],
+                    entry["status"],
+                    kind=entry["kind"],
+                    feature=entry["feature"],
+                    layer=entry["layer"],
+                    wiring=entry["wiring"],
+                    central=entry["central"],
+                    reason=entry["reason"],
+                    policies=tuple(entry["policies"]),
+                    source_root=entry["source_root"],
+                )
+                for entry in coverage["inventory"]
             ),
-            discovery_errors,
+            tuple(coverage["scan_roots"]),
+            tuple(coverage["unexplained_exclusions"]),
+            tuple(coverage["discovery_errors"]),
         )
 
     @property
@@ -214,164 +128,4 @@ def is_governed(info: ModuleInfo | None, *, layers_declared: bool = True) -> boo
             or info.wiring
             or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
         )
-    )
-
-
-def _classify_source(
-    source: SourceFile, files: FileIndex, model: ArchitectureModel, *, asts: AstCache
-) -> CoverageEntry:
-    info = model.info(source.module)
-    status: CoverageStatus = "unclassified"
-    reason = (
-        "No architecture layer or explicit shared, wiring or composition-root policy."
-    )
-    if is_governed(info, layers_declared=bool(model.part_for(source.module).layers)):
-        status, reason = "governed", "Explicit architecture policy."
-    elif source.is_package and _is_facade(source, asts):
-        status, reason = (
-            "facade",
-            "Package facade containing imports, documentation and package metadata only.",
-        )
-    return CoverageEntry(
-        source.path,
-        source.module,
-        status,
-        kind=info.kind.value if info else None,
-        feature=info.feature if info else None,
-        layer=info.layer if info else None,
-        wiring=bool(info and info.wiring),
-        central=bool(info and info.central),
-        reason=reason,
-        policies=_policies(info),
-        source_root=files.source_root_dir(source.module),
-    )
-
-
-def _policies(info: ModuleInfo | None) -> tuple[str, ...]:
-    if info is None:
-        return ()
-    policies = []
-    if info.layer:
-        policies.append(f"architecture.layers.{info.layer}")
-    if info.central:
-        binding = info.layer_binding
-        key = (
-            binding.key.partition("[")[0]
-            if binding and binding.key.startswith("layers.")
-            else "modules"
-        )
-        policies.append(f"architecture.{key}")
-    if info.feature:
-        policies.append("architecture.features")
-    if info.wiring:
-        policies.append("architecture.wiring")
-    if info.kind is ModuleKind.SHARED:
-        policies.append("architecture.shared")
-    if info.kind is ModuleKind.COMPOSITION_ROOT:
-        policies.append("architecture.composition_root")
-    return tuple(policies)
-
-
-def _is_facade(source: SourceFile, asts: AstCache) -> bool:
-    try:
-        tree = asts.parse(source.path)
-    except AnalysisError:
-        return False
-    version_calls = _version_calls(tree)
-    return all(_facade_statement(node, version_calls) for node in tree.body)
-
-
-def _version_calls(tree: ast.Module) -> set[str]:
-    calls: set[str] = set()
-    for node in tree_nodes(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "importlib.metadata":
-            calls.update(
-                alias.asname or alias.name
-                for alias in node.names
-                if alias.name == "version"
-            )
-        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
-            calls.update(
-                f"{alias.asname or alias.name}.version"
-                for alias in node.names
-                if alias.name == "metadata"
-            )
-        elif isinstance(node, ast.Import):
-            calls.update(
-                f"{alias.asname or alias.name}.version"
-                for alias in node.names
-                if alias.name == "importlib.metadata"
-            )
-    return calls
-
-
-def _facade_statement(node: ast.stmt, version_calls: set[str]) -> bool:
-    if isinstance(node, ast.Import | ast.ImportFrom | ast.Pass):
-        return True
-    if isinstance(node, ast.Expr):
-        return isinstance(node.value, ast.Constant) and isinstance(
-            node.value.value, str
-        )
-    if isinstance(node, ast.Assign | ast.AnnAssign):
-        return _metadata_assignment(node, version_calls)
-    if isinstance(node, ast.If) and ast.unparse(node.test) in (
-        "TYPE_CHECKING",
-        "typing.TYPE_CHECKING",
-    ):
-        return all(
-            _facade_statement(child, version_calls)
-            for child in (*node.body, *node.orelse)
-        )
-    if isinstance(node, ast.Try):
-        blocks = [
-            node.body,
-            node.orelse,
-            node.finalbody,
-            *(handler.body for handler in node.handlers),
-        ]
-        safe_handlers = all(
-            handler.type is None or isinstance(handler.type, ast.Name | ast.Attribute)
-            for handler in node.handlers
-        )
-        return safe_handlers and all(
-            _facade_statement(child, version_calls)
-            for block in blocks
-            for child in block
-        )
-    return False
-
-
-def _metadata_assignment(
-    node: ast.Assign | ast.AnnAssign, version_calls: set[str]
-) -> bool:
-    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-    names = [target.id for target in targets if isinstance(target, ast.Name)]
-    if len(names) != len(targets) or not set(names) <= {"__all__", "__version__"}:
-        return False
-    if node.value is None:
-        return False
-    try:
-        ast.literal_eval(node.value)
-    except (ValueError, TypeError):
-        value = node.value
-        return (
-            names == ["__version__"]
-            and isinstance(value, ast.Call)
-            and ast.unparse(value.func) in version_calls
-            and len(value.args) == 1
-            and isinstance(value.args[0], ast.Constant)
-            and isinstance(value.args[0].value, str)
-            and not value.keywords
-        )
-    return True
-
-
-def _module_name(path: Path, root: Path) -> str | None:
-    parts = list(path.relative_to(root).with_suffix("").parts)
-    if parts and parts[-1] == "__init__":
-        parts.pop()
-    return (
-        ".".join(parts)
-        if parts and all(part.isidentifier() for part in parts)
-        else None
     )

@@ -6,7 +6,6 @@ mod contracts;
 mod coverage_report;
 mod facade_coverage;
 mod files;
-mod import_report;
 mod meta;
 mod patterns;
 mod renames;
@@ -16,9 +15,11 @@ mod settings;
 mod snapshot;
 mod source;
 mod suppressions;
+mod symbols;
 mod violation;
 
 use analysis::architecture::{ArchitectureModel, Scope};
+use analysis::facade_usage::FacadeUsage;
 use analysis::imports::ImportIndex;
 use analysis::python_target::PythonTargets;
 use analysis::test_syntax::{self, TestModule};
@@ -92,6 +93,13 @@ pub struct Options {
     /// The requesting interpreter's import search path, for installed packages.
     #[serde(default)]
     search_path: Option<Vec<PathBuf>>,
+    /// Run the rules; without them the outcome only describes the files and coverage.
+    #[serde(default = "run_rules")]
+    rules: bool,
+}
+
+fn run_rules() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -119,41 +127,10 @@ struct Outcome {
     digests: BTreeMap<String, String>,
     /// The baseline revision's findings, each with the text of its line.
     baseline: Option<Vec<Value>>,
-}
-
-/// Check the project of `config` with the comma-separated rules and print JSON.
-pub fn serve(config: &Path, select: &str) -> i32 {
-    let options = Options {
-        config: config.to_path_buf(),
-        select: select.split(',').map(str::to_owned).collect(),
-        ignore: Vec::new(),
-        strict_coverage: false,
-        configuration_findings: true,
-        index: None,
-        baseline: None,
-        search_path: None,
-    };
-    let unported: Vec<&str> = options
-        .select
-        .iter()
-        .map(String::as_str)
-        .filter(|code| !rules::PORTED.contains(code))
-        .collect();
-    let result = if unported.is_empty() {
-        run(options).map_err(Failure::into_message)
-    } else {
-        Err(format!("rules not ported: {}", unported.join(", ")))
-    };
-    let output = result.map(|outcome| {
-        json!({"violations": outcome.violations, "suppressed": outcome.suppressed}).to_string()
-    });
-    match output.and_then(|output| write_output(&output)) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("smelt core: {message}");
-            2
-        }
-    }
+    /// The sources, packages and tests the check discovered.
+    files: Value,
+    /// Each `architecture.canonical_exports` declaration that failed, with why.
+    ownership_issues: Vec<(String, String)>,
 }
 
 /// Run the check that stdin requests as JSON `Options` and print its outcome.
@@ -177,6 +154,8 @@ pub fn serve_check() -> i32 {
                 "paths": outcome.paths,
                 "digests": outcome.digests,
                 "baseline": outcome.baseline,
+                "files": outcome.files,
+                "ownership_issues": outcome.ownership_issues,
             }),
             0,
         ),
@@ -205,14 +184,55 @@ pub fn serve_check() -> i32 {
     }
 }
 
-/// Load one configuration and print it, or its error, as JSON.
-pub fn serve_config(path: &Path) -> i32 {
-    let description = match config::load::load_config(path) {
-        Ok(loaded) => config::load::describe(&loaded),
-        Err(error) => json!({"ok": false, "error": error.render()}),
+/// The project settings discovery reads, as the engine sends them.
+#[derive(Deserialize)]
+struct FilesRequest {
+    root: PathBuf,
+    root_packages: Vec<String>,
+    source_roots: Vec<String>,
+    test_roots: Vec<String>,
+    exclude: Vec<String>,
+    /// Whether a file naming policy reads YAML files.
+    yaml: bool,
+    /// Also report the imports between uv workspace members, as `member_edges`.
+    #[serde(default)]
+    member_edges: bool,
+}
+
+/// Discover the files of the project stdin describes and print the inventory.
+///
+/// An error prints `{"error": message}` and exits 2, as a check does.
+pub fn serve_files() -> i32 {
+    let mut input = String::new();
+    let inventory = io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| error.to_string())
+        .and_then(|_| {
+            serde_json::from_str::<FilesRequest>(&input).map_err(|error| error.to_string())
+        })
+        .and_then(|request| {
+            let project = config::Project {
+                root_packages: request.root_packages,
+                source_roots: request.source_roots,
+                test_roots: request.test_roots,
+                exclude: request.exclude,
+                exclusions: Vec::new(),
+                python_version: None,
+                uv_workspace: false,
+            };
+            let files = FileIndex::scan(&request.root, &project)?;
+            let mut inventory = files.inventory(request.yaml);
+            if request.member_edges {
+                inventory["member_edges"] = json!(member_edges(&files, &project.root_packages)?);
+            }
+            Ok(inventory)
+        });
+    let (output, code) = match inventory {
+        Ok(inventory) => (inventory, 0),
+        Err(message) => (json!({"error": message}), 2),
     };
-    match write_output(&description.to_string()) {
-        Ok(()) => 0,
+    match write_output(&output.to_string()) {
+        Ok(()) => code,
         Err(message) => {
             eprintln!("smelt core: {message}");
             2
@@ -220,9 +240,51 @@ pub fn serve_config(path: &Path) -> i32 {
     }
 }
 
-/// Print the resolved import graph of `config` as JSON.
-pub fn serve_imports(config: &Path) -> i32 {
-    match import_report::run(config).and_then(|text| write_output(&text)) {
+/// The imports between the uv workspace members of `files`.
+fn member_edges(files: &FileIndex, roots: &[String]) -> Result<Vec<(String, String)>, String> {
+    let sources: Vec<&SourceFile> = files.sources.values().collect();
+    with_analysis_pool(|| {
+        let parsed = parse_sources(&sources, true)?;
+        let pairs: Vec<(&SourceFile, &ParsedSource)> =
+            sources.iter().copied().zip(&parsed).collect();
+        let imports = ImportIndex::build(files, roots, &pairs, &[])?;
+        analysis::workspace::member_edges(files, &imports)
+    })?
+}
+
+/// Print the symbols of the modules stdin lists, for `smelt init` to trace.
+///
+/// An error prints `{"error": message}` and exits 2, as a check does.
+pub fn serve_symbols() -> i32 {
+    let mut input = String::new();
+    let report = io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|error| error.to_string())
+        .and_then(|_| {
+            serde_json::from_str::<symbols::SymbolsRequest>(&input)
+                .map_err(|error| error.to_string())
+        })
+        .and_then(|request| with_analysis_pool(|| symbols::symbols(&request)));
+    let (output, code) = match report {
+        Ok(found) => (json!({"symbols": found}), 0),
+        Err(message) => (json!({"error": message}), 2),
+    };
+    match write_output(&output.to_string()) {
+        Ok(()) => code,
+        Err(message) => {
+            eprintln!("smelt core: {message}");
+            2
+        }
+    }
+}
+
+/// Load one configuration and print it, or its error, as JSON.
+pub fn serve_config(path: &Path) -> i32 {
+    let description = match config::load::load_config(path) {
+        Ok(loaded) => config::load::describe(&loaded),
+        Err(error) => json!({"ok": false, "error": error.render()}),
+    };
+    match write_output(&description.to_string()) {
         Ok(()) => 0,
         Err(message) => {
             eprintln!("smelt core: {message}");
@@ -244,15 +306,6 @@ enum Failure {
     /// A configuration the user must fix, reported with its issues.
     Config(ConfigError),
     Message(String),
-}
-
-impl Failure {
-    fn into_message(self) -> String {
-        match self {
-            Self::Config(error) => error.render(),
-            Self::Message(message) => message,
-        }
-    }
 }
 
 impl From<String> for Failure {
@@ -301,7 +354,12 @@ fn run(options: Options) -> Result<Outcome, Failure> {
                     .map_err(|error| Failure::from(error.to_string()))
             })
             .transpose()?;
-        let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
+        let mut outcome = check(
+            &request,
+            &options.ignore,
+            options.configuration_findings,
+            options.rules,
+        )?;
         if let Some(before) = before {
             let findings = before
                 .join()
@@ -332,7 +390,7 @@ fn baseline_findings(
     if !has_check_paths(&request)? {
         return Ok(Vec::new());
     }
-    let before = check(&request, ignore, false)?;
+    let before = check(&request, ignore, false, true)?;
     Ok(with_lines(&request.root, before.violations))
 }
 
@@ -384,18 +442,20 @@ fn python_lines(path: &Path) -> Vec<String> {
     lines
 }
 
-/// Check the project `request` describes, leaving out the `ignore` rules.
+/// Check the project `request` describes, leaving out the `ignore` rules, or
+/// without rules only describe its files and coverage.
 fn check(
     request: &Request,
     ignore: &[String],
     configuration_findings: bool,
+    with_rules: bool,
 ) -> Result<Outcome, Failure> {
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
     let files = FileIndex::discover(request)?;
     let contracts = Contracts::resolve(request, &files)?;
     let settings = Settings::new(&catalog, request);
-    let ignored = |rule: &&CatalogRule| ignore.contains(&rule.code);
+    let ignored = |rule: &&CatalogRule| !with_rules || ignore.contains(&rule.code);
     // The meta rules judge the run after filtering instead of checking sources.
     let (meta_rules, active): (Vec<&CatalogRule>, Vec<&CatalogRule>) = settings
         .active(&request.select)
@@ -496,10 +556,22 @@ fn check(
     }) || (configuration_findings
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
+    let mut ownership_issues = Vec::new();
     let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
         let parsed = parse_sources(&sources, needs_syntax)?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
+        // Ownership declarations are verified against the static exports of the sources.
+        if !request.canonical_exports.is_empty() {
+            let usage = FacadeUsage::new(
+                &files,
+                &source_pairs,
+                &[],
+                &request.project.test_roots,
+                HashMap::new(),
+            );
+            ownership_issues = usage.canonical_exports(&request.canonical_exports).1;
+        }
         let imports_tests = import_rules
             .iter()
             .any(|rule| TEST_IMPORT_RULES.contains(&rule.code.as_str()));
@@ -817,6 +889,8 @@ fn check(
         paths,
         digests,
         baseline: None,
+        files: files.inventory(request.file_naming.checks_yaml()),
+        ownership_issues,
     })
 }
 

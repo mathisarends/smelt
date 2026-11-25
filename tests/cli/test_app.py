@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-from smelt.analysis.imports import ImportIndex
 from smelt.cli import main
 from smelt.cli.commands import discover
 from smelt.config import load_config
@@ -1576,7 +1575,7 @@ class TestDiscoveryCommands:
             "instruction": "From layer domain, import no other layer",
         } in data["rules"]
 
-    def test_context_reuses_check_after_a_layer_violation(
+    def test_context_reports_the_current_layer_violations(
         self,
         capsys: pytest.CaptureFixture[str],
         clean_project: Path,
@@ -1589,14 +1588,9 @@ class TestDiscoveryCommands:
         assert (code, err) == (1, "")
         assert "ARC001" in {v["code"] for v in json.loads(report)["violations"]}
 
-        def unexpected_build(*args: object, **kwargs: object) -> None:
-            pytest.fail("context rebuilt the import graph after an unchanged check")
-
-        with monkeypatch.context() as warm:
-            warm.setattr(ImportIndex, "build", unexpected_build)
-            code, output, err = _run(
-                capsys, "context", "app.domain.order", "--format", "json"
-            )
+        code, output, err = _run(
+            capsys, "context", "app.domain.order", "--format", "json"
+        )
         assert (code, err) == (0, "")
         assert "ARC001" in json.loads(output)["violations"]["codes"]
 

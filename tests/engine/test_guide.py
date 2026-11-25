@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from smelt.analysis.context import AnalysisContext
 from smelt.config import load_config
 from smelt.diagnostics.violation import Severity
 from smelt.engine.guide import (
@@ -13,6 +12,7 @@ from smelt.engine.guide import (
     render_guide,
     resolve_guide_target,
 )
+from smelt.engine.native_core import project_context
 from tests.helpers import add_rules, write_policy_project
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ def project(tmp_path: Path) -> Path:
 
 def _guide(root: Path, raw: str | None) -> Guide:
     loaded = load_config(root / "smelt.yml")
-    ctx = AnalysisContext(loaded.root, loaded.config, store=loaded.source)
+    ctx = project_context(loaded)
     return build_guide(ctx, resolve_guide_target(ctx, raw), loaded)
 
 

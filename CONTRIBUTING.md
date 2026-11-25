@@ -26,19 +26,23 @@ the same decision before adding another finding.
 
 | Concern | Location | Responsibility |
 | --- | --- | --- |
-| Source facts | `smelt/analysis/` | Discovery, parsing and reusable indexes; never execute analyzed code |
+| Source facts | `native/checker/analysis/`, `native/checker/files.rs` | Discovery, parsing and reusable indexes in the Rust core; never execute analyzed code |
+| Policy resolution | `smelt/analysis/` | Contracts, coverage and workspace views over the core's file inventory, for `context`, `init` and validation |
 | Policy data | `smelt/config/models.py` | Typed configuration, defaults and validation |
-| Rule decision | `smelt/rules/<category>/<concept>.py` | Compare facts with policy and emit violations |
-| Catalog | `smelt/rules/registry.py` | Explicitly register each rule once |
+| Rule decision | `native/checker/rules/` | Compare facts with policy and emit violations |
+| Rule metadata | `smelt/rules/<category>/<concept>.py` | Code, name, default severity, `RuleDoc` and guide text |
+| Catalog | `smelt/rules/registry.py` | Explicitly register each rule once; generates `smelt/rules/catalog.json` for the core |
 | Diagnostic content | The rule's `RuleDoc` | Summary, rationale, bad/good examples, repair advice and config paths |
 | Execution and scope | `smelt/engine/` | Selection, severity, suppressions, debt and changed comparisons |
 | Output and CLI | `smelt/diagnostics/`, `smelt/cli/` | Render findings and expose commands |
 | Regression | Mirrored paths under `tests/` | Demonstrate the failure and protect valid neighbors |
 | Generated reference | `docs/rules/`, `smelt.schema.json` | Generated from code; edit their sources instead |
 
-Rules depend on analysis/config/model/diagnostics, never engine or CLI. The engine
-composes rules. Share a source fact through an analysis index when several rules
-need it; don't make one rule call another or hide policy decisions in parsing.
+Rule metadata depends on analysis/config/model/diagnostics, never engine or CLI.
+The core runs every rule; the engine selects them, applies severity, suppressions
+and debt, and renders the result. Share a source fact through a core analysis
+index when several rules need it; don't make one rule call another or hide
+policy decisions in parsing.
 Smelt checks these architecture boundaries with its own `smelt.yml`.
 
 The repository also enables public-first ordering, explicit
@@ -47,7 +51,7 @@ It checks private-symbol imports, redundant delegates/name aliases, deferred
 annotations, explicit `StrEnum` values and docstrings on abstract and
 `Protocol` methods, dataclasses that mutate their own fields after
 construction, broad exception handlers without a stated reason and copied
-module-level functions; shared syntax helpers live in `analysis/bindings.py`. Keep
+module-level functions; shared syntax helpers live in `native/checker/analysis/bindings.rs`. Keep
 serialized enum values stable.
 Functions accept at most three positional parameters; pass later arguments by
 keyword, including in tests and partial applications. Production dataclasses
@@ -232,16 +236,19 @@ configuration errors can point to the replacement; add entries there and to
 `docs/upgrading.md` whenever a published name or code is retired. Reconcile
 allocations when concurrent PRs introduce rules.
 
-1. Implement the decision next to the closest concept. `structure/naming.py` is a
-   small file-policy example; `dependencies/interfaces.py` shows richer import
-   analysis; `structure/ordering.py` consumes a dedicated analysis index.
-2. Use `self.violation(...)` so metadata and documentation links stay consistent.
+1. Implement the decision in the core next to the closest concept and dispatch
+   its code from the family's `rules` module. `rules/structure/naming.rs` is a
+   small file-policy example; `rules/dependencies/boundaries.rs` shows import
+   analysis; `rules/definition_order.rs` consumes a dedicated analysis index.
    Include a concrete location, useful `expected` policy data and an actionable
    hint. Keep output deterministic. Avoid a report for every alias when one
    architectural decision explains them all.
-3. Register the implementation path in `_IMPLEMENTATIONS` in `rules/registry.py`.
-   Keep abstract helper classes private; `build_rule_set()` is the public factory.
-   Production registration stays explicit; test discovery detects forgotten rules.
+2. Describe the rule in a metadata class next to its Python concept, such as
+   `smelt/rules/structure/naming.py`, with its `RuleDoc` and any `guide` text.
+3. Register the class in `_IMPLEMENTATIONS` in `rules/registry.py` and regenerate,
+   which rewrites the catalog the core reads. Keep abstract helper classes
+   private; `build_rule_set()` is the public factory. Production registration
+   stays explicit; test discovery detects forgotten rules.
 4. Add policy to the existing typed configuration only if needed. Preserve package
    ownership, closest-policy overrides and conservative behavior for unknown
    Python versions. Expose new placement policy in `context` when an agent needs it

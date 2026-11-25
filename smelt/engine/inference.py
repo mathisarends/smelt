@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import re
 from collections import Counter, deque
 from dataclasses import dataclass, field
@@ -9,8 +8,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from pydantic import ValidationError
 
-from smelt.analysis.exports import Namespace, namespace_of, resolve_dotted
-from smelt.analysis.parsing import tree_nodes
+from smelt.analysis.symbols import read_symbols, resolve_dotted
 from smelt.analysis.workspace import WorkspaceMember, import_root, workspace_members
 from smelt.config.discovery import IGNORED_DIRS, child_packages, has_python
 from smelt.config.models import SmeltConfig
@@ -23,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from pathlib import Path
 
-    from smelt.analysis.exports import Loader
+    from smelt.analysis.symbols import Loader, ModuleSymbols, Namespace
 _STARTER_RULES = {
     "LAY004",
     "IDM001",
@@ -185,10 +183,11 @@ def infer_config(root: Path, *, include_members: bool = True) -> InferredConfig 
         inferred.features = []
     _infer_special_modules(inferred, packages)
     _infer_wiring(inferred, packages)
-    _infer_app_factories(inferred, packages)
-    traces = _infer_assemblies(inferred, packages)
+    symbols = _read_symbols(packages)
+    _infer_app_factories(inferred, packages, symbols=symbols)
+    traces = _infer_assemblies(inferred, packages, symbols=symbols)
     _infer_central_modules(inferred, packages)
-    _infer_candidates(inferred, packages, traces)
+    _infer_candidates(inferred, packages, traces, symbols=symbols)
     inferred.wiring = _wiring_patterns(inferred.wiring, _all_modules(packages))
     if inferred.layers:
         inferred.layer_gaps = _layer_gaps(inferred, containers, packages=packages)
@@ -302,7 +301,9 @@ def _infer_special_modules(inferred: InferredConfig, packages: list[Path]) -> No
                 inferred.shared.append(f"{package.name}.{name}")
 
 
-def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None:
+def _infer_app_factories(
+    inferred: InferredConfig, packages: list[Path], *, symbols: _Symbols
+) -> None:
     """Root-level modules between the entry point and the wiring, like ``app.py``.
 
     A module counts when a composition root refers to it, by import or as a
@@ -311,7 +312,7 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
     facades count as the wiring they re-export: ``app.py`` importing
     ``backend.features``, whose ``__init__`` collects the feature providers.
     """
-    load = _loader(packages)
+    load = _loader(packages, symbols=symbols)
     roots = list(inferred.composition_root)
     targets = [*roots, *inferred.wiring]
     for package in packages:
@@ -323,18 +324,19 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
                 (
                     (root, how)
                     for root in roots
-                    if (how := _reference(packages, root, module)) is not None
+                    if (how := _reference(packages, root, module, symbols=symbols))
+                    is not None
                 ),
                 None,
             )
             if referred is None:
                 continue
-            imports = _imports(path, package.name)
+            imports = _imports(symbols.get(path), package.name)
             reached = _first_hit(_trace(load, module), targets) or next(
                 (
                     f"{name}, which re-exports wiring"
                     for name in sorted(imports)
-                    if _reaches(packages, name, targets)
+                    if _reaches(packages, name, targets, symbols=symbols)
                 ),
                 None,
             )
@@ -346,7 +348,7 @@ def _infer_app_factories(inferred: InferredConfig, packages: list[Path]) -> None
 
 
 def _infer_assemblies(
-    inferred: InferredConfig, packages: list[Path]
+    inferred: InferredConfig, packages: list[Path], *, symbols: _Symbols
 ) -> dict[str, dict[_Node, _Node | None]]:
     """Modules that assemble wiring for the composition root become wiring too.
 
@@ -357,7 +359,7 @@ def _infer_assemblies(
     module (not a facade) whose definition refers to wiring builds the app from it,
     as the wiring itself does. Merely importing a framework type is no assembly.
     """
-    load = _loader(packages)
+    load = _loader(packages, symbols=symbols)
     traces: dict[str, dict[_Node, _Node | None]] = {}
     for root in list(inferred.composition_root):
         parents = _trace(load, root)
@@ -380,6 +382,8 @@ def _infer_candidates(
     inferred: InferredConfig,
     packages: list[Path],
     traces: dict[str, dict[_Node, _Node | None]],
+    *,
+    symbols: _Symbols,
 ) -> None:
     """Unclassified packages the composition root uses: proposed, not applied.
 
@@ -419,7 +423,7 @@ def _infer_candidates(
             if not _within_any(module, [package])
             and any(
                 _within_any(name, [package])
-                for name in _module_imports(packages, module)
+                for name in _module_imports(packages, module, symbols=symbols)
             )
         }
         others = sorted(importers - roots)
@@ -502,60 +506,64 @@ def _reaches(
     name: str,
     targets: list[str],
     *,
-    depth: int = 3,
-    seen: set[str] | None = None,
+    symbols: _Symbols,
 ) -> bool:
     """``name`` is one of ``targets`` or a package facade re-exporting one."""
-    if _within_any(name, targets):
-        return True
-    seen = set() if seen is None else seen
-    path = _module_file(packages, name)
-    if depth == 0 or path is None or path.name != "__init__.py" or name in seen:
-        return False
-    seen.add(name)
-    return any(
-        _reaches(packages, imported, targets, depth=depth - 1, seen=seen)
-        for imported in sorted(_module_imports(packages, name))
-        if _within_any(imported, [name])
-    )
+    seen: set[str] = set()
+
+    def visit(module: str, depth: int) -> bool:
+        if _within_any(module, targets):
+            return True
+        path = _module_file(packages, module)
+        if depth == 0 or path is None or path.name != "__init__.py" or module in seen:
+            return False
+        seen.add(module)
+        return any(
+            visit(imported, depth - 1)
+            for imported in sorted(_module_imports(packages, module, symbols=symbols))
+            if _within_any(imported, [module])
+        )
+
+    return visit(name, 3)
 
 
-def _reference(packages: list[Path], root: str, module: str) -> str | None:
+def _reference(
+    packages: list[Path], root: str, module: str, *, symbols: _Symbols
+) -> str | None:
     """How ``root`` refers to ``module``: an import or a ``"module:attr"`` string."""
-    if module in _module_imports(packages, root):
+    if module in _module_imports(packages, root, symbols=symbols):
         return "imports"
-    for target in _server_targets(packages, root):
+    for target in _server_targets(packages, root, symbols=symbols):
         if target.split(":")[0] == module:
             return f'serves "{target}" from'
     return None
 
 
-def _server_targets(packages: list[Path], module: str) -> list[str]:
+def _server_targets(
+    packages: list[Path], module: str, *, symbols: _Symbols
+) -> list[str]:
     """``"backend.app:app"`` strings naming a first-party module, as uvicorn takes them."""
     path = _module_file(packages, module)
-    if path is None:
-        return []
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-    except SyntaxError:
+    found = None if path is None else symbols.get(path)
+    if found is None:
         return []
     return [
-        node.value
-        for node in tree_nodes(tree)
-        if isinstance(node, ast.Constant)
-        and isinstance(node.value, str)
-        and (match := _SERVER_TARGET.fullmatch(node.value))
+        value
+        for value in found.strings
+        if (match := _SERVER_TARGET.fullmatch(value))
         and _module_file(packages, match.group(1)) is not None
     ]
 
 
-def _module_imports(packages: list[Path], module: str) -> set[str]:
+def _module_imports(
+    packages: list[Path], module: str, *, symbols: _Symbols
+) -> set[str]:
     """Absolute names ``module`` imports; relative ones resolved from its package."""
     path = _module_file(packages, module)
     if path is None:
         return set()
     parent = module if path.name == "__init__.py" else module.rsplit(".", 1)[0]
-    return _imports(path, parent)
+    return _imports(symbols.get(path), parent)
 
 
 def _module_file(packages: list[Path], module: str) -> Path | None:
@@ -571,6 +579,8 @@ def _module_file(packages: list[Path], module: str) -> Path | None:
 
 
 type _Node = tuple[str, str | None]
+# Each first-party module file's symbols, None for one that does not parse.
+type _Symbols = Mapping[Path, ModuleSymbols | None]
 # Symbols followed from one composition root; plenty for hundreds of features.
 _TRACE_LIMIT = 2000
 _SERVER_TARGET = re.compile(r"([A-Za-z_][\w.]*):([A-Za-z_]\w*)")
@@ -698,24 +708,29 @@ def _rules_block(policies: Sequence[str]) -> list[str]:
     ]
 
 
-def _loader(packages: list[Path]) -> Loader:
+def _read_symbols(packages: list[Path]) -> dict[Path, ModuleSymbols | None]:
+    """Every first-party module's symbols, which the native core reads at once."""
+    files: list[tuple[Path, str]] = []
+    for package in packages:
+        for path in sorted(package.rglob("*.py")):
+            parts = path.relative_to(package.parent).with_suffix("").parts
+            if parts[-1] == "__init__":
+                parts = parts[:-1]
+            files.append((path, ".".join(parts)))
+    return read_symbols(files)
+
+
+def _loader(packages: list[Path], *, symbols: _Symbols) -> Loader:
     cache: dict[str, Namespace | None] = {}
 
     def load(module: str) -> Namespace | None:
         if module not in cache:
             path = _module_file(packages, module)
-            cache[module] = None if path is None else _namespace(path, module)
+            found = None if path is None else symbols.get(path)
+            cache[module] = None if found is None else found.namespace
         return cache[module]
 
     return load
-
-
-def _namespace(path: Path, module: str) -> Namespace | None:
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-    except SyntaxError:
-        return None
-    return namespace_of(tree, module, is_package=path.name == "__init__.py")
 
 
 def _trace(load: Loader, root: str) -> dict[_Node, _Node | None]:
@@ -776,25 +791,21 @@ def _chain(parents: dict[_Node, _Node | None], node: _Node) -> list[str]:
     return list(reversed(labels))
 
 
-def _imports(path: Path | None, package: str) -> set[str]:
+def _imports(symbols: ModuleSymbols | None, package: str) -> set[str]:
     """Absolute names a module directly inside ``package`` imports."""
-    if path is None:
-        return set()
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
-    except SyntaxError:
+    if symbols is None:
         return set()
     found: set[str] = set()
-    for node in tree_nodes(tree):
-        if isinstance(node, ast.Import):
-            found.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            base = node.module or ""
-            if node.level:
-                parent = package.rsplit(".", node.level - 1)[0]
-                base = f"{parent}.{base}" if base else parent
-            found.add(base)
-            found.update(f"{base}.{alias.name}" for alias in node.names)
+    for statement in symbols.imports:
+        if not statement.from_import:
+            found.update(statement.names)
+            continue
+        base = statement.module or ""
+        if statement.level:
+            parent = package.rsplit(".", statement.level - 1)[0]
+            base = f"{parent}.{base}" if base else parent
+        found.add(base)
+        found.update(f"{base}.{name}" for name in statement.names)
     return found
 
 

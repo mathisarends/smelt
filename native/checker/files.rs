@@ -1,6 +1,7 @@
 //! Source discovery with the package rules of `smelt.analysis.files`.
-use super::config::Request;
+use super::config::{Project, Request};
 use super::patterns::PathPattern;
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -26,6 +27,14 @@ pub struct SourceFile {
     pub is_package: bool,
 }
 
+/// One directory of a package: the package itself, or a namespace portion.
+struct Portion {
+    module: String,
+    path: String,
+    source_root: String,
+    has_init: bool,
+}
+
 pub struct FileIndex {
     pub root: PathBuf,
     pub sources: BTreeMap<String, SourceFile>,
@@ -47,14 +56,22 @@ pub struct FileIndex {
     test_roots: HashMap<String, String>,
     default_source_root: String,
     exclude: Vec<PathPattern>,
+    /// Every package directory in discovery order.
+    portions: Vec<Portion>,
+    /// The root packages, in configuration order.
+    root_packages: Vec<String>,
 }
 
 impl FileIndex {
     pub fn discover(request: &Request) -> Result<Self, String> {
-        let root = fs::canonicalize(&request.root)
+        Self::scan(&request.root, &request.project)
+    }
+
+    /// Discover the sources and tests the project settings describe below `root`.
+    pub fn scan(root: &Path, project: &Project) -> Result<Self, String> {
+        let root = fs::canonicalize(root)
             .map_err(|error| format!("cannot resolve project root: {error}"))?;
-        let exclude = request
-            .project
+        let exclude = project
             .exclude
             .iter()
             .map(|pattern| PathPattern::new(pattern))
@@ -67,11 +84,12 @@ impl FileIndex {
             parts: HashMap::new(),
             found_roots: Vec::new(),
             source_order: Vec::new(),
+            ordered_portions: Vec::new(),
         };
-        for package in &request.project.root_packages {
-            discovery.package_root(package, &request.project.source_roots)?;
+        for package in &project.root_packages {
+            discovery.package_root(package, &project.source_roots)?;
         }
-        let (tests, test_roots) = discovery.tests(&request.project.test_roots);
+        let (tests, test_roots) = discovery.tests(&project.test_roots);
         let namespace_packages = discovery
             .portions
             .iter()
@@ -90,6 +108,7 @@ impl FileIndex {
             .collect();
         let mut packages: Vec<String> = package_paths.keys().cloned().collect();
         packages.sort();
+        let portions = discovery.ordered_portions;
         Ok(Self {
             root: discovery.root,
             sources: discovery.sources,
@@ -102,13 +121,60 @@ impl FileIndex {
             package_parts: discovery.parts,
             package_source_roots,
             test_roots,
-            default_source_root: request
-                .project
+            default_source_root: project
                 .source_roots
                 .first()
                 .cloned()
                 .unwrap_or_else(|| ".".to_owned()),
             exclude: discovery.exclude,
+            portions,
+            root_packages: project.root_packages.clone(),
+        })
+    }
+
+    /// The discovered sources, packages and tests, which the engine indexes as found,
+    /// with the YAML files when a file naming policy reads them.
+    pub fn inventory(&self, yaml: bool) -> Value {
+        let sources: Vec<Value> = self
+            .source_order
+            .iter()
+            .filter_map(|module| self.sources.get(module))
+            .map(|source| {
+                json!({
+                    "module": source.module,
+                    "path": source.path,
+                    "is_package": source.is_package,
+                })
+            })
+            .collect();
+        let packages: Vec<Value> = self
+            .portions
+            .iter()
+            .map(|portion| {
+                json!({
+                    "module": portion.module,
+                    "path": portion.path,
+                    "source_root": portion.source_root,
+                    "has_init": portion.has_init,
+                })
+            })
+            .collect();
+        let tests: Vec<Value> = self
+            .tests
+            .keys()
+            .map(|path| json!({"path": path, "test_root": self.test_root(path)}))
+            .collect();
+        let missing: Vec<&String> = self
+            .root_packages
+            .iter()
+            .filter(|package| !self.found_roots.contains(package))
+            .collect();
+        json!({
+            "sources": sources,
+            "packages": packages,
+            "tests": tests,
+            "missing_root_packages": missing,
+            "yaml_paths": if yaml { self.yaml_paths() } else { Vec::new() },
         })
     }
 
@@ -225,6 +291,7 @@ struct Discovery {
     parts: HashMap<String, Vec<String>>,
     found_roots: Vec<String>,
     source_order: Vec<String>,
+    ordered_portions: Vec<Portion>,
 }
 
 impl Discovery {
@@ -291,6 +358,12 @@ impl Discovery {
             .entry(module.to_owned())
             .or_default()
             .push(relative.clone());
+        self.ordered_portions.push(Portion {
+            module: module.to_owned(),
+            path: relative.clone(),
+            source_root: source_root.to_owned(),
+            has_init,
+        });
         self.portions.entry(module.to_owned()).or_insert((
             relative,
             has_init,

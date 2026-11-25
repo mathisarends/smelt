@@ -1,5 +1,6 @@
 //! Workspace ownership and declared member dependencies, like
 //! `smelt.analysis.workspace_policy`.
+use crate::checker::analysis::imports::ImportIndex;
 use crate::checker::config::paths;
 use crate::checker::config::workspace::member_directories;
 use crate::checker::files::FileIndex;
@@ -157,6 +158,38 @@ impl WorkspaceIndex {
         }
         Ok(names)
     }
+}
+
+/// The first-party imports from one analyzed member into another, sorted.
+pub fn member_edges(
+    files: &FileIndex,
+    imports: &ImportIndex,
+) -> Result<Vec<(String, String)>, String> {
+    let members = member_paths(files)?;
+    let owner = |module: &str| -> Option<&str> {
+        if let Some(source) = files.sources.get(module) {
+            return Some(member_for_path(&members, &source.path));
+        }
+        let owners: HashSet<&str> = files
+            .package_parts(module)
+            .iter()
+            .map(|part| member_for_path(&members, part))
+            .collect();
+        match owners.len() {
+            1 => owners.into_iter().next(),
+            _ => None,
+        }
+    };
+    let edges: BTreeSet<(String, String)> = imports
+        .all_imports()
+        .filter(|detail| !detail.external)
+        .filter_map(|detail| {
+            let source = owner(&detail.importer)?;
+            let target = owner(&detail.imported)?;
+            (source != target).then(|| (source.to_owned(), target.to_owned()))
+        })
+        .collect();
+    Ok(edges.into_iter().collect())
 }
 
 /// The analyzed member paths of the workspace, without the root.
