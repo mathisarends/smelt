@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 
 def git(root: Path, *args: str) -> bytes:
-    return subprocess.check_output(  # noqa: S603
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+    return subprocess.check_output(  # noqa: S603 -- Git receives a list of arguments without shell expansion.
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607 -- Use the Git executable selected by PATH.
         cwd=root,
         stderr=subprocess.PIPE,
         timeout=10,
@@ -245,6 +245,7 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
     def no_git(command: list[str], *args: object, **kwargs: object) -> object:
         if Path(command[0]).stem == "git":
             pytest.fail("a standard staged check must use the native Git reader")
+        # The wrapper forwards the original subprocess arguments after checking the executable.
         return real_run(command, *args, **kwargs)  # type: ignore[call-overload]
 
     monkeypatch.setattr(subprocess, "run", no_git)

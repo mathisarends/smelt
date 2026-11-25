@@ -741,7 +741,8 @@ class TestFeatureBriefing:
                 }
             ],
         }
-        assert data["policy_hash"] == outcome.report.coverage["policy_hash"]  # type: ignore[index]
+        assert outcome.report.coverage is not None
+        assert data["policy_hash"] == outcome.report.coverage["policy_hash"]
 
 
 class TestModuleBriefing:

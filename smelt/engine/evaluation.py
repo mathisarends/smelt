@@ -142,17 +142,10 @@ def evaluate(
     if not tests.get("executed"):
         for name in ("pytest.stdout.txt", "pytest.stderr.txt"):
             (output / name).write_text("", encoding="utf-8")
-    failed_to_run = not analysis_ok or bool(tests.get("error"))
-    exit_code = (
-        2 if failed_to_run else 1 if tests.get("executed") and tests["exit"] != 0 else 0
-    )
+    status, exit_code = _evaluation_status(analysis_ok, tests)
     document = {
         "schema_version": 1,
-        "status": "error"
-        if failed_to_run
-        else "tests-failed"
-        if exit_code
-        else "complete",
+        "status": status,
         "exit_code": exit_code,
         "config": str(config),
         "config_sha256": policy_hash,
@@ -174,6 +167,14 @@ def evaluate(
         json.dumps(document, indent=2) + "\n", encoding="utf-8"
     )
     return document
+
+
+def _evaluation_status(analysis_ok: bool, tests: dict[str, Any]) -> tuple[str, int]:
+    if not analysis_ok or tests.get("error"):
+        return "error", 2
+    if tests.get("executed") and tests["exit"] != 0:
+        return "tests-failed", 1
+    return "complete", 0
 
 
 def _policy_inputs(config: Path) -> dict[str, str]:

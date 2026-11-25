@@ -77,6 +77,7 @@ def load_project_config(config_path: str | None, cwd: Path) -> LoadedConfig:
         raise CliError(msg, kind="config")
     loaded = _load_reporting_selectors(found)
     if loaded.config.project.workspace == "uv":
+        # Load configuration dependencies only for commands that read policy.
         from smelt.config.workspace import member_directories  # noqa: PLC0415
 
         owners = [
@@ -100,9 +101,8 @@ def configure_streams() -> None:
 
 def _load_reporting_selectors(path: Path) -> LoadedConfig:
     """Load a config; schema errors also list unknown rule selectors at once."""
+    # Load configuration dependencies only for commands that read policy.
     from smelt.config.loader import load_config, raw_config  # noqa: PLC0415
-    from smelt.engine.rule_settings import unknown_selectors  # noqa: PLC0415
-    from smelt.rules.registry import build_rule_set  # noqa: PLC0415
 
     try:
         return load_config(path)
@@ -110,6 +110,12 @@ def _load_reporting_selectors(path: Path) -> LoadedConfig:
         raw = raw_config(path)
         if "version" not in raw:
             raise
+        # Inspect rule selectors only while explaining invalid policy.
+        from smelt.engine.rule_settings import unknown_selectors  # noqa: PLC0415
+
+        # Only invalid configurations need the catalog for selector diagnostics.
+        from smelt.rules.registry import build_rule_set  # noqa: PLC0415
+
         reported = {issue.path for issue in exc.issues}
         missing = [
             issue

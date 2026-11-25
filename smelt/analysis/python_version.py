@@ -63,11 +63,9 @@ class PythonTargetIndex:
             return PythonTarget(
                 PythonVersion(int(major), int(minor)), "project.python_version"
             )
-        directory = (
-            (path.parent if path.suffix == ".py" else path)
-            if path is not None
-            else self.files.root
-        )
+        directory = self.files.root
+        if path is not None:
+            directory = path.parent if path.suffix == ".py" else path
         directory = self.files.resolve_path(directory)
         boundary = self.files.root
         if not directory.is_relative_to(self.files.root):

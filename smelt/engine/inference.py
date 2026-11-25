@@ -242,9 +242,9 @@ def _infer_features(inferred: InferredConfig, packages: list[Path]) -> None:
             child
             for child in child_packages(package)
             if child.name not in _SHARED_NAMES
-            and len({c.name for c in child_packages(child)} & layer_names) >= 2  # noqa: PLR2004
+            and len({c.name for c in child_packages(child)} & layer_names) >= 2  # noqa: PLR2004 -- Two recognized layers distinguish a layered feature from an ordinary package.
         ]
-        if len(layered) >= 2:  # noqa: PLR2004
+        if len(layered) >= 2:  # noqa: PLR2004 -- Infer a repeated layout only across multiple feature packages.
             inferred.features_pattern = f"{package.name}.{{feature}}"
             inferred.features = [child.name for child in layered]
             return
@@ -908,7 +908,7 @@ def _allow_lines(inferred: InferredConfig) -> list[str]:
         inferred.layers[0].name if inferred.layers else None,
     )
     names = inferred.features or ["orders", "billing"]
-    if layer is None or len(names) < 2:  # noqa: PLR2004
+    if layer is None or len(names) < 2:  # noqa: PLR2004 -- The example edge requires two distinct features.
         return ["    allow: []"]
     return [
         "    allow: []  # declare each feature relationship explicitly, e.g.:",

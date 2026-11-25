@@ -153,8 +153,8 @@ def _changed_repository(tmp_path: Path) -> tuple[Path, list[Path]]:
 
 
 def _git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+    subprocess.run(  # noqa: S603 -- Git receives a list of arguments without shell expansion.
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607 -- Use the Git executable selected by PATH.
         cwd=root,
         check=True,
         capture_output=True,

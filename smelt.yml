@@ -19,6 +19,7 @@ architecture:
   layers:
     config:
       path: config
+      third_party: {default: deny, allow: [pydantic, yaml]}
       may_depend_on: []
     model:
       path: model
@@ -49,9 +50,11 @@ architecture:
       required: [architecture]
       public: ['.']
       min_imports_to_bundle: 2
+      min_importers_to_export: 2
 
 style:
   forbidden_names: [utils, helpers]
+  imports: {style: absolute}
   private_modules: forbid
   future_annotations: when-needed
   reexports: all
@@ -59,14 +62,48 @@ style:
   dataclass_options: [slots]
   call_argument_kinds: [await]
   overrides:
+    analysis-errors:
+      match: smelt.analysis
+      errors: {base: smelt.analysis.errors.AnalysisError}
+      rules:
+        modeling/prefer-domain-exception: warning
     type-dispatch:
       match: smelt.rules.structure
       type_dispatch: {style: match, min_branches: 3}
 
 tests:
   layout: mirror
+  forbidden_mock_paths: ['tests/rules/**']
 
 rules:
+  architecture/forbidden-third-party-import: error
+  architecture/unclassified-module: error
+  architecture/missing-facade-export: hint
+  imports/forbidden-import-style: error
+  imports/excess-module-imports: hint
+  complexity/forbidden-nested-conditional: warning
+  complexity/excess-comprehension-loops: hint
+  complexity/excess-constructor-decisions: hint
+  idioms/loop-invariant-collection: warning
+  idioms/prefer-callable-instance: hint
+  layout/misplaced-module-logger: warning
+  layout/redundant-comment: hint
+  layout/redundant-module-name: hint
+  meta/missing-tool-suppression-reason: warning
+  modeling/redundant-str-enum-value: hint
+  modeling/prefer-str-enum-discriminator: hint
+  modeling/parallel-record-fields: hint
+  # Frozen records can own mutable caches. Review ownership at each finding.
+  modeling/mutable-field-in-frozen-dataclass: hint
+  tests/forbidden-mock: error
+  tests/string-patch-target: error
+  tests/excess-patches: {severity: error, max: 2}
+  # CLI and integration tests also exercise modules through their callers.
+  tests/missing-mirror-test: hint
+  tests/missing-skip-reason: warning
+  typing/implicit-optional-default: warning
+  typing/prefer-inline-type-parameters: warning
+  visibility/excess-private-definitions: hint
   # Public values are serialized in reports: keep their wire spelling explicit.
   modeling/str-enum-value-convention: warning
   typing/deprecated-async-contextmanager-return: warning

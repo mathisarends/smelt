@@ -8,7 +8,7 @@ import pytest
 
 from smelt.cli import main
 from smelt.diagnostics.debt import Debt, DebtEntry
-from smelt.engine.check import CheckOptions
+from smelt.engine.check import CheckOptions, snippet_reader
 from tests.helpers import FIXTURES, check, write_policy_project
 
 if TYPE_CHECKING:
@@ -94,7 +94,6 @@ def test_a_member_debt_file_cannot_accept_another_members_finding(
 ) -> None:
     root = _member_debt_project(tmp_path)
     outcome = check(root)
-    from smelt.engine.check import snippet_reader  # noqa: PLC0415
 
     Debt.from_violations(outcome.unfiltered, snippet_reader(outcome.context)).write(
         root / "packages/core/.smelt/debt.json"

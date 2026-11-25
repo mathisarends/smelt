@@ -112,6 +112,8 @@ class Rule:
         edge: str | None = None,
         fix: Fix | None = None,
     ) -> Violation:
+        if end_line is None and column:
+            end_line = line
         return Violation(
             code=self.code,
             rule=self.name,
@@ -120,7 +122,7 @@ class Rule:
             path=path,
             line=line,
             column=column,
-            end_line=end_line if end_line is not None else (line if column else None),
+            end_line=end_line,
             end_column=end_column,
             source_module=source_module,
             target_module=target_module,

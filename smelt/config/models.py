@@ -201,7 +201,7 @@ class FeaturesConfig(_Model):
                     'e.g. "gateway.{feature}"'
                 )
                 raise ValueError(msg)
-            if len(segments) < 2:  # noqa: PLR2004
+            if len(segments) < 2:  # noqa: PLR2004 -- The feature placeholder needs a parent package.
                 msg = "pattern needs a package before {feature}"
                 raise ValueError(msg)
             _check_dotted(segments[:-1])
