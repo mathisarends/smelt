@@ -1095,6 +1095,10 @@ class TestsConfig(_Model):
         default_factory=list,
         description="Qualified context/wrapper helpers known to bound async waits, e.g. tests.timing.deadline. They do not supply assertion evidence or bound synchronous subprocess calls.",
     )
+    skip_reason_pattern: str = Field(
+        default=r"#\d+|https?://\S+",
+        description="Regular expression a skip, xfail or rerun reason must contain unless an environment condition explains it (TST013). The default accepts an issue reference such as #123 or a link.",
+    )
 
     @field_validator("quality_exclude", "forbidden_mock_paths")
     @classmethod
@@ -1118,6 +1122,18 @@ class TestsConfig(_Model):
     @classmethod
     def _assertion_helpers(cls, values: list[str]) -> list[str]:
         return _check_dotted(values)
+
+    @field_validator("skip_reason_pattern")
+    @classmethod
+    def _skip_reason_pattern(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("skip_reason_pattern must not be empty")
+        try:
+            re.compile(value)
+        except re.error:
+            msg = f'skip_reason_pattern "{value}" is not a valid regular expression'
+            raise ValueError(msg) from None
+        return value
 
     @field_validator("mirror")
     @classmethod

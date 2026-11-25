@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- New opt-in rule `tests/missing-skip-reason` (TST013) reports pytest skip,
+  skipif, xfail and flaky markers, `pytest.skip`/`pytest.xfail` calls,
+  unittest skip decorators and flaky rerun decorators whose reason names no
+  issue. The reason must match the new `tests.skip_reason_pattern` (an issue
+  reference or a link by default), in the reason argument or a comment.
+  Environment limits such as `skipif(sys.platform == "win32", ...)` only need a
+  non-empty reason.
 - New opt-in rule `meta/missing-tool-suppression-reason` (MET006) reports
   `noqa`, `type: ignore`, `pyright: ignore`, `mypy:` and `pylint: disable`
   comments without a reason, in production and test modules. Text after the

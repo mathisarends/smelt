@@ -1075,6 +1075,20 @@
     "fix_availability": "none"
   },
   {
+    "target": "smelt.rules.testing.skips:MissingSkipReason",
+    "code": "TST013",
+    "name": "tests/missing-skip-reason",
+    "category": "tests",
+    "default_severity": "warning",
+    "requires": [
+      "test_syntax"
+    ],
+    "enabled_by_default": false,
+    "architecture_scoped": false,
+    "scope": "test",
+    "fix_availability": "none"
+  },
+  {
     "target": "smelt.rules.structure.headers:ForbiddenFutureAnnotations",
     "code": "TYP001",
     "name": "typing/forbidden-future-annotations",

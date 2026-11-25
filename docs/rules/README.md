@@ -79,6 +79,7 @@
 | [TST010](TST010.md) | tests/missing-await-assertion | tests | explicit | warning |
 | [TST011](TST011.md) | tests/nondeterministic-data | tests | explicit | warning |
 | [TST012](TST012.md) | tests/missing-mirror-test | tests | explicit | warning |
+| [TST013](TST013.md) | tests/missing-skip-reason | tests | explicit | warning |
 | [TYP001](TYP001.md) | typing/forbidden-future-annotations | typing | explicit | error |
 | [TYP002](TYP002.md) | typing/redundant-future-annotations | typing | explicit | hint |
 | [TYP003](TYP003.md) | typing/implicit-optional-default | typing | explicit | warning |

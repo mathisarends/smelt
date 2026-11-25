@@ -255,6 +255,9 @@ impl FileNaming {
     }
 }
 
+/// An issue reference or a link, as `tests.skip_reason_pattern` defaults to.
+pub const DEFAULT_SKIP_REASON_PATTERN: &str = r"#\d+|https?://\S+";
+
 /// The `tests` section and the project-wide patch limit.
 pub struct TestPolicy {
     /// `mirror` or `none`.
@@ -266,6 +269,8 @@ pub struct TestPolicy {
     pub forbidden_mock_paths: Vec<String>,
     pub assertion_helpers: Vec<String>,
     pub timeout_helpers: Vec<String>,
+    /// What a quarantine reason must match, such as an issue reference (TST013).
+    pub skip_reason_pattern: String,
     pub max_patches_per_test: Option<u64>,
 }
 
@@ -285,6 +290,10 @@ impl TestPolicy {
             forbidden_mock_paths: string_list(tests.get("forbidden_mock_paths")),
             assertion_helpers: string_list(tests.get("assertion_helpers")),
             timeout_helpers: string_list(tests.get("timeout_helpers")),
+            skip_reason_pattern: tests["skip_reason_pattern"]
+                .as_str()
+                .unwrap_or(DEFAULT_SKIP_REASON_PATTERN)
+                .to_owned(),
             // Both spellings may be set; the name is read last, so it wins.
             max_patches_per_test: ["TST005", "tests/excess-patches"]
                 .iter()
