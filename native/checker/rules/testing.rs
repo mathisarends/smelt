@@ -65,6 +65,7 @@ pub struct TestProject<'a> {
     pub policy: &'a TestPolicy,
     pub known: &'a HashSet<&'a str>,
     pub forbidden_mocks: &'a [PathPattern],
+    pub tracked_skip_reason: Option<Regex>,
 }
 
 struct Report<'r, 'a> {
@@ -566,10 +567,10 @@ fn nondeterministic(report: &Report<'_, '_>) -> Vec<Violation> {
 
 fn untracked_skips(report: &Report<'_, '_>, project: &TestProject<'_>) -> Vec<Violation> {
     let pattern = &project.policy.skip_reason_pattern;
-    let Ok(tracked) = Regex::new(pattern) else {
+    let Some(tracked) = &project.tracked_skip_reason else {
         return Vec::new();
     };
-    skips::untracked_skips(report.module, &tracked)
+    skips::untracked_skips(report.module, tracked)
         .into_iter()
         .map(|skip| {
             let action = match skip.kind {

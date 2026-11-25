@@ -346,28 +346,6 @@ fn search_path(project_root: &Path) -> Vec<PathBuf> {
     entries
 }
 
-/// The search path `python -P` starts with for `python` in a virtual
-/// environment without the system site packages; `None` for an interpreter
-/// whose path depends on more than its environment.
-pub fn interpreter_search_path(python: &Path) -> Option<Vec<PathBuf>> {
-    if env::var_os("PYTHONPATH").is_some_and(|value| !value.is_empty()) {
-        return None;
-    }
-    let prefix = python.parent()?.parent()?;
-    let config = venv_config(&fs::read_to_string(prefix.join("pyvenv.cfg")).ok()?);
-    if config
-        .get("include-system-site-packages")
-        .is_none_or(|value| !value.eq_ignore_ascii_case("false"))
-    {
-        return None;
-    }
-    let mut entries = Vec::new();
-    environment_entries(prefix, &mut entries);
-    let mut seen = HashSet::new();
-    entries.retain(|entry| seen.insert(entry.clone()));
-    (!entries.is_empty()).then_some(entries)
-}
-
 fn environment_entries(prefix: &Path, entries: &mut Vec<PathBuf>) {
     let sites = site_packages(prefix);
     if sites.is_empty() {

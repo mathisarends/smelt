@@ -34,6 +34,7 @@ use files::{FileIndex, SourceFile};
 use meta::{META_RULES, SuppressionAudit};
 use patterns::{ModulePattern, PathPattern};
 use rayon::prelude::*;
+use regex::Regex;
 use rule_policy::{PolicyInputs, missing_rule_policies};
 use rules::TEST_SOURCE_RULES;
 use rules::dependencies::{self, GraphContext, IMPORT_RULES, TEST_IMPORT_RULES};
@@ -137,8 +138,6 @@ pub(crate) struct Outcome {
     pub(crate) features: Vec<(String, Vec<String>)>,
 }
 
-pub(crate) use analysis::installed::interpreter_search_path;
-
 /// Check the working tree under a configuration the caller loaded, for the
 /// native `smelt check`; `None` for any failure the Python CLI reports instead.
 pub(crate) fn check_loaded(
@@ -147,12 +146,8 @@ pub(crate) fn check_loaded(
     ignore: &[String],
     strict_coverage: bool,
     configuration_findings: bool,
-    search_path: Option<Vec<PathBuf>>,
     baseline: Option<(PathBuf, String, PathBuf)>,
 ) -> Option<Outcome> {
-    if let Some(entries) = search_path {
-        analysis::installed::use_search_path(entries);
-    }
     let load = || {
         let mut request = Request::from_loaded(loaded, select.clone())?;
         if strict_coverage {
@@ -632,6 +627,12 @@ fn check_in_pool(
         policy: &request.tests,
         known: &known,
         forbidden_mocks: &forbidden_mocks,
+        tracked_skip_reason: test_rules
+            .iter()
+            .any(|rule| rule.code == "TST013")
+            .then(|| Regex::new(&request.tests.skip_reason_pattern))
+            .transpose()
+            .map_err(|error| error.to_string())?,
     };
     // A source that does not parse stops the check only when a rule reads syntax.
     let needs_syntax = active.iter().any(|rule| {

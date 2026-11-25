@@ -7,6 +7,11 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-25
+
+See [upgrading from 0.17.0](docs/upgrading.md#0170-to-0180) for hook pins and
+changes to existing rules.
+
 - New opt-in hint `layout/redundant-comment` (LAY012) reports a comment block
   above a def, class or assignment, or a docstring, whose words only restate
   the documented name, such as `# Get user by id` above `get_user_by_id`.
@@ -14,8 +19,9 @@ current configuration and complete rule contracts, see the [README](README.md),
 - New opt-in rule `tests/missing-skip-reason` (TST013) reports pytest skip,
   skipif, xfail and flaky markers, `pytest.skip`/`pytest.xfail` calls,
   unittest skip decorators and flaky rerun decorators whose reason names no
-  issue. The reason must match the new `tests.skip_reason_pattern` (an issue
-  reference or a link by default), in the reason argument or a comment.
+  issue. The reason must match the new `tests.skip_reason_pattern` (a Rust regular
+  expression that matches an issue reference or link by default), in the reason
+  argument or a comment.
   Environment limits such as `skipif(sys.platform == "win32", ...)` only need a
   non-empty reason.
 - New opt-in rule `meta/missing-tool-suppression-reason` (MET006) reports
@@ -33,21 +39,14 @@ current configuration and complete rule contracts, see the [README](README.md),
   reported. `time.monotonic` and `time.perf_counter` stay out of scope.
 - `SMELT_PROFILE=1 smelt check` prints how long each phase of the native core
   and each project-wide rule took to stderr, to locate a slow check.
-- `smelt check` is faster; reports, messages and exit codes are unchanged:
-  - It writes full and path-scoped reports in every format without starting
-    Python, including uv workspaces, checks started inside a member, and
-    `--changed` or `--staged` with or without `--base`, also in a commit hook.
-    A full check of this repository takes about 60% less time, a generated
-    1000-module project about 75% less, a uv workspace with two members about
-    60-80% less, and a small project 20 ms instead of 0.4 s on Windows. Other
-    options and every error still go through the Python CLI;
-    `SMELT_NATIVE_CHECK=0` always uses it.
-  - It lists each project directory once and in parallel, and runs the
-    import-graph and structure rules in parallel: about 35-40% less time for a
-    full check of this repository or of a generated 1000-module project.
-  - It loads a uv workspace's configuration from those directory listings
-    instead of looking up every file: about 5-15% less time for a two-member
-    workspace on Windows.
+- `smelt check` can write full and path-scoped reports in every format without
+  starting Python. This includes uv workspaces, checks started inside a member,
+  and `--changed` or `--staged` with or without `--base`. Report formats and exit
+  codes stay compatible. Options such as `--fix`, `--diff` and `--statistics`
+  and checks of installed third-party re-exports still use the Python CLI. Set
+  `SMELT_NATIVE_CHECK=0` to use it for every check.
+- Checks reuse directory listings for file discovery and workspace configuration.
+  Directory discovery and project-wide import and structure rules run in parallel.
 
 ## [0.17.0] - 2026-11-25
 
@@ -1752,7 +1751,8 @@ smelt explain SMT313 --format json
 - Import fanout, match suggestions and missing-assertion checks are review aids;
   their default severities differ. Configure policy and severity deliberately.
 
-[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/mathisarends/smelt/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/mathisarends/smelt/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/mathisarends/smelt/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/mathisarends/smelt/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/mathisarends/smelt/compare/v0.15.0...v0.16.0

@@ -671,11 +671,12 @@ wheels = [
 
 [[package]]
 name = "smelt-cli"
-version = "0.17.0"
+version = "0.18.0"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
     { name = "pydantic" },
+    { name = "pydantic-core" },
     { name = "pyyaml" },
     { name = "ruamel-yaml" },
 ]
@@ -695,6 +696,7 @@ dev = [
 requires-dist = [
     { name = "packaging", specifier = ">=24.2" },
     { name = "pydantic", specifier = ">=2.13.5" },
+    { name = "pydantic-core", specifier = ">=2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruamel-yaml", specifier = ">=0.19.1" },
 ]

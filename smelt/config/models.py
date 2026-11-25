@@ -17,6 +17,7 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+from pydantic_core import SchemaError
 
 from smelt.config.input_model import InputModel
 
@@ -1098,7 +1099,7 @@ class TestsConfig(_Model):
     )
     skip_reason_pattern: str = Field(
         default=r"#\d+|https?://\S+",
-        description="Regular expression a skip, xfail or rerun reason must contain unless an environment condition explains it (TST013). The default accepts an issue reference such as #123 or a link.",
+        description="Rust regular expression a skip, xfail or rerun reason must contain unless an environment condition explains it (TST013). The default accepts an issue reference such as #123 or a link.",
     )
 
     @field_validator("quality_exclude", "forbidden_mock_paths")
@@ -1130,8 +1131,8 @@ class TestsConfig(_Model):
         if not value.strip():
             raise ValueError("skip_reason_pattern must not be empty")
         try:
-            re.compile(value)
-        except re.error:
+            TypeAdapter(Annotated[str, StringConstraints(pattern=value)])
+        except SchemaError:
             msg = f'skip_reason_pattern "{value}" is not a valid regular expression'
             raise ValueError(msg) from None
         return value
