@@ -16,8 +16,9 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: debug-statements
-        # The fixture keeps a source that does not parse on purpose.
-        exclude: ^tests/fixtures/rust_parity_syntax_error/
+        # Fixtures are analyzed, not run: one does not parse on purpose, and
+        # others use syntax newer than the release job's Python 3.12.
+        exclude: ^tests/fixtures/
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/uv-pre-commit
