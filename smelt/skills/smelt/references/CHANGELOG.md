@@ -18,15 +18,16 @@ current configuration and complete rule contracts, see the [README](README.md),
   `--no-cache` is still accepted and has no effect.
 - The installed `smelt` command no longer starts a background worker; every
   check runs in the foreground and exits. `SMELT_DAEMON` has no effect.
+- A check builds its policy coverage once and reads file kinds from directory
+  listings, which shortens checks of projects with large non-Python
+  directories, such as a Rust `target/`. Staged checks read the lines debt
+  entries quote in one Git request.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.
-- Edits recheck private attribute accesses only in modules whose resolution
-  read the edited module. Previously any change to a module's names, such as a
-  new function, resolved the accesses of every module again.
 - Test analysis collects fixtures without analyzing every other function body
-  a second time, which shortens the first check of a project with many tests.
-- Cold checks traverse syntax trees faster and walk each statement's scope
+  a second time, which shortens checks of projects with many tests.
+- Checks traverse syntax trees faster and walk each statement's scope
   once for private attribute analysis. Findings are unchanged.
 - Installing from a Git checkout or source distribution now requires Rust 1.98+.
   Release wheels are unaffected.
