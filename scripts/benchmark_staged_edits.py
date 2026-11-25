@@ -22,9 +22,9 @@ _EDITS = {
         '"app/service.py": "VALUE = {}\\n"',
     ),
     "rule implementation": (
-        "smelt/rules/structure/narrowing_asserts.py",
-        "_MIN_METHODS = 2",
-        "_MIN_METHODS = {}",
+        "smelt/rules/structure/import_style.py",
+        "if policy.max_relative_level == 1",
+        "if policy.max_relative_level == {}",
     ),
     "core implementation": ("smelt/config/errors.py", "cutoff=0.6)", "cutoff=0.6{})"),
 }
