@@ -91,6 +91,13 @@ pub struct Options {
     /// The requesting interpreter's import search path, for installed packages.
     #[serde(default)]
     search_path: Option<Vec<PathBuf>>,
+    /// Run the rules; without them the outcome only describes the files and coverage.
+    #[serde(default = "run_rules")]
+    rules: bool,
+}
+
+fn run_rules() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -296,7 +303,12 @@ fn run(options: Options) -> Result<Outcome, Failure> {
                     .map_err(|error| Failure::from(error.to_string()))
             })
             .transpose()?;
-        let mut outcome = check(&request, &options.ignore, options.configuration_findings)?;
+        let mut outcome = check(
+            &request,
+            &options.ignore,
+            options.configuration_findings,
+            options.rules,
+        )?;
         if let Some(before) = before {
             let findings = before
                 .join()
@@ -327,7 +339,7 @@ fn baseline_findings(
     if !has_check_paths(&request)? {
         return Ok(Vec::new());
     }
-    let before = check(&request, ignore, false)?;
+    let before = check(&request, ignore, false, true)?;
     Ok(with_lines(&request.root, before.violations))
 }
 
@@ -379,18 +391,20 @@ fn python_lines(path: &Path) -> Vec<String> {
     lines
 }
 
-/// Check the project `request` describes, leaving out the `ignore` rules.
+/// Check the project `request` describes, leaving out the `ignore` rules, or
+/// without rules only describe its files and coverage.
 fn check(
     request: &Request,
     ignore: &[String],
     configuration_findings: bool,
+    with_rules: bool,
 ) -> Result<Outcome, Failure> {
     let catalog: Vec<CatalogRule> =
         serde_json::from_str(CATALOG).map_err(|error| error.to_string())?;
     let files = FileIndex::discover(request)?;
     let contracts = Contracts::resolve(request, &files)?;
     let settings = Settings::new(&catalog, request);
-    let ignored = |rule: &&CatalogRule| ignore.contains(&rule.code);
+    let ignored = |rule: &&CatalogRule| !with_rules || ignore.contains(&rule.code);
     // The meta rules judge the run after filtering instead of checking sources.
     let (meta_rules, active): (Vec<&CatalogRule>, Vec<&CatalogRule>) = settings
         .active(&request.select)

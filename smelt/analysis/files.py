@@ -13,11 +13,9 @@ from smelt.config.patterns import path_matches
 from smelt.config.source import SourceStore
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Mapping
+    from collections.abc import Iterator, Mapping
 
     from smelt.config.models import SmeltConfig
-
-_SKIP_DIRS = frozenset({"__pycache__", ".git", ".venv", "venv", "node_modules"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,9 +66,6 @@ class FileIndex:
     _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
     # The SHA-256 of texts another reader checked, by path.
     _observed: dict[str, str] = field(default_factory=dict, repr=False)
-    _directories: dict[Path, tuple[tuple[Path, bool], ...]] = field(
-        default_factory=dict, repr=False
-    )
     _relative_paths: dict[Path, str] = field(default_factory=dict, repr=False)
     _resolved_paths: dict[Path, Path] = field(default_factory=dict, repr=False)
     _test_root_paths: dict[str, bool] = field(default_factory=dict, repr=False)
@@ -241,17 +236,6 @@ class FileIndex:
         yield from self.all_python_paths()
         yield from self.yaml_paths
 
-    def entries(self, directory: Path) -> tuple[tuple[Path, bool], ...]:
-        """Share directory entries within one discovered view of the project."""
-        if directory not in self._directories:
-            self._directories[directory] = tuple(_entries(self.store, directory))
-        return self._directories[directory]
-
-    def python_files(self, directory: Path) -> Iterator[Path]:
-        yield from _walk_python_files(
-            directory, resolve=self.resolve_path, entries=self.entries
-        )
-
     def source_root_dir(self, module: str) -> str | None:
         parts = module.split(".")
         for end in range(len(parts), 0, -1):
@@ -280,40 +264,3 @@ class FileIndex:
             )
             self._test_root_paths[path] = under
         return under
-
-
-def python_files(
-    directory: Path, *, store: SourceStore | None = None
-) -> Iterable[Path]:
-    """Python files below a root, skipping tool directories and symlink cycles."""
-    store = store or SourceStore()
-    yield from _walk_python_files(
-        directory, resolve=store.resolve, entries=lambda parent: _entries(store, parent)
-    )
-
-
-def _entries(store: SourceStore, directory: Path) -> Iterator[tuple[Path, bool]]:
-    for entry in store.iterdir(directory):
-        yield entry, store.is_dir(entry)
-
-
-def _walk_python_files(
-    directory: Path,
-    *,
-    resolve: Callable[[Path], Path],
-    entries: Callable[[Path], Iterable[tuple[Path, bool]]],
-) -> Iterator[Path]:
-    visited: set[Path] = set()
-    pending = [directory]
-    while pending:
-        parent = pending.pop()
-        resolved = resolve(parent)
-        if resolved in visited:
-            continue
-        visited.add(resolved)
-        for entry, is_dir in entries(parent):
-            if is_dir:
-                if entry.name not in _SKIP_DIRS and not entry.name.startswith("."):
-                    pending.append(entry)
-            elif entry.suffix == ".py":
-                yield entry

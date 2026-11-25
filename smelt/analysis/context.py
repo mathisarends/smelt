@@ -55,7 +55,6 @@ class AnalysisContext:
         view = copy(self)
         view.config = scope.config
         view.model = model
-        view.__dict__.pop("coverage", None)
         return view
 
     @cached_property
@@ -101,9 +100,11 @@ class AnalysisContext:
 
     @cached_property
     def coverage(self) -> CoverageIndex:
-        from smelt.analysis.coverage import CoverageIndex  # noqa: PLC0415
+        """The policy coverage, which only a native core run inventories."""
+        from smelt.analysis.errors import AnalysisError  # noqa: PLC0415
 
-        return CoverageIndex.build(self.files, self.model, self.asts)
+        msg = "policy coverage comes from a native core run of the project"
+        raise AnalysisError(msg)
 
     @cached_property
     def workspace(self) -> WorkspaceIndex:

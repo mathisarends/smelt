@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext
+from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.errors import (
     InvalidOptionError as InvalidOptionError,  # noqa: PLC0414 - preserve the public engine exception import
 )
@@ -178,6 +179,8 @@ def _run_check(
         ctx.files = FileIndex.from_inventory(
             ctx.root, ctx.config, result.files, store=ctx.store
         )
+    if "coverage" not in ctx.__dict__:
+        ctx.coverage = CoverageIndex.from_report(analyzed.coverage)
     _validate_ownership(ctx, loaded)
     if issues := missing_paths(ctx):
         raise ConfigError(issues, loaded.path.name)

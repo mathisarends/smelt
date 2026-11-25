@@ -21,9 +21,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   listings, which shortens checks of projects with large non-Python
   directories, such as a Rust `target/`. Staged checks read the lines debt
   entries quote in one Git request.
-- Checks and `smelt context` take the project's sources and tests from the
-  native core instead of discovering them again in Python, which shortens
-  every check.
+- Checks and `smelt context` take the project's sources, tests and policy
+  coverage from the native core instead of discovering them again in Python,
+  which shortens every check.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from smelt.analysis.context import AnalysisContext
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
 from smelt.config import ConfigError
@@ -15,6 +14,7 @@ from smelt.engine.briefing import (
 )
 from smelt.engine.check import CheckOptions, relative_scope, run_check
 from smelt.engine.guide import build_guide, render_guide, resolve_guide_target
+from smelt.engine.native_core import project_context
 from smelt.engine.paths import missing_paths
 
 if TYPE_CHECKING:
@@ -24,7 +24,10 @@ if TYPE_CHECKING:
 
 def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    ctx = AnalysisContext(loaded.root, loaded.config, store=loaded.source)
+    try:
+        ctx = project_context(loaded)
+    except ConfigError as exc:
+        raise loaded.explain_error(exc) from exc
     issues = missing_paths(ctx)
     if issues:
         raise loaded.explain_error(ConfigError(issues, loaded.path.name))

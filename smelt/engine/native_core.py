@@ -14,8 +14,11 @@ from typing import TYPE_CHECKING, Any
 from pydantic import TypeAdapter
 
 from smelt.analysis import native
+from smelt.analysis.context import AnalysisContext
 from smelt.analysis.contracts import ResolvedContract, describe_contract
+from smelt.analysis.coverage import CoverageIndex
 from smelt.analysis.errors import AnalysisError
+from smelt.analysis.files import FileIndex
 from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Violation
@@ -60,6 +63,26 @@ class NativeRun:
     # Judge the configuration itself (MET004, MET005); a scoped run does not.
     configuration_findings: bool
     baseline: Baseline | None = None
+    # Without rules, the core only describes the files and their coverage.
+    rules: bool = True
+
+
+def project_context(loaded: LoadedConfig) -> AnalysisContext:
+    """The project's files and policy coverage as the core finds them, without rules."""
+    run = NativeRun(
+        select=(),
+        ignore=(),
+        strict_coverage=False,
+        configuration_findings=False,
+        rules=False,
+    )
+    result = analyze(loaded, run)
+    ctx = AnalysisContext(loaded.root, loaded.config, store=loaded.source)
+    ctx.files = FileIndex.from_inventory(
+        loaded.root, loaded.config, result.files, store=loaded.source
+    )
+    ctx.coverage = CoverageIndex.from_report(result.analysis.coverage)
+    return ctx
 
 
 def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
@@ -93,6 +116,7 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         ),
         # Installed packages are found where this interpreter imports them from.
         "search_path": sys.path,
+        "rules": run.rules,
     }
     data = native.request("--internal-check", request)
     if "config" in data:
