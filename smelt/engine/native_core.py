@@ -1,4 +1,4 @@
-"""The analysis of a check in the native core, which `SMELT_CORE=native` selects.
+"""The analysis of a check in the native core, which checks use by default.
 
 The core discovers, parses and judges the project itself and returns the
 findings with the coverage facts a report needs. It also checks the staged Git
@@ -23,7 +23,7 @@ from smelt.analysis.errors import AnalysisError
 from smelt.config.errors import ConfigError, ConfigIssue
 from smelt.diagnostics.debt import Debt
 from smelt.diagnostics.violation import Violation
-from smelt.engine.cache import CachedAnalysis
+from smelt.engine.analysis import Analysis
 from smelt.engine.coverage import effective_coverage
 from smelt.engine.git_source import GitSourceStore
 
@@ -31,13 +31,11 @@ if TYPE_CHECKING:
     from smelt.config.loader import LoadedConfig
 
 _VIOLATIONS = TypeAdapter(list[Violation])
-# The files whose content the core reads; it sees only the existence of others.
-_READ_SUFFIXES = (".py", ".pyi", ".yml", ".yaml", ".toml")
 
 
 @dataclass(frozen=True, slots=True)
 class NativeAnalysis:
-    analysis: CachedAnalysis
+    analysis: Analysis
     # The findings the base revision already had, when the run compares with one.
     baseline: Debt | None = None
     # The SHA-256 of each text a fixable finding was found in, by path.
@@ -65,8 +63,11 @@ class NativeRun:
 
 
 def selected() -> bool:
-    """Whether this process analyzes checks in the native core."""
-    return os.environ.get("SMELT_CORE") == "native"
+    """Whether this process analyzes checks in the native core.
+
+    `SMELT_CORE=python` selects the Python engine, which parity checks compare with.
+    """
+    return os.environ.get("SMELT_CORE") != "python"
 
 
 def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
@@ -134,20 +135,12 @@ def analyze(loaded: LoadedConfig, run: NativeRun) -> NativeAnalysis:
         )
         for entry in facts["contracts"]
     ]
-    analysis = CachedAnalysis(
+    analysis = Analysis(
         _VIOLATIONS.validate_python(data["violations"]),
         data["suppressed"],
         effective_coverage(loaded.config, facts, include_inventory=True),
         data["modules"],
         data["paths"],
-        # A staged file whose content the core reads may change the outcome.
-        {
-            path: blob
-            for path, blob in staged.blobs.items()
-            if path.endswith(_READ_SUFFIXES)
-        }
-        if staged
-        else {},
     )
     return NativeAnalysis(analysis, _known(data["baseline"]), data["digests"])
 
@@ -184,5 +177,5 @@ def _executable() -> str:
     installed = Path(sysconfig.get_path("scripts")) / name
     if installed.is_file():
         return str(installed)
-    msg = "SMELT_CORE=native needs the native smelt launcher, which is not installed"
+    msg = "checks need the native smelt launcher, which is not installed"
     raise AnalysisError(msg)

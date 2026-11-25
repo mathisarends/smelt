@@ -74,7 +74,6 @@ class FileIndex:
     store: SourceStore = field(default_factory=SourceStore, repr=False)
     _text_cache: dict[str, str] = field(default_factory=dict, repr=False)
     _line_cache: dict[str, list[str]] = field(default_factory=dict, repr=False)
-    _content_ids: dict[str, str] = field(default_factory=dict, repr=False)
     # The SHA-256 of texts another reader checked, by path.
     _observed: dict[str, str] = field(default_factory=dict, repr=False)
     _directories: dict[Path, tuple[tuple[Path, bool], ...]] = field(
@@ -183,14 +182,6 @@ class FileIndex:
 
     def sha256(self, path: str) -> str:
         return hashlib.sha256(self.read_text(path).encode()).hexdigest()
-
-    def content_id(self, path: str) -> str:
-        if path not in self._content_ids:
-            # One ID per text, so disk, index and revision views share their facts.
-            self._content_ids[path] = self.store.content_digest(
-                self.root / path
-            ) or self.sha256(path)
-        return self._content_ids[path]
 
     def size(self, path: str) -> int:
         return len(self.read_text(path).encode())

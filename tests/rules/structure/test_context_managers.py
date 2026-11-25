@@ -168,7 +168,7 @@ def test_opt_in_package_override_and_suppression(tmp_path: Path) -> None:
 
 
 def test_cached_results_follow_annotation_and_import_changes(tmp_path: Path) -> None:
-    uncached = CheckOptions(select=("TYP004",), use_cache=False)
+    uncached = CheckOptions(select=("TYP004",))
     for source, expected in (
         (SOURCE, ["TYP004"]),
         (SOURCE.replace("AsyncIterator", "AsyncGenerator"), []),

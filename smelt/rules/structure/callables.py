@@ -18,7 +18,6 @@ class PreferCallableInstance(Rule):
     category = Category.IDIOMS
     default_severity = Severity.HINT
     requires = frozenset({Index.SYNTAX})
-    file_local = True
     doc = RuleDoc(
         summary="Review __call__ and an operation-based class name for a single public method.",
         rationale=(

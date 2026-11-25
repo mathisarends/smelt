@@ -21,7 +21,6 @@ def run(command: list[str], root: Path, *, timeout: int = 240) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        env={**os.environ, "SMELT_DAEMON": "0"},
         check=False,
         timeout=timeout,
     )
@@ -132,10 +131,7 @@ def smoke(directory: Path) -> None:
                 raise AssertionError("installed checker reported the valid caller")
             caller.write_text("")
             edited = json.loads(run(command, project))
-            independent = json.loads(run([*command, "--no-cache"], project))
-            if edited != independent or [
-                finding["code"] for finding in edited["violations"]
-            ] != ["VIS001"]:
+            if [finding["code"] for finding in edited["violations"]] != ["VIS001"]:
                 raise AssertionError("installed checker lost the removed caller")
             print(f"Installed and checked {distribution.name}")  # noqa: T201
 

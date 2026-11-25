@@ -459,7 +459,7 @@ def test_warm_and_uncached_results_follow_callers_exports_and_deleted_definition
     ):
         write_policy_project(root, updates)
         warm = violations(root, OPTIONS)
-        fresh = violations(root, CheckOptions(select=("ARC008",), use_cache=False))
+        fresh = violations(root, CheckOptions(select=("ARC008",)))
         assert warm == fresh
         assert len(warm) == expected
     (root / "app/browser/base.py").unlink()

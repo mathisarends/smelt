@@ -27,7 +27,6 @@ _INLINE_TYPE_PARAMETERS = (3, 12)
 
 
 class PreferInlineTypeParameters(Rule):
-    file_local = True
     code = "TYP008"
     name = "typing/prefer-inline-type-parameters"
     category = Category.TYPING

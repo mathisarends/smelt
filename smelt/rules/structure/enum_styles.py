@@ -26,7 +26,6 @@ _SCOPE = (
 
 
 class StrEnumValueConvention(Rule):
-    file_local = True
     activation = POLICIES["MOD004"]
     code = "MOD004"
     name = "modeling/str-enum-value-convention"

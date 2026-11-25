@@ -41,7 +41,6 @@ _GENERATORS = frozenset(
 
 
 class NondeterministicTestData(Rule):
-    test_local = True
     scope = "test"
     code = "TST011"
     name = "tests/nondeterministic-data"

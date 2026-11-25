@@ -34,7 +34,6 @@ class DuplicateNarrowingAssert(Rule):
     name = "idioms/duplicate-narrowing-assert"
     category = Category.IDIOMS
     default_severity = Severity.WARNING
-    file_local = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Several methods of a class assert the same narrowing of a self attribute.",

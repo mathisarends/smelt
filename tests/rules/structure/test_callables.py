@@ -163,7 +163,7 @@ def test_cached_review_tracks_method_arguments_and_conversion(tmp_path: Path) ->
         },
     )
     cached = check(root, OPTIONS).report
-    fresh = check(root, CheckOptions(select=("IDM003",), use_cache=False)).report
+    fresh = check(root, CheckOptions(select=("IDM003",))).report
     assert cached.violations == fresh.violations
     [finding] = cached.violations
     assert finding.expected is not None
@@ -173,4 +173,4 @@ def test_cached_review_tracks_method_arguments_and_conversion(tmp_path: Path) ->
         root, {"app/reports.py": SINGLE_METHOD.replace("generate", "__call__")}
     )
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("IDM003",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("IDM003",))) == []

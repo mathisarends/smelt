@@ -14,30 +14,6 @@ def lexical_path(path: Path) -> Path:
     return Path(os.path.abspath(path))  # noqa: PTH100 - captured Git paths must not follow unstaged symlinks
 
 
-def git_repository(cwd: Path, requested: Path | None = None) -> Path:
-    """Prefer the caller's repository, including staged directories deleted on disk."""
-    try:
-        repository_path = Path(
-            os.fsdecode(run_git(cwd, "rev-parse", "--show-toplevel")).strip()
-        )
-        repository = repository_path.resolve()
-    except AnalysisError:
-        if requested is None:
-            raise
-    else:
-        if requested is None or requested.is_relative_to(repository):
-            return repository
-    if requested is None:
-        raise AnalysisError("changed/staged checks need a Git repository")
-    anchor = next(
-        (path for path in (requested.parent, *requested.parents) if path.is_dir()), cwd
-    )
-    repository_path = Path(
-        os.fsdecode(run_git(anchor, "rev-parse", "--show-toplevel")).strip()
-    )
-    return repository_path.resolve()
-
-
 def _head(root: Path) -> str | None:
     result = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", "HEAD"],  # noqa: S607

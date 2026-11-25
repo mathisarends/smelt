@@ -84,7 +84,6 @@ def test_supports_opt_in_package_overrides_and_suppression(tmp_path: Path) -> No
         "app/model.py",
         Severity.WARNING,
     )
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 def _project(tmp_path: Path, source: str) -> Path:

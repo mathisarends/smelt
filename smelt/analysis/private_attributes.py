@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 import ast
-import hashlib
-import json
 from collections import Counter
 from dataclasses import dataclass
-from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple
-
-from pydantic import TypeAdapter
 
 from smelt.analysis.bindings import binding_counts, qualified_name
 from smelt.analysis.exports import MAX_HOPS, resolve_export
@@ -119,56 +114,11 @@ class _ClassFacts:
 
 @dataclass(frozen=True, slots=True)
 class _ModuleFacts:
-    """Ownership inputs of one module: a function of its path and contents only.
-
-    Expressions are kept as source so that edits elsewhere in a class, such
-    as most method bodies, leave the facts and every dependent decision intact.
-    """
+    """Ownership inputs of one module: a function of its path and contents only."""
 
     bindings: dict[str, str]
     # uniquely defined top-level classes
     classes: dict[str, _ClassFacts]
-
-
-_FACTS = TypeAdapter(_ModuleFacts)
-
-
-@dataclass(frozen=True, slots=True)
-class _ResolvedAccesses:
-    """Accesses of one module with the identity of every module resolution read."""
-
-    accesses: tuple[PrivateAttributeAccess, ...]
-    dependencies: dict[str, str]
-
-
-_RESOLVED = TypeAdapter(_ResolvedAccesses)
-
-
-class _Reads:
-    """Modules one resolution read, including those behind shared memo entries.
-
-    A memo entry may still be under construction when a cyclic lookup reuses
-    it, so entries link to each other and the closure is taken at the end.
-    """
-
-    __slots__ = ("linked", "modules")
-
-    def __init__(self) -> None:
-        self.modules: set[str] = set()
-        self.linked: list[_Reads] = []
-
-    def closure(self) -> set[str]:
-        modules: set[str] = set()
-        seen: set[int] = set()
-        pending = [self]
-        while pending:
-            reads = pending.pop()
-            if id(reads) in seen:
-                continue
-            seen.add(id(reads))
-            modules |= reads.modules
-            pending.extend(reads.linked)
-        return modules
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,87 +138,25 @@ class PrivateAttributeIndex:
         self._syntax = syntax
         self._files = files
         self._facts: dict[str, _ModuleFacts | None] = {}
-        self._classes: dict[str, tuple[tuple[str, _ClassFacts] | None, _Reads]] = {}
-        self._members_cache: dict[str, tuple[dict[str, _Member], _Reads]] = {}
-        self._identities: dict[str, str] = {}
-        self._reads: list[_Reads] = []
+        self._classes: dict[str, tuple[str, _ClassFacts] | None] = {}
+        self._members_cache: dict[str, dict[str, _Member]] = {}
 
     def accesses(self, source: SourceFile) -> tuple[PrivateAttributeAccess, ...]:
-        """Accesses in ``source``, reused while it and every module it read hold."""
+        """Accesses in ``source``."""
         if not self._syntax.attribute_candidates(source.path).private:
             return ()
-        cache = self._syntax.cache
-        key = (
-            cache.key(
-                "private-accesses",
-                [
-                    source.module,
-                    source.path,
-                    source.is_package,
-                    self._files.content_id(source.path),
-                    self._packages,
-                ],
-            )
-            if cache
-            else None
-        )
-        cached = cache.read(key, _RESOLVED) if cache and key else None
-        if cached is not None and all(
-            self._identity(module) == identity
-            for module, identity in cached.dependencies.items()
-        ):
-            return cached.accesses
         module = self._syntax.for_path(source.path)
         if module is None:
             raise LookupError(source.path)
-        reads = self._enter()
-        try:
-            accesses = tuple(
-                self._scope(module, module.tree.body, {}, module_scope=True)
-            )
-        finally:
-            self._leave(reads)
-        if cache and key:
-            dependencies = {name: self._identity(name) for name in reads.closure()}
-            cache.write(key, _ResolvedAccesses(accesses, dependencies), _RESOLVED)
-        return accesses
-
-    @cached_property
-    def _packages(self) -> str:
-        return hashlib.sha256(
-            json.dumps(sorted(self._files.packages)).encode()
-        ).hexdigest()
-
-    def _identity(self, module: str) -> str:
-        """Every input resolution may read from ``module``: namespace and facts."""
-        if module not in self._identities:
-            source = self._files.sources.get(module)
-            facts = self._load_facts(module)
-            self._identities[module] = hashlib.sha256(
-                json.dumps(
-                    [
-                        module,
-                        None if source is None else [source.path, source.is_package],
-                        _namespace_inputs(self._syntax.namespace(module)),
-                        None if facts is None else _FACTS.dump_json(facts).decode(),
-                    ]
-                ).encode()
-            ).hexdigest()
-        return self._identities[module]
+        return tuple(self._scope(module, module.tree.body, {}, module_scope=True))
 
     def _members(self, name: str, owner: _ClassFacts) -> dict[str, _Member]:
         if name in self._members_cache:
-            cached, previous = self._members_cache[name]
-            self._reuse(previous)
-            return cached
+            return self._members_cache[name]
         members: dict[str, _Member] = {}
-        reads = self._enter()
         # Registered before resolving so that cyclic lookups see the partial map.
-        self._members_cache[name] = members, reads
-        try:
-            self._resolve_members(name, owner, members)
-        finally:
-            self._leave(reads)
+        self._members_cache[name] = members
+        self._resolve_members(name, owner, members)
         return members
 
     def _scope(
@@ -486,30 +374,12 @@ class PrivateAttributeIndex:
     def _class(self, name: str) -> tuple[str, _ClassFacts] | None:
         """The qualified name and facts of the class ``name`` resolves to."""
         if name in self._classes:
-            definition, reads = self._classes[name]
-            self._reuse(reads)
-            return definition
-        reads = self._enter()
-        self._classes[name] = None, reads
-        try:
-            definition = self._resolve_class(name)
-        finally:
-            self._leave(reads)
-        self._classes[name] = definition, reads
+            return self._classes[name]
+        # A cyclic lookup sees no class while this one resolves.
+        self._classes[name] = None
+        definition = self._resolve_class(name)
+        self._classes[name] = definition
         return definition
-
-    def _enter(self) -> _Reads:
-        reads = _Reads()
-        if self._reads:
-            self._reads[-1].linked.append(reads)
-        self._reads.append(reads)
-        return reads
-
-    def _leave(self, reads: _Reads) -> None:
-        popped = self._reads.pop()
-        if popped is not reads:
-            msg = "Unbalanced private access dependency tracking"
-            raise RuntimeError(msg)
 
     def _resolve_class(self, name: str) -> tuple[str, _ClassFacts] | None:
         parts = name.split(".")
@@ -533,7 +403,6 @@ class PrivateAttributeIndex:
         return None
 
     def _namespace(self, module: str) -> Namespace | None:
-        self._read(module)
         return self._syntax.namespace(module)
 
     def _bindings(self, module: str) -> dict[str, str]:
@@ -541,16 +410,10 @@ class PrivateAttributeIndex:
         return {} if facts is None else facts.bindings
 
     def _module_facts(self, module: str) -> _ModuleFacts | None:
-        self._read(module)
-        return self._load_facts(module)
-
-    def _read(self, module: str) -> None:
-        if self._reads:
-            self._reads[-1].modules.add(module)
-
-    def _reuse(self, reads: _Reads) -> None:
-        if self._reads:
-            self._reads[-1].linked.append(reads)
+        if module not in self._facts:
+            source = self._files.sources.get(module)
+            self._facts[module] = None if source is None else self._load(source)
+        return self._facts[module]
 
     def _function_env(
         self, module: str, function: _Function, owner: ast.ClassDef | None
@@ -588,34 +451,12 @@ class PrivateAttributeIndex:
             and (name := self._annotation(module, argument.annotation))
         }
 
-    def _load_facts(self, module: str) -> _ModuleFacts | None:
-        if module not in self._facts:
-            source = self._files.sources.get(module)
-            self._facts[module] = None if source is None else self._load(source)
-        return self._facts[module]
-
     def _load(self, source: SourceFile) -> _ModuleFacts:
-        def build() -> _ModuleFacts:
-            syntax = self._syntax.for_path(source.path)
-            namespace = self._syntax.namespace(source.module)
-            if syntax is None or namespace is None:
-                raise LookupError(source.path)
-            return _module_facts(syntax, namespace)
-
-        cache = self._syntax.cache
-        if cache is None:
-            return build()
-        return cache.get(
-            "private-ownership",
-            [
-                source.module,
-                source.path,
-                source.is_package,
-                self._files.content_id(source.path),
-            ],
-            _FACTS,
-            build=build,
-        )
+        syntax = self._syntax.for_path(source.path)
+        namespace = self._syntax.namespace(source.module)
+        if syntax is None or namespace is None:
+            raise LookupError(source.path)
+        return _module_facts(syntax, namespace)
 
 
 def _module_facts(syntax: ModuleSyntax, namespace: Namespace) -> _ModuleFacts:
@@ -732,16 +573,6 @@ def _method_facts(method: _Function, bindings: dict[str, str]) -> _MethodFacts:
 def _expression(source: str) -> ast.expr:
     # Parentheses admit every expression ``ast.unparse`` can produce, like yield.
     return ast.parse(f"({source})", mode="eval").body
-
-
-def _namespace_inputs(namespace: Namespace | None) -> object:
-    if namespace is None:
-        return None
-    return [
-        sorted(namespace.imported.items()),
-        sorted(namespace.defined),
-        sorted(namespace.references.items()),
-    ]
 
 
 def _scope_nodes(body: list[ast.stmt]) -> Iterator[ast.AST]:

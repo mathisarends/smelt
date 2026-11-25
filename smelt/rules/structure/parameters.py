@@ -29,7 +29,6 @@ _BARE_STAR = re.compile(r"\s*,\s*\*\s*,\s*")
 
 
 class ExcessPositionalParameters(Rule):
-    file_local = True
     code = "CPX003"
     name = "complexity/excess-positional-parameters"
     category = Category.COMPLEXITY

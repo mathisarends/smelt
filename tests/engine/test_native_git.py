@@ -257,6 +257,8 @@ def test_complete_staged_check_needs_no_git_process_with_native_service(
     (tmp_path / "app/caller.py").write_text("# removed last caller\n")
     git(tmp_path, "add", "app/caller.py")
     monkeypatch.chdir(tmp_path)
+    # The cached Python engine reads the index through the native service.
+    monkeypatch.setenv("SMELT_CORE", "python")
     args = ["check", "--staged", "--format", "json", "--fail-on", "warning"]
     expected_code = main([*args, "--no-cache"])
     expected = json.loads(capsys.readouterr().out)

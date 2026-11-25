@@ -27,7 +27,6 @@ class ForeignPrivateAccess(Rule):
     name = "visibility/foreign-private-access"
     category = Category.VISIBILITY
     default_severity = Severity.WARNING
-    production_only = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary=(

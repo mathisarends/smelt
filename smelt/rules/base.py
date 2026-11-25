@@ -78,11 +78,6 @@ class Rule:
     enabled_by_default: ClassVar[bool] = False
     activation: ClassVar[PolicyActivation | None] = None
     scope: ClassVar[str] = "source"
-    file_local: ClassVar[bool] = False
-    # Cross-module decisions fully determined by production sources, packages and policy.
-    production_only: ClassVar[bool] = False
-    test_local: ClassVar[bool] = False
-    member_local: ClassVar[bool] = False
     fix_availability: ClassVar[FixAvailability] = FixAvailability.NONE
     """Whether findings carry a machine-readable Fix; published in the catalog."""
     architecture_scoped: ClassVar[bool] = False

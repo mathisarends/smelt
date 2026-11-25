@@ -7,7 +7,8 @@ pub fn check(context: &StructureContext<'_>) -> Result<Vec<StructureFinding>, St
     if !context.strict_coverage {
         return Ok(Vec::new());
     }
-    let coverage = Coverage::build(
+    let coverage = Coverage::shared(
+        context.coverage,
         context.files,
         context.model,
         &CoverageInputs {

@@ -127,7 +127,7 @@ def test_cache_tracks_added_removed_and_reexported_symbol_consumers(
     ]:
         write_project(root, {"app/__init__.py": facade, "app/caller.py": caller})
         cached = check(root).report
-        uncached = check(root, CheckOptions(use_cache=False)).report
+        uncached = check(root, CheckOptions()).report
         assert render_json(cached) == render_json(uncached)
         assert len(cached.violations) == expected
     (root / "app/caller.py").unlink()

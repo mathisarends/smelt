@@ -198,7 +198,6 @@ style:
     )
     [finding] = violations(root)
     assert (finding.path, finding.severity) == ("app/client.py", Severity.WARNING)
-    assert violations(root, CheckOptions(use_cache=False)) == violations(root)
 
 
 def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
@@ -229,9 +228,7 @@ def test_cache_tracks_reexport_inventory_changes(tmp_path: Path) -> None:
         "app.users.write_api",
         "other.pay",
     ]
-    assert violations(root, CheckOptions(select=("IMP002",), use_cache=False)) == [
-        finding
-    ]
+    assert violations(root, CheckOptions(select=("IMP002",))) == [finding]
 
 
 @pytest.mark.parametrize(

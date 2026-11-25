@@ -41,7 +41,6 @@ _VARIADIC_TUPLE_PARTS = 2
 
 
 class LoopInvariantCollection(Rule):
-    file_local = True
     code = "IDM008"
     name = "idioms/loop-invariant-collection"
     category = Category.IDIOMS

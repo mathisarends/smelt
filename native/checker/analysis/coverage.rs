@@ -15,6 +15,7 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 const UNCOVERED_REASON: &str =
     "Not selected by project.root_packages/source_roots, or not an importable module.";
@@ -110,6 +111,22 @@ pub struct CoverageInputs<'a> {
 }
 
 impl Coverage {
+    /// The coverage in `cell`, built on first use.
+    ///
+    /// ARC013 and the report of one check read the same inputs, so they share it.
+    pub fn shared<'c>(
+        cell: &'c OnceLock<Self>,
+        files: &FileIndex,
+        model: &ArchitectureModel<'_>,
+        inputs: &CoverageInputs<'_>,
+    ) -> Result<&'c Self, String> {
+        if let Some(coverage) = cell.get() {
+            return Ok(coverage);
+        }
+        let built = Self::build(files, model, inputs)?;
+        Ok(cell.get_or_init(|| built))
+    }
+
     pub fn build(
         files: &FileIndex,
         model: &ArchitectureModel<'_>,

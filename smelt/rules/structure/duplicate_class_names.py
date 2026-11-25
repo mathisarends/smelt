@@ -26,7 +26,6 @@ class DuplicateClassName(Rule):
     name = "modeling/duplicate-class-name"
     category = Category.MODELING
     default_severity = Severity.WARNING
-    production_only = True
     requires = frozenset({Index.SYNTAX})
     doc = RuleDoc(
         summary="Two modules of one package define a public class with the same name.",

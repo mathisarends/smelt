@@ -294,7 +294,7 @@ def test_python_metadata_changes_invalidate_cached_findings(tmp_path: Path) -> N
     metadata.write_text('[project]\nrequires-python = ">=3.10"\n', encoding="utf-8")
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("MOD003",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("MOD003",))) == []
 
 
 def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> None:
@@ -308,4 +308,4 @@ def test_editing_a_discriminator_invalidates_cached_findings(tmp_path: Path) -> 
     )
 
     assert violations(root, OPTIONS) == []
-    assert violations(root, CheckOptions(select=("MOD003",), use_cache=False)) == []
+    assert violations(root, CheckOptions(select=("MOD003",))) == []

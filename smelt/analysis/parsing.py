@@ -15,14 +15,12 @@ from smelt.config.source import SourceStore
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.files import FileIndex
 
 
 class AstCache:
-    def __init__(self, files: FileIndex, *, cache: FactCache | None = None) -> None:
+    def __init__(self, files: FileIndex) -> None:
         self.files = files
-        self.cache = cache
         self._trees: dict[str, ast.Module] = {}
 
     def parse(self, path: str) -> ast.Module:

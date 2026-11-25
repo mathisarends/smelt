@@ -5,7 +5,7 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import NoReturn, TextIO, cast
+from typing import NoReturn
 
 from smelt import __version__
 from smelt.analysis.errors import AnalysisError, InvalidOptionError
@@ -15,12 +15,10 @@ from smelt.cli.support import (
     CliError,
     Console,
     configure_streams,
-    use_color,
 )
 from smelt.config import ConfigError
 from smelt.diagnostics.render.machine import render_error_json
 from smelt.engine.native_git import check_scope
-from smelt.engine.result_cache import RecordingStream, ResultCache
 
 type _Handler = Callable[[argparse.Namespace, Console, Path], int]
 
@@ -63,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if handler is None:
         parser.print_help(sys.stderr)
         return EXIT_ERROR
-    with check_scope(enabled=not getattr(args, "no_cache", False)):
+    with check_scope(enabled=True):
         return _run(args, console, handler)
 
 
@@ -157,7 +155,7 @@ def _add_check(sub: _Subparsers) -> None:
     check.add_argument(
         "--no-cache",
         action="store_true",
-        help="recompute all analysis without reading or writing the persistent cache",
+        help="has no effect: checks keep no cache (kept for existing scripts)",
     )
     check.add_argument(
         "--fix",
@@ -309,34 +307,7 @@ def _add_skill(sub: _Subparsers) -> None:
 
 def _run(args: argparse.Namespace, console: Console, handler: _Handler) -> int:
     try:
-        cwd = Path.cwd()
-        cache = ResultCache.prepare(
-            args,
-            cwd,
-            color=use_color(console.out, disabled=getattr(args, "no_color", False)),
-        )
-        if cache is None:
-            return handler(args, console, cwd)
-        cached = cache.read()
-        if cached is not None:
-            code, out, err = cached
-            console.out.write(out)
-            console.err.write(err)
-            return code
-        out_stream, err_stream = (
-            RecordingStream(console.out),
-            RecordingStream(console.err),
-        )
-        recording = Console(cast("TextIO", out_stream), cast("TextIO", err_stream))
-        code = handler(args, recording, cwd)
-        cache.write(
-            code,
-            "".join(out_stream.parts),
-            "".join(err_stream.parts),
-            dependencies=getattr(args, "_staged_inputs", None),
-            installed=getattr(args, "_installed_inputs", None),
-        )
-        return code
+        return handler(args, console, Path.cwd())
     except (
         AnalysisError,
         CliError,

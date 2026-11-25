@@ -54,7 +54,7 @@ PROJECT = {
         "def _helper() -> None:\n    pass\n\n\ndef helper() -> None:\n    _helper()\n"
     ),
 }
-BASE = CheckOptions(use_cache=False, show_coverage=True)
+BASE = CheckOptions(show_coverage=True)
 
 
 @pytest.mark.parametrize(
@@ -71,6 +71,7 @@ def test_reports_like_the_python_engine(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, options: CheckOptions
 ) -> None:
     write_project(tmp_path, PROJECT)
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = render_json(check(tmp_path, options).report, show_coverage=True)
 
     monkeypatch.setenv("SMELT_CORE", "native")
@@ -106,8 +107,8 @@ def test_reports_git_snapshots_like_the_python_engine(
     helpers = tmp_path / "shop/helpers.py"
     helpers.write_text(helpers.read_text(encoding="utf-8") + "\n\nimport os\n")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("SMELT_DAEMON", "0")
 
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = _cli_report(capsys, arguments)
     monkeypatch.setenv("SMELT_CORE", "native")
     actual = _cli_report(capsys, arguments)
@@ -212,7 +213,8 @@ def test_member_architecture_follows_only_its_own_import_paths(
             "services/api/src/api/infra/client.py": "import requests\n",
         },
     )
-    options = CheckOptions(select=("ARC003",), use_cache=False)
+    options = CheckOptions(select=("ARC003",))
+    monkeypatch.setenv("SMELT_CORE", "python")
     expected = violations(tmp_path, options)
 
     monkeypatch.setenv("SMELT_CORE", "native")

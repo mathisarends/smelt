@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 class ForbiddenTestMock(Rule):
-    test_local = True
     scope = "test"
     activation = POLICIES["TST003"]
     code = "TST003"
@@ -55,7 +54,6 @@ class ForbiddenTestMock(Rule):
 
 
 class StringPatchTarget(Rule):
-    test_local = True
     scope = "test"
     code = "TST004"
     name = "tests/string-patch-target"
@@ -90,7 +88,6 @@ class StringPatchTarget(Rule):
 
 
 class ExcessiveTestPatches(Rule):
-    test_local = True
     scope = "test"
     activation = POLICIES["TST005"]
     code = "TST005"

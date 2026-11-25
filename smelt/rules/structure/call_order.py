@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 
 class CallerBeforeCallee(Rule):
-    file_local = True
     code = "LAY006"
     name = "layout/callee-before-caller"
     category = Category.LAYOUT

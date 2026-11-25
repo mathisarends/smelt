@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 
 class ImplicitOptionalDefault(Rule):
-    file_local = True
     code = "TYP003"
     name = "typing/implicit-optional-default"
     category = Category.TYPING

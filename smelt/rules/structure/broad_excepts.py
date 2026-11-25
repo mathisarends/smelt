@@ -33,7 +33,6 @@ _SEPARATORS = " \t-:;,."
 
 
 class MissingBroadExceptReason(Rule):
-    file_local = True
     code = "IDM006"
     name = "idioms/missing-broad-except-reason"
     category = Category.IDIOMS

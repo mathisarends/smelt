@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 
 class ReexportConvention(Rule):
-    file_local = True
     activation = POLICIES["VIS008"]
     code = "VIS008"
     name = "visibility/reexport-convention"

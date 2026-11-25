@@ -5,18 +5,9 @@ Use [the vision](docs/vision.md) as the scope and acceptance filter for proposed
 Development requires Python 3.12+ and Rust 1.98+ with rustfmt/clippy and a platform
 linker. `uv sync --locked` builds the native `smelt` client with maturin; uv's cache
 keys include the Cargo manifests and native Rust sources. `python -m smelt` keeps
-the direct Python entry point for debugging and uncached comparisons. Installed
+the direct Python entry point for debugging. Installed
 wheels include both the native client and the Python engine. Keep Cargo.toml's
 version equal to pyproject.toml's version when releasing.
-
-The native client reuses a worker for read-only local checks. Workers are scoped
-to the interpreter, environment and invocation directory, serialize requests and
-expire after 120 idle seconds. Every request captures Git/configuration again.
-Changes to analyzer sources/dependency identity restart the worker. `--fix`, other
-commands and CI run directly; `SMELT_DAEMON=0` disables workers and
-`SMELT_DAEMON=1` enables them explicitly in CI. Transport/startup failures fall
-back to the foreground checker. Tests must cover fresh-client output/exit codes,
-partial staging, restart, concurrent startup and independent `--no-cache` results.
 
 Native interpreter launches use Python's safe-path mode so a project package named
 `smelt` cannot replace the installed analyzer. Explicit PYTHONPATH overrides are
@@ -71,8 +62,8 @@ forward references, TYPE_CHECKING or runtime annotation consumers.
 Run `uv run smelt check --strict-coverage --fail-on warning` before committing.
 CI and release validation use the same warning threshold; the staged hook checks
 new findings against HEAD. Do not record debt or disable rules to adopt a change.
-Prefer private helpers and test public behavior. A direct unit test of a parser,
-rewriter or cache invalidation boundary can use a local `TST002` exception with a
+Prefer private helpers and test public behavior. A direct unit test of a parser
+or rewriter can use a local `TST002` exception with a
 specific reason; in multiline imports put it on the imported name. Entry points
 used by excluded maintainer scripts retain a specific visibility suppression
 naming the actual consumer. Keep `__all__` declarations in package `__init__.py`
@@ -108,35 +99,8 @@ replace it outside the checkout. Keep its entrypoint aligned with CLI behavior;
 Checks read project inputs through `config.source.SourceStore`. Use the store on
 the analysis context or file index for reads, existence tests, discovery and path
 resolution; direct `Path` reads can accidentally inspect unstaged files during a
-Git-index check. Keep configured paths inside the captured repository. Cached
-facts must include content identity and any module, inventory, metadata or policy
-inputs that affect their meaning. Verify results against `--no-cache` after edits,
-deletions, re-exports and fixture changes. Mark a rule `production_only` only when the complete production module and package
-inventory, production file contents and effective config determine its raw findings.
-Test evidence, external metadata and Python targets are outside that key.
-The analysis layer caches source facts separately from rule decisions, and an
-edit only invalidates what the layer policy lets import the edited code. An edit
-under `smelt/rules/`, `smelt/engine/` or `smelt/diagnostics/` reuses the facts,
-and an edit under `smelt/cli/` reuses the rule decisions as well. Outside
-`analysis`, `config` and `model`, cache entries therefore need
-`FactCache.decision_key`, and the CLI must not store decisions at all.
-In a source checkout, a rule's decisions are keyed by
-`rules.identities.implementation_identity`: the rule's module, the rule modules
-it imports, the modules and catalog at the top of `smelt/rules/`, and every
-layer below the rules. Editing one rule keeps the decisions of the others, so
-pass that identity whenever an entry holds the output of a single rule.
-Mark a rule `file_local` only when its
-source contents, resolved policy and Python target fully determine its decision.
-`test_local` rules additionally receive resolved constructor, fixture and module
-inventory inputs. `member_local` rules consume resolved member facts, including
-current external-use and inheritance evidence. Global rules must retain their
-cross-file dependencies.
-
-Member-local decisions use a persisted dependency index. File summaries contribute
-reference/attribute/inheritance counts and record both positive and missing
-namespace dependencies. Changed contributions invalidate reverse readers; equal
-contributions do not propagate to unrelated definitions. Keep the uncached member
-analysis independent so differential tests can detect invalidation errors.
+Git-index check. Keep configured paths inside the captured repository.
+Checks keep no cache; a rule reads the current complete project on every run.
 
 Keep related rules together when they share a concept, as in `structure/headers.py`.
 Give a growing concept its own module rather than expanding a catch-all file.
@@ -358,14 +322,11 @@ uv run pytest tests/rules/test_registry.py tests/test_docs.py
 uv run smelt explain <code> --format json
 uv run smelt check --strict-coverage --fail-on warning --format json
 uv run prek run --all-files
-uv run pytest -n auto -m "not session"
-uv run pytest -m session
+uv run pytest -n auto
 ```
 
-Replace placeholders with real paths/codes. The full suite runs in two
-steps: `-n auto` spreads it over all cores with pytest-xdist, and the `session`
-tests, which start real workers against startup deadlines, run serially after it.
-Focused runs need neither. If source discovery, analysis shared
+Replace placeholders with real paths/codes. `-n auto` spreads the full suite
+over all cores with pytest-xdist; focused runs do not need it. If source discovery, analysis shared
 by multiple rules, metadata or machine output changes, include its consumers in
 focused validation; CI runs the full supported Python/OS matrix.
 

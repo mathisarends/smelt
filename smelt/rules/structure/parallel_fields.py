@@ -38,7 +38,6 @@ _MIN_FIELDS = 2
 
 
 class ParallelRecordFields(Rule):
-    file_local = True
     code = "MOD012"
     name = "modeling/parallel-record-fields"
     category = Category.MODELING

@@ -165,7 +165,7 @@ def test_yaml_renames_additions_and_deletions_invalidate_cached_findings(
     assert not check(tmp_path).report.violations
     (tmp_path / "compose.yml").rename(tmp_path / "docker-compose.yaml")
     cached = check(tmp_path).report
-    fresh = check(tmp_path, CheckOptions(use_cache=False)).report
+    fresh = check(tmp_path, CheckOptions()).report
     assert cached.violations == fresh.violations
     assert [v.code for v in cached.violations] == ["LAY007"]
     (tmp_path / "docker-compose.yaml").unlink()

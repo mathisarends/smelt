@@ -18,10 +18,8 @@ from grimp.application.ports.modulefinder import (
 from grimp.application.ports.packagefinder import AbstractPackageFinder
 from grimp.domain.valueobjects import Module
 from grimp.exceptions import SourceSyntaxError
-from pydantic import TypeAdapter
 
 from smelt.analysis.exports import resolve_dotted
-from smelt.analysis.import_cache import import_cache_type, resolution_identity
 from smelt.analysis.parsing import (
     AnalysisError,
     AstCache,
@@ -40,7 +38,6 @@ if TYPE_CHECKING:
 
     from grimp.application.ports.filesystem import AbstractFileSystem, BasicFileSystem
 
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.exports import Loader
     from smelt.analysis.files import FileIndex
     from smelt.analysis.syntax import ModuleSyntax, SyntaxIndex
@@ -125,7 +122,6 @@ class ImportDetail:
         return package
 
 
-_DETAILS = TypeAdapter(list[ImportDetail])
 _CHAIN_CACHE_HOPS = 20_000
 
 
@@ -192,15 +188,10 @@ class ImportIndex:
         graph: grimp.ImportGraph,
         files: FileIndex,
         asts: AstCache,
-        *,
-        cache: FactCache | None = None,
-        inventory: str = "",
     ) -> None:
         self.graph = graph
         self.files = files
         self._asts = asts
-        self._cache = cache
-        self._inventory = inventory
         roots = files.config.project.root_packages
         self.first_party = frozenset(
             m for m in graph.modules if any(is_within(m, r) for r in roots)
@@ -214,9 +205,7 @@ class ImportIndex:
         self._chain_hops = 0
 
     @classmethod
-    def build(
-        cls, files: FileIndex, asts: AstCache, *, cache: FactCache | None = None
-    ) -> ImportIndex:
+    def build(cls, files: FileIndex, asts: AstCache) -> ImportIndex:
         project = files.config.project
         packages = [
             p for p in project.root_packages if p not in files.missing_root_packages
@@ -224,23 +213,23 @@ class ImportIndex:
         if not packages:
             msg = "none of project.root_packages were found under project.source_roots"
             raise AnalysisError(msg)
-        inventory = resolution_identity(files)
+        # Smelt's own parse reports syntax and encoding errors before Grimp's scanner.
+        for source in files.sources.values():
+            asts.parse(source.path)
         previous_package_finder = grimp_settings.PACKAGE_FINDER
         previous_module_finder = grimp_settings.MODULE_FINDER
         previous_file_system = grimp_settings.FILE_SYSTEM
-        previous_cache_class = grimp_settings.CACHE_CLASS
         grimp_settings.configure(
             PACKAGE_FINDER=_SourceRootPackageFinder(files),
             MODULE_FINDER=_IndexedModuleFinder(files),
             FILE_SYSTEM=_SourceFileSystem(files, files.store),
-            CACHE_CLASS=import_cache_type(files, asts, cache, inventory=inventory),
         )
         try:
             graph = grimp.build_graph(
                 packages[0],
                 *packages[1:],
                 include_external_packages=True,
-                cache_dir="smelt",
+                cache_dir=None,
             )
         except SourceSyntaxError as exc:
             raise AnalysisError(
@@ -251,7 +240,6 @@ class ImportIndex:
                 PACKAGE_FINDER=previous_package_finder,
                 MODULE_FINDER=previous_module_finder,
                 FILE_SYSTEM=previous_file_system,
-                CACHE_CLASS=previous_cache_class,
             )
         for module in list(graph.modules):
             if (
@@ -266,7 +254,7 @@ class ImportIndex:
             raise AnalysisError(
                 f"import graph omitted {len(missing)} source module(s): {examples}"
             )
-        return cls(graph, files, asts, cache=cache, inventory=inventory)
+        return cls(graph, files, asts)
 
     def first_party_edges(
         self, *, include_type_checking: bool = True
@@ -294,20 +282,7 @@ class ImportIndex:
         for path in sorted(self.files.tests):
             details = self._test_imports.get(path)
             if details is None:
-                cache = self._cache
-                key = (
-                    cache.key(
-                        "test-import-details",
-                        [path, self.files.content_id(path), self._inventory],
-                    )
-                    if cache
-                    else None
-                )
-                details = cache.read(key, _DETAILS) if cache and key else None
-                if details is None:
-                    details = list(self._test_details(path, syntax, modules=modules))
-                    if cache and key:
-                        cache.write(key, details, _DETAILS)
+                details = list(self._test_details(path, syntax, modules=modules))
                 self._test_imports[path] = details
             for detail in details:
                 yield path, detail
@@ -316,27 +291,9 @@ class ImportIndex:
         return sorted(m for m in self.first_party if m in self.files.sources)
 
     def imports_of(self, module: str) -> list[ImportDetail]:
-        cached = self._outgoing.get(module)
-        if cached is None:
-            source = self.files.sources.get(module)
-            cached = (
-                self._details_for(module)
-                if self._cache is None or source is None
-                else self._cache.get(
-                    "import-details",
-                    [
-                        module,
-                        source.path,
-                        source.is_package,
-                        self.files.content_id(source.path),
-                        self._inventory,
-                    ],
-                    _DETAILS,
-                    build=lambda: self._details_for(module),
-                )
-            )
-            self._outgoing[module] = cached
-        return cached
+        if module not in self._outgoing:
+            self._outgoing[module] = self._details_for(module)
+        return self._outgoing[module]
 
     def shortest_chains_from(
         self,

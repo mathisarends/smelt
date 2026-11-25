@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
 
 class DeprecatedAsyncContextmanagerReturn(Rule):
-    file_local = True
     code = "TYP004"
     name = "typing/deprecated-async-contextmanager-return"
     category = Category.TYPING

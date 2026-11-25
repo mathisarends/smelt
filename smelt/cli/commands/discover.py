@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
-from contextlib import closing
 from typing import TYPE_CHECKING
 
-from smelt.analysis.cache import FactCache, cache_directory
 from smelt.analysis.context import AnalysisContext
 from smelt.analysis.parsing import AnalysisError
 from smelt.cli.support import EXIT_OK, CliError, Console, load_project_config
@@ -26,42 +24,39 @@ if TYPE_CHECKING:
 
 def context(args: argparse.Namespace, console: Console, cwd: Path) -> int:
     loaded = load_project_config(args.config, cwd)
-    with closing(FactCache(cache_directory(loaded.root))) as cache:
-        ctx = AnalysisContext(
-            loaded.root, loaded.config, store=loaded.source, cache=cache
-        )
-        issues = missing_paths(ctx)
-        if issues:
-            raise loaded.explain_error(ConfigError(issues, loaded.path.name))
-        raw = args.target
-        if (
-            raw is not None
-            and raw not in ctx.model.features
-            and ctx.files.path_for_module(raw) is None
-        ):
-            raw = relative_scope(loaded.root, cwd, raw)
-        resolve = resolve_guide_target if args.guide else resolve_target
-        try:
-            target = resolve(ctx, raw)
-        except TargetError as exc:
-            raise CliError(str(exc), option="target", value=args.target) from exc
-        if args.guide:
-            guide = build_guide(ctx, target, loaded)
-            if args.format == "json":
-                console.print(json.dumps(guide.to_json(), indent=2))
-            else:
-                console.print(render_guide(guide), end="")
-            return EXIT_OK
-        try:
-            outcome = run_check(loaded, CheckOptions(), context=ctx)
-        except (AnalysisError, ConfigError) as exc:
-            briefing = build_briefing(
-                ctx, target, None, analysis_error=str(exc), loaded=loaded
-            )
-        else:
-            briefing = build_briefing(ctx, target, outcome.report, loaded=loaded)
+    ctx = AnalysisContext(loaded.root, loaded.config, store=loaded.source)
+    issues = missing_paths(ctx)
+    if issues:
+        raise loaded.explain_error(ConfigError(issues, loaded.path.name))
+    raw = args.target
+    if (
+        raw is not None
+        and raw not in ctx.model.features
+        and ctx.files.path_for_module(raw) is None
+    ):
+        raw = relative_scope(loaded.root, cwd, raw)
+    resolve = resolve_guide_target if args.guide else resolve_target
+    try:
+        target = resolve(ctx, raw)
+    except TargetError as exc:
+        raise CliError(str(exc), option="target", value=args.target) from exc
+    if args.guide:
+        guide = build_guide(ctx, target, loaded)
         if args.format == "json":
-            console.print(json.dumps(briefing.to_json(), indent=2))
+            console.print(json.dumps(guide.to_json(), indent=2))
         else:
-            console.print(render_briefing(briefing, ctx), end="")
+            console.print(render_guide(guide), end="")
+        return EXIT_OK
+    try:
+        outcome = run_check(loaded, CheckOptions(), context=ctx)
+    except (AnalysisError, ConfigError) as exc:
+        briefing = build_briefing(
+            ctx, target, None, analysis_error=str(exc), loaded=loaded
+        )
+    else:
+        briefing = build_briefing(ctx, target, outcome.report, loaded=loaded)
+    if args.format == "json":
+        console.print(json.dumps(briefing.to_json(), indent=2))
+    else:
+        console.print(render_briefing(briefing, ctx), end="")
     return EXIT_OK

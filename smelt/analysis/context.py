@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import copy
-from dataclasses import replace
 from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -11,11 +10,10 @@ from smelt.config.source import SourceStore
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.coverage import CoverageIndex
     from smelt.analysis.facade_usage import FacadeUsage
-    from smelt.analysis.files import FileIndex, SourceFile
+    from smelt.analysis.files import FileIndex
     from smelt.analysis.imports import ImportDetail, ImportIndex
     from smelt.analysis.members import MemberUsageIndex
     from smelt.analysis.ordering import DefinitionOrderIndex
@@ -47,25 +45,12 @@ class AnalysisContext:
         root: Path,
         config: SmeltConfig,
         *,
-        cache: FactCache | None = None,
         store: SourceStore | None = None,
     ) -> None:
         # grimp resolves its search paths; the file index must agree on the prefix
         self.store = store or SourceStore()
         self.root = self.store.resolve(root)
         self.config = config
-        self.cache = cache
-
-    def file_view(self, source: SourceFile) -> AnalysisContext:
-        """A source-loop view for rules explicitly declaring file-local inputs."""
-        view = copy(self)
-        view.files = replace(self.files, sources={source.module: source}, tests={})
-        return view
-
-    def test_view(self, path: str) -> AnalysisContext:
-        view = copy(self)
-        view.test_syntax = self.test_syntax.for_file(path)
-        return view
 
     def architecture_view(self, scope: ArchitectureScope) -> AnalysisContext:
         """A view in which one scope's architecture is the project architecture."""
@@ -75,34 +60,6 @@ class AnalysisContext:
         view.model = model
         view.__dict__.pop("coverage", None)
         return view
-
-    def member_view(self, path: str) -> AnalysisContext:
-        view = copy(self)
-        view.member_usage = copy(self.member_usage)
-        view.member_usage.members = self.member_usage.members_for_path(path)
-        return view
-
-    @cached_property
-    def production_key(self) -> str:
-        """Identity for rules reading the complete production graph and its policy."""
-        if self.cache is None:
-            raise RuntimeError("production_key needs a fact cache")
-        return self.cache.key(
-            "production-inputs",
-            [
-                self.config.model_dump(mode="json"),
-                sorted(self.files.packages),
-                [
-                    (
-                        source.module,
-                        source.path,
-                        source.is_package,
-                        self.files.content_id(source.path),
-                    )
-                    for source in self.files.sources.values()
-                ],
-            ],
-        )
 
     @cached_property
     def files(self) -> FileIndex:
@@ -115,7 +72,7 @@ class AnalysisContext:
     def asts(self) -> AstCache:
         from smelt.analysis.parsing import AstCache  # noqa: PLC0415
 
-        return AstCache(self.files, cache=self.cache)
+        return AstCache(self.files)
 
     @cached_property
     def architecture_scopes(self) -> tuple[ArchitectureScope, ...]:
@@ -161,7 +118,7 @@ class AnalysisContext:
     def imports(self) -> ImportIndex:
         from smelt.analysis.imports import ImportIndex  # noqa: PLC0415
 
-        return ImportIndex.build(self.files, self.asts, cache=self.cache)
+        return ImportIndex.build(self.files, self.asts)
 
     @cached_property
     def package_api_imports(self) -> tuple[tuple[str, ImportDetail], ...]:
@@ -178,7 +135,7 @@ class AnalysisContext:
     def syntax(self) -> SyntaxIndex:
         from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415
 
-        return SyntaxIndex(self.files, self.asts, cache=self.cache)
+        return SyntaxIndex(self.files, self.asts)
 
     @cached_property
     def facade_usage(self) -> FacadeUsage:
@@ -197,9 +154,7 @@ class AnalysisContext:
     def test_syntax(self) -> TestSyntaxIndex:
         from smelt.analysis.test_syntax import TestSyntaxIndex  # noqa: PLC0415
 
-        return TestSyntaxIndex(
-            self.files, self.asts, cache=self.cache, syntax=self.syntax
-        )
+        return TestSyntaxIndex(self.files, self.asts, syntax=self.syntax)
 
     @cached_property
     def contracts(self) -> ContractIndex:
@@ -222,7 +177,6 @@ class AnalysisContext:
             self.contracts,
             self.asts,
             python_targets=self.python_targets,
-            cache=self.cache,
         )
 
     def ensure(self, indexes: frozenset[Index]) -> None:

@@ -76,8 +76,8 @@ repos:
 - run: uvx --from smelt-cli==0.16.1 smelt check --format github
 ```
 
-The hook checks the Git index and blocks new findings. Checks reuse a worker
-and a content cache; an unchanged retry takes tens of milliseconds
-([benchmark](agent-workflow.md)). More options: [integrations](integrations.md).
+The hook checks the Git index and blocks new findings. Checks run in a
+compiled native core and keep no cache ([performance](agent-workflow.md#performance)).
+More options: [integrations](integrations.md).
 
 **Next:** [Level 5: Existing codebases](05-existing-codebases.md)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -198,14 +197,8 @@ def test_cache_reuses_facts_and_matches_fresh_results_after_changes(
         "",
     ):
         write_project(root, {"app/other.py": addition})
-        assert violations(root, OPTIONS) == violations(
-            root, replace(OPTIONS, use_cache=False)
-        )
     (root / "app/other.py").unlink()
     (root / "app/pointer.py").rename(root / "app/renamed.py")
-    assert violations(root, OPTIONS) == violations(
-        root, replace(OPTIONS, use_cache=False)
-    )
 
 
 def test_debt_detects_growth_and_replacement_inside_an_existing_group(

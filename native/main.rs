@@ -1,64 +1,17 @@
-//! A small client: checks retain Python imports, all other commands run directly.
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+//! The `smelt` command: runs the Python CLI, which checks in the native core.
 use std::env;
 use std::ffi::OsString;
-use std::fs;
-use std::io::{self, BufRead, BufReader, IsTerminal, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
-use std::thread;
-use std::time::{Duration, Instant};
 
 mod checker;
 mod git;
-mod worker;
-
-const PROTOCOL: u32 = 3;
-const LIMIT: u64 = 64 * 1024 * 1024;
-const ACCEPT_TIMEOUT: Duration = Duration::from_millis(250);
-const MAX_ANALYSIS: Duration = Duration::from_secs(300);
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn trace(message: impl std::fmt::Display) {
     if env::var_os("SMELT_TRACE").is_some() {
         eprintln!("smelt trace: {message}");
     }
-}
-
-#[derive(Deserialize)]
-struct Endpoint {
-    port: u16,
-    token: String,
-    pid: u32,
-    protocol: u32,
-}
-
-#[derive(Serialize)]
-struct Request<'a> {
-    token: &'a str,
-    cwd: &'a str,
-    arguments: &'a [String],
-    tty: bool,
-    ack: bool,
-}
-
-#[derive(Deserialize)]
-struct Accepted {
-    accepted: bool,
-    pid: u32,
-}
-
-#[derive(Deserialize)]
-struct Response {
-    code: i32,
-    out: String,
-    err: String,
-    pid: u32,
-    #[serde(default)]
-    restart: bool,
 }
 
 fn python() -> io::Result<PathBuf> {
@@ -97,7 +50,7 @@ fn python() -> io::Result<PathBuf> {
 
 fn direct(python: &Path, arguments: &[OsString]) -> io::Result<i32> {
     let mut command = Command::new(python);
-    // Like the former console entry point, import the installed analyzer rather
+    // Import the installed analyzer rather
     // than a same-named package in the directory being checked.
     command.args(["-P", "-m", "smelt"]).args(arguments);
     command.env("SMELT_NATIVE_CLIENT", env::current_exe()?);
@@ -111,221 +64,6 @@ fn direct(python: &Path, arguments: &[OsString]) -> io::Result<i32> {
         let status = command.status()?;
         Ok(status.code().unwrap_or(2))
     }
-}
-
-fn endpoint(python: &Path, cwd: &Path) -> io::Result<PathBuf> {
-    let environment: BTreeMap<_, _> = env::vars_os().collect();
-    let mut hasher = Sha256::new();
-    // OS strings are hashed losslessly; changes in any environment variable get
-    // their own worker, rather than retaining stale interpreter/Git settings.
-    for value in [python.as_os_str(), cwd.as_os_str()] {
-        hasher.update(value.as_encoded_bytes());
-        hasher.update([0]);
-    }
-    for (name, value) in environment {
-        hasher.update(name.as_encoded_bytes());
-        hasher.update([0]);
-        hasher.update(value.as_encoded_bytes());
-        hasher.update([0]);
-    }
-    hasher.update(PROTOCOL.to_le_bytes());
-    let root = if cfg!(windows) {
-        PathBuf::from(
-            env::var_os("LOCALAPPDATA").ok_or_else(|| io::Error::other("missing LOCALAPPDATA"))?,
-        )
-    } else if let Some(cache) = env::var_os("XDG_CACHE_HOME") {
-        PathBuf::from(cache)
-    } else {
-        PathBuf::from(env::var_os("HOME").ok_or_else(|| io::Error::other("missing HOME"))?)
-            .join(".cache")
-    };
-    let directory = root.join("smelt").join("sessions-v1");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::DirBuilderExt;
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(&directory)?;
-    }
-    #[cfg(not(unix))]
-    fs::create_dir_all(&directory)?;
-    Ok(directory.join(format!("{:x}.json", hasher.finalize())))
-}
-
-fn read_frame(reader: &mut BufReader<TcpStream>, deadline: Instant) -> io::Result<Vec<u8>> {
-    let mut line = Vec::new();
-    loop {
-        let remaining = deadline
-            .checked_duration_since(Instant::now())
-            .filter(|remaining| !remaining.is_zero())
-            .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "worker deadline exceeded"))?;
-        reader.get_ref().set_read_timeout(Some(remaining))?;
-        let available = reader.fill_buf()?;
-        if available.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "worker disconnected",
-            ));
-        }
-        let end = available.iter().position(|byte| *byte == b'\n');
-        let count = end.map_or(available.len(), |end| end + 1);
-        if line.len() as u64 + count as u64 > LIMIT {
-            return Err(io::Error::other("oversized worker response"));
-        }
-        line.extend_from_slice(&available[..count]);
-        reader.consume(count);
-        if end.is_some() {
-            return Ok(line);
-        }
-    }
-}
-
-fn request(
-    path: &Path,
-    cwd: &str,
-    arguments: &[String],
-    accept_timeout: Duration,
-) -> io::Result<Response> {
-    trace(format!("connecting via {}", path.display()));
-    let metadata: Endpoint = serde_json::from_slice(&fs::read(path)?)?;
-    if metadata.protocol != PROTOCOL {
-        return Err(io::Error::other("different worker protocol"));
-    }
-    let address = SocketAddr::from(([127, 0, 0, 1], metadata.port));
-    let mut stream = TcpStream::connect_timeout(&address, Duration::from_millis(100))?;
-    stream.set_write_timeout(Some(ACCEPT_TIMEOUT))?;
-    let payload = Request {
-        token: &metadata.token,
-        cwd,
-        arguments,
-        tty: io::stdout().is_terminal(),
-        ack: true,
-    };
-    // A streaming serializer issues many tiny TCP writes. With Nagle enabled,
-    // the final newline can wait for a delayed ACK while the worker waits for
-    // that newline. Send the complete framed request in one write instead.
-    let mut encoded = serde_json::to_vec(&payload)?;
-    encoded.push(b'\n');
-    stream.write_all(&encoded)?;
-    trace("request sent");
-    let mut reader = BufReader::new(stream);
-    let accepted: Accepted =
-        serde_json::from_slice(&read_frame(&mut reader, Instant::now() + accept_timeout)?)?;
-    if !accepted.accepted || accepted.pid != metadata.pid {
-        return Err(io::Error::other("unexpected worker acceptance"));
-    }
-    // The worker starts analysis only when we acknowledge its acceptance. A
-    // timed-out handshake cannot race a foreground check against an orphan job.
-    reader.get_mut().write_all(b"start\n")?;
-    trace("worker accepted and dispatch confirmed");
-    // Once accepted, any failure must go straight to foreground checking. A
-    // watchdog disconnect must not start a second five-second worker attempt.
-    receive_response(&mut reader, metadata.pid)
-        .map_err(|error| io::Error::new(io::ErrorKind::ConnectionAborted, error))
-}
-
-fn receive_response(reader: &mut BufReader<TcpStream>, pid: u32) -> io::Result<Response> {
-    let hard_deadline = Instant::now() + MAX_ANALYSIS;
-    let mut frame_timeout = REQUEST_TIMEOUT;
-    let line = loop {
-        let frame = read_frame(reader, hard_deadline.min(Instant::now() + frame_timeout))?;
-        if frame != b"{\"progress\":true}\n" {
-            break frame;
-        }
-        trace("worker reports progress");
-        // A native analysis step can hold the GIL and briefly prevent the Python
-        // watchdog from sending frames. Its idle deadline still applies.
-        frame_timeout = Duration::from_secs(20);
-    };
-    let response: Response = serde_json::from_slice(&line)?;
-    trace(format!("received {} bytes", line.len()));
-    if response.pid != pid || !(0..=2).contains(&response.code) {
-        return Err(io::Error::other("unexpected worker response"));
-    }
-    Ok(response)
-}
-
-fn check(python: &Path, arguments: &[String]) -> io::Result<Response> {
-    let cwd = env::current_dir()?;
-    let name = cwd
-        .to_str()
-        .ok_or_else(|| io::Error::other("non-UTF-8 cwd"))?;
-    let path = endpoint(python, &cwd)?;
-    match request(&path, name, arguments, ACCEPT_TIMEOUT) {
-        Ok(response) if !response.restart => return Ok(response),
-        Err(error) if error.kind() == io::ErrorKind::ConnectionAborted => return Err(error),
-        Err(error)
-            if matches!(
-                error.kind(),
-                io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
-            ) =>
-        {
-            // A busy or stuck worker must not cause another worker to be spawned
-            // for the same endpoint. The caller runs directly instead.
-            let running = fs::read(&path)
-                .ok()
-                .and_then(|data| serde_json::from_slice::<Endpoint>(&data).ok())
-                .is_none_or(|endpoint| worker::running(endpoint.pid));
-            if running {
-                return Err(error);
-            }
-        }
-        _ => {}
-    }
-    // An atomic directory arbitrates concurrent first clients. Only its owner
-    // starts a worker. A crashed starter only delays other clients briefly;
-    // they fall back to the normal foreground check.
-    let lock = path.with_extension("starting");
-    if fs::metadata(&lock)
-        .and_then(|metadata| metadata.modified())
-        .ok()
-        .and_then(|modified| modified.elapsed().ok())
-        .is_some_and(|age| age > Duration::from_secs(10))
-    {
-        let _ = fs::remove_dir(&lock);
-    }
-    let owner = fs::create_dir(&lock).is_ok();
-    if owner {
-        let _ = fs::remove_file(&path);
-        match worker::spawn(python, &path, &cwd) {
-            Ok(mut child) => {
-                trace(format!("started worker {}", child.id()));
-                let deadline = Instant::now() + Duration::from_secs(5);
-                while !path.is_file() && Instant::now() < deadline {
-                    if child.try_wait()?.is_some() {
-                        break;
-                    }
-                    thread::sleep(Duration::from_millis(10));
-                }
-                if !path.is_file() {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                }
-                trace(format!("endpoint ready: {}", path.is_file()));
-            }
-            Err(error) => {
-                let _ = fs::remove_dir(&lock);
-                return Err(error);
-            }
-        }
-        let _ = fs::remove_dir(&lock);
-    } else {
-        let deadline = Instant::now() + Duration::from_millis(150);
-        while !path.is_file() && Instant::now() < deadline {
-            thread::sleep(Duration::from_millis(10));
-        }
-    }
-    request(
-        &path,
-        name,
-        arguments,
-        if owner {
-            Duration::from_secs(2)
-        } else {
-            ACCEPT_TIMEOUT
-        },
-    )
 }
 
 fn run() -> io::Result<i32> {
@@ -357,45 +95,6 @@ fn run() -> io::Result<i32> {
     }
     let python = python()?;
     trace(format!("interpreter: {}", python.display()));
-    let text: Option<Vec<_>> = arguments
-        .iter()
-        .map(|arg| arg.to_str().map(String::from))
-        .collect();
-    let enabled = match env::var("SMELT_DAEMON").as_deref() {
-        Ok("0") => false,
-        Ok("1") => true,
-        _ => env::var_os("CI").is_none(),
-    };
-    // Workers start outside the project. Relative Python search-path overrides
-    // must keep their caller-relative meaning in a foreground process.
-    let relative_python_paths = ["PYTHONPATH", "PYTHONHOME", "PYTHONUSERBASE"]
-        .into_iter()
-        .filter_map(env::var_os)
-        .filter(|value| !value.is_empty())
-        .any(|value| env::split_paths(&value).any(|path| path.is_relative()));
-    if enabled
-        && !relative_python_paths
-        && let Some(text) = text
-        && text.first().map(String::as_str) == Some("check")
-        && !text.iter().any(|value| {
-            value.starts_with("--fi") || matches!(value.as_str(), "--f" | "--help" | "-h")
-        })
-    {
-        match check(&python, &text) {
-            Ok(response) if !response.restart => {
-                io::stdout().write_all(response.out.as_bytes())?;
-                io::stdout().flush()?;
-                io::stderr().write_all(response.err.as_bytes())?;
-                io::stderr().flush()?;
-                trace("returning result");
-                return Ok(response.code);
-            }
-            Ok(_) => trace("worker requested restart; checking in foreground"),
-            Err(error) => trace(format!(
-                "worker unavailable: {error}; checking in foreground"
-            )),
-        }
-    }
     direct(&python, &arguments)
 }
 

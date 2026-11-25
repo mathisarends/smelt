@@ -39,7 +39,7 @@ from smelt.engine.check import CheckOptions, run_check
 # CPython and the native parser explain a syntax error in their own words.
 _SYNTAX_ERROR = re.compile(r"(: syntax error): .*", re.DOTALL)
 SYNTAX_FIXTURE = REPOSITORY / "tests" / "fixtures" / "rust_parity_syntax_error"
-BASE = CheckOptions(use_cache=False, show_coverage=True)
+BASE = CheckOptions(show_coverage=True)
 MODES = {
     "configured": BASE,
     "all rules": replace(BASE, select=("ALL",)),
@@ -142,10 +142,7 @@ def _compare_cli(root: Path, arguments: tuple[str, ...], *, label: str) -> int:
 def _cli_report(
     root: Path, arguments: tuple[str, ...], *, engine: str
 ) -> dict[str, Any]:
-    environment = {**os.environ, "SMELT_DAEMON": "0"}
-    environment.pop("SMELT_CORE", None)
-    if engine == "native":
-        environment["SMELT_CORE"] = "native"
+    environment = {**os.environ, "SMELT_CORE": engine}
     result = subprocess.run(  # noqa: S603 - this interpreter's smelt
         [
             sys.executable,
@@ -153,7 +150,6 @@ def _cli_report(
             "smelt",
             "check",
             *arguments,
-            "--no-cache",
             "--show-coverage",
             "--format",
             "json",
@@ -181,10 +177,7 @@ def _cli_report(
 
 
 def _report(root: Path, options: CheckOptions, *, engine: str) -> dict[str, Any]:
-    if engine == "native":
-        os.environ["SMELT_CORE"] = "native"
-    else:
-        os.environ.pop("SMELT_CORE", None)
+    os.environ["SMELT_CORE"] = engine
     try:
         outcome = run_check(load_config(root / "smelt.yml"), options)
     except Exception as error:

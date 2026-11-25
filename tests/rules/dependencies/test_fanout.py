@@ -360,7 +360,7 @@ def test_cached_bundling_evidence_follows_dependency_edits(tmp_path: Path) -> No
     )
 
     [cached] = violations(tmp_path, OPTIONS)
-    [fresh] = violations(tmp_path, CheckOptions(select=("IMP001",), use_cache=False))
+    [fresh] = violations(tmp_path, CheckOptions(select=("IMP001",)))
 
     assert cached.expected == fresh.expected
     assert cached.expected is not None

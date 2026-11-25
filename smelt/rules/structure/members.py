@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class InternalPublicMember(Rule):
-    member_local = True
     code = "VIS001"
     name = "visibility/internal-public-member"
     category = Category.VISIBILITY
@@ -83,7 +82,6 @@ class InternalPublicMember(Rule):
 
 
 class InternalStaticHelper(Rule):
-    member_local = True
     code = "LAY005"
     name = "layout/misplaced-static-helper"
     category = Category.LAYOUT

@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 class PreferProjectBaseClass(Rule):
-    file_local = True
     activation = POLICIES["MOD007"]
     code = "MOD007"
     name = "modeling/prefer-project-base-class"

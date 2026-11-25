@@ -18,6 +18,7 @@ mod test_location;
 mod untested;
 
 use crate::checker::analysis::architecture::ArchitectureModel;
+use crate::checker::analysis::coverage::Coverage;
 use crate::checker::analysis::members::MemberUsageIndex;
 use crate::checker::analysis::namespace::project_namespaces;
 use crate::checker::analysis::test_syntax::{self, TestModule};
@@ -57,6 +58,8 @@ pub struct StructureContext<'a> {
     pub test_policy: &'a TestPolicy,
     /// Whether `architecture/uncovered-source` guards the whole run.
     pub strict_coverage: bool,
+    /// The strict coverage of the run, which its report reads as well.
+    pub coverage: &'a OnceLock<Coverage>,
     /// Tests the test-quality rules exempt; they still count as use evidence.
     pub quality_exclude: &'a [PathPattern],
     pub member_usage: OnceLock<MemberUsageIndex<'a>>,

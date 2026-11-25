@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
 
 class InlineConstructorReceiver(Rule):
-    file_local = True
     code = "CPX008"
     name = "complexity/inline-constructor-receiver"
     category = Category.COMPLEXITY

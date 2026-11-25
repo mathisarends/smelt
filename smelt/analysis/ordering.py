@@ -9,8 +9,6 @@ from dataclasses import dataclass, field, replace
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, TypedDict
 
-from pydantic import TypeAdapter
-
 from smelt.analysis.definition_blocks import (
     DefinitionBlock,
     ScopeNode,
@@ -23,7 +21,6 @@ from smelt.analysis.parsing import child_nodes, tree_nodes
 from smelt.config.models import OrderingConfig
 
 if TYPE_CHECKING:
-    from smelt.analysis.cache import FactCache
     from smelt.analysis.contracts import ContractIndex
     from smelt.analysis.files import FileIndex, SourceFile
     from smelt.analysis.parsing import AstCache
@@ -119,9 +116,6 @@ class OrderFacts:
     findings: list[OrderFinding]
 
 
-_ORDER_FACTS = TypeAdapter(OrderFacts)
-
-
 @dataclass(frozen=True, slots=True)
 class _OrderInput:
     source: SourceFile
@@ -157,47 +151,23 @@ class DefinitionOrderIndex:
         asts: AstCache,
         *,
         python_targets: PythonTargetIndex,
-        cache: FactCache | None = None,
     ) -> None:
         self._asts = asts
         self._files = files
         self._contracts = contracts
         self._targets = python_targets
-        self._cache = cache
 
     @cached_property
     def files(self) -> dict[str, OrderFacts]:
-        cache = self._cache
         facts_by_path = {}
         for source in self._files.sources.values():
-            inputs = self._inputs(source)
-            key = (
-                cache.key(
-                    "ordering",
-                    [
-                        source.path,
-                        source.module,
-                        self._files.content_id(source.path),
-                        inputs.config.model_dump(mode="json"),
-                        inputs.contract,
-                        inputs.target.to_json(),
-                    ],
-                )
-                if cache
-                else None
+            result = self._inputs(source).analyze(self._asts)
+            facts_by_path[source.path] = OrderFacts(
+                source.module,
+                source.path,
+                result.summary(),
+                [_finding(result, issue) for issue in result.issues],
             )
-            facts = cache.read(key, _ORDER_FACTS) if cache and key else None
-            if facts is None:
-                result = inputs.analyze(self._asts)
-                facts = OrderFacts(
-                    source.module,
-                    source.path,
-                    result.summary(),
-                    [_finding(result, issue) for issue in result.issues],
-                )
-                if cache and key:
-                    cache.write(key, facts, _ORDER_FACTS)
-            facts_by_path[source.path] = facts
         return facts_by_path
 
     def for_rewrite(self, path: str) -> FileOrder:

@@ -172,18 +172,19 @@ impl FileIndex {
     pub fn yaml_paths(&self) -> Vec<String> {
         let mut found = BTreeSet::new();
         let mut visited = HashSet::new();
-        let mut pending = vec![self.root.clone()];
-        while let Some(directory) = pending.pop() {
-            let resolved = fs::canonicalize(&directory).unwrap_or_else(|_| directory.clone());
-            if !resolved.starts_with(&self.root) || !visited.insert(resolved) {
+        let real = fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+        let mut pending = vec![(self.root.clone(), real)];
+        while let Some((directory, resolved)) = pending.pop() {
+            if !resolved.starts_with(&self.root) || !visited.insert(resolved.clone()) {
                 continue;
             }
             let Ok(entries) = fs::read_dir(&directory) else {
                 continue;
             };
-            let mut entries: Vec<PathBuf> = entries.flatten().map(|entry| entry.path()).collect();
-            entries.sort();
-            for entry in entries {
+            let mut entries: Vec<fs::DirEntry> = entries.flatten().collect();
+            entries.sort_by_key(fs::DirEntry::path);
+            for listed in entries {
+                let entry = listed.path();
                 let Ok(inside) = entry.strip_prefix(&self.root) else {
                     continue;
                 };
@@ -195,16 +196,16 @@ impl FileIndex {
                 {
                     continue;
                 }
-                if entry.is_dir() {
+                if listed_directory(&listed) {
                     let name = file_name(&entry);
                     if !SKIP_DIRS.contains(&name) && !YAML_SKIP_DIRS.contains(&name) {
-                        pending.push(entry);
+                        let real = listed_real(&resolved, &listed);
+                        pending.push((entry, real));
                     }
                 } else if entry
                     .extension()
                     .is_some_and(|suffix| suffix == "yaml" || suffix == "yml")
-                    && entry.is_file()
-                    && fs::canonicalize(&entry).is_ok_and(|real| real.starts_with(&self.root))
+                    && listed_file_inside(&listed, &self.root)
                 {
                     found.insert(relative);
                 }
@@ -454,11 +455,23 @@ fn posix_parts(path: &Path) -> Vec<String> {
 /// Python files below a directory, skipping tool directories and symlink cycles.
 pub fn python_files(directory: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
+    walk_python(directory, |path| {
+        found.push(path);
+        false
+    });
+    found
+}
+
+/// Visit the Python files below `directory` until `visit` returns true.
+///
+/// A listing already holds the kind of each entry, so only links cost a
+/// lookup, and a directory's real path is its parent's unless it is a link.
+fn walk_python(directory: &Path, mut visit: impl FnMut(PathBuf) -> bool) -> bool {
     let mut visited = HashSet::new();
-    let mut pending = vec![directory.to_path_buf()];
-    while let Some(parent) = pending.pop() {
-        let resolved = fs::canonicalize(&parent).unwrap_or_else(|_| parent.clone());
-        if !visited.insert(resolved) {
+    let real = fs::canonicalize(directory).unwrap_or_else(|_| directory.to_path_buf());
+    let mut pending = vec![(directory.to_path_buf(), real)];
+    while let Some((parent, resolved)) = pending.pop() {
+        if !visited.insert(resolved.clone()) {
             continue;
         }
         let Ok(entries) = fs::read_dir(&parent) else {
@@ -466,17 +479,34 @@ pub fn python_files(directory: &Path) -> Vec<PathBuf> {
         };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
+            if listed_directory(&entry) {
                 let name = file_name(&path);
                 if !SKIP_DIRS.contains(&name) && !name.starts_with('.') {
-                    pending.push(path);
+                    let real = listed_real(&resolved, &entry);
+                    pending.push((path, real));
                 }
-            } else if path.extension().is_some_and(|suffix| suffix == "py") {
-                found.push(path);
+            } else if path.extension().is_some_and(|suffix| suffix == "py") && visit(path) {
+                return true;
             }
         }
     }
-    found
+    false
+}
+
+/// Whether a listed entry is a directory, following links as `Path::is_dir` does.
+fn listed_directory(entry: &fs::DirEntry) -> bool {
+    match entry.file_type() {
+        Ok(kind) if !kind.is_symlink() => kind.is_dir(),
+        _ => entry.path().is_dir(),
+    }
+}
+
+/// The real path of a listed entry below the real directory `parent`.
+fn listed_real(parent: &Path, entry: &fs::DirEntry) -> PathBuf {
+    match entry.file_type() {
+        Ok(kind) if !kind.is_symlink() => parent.join(entry.file_name()),
+        _ => fs::canonicalize(entry.path()).unwrap_or_else(|_| entry.path()),
+    }
 }
 
 fn file_name(path: &Path) -> &str {
@@ -485,31 +515,21 @@ fn file_name(path: &Path) -> &str {
         .unwrap_or_default()
 }
 
-fn contains_python(directory: &Path) -> bool {
-    let mut pending = vec![directory.to_path_buf()];
-    let mut visited = Vec::new();
-    while let Some(parent) = pending.pop() {
-        let resolved = fs::canonicalize(&parent).unwrap_or_else(|_| parent.clone());
-        if visited.contains(&resolved) {
-            continue;
-        }
-        visited.push(resolved);
-        let Ok(entries) = fs::read_dir(&parent) else {
-            continue;
-        };
-        for entry in entries.flatten() {
+/// Whether a listed entry is a file whose real path stays below `root`.
+///
+/// Its directory is already known to be inside, so only a link needs resolving.
+fn listed_file_inside(entry: &fs::DirEntry, root: &Path) -> bool {
+    match entry.file_type() {
+        Ok(kind) if !kind.is_symlink() => kind.is_file(),
+        _ => {
             let path = entry.path();
-            if path.is_dir() {
-                let name = file_name(&path);
-                if !SKIP_DIRS.contains(&name) && !name.starts_with('.') {
-                    pending.push(path);
-                }
-            } else if path.extension().is_some_and(|suffix| suffix == "py") {
-                return true;
-            }
+            path.is_file() && fs::canonicalize(&path).is_ok_and(|real| real.starts_with(root))
         }
     }
-    false
+}
+
+fn contains_python(directory: &Path) -> bool {
+    walk_python(directory, |_| true)
 }
 
 /// `str.isidentifier`.
