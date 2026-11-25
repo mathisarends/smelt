@@ -7,6 +7,13 @@ current configuration and complete rule contracts, see the [README](README.md),
 
 ## [Unreleased]
 
+- New opt-in rule `meta/missing-tool-suppression-reason` (MET006) reports
+  `noqa`, `type: ignore`, `pyright: ignore`, `mypy:` and `pylint: disable`
+  comments without a reason, in production and test modules. Text after the
+  directive or a comment right above it counts as the reason.
+  `meta/missing-suppression-reason` (MET002) is unchanged.
+- `idioms/missing-broad-except-reason` (IDM006) no longer accepts `ruff: noqa`,
+  `flake8: noqa` or `mypy:` directives as the reason for a broad handler.
 - `tests/nondeterministic-data` (TST011) also reviews wall-clock reads in
   tests: `datetime.now`, `datetime.utcnow`, `datetime.today`, `date.today`,
   `time.time` and `time.time_ns`. Reads inside `freezegun.freeze_time` or

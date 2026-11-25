@@ -15,6 +15,7 @@ IDM003 shop/method.py:1:1 hint review Service.run as __call__ with an operation-
 IDM005 shop/stubs.py:11:5 hint Protocol method Port.fail has a placeholder body and no docstring
 IDM005 shop/stubs.py:14:5 hint Protocol method Port.nothing has a placeholder body and no docstring
 IDM005 shop/stubs.py:6:5 hint Protocol method Port.send has a placeholder body and no docstring
+MET006 shop/stubs.py:27:22 warning `noqa` hides a linter finding without saying why
 TST006 tests/domain/test_order_items.py:1:None warning test_count has no recognized outcome assertion
 TST006 tests/test_tested.py:1:None warning test_run has no recognized outcome assertion
 TST006 tests/test_topical_parsing.py:1:None warning test_parse has no recognized outcome assertion

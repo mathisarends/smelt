@@ -1,3 +1,4 @@
+from smelt.analysis.context import Index
 from smelt.diagnostics.fixes import (
     FixAvailability,
 )
@@ -55,6 +56,49 @@ class SuppressionWithoutReason(_EngineRule):
         fix="Append ` -- <reason>` to the comment.",
         canonical="Give every smelt suppression comment a -- reason",
         config=("suppressions.require_reason",),
+    )
+
+
+class MissingToolSuppressionReason(Rule):
+    code = "MET006"
+    name = "meta/missing-tool-suppression-reason"
+    category = Category.META
+    default_severity = Severity.WARNING
+    requires = frozenset({Index.SYNTAX})
+    doc = RuleDoc(
+        summary="A noqa, type: ignore or other tool suppression without a reason.",
+        rationale=(
+            "Silencing a linter or type checker is the quickest way to a passing "
+            "result, and the directive records only that a finding was hidden, not "
+            "why. Without the reason a reviewer cannot tell a known stub defect from "
+            "a real bug, or decide when the suppression can go. This opt-in rule "
+            "reports `noqa`, `ruff: noqa`, `flake8: noqa`, `type: ignore`, "
+            "`pyright: ignore`, `mypy: ignore-errors`, `mypy: disable-error-code` "
+            "and `pylint: disable`/`disable-next` comments in production and test "
+            "modules, with or without codes. A file-level directive is one finding "
+            "on its line. Text after the directive counts as the reason, for "
+            "example ` -- stub is wrong, see #123`, as does a comment block directly "
+            "above the line that says more than further directives. A reason above "
+            "a multi-line statement only counts when it ends right above the "
+            "directive's line. `pragma: no cover`, `fmt:` and smelt's own "
+            "suppressions are out of scope; meta/missing-suppression-reason covers "
+            "the latter. Whether the suppression is still needed remains each "
+            "tool's job (`RUF100`, `--warn-unused-ignores`). Files excluded in "
+            "`project.exclude`, such as generated code, are not checked."
+        ),
+        bad="result = client.fetch()  # type: ignore[no-any-return]",
+        good=(
+            "result = client.fetch()  "
+            "# type: ignore[no-any-return] -- the SDK stub returns Any, see #123"
+        ),
+        fix=(
+            "Fix the reported problem so the directive can go. When the suppression "
+            "must stay, append ` -- <reason>` to the comment or put the reason on "
+            "the comment line above. No source is rewritten. Enable rules: "
+            "{meta/missing-tool-suppression-reason: warning}, or select MET006."
+        ),
+        canonical="Give every noqa, type: ignore and pylint: disable comment a -- reason",
+        config=("rules", "project.exclude"),
     )
 
 

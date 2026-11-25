@@ -110,6 +110,7 @@ _IMPLEMENTATIONS = (
     "smelt.rules.testing.untested:MissingMirrorTest",
     "smelt.rules.meta:UnusedSuppression",
     "smelt.rules.meta:SuppressionWithoutReason",
+    "smelt.rules.meta:MissingToolSuppressionReason",
     "smelt.rules.meta:ResolvedDebt",
     "smelt.rules.meta:MissingRulePolicy",
     "smelt.rules.meta:UncoveredPackageFacade",
