@@ -147,7 +147,7 @@ class _Validator:
         self.architecture = architecture
         self.roots = list(roots)
         self.location = location
-        self._member_owners = member_owners or {}
+        self._member_owners = member_owners if member_owners is not None else {}
         self.errors: list[ConfigIssue] = []
         self.warnings: list[ConfigIssue] = []
 

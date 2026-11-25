@@ -519,6 +519,7 @@ class RuleSettings:
         root = RuleSettings(self.rules, self._base_loaded, validate=False)
         root_ctx = None
         if ctx is not None:
+            # Only scoped comparisons need a new analysis context.
             from smelt.analysis.context import AnalysisContext  # noqa: PLC0415
 
             root_ctx = AnalysisContext(ctx.root, root.config, store=ctx.store)

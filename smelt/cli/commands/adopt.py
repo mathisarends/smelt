@@ -300,6 +300,7 @@ def _debt_targets(
                 DebtScope(posixpath.join(loaded.member, _DEFAULT_DEBT), loaded.member),
             )
         return configured
+    # Only per-member debt discovery needs the workspace inventory.
     from smelt.analysis.workspace import workspace_members  # noqa: PLC0415
 
     targets = []

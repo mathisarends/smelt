@@ -7,9 +7,10 @@ from collections import Counter
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
 from smelt.config.errors import ConfigError, ConfigIssue, format_loc
+from smelt.config.input_model import InputModel
 from smelt.config.source import SourceStore
 from smelt.diagnostics.legacy_codes import LEGACY_CODES, legacy_code
 
@@ -22,22 +23,23 @@ if TYPE_CHECKING:
 _DEBT_VERSION = 2
 
 
-class _DebtItem(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+class _DebtModel(InputModel):
+    model_config = ConfigDict(strict=True)
+
+
+class _DebtItem(_DebtModel):
     fingerprint: str
     code: str
     path: str | None = None
     message: str = ""
 
 
-class _DebtDocument(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+class _DebtDocument(_DebtModel):
     version: Literal[1]
     violations: list[_DebtItem]
 
 
-class _DebtGroup(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+class _DebtGroup(_DebtModel):
     code: str
     path: str | None = None
     message: str = ""
@@ -45,8 +47,7 @@ class _DebtGroup(BaseModel):
     fingerprints: list[str] = Field(min_length=1)
 
 
-class _GroupedDebtDocument(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+class _GroupedDebtDocument(_DebtModel):
     version: Literal[2]
     violations: list[_DebtGroup]
 

@@ -1400,7 +1400,7 @@ class TestChangedHints:
             ["add", "-A"],
             ["commit", "-qm", "i"],
         ):
-            subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603
+            subprocess.run([*git, *args], cwd=clean_project, check=True)  # noqa: S603 -- Git receives a list of arguments without shell expansion.
         add_rules(clean_project, {"ARC012": "hint"})
         (clean_project / "app" / "misc.py").write_text("", encoding="utf-8")
         monkeypatch.chdir(clean_project)

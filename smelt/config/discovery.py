@@ -79,15 +79,19 @@ def build_package_settings(
     directory: Path, *, store: SourceStore | None = None
 ) -> tuple[set[str], bool]:
     """Top-level modules and namespace support declared by the uv build backend."""
+    view = store if store is not None else SourceStore()
     try:
-        data = tomllib.loads(
-            (store or SourceStore()).read_text(directory / "pyproject.toml")
-        )
+        data = tomllib.loads(view.read_text(directory / "pyproject.toml"))
     except (OSError, tomllib.TOMLDecodeError):
         return set(), False
     backend = data.get("tool", {}).get("uv", {}).get("build-backend", {})
     raw = backend.get("module-name")
-    names = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
+    if isinstance(raw, str):
+        names = [raw]
+    elif isinstance(raw, list):
+        names = raw
+    else:
+        names = []
     return {name.split(".")[0] for name in names if isinstance(name, str)}, backend.get(
         "namespace"
     ) is True

@@ -32,6 +32,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def test_repository_policy_reviews_every_opt_in_rule(
+    pytestconfig: pytest.Config,
+) -> None:
+    policy = load_config(pytestconfig.rootpath / "smelt.yml")
+    settings = RuleSettings(build_rule_set(lazy=True), policy)
+
+    assert settings.unconfigured_codes() == {
+        "ARC002",  # Smelt uses layers without feature namespaces.
+        "ARC009",  # Member boundaries require a multi-member workspace.
+        "ARC010",  # The single Python distribution has no member dependencies.
+        "LAY002",  # Module introductions are useful selectively.
+    }
+
+
 @pytest.mark.parametrize("value", ["off", "warning", "hint", "on"])
 def test_member_weakening_requires_a_reason(tmp_path: Path, value: str) -> None:
     root = write_policy_project(

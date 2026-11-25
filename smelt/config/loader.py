@@ -88,7 +88,7 @@ _StrictBoolLoader.add_implicit_resolver(
 
 
 def _load_yaml(text: str) -> object:
-    return yaml.load(text, Loader=_StrictBoolLoader)  # noqa: S506
+    return yaml.load(text, Loader=_StrictBoolLoader)  # noqa: S506 -- _StrictBoolLoader inherits SafeLoader and adjusts boolean resolution.
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +126,7 @@ class LoadedConfig:
 
 def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | None:
     """Walk up from ``start`` looking for ``smelt.yml`` or ``smelt.yaml``."""
-    store = store or SourceStore()
+    store = store if store is not None else SourceStore()
     current = store.resolve(start)
     for directory in (current, *current.parents):
         for filename in CONFIG_FILENAMES:
@@ -138,7 +138,7 @@ def discover_config(start: Path, *, store: SourceStore | None = None) -> Path | 
 
 def load_config(path: Path, *, store: SourceStore | None = None) -> LoadedConfig:
     """Load a project config; a workspace member's config selects its root."""
-    view = store or SourceStore()
+    view = store if store is not None else SourceStore()
     path = view.resolve(path)
     member: str | None = None
     try:
@@ -163,7 +163,7 @@ def config_files(path: Path, *, store: SourceStore | None = None) -> ConfigFiles
 
     Only the YAML is read, so a version 1 workspace can be migrated as a whole.
     """
-    view = store or SourceStore()
+    view = store if store is not None else SourceStore()
     path = view.resolve(path)
     if (workspace := _workspace_of(path, view)) is not None:
         path = workspace[0]
@@ -223,7 +223,9 @@ def parse_config(
 def raw_config(path: Path, *, store: SourceStore | None = None) -> Mapping[str, object]:
     """The composed YAML before validation; empty when it cannot be read."""
     try:
-        raw = compose_config(path, store or SourceStore(), _load_yaml).raw
+        raw = compose_config(
+            path, store if store is not None else SourceStore(), _load_yaml
+        ).raw
     except ConfigError:
         return {}
     return raw if isinstance(raw, dict) else {}
@@ -614,7 +616,7 @@ def _step(annotation: Any, item: str | int) -> Any:
     args = typing.get_args(annotation)
     if origin is list and args:
         return args[0]
-    if origin is dict and len(args) == 2:  # noqa: PLR2004
+    if origin is dict and len(args) == 2:  # noqa: PLR2004 -- A parameterized dict has a key type and a value type.
         return args[1]
     return None
 

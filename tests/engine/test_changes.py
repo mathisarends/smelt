@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -366,8 +367,8 @@ def test_changed_optional_defaults_distinguish_a_replaced_function(repo: Path) -
 
 
 def _git(root: Path, *args: str) -> bytes:
-    return subprocess.run(  # noqa: S603
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+    return subprocess.run(  # noqa: S603 -- Git receives a list of arguments without shell expansion.
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607 -- Use the Git executable selected by PATH.
         cwd=root,
         check=True,
         capture_output=True,
@@ -416,8 +417,8 @@ class TestBaseComparison:
         def unexpected(*args: object, **kwargs: object) -> None:
             pytest.fail("the base revision must be read from Git objects")
 
-        monkeypatch.setattr("tempfile.TemporaryDirectory", unexpected)
-        monkeypatch.setattr("tempfile.mkdtemp", unexpected)
+        monkeypatch.setattr(tempfile, "TemporaryDirectory", unexpected)
+        monkeypatch.setattr(tempfile, "mkdtemp", unexpected)
         (repo / "app/application/service.py").write_text("x = 1\n")
 
         assert violations(repo, CheckOptions(changed=True)) == []
@@ -948,7 +949,7 @@ class TestChangedMode:
         document = json.loads(render_json(report))
 
         main = subprocess.run(
-            ["git", "rev-parse", "main"],  # noqa: S607
+            ["git", "rev-parse", "main"],  # noqa: S607 -- Use the Git executable selected by PATH.
             cwd=repo,
             check=True,
             capture_output=True,

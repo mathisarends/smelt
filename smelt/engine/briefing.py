@@ -261,7 +261,11 @@ def build_briefing(
     coverage = _coverage_brief(ctx, target, info=info)
     target_path = target.path or ctx.files.path_for_module(package or "")
     module = target.module or package
-    policy_file = loaded or LoadedConfig(ctx.config, ctx.root / "smelt.yml")
+    policy_file = (
+        loaded
+        if loaded is not None
+        else LoadedConfig(ctx.config, ctx.root / "smelt.yml")
+    )
     workspace_policy = _workspace_sources(
         ctx, target_path, loaded=loaded, module=module
     )
@@ -450,15 +454,11 @@ def _workspace_sources(
     if member_file is not None:
         inputs.append(Path(member_file))
     config = loaded.config.members.get(member)
-    architecture = (
-        _config_source(Path(member_file), root=loaded.root)
-        if member_file is not None
-        and config is not None
-        and config.governs_architecture
-        else root_config
-        if member == "." and loaded.config.architecture.has_layout
-        else None
-    )
+    architecture = None
+    if member_file is not None and config is not None and config.governs_architecture:
+        architecture = _config_source(Path(member_file), root=loaded.root)
+    elif member == "." and loaded.config.architecture.has_layout:
+        architecture = root_config
     sources = [_config_source(path, root=loaded.root) for path in inputs]
     if module is not None:
         sources.extend(
@@ -677,7 +677,7 @@ def _third_party(policy: ThirdPartyPolicy) -> str:
     return f"not {', '.join(policy.deny)}" if policy.deny else "all allowed"
 
 
-def _boundary_policy(info: ModuleInfo | None) -> str:  # noqa: PLR0911
+def _boundary_policy(info: ModuleInfo | None) -> str:  # noqa: PLR0911 -- Each architecture role has its own policy description.
     if info is None:
         return "Layer and feature boundaries apply as configured; wiring and composition roots have exceptions."
     if info.kind is ModuleKind.COMPOSITION_ROOT:
@@ -826,7 +826,7 @@ def _rule_lines(briefing: Briefing) -> list[str]:
         if (detail["severity"] != "off" or detail.get("reason"))
         and (
             briefing.target.kind == "project"
-            or (detail["scope"] != "test" and detail["family"] != Category.META.value)
+            or (detail["scope"] != "test" and detail["family"] != Category.META)
         )
     ]
 
@@ -836,9 +836,11 @@ def _source_label(entry: dict[str, Any]) -> str:
     key = entry.get("key")
     reason = entry.get("reason")
     description = entry.get("description")
-    origin = (
-        f"({source}: {key})" if source else f"({description})" if description else ""
-    )
+    origin = ""
+    if source:
+        origin = f"({source}: {key})"
+    elif description:
+        origin = f"({description})"
     return f"{origin}; reason: {reason}" if reason else origin
 
 

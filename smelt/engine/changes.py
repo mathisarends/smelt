@@ -16,7 +16,7 @@ def lexical_path(path: Path) -> Path:
 
 def _head(root: Path) -> str | None:
     result = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", "HEAD"],  # noqa: S607
+        ["git", "rev-parse", "--verify", "--quiet", "HEAD"],  # noqa: S607 -- Use the Git executable selected by PATH.
         cwd=root,
         capture_output=True,
         check=False,
@@ -42,7 +42,7 @@ def capture_repository(cwd: Path, requested: Path | None = None) -> GitRepositor
         if native is not None:
             return GitRepository(*native)
         result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel", "--verify", "--quiet", "HEAD"],  # noqa: S607
+            ["git", "rev-parse", "--show-toplevel", "--verify", "--quiet", "HEAD"],  # noqa: S607 -- Use the Git executable selected by PATH.
             cwd=anchor,
             capture_output=True,
             check=False,
@@ -176,8 +176,8 @@ def read_blobs(repository: Path, identifiers: list[str]) -> dict[str, bytes]:
 
 def _run_git(root: Path, *args: str, input_data: bytes | None = None) -> bytes:
     try:
-        result = subprocess.run(  # noqa: S603
-            ["git", *args],  # noqa: S607
+        result = subprocess.run(  # noqa: S603 -- Git receives a list of arguments without shell expansion.
+            ["git", *args],  # noqa: S607 -- Use the Git executable selected by PATH.
             cwd=root,
             capture_output=True,
             input=input_data,

@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from smelt.cli import main
 from smelt.diagnostics.debt import Debt
+from smelt.engine import staged
 from smelt.engine.changes import GitIndex, capture_index
 from smelt.engine.check import snippet_reader
 from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_policy_project
@@ -220,8 +222,8 @@ def test_staged_optional_default_uses_grouped_debt_and_staged_function_identity(
 
 
 def _git(root: Path, *args: str) -> None:
-    subprocess.run(  # noqa: S603
-        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+    subprocess.run(  # noqa: S603 -- Git receives a list of arguments without shell expansion.
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607 -- Use the Git executable selected by PATH.
         cwd=root,
         check=True,
         capture_output=True,
@@ -704,8 +706,8 @@ def test_staged_analyses_do_not_materialize_sources(
     def unexpected(*args: Any, **kwargs: Any) -> None:
         pytest.fail("staged analysis must not create a temporary source tree")
 
-    monkeypatch.setattr("tempfile.TemporaryDirectory", unexpected)
-    monkeypatch.setattr("tempfile.mkdtemp", unexpected)
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", unexpected)
+    monkeypatch.setattr(tempfile, "mkdtemp", unexpected)
     (repo / "app/consumer.py").write_text("")
     _git(repo, "add", "app/consumer.py")
     code, report = _check(repo, capsys)
@@ -910,7 +912,7 @@ def test_debt_uses_the_captured_index_even_if_another_process_stages_again(
         _git(repo, "add", "accepted.baseline")
         return captured
 
-    monkeypatch.setattr("smelt.engine.staged.capture_index", capture)
+    monkeypatch.setattr(staged, "capture_index", capture)
     code, report = _check(repo, capsys)
     assert code == 0
     assert report["summary"]["in_debt"] == 1

@@ -88,6 +88,12 @@ class CheckOutcome:
 def rule_meta(rule: RuleContract) -> RuleMeta:
     default = bool(getattr(rule, "enabled_by_default", False))
     activation = getattr(rule, "activation", None)
+    if default:
+        description = "Enabled by default."
+    elif activation:
+        description = _policy_description(activation)
+    else:
+        description = "Enable by rule setting or --select."
     return RuleMeta(
         code=rule.code,
         name=rule.name,
@@ -100,11 +106,7 @@ def rule_meta(rule: RuleContract) -> RuleMeta:
         config=rule.explain().config,
         activation={
             "mode": "default" if default else "explicit",
-            "description": "Enabled by default."
-            if default
-            else _policy_description(activation)
-            if activation
-            else "Enable by rule setting or --select.",
+            "description": description,
         },
         scope=getattr(rule, "scope", "source"),
         fix=getattr(rule, "fix_availability", FixAvailability.NONE),
