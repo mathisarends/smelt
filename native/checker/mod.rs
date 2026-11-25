@@ -465,7 +465,20 @@ fn python_lines(path: &Path) -> Vec<String> {
 
 /// Check the project `request` describes, leaving out the `ignore` rules, or
 /// without rules only describe its files and coverage.
+///
+/// The whole check runs on an analysis pool, so discovery lists directories in
+/// parallel too, and every walk of the check shares their listings.
 fn check(
+    request: &Request,
+    ignore: &[String],
+    configuration_findings: bool,
+    with_rules: bool,
+) -> Result<Outcome, Failure> {
+    let _listings = vfs::ListingCache::enable();
+    with_analysis_pool(|| check_in_pool(request, ignore, configuration_findings, with_rules))?
+}
+
+fn check_in_pool(
     request: &Request,
     ignore: &[String],
     configuration_findings: bool,
@@ -578,7 +591,7 @@ fn check(
         && meta_rule("MET005").is_some()
         && configured.contains("IMP004"));
     let mut ownership_issues = Vec::new();
-    let (mut violations, suppressed, coverage, digests) = with_analysis_pool(|| {
+    let (mut violations, suppressed, coverage, digests) = (|| {
         let parsed = profile::time("parse sources", || parse_sources(&sources, needs_syntax))?;
         let source_pairs: Vec<(&SourceFile, &ParsedSource)> =
             sources.iter().copied().zip(&parsed).collect();
@@ -897,7 +910,7 @@ fn check(
         })?;
         drop(coverage_span);
         Ok::<_, String>((violations, suppressed, coverage, digests))
-    })??;
+    })()?;
     let _span = profile::span("build report");
     violations.sort_by(Violation::compare);
     // In a uv workspace every finding names the member that owns its file.

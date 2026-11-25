@@ -5,7 +5,10 @@ use crate::checker::config::discovery::import_root;
 use crate::checker::config::paths;
 use crate::checker::config::workspace::member_directories;
 use crate::checker::config::{Exclusion, Project};
-use crate::checker::files::{FileIndex, SourceFile, is_identifier, python_files, relative_path};
+use crate::checker::files::{
+    self, FileIndex, PythonFile, SourceFile, is_identifier, python_files, relative_path,
+    resolved_relative_path,
+};
 use crate::checker::patterns::PathPattern;
 use crate::checker::profile;
 use crate::checker::source::ParsedSource;
@@ -202,13 +205,19 @@ impl Coverage {
             )
         });
         let mut tested: HashMap<PathBuf, bool> = HashMap::new();
+        profile::time("list coverage directories", || {
+            files::prefetch_python_directories(&ordered);
+        });
         for directory in ordered {
             if !vfs::is_dir(&directory) {
                 continue;
             }
-            for path in python_files(&directory) {
-                let absolute = real(&path);
-                let relative = relative_path(&files.root, &path);
+            for PythonFile {
+                path,
+                real: absolute,
+            } in python_files(&directory)
+            {
+                let relative = resolved_relative_path(&files.root, &absolute);
                 if inventory.contains_key(&relative) || test_roots.contains(&absolute) {
                     continue;
                 }
