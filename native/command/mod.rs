@@ -65,7 +65,12 @@ pub fn check(arguments: &[OsString]) -> Option<i32> {
         return None;
     };
     profile::start();
-    let output = profile::time("native check", || run(&args));
+    let output = profile::time("native check", || {
+        // One set of directory listings serves the whole check, from the
+        // configuration's workspace scan to the report's validation.
+        let _listings = vfs::ListingCache::enable();
+        run(&args)
+    });
     profile::report();
     let (text, code) = output.map_err(trace).ok()?;
     let text = if cfg!(windows) {

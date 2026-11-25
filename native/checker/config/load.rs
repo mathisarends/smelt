@@ -191,6 +191,11 @@ fn with_origins(error: ConfigError, composed: &Composition) -> ConfigError {
 }
 
 fn misplaced_configs(root: &Path, known: &[PathBuf]) -> Vec<Issue> {
+    // While a check shares listings, keep the scanned tree's for its walks.
+    vfs::prefetch(&[root.to_path_buf()], |entry| {
+        let name = file_name(&entry.path);
+        !name.starts_with('.') && !SKIPPED.contains(&name.as_str())
+    });
     let mut found = Vec::new();
     collect_configs(root, &mut found);
     found.sort();
@@ -210,25 +215,29 @@ fn misplaced_configs(root: &Path, known: &[PathBuf]) -> Vec<Issue> {
         .collect()
 }
 
+/// The directories a workspace's config scan does not enter, besides hidden ones.
+const SKIPPED: [&str; 6] = [
+    "venv",
+    "env",
+    "node_modules",
+    "build",
+    "dist",
+    "__pycache__",
+];
+
 fn collect_configs(directory: &Path, found: &mut Vec<PathBuf>) {
-    const SKIPPED: [&str; 6] = [
-        "venv",
-        "env",
-        "node_modules",
-        "build",
-        "dist",
-        "__pycache__",
-    ];
-    for entry in paths::children(directory) {
-        let name = file_name(&entry);
-        if CONFIG_FILENAMES.contains(&name.as_str()) && vfs::is_file(&entry) {
-            found.push(entry);
+    // The listing tells each entry's kind; only a link needs resolving, and
+    // it is followed only where it resolves to itself, as Python compares.
+    for entry in vfs::read_dir(directory).unwrap_or_default() {
+        let name = file_name(&entry.path);
+        if CONFIG_FILENAMES.contains(&name.as_str()) && entry.is_file() {
+            found.push(entry.path);
         } else if !name.starts_with('.')
             && !SKIPPED.contains(&name.as_str())
-            && vfs::is_dir(&entry)
-            && paths::same_path(&paths::resolve(&entry), &entry)
+            && entry.is_dir()
+            && (!entry.is_link() || paths::same_path(&paths::resolve(&entry.path), &entry.path))
         {
-            collect_configs(&entry, found);
+            collect_configs(&entry.path, found);
         }
     }
 }
