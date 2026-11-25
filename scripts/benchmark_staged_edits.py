@@ -13,7 +13,6 @@ import time
 from pathlib import Path
 
 from benchmark_checks import git
-from benchmark_client import shutdown
 
 # Change executable Python in existing, independently passing files. A missing
 # anchor is a broken workload and must never turn into an exact-result retry.
@@ -53,97 +52,84 @@ def benchmark(
 ) -> dict[str, dict[str, list[float]]]:
     repo = Path(__file__).resolve().parents[1]
     roots = {name: parent / name for name in ("base", "candidate")}
-    sessions = parent / "sessions"
     env = {
         **os.environ,
         "UV_CACHE_DIR": command(repo, ["uv", "cache", "dir"]),
         "UV_PYTHON_INSTALL_DIR": command(repo, ["uv", "python", "dir"]),
         "PREK_HOME": command(repo, ["uv", "run", "--frozen", "prek", "cache", "dir"]),
-        "SMELT_DAEMON": "1",
-        "LOCALAPPDATA": str(sessions),
-        "XDG_CACHE_HOME": str(sessions),
     }
     env.pop("UV_PROJECT_ENVIRONMENT", None)
     env.pop("VIRTUAL_ENV", None)
     hooks = ["uv", "run", "--frozen", "prek", "run"]
-    try:
-        for name, revision in (("base", args.base), ("candidate", args.candidate)):
-            sha = command(
-                repo, ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"]
-            )
-            git(
-                repo,
-                "clone",
-                "--quiet",
-                "--shared",
-                "--no-checkout",
-                str(repo),
-                str(roots[name]),
-            )
-            git(roots[name], "checkout", "--quiet", "--detach", sha)
-            command(roots[name], ["uv", "sync", "--frozen"], env=env)
-            sys.stdout.write(f"{name}: {sha}\n")
-            sys.stdout.flush()
-        full_check: dict[str, list[float]] = {"base": [], "candidate": []}
-        times = {"strict full check after test edit": full_check}
-        for scenario, (path, anchor, replacement) in _EDITS.items():
-            samples: dict[str, list[float]] = {"base": [], "candidate": []}
-            times[scenario] = samples
-            originals = {
-                name: (root / path).read_bytes() for name, root in roots.items()
-            }
-            for i in range(args.repeats + 1):
-                for name in reversed(roots) if i % 2 else roots:
-                    root = roots[name]
-                    original = originals[name]
-                    if original.count(anchor.encode()) != 1:
-                        raise ValueError(f"Expected one {anchor!r} in {name}/{path}")
-                    (root / path).write_bytes(
-                        original.replace(
-                            anchor.encode(), replacement.format(i + 3).encode()
-                        )
+    for name, revision in (("base", args.base), ("candidate", args.candidate)):
+        sha = command(repo, ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"])
+        git(
+            repo,
+            "clone",
+            "--quiet",
+            "--shared",
+            "--no-checkout",
+            str(repo),
+            str(roots[name]),
+        )
+        git(roots[name], "checkout", "--quiet", "--detach", sha)
+        command(roots[name], ["uv", "sync", "--frozen"], env=env)
+        sys.stdout.write(f"{name}: {sha}\n")
+        sys.stdout.flush()
+    full_check: dict[str, list[float]] = {"base": [], "candidate": []}
+    times = {"strict full check after test edit": full_check}
+    for scenario, (path, anchor, replacement) in _EDITS.items():
+        samples: dict[str, list[float]] = {"base": [], "candidate": []}
+        times[scenario] = samples
+        originals = {name: (root / path).read_bytes() for name, root in roots.items()}
+        for i in range(args.repeats + 1):
+            for name in reversed(roots) if i % 2 else roots:
+                root = roots[name]
+                original = originals[name]
+                if original.count(anchor.encode()) != 1:
+                    raise ValueError(f"Expected one {anchor!r} in {name}/{path}")
+                (root / path).write_bytes(
+                    original.replace(
+                        anchor.encode(), replacement.format(i + 3).encode()
                     )
-                    git(root, "add", "--", path)
-                    start = time.perf_counter()
-                    command(root, hooks, env=env)
-                    elapsed = time.perf_counter() - start
-                    if i:
-                        samples[name].append(elapsed)
-                    sys.stdout.write(
-                        f"{scenario}, {name}, sample {i}: {elapsed:.2f}s\n"
-                    )
-                    sys.stdout.flush()
-                    if scenario == "test body":
-                        start = time.perf_counter()
-                        command(
-                            root,
-                            [
-                                "uv",
-                                "run",
-                                "--frozen",
-                                "smelt",
-                                "check",
-                                "--strict-coverage",
-                                "--fail-on",
-                                "warning",
-                            ],
-                            env=env,
-                        )
-                        if i:
-                            full_check[name].append(time.perf_counter() - start)
-            for root in roots.values():
-                git(
-                    root,
-                    "restore",
-                    "--source=HEAD",
-                    "--staged",
-                    "--worktree",
-                    "--",
-                    path,
                 )
-        return times
-    finally:
-        shutdown(sessions)
+                git(root, "add", "--", path)
+                start = time.perf_counter()
+                command(root, hooks, env=env)
+                elapsed = time.perf_counter() - start
+                if i:
+                    samples[name].append(elapsed)
+                sys.stdout.write(f"{scenario}, {name}, sample {i}: {elapsed:.2f}s\n")
+                sys.stdout.flush()
+                if scenario == "test body":
+                    start = time.perf_counter()
+                    command(
+                        root,
+                        [
+                            "uv",
+                            "run",
+                            "--frozen",
+                            "smelt",
+                            "check",
+                            "--strict-coverage",
+                            "--fail-on",
+                            "warning",
+                        ],
+                        env=env,
+                    )
+                    if i:
+                        full_check[name].append(time.perf_counter() - start)
+        for root in roots.values():
+            git(
+                root,
+                "restore",
+                "--source=HEAD",
+                "--staged",
+                "--worktree",
+                "--",
+                path,
+            )
+    return times
 
 
 def main() -> None:

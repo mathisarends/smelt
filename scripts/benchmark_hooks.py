@@ -46,7 +46,6 @@ def hook_check(
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     if analyzer.is_file():
         env.pop("PYTHONPATH", None)
-        env["SMELT_DAEMON"] = "1"
     else:
         env["PYTHONPATH"] = str(analyzer)
     started = time.perf_counter()

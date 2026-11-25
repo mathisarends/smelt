@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import json
-import runpy
 import shutil
 import subprocess
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -14,6 +12,9 @@ from smelt.diagnostics.debt import Debt
 from smelt.engine.changes import GitIndex, capture_index
 from smelt.engine.check import snippet_reader
 from tests.helpers import LAYERED_CONFIG, MEMBER_BOUNDARIES, check, write_policy_project
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 
@@ -830,40 +831,6 @@ def test_inventory_changes_invalidate_reused_results(
     cached = _check(repo, capsys)
     assert cached[0] == 1
     assert cached == _check(repo, capsys, "--no-cache")
-
-
-def test_retained_worker_matches_fresh_checks_after_edits_errors_and_head_changes(
-    repo: Path,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(repo)
-    project = Path(__file__).resolve().parents[2]
-    # The benchmark harness is a standalone script, not an installed package.
-    harness = runpy.run_path(str(project / "scripts/benchmark_session.py"))
-    invoke_client = harness["invoke_client"]
-    with harness["session"](repo, project) as (endpoint, _):
-        _, initial = invoke_client(repo, endpoint)
-        assert initial == _check(repo, capsys, "--no-cache")[1]
-        (repo / "app/consumer.py").write_text("")
-        _git(repo, "add", "app/consumer.py")
-        # The retained process must still inspect captured source, not this repair.
-        (repo / "app/consumer.py").write_text(
-            "from .browser import Browser\nBrowser().emit()\n"
-        )
-        _, edited = invoke_client(repo, endpoint)
-        assert edited["violations"][0]["path"] == "app/browser.py"
-        assert edited == _check(repo, capsys, "--no-cache")[1]
-        (repo / "smelt.yml").write_text("broken: [")
-        _git(repo, "add", "smelt.yml")
-        with pytest.raises(RuntimeError, match="worker check failed"):
-            invoke_client(repo, endpoint)
-        (repo / "smelt.yml").write_text(CONFIG)
-        _git(repo, "add", "smelt.yml")
-        _git(repo, "commit", "-qm", "accept finding")
-        _, committed = invoke_client(repo, endpoint)
-        assert not committed["violations"]
-        assert committed == _check(repo, capsys, "--no-cache")[1]
 
 
 def test_staged_native_import_graph_ignores_unstaged_repairs_and_missing_working_files(

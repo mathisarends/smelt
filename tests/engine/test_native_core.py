@@ -107,7 +107,6 @@ def test_reports_git_snapshots_like_the_python_engine(
     helpers = tmp_path / "shop/helpers.py"
     helpers.write_text(helpers.read_text(encoding="utf-8") + "\n\nimport os\n")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("SMELT_DAEMON", "0")
 
     monkeypatch.setenv("SMELT_CORE", "python")
     expected = _cli_report(capsys, arguments)

@@ -142,8 +142,7 @@ def _compare_cli(root: Path, arguments: tuple[str, ...], *, label: str) -> int:
 def _cli_report(
     root: Path, arguments: tuple[str, ...], *, engine: str
 ) -> dict[str, Any]:
-    environment = {**os.environ, "SMELT_DAEMON": "0"}
-    environment["SMELT_CORE"] = engine
+    environment = {**os.environ, "SMELT_CORE": engine}
     result = subprocess.run(  # noqa: S603 - this interpreter's smelt
         [
             sys.executable,

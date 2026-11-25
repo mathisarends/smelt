@@ -21,7 +21,6 @@ def run(command: list[str], root: Path, *, timeout: int = 240) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        env={**os.environ, "SMELT_DAEMON": "0"},
         check=False,
         timeout=timeout,
     )

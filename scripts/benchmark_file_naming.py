@@ -111,7 +111,7 @@ def measure(
 ) -> tuple[float, dict[str, Any]]:
     if mode == "cli":
         return invoke(root, args.analyzer, "--staged")
-    environment = {**os.environ, "SMELT_DAEMON": "1", "PYTHONIOENCODING": "utf-8"}
+    environment = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     started = time.perf_counter()
     result = subprocess.run(  # noqa: S603 - explicit benchmark runner
         [str(args.runner), "run", "smelt", "--all-files", "--verbose"],
@@ -208,7 +208,7 @@ def benchmark(args: argparse.Namespace, parent: Path) -> dict[str, Any]:
             "comparison": "Same candidate with policies omitted versus both policies enabled; not a comparison against a prior release.",
             "hook": "Complete prek run smelt --all-files --verbose; local system hook, native CLI, independent repository/cache per mode and policy.",
             "order": "Alternating mode/policy order each repetition.",
-            "cold": "Single first observations include cache creation and worker startup; excluded from warm samples.",
+            "cold": "Single first observations include cache creation; excluded from warm samples.",
             "limits": "Synthetic Windows repositories; no installation, uv wrapper or other hooks. p95 is nearest rank (maximum at seven repeats).",
         },
     }

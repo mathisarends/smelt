@@ -74,9 +74,10 @@ record broad debt merely to obtain a passing commit.
 
 ## Performance
 
-Checks keep no cache. Every run analyzes the working tree or the staged index
-afresh in the compiled native core, so a result never depends on an earlier
-run, and there is no `.smelt_cache/` directory to ignore or delete.
+Checks keep no cache and leave no background process behind. Every run
+analyzes the working tree or the staged index afresh in the compiled native
+core, so a result never depends on an earlier run, and there is no
+`.smelt_cache/` directory to ignore or delete.
 `--no-cache` is still accepted and has no effect.
 
 Staged checks read source and metadata directly from the captured Git blobs,
@@ -91,12 +92,6 @@ worktrees, split indexes and `GIT_INDEX_FILE`, including temporary indexes used
 for partial commits. Unsupported inputs, other Git environment overrides or a
 failed reader fall back to Git. `--base` resolution still uses Git.
 `SMELT_NATIVE_GIT=0` disables the native reader for diagnosis.
-
-The installed Rust client reuses a local worker for read-only checks. Workers are
-scoped to the interpreter, complete environment and invocation directory, serialize
-requests and expire after 120 idle seconds. Analyzer changes restart the worker;
-startup or IPC failures run the normal foreground checker. `SMELT_DAEMON=0`
-disables workers and `SMELT_DAEMON=1` explicitly enables them.
 
 The PR hook-latency job compares the complete pre-commit chain of a revision
 with its base; see [CONTRIBUTING.md](../CONTRIBUTING.md) to reproduce it.

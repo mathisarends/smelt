@@ -37,7 +37,6 @@ def invoke(root: Path, analyzer: Path, *args: str) -> tuple[float, dict[str, Any
     if analyzer.is_file():
         command = [str(analyzer)]
         env.pop("PYTHONPATH", None)
-        env["SMELT_DAEMON"] = "0" if "--no-cache" in args else "1"
     else:
         command = [sys.executable, "-m", "smelt"]
         env["PYTHONPATH"] = str(analyzer)

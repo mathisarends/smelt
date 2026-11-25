@@ -5,10 +5,9 @@
 Smelt runs on Python 3.12 to 3.14. Its native core parses the newest Python grammar
 whichever Python runs smelt, so 3.14's `except A, B:` or t-strings check on 3.12 too.
 
-The installed command uses a native client and reuses a bounded worker for local
-read-only checks. Use `SMELT_DAEMON=0 smelt check` or `python -m smelt check`
-to run directly. A checkout or source distribution requires Rust 1.98+ and a
-platform linker; release wheels include the compiled client.
+The installed command checks in a compiled native core. A checkout or source
+distribution requires Rust 1.98+ and a platform linker; release wheels include
+the compiled core.
 
 
 ## Using Smelt with coding agents

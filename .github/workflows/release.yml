@@ -54,8 +54,7 @@ jobs:
       - name: Check generated catalog, rule docs and skill references for drift
         run: uv run --frozen python scripts/generate.py --check
       - run: uv run --frozen prek run --all-files --show-diff-on-failure
-      - run: uv run --frozen pytest -n auto -m "not session"
-      - run: uv run --frozen pytest -m session
+      - run: uv run --frozen pytest -n auto
       - run: uv run --frozen smelt check --strict-coverage --fail-on warning
       - run: uv build --no-sources --sdist
       - name: Install and smoke-test the source distribution

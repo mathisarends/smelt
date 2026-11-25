@@ -9,15 +9,6 @@ the direct Python entry point for debugging. Installed
 wheels include both the native client and the Python engine. Keep Cargo.toml's
 version equal to pyproject.toml's version when releasing.
 
-The native client reuses a worker for read-only local checks. Workers are scoped
-to the interpreter, environment and invocation directory, serialize requests and
-expire after 120 idle seconds. Every request captures Git/configuration again.
-Changes to analyzer sources/dependency identity restart the worker. `--fix`, other
-commands and CI run directly; `SMELT_DAEMON=0` disables workers and
-`SMELT_DAEMON=1` enables them explicitly in CI. Transport/startup failures fall
-back to the foreground checker. Tests must cover fresh-client output/exit codes,
-partial staging, restart and concurrent startup.
-
 Native interpreter launches use Python's safe-path mode so a project package named
 `smelt` cannot replace the installed analyzer. Explicit PYTHONPATH overrides are
 retained; relative PYTHONPATH/PYTHONHOME/PYTHONUSERBASE entries use the foreground
@@ -331,14 +322,11 @@ uv run pytest tests/rules/test_registry.py tests/test_docs.py
 uv run smelt explain <code> --format json
 uv run smelt check --strict-coverage --fail-on warning --format json
 uv run prek run --all-files
-uv run pytest -n auto -m "not session"
-uv run pytest -m session
+uv run pytest -n auto
 ```
 
-Replace placeholders with real paths/codes. The full suite runs in two
-steps: `-n auto` spreads it over all cores with pytest-xdist, and the `session`
-tests, which start real workers against startup deadlines, run serially after it.
-Focused runs need neither. If source discovery, analysis shared
+Replace placeholders with real paths/codes. `-n auto` spreads the full suite
+over all cores with pytest-xdist; focused runs do not need it. If source discovery, analysis shared
 by multiple rules, metadata or machine output changes, include its consumers in
 focused validation; CI runs the full supported Python/OS matrix.
 

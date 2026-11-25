@@ -16,6 +16,8 @@ current configuration and complete rule contracts, see the [README](README.md),
   index, so a result never depends on an earlier run, and smelt no longer
   writes a `.smelt_cache/` directory; an existing one can be deleted.
   `--no-cache` is still accepted and has no effect.
+- The installed `smelt` command no longer starts a background worker; every
+  check runs in the foreground and exits. `SMELT_DAEMON` has no effect.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.

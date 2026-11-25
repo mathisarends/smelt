@@ -120,9 +120,6 @@ minversion = "9.0"
 testpaths = ["tests"]
 norecursedirs = ["tests/fixtures"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
-markers = [
-    "session: starts real check workers against startup deadlines; run serially",
-]
 xfail_strict = true
 filterwarnings = ["error"]
 

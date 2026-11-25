@@ -1885,7 +1885,6 @@ version = "0.16.1"
 dependencies = [
  "base64",
  "gix",
- "libc",
  "rayon",
  "regex",
  "ruff_python_ast",
@@ -1897,7 +1896,6 @@ dependencies = [
  "sha2 0.10.9",
  "toml",
  "unicode-ident",
- "windows-sys",
 ]
 
 [[package]]
