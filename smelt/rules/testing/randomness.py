@@ -1,43 +1,6 @@
-from __future__ import annotations
-
-from collections import defaultdict
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-_GENERATORS = frozenset(
-    {
-        "uuid.uuid1",
-        "uuid.uuid4",
-        "os.urandom",
-        "secrets.choice",
-        "secrets.randbelow",
-        "secrets.randbits",
-        "secrets.token_bytes",
-        "secrets.token_hex",
-        "secrets.token_urlsafe",
-        *(
-            f"random.{name}"
-            for name in (
-                "random",
-                "randint",
-                "randrange",
-                "choice",
-                "choices",
-                "sample",
-                "shuffle",
-                "uniform",
-                "getrandbits",
-                "randbytes",
-            )
-        ),
-    }
-)
 
 
 class NondeterministicTestData(Rule):
@@ -58,21 +21,3 @@ class NondeterministicTestData(Rule):
         ),
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            calls: dict[int, set[str]] = defaultdict(set)
-            for call in module.calls:
-                if call.qualified in _GENERATORS:
-                    calls[call.node.lineno].add(call.qualified)
-            for line, generators in sorted(calls.items()):
-                yield self.violation(
-                    "review random test data; prefer fixed inputs or a seeded local generator",
-                    path=module.path,
-                    line=line,
-                    expected={
-                        "generators": sorted(generators),
-                        "automatic_rewrite": False,
-                    },
-                    hint="Use fixed IDs/values for incidental setup; keep intentional randomness tests with a specific reason.",
-                )

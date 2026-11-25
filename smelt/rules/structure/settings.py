@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.settings import secret_settings
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class SecretSettingsField(Rule):
@@ -26,25 +18,3 @@ class SecretSettingsField(Rule):
         canonical="Type secret settings fields as SecretStr or SecretBytes",
         config=("rules", "style.overrides"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            for setting in secret_settings(ctx.asts.parse(source.path)):
-                yield self.violation(
-                    f"review secret settings field {setting.owner}.{setting.name}; use a masked secret type",
-                    path=source.path,
-                    line=setting.node.lineno,
-                    column=setting.node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "class": setting.owner,
-                        "field": setting.name,
-                        "plain_types": list(setting.plain_types),
-                        "suggested_types": [
-                            "SecretBytes" if kind == "bytes" else "SecretStr"
-                            for kind in setting.plain_types
-                        ],
-                        "automatic_rewrite": False,
-                    },
-                    hint="Use SecretStr/SecretBytes for credentials; review plaintext consumers and serialization explicitly.",
-                )

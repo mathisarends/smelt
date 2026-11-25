@@ -1,31 +1,15 @@
 from __future__ import annotations
 
 import ast
-import re
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
 from smelt.diagnostics.fixes import (
-    Applicability,
-    Fix,
     FixAvailability,
-    TextEdit,
-    TextSpan,
 )
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-from smelt.rules.edits import SourceText
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 type _Function = ast.FunctionDef | ast.AsyncFunctionDef
-
-_EXEMPT_DECORATORS = frozenset({"overload", "override"})
-
-# The separator between the last positional and the first keyword-only parameter.
-_BARE_STAR = re.compile(r"\s*,\s*\*\s*,\s*")
 
 
 class ExcessPositionalParameters(Rule):
@@ -81,132 +65,3 @@ class ExcessPositionalParameters(Rule):
             return "Make every parameter keyword-only with a leading *"
         noun = "parameter" if limit == 1 else "parameters"
         return f"Accept at most {limit} positional {noun}; make the rest keyword-only with *"
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            limit, contract = ctx.contracts.threshold(
-                source.module, "max_positional_parameters"
-            )
-            origin = contract.origin if contract else "default"
-            text: SourceText | None = None
-            for function in _functions(ctx.asts.parse(source.path)):
-                if len(function.positional) <= limit:
-                    continue
-                text = text or SourceText(ctx.files.read_text(source.path))
-                fix = _suggestion(text, function, limit)
-                excess = function.positional[limit:]
-                anchor = (
-                    f"after {function.positional[limit - 1]}"
-                    if limit
-                    else "before the first parameter"
-                )
-                yield self.violation(
-                    f"{function.node.name} accepts {len(function.positional)} "
-                    f"positional parameters; {origin} allows {limit}",
-                    path=source.path,
-                    line=function.node.lineno,
-                    column=function.node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "contract": contract.name if contract else None,
-                        "max_positional_parameters": limit,
-                        "function": function.node.name,
-                        "positional": function.positional,
-                        "keyword_only_candidates": excess,
-                        "automatic_rewrite": False,
-                        "suggested_rewrite": fix is not None,
-                    },
-                    hint=(
-                        f"Make {', '.join(excess)} keyword-only by placing * "
-                        f"{anchor}; pass them by keyword at call sites."
-                    ),
-                    fix=fix,
-                )
-
-
-def _suggestion(source: SourceText, function: _Signature, limit: int) -> Fix | None:
-    """Insert * before the first excess parameter; shown, never applied.
-
-    Every call site that passes those arguments positionally has to change too.
-    """
-    arguments = function.node.args
-    if arguments.vararg is not None:
-        return None
-    parameters = [*arguments.posonlyargs, *arguments.args]
-    skipped = len(parameters) - len(function.positional)
-    first = parameters[skipped + limit]
-    if first in arguments.posonlyargs:
-        return None
-    edits = [source.insert(source.span(first).start, "*, ")]
-    if arguments.kwonlyargs:
-        # The existing bare * moves to the new position.
-        ends = [source.span(parameters[-1]).end]
-        ends.extend(source.span(default).end for default in arguments.defaults[-1:])
-        span = TextSpan(max(ends), source.span(arguments.kwonlyargs[0]).start)
-        if not _BARE_STAR.fullmatch(source.text[span.start : span.end]):
-            return None
-        edits.append(TextEdit.at(source.text, span, ", "))
-    return Fix(
-        Applicability.DISPLAY,
-        f"Make {first.arg} and the parameters after it keyword-only",
-        tuple(edits),
-    )
-
-
-@dataclass(frozen=True, slots=True)
-class _Signature:
-    node: _Function
-    positional: list[str]
-
-
-def _functions(tree: ast.Module) -> Iterator[_Signature]:
-    yield from _walk(tree.body, in_class=False)
-
-
-def _walk(body: list[ast.stmt], *, in_class: bool) -> Iterator[_Signature]:
-    for node in body:
-        match node:
-            case ast.ClassDef():
-                yield from _walk(node.body, in_class=True)
-            case ast.FunctionDef() | ast.AsyncFunctionDef():
-                if signature := _signature(node, in_class=in_class):
-                    yield signature
-                yield from _walk(node.body, in_class=False)
-            case _:
-                yield from _walk(_nested(node), in_class=in_class)
-
-
-def _nested(node: ast.stmt) -> list[ast.stmt]:
-    return [
-        child
-        for field in ("body", "orelse", "finalbody", "handlers", "cases")
-        for item in getattr(node, field, ())
-        for child in (
-            item.body
-            if isinstance(item, ast.ExceptHandler | ast.match_case)
-            else [item]
-        )
-        if isinstance(child, ast.stmt)
-    ]
-
-
-def _signature(node: _Function, *, in_class: bool) -> _Signature | None:
-    if node.name.startswith("__") and node.name.endswith("__"):
-        return None
-    decorators = {_decorator_name(decorator) for decorator in node.decorator_list}
-    if decorators & _EXEMPT_DECORATORS:
-        return None
-    names = [arg.arg for arg in (*node.args.posonlyargs, *node.args.args)]
-    if in_class and "staticmethod" not in decorators and names:
-        names = names[1:]
-    return _Signature(node, names)
-
-
-def _decorator_name(decorator: ast.expr) -> str | None:
-    if isinstance(decorator, ast.Call):
-        decorator = decorator.func
-    if isinstance(decorator, ast.Name):
-        return decorator.id
-    if isinstance(decorator, ast.Attribute):
-        return decorator.attr
-    return None

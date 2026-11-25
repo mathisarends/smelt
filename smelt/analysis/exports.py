@@ -69,7 +69,7 @@ def namespace_of(tree: ast.Module, module: str, *, is_package: bool) -> Namespac
 
 
 def resolve_dotted(qualified: str, load: Loader) -> tuple[str, str | None] | None:
-    """Like :func:`resolve_export` for a dotted name such as ``app.billing.Invoice``.
+    """The module defining a dotted name such as ``app.billing.Invoice``.
 
     The longest module prefix short of the last segment is imported as a module;
     the remaining segments are attributes, as in ``from app.billing import
@@ -91,11 +91,11 @@ def resolve_dotted(qualified: str, load: Loader) -> tuple[str, str | None] | Non
     for attribute in parts[end:]:
         if current is None or current[1] is not None:
             break
-        current = resolve_export(current[0], attribute, load)
+        current = _resolve_export(current[0], attribute, load)
     return current
 
 
-def resolve_export(
+def _resolve_export(
     module: str, name: str, load: Loader
 ) -> tuple[str, str | None] | None:
     """The module defining ``module.name`` and its name there.

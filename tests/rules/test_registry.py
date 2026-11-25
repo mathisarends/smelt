@@ -130,7 +130,6 @@ from smelt.cli import main
 assert main(['check', '--no-cache']) == 0
 assert 'smelt.rules.structure.members' in sys.modules
 assert 'smelt.rules.testing.awaits' not in sys.modules
-assert 'smelt.analysis.test_syntax' not in sys.modules
 """
     completed = subprocess.run(  # noqa: S603 - fixed Python regression script
         [sys.executable, "-c", script],

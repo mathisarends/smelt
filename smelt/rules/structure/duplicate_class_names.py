@@ -1,24 +1,6 @@
-from __future__ import annotations
-
-from collections import defaultdict
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.files import SourceFile
-    from smelt.analysis.syntax import ClassDefinition
-
-
-@dataclass(frozen=True, slots=True)
-class _Definition:
-    source: SourceFile
-    node: ClassDefinition
 
 
 class DuplicateClassName(Rule):
@@ -67,57 +49,3 @@ class DuplicateClassName(Rule):
         canonical="Give public classes in one package distinct names",
         config=("rules",),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        # package -> class name -> definitions
-        groups: dict[str, dict[str, list[_Definition]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
-        for source in ctx.files.sources.values():
-            package = (
-                source.module if source.is_package else source.module.rpartition(".")[0]
-            )
-            for node in ctx.syntax.class_definitions(source.path):
-                if not node.name.startswith("_"):
-                    groups[package][node.name].append(_Definition(source, node))
-        for package, names in sorted(groups.items()):
-            for name, definitions in sorted(names.items()):
-                modules = {item.source.module for item in definitions}
-                if len(modules) == 1:
-                    continue
-                for definition in definitions:
-                    yield self._finding(
-                        package, name, definition, definitions=definitions
-                    )
-
-    def _finding(
-        self,
-        package: str,
-        name: str,
-        definition: _Definition,
-        *,
-        definitions: list[_Definition],
-    ) -> Violation:
-        others = [
-            {"module": other.source.module, "line": other.node.line}
-            for other in definitions
-            if other.source.module != definition.source.module
-        ]
-        where = ", ".join(f"{other['module']}:{other['line']}" for other in others)
-        return self.violation(
-            f"Class {name} is also defined in {where}",
-            path=definition.source.path,
-            line=definition.node.line,
-            column=definition.node.column,
-            source_module=definition.source.module,
-            expected={
-                "class": name,
-                "package": package,
-                "others": others,
-                "automatic_rewrite": False,
-            },
-            hint=(
-                f"Rename {name} after its role in {definition.source.module}, "
-                "or merge the classes if they describe the same thing."
-            ),
-        )

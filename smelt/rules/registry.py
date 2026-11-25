@@ -15,10 +15,7 @@ from smelt.rules.activation import POLICIES
 from smelt.rules.base import RuleSet
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from smelt.analysis.context import AnalysisContext
-    from smelt.diagnostics.violation import Violation
     from smelt.rules.base import GuideTarget, RuleContract, RuleDoc
 
 _IMPLEMENTATIONS = (
@@ -141,9 +138,6 @@ class _LazyRule:
     @cached_property
     def _implementation(self) -> RuleContract:
         return _load(self._target)
-
-    def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
-        return self._implementation.check(ctx)
 
     def explain(self) -> RuleDoc:
         return self._implementation.explain()

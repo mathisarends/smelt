@@ -1,24 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, ImportLink, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-from smelt.rules.common import (
-    boundary_imports,
-    import_violation,
-    join,
-    readable_list,
-    skip_import,
-)
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.imports import ImportDetail
-    from smelt.model import ModuleInfo
+from smelt.rules.common import readable_list
 
 
 class LayerBoundary(Rule):
@@ -75,86 +61,3 @@ class LayerBoundary(Rule):
             f"From layer {layer}, import only {readable_list(allowed, conjunction='or')}; "
             "reach other layers through a port"
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        model = ctx.model
-        for detail, chain in boundary_imports(ctx):
-            if detail.external or skip_import(ctx, detail):
-                continue
-            source = model.info(detail.importer)
-            forbidden = _forbidden_layer(ctx, source, model.info(detail.imported))
-            if source is not None and forbidden is not None:
-                yield self._violation(
-                    ctx, detail, source, target_layer=forbidden, chain=chain
-                )
-
-    def _violation(
-        self,
-        ctx: AnalysisContext,
-        detail: ImportDetail,
-        source: ModuleInfo,
-        *,
-        target_layer: str,
-        chain: tuple[ImportLink, ...] = (),
-    ) -> Violation:
-        layer = source.layer or ""
-        allowed = list(ctx.model.layers[layer].may_depend_on)
-        via = " (indirectly)" if chain else ""
-        return import_violation(
-            self,
-            ctx,
-            detail,
-            message=f"{layer} must not depend on {target_layer}{via}",
-            expected={"may_depend_on": allowed},
-            hint=_hint(ctx, detail, source, chain=chain),
-            chain=chain,
-        )
-
-
-def _forbidden_layer(
-    ctx: AnalysisContext, source: ModuleInfo | None, target: ModuleInfo | None
-) -> str | None:
-    """The target's layer if ``source`` must not import ``target``."""
-    if (
-        source is None
-        or target is None
-        or source.wiring
-        or not (source.in_grid and target.in_grid)
-    ):
-        return None
-    if source.layer is None or target.layer is None:
-        return None
-    if source.layer == target.layer:
-        return None
-    # across features ARC002 decides; a central module shares its layer rules with all
-    if source.feature != target.feature and not (source.central or target.central):
-        return None
-    if target.layer in ctx.model.layers[source.layer].may_depend_on:
-        return None
-    return target.layer
-
-
-def _hint(
-    ctx: AnalysisContext,
-    detail: ImportDetail,
-    source: ModuleInfo,
-    *,
-    chain: tuple[ImportLink, ...],
-) -> str:
-    model = ctx.model
-    layer = source.layer or ""
-    allowed = join(list(model.layers[layer].may_depend_on))
-    if not model.layers[layer].may_depend_on and not chain:
-        return (
-            f"{layer} depends on no other layer. Define what it needs as an "
-            f"abstraction in {layer} and implement it in an outer layer."
-        )
-    if chain:
-        return (
-            f"The dependency goes through {join([link.imported for link in chain[:-1]])}; "
-            f"break the chain or move the code into a layer {layer} may use ({allowed})."
-        )
-    return (
-        f"Move what {layer} needs into a layer it may depend on ({allowed}), "
-        "or invert the dependency behind an abstraction."
-    )

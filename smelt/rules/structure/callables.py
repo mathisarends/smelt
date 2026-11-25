@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class PreferCallableInstance(Rule):
@@ -64,85 +55,4 @@ class PreferCallableInstance(Rule):
             "a single public method"
         ),
         config=("rules", "style.overrides"),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            for cls in tree_nodes(ctx.asts.parse(source.path)):
-                if not isinstance(cls, ast.ClassDef):
-                    continue
-                methods = _plain_methods(cls)
-                public = [
-                    method for method in methods if not method.name.startswith("_")
-                ]
-                if len(public) != 1 or any(m.name == "__call__" for m in methods):
-                    continue
-                [method] = public
-                constructor = next((m for m in methods if m.name == "__init__"), None)
-                yield self.violation(
-                    f"review {cls.name}.{method.name} as __call__ with an operation-based class name",
-                    path=source.path,
-                    line=cls.lineno,
-                    column=cls.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "class": cls.name,
-                        "method": method.name,
-                        "candidate_method": "__call__",
-                        "constructor_signature": _signature(constructor)
-                        if constructor
-                        else "",
-                        "operation_signature": _signature(method),
-                        "async_operation": isinstance(method, ast.AsyncFunctionDef),
-                        "review_class_name": True,
-                        "review_required": True,
-                        "automatic_rewrite": False,
-                    },
-                    hint="Consider __call__ and a class name describing the operation. Preserve constructor and call-time arguments separately; review all callers and public compatibility before renaming.",
-                )
-
-
-def _plain_methods(cls: ast.ClassDef) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
-    if cls.bases or cls.keywords or cls.decorator_list:
-        return []
-    methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
-    names: set[str] = set()
-    for node in cls.body:
-        if isinstance(node, ast.Pass) or (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        ):
-            continue
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            return []
-        if (
-            node.decorator_list
-            or not (node.args.posonlyargs or node.args.args)
-            or node.name in names
-            or (
-                node.name.startswith("__")
-                and node.name.endswith("__")
-                and node.name not in {"__init__", "__call__"}
-            )
-        ):
-            return []
-        names.add(node.name)
-        methods.append(node)
-    return methods
-
-
-def _signature(method: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    args = method.args
-    positional = [*args.posonlyargs, *args.args][1:]
-    return ast.unparse(
-        ast.arguments(
-            posonlyargs=args.posonlyargs[1:],
-            args=args.args if args.posonlyargs else args.args[1:],
-            vararg=args.vararg,
-            kwonlyargs=args.kwonlyargs,
-            kw_defaults=args.kw_defaults,
-            kwarg=args.kwarg,
-            defaults=args.defaults[-len(positional) :] if positional else [],
-        )
     )

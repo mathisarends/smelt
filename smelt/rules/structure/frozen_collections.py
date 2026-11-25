@@ -1,22 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.bindings import annotation_name, qualified_name, unshadowed_bindings
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
-
-_ALTERNATIVES = {
-    "builtins.dict": "a defensive copy behind MappingProxyType, exposed as Mapping",
-    "builtins.list": "tuple",
-    "builtins.set": "frozenset",
-}
 
 
 class MutableFieldInFrozenDataclass(Rule):
@@ -70,52 +54,4 @@ class MutableFieldInFrozenDataclass(Rule):
             " dataclasses"
         ),
         config=("rules", "style.overrides"),
-    )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            tree = ctx.asts.parse(source.path)
-            bindings = unshadowed_bindings(tree, builtin_names=("dict", "list", "set"))
-            for owner in tree_nodes(tree):
-                if not isinstance(owner, ast.ClassDef) or not _is_frozen(
-                    owner, bindings
-                ):
-                    continue
-                for field in owner.body:
-                    if not isinstance(field, ast.AnnAssign) or not isinstance(
-                        field.target, ast.Name
-                    ):
-                        continue
-                    kind = annotation_name(field.annotation, bindings)
-                    if kind is None or kind not in _ALTERNATIVES:
-                        continue
-                    yield self.violation(
-                        f"Frozen dataclass {owner.name}.{field.target.id} contains "
-                        f"mutable {kind.removeprefix('builtins.')} contents",
-                        path=source.path,
-                        line=field.lineno,
-                        column=field.col_offset + 1,
-                        source_module=source.module,
-                        expected={
-                            "class": owner.name,
-                            "field": field.target.id,
-                            "mutable_type": kind,
-                            "automatic_rewrite": False,
-                        },
-                        hint=f"Review ownership; consider {_ALTERNATIVES[kind]}.",
-                    )
-
-
-def _is_frozen(owner: ast.ClassDef, bindings: Mapping[str, str]) -> bool:
-    return any(
-        isinstance(decorator, ast.Call)
-        and qualified_name(decorator.func, bindings) == "dataclasses.dataclass"
-        and not any(keyword.arg is None for keyword in decorator.keywords)
-        and any(
-            keyword.arg == "frozen"
-            and isinstance(keyword.value, ast.Constant)
-            and keyword.value.value is True
-            for keyword in decorator.keywords
-        )
-        for decorator in owner.decorator_list
     )

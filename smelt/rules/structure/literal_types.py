@@ -1,17 +1,6 @@
-from __future__ import annotations
-
-import json
-from collections import Counter, defaultdict
-from itertools import islice
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.literal_types import LiteralMembers, LiteralType, literal_types
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class DuplicateLiteralType(Rule):
@@ -32,59 +21,3 @@ class DuplicateLiteralType(Rule):
         ),
         config=("rules", "style.overrides"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        groups: dict[tuple[str, LiteralMembers], dict[str, list[LiteralType]]] = (
-            defaultdict(lambda: defaultdict(list))
-        )
-        for source in sorted(
-            ctx.files.sources.values(), key=lambda source: source.path
-        ):
-            package = source.module.split(".", maxsplit=1)[0]
-            for occurrence in literal_types(ctx, source.path):
-                groups[package, occurrence.members][source.path].append(occurrence)
-        for (package, members), files in sorted(groups.items()):
-            count = sum(map(len, files.values()))
-            if count < 2:  # noqa: PLR2004 - a duplicate needs at least two occurrences
-                continue
-            label = f"Literal[{', '.join(member.value for member in members)}]"
-            locations = list(
-                islice(
-                    (
-                        {"path": path, "line": site.line, "column": site.column}
-                        for path, sites in files.items()
-                        for site in sites
-                    ),
-                    5,
-                )
-            )
-            for path, sites in files.items():
-                first = sites[0]
-                owner = ctx.files.source_for_path(path)
-                ordinals: Counter[str] = Counter()
-                edges = []
-                for site in sites:
-                    edges.append(
-                        json.dumps([members, site.scope, ordinals[site.scope]])
-                    )
-                    ordinals[site.scope] += 1
-                yield self.violation(
-                    f"consider a shared alias for {label}; {count} occurrences in {package}",
-                    path=path,
-                    line=first.line,
-                    column=first.column,
-                    end_line=first.end_line,
-                    end_column=first.end_column,
-                    source_module=owner.module if owner else None,
-                    expected={
-                        "scope": package,
-                        "literal": label,
-                        "members": [list(member) for member in members],
-                        "count": count,
-                        "locations": locations,
-                        "locations_truncated": count > len(locations),
-                        "literal_edges": edges,
-                        "automatic_rewrite": False,
-                    },
-                    hint="Reuse or extract a plain type alias for the same concept; retain Annotated/Field metadata on the relevant wrappers.",
-                )

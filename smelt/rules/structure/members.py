@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import ModuleKind
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name, rename_advice
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class InternalPublicMember(Rule):
@@ -41,45 +32,6 @@ class InternalPublicMember(Rule):
         ),
     )
 
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for member in ctx.member_usage.members:
-            if (
-                info := ctx.model.info(member.module)
-            ) and info.kind is ModuleKind.COMPOSITION_ROOT:
-                continue
-            node = member.node
-            if (
-                node.name.startswith("_")
-                or member.kind == "staticmethod"
-                or member.external_use
-            ):
-                continue
-            qualified = (
-                f"{member.owner.name}.{node.name}" if member.owner else node.name
-            )
-            suggested_name = private_name(node.name, member.occupied_names)
-            yield self.violation(
-                f"{qualified} is public, but has no observed use outside its {'class' if member.owner else 'module'}",
-                path=member.path,
-                line=node.lineno,
-                column=node.col_offset + 1,
-                source_module=member.module,
-                target_module=f"{member.module}.{qualified}",
-                expected={
-                    "kind": member.kind,
-                    "class": member.owner.name if member.owner else None,
-                    "member": node.name,
-                    "suggested_name": suggested_name,
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "observed_usage": "internal-only"
-                    if member.internal_references
-                    else "unused",
-                    "internal_references": list(member.internal_references),
-                    "automatic_rename": False,
-                },
-                hint=f"Unless public by design, {rename_advice(node.name, suggested_name)}; otherwise export it or add `# smelt: ignore[VIS001] -- <reason>` on the definition.",
-            )
-
 
 class InternalStaticHelper(Rule):
     code = "LAY005"
@@ -102,33 +54,3 @@ class InternalStaticHelper(Rule):
         ),
         config=("rules", "style.overrides", "project.test_roots"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for member in ctx.member_usage.members:
-            if (
-                member.kind != "staticmethod"
-                or member.external_use
-                or member.class_dependencies
-                or member.node.name.startswith("__")
-            ):
-                continue
-            node = member.node
-            name = private_name(node.name, member.module_names)
-            yield self.violation(
-                f"{member.owner.name if member.owner else ''}.{node.name} is an internal static helper; prefer a private module function",
-                path=member.path,
-                line=node.lineno,
-                column=node.col_offset + 1,
-                source_module=member.module,
-                target_module=f"{member.module}.{member.owner.name if member.owner else ''}.{node.name}",
-                expected={
-                    "class": member.owner.name if member.owner else None,
-                    "method": node.name,
-                    "suggested_name": name,
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "destination": member.module,
-                    "internal_references": list(member.internal_references),
-                    "automatic_extraction": False,
-                },
-                hint=f"Review moving this helper to {name} at module scope, preserving defaults, annotations and deliberate public APIs.",
-            )

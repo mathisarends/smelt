@@ -1,15 +1,7 @@
-from __future__ import annotations
-
-from pathlib import PurePosixPath
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class FileNameConvention(Rule):
@@ -48,36 +40,3 @@ class FileNameConvention(Rule):
         ),
         example_language="yaml",
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        policy = ctx.config.structure.file_naming
-        extension, basename = policy.yaml_extension, policy.compose_basename
-        if extension is None and basename is None:
-            return
-        for path in ctx.files.yaml_paths:
-            expected = PurePosixPath(path)
-            reasons: dict[str, str] = {}
-            if extension is not None and expected.suffix != f".{extension}":
-                expected = expected.with_suffix(f".{extension}")
-                reasons["yaml_extension"] = extension
-            current, separator, variant = expected.stem.partition(".")
-            if (
-                basename is not None
-                and current in {"compose", "docker-compose"}
-                and current != basename
-            ):
-                name = basename + (separator + variant if separator else "")
-                expected = expected.with_name(name + expected.suffix)
-                reasons["compose_basename"] = basename
-            if not reasons:
-                continue
-            spelled = " and ".join(
-                f".{value}" if key == "yaml_extension" else value
-                for key, value in reasons.items()
-            )
-            yield self.violation(
-                f"filename must use {spelled}: {path}",
-                path=path,
-                expected={**reasons, "path": expected.as_posix()},
-                hint=f'Rename to "{expected.as_posix()}" and update filename references; resolve any existing destination manually.',
-            )

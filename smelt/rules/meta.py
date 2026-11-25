@@ -1,29 +1,16 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
 from smelt.diagnostics.fixes import (
     FixAvailability,
 )
 from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.context import AnalysisContext
-    from smelt.diagnostics.violation import Violation
-
 
 class _EngineRule(Rule):
-    """Meta rules are evaluated by the engine after filtering, not by ``check``."""
+    """Meta rules are judged after the other findings are filtered."""
 
     category = Category.META
     scope = "project"
     enabled_by_default = True
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        return iter(())
 
 
 class UnusedSuppression(_EngineRule):

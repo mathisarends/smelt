@@ -14,13 +14,10 @@ if TYPE_CHECKING:
     from smelt.analysis.coverage import CoverageIndex
     from smelt.analysis.facade_usage import FacadeUsage
     from smelt.analysis.files import FileIndex
-    from smelt.analysis.imports import ImportDetail, ImportIndex
-    from smelt.analysis.members import MemberUsageIndex
-    from smelt.analysis.ordering import DefinitionOrderIndex
+    from smelt.analysis.imports import ImportIndex
     from smelt.analysis.parsing import AstCache
     from smelt.analysis.python_version import PythonTargetIndex
     from smelt.analysis.syntax import SyntaxIndex
-    from smelt.analysis.test_syntax import TestSyntaxIndex
     from smelt.analysis.workspace_policy import WorkspaceIndex
     from smelt.config.models import SmeltConfig
     from smelt.config.workspace import ArchitectureScope
@@ -121,17 +118,6 @@ class AnalysisContext:
         return ImportIndex.build(self.files, self.asts)
 
     @cached_property
-    def package_api_imports(self) -> tuple[tuple[str, ImportDetail], ...]:
-        """Source and test callers shared by all package API policies."""
-        sources = self.files.sources
-        callers = [
-            (sources[detail.importer].path, detail)
-            for detail in self.imports.all_imports()
-        ]
-        callers.extend(self.imports.imports_in_tests(self.syntax))
-        return tuple(callers)
-
-    @cached_property
     def syntax(self) -> SyntaxIndex:
         from smelt.analysis.syntax import SyntaxIndex  # noqa: PLC0415
 
@@ -145,18 +131,6 @@ class AnalysisContext:
         return FacadeUsage(self.syntax, self.imports, files=self.files)
 
     @cached_property
-    def member_usage(self) -> MemberUsageIndex:
-        from smelt.analysis.members import MemberUsageIndex  # noqa: PLC0415
-
-        return MemberUsageIndex(self.syntax)
-
-    @cached_property
-    def test_syntax(self) -> TestSyntaxIndex:
-        from smelt.analysis.test_syntax import TestSyntaxIndex  # noqa: PLC0415
-
-        return TestSyntaxIndex(self.files, self.asts, syntax=self.syntax)
-
-    @cached_property
     def contracts(self) -> ContractIndex:
         from smelt.analysis.contracts import ContractIndex  # noqa: PLC0415
 
@@ -167,19 +141,3 @@ class AnalysisContext:
         from smelt.analysis.python_version import PythonTargetIndex  # noqa: PLC0415
 
         return PythonTargetIndex(self.files, self.store)
-
-    @cached_property
-    def ordering(self) -> DefinitionOrderIndex:
-        from smelt.analysis.ordering import DefinitionOrderIndex  # noqa: PLC0415
-
-        return DefinitionOrderIndex(
-            self.files,
-            self.contracts,
-            self.asts,
-            python_targets=self.python_targets,
-        )
-
-    def ensure(self, indexes: frozenset[Index]) -> None:
-        """Build the requested indexes up front so failures surface before rules run."""
-        for index in sorted(indexes):
-            getattr(self, index.value)

@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.providers import provider_forwardings
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class RedundantDishkaProvider(Rule):
@@ -29,23 +21,3 @@ class RedundantDishkaProvider(Rule):
         ),
         config=("rules", "style.overrides"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for source in ctx.files.sources.values():
-            for candidate in provider_forwardings(ctx.asts.parse(source.path)):
-                yield self.violation(
-                    f"review direct constructor registration for {candidate.owner}.{candidate.node.name}",
-                    path=source.path,
-                    line=candidate.node.lineno,
-                    column=candidate.node.col_offset + 1,
-                    source_module=source.module,
-                    expected={
-                        "class": candidate.owner,
-                        "method": candidate.node.name,
-                        "constructor": candidate.constructor,
-                        "dependencies": list(candidate.dependencies),
-                        "suggested_registration": candidate.registration,
-                        "automatic_rewrite": False,
-                    },
-                    hint=f"Review {candidate.node.name} = {candidate.registration}; verify constructor hints and preserve scope/cache/dependency markers.",
-                )

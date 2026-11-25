@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.test_awaits import call_only_async_mocks
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class AsyncMockWithoutAwaitCheck(Rule):
@@ -27,20 +19,3 @@ class AsyncMockWithoutAwaitCheck(Rule):
         canonical="Check async mocks with assert_awaited*, not only assert_called*",
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                for observation in call_only_async_mocks(test):
-                    yield self.violation(
-                        f"{test.name} checks calls to {observation.receiver} without await evidence",
-                        path=module.path,
-                        line=observation.node.lineno,
-                        expected={
-                            "test": test.name,
-                            "receiver": observation.receiver,
-                            "async_callable": observation.async_callable,
-                            "provenance": observation.provenance,
-                        },
-                        hint="Check this operation was awaited when execution matters; review deliberate awaitable creation/scheduling.",
-                    )

@@ -1,18 +1,7 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, NamedTuple
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.config.patterns import path_matches
-from smelt.diagnostics.violation import Category, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, skip_import
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.imports import ImportDetail
 
 
 class MemberBoundary(Rule):
@@ -49,23 +38,6 @@ class MemberBoundary(Rule):
             "architecture.import_graph.type_checking",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for detail, source, target in _member_imports(ctx):
-            if (allowed := _boundary_restriction(ctx, source, target)) is not None:
-                yield import_violation(
-                    self,
-                    ctx,
-                    detail,
-                    message=f"member {source} must not depend on {target}",
-                    expected={
-                        "source_member": source,
-                        "target_member": target,
-                        "may_depend_on": allowed,
-                    },
-                    hint="Move this dependency behind an allowed member boundary; the workspace root declares architecture.members.",
-                    edge=f"{source} -> {target}",
-                )
 
 
 class UndeclaredMemberDependency(Rule):
@@ -105,71 +77,3 @@ class UndeclaredMemberDependency(Rule):
             "architecture.members",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        declared = ctx.workspace.dependencies
-        for detail, source, target in _member_imports(ctx):
-            target_project = ctx.workspace.metadata.get(target, {}).get("project", {})
-            if (
-                source not in declared
-                or not isinstance(target_project, dict)
-                or not isinstance(target_project.get("name"), str)
-                or target in declared[source]
-            ):
-                continue
-            name = target_project["name"]
-            hint = (
-                "Remove this import or move the dependency behind an allowed member boundary. "
-                "The root architecture.members policy forbids this dependency (ARC009)."
-                if _boundary_restriction(ctx, source, target) is not None
-                else f"Declare {name} in {source}/pyproject.toml project.dependencies and configure its tool.uv.sources workspace source."
-            )
-            yield import_violation(
-                self,
-                ctx,
-                detail,
-                message=f"member {source} imports {target} without a declared dependency on {name}",
-                expected={
-                    "source_member": source,
-                    "target_member": target,
-                    "dependency": name,
-                    "declared_members": sorted(declared[source]),
-                },
-                hint=hint,
-                edge=f"{source} -> {target}",
-            )
-
-
-def _boundary_restriction(
-    ctx: AnalysisContext, source: str, target: str
-) -> list[str] | None:
-    """Return the applicable allowlist when it rejects the dependency."""
-    policies = [
-        policy
-        for pattern, policy in ctx.config.architecture.members.items()
-        if path_matches(pattern, source)
-    ]
-    if not policies:
-        return None
-    allowed = sorted(
-        {pattern for policy in policies for pattern in policy.may_depend_on}
-    )
-    return (
-        None if any(path_matches(pattern, target) for pattern in allowed) else allowed
-    )
-
-
-class _MemberImport(NamedTuple):
-    detail: ImportDetail
-    source: str
-    target: str
-
-
-def _member_imports(ctx: AnalysisContext) -> Iterator[_MemberImport]:
-    for detail in ctx.imports.all_imports():
-        if detail.external or skip_import(ctx, detail):
-            continue
-        source = ctx.workspace.member_for_module(detail.importer)
-        target = ctx.workspace.member_for_module(detail.imported)
-        if source is not None and target is not None and source != target:
-            yield _MemberImport(detail, source, target)

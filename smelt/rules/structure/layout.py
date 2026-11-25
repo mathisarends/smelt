@@ -3,30 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import ModuleKind, is_within
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-from smelt.rules.common import display_module_path, join, last_segment
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from smelt.analysis.files import FileIndex, PackageDir
-    from smelt.model import ArchitectureModel
 
 
-def package_location(files: FileIndex, package: PackageDir) -> str:
+def _package_location(files: FileIndex, package: PackageDir) -> str:
     init = files.sources.get(package.module)
     return init.path if init is not None else package.path
-
-
-def _child_packages(files: FileIndex, parent: str) -> list[PackageDir]:
-    prefix = f"{parent}."
-    return [
-        package
-        for name, package in sorted(files.packages.items())
-        if name.startswith(prefix) and "." not in name[len(prefix) :]
-    ]
 
 
 class UnknownLayer(Rule):
@@ -66,93 +52,6 @@ class UnknownLayer(Rule):
             return self.doc.canonical if ctx.model.has_features else None
         return self.doc.canonical if info.feature is not None else None
 
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        model = ctx.model
-        paths = [
-            layer.path.split(".")
-            for layer in model.layers.values()
-            if layer.path is not None
-        ]
-        bindings = model.config.architecture.module_bindings()
-        for container in model.grid_containers():
-            prefix = f"{container}."
-            explicit = [
-                binding.prefix[len(prefix) :].split(".")
-                for binding in bindings
-                if binding.prefix.startswith(prefix)
-            ]
-            yield from self._check_children(
-                ctx, container, container, paths=[*paths, *explicit]
-            )
-
-    def _check_children(
-        self,
-        ctx: AnalysisContext,
-        container: str,
-        parent: str,
-        *,
-        paths: list[list[str]],
-    ) -> Iterator[Violation]:
-        model = ctx.model
-        if model.has_features:
-            yield from self._loose_modules(ctx, parent)
-        for package in _child_packages(ctx.files, parent):
-            info = model.info(package.module)
-            if info is not None and (
-                info.wiring
-                or info.central
-                or info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT)
-            ):
-                continue
-            segment = last_segment(package.module)
-            rests = [path[1:] for path in paths if path[0] == segment]
-            if any(not rest for rest in rests):
-                continue
-            if rests:
-                yield from self._check_children(
-                    ctx, container, package.module, paths=rests
-                )
-                continue
-            owner = info.feature if info and info.feature else container
-            layers = list(model.layers)
-            yield self.violation(
-                f"{owner} contains package {segment}, which is not a declared layer "
-                f"({join(layers)})",
-                path=package_location(ctx.files, package),
-                source_module=package.module,
-                feature=info.feature if info else None,
-                expected={"layers": layers},
-                hint=(
-                    f"Move the modules of {display_module_path(model, package.module, package=True)} "
-                    "into a layer, or assign the package to the intended layer."
-                ),
-            )
-
-    def _loose_modules(self, ctx: AnalysisContext, parent: str) -> Iterator[Violation]:
-        model = ctx.model
-        layers = list(model.layers)
-        for name, source in sorted(ctx.files.sources.items()):
-            if source.is_package or name.rsplit(".", 1)[0] != parent:
-                continue
-            info = model.info(name)
-            if info is None or info.layer is not None or info.wiring:
-                continue
-            if info.kind in (ModuleKind.SHARED, ModuleKind.COMPOSITION_ROOT):
-                continue
-            owner = info.feature or parent
-            yield self.violation(
-                f"{owner} contains module {last_segment(name)}.py, which is in no layer "
-                f"({join(layers)})",
-                path=source.path,
-                source_module=name,
-                feature=info.feature,
-                expected={"layers": layers},
-                hint=(
-                    f"Move {display_module_path(model, name)} into a layer of {owner}, "
-                    "such as infrastructure for configuration and external services."
-                ),
-            )
-
 
 class UnclassifiedModule(Rule):
     code = "ARC012"
@@ -185,50 +84,3 @@ class UnclassifiedModule(Rule):
             "architecture.composition_root",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        model = ctx.model
-        if not model.layers and not model.has_features:
-            return
-        # A root package with nothing classified is a library outside the
-        # architecture (e.g. a workspace member): check it for cycles only.
-        described = {
-            name.split(".", 1)[0]
-            for name in ctx.files.sources
-            if (info := model.info(name)) is not None
-            and (info.kind is not ModuleKind.UNCLASSIFIED or info.wiring)
-        }
-        for name, source in sorted(ctx.files.sources.items()):
-            info = model.info(name)
-            if source.is_package or info is None:
-                continue
-            if info.kind is not ModuleKind.UNCLASSIFIED or info.wiring:
-                continue
-            if name.split(".", 1)[0] not in described:
-                continue
-            package = _top_package(model, name)
-            yield self.violation(
-                f"{name} is not part of a feature, layer, shared or composition root",
-                path=source.path,
-                source_module=name,
-                hint=(
-                    f"Give {package} a layer by adding it to that layer's modules list, or list it in shared or "
-                    "composition_root."
-                ),
-            )
-
-
-def _top_package(model: ArchitectureModel, module: str) -> str:
-    """The package directly below the root package, or the module itself."""
-    parts = module.split(".")
-    if all(
-        info.kind is ModuleKind.UNCLASSIFIED
-        for name, info in model.modules.items()
-        if is_within(name, parts[0])
-    ):
-        return parts[0]
-    if parts[0] in model.config.project.root_packages and len(parts) > 2:  # noqa: PLR2004
-        candidate = ".".join(parts[:2])
-        if model.is_package(candidate):
-            return candidate
-    return module

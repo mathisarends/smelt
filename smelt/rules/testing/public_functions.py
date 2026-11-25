@@ -1,14 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name, rename_advice
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class TestOnlyPublicFunction(Rule):
@@ -33,36 +25,3 @@ class TestOnlyPublicFunction(Rule):
         ),
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for function, references in ctx.member_usage.test_only_functions(
-            ctx.test_syntax
-        ):
-            node = function.node
-            suggested_name = private_name(node.name, function.occupied_names)
-            usage = (
-                "among analyzed modules, only tests access it outside its defining module"
-                if function.internal_references
-                else "unused outside tests among analyzed modules"
-            )
-            yield self.violation(
-                f"{function.module}.{node.name} is public; {usage}",
-                path=function.path,
-                line=node.lineno,
-                source_module=function.module,
-                expected={
-                    "function": node.name,
-                    "suggested_name": suggested_name,
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "observed_usage": "internal-and-tests"
-                    if function.internal_references
-                    else "tests-only",
-                    "internal_references": list(function.internal_references),
-                    "test_references": [
-                        {"path": path, "line": line} for path, line in references
-                    ],
-                },
-                hint=f"Unless public by design, remove it or {rename_advice(node.name, suggested_name)}."
-                if not function.internal_references
-                else f"Unless public by design, {rename_advice(node.name, suggested_name)} and test its public caller instead.",
-            )

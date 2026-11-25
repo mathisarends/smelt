@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-from smelt.rules.member_names import private_name, rename_advice
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class InternalPublicAttribute(Rule):
@@ -44,34 +38,3 @@ class InternalPublicAttribute(Rule):
     def guide(self, ctx: AnalysisContext, target: GuideTarget) -> str | None:
         boundary = ctx.contracts.public_attribute_boundary(target.module)
         return f"Make data attributes used only inside their {boundary} private"
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        boundary_for = ctx.contracts.public_attribute_boundary
-        for attribute in ctx.member_usage.internal_attributes(
-            boundary_for=boundary_for
-        ):
-            qualified = f"{attribute.owner.name}.{attribute.name}"
-            suggested_name = private_name(attribute.name, attribute.occupied_names)
-            boundary = boundary_for(attribute.module)
-            repair = rename_advice(attribute.name, suggested_name)
-            if boundary == "module":
-                repair += " and update same-module reads and writes"
-            yield self.violation(
-                f"{qualified} is public, but has no observed access outside its {boundary}",
-                path=attribute.path,
-                line=attribute.node.lineno,
-                column=attribute.node.col_offset + 1,
-                source_module=attribute.module,
-                target_module=f"{attribute.module}.{qualified}",
-                expected={
-                    "class": attribute.owner.name,
-                    "attribute": attribute.name,
-                    "kind": attribute.kind,
-                    "suggested_name": suggested_name,
-                    "boundary": boundary,
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "internal_references": list(attribute.internal_references),
-                    "automatic_rename": False,
-                },
-                hint=f"Unless public by design, {repair}. Preserve deliberate public contracts with a reasoned VIS004 suppression on the declaration.",
-            )

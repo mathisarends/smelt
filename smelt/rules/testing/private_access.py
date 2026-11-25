@@ -1,18 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.diagnostics.violation import Category, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-
-def _private(name: str) -> bool:
-    return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
 class PrivateTestAccess(Rule):
@@ -32,64 +20,3 @@ class PrivateTestAccess(Rule):
         ),
         config=("rules", "tests.quality_exclude"),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        known = set(ctx.files.sources) | set(ctx.files.packages)
-        for module in ctx.test_syntax.modules.values():
-            seen: set[tuple[int, int, str]] = set()
-            accesses = [
-                (node, qualified, "import", "module")
-                for node, qualified in [*module.imports, *module.attributes]
-            ]
-            accesses.extend(
-                (node, qualified, provenance, "instance")
-                for node, qualified, provenance in module.instance_attributes
-            )
-            for node, qualified, provenance, access in accesses:
-                parts = qualified.split(".")
-                if access == "instance" and not _private(parts[-1]):
-                    # Importing a private class is one decision, not another
-                    # finding for each public operation on that instance.
-                    continue
-                if not any(
-                    ".".join(parts[:end]) in known for end in range(1, len(parts) + 1)
-                ):
-                    continue
-                private = next(
-                    (index for index, name in enumerate(parts) if _private(name)), None
-                )
-                if private is None:
-                    continue
-                target = (
-                    qualified
-                    if access == "instance"
-                    else ".".join(parts[: private + 1])
-                )
-                location: ast.alias | ast.Attribute | ast.Import | ast.ImportFrom = node
-                if isinstance(node, ast.Import | ast.ImportFrom):
-                    location = next(
-                        (
-                            alias
-                            for alias in node.names
-                            if qualified == alias.name
-                            or qualified.endswith("." + alias.name)
-                        ),
-                        node,
-                    )
-                key = (location.lineno, location.col_offset, target)
-                if key in seen:
-                    continue
-                seen.add(key)
-                yield self.violation(
-                    f"test accesses private production name {target}",
-                    path=module.path,
-                    line=location.lineno,
-                    column=location.col_offset + 1,
-                    target_module=target,
-                    expected={
-                        "private_target": target,
-                        "access": access,
-                        "provenance": provenance,
-                    },
-                    hint="Test the supported public behavior instead of an internal helper or module.",
-                )

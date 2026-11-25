@@ -1,22 +1,10 @@
 from __future__ import annotations
 
-import ast
-import keyword
-from itertools import chain
-from typing import TYPE_CHECKING
-
 from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.parsing import tree_nodes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import GuideTarget, Rule, RuleDoc
-from smelt.rules.common import last_segment, readable_list
-from smelt.rules.structure.layout import package_location
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-_MIN_PLURAL_LENGTH = 4
+from smelt.rules.common import readable_list
 
 
 class ForbiddenPackageName(Rule):
@@ -50,38 +38,6 @@ class ForbiddenPackageName(Rule):
             f"Never name a module or package {readable_list(names, conjunction='or')}; "
             "name it after what it does"
         )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        forbidden = set(ctx.config.structure.forbidden_names)
-        if not forbidden:
-            return
-        files = ctx.files
-        model = ctx.model
-        for name, package in sorted(files.packages.items()):
-            if last_segment(name) in forbidden:
-                info = model.info(name)
-                yield self.violation(
-                    f'package name "{last_segment(name)}" is not allowed ({name})',
-                    path=package_location(files, package),
-                    source_module=name,
-                    feature=info.feature if info else None,
-                    layer=info.layer if info else None,
-                    expected={"forbidden_names": sorted(forbidden)},
-                    hint="Name the package after what it does.",
-                )
-        for name, source in sorted(files.sources.items()):
-            if source.is_package or last_segment(name) not in forbidden:
-                continue
-            info = model.info(name)
-            yield self.violation(
-                f'module name "{last_segment(name)}" is not allowed ({name})',
-                path=source.path,
-                source_module=name,
-                feature=info.feature if info else None,
-                layer=info.layer if info else None,
-                expected={"forbidden_names": sorted(forbidden)},
-                hint="Name the module after what it does, or move its functions next to their callers.",
-            )
 
 
 class ForbiddenPrivateModule(Rule):
@@ -119,42 +75,6 @@ class ForbiddenPrivateModule(Rule):
         if contract is None or contract.spec.private_modules != "forbid":
             return None
         return self.doc.canonical
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        files = ctx.files
-        entries = chain(
-            (
-                (name, package_location(files, package), "package")
-                for name, package in sorted(files.packages.items())
-            ),
-            (
-                (name, source.path, "module")
-                for name, source in sorted(files.sources.items())
-                if not source.is_package and last_segment(name) != "__main__"
-            ),
-        )
-        for name, path, kind in entries:
-            segment = last_segment(name)
-            if not segment.startswith("_"):
-                continue
-            contract = ctx.contracts.policy_for(name, "private_modules")
-            if contract is None or contract.spec.private_modules != "forbid":
-                continue
-            info = ctx.model.info(name)
-            yield self.violation(
-                f'{contract.origin} forbids underscore-prefixed {kind} name "{segment}" ({name})',
-                path=path,
-                source_module=name,
-                feature=info.feature if info else None,
-                layer=info.layer if info else None,
-                expected={
-                    "contract": contract.name,
-                    "private_modules": "forbid",
-                    "kind": kind,
-                    "name": segment,
-                },
-                hint=f"Rename the {kind} after its responsibility without a leading underscore; update imports and facade exports. Private helpers inside a normal module may keep their underscore prefix.",
-            )
 
 
 class ForbiddenBaseClassAffix(Rule):
@@ -207,32 +127,6 @@ class ForbiddenBaseClassAffix(Rule):
         config=("rules", "style.overrides"),
     )
 
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for name, source in sorted(ctx.files.sources.items()):
-            info = ctx.model.info(name)
-            for node in tree_nodes(ctx.asts.parse(source.path)):
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                affix = _base_affix(node.name)
-                if affix is None:
-                    continue
-                yield self.violation(
-                    f'class "{node.name}" uses the forbidden Base {affix}',
-                    path=source.path,
-                    line=node.lineno,
-                    column=node.col_offset + 1,
-                    source_module=name,
-                    feature=info.feature if info else None,
-                    layer=info.layer if info else None,
-                    expected={
-                        "forbidden_affix": "Base",
-                        "position": affix,
-                        "class": node.name,
-                        "automatic_rename": False,
-                    },
-                    hint="Name the class after its responsibility or contract instead of its inheritance role; update references and exports.",
-                )
-
 
 class RedundantModuleName(Rule):
     code = "LAY009"
@@ -270,80 +164,3 @@ class RedundantModuleName(Rule):
         config=("rules", "style.overrides"),
         example_language="text",
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        files = ctx.files
-        for module, source in sorted(files.sources.items()):
-            if source.is_package:
-                continue
-            match = _redundant_module_context(module)
-            if match is None:
-                continue
-            ancestor, repeated, shorter = match
-            parent = module.rsplit(".", 1)[0]
-            target = f"{parent}.{shorter}"
-            suggested = (
-                None
-                if target in files.sources or target in files.packages
-                else f"{shorter}.py"
-            )
-            info = ctx.model.info(module)
-            yield self.violation(
-                f'module name "{last_segment(module)}" repeats "{repeated}" from package "{ancestor}"',
-                path=source.path,
-                source_module=module,
-                feature=info.feature if info else None,
-                layer=info.layer if info else None,
-                expected={
-                    "ancestor": ancestor,
-                    "repeated_name": repeated,
-                    "suggested_name": suggested,
-                    "automatic_rename": False,
-                },
-                hint=(
-                    f'Review renaming this file to "{suggested}"; update imports and facade exports.'
-                    if suggested
-                    else "Choose a responsibility-based filename; the shorter name is already occupied by a module or package. Update imports and facade exports."
-                ),
-            )
-
-
-def _redundant_module_context(module: str) -> tuple[str, str, str] | None:
-    parts = module.split(".")
-    name = parts[-1]
-    if name.startswith("__") and name.endswith("__"):
-        return None
-    bare = name.lstrip("_")
-    private_prefix = name[: len(name) - len(bare)]
-    for end in range(len(parts) - 1, 0, -1):
-        context = parts[end - 1].lstrip("_")
-        if not context:
-            continue
-        variants = [context]
-        if (
-            len(context) >= _MIN_PLURAL_LENGTH
-            and context.endswith("s")
-            and not context.endswith(
-                ("ss", "us", "is", "ies", "ses", "xes", "zes", "ches", "shes")
-            )
-        ):
-            variants.append(context[:-1])
-        for repeated in variants:
-            shorter = None
-            if bare.startswith(f"{repeated}_"):
-                shorter = bare[len(repeated) + 1 :]
-            elif bare.endswith(f"_{repeated}"):
-                shorter = bare[: -len(repeated) - 1]
-            if shorter and shorter.isidentifier() and not keyword.iskeyword(shorter):
-                return ".".join(parts[:end]), repeated, private_prefix + shorter
-    return None
-
-
-def _base_affix(name: str) -> str | None:
-    name = name.lstrip("_")
-    rest = name.removeprefix("Base")
-    if name.startswith("Base") and (not rest or rest[0].isupper() or rest[0] == "_"):
-        return "prefix"
-    if name.endswith("Base") and name[:-4].strip("_"):
-        return "suffix"
-    return None

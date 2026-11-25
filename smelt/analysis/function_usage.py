@@ -31,50 +31,6 @@ class ReferenceNames(NamedTuple):
     stars: list[str]
 
 
-def reference_names(module: ModuleSyntax) -> ReferenceNames:
-    """Unresolved use evidence, independent of every other module's contents."""
-    imports: set[str] = set()
-    loads: set[str] = set()
-    stars: set[str] = set()
-    nodes = module.nodes
-    # Preserve every possible import binding. A same-named import in a different
-    # local scope must not hide a real production consumer elsewhere in the file.
-    bindings: dict[str, set[str]] = {}
-    for node in nodes:
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                name = alias.asname or alias.name.split(".")[0]
-                bindings.setdefault(name, set()).add(
-                    alias.name if alias.asname else name
-                )
-        elif isinstance(node, ast.ImportFrom):
-            base = resolve_relative(
-                module.module,
-                is_package=module.is_package,
-                level=node.level,
-                target=node.module,
-            )
-            for alias in node.names:
-                if alias.name == "*":
-                    stars.add(base)
-                    continue
-                qualified = f"{base}.{alias.name}"
-                bindings.setdefault(alias.asname or alias.name, set()).add(qualified)
-                imports.add(qualified)
-    parents = {child: parent for parent in nodes for child in child_nodes(parent)}
-    for node in nodes:
-        if isinstance(node, ast.Name | ast.Attribute) and isinstance(
-            node.ctx, ast.Load
-        ):
-            parent = parents.get(node)
-            if isinstance(parent, ast.Attribute) and parent.value is node:
-                continue
-            for qualified in _qualified(node, bindings):
-                # Module-valued loads may escape via aliases, callbacks or reflection.
-                loads.add(qualified)
-    return ReferenceNames(sorted(imports), sorted(loads), sorted(stars))
-
-
 def explicit_exports(tree: ast.Module) -> frozenset[str] | None:
     """None means a dynamic export declaration whose intent we cannot narrow."""
     exports: set[str] = set()
@@ -117,6 +73,50 @@ def explicit_exports(tree: ast.Module) -> frozenset[str] | None:
     ):
         return None
     return frozenset(exports)
+
+
+def _reference_names(module: ModuleSyntax) -> ReferenceNames:
+    """Unresolved use evidence, independent of every other module's contents."""
+    imports: set[str] = set()
+    loads: set[str] = set()
+    stars: set[str] = set()
+    nodes = module.nodes
+    # Preserve every possible import binding. A same-named import in a different
+    # local scope must not hide a real production consumer elsewhere in the file.
+    bindings: dict[str, set[str]] = {}
+    for node in nodes:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.asname or alias.name.split(".")[0]
+                bindings.setdefault(name, set()).add(
+                    alias.name if alias.asname else name
+                )
+        elif isinstance(node, ast.ImportFrom):
+            base = resolve_relative(
+                module.module,
+                is_package=module.is_package,
+                level=node.level,
+                target=node.module,
+            )
+            for alias in node.names:
+                if alias.name == "*":
+                    stars.add(base)
+                    continue
+                qualified = f"{base}.{alias.name}"
+                bindings.setdefault(alias.asname or alias.name, set()).add(qualified)
+                imports.add(qualified)
+    parents = {child: parent for parent in nodes for child in child_nodes(parent)}
+    for node in nodes:
+        if isinstance(node, ast.Name | ast.Attribute) and isinstance(
+            node.ctx, ast.Load
+        ):
+            parent = parents.get(node)
+            if isinstance(parent, ast.Attribute) and parent.value is node:
+                continue
+            for qualified in _qualified(node, bindings):
+                # Module-valued loads may escape via aliases, callbacks or reflection.
+                loads.add(qualified)
+    return ReferenceNames(sorted(imports), sorted(loads), sorted(stars))
 
 
 def _qualified(node: ast.AST, bindings: dict[str, set[str]]) -> Iterator[str]:

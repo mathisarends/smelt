@@ -1,21 +1,7 @@
-from __future__ import annotations
-
-from dataclasses import replace
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.exports import resolve_dotted
-from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import is_within
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.activation import POLICIES
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.common import import_violation, join, skip_import
-from smelt.rules.dependencies.insiders import inside_contract
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from smelt.analysis.imports import ImportDetail
 
 
 class PrivateModuleImport(Rule):
@@ -56,47 +42,3 @@ class PrivateModuleImport(Rule):
             "tests.mirror",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        if not any(contract.public is not None for contract in ctx.contracts.resolved):
-            return
-        for path, detail in ctx.package_api_imports:
-            if detail.external or skip_import(ctx, detail):
-                continue
-            for target in _module_targets(ctx, detail):
-                for contract in ctx.contracts.resolved:
-                    if (
-                        contract.public is None
-                        or not is_within(target, contract.package)
-                        or inside_contract(
-                            ctx, path, detail.importer, contract=contract
-                        )
-                        or contract.exposes(target)
-                    ):
-                        continue
-                    yield import_violation(
-                        self,
-                        ctx,
-                        replace(detail, imported=target),
-                        path=path,
-                        message=f'{detail.importer} imports private module {target} of contract "{contract.name}"',
-                        expected={
-                            "contract": contract.name,
-                            "package": contract.package,
-                            "public": list(contract.public),
-                        },
-                        hint=f"Use a public entry point of {contract.package}: {join(contract.public, empty='none; this package is private')}.",
-                        edge=f"{detail.importer} -> {contract.package} ({contract.name})",
-                    )
-
-
-def _module_targets(ctx: AnalysisContext, detail: ImportDetail) -> Iterator[str]:
-    """Keep symbol re-exports public, but resolve explicit module-valued aliases."""
-    imported = detail.bound_module(ctx.syntax.namespace)
-    seen = {imported}
-    yield imported
-    for name in detail.names:
-        resolved = resolve_dotted(name, ctx.syntax.namespace)
-        if resolved is not None and resolved[1] is None and resolved[0] not in seen:
-            seen.add(resolved[0])
-            yield resolved[0]

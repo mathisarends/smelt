@@ -1,15 +1,6 @@
-from __future__ import annotations
-
-import ast
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.test_outcomes import helper_outcome_review, vacuous_outcomes
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class TestWithoutOutcomeCheck(Rule):
@@ -35,47 +26,6 @@ class TestWithoutOutcomeCheck(Rule):
             "tests.quality_exclude",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                if not test.has_assertion(ctx.config.tests.assertion_helpers):
-                    children = [
-                        call
-                        for call in test.calls
-                        if call.qualified.startswith("subprocess.")
-                    ]
-                    yield self.violation(
-                        f"{test.name} has no recognized outcome assertion",
-                        path=module.path,
-                        line=test.node.lineno,
-                        expected={
-                            "test": test.name,
-                            "subprocess_review": [
-                                {
-                                    "line": call.node.lineno,
-                                    "operation": call.qualified,
-                                    "child_assertions": "not inferred",
-                                }
-                                for call in children
-                            ],
-                            "assertion_helpers": ctx.config.tests.assertion_helpers,
-                            "helper_review": helper_outcome_review(
-                                test, ctx.config.tests.assertion_helpers
-                            ),
-                            "analysis_limits": {
-                                "helper_hops": 1,
-                                "same_file_only": True,
-                                "imported_bodies": "not analyzed",
-                            },
-                        },
-                        hint="Check an observable result, state, expected exception/warning, or a configured assertion helper. Only one directly executed, eligible same-file helper is followed; imported bodies and further helper calls are not analyzed. helper_review explains missing evidence where known."
-                        + (
-                            " Child assertions were not inferred: only checked sys.executable -c calls with statically known script text and direct assertions are recognized. Assert the parent-visible outcome for dynamic scripts or files."
-                            if children
-                            else ""
-                        ),
-                    )
 
 
 class TestOnlyChecksPossiblyEmptyData(Rule):
@@ -104,27 +54,3 @@ class TestOnlyChecksPossiblyEmptyData(Rule):
             "tests.quality_exclude",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for module in ctx.test_syntax.modules.values():
-            for test in module.tests:
-                risks = vacuous_outcomes(test, ctx.config.tests.assertion_helpers)
-                if risks:
-                    yield self.violation(
-                        f"{test.name} only checks possibly empty data; its assertions can pass or be skipped without checking an item",
-                        path=module.path,
-                        line=test.node.lineno,
-                        expected={
-                            "test": test.name,
-                            "evidence": [
-                                {
-                                    "line": node.lineno,
-                                    "kind": "loop"
-                                    if isinstance(node, ast.For | ast.AsyncFor)
-                                    else "all",
-                                }
-                                for node in risks
-                            ],
-                        },
-                        hint="Compare complete output or verify expected presence before iterating; review deliberate empty-result properties.",
-                    )

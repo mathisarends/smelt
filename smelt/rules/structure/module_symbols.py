@@ -1,16 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.module_symbols import internal_module_symbols
-from smelt.diagnostics.violation import Category, Severity, Violation
-from smelt.model import ModuleKind
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-from smelt.rules.member_names import private_name, rename_advice
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 class InternalPublicModuleSymbol(Rule):
@@ -36,29 +26,3 @@ class InternalPublicModuleSymbol(Rule):
             "architecture.composition_root",
         ),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        for symbol in internal_module_symbols(ctx.syntax, ctx.member_usage):
-            if (
-                info := ctx.model.info(symbol.module)
-            ) and info.kind is ModuleKind.COMPOSITION_ROOT:
-                continue
-            name = symbol.node.id
-            suggested = private_name(name, symbol.occupied_names)
-            yield self.violation(
-                f"{name} is public, but has no observed use outside its module or public-signature evidence",
-                path=symbol.path,
-                line=symbol.node.lineno,
-                column=symbol.node.col_offset + 1,
-                source_module=symbol.module,
-                target_module=f"{symbol.module}.{name}",
-                expected={
-                    "kind": symbol.kind,
-                    "member": name,
-                    "suggested_name": suggested,
-                    "internal_references": list(symbol.internal_references),
-                    "usage_scope": ctx.member_usage.usage_scope,
-                    "automatic_rename": False,
-                },
-                hint=f"Unless public by design, {rename_advice(name, suggested)}; otherwise export it or suppress VIS002 with a reason.",
-            )

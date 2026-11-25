@@ -10,7 +10,6 @@ from smelt.analysis.exports import (
     Namespace,
     namespace_of,
     resolve_dotted,
-    resolve_export,
 )
 
 PACKAGES = {"app", "app.billing", "app.cycle", "app.cycle.inner"}
@@ -66,7 +65,7 @@ class TestResolveExport:
     ) -> None:
         load = _loader({**SOURCES, "app": source})
 
-        assert resolve_export("app", name, load) == expected
+        assert resolve_dotted(f"app.{name}", load) == expected
         namespace = load("app")
         assert namespace is not None
         assert not namespace.defined.intersection(namespace.imported)
@@ -75,12 +74,12 @@ class TestResolveExport:
     def test_follows_aliases_through_facades(self) -> None:
         load = _loader(SOURCES)
 
-        assert resolve_export("app", "Bill", load) == ("app.billing.models", "Invoice")
+        assert resolve_dotted("app.Bill", load) == ("app.billing.models", "Invoice")
 
     def test_submodule_is_a_module(self) -> None:
         load = _loader(SOURCES)
 
-        assert resolve_export("app.billing", "models", load) == (
+        assert resolve_dotted("app.billing.models", load) == (
             "app.billing.models",
             None,
         )
@@ -88,12 +87,12 @@ class TestResolveExport:
     def test_cycle_ends(self) -> None:
         load = _loader(SOURCES)
 
-        assert resolve_export("app.cycle", "Thing", load) is None
+        assert resolve_dotted("app.cycle.Thing", load) is None
 
     def test_third_party_is_unresolved(self) -> None:
         load = _loader({"app": "from pydantic import BaseModel\n"})
 
-        assert resolve_export("app", "BaseModel", load) is None
+        assert resolve_dotted("app.BaseModel", load) is None
 
 
 class TestResolveDotted:

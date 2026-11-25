@@ -1,21 +1,6 @@
-from __future__ import annotations
-
-from collections import defaultdict
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from smelt.analysis.context import AnalysisContext, Index
-from smelt.analysis.function_fingerprints import (
-    FunctionFingerprint,
-    function_fingerprints,
-)
-from smelt.diagnostics.violation import Category, Severity, Violation
+from smelt.analysis.context import Index
+from smelt.diagnostics.violation import Category, Severity
 from smelt.rules.base import Rule, RuleDoc
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-_MAX_LOCATIONS = 5
 
 
 class DuplicateFunction(Rule):
@@ -74,71 +59,3 @@ class DuplicateFunction(Rule):
         ),
         config=("rules",),
     )
-
-    def check(self, ctx: AnalysisContext) -> Iterator[Violation]:
-        # root package -> body fingerprint -> copies
-        groups: dict[str, dict[str, list[_Copy]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
-        for source in sorted(ctx.files.sources.values(), key=lambda item: item.path):
-            package = source.module.split(".", maxsplit=1)[0]
-            for function in function_fingerprints(ctx.asts, source.path):
-                groups[package][function.fingerprint].append(
-                    _Copy(source.path, source.module, function)
-                )
-        for package in sorted(groups):
-            for fingerprint, copies in sorted(groups[package].items()):
-                if len(copies) >= 2:  # noqa: PLR2004 - a duplicate needs two copies
-                    yield from self._report(fingerprint, copies)
-
-    def _report(self, fingerprint: str, copies: list[_Copy]) -> Iterator[Violation]:
-        owner = _common_package([copy.module for copy in copies])
-        for copy in copies:
-            others = [other for other in copies if other is not copy]
-            first = others[0]
-            yield self.violation(
-                f"Function {copy.function.name} repeats {first.function.name} in "
-                f"{first.path}"
-                + (f" and {len(others) - 1} more" if len(others) > 1 else ""),
-                path=copy.path,
-                line=copy.function.line,
-                column=copy.function.column,
-                source_module=copy.module,
-                expected={
-                    "function": copy.function.name,
-                    "fingerprint": fingerprint,
-                    "count": len(copies),
-                    "copies": [
-                        {
-                            "path": other.path,
-                            "line": other.function.line,
-                            "function": other.function.name,
-                        }
-                        for other in others[:_MAX_LOCATIONS]
-                    ],
-                    "copies_truncated": len(others) > _MAX_LOCATIONS,
-                    "common_package": owner,
-                    "automatic_rewrite": False,
-                },
-                hint=(
-                    f"Keep one copy in a shared module under {owner} and "
-                    "import it from every caller."
-                ),
-            )
-
-
-@dataclass(frozen=True, slots=True)
-class _Copy:
-    path: str
-    module: str
-    function: FunctionFingerprint
-
-
-def _common_package(modules: list[str]) -> str:
-    parts = [module.split(".")[:-1] or module.split(".") for module in modules]
-    common: list[str] = []
-    for segments in zip(*parts, strict=False):
-        if len(set(segments)) != 1:
-            break
-        common.append(segments[0])
-    return ".".join(common) or parts[0][0]

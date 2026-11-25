@@ -49,16 +49,16 @@ class GuideTarget:
 
 @runtime_checkable
 class RuleContract(Protocol):
-    """Metadata and checking interface, including lazy rule implementations."""
+    """Rule metadata and guidance, including lazy rule implementations.
+
+    The native core finds the violations of every built-in rule.
+    """
 
     code: str
     name: str
     category: Category
     default_severity: Severity
     requires: frozenset[Index]
-
-    def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
-        """Yield the rule's findings for the analyzed project, without side effects."""
 
     def explain(self) -> RuleDoc:
         """Return the documentation shown by `smelt explain` and the rule pages."""
@@ -84,9 +84,6 @@ class Rule:
     """Reads architecture policy beyond module classification, so a workspace
     with member architectures runs it once per architecture."""
     doc: ClassVar[RuleDoc]
-
-    def check(self, ctx: AnalysisContext) -> Iterable[Violation]:
-        raise NotImplementedError
 
     def explain(self) -> RuleDoc:
         return self.doc
