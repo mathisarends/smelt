@@ -519,6 +519,7 @@ fn check(
             .par_iter()
             .map(|(source, parsed)| analysis.file(source, parsed))
             .collect();
+        let shared_coverage = OnceLock::new();
         let roots = &request.project.root_packages;
         let model = if request.workspace_packages.is_empty() {
             ArchitectureModel::build(&request.architecture, roots, &files, Scope::Project)
@@ -600,6 +601,7 @@ fn check(
                         project: &request.project,
                         test_policy: &request.tests,
                         strict_coverage: request.strict_coverage,
+                        coverage: &shared_coverage,
                         quality_exclude: &quality_exclude,
                         member_usage: OnceLock::new(),
                         test_modules: OnceLock::new(),
@@ -771,6 +773,7 @@ fn check(
             sources: &source_pairs,
             ordering: report_ordering,
             test_modules: test_modules.as_deref().filter(|_| report_test_quality),
+            coverage: &shared_coverage,
         })?;
         Ok::<_, String>((violations, suppressed, coverage, digests))
     })??;

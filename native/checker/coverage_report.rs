@@ -17,6 +17,7 @@ use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 const NO_PACKAGE: &str = "no Python package in src/ or the member directory";
 
@@ -31,11 +32,14 @@ pub struct ReportInputs<'a> {
     pub ordering: bool,
     /// The analyzed tests, when a test-quality rule ran.
     pub test_modules: Option<&'a [TestModule<'a>]>,
+    /// The coverage ARC013 built, when it ran with the same inputs.
+    pub coverage: &'a OnceLock<Coverage>,
 }
 
 /// The coverage facts the Python report completes with its configuration.
 pub fn facts(inputs: &ReportInputs<'_>) -> Result<Value, String> {
-    let coverage = Coverage::build(
+    let coverage = Coverage::shared(
+        inputs.coverage,
         inputs.files,
         inputs.model,
         &CoverageInputs {
