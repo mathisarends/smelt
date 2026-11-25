@@ -693,8 +693,12 @@ fn check_in_pool(
                 let severity = |rule, module: &str, path: &str| {
                     settings.severity(rule, &contracts, module, path, analysis.selected)
                 };
-                let mut found = Vec::new();
-                if let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty()) {
+                // Graph and structure rules share no lazily built facts, so they run together.
+                let graph_findings = || {
+                    let Some(imports) = imports.as_ref().filter(|_| !import_rules.is_empty())
+                    else {
+                        return Ok(Vec::new());
+                    };
                     let context = GraphContext {
                         imports,
                         model,
@@ -711,9 +715,12 @@ fn check_in_pool(
                         uv_workspace: request.project.uv_workspace,
                         workspace: OnceLock::new(),
                     };
-                    found.extend(dependencies::findings(import_rules, &context, severity)?);
-                }
-                if !structure_rules.is_empty() {
+                    dependencies::findings(import_rules, &context, severity)
+                };
+                let structure_findings = || {
+                    if structure_rules.is_empty() {
+                        return Ok(Vec::new());
+                    }
                     let context = StructureContext {
                         files: &files,
                         model,
@@ -731,8 +738,11 @@ fn check_in_pool(
                         member_usage: OnceLock::new(),
                         test_modules: OnceLock::new(),
                     };
-                    found.extend(structure::findings(structure_rules, &context, severity)?);
-                }
+                    structure::findings(structure_rules, &context, severity)
+                };
+                let (graph, structure) = rayon::join(graph_findings, structure_findings);
+                let mut found = graph?;
+                found.extend(structure?);
                 Ok(found)
             };
             let mut found = Vec::new();

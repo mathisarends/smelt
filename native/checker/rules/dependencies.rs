@@ -17,9 +17,11 @@ use crate::checker::contracts::{Contracts, ResolvedContract};
 use crate::checker::files::{FileIndex, SourceFile};
 use crate::checker::patterns::is_within;
 use crate::checker::profile;
+use crate::checker::rules::{reads_fact, shared_fact};
 use crate::checker::settings::CatalogRule;
 use crate::checker::source::ParsedSource;
 use crate::checker::violation::{ImportLink, Violation};
+use rayon::prelude::*;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -59,14 +61,33 @@ pub struct GraphContext<'a> {
     pub workspace: OnceLock<Result<WorkspaceIndex, String>>,
 }
 
+/// The rules that read each lazily built fact, which `prepare` builds first.
+const NAMESPACE_RULES: [&str; 2] = ["ARC007", "IMP001"];
+const FACADE_USAGE_RULES: [&str; 2] = ["ARC008", "IMP001"];
+const WORKSPACE_RULES: [&str; 2] = ["ARC009", "ARC010"];
+
 impl<'a> GraphContext<'a> {
+    /// Build the facts `rules` read, in parallel, before the rules run.
+    fn prepare(&self, rules: &[&CatalogRule]) {
+        rayon::join(
+            || reads_fact(rules, &NAMESPACE_RULES).then(|| self.namespaces()),
+            || {
+                rayon::join(
+                    || reads_fact(rules, &FACADE_USAGE_RULES).then(|| self.facade_usage()),
+                    || reads_fact(rules, &WORKSPACE_RULES).then(|| self.workspace()),
+                )
+            },
+        );
+    }
+
     fn namespaces(&self) -> &HashMap<&'a str, Namespace> {
-        self.namespaces
-            .get_or_init(|| project_namespaces(self.sources, &self.files.packages))
+        shared_fact(&self.namespaces, || {
+            project_namespaces(self.sources, &self.files.packages)
+        })
     }
 
     fn facade_usage(&self) -> &FacadeUsage<'a> {
-        self.facade_usage.get_or_init(|| {
+        shared_fact(&self.facade_usage, || {
             FacadeUsage::new(
                 self.files,
                 self.sources,
@@ -82,8 +103,7 @@ impl<'a> GraphContext<'a> {
         if !self.uv_workspace {
             return Ok(None);
         }
-        self.workspace
-            .get_or_init(|| WorkspaceIndex::new(self.files))
+        shared_fact(&self.workspace, || WorkspaceIndex::new(self.files))
             .as_ref()
             .map(Some)
             .map_err(Clone::clone)
@@ -177,23 +197,42 @@ struct ImportFinding {
     edge: Option<String>,
 }
 
-/// Every finding of `rules` at its resolved severity.
+/// Every finding of `rules` at its resolved severity, in the order of `rules`.
+///
+/// The rules run in parallel and share the context's lazily built facts.
 pub fn findings<'r>(
     rules: &[&'r CatalogRule],
     context: &GraphContext<'_>,
-    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
+    severity: impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str> + Sync,
 ) -> Result<Vec<Violation>, String> {
-    let boundary = boundary_imports(context);
+    let (boundary, ()) = rayon::join(|| boundary_imports(context), || context.prepare(rules));
+    let per_rule: Vec<Result<Vec<Violation>, String>> = rules
+        .par_iter()
+        .map(|rule| rule_findings(rule, context, &boundary, &severity))
+        .collect();
     let mut found = Vec::new();
-    for rule in rules {
-        let _span = profile::span(format!("rule {}", rule.code));
+    for raised in per_rule {
+        found.extend(raised?);
+    }
+    Ok(found)
+}
+
+fn rule_findings<'r>(
+    rule: &'r CatalogRule,
+    context: &GraphContext<'_>,
+    boundary: &[BoundaryImport<'_>],
+    severity: &impl Fn(&'r CatalogRule, &str, &str) -> Option<&'r str>,
+) -> Result<Vec<Violation>, String> {
+    let _span = profile::span(format!("rule {}", rule.code));
+    let mut found = Vec::new();
+    {
         let raised = match rule.code.as_str() {
-            "ARC001" => boundaries::check_layers(rule, context, &boundary),
-            "ARC002" => boundaries::check_cross_feature(rule, context, &boundary),
-            "ARC003" => boundaries::check_third_party(rule, context, &boundary),
+            "ARC001" => boundaries::check_layers(rule, context, boundary),
+            "ARC002" => boundaries::check_cross_feature(rule, context, boundary),
+            "ARC003" => boundaries::check_third_party(rule, context, boundary),
             "ARC004" => cycles::check(rule, context),
-            "ARC005" => boundaries::check_shared(rule, context, &boundary),
-            "ARC006" => boundaries::check_composition_root(rule, context, &boundary),
+            "ARC005" => boundaries::check_shared(rule, context, boundary),
+            "ARC006" => boundaries::check_composition_root(rule, context, boundary),
             "ARC007" => contracts::check_private_modules(rule, context),
             "ARC008" => facades::check(rule, context)?,
             "ARC009" => members::check_boundaries(rule, context)?,
