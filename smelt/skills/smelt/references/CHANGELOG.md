@@ -31,6 +31,9 @@ current configuration and complete rule contracts, see the [README](README.md),
   imports between uv workspace members and reads the symbols that
   `smelt init` traces. Smelt no longer analyzes project sources in Python and
   no longer depends on `grimp`.
+- `--staged` and `--changed` read the staged index and the base revision in
+  memory instead of writing them to a temporary directory, which saves one to
+  two seconds per check on Windows.
 - `visibility/redundant-private-delegate` (VIS006) no longer fails with a
   recursion error on classes whose local bases inherit from each other. Such
   classes are treated like classes with an external base and are not reported.

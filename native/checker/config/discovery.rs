@@ -1,5 +1,6 @@
 //! Top-level package discovery, as in `smelt.config.discovery`.
 use super::paths;
+use crate::checker::vfs;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use unicode_ident::{is_xid_continue, is_xid_start};
@@ -36,14 +37,14 @@ fn file_name(path: &Path) -> String {
 
 fn has_python(directory: &Path) -> bool {
     let name = file_name(directory);
-    directory.is_dir()
+    vfs::is_dir(directory)
         && is_identifier(&name)
         && !IGNORED_DIRS.contains(&name.as_str())
         && paths::contains_match(directory, "*.py")
 }
 
 fn child_packages(directory: &Path) -> Vec<PathBuf> {
-    if !directory.is_dir() {
+    if !vfs::is_dir(directory) {
         return Vec::new();
     }
     let mut children: Vec<PathBuf> = paths::children(directory)
@@ -71,7 +72,7 @@ pub fn packages_in(base: &Path) -> Vec<PathBuf> {
                 || (namespace
                     && paths::children(child)
                         .iter()
-                        .any(|entry| entry.join("__init__.py").is_file()))
+                        .any(|entry| vfs::is_file(&entry.join("__init__.py"))))
         })
         .collect();
     if declared.is_empty() {

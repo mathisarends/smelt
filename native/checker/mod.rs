@@ -16,6 +16,7 @@ mod snapshot;
 mod source;
 mod suppressions;
 mod symbols;
+mod vfs;
 mod violation;
 
 use analysis::architecture::{ArchitectureModel, Scope};
@@ -42,7 +43,6 @@ use settings::{CatalogRule, Settings};
 use snapshot::Snapshot;
 use source::ParsedSource;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -382,7 +382,7 @@ fn baseline_findings(
     let snapshot = Snapshot::revision(&baseline.repository, &baseline.revision)?;
     let root = snapshot.locate(top, &request.root)?;
     // A project the revision lacks, or one without files, had no findings.
-    if !root.is_dir() {
+    if !vfs::is_dir(&root) {
         return Ok(Vec::new());
     }
     request.root = root;
@@ -1017,7 +1017,7 @@ fn settle(
 /// A file read only for its suppression comments; `None` when it has none or
 /// cannot be tokenized, as `tokenize` errors leave Python without suppressions.
 fn unparsed_suppressions(file: &SourceFile) -> Option<ParsedSource> {
-    let bytes = fs::read(&file.absolute).ok()?;
+    let bytes = vfs::read(&file.absolute).ok()?;
     if !bytes.windows(6).any(|window| window == b"smelt:") {
         return None;
     }

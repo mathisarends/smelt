@@ -1,11 +1,11 @@
 //! One parsed source with CPython-compatible positions.
 use super::files::SourceFile;
+use super::vfs;
 use ruff_python_ast::token::TokenKind;
 use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef, StmtFunctionDef};
 use ruff_python_parser::{Mode, ParseOptions, Parsed, parse_unchecked};
 use ruff_text_size::{Ranged, TextRange, TextSize};
 use serde_json::{Value, json};
-use std::fs;
 
 pub struct SourceText {
     pub text: String,
@@ -76,7 +76,7 @@ impl ParsedSource {
     /// The Python engine parses a source only when a rule needs its syntax, so
     /// a syntax error stops a check only then.
     pub fn read_tolerant(source: &SourceFile) -> Result<Self, String> {
-        let bytes = fs::read(&source.absolute)
+        let bytes = vfs::read(&source.absolute)
             .map_err(|error| format!("cannot read source {}: {error}", source.path))?;
         let body = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&bytes);
         let decoded = std::str::from_utf8(body)

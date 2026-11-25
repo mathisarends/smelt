@@ -1,7 +1,7 @@
 //! Paths, globs and file reads with the behavior of `pathlib` on this platform.
+use crate::checker::vfs;
 use std::env;
 use std::ffi::OsStr;
-use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
@@ -15,7 +15,7 @@ pub fn resolve(path: &Path) -> PathBuf {
     let mut existing = absolute.as_path();
     let mut missing: Vec<&OsStr> = Vec::new();
     loop {
-        if let Ok(real) = fs::canonicalize(existing) {
+        if let Ok(real) = vfs::canonicalize(existing) {
             let mut resolved = without_verbatim(real);
             for part in missing.iter().rev() {
                 resolved.push(part);
@@ -81,7 +81,7 @@ pub fn same_path(left: &Path, right: &Path) -> bool {
 
 /// UTF-8 text with universal newlines; invalid text is an `InvalidData` error.
 pub fn read_text(path: &Path) -> io::Result<String> {
-    let bytes = fs::read(path)?;
+    let bytes = vfs::read(path)?;
     let text = String::from_utf8(bytes)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
     Ok(text.replace("\r\n", "\n").replace('\r', "\n"))
@@ -89,13 +89,8 @@ pub fn read_text(path: &Path) -> io::Result<String> {
 
 /// Direct children; an unreadable directory has none.
 pub fn children(directory: &Path) -> Vec<PathBuf> {
-    fs::read_dir(directory)
-        .map(|entries| {
-            entries
-                .filter_map(Result::ok)
-                .map(|entry| entry.path())
-                .collect()
-        })
+    vfs::read_dir(directory)
+        .map(|entries| entries.into_iter().map(|entry| entry.path).collect())
         .unwrap_or_default()
 }
 
@@ -133,20 +128,20 @@ fn select(directory: &Path, parts: &[&str], found: &mut Vec<PathBuf>) {
             let matched = child
                 .file_name()
                 .is_some_and(|name| name_matches(part, &name.to_string_lossy()));
-            if matched && (rest.is_empty() || child.is_dir()) {
+            if matched && (rest.is_empty() || vfs::is_dir(&child)) {
                 select(&child, rest, found);
             }
         }
     } else {
         let next = directory.join(part);
-        if next.exists() {
+        if vfs::exists(&next) {
             select(&next, rest, found);
         }
     }
 }
 
 fn is_real_directory(path: &Path) -> bool {
-    fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_dir())
+    vfs::is_real_dir(path)
 }
 
 /// Whether `directory` holds, at any depth, an entry matching `pattern`.

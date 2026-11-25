@@ -1,8 +1,8 @@
 //! Declared minimum Python versions, with per-project provenance.
+use crate::checker::vfs;
 use regex::Regex;
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
@@ -80,7 +80,7 @@ impl PythonTargets {
                 .iter()
                 .map(|entry| {
                     let joined = root.join(entry);
-                    fs::canonicalize(&joined).unwrap_or(joined)
+                    vfs::canonicalize(&joined).unwrap_or(joined)
                 })
                 .collect(),
             pinned: pinned.and_then(|value| {
@@ -101,7 +101,7 @@ impl PythonTargets {
             };
         }
         let parent = path.parent().unwrap_or(path);
-        let directory = fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+        let directory = vfs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
         let mut boundary = self.root.as_path();
         if !directory.starts_with(&self.root) {
             let Some(deepest) = self
@@ -134,7 +134,7 @@ impl PythonTargets {
                 break;
             }
             let metadata = current.join("pyproject.toml");
-            if metadata.is_file()
+            if vfs::is_file(&metadata)
                 && let Some(target) = self.read(&metadata)
             {
                 found = Some(target);
@@ -173,7 +173,7 @@ impl PythonTargets {
 
     fn read(&self, path: &Path) -> Option<PythonTarget> {
         let source = relative(path, &self.root);
-        let data = fs::read_to_string(path)
+        let data = vfs::read_to_string(path)
             .map_err(|error| error.to_string())
             .and_then(|text| {
                 text.parse::<toml::Table>()

@@ -8,12 +8,12 @@ use crate::checker::config::{Exclusion, Project};
 use crate::checker::files::{FileIndex, SourceFile, is_identifier, python_files, relative_path};
 use crate::checker::patterns::PathPattern;
 use crate::checker::source::ParsedSource;
+use crate::checker::vfs;
 use ruff_python_ast::{
     ExceptHandler, Expr, ModModule, Number, Operator, Stmt, StmtAnnAssign, StmtAssign, UnaryOp,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -155,13 +155,13 @@ impl Coverage {
         };
         for member in members {
             let directory = base.join(&member.path);
-            if !directory.is_dir() {
+            if !vfs::is_dir(&directory) {
                 continue;
             }
             // uv excludes control packaging, not architecture coverage.
             let located = import_root(&directory).unwrap_or_else(|| {
                 let source = directory.join("src");
-                if source.is_dir() {
+                if vfs::is_dir(&source) {
                     source
                 } else {
                     directory.clone()
@@ -201,7 +201,7 @@ impl Coverage {
         });
         let mut tested: HashMap<PathBuf, bool> = HashMap::new();
         for directory in ordered {
-            if !directory.is_dir() {
+            if !vfs::is_dir(&directory) {
                 continue;
             }
             for path in python_files(&directory) {
@@ -297,7 +297,7 @@ impl Coverage {
 }
 
 fn real(path: &Path) -> PathBuf {
-    fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    vfs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 fn is_governed(info: &ModuleInfo, layers_declared: bool) -> bool {
