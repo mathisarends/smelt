@@ -25,6 +25,7 @@ pub struct Args {
     pub strict_coverage: bool,
     pub show_coverage: bool,
     pub changed: bool,
+    pub staged: bool,
     pub base: Option<String>,
 }
 
@@ -35,7 +36,7 @@ impl Args {
 
     /// Whether the check reports only the findings new since a commit.
     pub fn compares(&self) -> bool {
-        self.changed || self.base.is_some()
+        self.changed || self.staged || self.base.is_some()
     }
 }
 
@@ -57,6 +58,7 @@ fn flag(args: &mut Args, name: &str) -> Option<()> {
         "--strict-coverage" => args.strict_coverage = true,
         "--show-coverage" => args.show_coverage = true,
         "--changed" => args.changed = true,
+        "--staged" => args.staged = true,
         _ => return None,
     }
     Some(())
@@ -147,6 +149,10 @@ pub fn parse(arguments: &[OsString]) -> Option<Args> {
             index += 1;
         }
     }
+    // argparse rejects the two together.
+    if args.changed && args.staged {
+        return None;
+    }
     Some(args)
 }
 
@@ -199,8 +205,12 @@ mod tests {
                 .expect("supported")
                 .compares()
         );
+        assert!(
+            parse(&arguments("check --staged"))
+                .expect("supported")
+                .staged
+        );
         for unsupported in [
-            "check --staged",
             "check --changed --staged",
             "check --base -x",
             "check --statistics",

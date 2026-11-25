@@ -1,4 +1,5 @@
-//! What `--changed` compares with, as `smelt.engine.changes` resolves it.
+//! What `--changed` and `--staged` compare with, as `smelt.engine.changes`
+//! resolves it.
 use serde_json::{Map, Value, json};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -16,20 +17,27 @@ const HARMLESS: [&str; 7] = [
     "GIT_REFLOG_ACTION",
 ];
 
-/// What a `--changed` check compared the working tree with.
+/// What a `--changed` or `--staged` check compared with.
 pub struct Comparison {
     /// `--base` as given.
     pub base: Option<String>,
     /// The commit compared with; `None` before the first commit.
     pub revision: Option<String>,
     pub head: Option<String>,
+    /// Whether the staged index, not the working tree, was compared.
+    pub staged: bool,
+    /// The staged index's identity, which a `--staged` report adds.
+    pub index_hash: Option<String>,
 }
 
 impl Comparison {
     /// `Comparison.to_json`.
     pub fn to_json(&self) -> Map<String, Value> {
         let mut comparison = Map::new();
-        comparison.insert("mode".into(), json!("changed"));
+        comparison.insert(
+            "mode".into(),
+            json!(if self.staged { "staged" } else { "changed" }),
+        );
         comparison.insert("base".into(), json!(self.base));
         comparison.insert(
             "merge_base".into(),
@@ -37,7 +45,10 @@ impl Comparison {
         );
         comparison.insert("compared_revision".into(), json!(self.revision));
         comparison.insert("head".into(), json!(self.head));
-        comparison.insert("working_tree".into(), json!(true));
+        comparison.insert("working_tree".into(), json!(!self.staged));
+        if let Some(index_hash) = &self.index_hash {
+            comparison.insert("index_hash".into(), json!(index_hash));
+        }
         comparison
     }
 }
@@ -46,10 +57,20 @@ impl Comparison {
 /// `root` compares with; `Err` where the Python engine would fail.
 pub fn resolve(root: &Path, base: Option<&str>) -> Result<(PathBuf, Comparison), &'static str> {
     let (top, head) = repository(root)?;
+    Ok((top, compare(root, head, base)?))
+}
+
+/// What a check compares with: the merge base of `head` and `base`, run in
+/// `directory`, else `head`.
+pub fn compare(
+    directory: &Path,
+    head: Option<String>,
+    base: Option<&str>,
+) -> Result<Comparison, &'static str> {
     let revision = match base {
         Some(base) => {
             let output = git(
-                root,
+                directory,
                 &["merge-base", head.as_deref().unwrap_or("HEAD"), base],
             )
             .filter(|output| output.status.success())
@@ -63,28 +84,32 @@ pub fn resolve(root: &Path, base: Option<&str>) -> Result<(PathBuf, Comparison),
         }
         None => head.clone(),
     };
-    Ok((
-        top,
-        Comparison {
-            base: base.map(str::to_owned),
-            revision,
-            head,
-        },
-    ))
+    Ok(Comparison {
+        base: base.map(str::to_owned),
+        revision,
+        head,
+        staged: false,
+        index_hash: None,
+    })
 }
 
-/// The top level of the repository `anchor` lies in, and its HEAD commit,
-/// `None` before the first commit.
-fn repository(anchor: &Path) -> Result<(PathBuf, Option<String>), &'static str> {
-    let foreign = env::vars_os().any(|(name, _)| {
+/// Whether a Git variable could change what Git reads, beyond the ones Git
+/// sets for a commit hook.
+pub fn foreign_git_variables() -> bool {
+    env::vars_os().any(|(name, _)| {
         name.to_str().is_none_or(|name| {
             name.starts_with("GIT_")
                 && !HARMLESS.contains(&name)
                 && !name.starts_with("GIT_AUTHOR_")
                 && !name.starts_with("GIT_COMMITTER_")
         })
-    });
-    if foreign {
+    })
+}
+
+/// The top level of the repository `anchor` lies in, and its HEAD commit,
+/// `None` before the first commit.
+fn repository(anchor: &Path) -> Result<(PathBuf, Option<String>), &'static str> {
+    if foreign_git_variables() {
         // Git reads these; ask it rather than interpret them.
         return revparse(anchor);
     }
